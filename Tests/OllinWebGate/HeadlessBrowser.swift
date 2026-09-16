@@ -31,6 +31,11 @@ package enum HeadlessBrowser {
 
     package struct Failure: Error, CustomStringConvertible {
         package var description: String
+        /// The browser did not exit on its own: it was signalled, which here
+        /// means its time ran out. A run that ends this way is worth one more
+        /// try at a longer budget, since a machine that was merely busy will
+        /// finish the second time and a page that truly hangs will not.
+        package var wasSignalled = false
     }
 
     /// The flags every run carries. No `--user-data-dir` on purpose: with one,
@@ -50,6 +55,11 @@ package enum HeadlessBrowser {
     package struct Capability: Sendable {
         package var flags: [String]?
         package var reason: String
+        /// Wall-clock seconds the probe's own run took: one browser launch
+        /// that compiles a trivial shader and writes a word into the DOM. It
+        /// is this machine's floor for running any page at all, and it is what
+        /// every other budget here is measured against.
+        package var launchSeconds: TimeInterval = 0
     }
 
     package static let capability: Task<Capability, Never> = Task {
@@ -58,9 +68,17 @@ package enum HeadlessBrowser {
         for extra in [[], ["--use-angle=swiftshader"]] {
             let flags = baseFlags + extra
             do {
+                let started = Date()
                 let dom = try await dom(of: WebGLPage.compile(["#version 300 es\nprecision highp float;\nout vec4 o;\nvoid main() { o = vec4(1.0); }"]),
                                         flags: flags, timeout: 60)
-                if text(of: "r0", in: dom) == "OK" { return Capability(flags: flags, reason: "") }
+                let launch = Date().timeIntervalSince(started)
+                if text(of: "r0", in: dom) == "OK" {
+                    // One line per run, so the machine's own number is in every
+                    // log rather than only in the investigation that wanted it.
+                    print(String(format: "web gate: the browser launched and compiled a shader in %.1fs here, "
+                                 + "so no page waits less than %.0fs", launch, budget(0, launch: launch)))
+                    return Capability(flags: flags, reason: "", launchSeconds: launch)
+                }
                 reasons.append("\(extra.joined(separator: " ")): \(text(of: "r0", in: dom) ?? "no report")")
             } catch {
                 reasons.append("\(extra.joined(separator: " ")): \(error)")
@@ -76,13 +94,46 @@ package enum HeadlessBrowser {
         await capability.value.flags != nil
     }
 
+    /// How long a page may take here, given what the probe measured.
+    ///
+    /// `base` is what the work costs at a desk, which is the only number a
+    /// test can honestly name: it knows its own page, not the machine reading
+    /// it. The floor is eight times the probe's own launch, because a machine
+    /// where merely starting the browser and compiling one shader takes N
+    /// seconds is not going to draw a real page inside a desk's budget. The
+    /// runner Ollin builds on has no GPU, so every pixel of a WebGL page is
+    /// rasterized on the CPU: the same one-page test that takes 2.0s here has
+    /// taken 229.7s and 450.9s there, in runs that passed. Measuring the
+    /// machine beats naming a number, which would need a line per machine and
+    /// would be wrong on the next one.
+    ///
+    /// The ceiling is there because the timeout's whole job is to fail a hang
+    /// rather than park a test forever.
+    package static func budget(_ base: TimeInterval, launch: TimeInterval) -> TimeInterval {
+        min(600, max(base, launch * 8))
+    }
+
     /// Loads `html` from a temporary file and returns the DOM once its scripts
     /// have run, with the flags the capability probe found.
+    ///
+    /// A run whose time ran out is tried once more with four times the budget.
+    /// A slow machine is not a steady one: what is being waited on is wall
+    /// clock, and the browser competes for the cores with the rest of the
+    /// suite, so a page can land just under the line on one run and just over
+    /// it on the next. A second attempt costs nothing where the first one
+    /// passes, and a page that genuinely hangs still fails, twice, inside a
+    /// bounded time.
     package static func dom(of html: String, timeout: TimeInterval = 90) async throws -> String {
-        guard let flags = await capability.value.flags else {
-            throw Failure(description: await capability.value.reason)
+        let capability = await capability.value
+        guard let flags = capability.flags else {
+            throw Failure(description: capability.reason)
         }
-        return try await dom(of: html, flags: flags, timeout: timeout)
+        let first = budget(timeout, launch: capability.launchSeconds)
+        do {
+            return try await dom(of: html, flags: flags, timeout: first)
+        } catch let failure as Failure where failure.wasSignalled {
+            return try await dom(of: html, flags: flags, timeout: min(900, first * 4))
+        }
     }
 
     /// The run itself. The browser is killed after `timeout`, so a hang fails
@@ -108,9 +159,10 @@ package enum HeadlessBrowser {
         process.standardOutput = handle
         process.standardError = FileHandle.nullDevice
 
-        let status: Int32 = try await withCheckedThrowingContinuation { continuation in
+        let ending: (status: Int32, signalled: Bool) = try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { finished in
-                continuation.resume(returning: finished.terminationStatus)
+                continuation.resume(returning: (finished.terminationStatus,
+                                                finished.terminationReason == .uncaughtSignal))
             }
             do {
                 try process.run()
@@ -130,7 +182,9 @@ package enum HeadlessBrowser {
 
         let text = (try? String(contentsOf: output, encoding: .utf8)) ?? ""
         guard !text.isEmpty else {
-            throw Failure(description: "the browser wrote nothing (exit status \(status))")
+            throw Failure(description: String(format: "the browser wrote nothing (exit status %d, %.0fs allowed)",
+                                              ending.status, timeout),
+                          wasSignalled: ending.signalled)
         }
         return text
     }
