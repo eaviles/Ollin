@@ -444,26 +444,31 @@ extension OllinApp {
         sketch.drawer.recordsWebSources = true
         var bound = WebWeightBound(samplesMovingColumns: samplesMovingColumns)
         for k in 0 ..< (skip + frames) {
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
-            if k < skip {
-                // The page cannot replay a pile it never saw, nor a state it
-                // never stepped.
-                if sketch.drawer.accumulates {
-                    throw WebExportRefusal(call: "--skip on a sketch that accumulates (noClear)", frame: 0)
+            // A recording is one long synchronous run with no run loop under it,
+            // so each frame drains what it drew: a sketch's own device buffers,
+            // and the pictures this frame encoded on the way into the page.
+            try autoreleasepool {
+                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                sketch.performDraw()
+                if k < skip {
+                    // The page cannot replay a pile it never saw, nor a state it
+                    // never stepped.
+                    if sketch.drawer.accumulates {
+                        throw WebExportRefusal(call: "--skip on a sketch that accumulates (noClear)", frame: 0)
+                    }
+                    if sketch.drawer.usesFeedback {
+                        throw WebExportRefusal(call: "--skip on a sketch with a feedback layer or a simulation", frame: 0)
+                    }
+                    return                            // the pool is the iteration, so leaving it is `continue`
                 }
-                if sketch.drawer.usesFeedback {
-                    throw WebExportRefusal(call: "--skip on a sketch with a feedback layer or a simulation", frame: 0)
-                }
-                continue
-            }
-            each(k)
-            recorded.append(try recorder.capture(sketch.drawer, frame: k - skip, width: width, height: height))
-            if let maxBytes {
-                bound.add(recorded[recorded.count - 1], previous: recorded.count > 1 ? recorded[recorded.count - 2] : nil,
-                          pictureBytes: recorder.pictures.reduce(0) { $0 + $1.data.count })
-                if bound.bytes > maxBytes {
-                    throw bound.refusal(maxBytes: maxBytes, seen: recorded.count, of: frames)
+                each(k)
+                recorded.append(try recorder.capture(sketch.drawer, frame: k - skip, width: width, height: height))
+                if let maxBytes {
+                    bound.add(recorded[recorded.count - 1], previous: recorded.count > 1 ? recorded[recorded.count - 2] : nil,
+                              pictureBytes: recorder.pictures.reduce(0) { $0 + $1.data.count })
+                    if bound.bytes > maxBytes {
+                        throw bound.refusal(maxBytes: maxBytes, seen: recorded.count, of: frames)
+                    }
                 }
             }
         }

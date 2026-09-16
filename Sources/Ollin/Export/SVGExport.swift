@@ -615,9 +615,14 @@ extension OllinApp {
         sketch.runSetup()
         let recorder = SVGRecorder()
         for k in 0...max(0, frame) {                 // advance so frame N is correct
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.drawer.svgRecorder = (k == frame) ? recorder : nil
-            sketch.performDraw()
+            // Nothing here touches the GPU, but the sketch's own draw() may, and
+            // this drive never returns to a run loop that would drain what it
+            // asked the device for.
+            autoreleasepool {
+                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                sketch.drawer.svgRecorder = (k == frame) ? recorder : nil
+                sketch.performDraw()
+            }
         }
         sketch.drawer.svgRecorder = nil
         let commands = hatching.map { applyHatching(recorder.commands, $0) } ?? recorder.commands

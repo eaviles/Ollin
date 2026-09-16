@@ -177,26 +177,33 @@ extension OllinApp {
         context.textMatrix = .identity
 
         for (index, tile) in tiles.enumerated() {
-            let sketch = index == 0 ? first : make()
-            tile.prepare(sketch)
-            renderer.resetAccumulation()   // a `noClear()` pile must not leak across tiles
-            guard let image = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
-                FileHandle.standardError.write(Data("\nOllin: failed to render tile '\(tile.label)'\n".utf8))
-                return nil
-            }
-            let column = index % cols, row = index / cols
-            let x = margin + column * (tileW + gutter)
-            let topDownY = margin + row * (cellHeight + gutter)
-            let tileRect = CGRect(x: x, y: sheetHeight - topDownY - tileH, width: tileW, height: tileH)
-            context.draw(image, in: tileRect)
-            drawSheetLabel(tile.label, in: context,
-                           centerX: tileRect.midX,
-                           baselineY: tileRect.minY - Double(labelHeight) * 0.70,
-                           fontSize: Double(labelHeight) * 0.46)
+            // One pool per tile: a sheet is one synchronous run of as many whole
+            // renders as it has cells, and each tile's frames, its readback and
+            // its own image are finished with the moment it is on the sheet.
+            let drawn = autoreleasepool { () -> Bool in
+                let sketch = index == 0 ? first : make()
+                tile.prepare(sketch)
+                renderer.resetAccumulation()   // a `noClear()` pile must not leak across tiles
+                guard let image = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
+                    FileHandle.standardError.write(Data("\nOllin: failed to render tile '\(tile.label)'\n".utf8))
+                    return false
+                }
+                let column = index % cols, row = index / cols
+                let x = margin + column * (tileW + gutter)
+                let topDownY = margin + row * (cellHeight + gutter)
+                let tileRect = CGRect(x: x, y: sheetHeight - topDownY - tileH, width: tileW, height: tileH)
+                context.draw(image, in: tileRect)
+                drawSheetLabel(tile.label, in: context,
+                               centerX: tileRect.midX,
+                               baselineY: tileRect.minY - Double(labelHeight) * 0.70,
+                               fontSize: Double(labelHeight) * 0.46)
 
-            let line = String(format: "\r  rendering tile %d/%d (%@)    ",
-                              index + 1, tiles.count, tile.label)
-            FileHandle.standardError.write(Data(line.utf8))
+                let line = String(format: "\r  rendering tile %d/%d (%@)    ",
+                                  index + 1, tiles.count, tile.label)
+                FileHandle.standardError.write(Data(line.utf8))
+                return true
+            }
+            guard drawn else { return nil }
         }
         FileHandle.standardError.write(Data("\n".utf8))
         return context.makeImage()

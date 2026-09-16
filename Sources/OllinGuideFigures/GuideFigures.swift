@@ -558,143 +558,149 @@ enum GuideFigures {
                                progressPath: String?, echo: Bool) -> [Rendered] {
         var results: [Rendered] = []
         for work in list {
-            let relative = work.figure
-            let sourcePath = sourceFile(relative, root: root)
-            let started = Date()
-            var log = ""
-            var outPath = ""
-            var sourceHash = ""
-            var ok = false
-            var unstable = false
-            var held = ""
-            var movement: Movement?
-            var darkOutPath: String?
+            // A run renders hundreds of figures without once returning to a run
+            // loop, and each one loads a sketch, renders it and compares images.
+            // Draining per figure is what keeps a full render inside its worker's
+            // memory rather than growing by every figure it has already written.
+            autoreleasepool {
+                let relative = work.figure
+                let sourcePath = sourceFile(relative, root: root)
+                let started = Date()
+                var log = ""
+                var outPath = ""
+                var sourceHash = ""
+                var ok = false
+                var unstable = false
+                var held = ""
+                var movement: Movement?
+                var darkOutPath: String?
 
-            if let data = FileManager.default.contents(atPath: sourcePath),
-               let source = String(data: data, encoding: .utf8) {
-                sourceHash = hex(SHA256.hash(data: data))
-                let directive = Directive(source: source)
-                unstable = directive.unstable
-                let stem = (relative as NSString).deletingPathExtension
-                let name = (stem as NSString).lastPathComponent
-                    + (directive.gif ? ".gif" : directive.stillExtension)
-                let directory = imageFolder(relative, root: root)
-                outPath = directory + "/" + name
-                try? FileManager.default.createDirectory(
-                    atPath: directory, withIntermediateDirectories: true)
+                if let data = FileManager.default.contents(atPath: sourcePath),
+                   let source = String(data: data, encoding: .utf8) {
+                    sourceHash = hex(SHA256.hash(data: data))
+                    let directive = Directive(source: source)
+                    unstable = directive.unstable
+                    let stem = (relative as NSString).deletingPathExtension
+                    let name = (stem as NSString).lastPathComponent
+                        + (directive.gif ? ".gif" : directive.stillExtension)
+                    let directory = imageFolder(relative, root: root)
+                    outPath = directory + "/" + name
+                    try? FileManager.default.createDirectory(
+                        atPath: directory, withIntermediateDirectories: true)
 
-                // Verifying rather than recording: render beside the committed
-                // image and throw the result away. Probing is the same detour
-                // with the result measured against the committed image first,
-                // so the caller learns how far it moved without that image ever
-                // being overwritten. And a recording render goes to a dot-temp
-                // too, promoted over the committed image only when the picture
-                // actually changed (see the type comment on byte-nondeterministic
-                // encoders and the visible threshold).
-                let verifying = work.verifyOnly
-                    && FileManager.default.fileExists(atPath: outPath)
-                let probing = work.probeOnly
-                let writePath = verifying || probing
-                    ? directory + "/." + (probing ? "probe-" : "verify-") + name
-                    : directory + "/.new-" + name
+                    // Verifying rather than recording: render beside the committed
+                    // image and throw the result away. Probing is the same detour
+                    // with the result measured against the committed image first,
+                    // so the caller learns how far it moved without that image ever
+                    // being overwritten. And a recording render goes to a dot-temp
+                    // too, promoted over the committed image only when the picture
+                    // actually changed (see the type comment on byte-nondeterministic
+                    // encoders and the visible threshold).
+                    let verifying = work.verifyOnly
+                        && FileManager.default.fileExists(atPath: outPath)
+                    let probing = work.probeOnly
+                    let writePath = verifying || probing
+                        ? directory + "/." + (probing ? "probe-" : "verify-") + name
+                        : directory + "/.new-" + name
 
-                if echo { print("guide-figures: \(relative)") }
-                switch SketchLoader(sketchPath: sourcePath).load() {
-                case .success(let sketch):
-                    if directive.gif {
-                        let frames = max(1, Int((directive.duration * directive.fps).rounded()))
-                        OllinApp.exportGIF(sketch, to: writePath, frames: frames,
-                                           fps: FrameRate(directive.fps), width: directive.width)
-                    } else if directive.png {
-                        OllinApp.export(sketch, to: writePath, frame: directive.frame)
-                    } else {
-                        exportJPEG(sketch, to: writePath, frame: directive.frame)
-                    }
-                    if FileManager.default.fileExists(atPath: writePath) {
-                        ok = true
-                    } else {
-                        log = "no output written"
-                    }
-                    // The dark pass: flip the figure's own parameter and render the
-                    // same instance again, beside the light image.
-                    if ok, directive.themed {
+                    if echo { print("guide-figures: \(relative)") }
+                    switch SketchLoader(sketchPath: sourcePath).load() {
+                    case .success(let sketch):
                         if directive.gif {
-                            warn("\(relative): themed is still-only; ignoring it for a GIF")
-                        } else if let parameter = sketch.parameters()
-                            .first(where: { $0.name == "darkTheme" }) {
-                            let darkName = ((stem as NSString).lastPathComponent)
-                                + "-dark" + directive.stillExtension
-                            let darkWrite = verifying || probing
-                                ? directory + "/." + (probing ? "probe-" : "verify-") + darkName
-                                : directory + "/.new-" + darkName
-                            parameter.param.restore(.boolean(true))
-                            if directive.png {
-                                OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
-                            } else {
-                                exportJPEG(sketch, to: darkWrite, frame: directive.frame)
-                            }
-                            if FileManager.default.fileExists(atPath: darkWrite) {
-                                darkOutPath = directory + "/" + darkName
-                                if probing {
-                                    movement = Movement.between(darkWrite, and: probeReference(
-                                        relative, dark: true,
-                                        committed: directory + "/" + darkName))
+                            let frames = max(1, Int((directive.duration * directive.fps).rounded()))
+                            OllinApp.exportGIF(sketch, to: writePath, frames: frames,
+                                               fps: FrameRate(directive.fps), width: directive.width)
+                        } else if directive.png {
+                            OllinApp.export(sketch, to: writePath, frame: directive.frame)
+                        } else {
+                            exportJPEG(sketch, to: writePath, frame: directive.frame)
+                        }
+                        if FileManager.default.fileExists(atPath: writePath) {
+                            ok = true
+                        } else {
+                            log = "no output written"
+                        }
+                        // The dark pass: flip the figure's own parameter and render the
+                        // same instance again, beside the light image.
+                        if ok, directive.themed {
+                            if directive.gif {
+                                warn("\(relative): themed is still-only; ignoring it for a GIF")
+                            } else if let parameter = sketch.parameters()
+                                .first(where: { $0.name == "darkTheme" }) {
+                                let darkName = ((stem as NSString).lastPathComponent)
+                                    + "-dark" + directive.stillExtension
+                                let darkWrite = verifying || probing
+                                    ? directory + "/." + (probing ? "probe-" : "verify-") + darkName
+                                    : directory + "/.new-" + darkName
+                                parameter.param.restore(.boolean(true))
+                                if directive.png {
+                                    OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
+                                } else {
+                                    exportJPEG(sketch, to: darkWrite, frame: directive.frame)
                                 }
-                                if directive.probe {
-                                    keepBaseline(darkWrite, for: relative, dark: true)
+                                if FileManager.default.fileExists(atPath: darkWrite) {
+                                    darkOutPath = directory + "/" + darkName
+                                    if probing {
+                                        movement = Movement.between(darkWrite, and: probeReference(
+                                            relative, dark: true,
+                                            committed: directory + "/" + darkName))
+                                    }
+                                    if directive.probe {
+                                        keepBaseline(darkWrite, for: relative, dark: true)
+                                    }
+                                } else {
+                                    ok = false
+                                    log = "no dark output written"
+                                }
+                                if verifying || probing {
+                                    try? FileManager.default.removeItem(atPath: darkWrite)
+                                } else if ok, let kept = promote(darkWrite, over: directory + "/" + darkName,
+                                                                 exact: work.exact) {
+                                    held = "dark: " + kept
                                 }
                             } else {
                                 ok = false
-                                log = "no dark output written"
+                                log = "themed, but the figure declares no"
+                                    + " `@Param var darkTheme = false` parameter to flip"
                             }
-                            if verifying || probing {
-                                try? FileManager.default.removeItem(atPath: darkWrite)
-                            } else if ok, let kept = promote(darkWrite, over: directory + "/" + darkName,
-                                                             exact: work.exact) {
-                                held = "dark: " + kept
-                            }
-                        } else {
-                            ok = false
-                            log = "themed, but the figure declares no"
-                                + " `@Param var darkTheme = false` parameter to flip"
                         }
+                        if probing {
+                            let light = Movement.between(writePath, and: probeReference(
+                                relative, dark: false, committed: outPath))
+                            movement = movement.map { Movement.larger($0, light) } ?? light
+                        }
+                        if ok, directive.probe {
+                            keepBaseline(writePath, for: relative, dark: false)
+                        }
+                        if verifying || probing {
+                            try? FileManager.default.removeItem(atPath: writePath)
+                        } else if ok, let kept = promote(writePath, over: outPath, exact: work.exact) {
+                            held = held.isEmpty ? kept : kept + "; " + held
+                        }
+                    case .failure(let error):
+                        log = "\(error)"
                     }
-                    if probing {
-                        let light = Movement.between(writePath, and: probeReference(
-                            relative, dark: false, committed: outPath))
-                        movement = movement.map { Movement.larger($0, light) } ?? light
-                    }
-                    if ok, directive.probe {
-                        keepBaseline(writePath, for: relative, dark: false)
-                    }
-                    if verifying || probing {
-                        try? FileManager.default.removeItem(atPath: writePath)
-                    } else if ok, let kept = promote(writePath, over: outPath, exact: work.exact) {
-                        held = held.isEmpty ? kept : kept + "; " + held
-                    }
-                case .failure(let error):
-                    log = "\(error)"
+                } else {
+                    log = "unreadable"
                 }
-            } else {
-                log = "unreadable"
-            }
 
-            // A probe reports how far it moved; everything else reports the
-            // hash of the image now on disk.
-            let outputHash = ok && !unstable && !work.probeOnly ? fileHash(outPath) : ""
-            var darkHash: String?
-            if let darkOutPath, ok, !unstable, !work.probeOnly {
-                darkHash = fileHash(darkOutPath)
+                // A probe reports how far it moved; everything else reports the
+                // hash of the image now on disk.
+                let outputHash = ok && !unstable && !work.probeOnly ? fileHash(outPath) : ""
+                var darkHash: String?
+                if let darkOutPath, ok, !unstable, !work.probeOnly {
+                    darkHash = fileHash(darkOutPath)
+                }
+                results.append(Rendered(
+                    figure: relative, ok: ok, seconds: Date().timeIntervalSince(started),
+                    source: sourceHash, output: outputHash,
+                    outputPath: (outPath as NSString).lastPathComponent, log: log,
+                    unstable: unstable, darkOutput: darkHash,
+                    darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent },
+                    note: held, movement: work.probeOnly ? movement : nil))
+                if !ok { warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)") }
+                note(progressPath, ok ? "." : "x")
             }
-            results.append(Rendered(
-                figure: relative, ok: ok, seconds: Date().timeIntervalSince(started),
-                source: sourceHash, output: outputHash,
-                outputPath: (outPath as NSString).lastPathComponent, log: log,
-                unstable: unstable, darkOutput: darkHash,
-                darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent },
-                note: held, movement: work.probeOnly ? movement : nil))
-            if !ok { warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)") }
-            note(progressPath, ok ? "." : "x")
         }
         return results
     }

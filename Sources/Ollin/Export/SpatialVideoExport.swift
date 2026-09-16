@@ -339,77 +339,82 @@ extension OllinApp {
         let wallStart = CACurrentMediaTime()
 
         for k in 0 ..< (skipFrames + frames) {
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
+            // Both eyes' readbacks, and everything the frame drew, are done with at
+            // the end of the iteration; this drive never reaches a run loop that
+            // would drain them, so a long clip would otherwise hold every frame.
+            autoreleasepool {
+                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                sketch.performDraw()
 
-            let accumulates = sketch.drawer.accumulates
-            let center = sketch.drawer.camera3D
-            let pair = center?.stereoPair(geometry, aspect: aspect)
-            let resolved = center.map { geometry.resolved(for: $0, aspect: aspect) }
+                let accumulates = sketch.drawer.accumulates
+                let center = sketch.drawer.camera3D
+                let pair = center?.stereoPair(geometry, aspect: aspect)
+                let resolved = center.map { geometry.resolved(for: $0, aspect: aspect) }
 
-            var frame: StereoFrame?
-            if accumulates || k >= skipFrames {
-                if accumulates {
-                    // The pile lives in one persistent surface, and there is only one
-                    // of it, so both eyes are handed the same picture and the piece
-                    // reads flat. Rendering it twice would deposit the frame twice.
-                    sketch.drawer.noteOnce(
-                        "Ollin: this sketch accumulates onto one surface, so its spatial video "
-                        + "shows the same picture to both eyes and will read flat")
-                    guard let image = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
-                                                                width: width, height: height) else {
-                        fatalError("Ollin: failed to render frame \(k)")
+                var frame: StereoFrame?
+                if accumulates || k >= skipFrames {
+                    if accumulates {
+                        // The pile lives in one persistent surface, and there is only one
+                        // of it, so both eyes are handed the same picture and the piece
+                        // reads flat. Rendering it twice would deposit the frame twice.
+                        sketch.drawer.noteOnce(
+                            "Ollin: this sketch accumulates onto one surface, so its spatial video "
+                            + "shows the same picture to both eyes and will read flat")
+                        guard let image = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                                                    width: width, height: height) else {
+                            fatalError("Ollin: failed to render frame \(k)")
+                        }
+                        let convergence = resolved?.convergence ?? 1
+                        frame = StereoFrame(left: image, right: image, interocular: 0,
+                                            fieldOfView: center?.horizontalFieldOfView(
+                                                aspect: aspect, convergence: convergence) ?? .pi / 3)
+                    } else if let pair, let resolved {
+                        sketch.drawer.aimStereoEye(pair.left, previous: previous?.left)
+                        guard let left = renderer.image(of: sketch.drawer, viewport: viewport,
+                                                        width: width, height: height) else {
+                            fatalError("Ollin: failed to render frame \(k)")
+                        }
+                        sketch.drawer.aimStereoEye(pair.right, previous: previous?.right)
+                        guard let right = renderer.image(of: sketch.drawer, viewport: viewport,
+                                                         width: width, height: height) else {
+                            fatalError("Ollin: failed to render frame \(k)")
+                        }
+                        frame = StereoFrame(left: left, right: right,
+                                            interocular: resolved.interocular,
+                                            fieldOfView: pair.left.horizontalFieldOfView(
+                                                aspect: aspect, convergence: resolved.convergence))
+                    } else {
+                        sketch.drawer.noteOnce(
+                            "Ollin: this sketch sets no 3D camera, so its spatial video shows the same "
+                            + "picture to both eyes and will read flat")
+                        guard let image = renderer.image(of: sketch.drawer, viewport: viewport,
+                                                         width: width, height: height) else {
+                            fatalError("Ollin: failed to render frame \(k)")
+                        }
+                        frame = StereoFrame(left: image, right: image, interocular: 0, fieldOfView: .pi / 3)
                     }
-                    let convergence = resolved?.convergence ?? 1
-                    frame = StereoFrame(left: image, right: image, interocular: 0,
-                                        fieldOfView: center?.horizontalFieldOfView(
-                                            aspect: aspect, convergence: convergence) ?? .pi / 3)
-                } else if let pair, let resolved {
-                    sketch.drawer.aimStereoEye(pair.left, previous: previous?.left)
-                    guard let left = renderer.image(of: sketch.drawer, viewport: viewport,
-                                                    width: width, height: height) else {
-                        fatalError("Ollin: failed to render frame \(k)")
-                    }
-                    sketch.drawer.aimStereoEye(pair.right, previous: previous?.right)
-                    guard let right = renderer.image(of: sketch.drawer, viewport: viewport,
-                                                     width: width, height: height) else {
-                        fatalError("Ollin: failed to render frame \(k)")
-                    }
-                    frame = StereoFrame(left: left, right: right,
-                                        interocular: resolved.interocular,
-                                        fieldOfView: pair.left.horizontalFieldOfView(
-                                            aspect: aspect, convergence: resolved.convergence))
                 } else {
-                    sketch.drawer.noteOnce(
-                        "Ollin: this sketch sets no 3D camera, so its spatial video shows the same "
-                        + "picture to both eyes and will read flat")
-                    guard let image = renderer.image(of: sketch.drawer, viewport: viewport,
-                                                     width: width, height: height) else {
-                        fatalError("Ollin: failed to render frame \(k)")
-                    }
-                    frame = StereoFrame(left: image, right: image, interocular: 0, fieldOfView: .pi / 3)
+                    // A warmup frame nobody keeps: still stepped, so a stateful sim
+                    // evolves into the first frame that is.
+                    renderer.stepCompute(sketch.drawer)
                 }
-            } else {
-                // A warmup frame nobody keeps: still stepped, so a stateful sim
-                // evolves into the first frame that is.
-                renderer.stepCompute(sketch.drawer)
-            }
-            previous = pair
+                previous = pair
 
-            if k < skipFrames {
-                FileHandle.standardError.write(Data(
-                    String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
-                continue
-            }
-            guard let frame else { fatalError("Ollin: failed to render frame \(k)") }
-            let done = k - skipFrames + 1
-            write(frame, done - 1)
+                if k < skipFrames {
+                    FileHandle.standardError.write(Data(
+                        String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
+                    return                            // the pool is the iteration, so leaving it is `continue`
+                }
+                guard let frame else { fatalError("Ollin: failed to render frame \(k)") }
+                let done = k - skipFrames + 1
+                write(frame, done - 1)
 
-            let elapsed = CACurrentMediaTime() - wallStart
-            let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
-            let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
-                              done, frames, done * 100 / frames, renderFPS)
-            FileHandle.standardError.write(Data(line.utf8))
+                let elapsed = CACurrentMediaTime() - wallStart
+                let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
+                let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
+                                  done, frames, done * 100 / frames, renderFPS)
+                FileHandle.standardError.write(Data(line.utf8))
+            }
         }
         FileHandle.standardError.write(Data("\n".utf8))
         return CACurrentMediaTime() - wallStart

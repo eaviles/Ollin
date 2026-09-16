@@ -523,22 +523,27 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// accumulating or feedback frame must actually render for its persistent
     /// surface to evolve; anything else only needs its compute stepped.
     private func stepReplayFrame() {
-        if !didSetup {
-            sketch.setup()
-            applyLaunchParams()
-            didSetup = true
-        }
-        sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
-        sketch.performDraw()
-        let viewport = SIMD2<Float>(Float(sketch.width), Float(sketch.height))
-        let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
-        if sketch.drawer.accumulates {
-            _ = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
-                                          width: w, height: h)
-        } else if sketch.drawer.usesFeedback {
-            _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
-        } else {
-            renderer.stepCompute(sketch.drawer)
+        // A scrub to a late frame re-simulates every frame before it without
+        // returning to the run loop, so this frame's own pool is what keeps a
+        // long jump from ending with a few thousand readbacks still resident.
+        autoreleasepool {
+            if !didSetup {
+                sketch.setup()
+                applyLaunchParams()
+                didSetup = true
+            }
+            sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
+            sketch.performDraw()
+            let viewport = SIMD2<Float>(Float(sketch.width), Float(sketch.height))
+            let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
+            if sketch.drawer.accumulates {
+                _ = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                              width: w, height: h)
+            } else if sketch.drawer.usesFeedback {
+                _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+            } else {
+                renderer.stepCompute(sketch.drawer)
+            }
         }
     }
 
@@ -2582,16 +2587,22 @@ public enum OllinApp {
 
     public static func image(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let renderer = headlessRenderer(for: sketch, device: device) else {
-            return nil
+        // The pool holds the renderer as well as the frames: a device resource
+        // arrives autoreleased, so the textures this renderer builds are freed
+        // only once something drains, and a caller taking many stills in a row
+        // (a figure run, a test suite) never returns to a run loop that would.
+        autoreleasepool { () -> CGImage? in
+            guard let device = MTLCreateSystemDefaultDevice(),
+                  let renderer = headlessRenderer(for: sketch, device: device) else {
+                return nil
+            }
+            isRenderingHeadless = true
+            defer { isRenderingHeadless = false }
+            renderer.automaticQuality = quality
+            renderer.pathTracing = pathTracedExport
+            renderer.renderScale = exportRenderScale
+            return renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
         }
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
-        renderer.automaticQuality = quality
-        renderer.pathTracing = pathTracedExport
-        renderer.renderScale = exportRenderScale
-        return renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
     }
 
     /// The one-frame headless drive behind `image(of:)`, against a caller-owned
@@ -2619,24 +2630,29 @@ public enum OllinApp {
         for k in 0...target {                        // advance so frame N is correct
             let draws = k == target ? settle : 1
             for pass in 0..<draws {
-                sketch.advance(time: Double(k) / fps, deltaTime: pass == 0 ? 1 / fps : 0, frameRate: fps)
-                sketch.performDraw()
-                if sketch.drawer.accumulates {
-                    accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
-                                                            width: width, height: height)
-                } else if sketch.drawer.usesFeedback || pass > 0 {
-                    // Feedback state lives in render-pass-filled ping-pong textures, so
-                    // (like accumulation) every intermediate frame must render (which also
-                    // steps compute) for the layer to evolve; only the last frame is kept.
-                    // A settle draw always renders, since rendering is what steps the
-                    // layer it is there to settle.
-                    fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
-                                             width: width, height: height)
-                } else if k < target {
-                    // A stateful compute sim must run on the GPU every frame to evolve;
-                    // the intermediate frames we don't capture still need their steps
-                    // executed (only the final frame is rendered + read back below).
-                    renderer.stepCompute(sketch.drawer)
+                // Every drawn frame is drained: a buffer a frame asks the device
+                // for arrives autoreleased, and this drive never returns to the run
+                // loop that would otherwise empty the pool. `HeadlessDrainTests`.
+                autoreleasepool {
+                    sketch.advance(time: Double(k) / fps, deltaTime: pass == 0 ? 1 / fps : 0, frameRate: fps)
+                    sketch.performDraw()
+                    if sketch.drawer.accumulates {
+                        accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                                                width: width, height: height)
+                    } else if sketch.drawer.usesFeedback || pass > 0 {
+                        // Feedback state lives in render-pass-filled ping-pong textures, so
+                        // (like accumulation) every intermediate frame must render (which also
+                        // steps compute) for the layer to evolve; only the last frame is kept.
+                        // A settle draw always renders, since rendering is what steps the
+                        // layer it is there to settle.
+                        fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
+                                                 width: width, height: height)
+                    } else if k < target {
+                        // A stateful compute sim must run on the GPU every frame to evolve;
+                        // the intermediate frames we don't capture still need their steps
+                        // executed (only the final frame is rendered + read back below).
+                        renderer.stepCompute(sketch.drawer)
+                    }
                 }
             }
         }
@@ -2856,90 +2872,103 @@ public enum OllinApp {
         let wallStart = CACurrentMediaTime()
         var written = 0                                   // 0-based index handed to `write`
         for k in 0..<(skipFrames + drawnFrames) {
-            sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
-            sketch.performDraw()                          // run every frame so state settles
+            // Every drawn frame is drained: a buffer a frame asks the device for
+            // arrives autoreleased, and this drive never returns to the run loop that
+            // would otherwise empty the pool, so without this a long export grows by
+            // every frame's readback and by whatever the sketch itself allocated,
+            // until the machine is swapping. `HeadlessDrainTests` pins it.
+            autoreleasepool {
+                sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
+                sketch.performDraw()                          // run every frame so state settles
 
-            // Whether the interpolator can work on this sketch at all is only
-            // knowable once it has drawn, so it is asked at the first frame,
-            // before a single file has been written.
-            if k == 0, motion?.source == .made,
-               let refusal = renderer.madeFrameRefusal(sketch.drawer) {
-                fflush(stdout)          // so the refusal reads after the header
-                FileHandle.standardError.write(Data(
-                    "Ollin: \(refusal).\nDrop --made-frames and every frame is drawn instead, which costs more time and is never worse.\n".utf8))
-                exit(1)
-            }
+                // Whether the interpolator can work on this sketch at all is only
+                // knowable once it has drawn, so it is asked at the first frame,
+                // before a single file has been written.
+                if k == 0, motion?.source == .made,
+                   let refusal = renderer.madeFrameRefusal(sketch.drawer) {
+                    fflush(stdout)          // so the refusal reads after the header
+                    FileHandle.standardError.write(Data(
+                        "Ollin: \(refusal).\nDrop --made-frames and every frame is drawn instead, which costs more time and is never worse.\n".utf8))
+                    exit(1)
+                }
 
-            // In accumulation mode (`noClear`) the persistent pile must build every
-            // frame — including warmup — so render into it always; otherwise warmup
-            // frames skip the render entirely.
-            let accumulates = sketch.drawer.accumulates
-            var rendered: (buffer: MTLBuffer, bytesPerRow: Int)?
-            if accumulates || k >= skipFrames {
-                rendered = accumulates
-                    ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                    : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                // A written frame settles: the same moment drawn again `exportSettle`
-                // times with the clock held (no `deltaTime`, the frame count moving
-                // on so the renderer steps its persistent layers), and the last
-                // draw is the one written. Warmup frames are drawn once.
-                if k >= skipFrames {
-                    for _ in 1..<max(1, exportSettle) {
-                        sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
-                        sketch.performDraw()
-                        rendered = accumulates
-                            ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                            : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                // In accumulation mode (`noClear`) the persistent pile must build every
+                // frame, warmup included, so render into it always; otherwise warmup
+                // frames skip the render entirely.
+                let accumulates = sketch.drawer.accumulates
+                var rendered: (buffer: MTLBuffer, bytesPerRow: Int)?
+                if accumulates || k >= skipFrames {
+                    rendered = accumulates
+                        ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                        : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    // A written frame settles: the same moment drawn again `exportSettle`
+                    // times with the clock held (no `deltaTime`, the frame count moving
+                    // on so the renderer steps its persistent layers), and the last
+                    // draw is the one written. Warmup frames are drawn once.
+                    if k >= skipFrames {
+                        for _ in 1..<max(1, exportSettle) {
+                            // A settle draw reads back like any other, so a frame held
+                            // for eight of them would carry eight readbacks at once;
+                            // `rendered` holds the one that is kept, which is what lets
+                            // the pass before it go here rather than at the frame's end.
+                            autoreleasepool {
+                                sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
+                                sketch.performDraw()
+                                rendered = accumulates
+                                    ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                                    : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                            }
+                        }
+                    }
+                } else {
+                    // Non-accumulating warmup frame: not captured, but a stateful compute
+                    // sim still needs its steps run on the GPU so the field evolves into
+                    // the first captured frame.
+                    renderer.stepCompute(sketch.drawer)
+                }
+
+                if k < skipFrames {                           // warmup: built the pile, don't write
+                    FileHandle.standardError.write(Data(
+                        String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
+                    return                            // the pool is the iteration, so leaving it is `continue`
+                }
+
+                guard let rendered else {
+                    fatalError("Ollin: failed to render frame \(k)")
+                }
+                let done = k - skipFrames + 1                  // 1-based count of drawn frames
+                // The made frame goes first: it belongs between the frame just drawn
+                // and the one before it, and it is built from the pair the render
+                // left behind. Nothing comes back for the first frame of a run,
+                // which has nothing before it to sit between.
+                if motion?.source == .made {
+                    if let made = renderer.exportMadeFrame(sketch.drawer, deltaTime: 1 / clock,
+                                                           width: width, height: height),
+                       written < frames {
+                        write(RenderedFrame(renderer: renderer, buffer: made.buffer,
+                                            bytesPerRow: made.bytesPerRow,
+                                            width: width, height: height,
+                                            transparent: sketch.drawer.hasTransparentBackground), written)
+                        written += 1
                     }
                 }
-            } else {
-                // Non-accumulating warmup frame: not captured, but a stateful compute
-                // sim still needs its steps run on the GPU so the field evolves into
-                // the first captured frame.
-                renderer.stepCompute(sketch.drawer)
-            }
-
-            if k < skipFrames {                           // warmup: built the pile, don't write
-                FileHandle.standardError.write(Data(
-                    String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
-                continue
-            }
-
-            guard let rendered else {
-                fatalError("Ollin: failed to render frame \(k)")
-            }
-            let done = k - skipFrames + 1                  // 1-based count of drawn frames
-            // The made frame goes first: it belongs between the frame just drawn
-            // and the one before it, and it is built from the pair the render
-            // left behind. Nothing comes back for the first frame of a run,
-            // which has nothing before it to sit between.
-            if motion?.source == .made {
-                if let made = renderer.exportMadeFrame(sketch.drawer, deltaTime: 1 / clock,
-                                                       width: width, height: height),
-                   written < frames {
-                    write(RenderedFrame(renderer: renderer, buffer: made.buffer,
-                                        bytesPerRow: made.bytesPerRow,
+                if written < frames {
+                    write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
+                                        bytesPerRow: rendered.bytesPerRow,
                                         width: width, height: height,
                                         transparent: sketch.drawer.hasTransparentBackground), written)
                     written += 1
                 }
-            }
-            if written < frames {
-                write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
-                                    bytesPerRow: rendered.bytesPerRow,
-                                    width: width, height: height,
-                                    transparent: sketch.drawer.hasTransparentBackground), written)
-                written += 1
-            }
 
-            // A single rewriting progress line: pct done · render throughput.
-            // It counts what the sketch draws, which is what the time is going
-            // into; under made-frame slow motion the file holds more than that.
-            let elapsed = CACurrentMediaTime() - wallStart
-            let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
-            let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
-                              done, drawnFrames, done * 100 / drawnFrames, renderFPS)
-            FileHandle.standardError.write(Data(line.utf8))
+                // A single rewriting progress line: pct done · render throughput.
+                // It counts what the sketch draws, which is what the time is going
+                // into; under made-frame slow motion the file holds more than that.
+                let elapsed = CACurrentMediaTime() - wallStart
+                let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
+                let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
+                                  done, drawnFrames, done * 100 / drawnFrames, renderFPS)
+                FileHandle.standardError.write(Data(line.utf8))
+            }
         }
         FileHandle.standardError.write(Data("\n".utf8))
         // A gap that could not be filled leaves the file short, and a short file
@@ -2998,20 +3027,27 @@ public enum OllinApp {
             // Warm up: render several real frames so first-time buffer growth is paid and
             // any stateful layer (feedback, a sim field) settles into its steady-state cost.
             for k in 0..<8 {
-                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-                sketch.performDraw()
-                _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+                autoreleasepool {
+                    sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                    sketch.performDraw()
+                    _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+                }
             }
 
             // CPU draw cost and the end-to-end (serial CPU + GPU + readback) cost, one loop.
             let start = CACurrentMediaTime()
             var cpuTotal = 0.0
+            // The drain is inside the timed loop on purpose: a live frame's buffers
+            // are freed once a frame too, so end-to-end measures what a frame costs
+            // rather than what it costs while nothing is ever given back.
             for k in 1...n {
-                sketch.advance(time: Double(n + k) / fps, deltaTime: 1 / fps, frameRate: fps)
-                let drawStart = CACurrentMediaTime()
-                sketch.performDraw()
-                cpuTotal += CACurrentMediaTime() - drawStart
-                _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+                autoreleasepool {
+                    sketch.advance(time: Double(n + k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                    let drawStart = CACurrentMediaTime()
+                    sketch.performDraw()
+                    cpuTotal += CACurrentMediaTime() - drawStart
+                    _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+                }
             }
             let endToEnd = (CACurrentMediaTime() - start) / Double(n) * 1000
             let cpuMs = cpuTotal / Double(n) * 1000
@@ -3031,10 +3067,12 @@ public enum OllinApp {
         var vertexTotal = 0
         var instanceTotal = 0
         for k in 1...n {
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
-            vertexTotal += sketch.drawer.vertices.count
-            instanceTotal += sketch.drawer.sdfInstances.count
+            autoreleasepool {
+                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                sketch.performDraw()
+                vertexTotal += sketch.drawer.vertices.count
+                instanceTotal += sketch.drawer.sdfInstances.count
+            }
         }
         let elapsed = CACurrentMediaTime() - start
         let msPerFrame = elapsed / Double(n) * 1000
