@@ -137,7 +137,8 @@ final class LineSpray_Example: Sketch {
     /// The scene bent by the curl field read at `offset` from every vertex, one
     /// `SprayLine` per source, every core taking a slice. The fields are a
     /// value, so the threads read exactly the field the sketch reads, seeded as
-    /// it is.
+    /// it is; the light is handed over as light, in the linear units the scene
+    /// works in.
     private func bent(offset: Vector3) -> [SprayLine] {
         let fields = noiseFields
         let sources = self.sources
@@ -148,10 +149,10 @@ final class LineSpray_Example: Sketch {
                 case .ring(let p1, let p2, let radiance):
                     let q1 = p1 + displacement(p1 + offset, in: fields)
                     let q2 = p2 + displacement(p2 + offset, in: fields)
-                    out[i] = SprayLine(from: q1, to: q2, color: .white, intensity: radiance)
+                    out[i] = SprayLine(from: q1, to: q2, light: SIMD3(repeating: radiance))
                 case .spoke(let p1, let inner, let outer, let radiance):
                     let q1 = p1 + displacement(p1 + offset, in: fields)
-                    out[i] = SprayLine(from: q1 * inner, to: q1 * outer, color: .white, intensity: radiance)
+                    out[i] = SprayLine(from: q1 * inner, to: q1 * outer, light: SIMD3(repeating: radiance))
                 }
             }
         }

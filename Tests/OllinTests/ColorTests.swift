@@ -179,4 +179,44 @@ struct ColorTests {
         #expect(Color.red.luminance > Color.blue.luminance)
         #expect(abs(Color.green.luminance - 0.7152) < 1e-9)
     }
+
+    // MARK: Linear light
+
+    /// The sRGB curve and its inverse are exact inverses, and the linear
+    /// initializer is the inverse of `linearRGB`: a color worked out in light
+    /// comes back as the color it was.
+    @Test func linearLightRoundTrips() {
+        for c in [0.0, 0.001, 0.002, 0.2, 0.5, 0.735, 1.0, 1.4] {
+            #expect(abs(Color.srgbToLinear(Color.linearToSrgb(c)) - c) < 1e-12)
+            #expect(abs(Color.linearToSrgb(Color.srgbToLinear(c)) - c) < 1e-12)
+        }
+        // The standard's two segments do not meet exactly at the junction (the
+        // linear one reaches 0.0031308 at 0.04045, the power one a hair away),
+        // so a value right on it comes back within a couple of millionths.
+        for c in [0.0031308, 0.04045] {
+            #expect(abs(Color.srgbToLinear(Color.linearToSrgb(c)) - c) < 3e-6)
+            #expect(abs(Color.linearToSrgb(Color.srgbToLinear(c)) - c) < 3e-6)
+        }
+        for color in [Color.coral, .teal, Color(white: 0.5), .white, Color(displayP3: 1, green: 0, blue: 0)] {
+            let back = Color(linear: color.linearRGB)
+            #expect(abs(back.red - color.red) < 1e-12 && abs(back.green - color.green) < 1e-12
+                    && abs(back.blue - color.blue) < 1e-12, "\(color) came back as \(back)")
+        }
+        #expect(Color(linear: 0.5, green: 0.5, blue: 0.5).red == Color.linearToSrgb(0.5))
+        #expect(close(Color(linear: 1, green: 1, blue: 1), .white))
+        #expect(Color(linear: 0, green: 0, blue: 0, alpha: 0.3) == Color.black.withAlpha(0.3))
+    }
+
+    /// `linearRGB` is what `linearRGBA` carries, in `Double` and without alpha,
+    /// and the light of mid-gray is a fifth of white's, not half.
+    @Test func linearRGBIsTheLightOfTheColor() {
+        let gray = Color(white: 0.5)
+        #expect(abs(gray.linearRGB.x - 0.2140) < 0.001)
+        let coral = Color.coral
+        let floats = coral.linearRGBA
+        #expect(abs(Double(floats.x) - coral.linearRGB.x) < 1e-6)
+        #expect(abs(Double(floats.y) - coral.linearRGB.y) < 1e-6)
+        #expect(abs(Double(floats.z) - coral.linearRGB.z) < 1e-6)
+        #expect(Color.orange.linearRGB * 3 == SIMD3(Color.srgbToLinear(1), Color.srgbToLinear(Color.orange.green), 0) * 3)
+    }
 }

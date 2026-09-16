@@ -3057,14 +3057,18 @@ struct Color: ParamValue, RadialBasisValue, Decodable, Encodable, Equatable, Has
   init(hex: UInt32, alpha: Double = default)
   init(hue: Double, saturation: Double, brightness: Double, alpha: Double = default)
   init(kelvin: Double, alpha: Double = default)
+  init(linear: Double, green: Double, blue: Double, alpha: Double = default)
+  init(linear: SIMD3<Double>, alpha: Double = default)
   init(red: Double, green: Double, blue: Double, alpha: Double = default)
   init(wavelength: Double)
   init(white: Double, alpha: Double = default)
   init?(hex: String)
   static func clamped(_: Color, by: Void) -> Color
   static func control(for: Param<Color>) -> ParamControl
+  static func linearToSrgb(_: Double) -> Double
   static func mix(_: Color, _: Color, _: Double, in: ColorSpace = default) -> Color
   static func restored(_: ParamStored) -> Color?
+  static func srgbToLinear(_: Double) -> Double
   static func stored(_: Color) -> ParamStored
   static let beige: Color
   static let black: Color
@@ -3120,6 +3124,7 @@ struct Color: ParamValue, RadialBasisValue, Decodable, Encodable, Equatable, Has
   var green: Double { get set }
   var hue: Double { get }
   var isOutsideSRGB: Bool { get }
+  var linearRGB: SIMD3<Double> { get }
   var linearRGBA: SIMD4<Float> { get }
   var luminance: Double { get }
   var red: Double { get set }
@@ -5819,12 +5824,11 @@ struct SplitMix64: RandomNumberGenerator, Sendable
   mutating func next() -> UInt64
 struct SprayLine: Equatable, Sendable
   init(from: Vector3, to: Vector3, color: Color = default, endColor: Color? = default, intensity: Double = default, endIntensity: Double? = default, weight: Double = default)
-  var color: Color { get set }
+  init(from: Vector3, to: Vector3, light: SIMD3<Double>, endLight: SIMD3<Double>? = default, weight: Double = default)
   var end: Vector3 { get set }
-  var endColor: Color { get set }
-  var endIntensity: Double { get set }
-  var intensity: Double { get set }
+  var endLight: SIMD3<Double> { get set }
   var length: Double { get }
+  var light: SIMD3<Double> { get set }
   var start: Vector3 { get set }
   var weight: Double { get set }
 struct StatusChip: Sendable, View

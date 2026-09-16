@@ -175,26 +175,27 @@ eef3567df64a  Docs/Drawing/Clothoid.md:194  expected type before '->'
 4ca3490a3729  Docs/Drawing/Clothoid.md:34  cannot convert value of type '()' to expected argument type 'Vector2'
 d0dda05019df  Docs/Drawing/Clothoid.md:77  cannot find 'curve' in scope
 bf2a06ada4bf  Docs/Drawing/Clothoid.md:89  expected type before '->'
-3b585d8db480  Docs/Drawing/Color.md:110  consecutive statements on a line must be separated by ';'
-acd0630dbda0  Docs/Drawing/Color.md:122  cannot find 'brand' in scope
-ddbe57709497  Docs/Drawing/Color.md:138  expected ',' separator
-53df4ad44e2c  Docs/Drawing/Color.md:150  cannot find 'ink' in scope
-bc263aff0c18  Docs/Drawing/Color.md:165  cannot find 'energy' in scope
-ce8340e46df2  Docs/Drawing/Color.md:182  cannot find 'sky' in scope
-04196cfd36c7  Docs/Drawing/Color.md:199  cannot find 'beat' in scope
-a289bd896621  Docs/Drawing/Color.md:217  cannot find 'x' in scope
-9e7fb1cec3a6  Docs/Drawing/Color.md:226  cannot find 'palette' in scope
-47ccf99dc7f7  Docs/Drawing/Color.md:238  cannot find 'base' in scope
-973e03e20d17  Docs/Drawing/Color.md:255  'module' is inaccessible due to 'internal' protection level
-47665411f9b3  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-512f523c5b16  Docs/Drawing/Color.md:309  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:363  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:382  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:404  cannot find 'x' in scope
-c708de778678  Docs/Drawing/Color.md:58  cannot find 'userString' in scope
-3340ea233772  Docs/Drawing/Color.md:71  cannot find 'base' in scope
-2c556ffcbf3d  Docs/Drawing/Color.md:90  cannot find 'ink' in scope
-0960d237620b  Docs/Drawing/Color.md:97  cannot find 'ink' in scope
+0960d237620b  Docs/Drawing/Color.md:106  cannot find 'ink' in scope
+3b585d8db480  Docs/Drawing/Color.md:119  consecutive statements on a line must be separated by ';'
+acd0630dbda0  Docs/Drawing/Color.md:131  cannot find 'brand' in scope
+ddbe57709497  Docs/Drawing/Color.md:147  expected ',' separator
+53df4ad44e2c  Docs/Drawing/Color.md:159  cannot find 'ink' in scope
+bc263aff0c18  Docs/Drawing/Color.md:174  cannot find 'energy' in scope
+ce8340e46df2  Docs/Drawing/Color.md:191  cannot find 'sky' in scope
+04196cfd36c7  Docs/Drawing/Color.md:208  cannot find 'beat' in scope
+a289bd896621  Docs/Drawing/Color.md:226  cannot find 'x' in scope
+9e7fb1cec3a6  Docs/Drawing/Color.md:235  cannot find 'palette' in scope
+47ccf99dc7f7  Docs/Drawing/Color.md:247  cannot find 'base' in scope
+973e03e20d17  Docs/Drawing/Color.md:264  'module' is inaccessible due to 'internal' protection level
+a5908cabee46  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+512f523c5b16  Docs/Drawing/Color.md:318  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:372  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:391  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:413  cannot find 'x' in scope
+c708de778678  Docs/Drawing/Color.md:59  cannot find 'userString' in scope
+3340ea233772  Docs/Drawing/Color.md:72  cannot find 'base' in scope
+a47e065ecf70  Docs/Drawing/Color.md:91  cannot find 'albedo' in scope
+2c556ffcbf3d  Docs/Drawing/Color.md:99  cannot find 'ink' in scope
 688be5dd137a  Docs/Drawing/Combinators.md:133  cannot find 'a' in scope
 48a73e312322  Docs/Drawing/Combinators.md:150  cannot find 'a' in scope
 37573516968f  Docs/Drawing/Combinators.md:170  cannot find 'field' in scope
@@ -215,9 +216,9 @@ b37a8b2335f9  Docs/Drawing/Curves.md:53  expected type before '->'
 8971faf1bee4  Docs/Drawing/Curves.md:66  expected type before '->'
 793884e6c153  Docs/Drawing/Curves.md:78  expected type before '->'
 29396a5f03fe  Docs/Drawing/Curves.md:91  expected type before '->'
-92f7d6441007  Docs/Drawing/DepthOfField.md:108  value of type '@MainActor (Light) -> ()' has no member 'developed'
-130e10801562  Docs/Drawing/DepthOfField.md:54  cannot find 'a' in scope
-b785ec4fb130  Docs/Drawing/DepthOfField.md:91  cannot find 'samples' in scope
+92f7d6441007  Docs/Drawing/DepthOfField.md:110  value of type '@MainActor (Light) -> ()' has no member 'developed'
+381fce610bdb  Docs/Drawing/DepthOfField.md:54  cannot find 'a' in scope
+b785ec4fb130  Docs/Drawing/DepthOfField.md:93  cannot find 'samples' in scope
 671a77e4a4db  Docs/Drawing/DistanceFields.md:106  cannot find 'field' in scope
 f217cb6898e7  Docs/Drawing/DistanceFields.md:140  cannot find 'field' in scope
 20760d26b2ab  Docs/Drawing/DistanceFields.md:154  cannot find 'marks' in scope

@@ -119,6 +119,6 @@ final class RingProbe: Sketch {
     }
 
     private func line(_ a: Vector3, _ b: Vector3, _ radiance: Double) -> SprayLine {
-        SprayLine(from: a, to: b, color: .white, intensity: radiance)
+        SprayLine(from: a, to: b, light: SIMD3(repeating: radiance))
     }
 }

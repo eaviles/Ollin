@@ -9,23 +9,56 @@ import Foundation
 
 // MARK: - sRGB transfer
 
-extension Color {
-    /// sRGB → linear for a single 0–1 component (the standard piecewise curve).
+public extension Color {
+    /// The sRGB transfer curve, one component at a time: a stored `0...1`
+    /// component to the light it stands for (the standard piecewise curve; a
+    /// component past 1 or below 0 goes through the same formula, so a wide
+    /// color keeps its meaning). The shader library's `srgbToLinear` is the
+    /// same curve per pixel.
     static func srgbToLinear(_ c: Double) -> Double {
         c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
     }
 
-    /// Linear → sRGB for a single 0–1 component (the inverse curve).
+    /// The inverse curve: light to the sRGB component that encodes it.
     static func linearToSrgb(_ c: Double) -> Double {
         c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055
     }
 
     /// This color's straight-alpha RGBA as linear-light floats: the form the
     /// effect fragments and generators composite in (RGB linearized, alpha as-is),
-    /// and the radiance a `.light` particle or a `SprayLine` carries.
-    public var linearRGBA: SIMD4<Float> {
+    /// and the radiance a `.light` particle carries.
+    var linearRGBA: SIMD4<Float> {
         SIMD4(Float(Color.srgbToLinear(red)), Float(Color.srgbToLinear(green)),
               Float(Color.srgbToLinear(blue)), Float(alpha))
+    }
+
+    /// This color as light: its RGB through the sRGB curve, in `Double`, with
+    /// no alpha. The form to do light arithmetic in, since light adds and
+    /// scales where sRGB components do not: `Color.orange.linearRGB * 3` is
+    /// three times the light of orange, which is what a `SprayLine` takes as
+    /// its `light`. `Color(linear:alpha:)` takes the result back.
+    var linearRGB: SIMD3<Double> {
+        SIMD3(Color.srgbToLinear(red), Color.srgbToLinear(green), Color.srgbToLinear(blue))
+    }
+
+    /// A color named by its light rather than by sRGB components: `red`,
+    /// `green`, and `blue` are linear, the numbers a lighting calculation
+    /// ends with, and the color stores the sRGB components that mean that
+    /// light. A component past 1 stays past 1 (a highlight brighter than
+    /// white, which `.extended` output shows), and nothing clamps.
+    ///
+    /// ```swift
+    /// let lit = albedo.linearRGB * diffuse                // a shade worked out in light
+    /// fill(Color(linear: lit.x, green: lit.y, blue: lit.z))
+    /// ```
+    init(linear red: Double, green: Double, blue: Double, alpha: Double = 1) {
+        self.init(red: Color.linearToSrgb(red), green: Color.linearToSrgb(green),
+                  blue: Color.linearToSrgb(blue), alpha: alpha)
+    }
+
+    /// A color named by its light as one vector, the inverse of `linearRGB`.
+    init(linear rgb: SIMD3<Double>, alpha: Double = 1) {
+        self.init(linear: rgb.x, green: rgb.y, blue: rgb.z, alpha: alpha)
     }
 }
 

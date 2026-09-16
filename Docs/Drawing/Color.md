@@ -31,6 +31,7 @@ Color(hex: UInt32, alpha: Double = 1)     // 24-bit RGB: Color(hex: 0xFF0066)
 Color(hex: String)                        // "#RGB" "#RGBA" "#RRGGBB" "#RRGGBBAA" → Color?
 Color(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1)
 Color(kelvin: Double, alpha: Double = 1)  // blackbody color temperature
+Color(linear: Double, green: Double, blue: Double, alpha: Double = 1)   // named by its light
 ```
 
 Named constants come in two tiers. The first tier is the essentials: `.white`, `.black`, `.gray`, `.clear`, and the additive primaries `.red`, `.green`, and `.blue`, so `green` is the pure `(0, 1, 0)`. The second tier is a fuller set around them, so that common colors read by name. The names and their exact sRGB values come from the [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/#named-colors) list:
@@ -83,6 +84,14 @@ let shifted = Color(hue: fract(base.hue + 0.1), saturation: base.saturation,
 ```swift
 directionalLight(Color(kelvin: 5600), direction: Vector3(-0.5, -0.8, -0.4))  // daylight key
 fill(Color(kelvin: 3200))                                                    // warm tungsten
+```
+
+**Linear light** is the other way to name a color. A `Color` stores sRGB components, which are what a display takes, but the middle of a frame works in light, where a number is proportional to what it stands for (see [Light and color](../Concepts/Light.md)). `linearRGB` is the color as light, its three components through the sRGB curve in `Double`, and `Color(linear:green:blue:)` names a color from such numbers. That is the pair a lighting calculation wants: shade in light, then hand the result to `fill`. Nothing clamps, so a value past 1 stays a highlight past white. The two curves themselves are `Color.srgbToLinear` and `Color.linearToSrgb`, one component at a time, the same curves the [shader library](../Shaders/ShaderLibrary.md) runs per pixel. `linearRGBA` is the same reading as `Float` with alpha, the form the GPU takes.
+
+```swift
+let lit = albedo.linearRGB * diffuse                    // shaded in light
+fill(Color(linear: lit.x, green: lit.y, blue: lit.z))   // back to a color
+let bright = Color(linear: 2, green: 1.8, blue: 1.5)    // a highlight past white
 ```
 
 **Two component helpers** finish the type. `withAlpha(_:)` returns the same color at a different opacity and leaves the original unchanged. That is the everyday fade. `luminance` is the color's perceived brightness in `0...1`. It is the Rec. 709 weighted sum of the linearized components, so green counts most and blue least, which matches how the eye weighs them. That makes it the value to read for image-driven work. Sample a pixel with the [`Image`](Images.md#pixels) subscript, then size or choose marks by `pixel.luminance`.

@@ -2,38 +2,53 @@ import Foundation
 import simd
 import COllinShaders
 
-/// One line of light for a `LineSpray`: a segment in world space with a color at
-/// each end, an intensity, and a weight. A pass scatters points along it, each
-/// point carrying the line's share of light, so over many passes the line adds up
-/// to exactly `color × intensity` however many points draw it.
+/// One line of light for a `LineSpray`: a segment in world space with light at
+/// each end and a weight. A pass scatters points along it, each point carrying
+/// the line's share of light, so over many passes the line adds up to exactly
+/// its `light` however many points draw it.
+///
+/// The light is linear RGB radiance, the numbers a lighting calculation ends
+/// with, so a sketch that works in light hands it over as it is. A line named
+/// as a tone and a brightness converts on the way in: `color: .orange,
+/// intensity: 2` is the line whose light is `Color.orange.linearRGB * 2`.
 public struct SprayLine: Sendable, Equatable {
     /// The segment's ends, world space.
     public var start: Vector3
     public var end: Vector3
-    /// The tone at each end (an sRGB `Color`, linearized before it becomes light);
-    /// `endColor` defaults to `color`.
-    public var color: Color
-    public var endColor: Color
-    /// Light emitted per pass, in linear units, at each end: the multiplier that
-    /// lets a line shine well past white. `endIntensity` defaults to `intensity`.
-    public var intensity: Double
-    public var endIntensity: Double
+    /// The light at `start`: linear RGB radiance emitted per pass, with no
+    /// ceiling, so a line can shine well past white. `endLight` is the light at
+    /// `end`, and the points between carry the blend.
+    public var light: SIMD3<Double>
+    public var endLight: SIMD3<Double>
     /// Under length sampling, this line's share of the pass's points relative to
     /// its length (2 draws twice the points, at half the light each). Ignored by
     /// per-line sampling.
     public var weight: Double
 
+    /// A line carrying `light` (linear RGB radiance per pass) at its start and
+    /// `endLight` at its end; `endLight` defaults to `light`.
+    public init(from start: Vector3, to end: Vector3,
+                light: SIMD3<Double>, endLight: SIMD3<Double>? = nil,
+                weight: Double = 1) {
+        self.start = start
+        self.end = end
+        self.light = light
+        self.endLight = endLight ?? light
+        self.weight = max(0, weight)
+    }
+
+    /// A line named as a tone and a brightness: `color` (an sRGB `Color`) times
+    /// `intensity` (a linear multiplier) becomes the light at the start, and
+    /// `endColor` times `endIntensity` the light at the end, each defaulting to
+    /// the start's. `SprayLine(from: a, to: b)` is a white line at intensity 1.
     public init(from start: Vector3, to end: Vector3,
                 color: Color = .white, endColor: Color? = nil,
                 intensity: Double = 1, endIntensity: Double? = nil,
                 weight: Double = 1) {
-        self.start = start
-        self.end = end
-        self.color = color
-        self.endColor = endColor ?? color
-        self.intensity = intensity
-        self.endIntensity = endIntensity ?? intensity
-        self.weight = max(0, weight)
+        self.init(from: start, to: end,
+                  light: color.linearRGB * intensity,
+                  endLight: (endColor ?? color).linearRGB * (endIntensity ?? intensity),
+                  weight: weight)
     }
 
     /// The segment's length in world units.
@@ -203,13 +218,13 @@ public final class LineSpray {
         table.reserveCapacity(counts.reduce(0, +))
         for (i, line) in lines.enumerated() {
             let n = counts[i]
-            let a = line.color.linearRGBA, b = line.endColor.linearRGBA
+            let a = line.light, b = line.endLight
             records.append(OllinSprayLine(
                 start: SIMD4<Float>(Float(line.start.x), Float(line.start.y), Float(line.start.z),
                                     1 / Float(n)),
                 end: SIMD4<Float>(Float(line.end.x), Float(line.end.y), Float(line.end.z), 0),
-                startColor: SIMD4<Float>(a.x, a.y, a.z, 0) * Float(line.intensity),
-                endColor: SIMD4<Float>(b.x, b.y, b.z, 0) * Float(line.endIntensity)))
+                startColor: SIMD4<Float>(Float(a.x), Float(a.y), Float(a.z), 0),
+                endColor: SIMD4<Float>(Float(b.x), Float(b.y), Float(b.z), 0)))
             table.append(contentsOf: repeatElement(UInt32(i), count: n))
         }
         lineBuffer = ComputeBuffer(records)

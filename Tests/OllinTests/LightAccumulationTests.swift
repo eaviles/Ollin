@@ -46,13 +46,32 @@ struct LightAccumulationTests {
         #expect(LineSpray.pointCounts(for: lines, sampling: .byLength(pointsPerPass: 100)) == [16, 50, 33, 1])
     }
 
-    /// A spray line's optional end values default to the start's.
+    /// A spray line's optional end values default to the start's, and the tone
+    /// form converts on the way in: the light is the color's linear RGB times
+    /// the intensity.
     @Test func sprayLineDefaults() {
         let line = SprayLine(from: .zero, to: Vector3(1, 0, 0), color: .orange, intensity: 3)
-        #expect(line.endColor == .orange)
-        #expect(line.endIntensity == 3)
+        #expect(line.light == Color.orange.linearRGB * 3)
+        #expect(line.endLight == line.light)
         #expect(line.weight == 1)
         #expect(line.length == 1)
+        let lit = SprayLine(from: .zero, to: Vector3(1, 0, 0), light: SIMD3(0.2, 0.1, 0.05))
+        #expect(lit.endLight == lit.light)
+    }
+
+    /// The two ways of naming a line's light meet exactly: a white line at
+    /// intensity 0.4 is the line whose light is 0.4 in every channel, and a
+    /// line given its light reads back as the tone that light encodes.
+    @Test func sprayLineLightAndToneAreOneNumber() {
+        let byTone = SprayLine(from: .zero, to: Vector3(1, 0, 0), color: .white, intensity: 0.4)
+        let byLight = SprayLine(from: .zero, to: Vector3(1, 0, 0), light: SIMD3(repeating: 0.4))
+        #expect(byTone == byLight)
+        let radiance = Color.coral.linearRGB * 2.5
+        let line = SprayLine(from: .zero, to: Vector3(0, 1, 0), light: radiance, endLight: radiance * 0.5)
+        let tone = Color(linear: line.light / 2.5)
+        #expect(abs(tone.red - Color.coral.red) < 1e-12 && abs(tone.green - Color.coral.green) < 1e-12
+                && abs(tone.blue - Color.coral.blue) < 1e-12)
+        #expect(line.endLight == radiance * 0.5)
     }
 
     /// The develop filter is one fragment pass carrying the exposure and the

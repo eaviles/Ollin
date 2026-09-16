@@ -49,14 +49,16 @@ override func draw() {
 
 Each frame, `drawLineSpray` scatters `passesPerFrame` passes of points along the lines on the GPU, and adds them into a running mean. Every point is a new spot on its line. Ollin then moves that spot to another spot inside the bokeh ball around it, and projects it through the sketch's `Camera3D`. The mean converges as passes add up, so the longer the sketch runs, the smoother the bokeh gets. When you change the camera, the lens, the lines, or the point size, the average restarts on its own. It restarts because the samples drawn before no longer describe the picture. `spray.passes` tells you how far it has converged.
 
-A `SprayLine` is a segment with a tone at each end, an intensity, and a weight:
+A `SprayLine` is a segment with light at each end and a weight. Name the light as it is, or as a tone and a brightness:
 
 ```swift
-SprayLine(from: a, to: b, color: .orange, endColor: .white, intensity: 2, weight: 1)
+SprayLine(from: a, to: b, light: radiance, weight: 1)                                 // linear RGB, per pass
+SprayLine(from: a, to: b, color: .orange, endColor: .white, intensity: 2, weight: 1)  // a tone times a brightness
 ```
 
-- `color` and `endColor` are sRGB tones. Ollin linearizes them before they become light. `intensity` (and `endIntensity`) is the light emitted per pass, in linear units, so a line can be brighter than white.
-- A line's light per pass is its color times its intensity, however many points draw it. Every point carries its share of that light. This keeps the exposure the same under either sampling mode.
+- `light` and `endLight` are linear RGB radiance emitted per pass, `SIMD3<Double>`, with no ceiling, so a line can be brighter than white. A scene that works out its light in linear units, a diffuse term times a tint, hands the numbers over unchanged.
+- `color` and `endColor` are sRGB tones and `intensity` and `endIntensity` linear multipliers. The initializer converts them on the way in, `color.linearRGB × intensity`, so the two forms meet exactly: a white line at intensity 0.4 is the line whose light is 0.4 in every channel.
+- A line's light per pass is its `light`, however many points draw it. Every point carries its share of that light. This keeps the exposure the same under either sampling mode.
 - `sampling` picks how a pass divides its points among the lines. `.byLength(pointsPerPass:)` gives every line points in proportion to its length times its `weight`, and never fewer than one. So a long line is drawn as densely as a short one. `.perLine(n)` gives every line the same count.
 - `pointSize` is the diameter that each sample's light spreads over, in canvas points. The total light is the same at any size, so a larger size softens the grain without changing the exposure. The default of 1 is a one-pixel point, which is the cheapest to draw.
 - `spray.image` is the running mean as an `Image` in linear light, for when you would rather print it yourself. `spray.setLines(_:)` swaps in a new scene and restarts the average.
