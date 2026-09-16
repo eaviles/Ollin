@@ -88,6 +88,12 @@ public enum CanvasSize: Sendable, Equatable {
     /// 1080×1350. The portrait feed crop (e.g. Instagram).
     public static let portrait1080 = CanvasSize.size(1080, 1350)
 
+    // MARK: Photo (3:4)
+
+    /// 1080×1440. The photographic frame a camera shoots natively, stood up
+    /// tall; `.landscape` gives the 4:3 form. Also the shape of a feed grid.
+    public static let photo1080 = CanvasSize.size(1080, 1440)
+
     // MARK: Paper (PDF points)
 
     // Standard paper sizes in PDF points (72 per inch), portrait like the

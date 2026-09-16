@@ -186,6 +186,7 @@ enum CanvasSize: Equatable, Sendable
   static let dci4K: CanvasSize
   static let fhd1080: CanvasSize
   static let hd720: CanvasSize
+  static let photo1080: CanvasSize
   static let portrait1080: CanvasSize
   static let qhd1440: CanvasSize
   static let square1080: CanvasSize

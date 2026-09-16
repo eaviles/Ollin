@@ -191,13 +191,14 @@ extension CanvasChoice {
     public static let uhd4K = CanvasChoice(id: "uhd4k", title: "3840 x 2160", expression: ".uhd4K")
     public static let vertical1080 = CanvasChoice(id: "vertical1080", title: "Vertical 1080 x 1920", expression: ".vertical1080")
     public static let portrait1080 = CanvasChoice(id: "portrait1080", title: "Portrait 1080 x 1350", expression: ".portrait1080")
+    public static let photo1080 = CanvasChoice(id: "photo1080", title: "Photo 1080 x 1440", expression: ".photo1080")
     public static let a4 = CanvasChoice(id: "a4", title: "A4 sheet", expression: ".a4")
     public static let a3 = CanvasChoice(id: "a3", title: "A3 sheet", expression: ".a3")
     public static let usLetter = CanvasChoice(id: "us-letter", title: "US Letter sheet", expression: ".usLetter")
 
     public static let all: [CanvasChoice] = [
         .default, .square1440, .square2160, .fhd1080, .uhd4K,
-        .vertical1080, .portrait1080, .a4, .a3, .usLetter,
+        .vertical1080, .portrait1080, .photo1080, .a4, .a3, .usLetter,
     ]
 
     public static func named(_ id: String) -> CanvasChoice? {

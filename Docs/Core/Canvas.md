@@ -102,6 +102,7 @@ directly.
 | `.dci4K` | 4096 × 2160 | ~17:9 | cinema 4K (DCI), for film delivery |
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
 | `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (for example Instagram) |
+| `.photo1080` | 1080 × 1440 | 3:4 | the photographic frame stood up tall, and the shape of a feed grid |
 | `.usLetter` | 612 × 792 | 8.5:11 | US Letter paper (8.5×11 in), for PDF export |
 | `.usLegal` | 612 × 1008 | 8.5:14 | US Legal paper (8.5×14 in), for PDF export |
 | `.a3` | 842 × 1191 | 1:√2 | ISO A3 paper (297×420 mm), for PDF export |
