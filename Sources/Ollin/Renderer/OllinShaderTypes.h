@@ -617,7 +617,7 @@ typedef struct {
                                   // (`MeshMaterial.detailScale`); the detail maps repeat that
                                   // many times across one base tile. 0 = no detail (every other
                                   // mesh keeps this zero, so detail-less frames are untouched).
-    float detailStrength;         // how strongly the detail pair applies: scales the color map's
+    float detailAmount;         // how strongly the detail pair applies: scales the color map's
                                   // push away from its 128-gray neutral and the detail normal's
                                   // tangent-plane tilt. Packed only while detailScale > 0.
     simd_float4 detailGates;      // x = 1 when a detail color map is bound (texture 22, sampled

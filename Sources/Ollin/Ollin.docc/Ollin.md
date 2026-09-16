@@ -233,7 +233,7 @@ The technique catalog: tilings, fractals, packings, growth, flow, agents, and th
 - ``concaveHull(of:concavity:)``
 - ``convexHull(of:)->[Vector2]``
 - ``convexHull(of:)->Mesh``
-- ``elementaryCA(rule:width:generations:from:wrap:)``
+- ``elementaryCA(rule:width:generations:from:wraps:)``
 - ``envelope(of:closed:)``
 - ``epitrochoid(ring:wheel:pen:samples:)``
 - ``eulerSpiral(size:turns:count:)``
@@ -264,7 +264,7 @@ The technique catalog: tilings, fractals, packings, growth, flow, agents, and th
 - ``randomWalk(from:steps:stepLength:using:)``
 - ``reconstructSurface(of:spacing:resolution:orientedToward:maxGap:neighbors:fitting:keepingLargestComponent:)-(PointCloud,_,_,_,_,_,_,_)``
 - ``reflectedRays(off:from:closed:)``
-- ``refractedRays(through:from:index:closed:)``
+- ``refractedRays(through:from:ior:closed:)``
 - ``relaxCircles(_:in:iterations:padding:)``
 - ``Penrose``
 - ``schottkyCircles(_:in:minRadius:maxDepth:)``
@@ -283,7 +283,7 @@ The technique catalog: tilings, fractals, packings, growth, flow, agents, and th
 - ``supershape(radius:m:n1:n2:n3:samples:)``
 - ``surfacePoints(on:count:scatter:using:)``
 - ``tilePolyominoes(_:covering:reuse:reflections:)``
-- ``totalisticCA(code:colors:width:generations:from:wrap:)``
+- ``totalisticCA(code:colors:width:generations:from:wraps:)``
 
 ### Text
 
@@ -467,7 +467,7 @@ Vectors, ranges, easing, springs, noise, tempo, and the small helpers that shape
 - ``isPrime(_:)``
 - ``lerp(_:_:_:)``
 - ``lyndonWords(symbols:maxLength:)``
-- ``map(_:_:_:_:_:clamp:)``
+- ``map(_:_:_:_:_:clamped:)``
 - ``polar(_:_:around:)``
 - ``primes(upTo:)``
 - ``smoothstep(_:_:_:)``

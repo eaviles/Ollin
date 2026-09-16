@@ -152,7 +152,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.temperature(amount:tint:)`** white balance: `amount` warms (>0) or cools (<0), `tint` pushes toward magenta (>0) or green (<0).
 - **`.vibrance(amount:)`** saturation that lifts the muted colors most and the vivid ones least. It strengthens a flat image without blowing out tones that are already saturated.
 - **`.colorama(cycles:shift:)`** cycle the hue wheel `cycles` times across luminance, turning a gradient into rainbow bands, and `shift` spins the wheel.
-- **`.lumaKey(low:high:invert:)`** a luminance key. It makes the image transparent outside a brightness band, so a dark or light backdrop drops out.
+- **`.lumaKey(low:high:inverted:)`** a luminance key. It makes the image transparent outside a brightness band, so a dark or light backdrop drops out.
 
 ```swift
 layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
@@ -250,9 +250,9 @@ These filters warp the image's *coordinates*. They re-sample the source at a rem
 - **`.wave(amplitude:frequency:phase:vertical:)`** ripple rows side to side (or columns up and down), and animate `phase` for motion.
 
 The three radial warps take an optional `center` in fractions of the layer, measured from the top-left corner and defaulting to the middle. So a cursor-driven lens or vortex is one line: `.bulge(amount: 1, center: Vector2(mouseX / width, mouseY / height))`.
-- **`.mirror(vertical:flip:)`** reflect one half of the image onto the other.
+- **`.mirror(vertical:flipped:)`** reflect one half of the image onto the other.
 - **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates, a tunnel or fold.
-- **`.tile(count:mirror:)`** repeat the image in a `count`×`count` grid, and `mirror` flips alternate cells for a seamless tiling.
+- **`.tile(count:mirrored:)`** repeat the image in a `count`×`count` grid, and `mirrored` flips alternate cells for a seamless tiling.
 - **`.perturb(amount:scale:phase:)`** warp the image by its own internal fbm noise, with no map needed, for a smoky heat-haze ripple.
 - **`.droste(inner:twist:zoom:center:angle:)`** put the picture inside itself, without end. The ring between `inner` and the layer's edge repeats at every scale. So a smaller copy of the picture sits in the middle of it, with a smaller copy inside that one. `inner` is the radius of the hole, which is also how much smaller each copy is. `twist` is how many copies one turn around the middle steps down. `0` leaves plain concentric rings, `1` winds them into the single spiral of the Escher construction, and a negative value winds it the other way. `zoom` slides the picture into itself in copies, so `zoom: time * 0.2` is an endless fall that loops exactly every five seconds. The join between one copy and the next shows unless the picture is made for it. Keep the content clear of both edges of the ring, or let the ring end on flat color at each end.
 
@@ -326,7 +326,7 @@ A [`Filter`](#filter) reads one layer, while a `Combine` reads **two**. It takes
 
 A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold a `RenderTarget`, so the aux layer travels alongside it as the `with:` argument. The ops:
 
-- **`.mask(channel:invert:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default, so draw the mask in white over transparent) or **opaque** (`channel: .alpha`). Everywhere else the base fades to transparent, and `invert` flips that. Use it for a spotlight reveal, a vignette, or a clip to a shape.
+- **`.mask(channel:inverted:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default, so draw the mask in white over transparent) or **opaque** (`channel: .alpha`). Everywhere else the base fades to transparent, and `inverted` flips that. Use it for a spotlight reveal, a vignette, or a clip to a shape.
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**. Red is horizontal, green is vertical, mid-gray is no shift, and the largest shift is `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat haze, and refraction.
 - **`.disperse(amount:mode:spectral:quality:)`** chromatic aberration over the base, its amount scaled per pixel by the aux's brightness. A white aux splits by the full `amount`, and a black one leaves the base alone. So the aux decides *where* the color comes apart rather than how much. `mode`, `spectral`, and `quality` mean what they mean on [`.chromaticAberration`](#filter).
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux). It is the everyday transition.
@@ -859,7 +859,7 @@ compose {
 
 The combine modifiers mirror the [`Combine`](#combined) ops:
 
-- **`.masked(by:channel:invert:)`** keep the layer where the aside reads bright (or, with `channel: .alpha`, opaque).
+- **`.masked(by:channel:inverted:)`** keep the layer where the aside reads bright (or, with `channel: .alpha`, opaque).
 - **`.displaced(by:amount:)`** push the layer's pixels around by the aside read as a vector field.
 - **`.dispersed(by:amount:mode:spectral:quality:)`** pull the layer's colors apart where the aside is bright.
 - **`.mixed(with:amount:)`** cross-dissolve the layer toward the aside.

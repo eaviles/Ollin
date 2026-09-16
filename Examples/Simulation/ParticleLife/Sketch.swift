@@ -31,7 +31,7 @@ final class ParticleLife_Example: Sketch {
 
         background(Color(white: 0.04))
         blendMode(.add)
-        updateParticleLife(life)
+        stepParticleLife(life)
         drawParticles(life)
 
         blendMode(.normal)

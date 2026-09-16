@@ -3512,7 +3512,7 @@ shipped base-normal resolve above it, keeping that code textually untouched.
 Strength scales the detail's tangent-space xy before renormalizing, the
 standard fade.
 
-**Packing:** `detailScale`/`detailStrength` claimed the two free tail pads
+**Packing:** `detailScale`/`detailAmount` claimed the two free tail pads
 and `detailGates` (color-bound / normal-bound flags) appended one row,
 growing `OllinMaterial` 256 → 272 (offsets 248/252/256; the drawer packs
 them only for a verified uv-mapped mesh, never with triplanar, so the union

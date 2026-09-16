@@ -36,7 +36,7 @@ override func setup() {
 override func draw() {
     background(.black)
     blendMode(.add)
-    updateSwarm(flock)
+    stepSwarm(flock)
     drawParticles(flock)
 }
 ```
@@ -120,7 +120,7 @@ override func draw() {
     fill(Color(white: 0.02, alpha: 0.16))
     drawRect(0, 0, width, height)     // fade what is already there
     blendMode(.add)
-    updateSwarm(flock)
+    stepSwarm(flock)
     drawParticles(flock)
 }
 ```

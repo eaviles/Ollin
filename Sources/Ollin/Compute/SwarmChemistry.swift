@@ -22,7 +22,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSwarmChemistryPa
 /// }
 /// override func draw() {
 ///     background(Color.black.withAlpha(0.08))
-///     updateSwarmChemistry(chem)
+///     stepSwarmChemistry(chem)
 ///     drawParticles(chem)
 /// }
 /// ```
@@ -304,7 +304,7 @@ public final class SwarmChemistry {
 
     /// Record one frame: as many model steps as the frame is worth, each one a fresh
     /// neighbor sort followed by the kinetic-and-transmission kernel. Called by
-    /// `Sketch.updateSwarmChemistry`.
+    /// `Sketch.stepSwarmChemistry`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let frame = frameDt > 0 ? min(frameDt, 1.0 / 30.0) : 1.0 / 60.0
         // Whole steps only, with the remainder banked, so a display that is not 60 Hz

@@ -9,15 +9,15 @@ import Foundation
 /// ```
 ///
 /// By default the result is *not* bounded — a `value` outside the source range
-/// maps proportionally outside the destination range. Pass `clamp: true` to
+/// maps proportionally outside the destination range. Pass `clamped: true` to
 /// hold the result within `start2...stop2` (correct even when that range runs
 /// high-to-low).
 public func map(_ value: Double,
                 _ start1: Double, _ stop1: Double,
                 _ start2: Double, _ stop2: Double,
-                clamp: Bool = false) -> Double {
+                clamped: Bool = false) -> Double {
     let mapped = start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1))
-    guard clamp else { return mapped }
+    guard clamped else { return mapped }
     let lo = Swift.min(start2, stop2)
     let hi = Swift.max(start2, stop2)
     return Swift.min(Swift.max(mapped, lo), hi)

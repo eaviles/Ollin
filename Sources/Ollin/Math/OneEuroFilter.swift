@@ -105,9 +105,9 @@ public struct OneEuroFilter<Value: Smoothable>: Sendable {
         lastValue = nil
     }
 
-    /// Re-seat the filter on `value` with zero speed, so the next output starts
-    /// from there with no jump.
-    public mutating func set(_ value: Value) {
+    /// Jump the filter to `value` with zero speed, so the next output starts from
+    /// there with no glide of its own.
+    public mutating func jump(to value: Value) {
         lastRaw = value
         lastSpeed = value - value
         lastValue = value
@@ -174,11 +174,11 @@ public final class Smoothed<Value: Smoothable>: FrameAdvancing {
     }
 
     /// Jump straight to `value`, dropping the filter history so it continues from
-    /// there with no glide.
-    public func set(_ value: Value) {
+    /// there with no glide. Assigning the property smooths toward a value instead.
+    public func jump(to value: Value) {
         input = value
         output = value
-        filter.set(value)
+        filter.jump(to: value)
     }
 
     /// Run the filter one step against the latest assigned value. Called by the

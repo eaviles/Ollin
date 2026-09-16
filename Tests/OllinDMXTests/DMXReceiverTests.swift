@@ -28,7 +28,7 @@ struct DMXReceiverTests {
         #expect(abs(receiver.level(2) - 128.0 / 255) < 0.001)
         #expect(receiver.universe(1)?[3] == 255)
         #expect(receiver.universe(2) == nil)
-        #expect(receiver.universeNumbers() == [1])
+        #expect(receiver.universeNumbers == [1])
         // A channel past what the packet carried reads 0.
         #expect(receiver.channel(400) == 0)
         #expect(receiver.channel(0) == 0)
@@ -113,7 +113,7 @@ struct DMXReceiverTests {
         receiver.handle(ArtDMXPacket(universe: 1, channels: [1]).encode())
         receiver.handle(Data([0x00, 0x01, 0x02]))
         receiver.handle(Data())
-        #expect(receiver.universeNumbers().isEmpty)
+        #expect(receiver.universeNumbers.isEmpty)
     }
 
     @Test func bindingDrivesAParam() {

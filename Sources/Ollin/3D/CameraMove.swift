@@ -27,11 +27,11 @@ public struct CameraMove: Sendable, Equatable {
     enum Kind: Sendable {
         case turntable(period: Double)
         case sway(amplitude: Double, period: Double)
-        case pushIn(factor: Double, duration: Double, ease: Easing)
-        case pullOut(factor: Double, duration: Double, ease: Easing)
-        case tilt(to: Double, duration: Double, ease: Easing)
+        case pushIn(factor: Double, duration: Double, curve: Easing)
+        case pullOut(factor: Double, duration: Double, curve: Easing)
+        case tilt(to: Double, duration: Double, curve: Easing)
         case orbitAndRise(period: Double, rise: Double, duration: Double)
-        case reveal(duration: Double, ease: Easing)
+        case reveal(duration: Double, curve: Easing)
         case handheld(amount: Double, speed: Double)
     }
 
@@ -67,22 +67,22 @@ public struct CameraMove: Sendable, Equatable {
     /// Dolly closer, scaling the radius by `factor` (below 1 zooms in) over
     /// `duration` seconds, then holds.
     public static func pushIn(by factor: Double = 0.5, in duration: Double = 2,
-                              ease: Easing = .easeInOut) -> CameraMove {
-        CameraMove(kind: .pushIn(factor: factor, duration: duration, ease: ease))
+                              curve: Easing = .easeInOut) -> CameraMove {
+        CameraMove(kind: .pushIn(factor: factor, duration: duration, curve: curve))
     }
 
     /// Dolly away, scaling the radius by `factor` (above 1 zooms out) over
     /// `duration` seconds, then holds.
     public static func pullOut(by factor: Double = 2, in duration: Double = 2,
-                               ease: Easing = .easeInOut) -> CameraMove {
-        CameraMove(kind: .pullOut(factor: factor, duration: duration, ease: ease))
+                               curve: Easing = .easeInOut) -> CameraMove {
+        CameraMove(kind: .pullOut(factor: factor, duration: duration, curve: curve))
     }
 
     /// Sweep the elevation to `elevation` radians (rise to look down on the object,
     /// drop to look up at it) over `duration` seconds, then holds.
     public static func tilt(to elevation: Double, in duration: Double = 2,
-                            ease: Easing = .easeInOut) -> CameraMove {
-        CameraMove(kind: .tilt(to: elevation, duration: duration, ease: ease))
+                            curve: Easing = .easeInOut) -> CameraMove {
+        CameraMove(kind: .tilt(to: elevation, duration: duration, curve: curve))
     }
 
     /// The spiral beauty pass: turn continuously (one revolution every `period`
@@ -95,8 +95,8 @@ public struct CameraMove: Sendable, Equatable {
 
     /// An opening shot: start close and low, then pull back out to the framed radius
     /// and rise to the framed elevation over `duration` seconds, then holds.
-    public static func reveal(in duration: Double = 3, ease: Easing = .easeOut) -> CameraMove {
-        CameraMove(kind: .reveal(duration: duration, ease: ease))
+    public static func reveal(in duration: Double = 3, curve: Easing = .easeOut) -> CameraMove {
+        CameraMove(kind: .reveal(duration: duration, curve: curve))
     }
 
     /// Subtle operator breathing: small continuous drift on the azimuth, elevation,

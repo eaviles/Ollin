@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Docs diagram (Generators/Random.md): what ring(innerRadius:outerRadius:)
+// Docs diagram (Generators/Random.md): what randomVector(innerRadius:outerRadius:)
 // hands back. Left, the geometry: a band between two circles around the
 // origin, the hole inside the inner radius empty. Right, seeded samples
 // landing uniformly over that band and nowhere else.
@@ -65,7 +65,7 @@ final class RandomRing: Sketch {
         noStroke()
         fill(accent)
         for _ in 0 ..< 1500 {
-            let p = rightCenter + ring(innerRadius: inner, outerRadius: outer)
+            let p = rightCenter + randomVector(innerRadius: inner, outerRadius: outer)
             drawCircle(center: p, radius: 2.2)
         }
 
@@ -76,7 +76,7 @@ final class RandomRing: Sketch {
         drawText("the band between two radii", leftCenter.x, 390)
         drawText("1,500 samples, uniform over the band", rightCenter.x, 390)
         textSize(21)
-        drawText("center + ring(innerRadius:outerRadius:) places it anywhere",
+        drawText("center + randomVector(innerRadius:outerRadius:) places it anywhere",
                  width / 2, 432)
     }
 }

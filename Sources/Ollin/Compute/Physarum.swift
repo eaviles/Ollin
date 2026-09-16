@@ -19,7 +19,7 @@ import COllinShaders   // OllinParticle
 /// var slime: Physarum!
 /// override func setup() { slime = makePhysarum(agents: 200_000, resolution: 1024) }
 /// override func draw() {
-///     updatePhysarum(slime)
+///     stepPhysarum(slime)
 ///     drawImage(slime.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
 /// }
 /// ```
@@ -110,7 +110,7 @@ public final class Physarum {
 
     /// Record one step: clear the deposit grid, run the agents (sense, steer, move,
     /// deposit), diffuse and decay the trail, then colorize it for display. Called by
-    /// `Sketch.updatePhysarum`.
+    /// `Sketch.stepPhysarum`.
     func recordStep(into drawer: Drawer) {
         let cells = width * height
         // 1. Clear the atomic deposit grid.

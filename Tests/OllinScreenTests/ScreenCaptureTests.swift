@@ -204,8 +204,8 @@ import Ollin
             == sharedOrder(windowsAgain, windows, by: \.id))
         #expect(windows.sorted { $0.id < $1.id } == windows)
 
-        let apps = await ScreenCapture.apps()
-        let appsAgain = await ScreenCapture.apps()
+        let apps = await ScreenCapture.availableApps()
+        let appsAgain = await ScreenCapture.availableApps()
         #expect(sharedOrder(apps, appsAgain, by: \.id)
             == sharedOrder(appsAgain, apps, by: \.id))
     }

@@ -13,7 +13,7 @@ final class ScreenCapture: FrameSource, VideoFeed, Sendable
   func start()
   func stop()
   init(_: ScreenSource = default)
-  nonisolated static func apps() -> [ScreenApp]
+  nonisolated static func availableApps() -> [ScreenApp]
   nonisolated static func availableDisplays() -> [ScreenDisplay]
   nonisolated static func availableWindows() -> [ScreenWindow]
   nonisolated static var isAvailable: Bool { get }

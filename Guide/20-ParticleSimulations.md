@@ -29,7 +29,7 @@ lazy var sand = Particles(count: 1_000_000, step: """
 override func draw() {
     background(.black)
     blendMode(.add)         // particles sum as light
-    updateParticles(sand)   // one GPU simulation step
+    stepParticles(sand)   // one GPU simulation step
     drawParticles(sand)     // a million additive discs
 }
 ```
@@ -72,7 +72,7 @@ The grains in the last section never noticed each other. Making a hundred thousa
 life = makeParticleLife(count: 24_000, kinds: 6, radius: 46)
 
 // each frame:
-updateParticleLife(life)
+stepParticleLife(life)
 drawParticles(life)
 ```
 
@@ -86,7 +86,7 @@ The matrix is rolled at build, and `life.randomizeMatrix(seed:)` rolls a fresh o
 slime = makePhysarum(agents: 220_000, resolution: 1024)
 
 // each frame:
-updatePhysarum(slime)
+stepPhysarum(slime)
 drawImage(slime.image, in: bounds)
 ```
 
@@ -126,7 +126,7 @@ Each particle adds up a ring-shaped kernel over its neighbors to get one number,
 lenia = makeParticleLenia(count: 6000, spacing: 9)
 
 // each frame:
-updateParticleLenia(lenia)
+stepParticleLenia(lenia)
 drawParticles(lenia)
 ```
 
@@ -153,7 +153,7 @@ flock.alignment = 1.5      // go the way your neighbors go
 flock.cohesion = 0.8       // stay with them
 
 // each frame:
-updateSwarm(flock)
+stepSwarm(flock)
 drawParticles(flock)
 ```
 
@@ -178,7 +178,7 @@ fluid = makeParticleFluid(count: 26_000, radius: 12)
 
 // each frame:
 if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
-updateParticleFluid(fluid)
+stepParticleFluid(fluid)
 drawParticles(fluid)
 ```
 
@@ -190,7 +190,7 @@ drawParticles(fluid)
 blobs = makeSoftBodies(bodies: 12, radius: 80)
 
 // each frame:
-updateSoftBodies(blobs)
+stepSoftBodies(blobs)
 drawParticles(blobs)
 ```
 
@@ -211,7 +211,7 @@ run.obstacles = [Rectangle(x: 0, y: 620, width: 640, height: 34),
                  Rectangle(x: 800, y: 620, width: 280, height: 34)]
 
 // each frame:
-updateEvolution(run)
+stepEvolution(run)
 drawParticles(run)
 ```
 
@@ -268,7 +268,7 @@ Every particle carries its own copy of the rule it moves by, eight numbers calle
 chem = makeSwarmChemistry(count: 4000, kinds: 6)
 
 // each frame:
-updateSwarmChemistry(chem)
+stepSwarmChemistry(chem)
 drawParticles(chem)
 ```
 
@@ -330,7 +330,7 @@ final class Drift: Sketch {
         drawRect(0, 0, width, height)
 
         blendMode(.add)
-        updateParticles(dust, custom: SIMD4<Float>(Float(fieldScale), Float(speed), Float(lifespan), 0))
+        stepParticles(dust, custom: SIMD4<Float>(Float(fieldScale), Float(speed), Float(lifespan), 0))
         drawParticles(dust)
     }
 }

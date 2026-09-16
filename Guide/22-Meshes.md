@@ -769,7 +769,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
             .textured(paint)
             .normalMapped(scuffs)
             .surfaceMapped(metallicRoughness: wear)
-            .detailMapped(grain, normal: grainBumps, scale: 6, strength: 0.5)
+            .detailMapped(grain, normal: grainBumps, scale: 6, amount: 0.5)
 
         // A tile whose device is carved by a height map rather than by geometry.
         let carved = picture(size: 512) { u, v in Color(white: self.device(u, v)) }

@@ -23,7 +23,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinLeniaParams
 /// override func draw() {
 ///     background(.black)
 ///     blendMode(.add)
-///     updateParticleLenia(lenia)
+///     stepParticleLenia(lenia)
 ///     drawParticles(lenia)
 /// }
 /// ```
@@ -162,7 +162,7 @@ public final class ParticleLenia {
 
     /// Record one frame: as many model steps as the pace asks for, each one a fresh
     /// neighbor sort followed by the gradient step. Called by
-    /// `Sketch.updateParticleLenia`.
+    /// `Sketch.stepParticleLenia`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         // A hitch must not tear the structure apart, so the frame's own step is capped
         // the way the other particle systems cap theirs.

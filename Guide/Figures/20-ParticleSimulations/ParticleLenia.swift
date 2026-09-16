@@ -53,7 +53,7 @@ final class ParticleLeniaFigure: Sketch {
         background(paper)
         blendMode(.add)
         for run in runs {
-            updateParticleLenia(run)
+            stepParticleLenia(run)
             drawParticles(run)
         }
         blendMode(.normal)

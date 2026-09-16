@@ -139,7 +139,7 @@ struct DampedSpringTests {
         let sprung = Sprung(wrappedValue: 0.0, duration: 0.4)
         sprung.wrappedValue = 100
         for _ in 0 ..< 10 { sprung.advance(by: 1.0 / 60.0) }
-        sprung.set(7)
+        sprung.jump(to: 7)
         #expect(sprung.wrappedValue == 7)
         #expect(sprung.target == 7)
         sprung.advance(by: 1.0 / 60.0)

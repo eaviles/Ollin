@@ -103,13 +103,14 @@ public func reflectedRays(off curve: [Vector2], from source: LightSource,
     }
 }
 
-/// The rays that bend as they cross `curve` into a material of refractive `index`.
+/// The rays that bend as they cross `curve` into a material whose index of
+/// refraction is `ior` (water 1.33, glass about 1.5).
 ///
 /// A ray meeting the surface too steeply turns back instead of crossing, which is
 /// total internal reflection, and those rays are left out rather than faked.
 public func refractedRays(through curve: [Vector2], from source: LightSource,
-                          index: Double, closed: Bool = false) -> [Ray2] {
-    let ratio = index == 0 ? 1 : 1 / index
+                          ior: Double, closed: Bool = false) -> [Ray2] {
+    let ratio = ior == 0 ? 1 : 1 / ior
     return normals(along: curve, closed: closed).compactMap { point, normal in
         let incoming = source.direction(reaching: point).normalized
         // Snell's law in vector form, with the normal turned to face the ray.
@@ -141,10 +142,10 @@ public func caustic(off curve: [Vector2], from source: LightSource,
 }
 
 /// The bright curve the *bent* light gathers on, for light crossing into a
-/// material of refractive `index`.
+/// material whose index of refraction is `ior`.
 public func caustic(through curve: [Vector2], from source: LightSource,
-                    index: Double, closed: Bool = false) -> [Contour] {
-    envelope(of: refractedRays(through: curve, from: source, index: index, closed: closed),
+                    ior: Double, closed: Bool = false) -> [Contour] {
+    envelope(of: refractedRays(through: curve, from: source, ior: ior, closed: closed),
              closed: closed)
 }
 

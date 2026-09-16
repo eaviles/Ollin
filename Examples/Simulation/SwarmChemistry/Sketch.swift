@@ -43,7 +43,7 @@ final class SwarmChemistry_Example: Sketch {
         // A translucent wipe rather than a hard clear: these particles move a few points
         // a step, so a still frame of dots shows density where the trails show movement.
         background(Color(white: 0.04).withAlpha(0.14))
-        updateSwarmChemistry(chem)
+        stepSwarmChemistry(chem)
         drawParticles(chem)
 
         // Reading the tally stalls on the GPU, so do it a few times a second, not every

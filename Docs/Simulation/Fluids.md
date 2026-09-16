@@ -32,7 +32,7 @@ override func draw() {
     background(.black)
     if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
     blendMode(.add)
-    updateParticleFluid(fluid)
+    stepParticleFluid(fluid)
     drawParticles(fluid)
 }
 ```
@@ -69,7 +69,7 @@ override func setup() {
 override func draw() {
     background(.black)
     if mouseIsPressed { blobs.pull(at: Vector2(mouseX, mouseY)) }
-    updateSoftBodies(blobs)
+    stepSoftBodies(blobs)
     drawParticles(blobs)
 }
 ```

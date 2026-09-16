@@ -442,7 +442,7 @@ lazy var room = BeatFollower(mic)
 var counter = StepCounter(perBeat: 2)
 
 override func draw() {
-    room.update(at: time)
+    room.advance(to: time)
     for step in counter.steps(upTo: room.beats) {
         synth.play(scale[step % 5], for: 0.2)      // in time with the room
     }
@@ -451,7 +451,7 @@ override func draw() {
 
 | Member | What it gives |
 |---|---|
-| `update(at:)` | reads what has been heard since the last call. Call it once a frame |
+| `advance(to:)` | reads what has been heard since the last call. Call it once a frame, handing it the sketch's clock |
 | `beats` | the current position of the music, in beats. Hand this to a `StepCounter` |
 | `tempo` | beats per minute, or zero until it has an estimate |
 | `isFollowing` | whether it has heard enough to be worth following |

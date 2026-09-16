@@ -93,8 +93,9 @@ public final class MIDIInput: @unchecked Sendable {
     /// Whether the input is currently connected and listening.
     public var isRunning: Bool { core.withLock { $0.running } }
 
-    /// The MIDI sources currently visible on the system (every connected device).
-    public var sources: [MIDIEndpoint] {
+    /// The MIDI sources on the system right now (every connected device). It asks
+    /// Core MIDI on every call, so it is a question rather than stored state.
+    public func availableSources() -> [MIDIEndpoint] {
         (0..<MIDIGetNumberOfSources()).compactMap { index in
             let source = MIDIGetSource(index)
             return source != 0 ? MIDIEndpoint(source) : nil

@@ -120,7 +120,7 @@ private final class FluidProbe: Sketch {
     override func setup() {
         fluid = ParticleFluid(count: 1_500, bounds: box, radius: 16, seed: 7)
     }
-    override func draw() { updateParticleFluid(fluid) }
+    override func draw() { stepParticleFluid(fluid) }
 }
 
 @MainActor
@@ -130,7 +130,7 @@ private final class SoftBodyProbe: Sketch {
         blobs = SoftBodies(bodies: 3, bounds: Rectangle(x: 0, y: 0, width: 500, height: 500),
                            radius: 60, seed: 5)
     }
-    override func draw() { updateSoftBodies(blobs) }
+    override func draw() { stepSoftBodies(blobs) }
 }
 
 @MainActor
@@ -145,5 +145,5 @@ private final class DriftProbe: Sketch {
                            radius: 70, seed: 9)
         blobs.gravity = Vector2(0, 0)
     }
-    override func draw() { updateSoftBodies(blobs) }
+    override func draw() { stepSoftBodies(blobs) }
 }

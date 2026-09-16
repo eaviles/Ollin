@@ -182,8 +182,9 @@ public final class DMXReceiver: @unchecked Sendable {
         state.withLock { $0.slots[number] }.map { DMXUniverse(channels: $0.channels) }
     }
 
-    /// The universe numbers heard so far, in order.
-    public func universeNumbers() -> [Int] {
+    /// The universe numbers heard so far, in order. Live state the receiver
+    /// already holds, so reading it changes nothing.
+    public var universeNumbers: [Int] {
         state.withLock { $0.slots.keys.sorted() }
     }
 

@@ -16,7 +16,7 @@ import Ollin
 /// What is not ordinary is that three of those go into layers of their own, and two
 /// masks against the lit picture put them back. An emissive map would glow on the
 /// day side too, where nobody would ever see a city, so the lights are kept only
-/// where the lit planet is dark (`.mask(invert: true)`). A Fresnel rim is a view
+/// where the lit planet is dark (`.mask(inverted: true)`). A Fresnel rim is a view
 /// angle and knows nothing about the sun, so the halo is kept only where the lit
 /// planet is bright, read through a blurred copy of it so the daylight reaches a
 /// little way past the edge. The terminator does the deciding both times, and it
@@ -249,7 +249,7 @@ final class Planet_Example: Sketch {
         // edge and the ring of air survives outside the disc while the night limb
         // stays dark. A rim is a view angle and knows nothing about the sun, so
         // this is what tells it where the sun is.
-        let night = lights.combined(with: scene, .mask(channel: .luminance, invert: true))
+        let night = lights.combined(with: scene, .mask(channel: .luminance, inverted: true))
         let daylight = scene.filtered(.gaussianBlur(radius: 30))
         let halo = atmosphere.combined(with: daylight, .mask(channel: .luminance))
 

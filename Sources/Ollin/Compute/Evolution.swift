@@ -27,7 +27,7 @@ import COllinShaders   // OllinParticle, OllinEvolutionParams
 /// override func draw() {
 ///     background(Color.black.withAlpha(0.08))
 ///     blendMode(.add)
-///     updateEvolution(run)
+///     stepEvolution(run)
 ///     drawParticles(run)
 /// }
 /// ```
@@ -240,7 +240,7 @@ public final class Evolution {
 
     /// Record one frame: either another step of the current trial, or, when the trial
     /// is up, the breeding pass that makes the next generation. Called by
-    /// `Sketch.updateEvolution`.
+    /// `Sketch.stepEvolution`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         // A hitch must not fast-forward a trial, so the frame is capped the way the
         // other particle systems cap theirs.

@@ -22,7 +22,7 @@
 | [NoiseWave](NoiseWave/Sketch.swift) | a wave of dots offset by `signedNoise`, which is smooth, as the noise counterpart to RandomBand |
 | [TilingNoise](TilingNoise/Sketch.swift) | one tile laid down nine times, once from `fbm` and once from `tilingFbm`, so you can see the seams and where they disappear |
 | [RandomBand](RandomBand/Sketch.swift) | a band of dots jittered by `random`, which is jagged, and the mouse re-rolls it |
-| [Ring](Ring/Sketch.swift) | dots scattered in an annulus by `ring()`, relative to `scale`, so the ring keeps its proportion |
+| [Ring](Ring/Sketch.swift) | dots scattered in an annulus by `randomVector(innerRadius:outerRadius:)`, relative to `scale`, so the ring keeps its proportion |
 | [Variations](Variations/Sketch.swift) | a whole composition per seed, which you explore from the inspector's Variation card and proof as a range with `--export-grid` |
 | [Walk](Walk/Sketch.swift) | a seeded random walk that the clock reveals over time, and a click starts a fresh walk in a `randomChoice` color |
 

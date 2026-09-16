@@ -201,7 +201,7 @@ public struct Filter: Sendable {
         /// Cycle the hue wheel `cycles` times across the luminance range (rainbow banding).
         case colorama(cycles: Double, shift: Double)
         /// Set alpha from a luminance band (`low`…`high`), optionally inverted — a luma key.
-        case lumaKey(low: Double, high: Double, invert: Bool)
+        case lumaKey(low: Double, high: Double, inverted: Bool)
 
         // Blur ---------------------------------------------------------------
         /// Directional (motion) blur: average `samples` taps along `angle`, span `distance`.
@@ -350,12 +350,12 @@ public struct Filter: Sendable {
         /// The picture inside itself without end: the ring between `inner` and the layer's
         /// edge repeated at every scale, `twist` copies stepped per turn, slid by `zoom`.
         case droste(inner: Double, twist: Double, zoom: Double, center: Vector2, rotation: Double)
-        /// Reflect one half of the image onto the other; `vertical` axis, `flip` chooses the source half.
-        case mirror(vertical: Bool, flip: Bool)
+        /// Reflect one half of the image onto the other; `vertical` axis, `flipped` chooses the source half.
+        case mirror(vertical: Bool, flipped: Bool)
         /// Cartesian↔polar warp, blended by `amount` (a tunnel / fold of the image around the center).
         case polar(amount: Double)
         /// Repeat the image in a `count`×`count` grid, optionally mirror-tiled.
-        case tile(count: Double, mirror: Bool)
+        case tile(count: Double, mirrored: Bool)
         /// Self-displace by internal fbm noise: organic warp of `amount`, noise `scale`, `phase`.
         case perturb(amount: Double, scale: Double, phase: Double)
 
@@ -414,7 +414,7 @@ public struct Filter: Sendable {
         /// rather than against one number for the whole layer (nil sizes the window at
         /// an eighth of the layer). A pixel goes dark where it sits `bias` below that
         /// local average.
-        case adaptiveThreshold(window: Double?, bias: Double, invert: Bool)
+        case adaptiveThreshold(window: Double?, bias: Double, inverted: Bool)
     }
 
     let kind: Kind
@@ -833,9 +833,9 @@ public struct Filter: Sendable {
     }
 
     /// Luma key: make the image transparent outside the `low`…`high` brightness band (so a
-    /// dark or light backdrop drops out). `invert` keeps the band and cuts the rest instead.
-    public static func lumaKey(low: Double = 0.1, high: Double = 1, invert: Bool = false) -> Filter {
-        Filter(kind: .lumaKey(low: min(max(low, 0), 1), high: min(max(high, 0), 1), invert: invert))
+    /// dark or light backdrop drops out). `inverted` keeps the band and cuts the rest instead.
+    public static func lumaKey(low: Double = 0.1, high: Double = 1, inverted: Bool = false) -> Filter {
+        Filter(kind: .lumaKey(low: min(max(low, 0), 1), high: min(max(high, 0), 1), inverted: inverted))
     }
 
     // MARK: Blur (continued)
@@ -1212,9 +1212,9 @@ public struct Filter: Sendable {
     }
 
     /// Mirror: reflect one half of the image onto the other. `vertical` false mirrors left↔
-    /// right, true mirrors top↔bottom; `flip` chooses which half is the source.
-    public static func mirror(vertical: Bool = false, flip: Bool = false) -> Filter {
-        Filter(kind: .mirror(vertical: vertical, flip: flip))
+    /// right, true mirrors top↔bottom; `flipped` chooses which half is the source.
+    public static func mirror(vertical: Bool = false, flipped: Bool = false) -> Filter {
+        Filter(kind: .mirror(vertical: vertical, flipped: flipped))
     }
 
     /// Polar warp: bend the image around the center by remapping between Cartesian and polar
@@ -1223,10 +1223,10 @@ public struct Filter: Sendable {
         Filter(kind: .polar(amount: min(max(amount, 0), 1)))
     }
 
-    /// Tile: repeat the image in a `count`×`count` grid. `mirror` flips alternate cells so
+    /// Tile: repeat the image in a `count`×`count` grid. `mirrored` flips alternate cells so
     /// the tiling is seamless (a mirror-repeat) instead of hard-edged.
-    public static func tile(count: Double = 3, mirror: Bool = false) -> Filter {
-        Filter(kind: .tile(count: max(1, count), mirror: mirror))
+    public static func tile(count: Double = 3, mirrored: Bool = false) -> Filter {
+        Filter(kind: .tile(count: max(1, count), mirrored: mirrored))
     }
 
     /// Perturb: warp the image by its own internal fbm noise (no map needed), for a
@@ -1581,9 +1581,9 @@ public struct Filter: Sendable {
     /// light, since light falling on a page multiplies what comes back off it. The window
     /// costs nothing to widen, so it is a parameter to adjust freely.
     public static func adaptiveThreshold(window: Double? = nil, bias: Double = 0.15,
-                                         invert: Bool = false) -> Filter {
+                                         inverted: Bool = false) -> Filter {
         Filter(kind: .adaptiveThreshold(window: window.map { max(1, $0) },
-                                        bias: bias, invert: invert))
+                                        bias: bias, inverted: inverted))
     }
 }
 

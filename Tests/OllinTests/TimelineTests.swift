@@ -14,8 +14,8 @@ struct TimelineTests {
     /// holds at the ends past its bounds.
     @Test func linearSegments() {
         let tl = Timeline(0.0)
-            .to(100, in: 1, ease: .linear)
-            .to(0, in: 1, ease: .linear)
+            .to(100, in: 1, curve: .linear)
+            .to(0, in: 1, curve: .linear)
 
         #expect(close(tl.value, 0))           // clock 0 -> start
         tl.advance(by: 0.5)
@@ -32,7 +32,7 @@ struct TimelineTests {
 
     /// `duration`, `progress`, and `isFinished` track the clock.
     @Test func progressAndFinish() {
-        let tl = Timeline(0.0).to(10, in: 2, ease: .linear)
+        let tl = Timeline(0.0).to(10, in: 2, curve: .linear)
         #expect(close(tl.duration, 2))
         #expect(close(tl.progress, 0))
         #expect(!tl.isFinished)
@@ -47,9 +47,9 @@ struct TimelineTests {
     /// `hold` keeps the previous target steady for its duration.
     @Test func holdSegment() {
         let tl = Timeline(0.0)
-            .to(5, in: 1, ease: .linear)
+            .to(5, in: 1, curve: .linear)
             .hold(for: 1)
-            .to(0, in: 1, ease: .linear)
+            .to(0, in: 1, curve: .linear)
         tl.advance(by: 1.5)                    // 0.5s into the hold
         #expect(close(tl.value, 5))
         tl.advance(by: 0.5)                    // end of the hold
@@ -60,7 +60,7 @@ struct TimelineTests {
 
     /// A looping timeline wraps the clock at the total duration.
     @Test func loopsWrap() {
-        let tl = Timeline(0.0).to(10, in: 1, ease: .linear)
+        let tl = Timeline(0.0).to(10, in: 1, curve: .linear)
         tl.loops = true
         tl.advance(by: 1.25)                   // wraps to 0.25
         #expect(close(tl.value, 2.5))
@@ -68,16 +68,16 @@ struct TimelineTests {
         #expect(close(tl.progress, 0.25))
     }
 
-    /// Easing shapes the segment: an ease-out is past the linear midpoint at t=0.5.
+    /// Easing shapes the segment: an curve-out is past the linear midpoint at t=0.5.
     @Test func perSegmentEasing() {
-        let tl = Timeline(0.0).to(1, in: 1, ease: .easeOut)
+        let tl = Timeline(0.0).to(1, in: 1, curve: .easeOut)
         tl.advance(by: 0.5)
-        #expect(tl.value > 0.5)                // ease-out is ahead of linear mid-flight
+        #expect(tl.value > 0.5)                // curve-out is ahead of linear mid-flight
     }
 
     /// `Vector3` interpolates component-wise through a timeline.
     @Test func vector3Timeline() {
-        let tl = Timeline(Vector3.zero).to(Vector3(2, 4, 6), in: 1, ease: .linear)
+        let tl = Timeline(Vector3.zero).to(Vector3(2, 4, 6), in: 1, curve: .linear)
         tl.advance(by: 0.5)
         #expect(close(tl.value.x, 1))
         #expect(close(tl.value.y, 2))

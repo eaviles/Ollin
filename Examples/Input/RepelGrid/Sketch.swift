@@ -8,7 +8,7 @@ import Ollin
 /// A 30×30 grid of dots that flee the cursor: each dot is pushed away from
 /// `mouseX`/`mouseY` and swells as the pointer nears it.
 ///
-/// `dist` gives each dot's distance to the cursor; `map(..., clamp: true)`
+/// `dist` gives each dot's distance to the cursor; `map(..., clamped: true)`
 /// turns that into a 0...1 closeness `pct` (1 right under the cursor, 0 once
 /// it's 200 points away). `pct` then drives both the push (along the unit
 /// vector away from the cursor) and the radius.
@@ -32,7 +32,7 @@ final class RepelGrid: Sketch {
             let x = dot.position.x, y = dot.position.y
 
             let distance = dist(x, y, mouseX, mouseY)
-            let pct = map(distance, 0, reach, 1, 0, clamp: true)
+            let pct = map(distance, 0, reach, 1, 0, clamped: true)
 
             var dx = x - mouseX
             var dy = y - mouseY

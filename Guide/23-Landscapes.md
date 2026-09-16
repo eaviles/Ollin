@@ -93,7 +93,7 @@ override func draw() {
     blendMode(.add)
     toneMap(.aces)
     cameraShowcase(target: flow.center, radius: flow.extent * 3.4)
-    updateAttractorFlow(flow)
+    stepAttractorFlow(flow)
     drawParticles(flow)
 }
 ```

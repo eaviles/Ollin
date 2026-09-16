@@ -50,7 +50,7 @@
   @objc override init?(frame: Foundation.NSRect, isPreview: Bool)
   open func makeSketch() -> Sketch
 @propertyWrapper final class Eased: FrameAdvancing
-  func set(_: Double)
+  func jump(to: Double)
   init(wrappedValue: Double, duration: Double = default, curve: Easing = default)
   let curve: Easing
   let duration: Double
@@ -93,8 +93,8 @@
   convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>, style: ParamVectorStyle = default, icon: String? = default, group: ParamGroup? = default)
   convenience init(wrappedValue: Vector3, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
   convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
+  func jump(to: Value)
   func restore(_: ParamStored)
-  func set(_: Value)
   func show(when: Param<Other>, _: (Other) -> Bool)
   let constraints: Value.Constraints
   let group: String?
@@ -117,7 +117,7 @@
   var projectedValue: Saved<Value> { get }
   var wrappedValue: Value { get set }
 @propertyWrapper final class Smoothed<Value where Value : Smoothable>: FrameAdvancing
-  func set(_: Value)
+  func jump(to: Value)
   init(wrappedValue: Value, minCutoff: Double = default, beta: Double = default, derivativeCutoff: Double = default)
   var beta: Double { get set }
   var minCutoff: Double { get set }
@@ -125,8 +125,8 @@
   var rawValue: Value { get }
   var wrappedValue: Value { get set }
 @propertyWrapper final class Sprung<Value where Value : Smoothable>: FrameAdvancing
+  func jump(to: Value)
   func kick(_: Value)
-  func set(_: Value)
   init(wrappedValue: Value, duration: Double = default, bounce: Double = default)
   var bounce: Double { get set }
   var duration: Double { get set }
@@ -1597,7 +1597,7 @@ final class SwarmChemistry: Sendable
   var transmits: Bool { get set }
 final class Timeline<Value where Value : Tweenable>: FrameAdvancing
   @discardableResult func hold(for: Double) -> Timeline<Value>
-  @discardableResult func to(_: Value, in: Double, ease: Easing = default) -> Timeline<Value>
+  @discardableResult func to(_: Value, in: Double, curve: Easing = default) -> Timeline<Value>
   func advance(by: Double)
   func restart()
   func seek(to: Double)
@@ -1796,7 +1796,7 @@ func angles(_: Int, from: Double = default, turns: Double = default) -> [Double]
 func apollonianGasket(in: Circle, minRadius: Double, rotation: Double = default, maxCount: Int = default) -> [Circle]
 func bipolar(_: Double) -> Double
 func caustic(off: [Vector2], from: LightSource, closed: Bool = default) -> [Contour]
-func caustic(through: [Vector2], from: LightSource, index: Double, closed: Bool = default) -> [Contour]
+func caustic(through: [Vector2], from: LightSource, ior: Double, closed: Bool = default) -> [Contour]
 func chladni(_: Double, _: Double, m: Double, n: Double, a: Double = default, b: Double = default) -> Double
 func clamp(_: Double, _: Double, _: Double) -> Double
 func clamp(_: T, _: T, _: T) -> T
@@ -1808,7 +1808,7 @@ func convexHull(of: [Vector2]) -> [Vector2]
 func convexHull(of: [Vector3]) -> Mesh
 func deBruijnSequence(symbols: Int, window: Int) -> [Int]
 func dist(_: Double, _: Double, _: Double, _: Double) -> Double
-func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wrap: Bool = default) -> [[Bool]]
+func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wraps: Bool = default) -> [[Bool]]
 func envelope(of: [Ray2], closed: Bool = default) -> [Contour]
 func epitrochoid(ring: Int, wheel: Int, pen: Double, samples: Int? = default) -> Contour
 func eulerSpiral(size: Double, turns: Double = default, count: Int = default) -> [Vector2]
@@ -1839,7 +1839,7 @@ func lerp(_: Double, _: Double, _: Double) -> Double
 func levyFlight(from: Vector2, steps: Int, minStep: Double, maxStep: Double, exponent: Double = default, using: R) -> [Vector2]
 func lissajous(a: Int, b: Int, phase: Double = default, width: Double, height: Double? = default, samples: Int = default) -> Contour
 func lyndonWords(symbols: Int, maxLength: Int) -> [[Int]]
-func map(_: Double, _: Double, _: Double, _: Double, _: Double, clamp: Bool = default) -> Double
+func map(_: Double, _: Double, _: Double, _: Double, _: Double, clamped: Bool = default) -> Double
 func medialAxis(of: Shape, spacing: Double = default, prune: Double = default) -> MedialAxis
 func packCircles(around: [Vector2], in: Rectangle? = default, minRadius: Double = default, maxRadius: Double = default, padding: Double = default) -> [Circle]
 func packCircles(in: Rectangle, count: Int, minRadius: Double, maxRadius: Double = default, padding: Double = default, attemptsPerCircle: Int = default, using: R) -> [Circle]
@@ -1856,7 +1856,7 @@ func randomWalk(from: Vector2, steps: Int, stepLength: Double, using: R) -> [Vec
 func reconstructSurface(of: PointCloud, spacing: Double? = default, resolution: Int = default, orientedToward: [Vector3] = default, maxGap: Double? = default, neighbors: Int = default, fitting: SurfaceFitting = default, keepingLargestComponent: Bool = default) -> Mesh
 func reconstructSurface(of: [Vector3], spacing: Double? = default, resolution: Int = default, orientedToward: [Vector3] = default, maxGap: Double? = default, neighbors: Int = default, fitting: SurfaceFitting = default, keepingLargestComponent: Bool = default) -> Mesh
 func reflectedRays(off: [Vector2], from: LightSource, closed: Bool = default) -> [Ray2]
-func refractedRays(through: [Vector2], from: LightSource, index: Double, closed: Bool = default) -> [Ray2]
+func refractedRays(through: [Vector2], from: LightSource, ior: Double, closed: Bool = default) -> [Ray2]
 func relaxCircles(_: [Circle], in: Rectangle? = default, iterations: Int = default, padding: Double = default) -> [Circle]
 func rose(n: Int, d: Int = default, radius: Double, samples: Int? = default) -> Contour
 func schottkyCircles(_: KleinianPreset, in: Rectangle, viewpoint: Vector2? = default, minRadius: Double = default, maxDepth: Int = default) -> [Circle]
@@ -1887,7 +1887,7 @@ func surfacePoints(on: Mesh, count: Int, scatter: SurfaceScatter = default, usin
 func surfacePoints(on: Mesh, spacing: Double, scatter: SurfaceScatter = default, using: R) -> [SurfaceSample]
 func tilePolyominoes(_: [Polyomino], covering: Polyomino, reuse: Bool = default, reflections: Bool = default) -> [PolyominoPlacement]?
 func tilePolyominoes(_: [Polyomino], covering: Polyomino, reuse: Bool = default, reflections: Bool = default, using: R) -> [PolyominoPlacement]?
-func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, from: [Int]? = default, wrap: Bool = default) -> [[Int]]
+func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, from: [Int]? = default, wraps: Bool = default) -> [[Int]]
 func unipolar(_: Double) -> Double
 func wrap(_: Double, _: Double, _: Double) -> Double
 open class Sketch: Sendable
@@ -2172,8 +2172,8 @@ open class Sketch: Sendable
   func drive(_: Param<Vector2>, x: String? = default, y: String? = default)
   func drive(_: Param<Vector3>, x: String? = default, y: String? = default, z: String? = default)
   func droppedFiles() -> [String]
-  func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wrap: Bool = default) -> [[Bool]]
-  func elementaryCA(rule: Int, width: Int, generations: Int, startDensity: Double, wrap: Bool = default) -> [[Bool]]
+  func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wraps: Bool = default) -> [[Bool]]
+  func elementaryCA(rule: Int, width: Int, generations: Int, startDensity: Double, wraps: Bool = default) -> [[Bool]]
   func environment(_: Environment)
   func every(_: Double, phase: Double = default) -> Bool
   func everyFrames(_: Int) -> Bool
@@ -2364,6 +2364,7 @@ open class Sketch: Sendable
   func randomGaussian(mean: Double, deviation: Double) -> Double
   func randomSeed(_: Int)
   func randomVector(in: Rectangle) -> Vector2
+  func randomVector(innerRadius: Double, outerRadius: Double) -> Vector2
   func randomWalk(from: Vector2? = default, steps: Int, stepLength: Double) -> [Vector2]
   func rayTracedReflections(_: Bool = default)
   func raymarchQuality(_: RenderQuality = default)
@@ -2383,7 +2384,6 @@ open class Sketch: Sendable
   func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
-  func ring(innerRadius: Double, outerRadius: Double) -> Vector2
   func rotate(_: Double)
   func rotate(_: Double, axis: Vector3)
   func rotate(_: Rotation3D)
@@ -2444,6 +2444,18 @@ open class Sketch: Sendable
   func stairsSubtract(radius: Double, steps: Int, _: () -> Void)
   func stairsUnion(radius: Double, steps: Int, _: () -> Void)
   func startRecording(to: String? = default, audio: SessionRecorder.Audio = default)
+  func stepAttractorFlow(_: AttractorFlow)
+  func stepEvolution(_: Evolution)
+  func stepParticleFluid(_: ParticleFluid)
+  func stepParticleLenia(_: ParticleLenia)
+  func stepParticleLife(_: ParticleLife)
+  func stepParticles(_: Particles, custom: SIMD4<Float> = default)
+  func stepPhysarum(_: Physarum)
+  func stepPrimordialParticles(_: PPS)
+  func stepSimulation(_: Simulation, custom: SIMD4<Float> = default)
+  func stepSoftBodies(_: SoftBodies)
+  func stepSwarm(_: Swarm)
+  func stepSwarmChemistry(_: SwarmChemistry)
   func stipple(count: Int, in: Rectangle? = default, iterations: Int = default, density: (Vector2) -> Double) -> [Vector2]
   func stipple(of: Image, count: Int, in: Rectangle? = default, iterations: Int = default) -> [Vector2]
   func stopRecording(completion: ((Foundation.URL?) -> Void)? = default)
@@ -2491,8 +2503,8 @@ open class Sketch: Sendable
   func tilingNoise(_: Double, _: Double, detail: Double = default) -> Double
   func tint(_: Color)
   func toneMap(_: ToneMap = default, exposure: Double = default)
-  func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, from: [Int]? = default, wrap: Bool = default) -> [[Int]]
-  func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, startDensity: Double, wrap: Bool = default) -> [[Int]]
+  func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, from: [Int]? = default, wraps: Bool = default) -> [[Int]]
+  func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int, startDensity: Double, wraps: Bool = default) -> [[Int]]
   func transform(_: simd.simd_float4x4)
   func translate(_: Double, _: Double)
   func translate(_: Double, _: Double, _: Double)
@@ -2507,18 +2519,6 @@ open class Sketch: Sendable
   func turbulence(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ulamSpiral(in: Rectangle? = default, size: Int, start: Int = default, padding: Insets = default) -> UlamSpiral
   func union(_: () -> Void)
-  func updateAttractorFlow(_: AttractorFlow)
-  func updateEvolution(_: Evolution)
-  func updateParticleFluid(_: ParticleFluid)
-  func updateParticleLenia(_: ParticleLenia)
-  func updateParticleLife(_: ParticleLife)
-  func updateParticles(_: Particles, custom: SIMD4<Float> = default)
-  func updatePhysarum(_: Physarum)
-  func updatePrimordialParticles(_: PPS)
-  func updateSimulation(_: Simulation, custom: SIMD4<Float> = default)
-  func updateSoftBodies(_: SoftBodies)
-  func updateSwarm(_: Swarm)
-  func updateSwarmChemistry(_: SwarmChemistry)
   func uv(_: Double, _: Double) -> Vector2
   func viewControl(center: Vector2? = default, zoom: Double = default, in: ClosedRange<Double> = default)
   func volumetricLight(_: Double = default, anisotropy: Double = default)
@@ -2964,11 +2964,11 @@ struct CameraMove: Equatable, Sendable
   static func autoOrbit(period: Double = default) -> CameraMove
   static func handheld(amount: Double = default, speed: Double = default) -> CameraMove
   static func orbitAndRise(period: Double = default, rise: Double = default, in: Double = default) -> CameraMove
-  static func pullOut(by: Double = default, in: Double = default, ease: Easing = default) -> CameraMove
-  static func pushIn(by: Double = default, in: Double = default, ease: Easing = default) -> CameraMove
-  static func reveal(in: Double = default, ease: Easing = default) -> CameraMove
+  static func pullOut(by: Double = default, in: Double = default, curve: Easing = default) -> CameraMove
+  static func pushIn(by: Double = default, in: Double = default, curve: Easing = default) -> CameraMove
+  static func reveal(in: Double = default, curve: Easing = default) -> CameraMove
   static func sway(amplitude: Double = default, period: Double = default) -> CameraMove
-  static func tilt(to: Double, in: Double = default, ease: Easing = default) -> CameraMove
+  static func tilt(to: Double, in: Double = default, curve: Easing = default) -> CameraMove
   static func turntable(period: Double) -> CameraMove
 struct ChaoticMap: Sendable
   func orbit(count: Int, settle: Int = default) -> [Vector2]
@@ -3180,7 +3180,7 @@ struct Combine: Sendable
   static func displace(amount: Double = default) -> Combine
   static func light(reach: Double? = default, brightness: Double = default, bounces: Int = default, sky: Color = default, quality: RenderQuality = default) -> Combine
   static func lineIntegralConvolution(length: Double = default, field: Combine.FieldEncoding = default) -> Combine
-  static func mask(channel: Combine.MaskChannel = default, invert: Bool = default) -> Combine
+  static func mask(channel: Combine.MaskChannel = default, inverted: Bool = default) -> Combine
   static func mix(amount: Double = default) -> Combine
   static func paintMix(amount: Double = default, quality: RenderQuality = default) -> Combine
   static func screenSpaceReflections(amount: Double = default, maxDistance: Double = default, thickness: Double = default, roughness: Double = default, fresnel: Double = default, edgeFade: Double = default, quality: RenderQuality = default, file: String = default, line: Int = default) -> Combine
@@ -3193,7 +3193,7 @@ struct ComposeLayer
   func dispersed(by: ComposeLayer, amount: Double = default, mode: Filter.Dispersion = default, spectral: Bool = default, quality: RenderQuality = default) -> ComposeLayer
   func displaced(by: ComposeLayer, amount: Double = default) -> ComposeLayer
   func lit(by: ComposeLayer, reach: Double? = default, brightness: Double = default, bounces: Int = default, sky: Color = default, quality: RenderQuality = default) -> ComposeLayer
-  func masked(by: ComposeLayer, channel: Combine.MaskChannel = default, invert: Bool = default) -> ComposeLayer
+  func masked(by: ComposeLayer, channel: Combine.MaskChannel = default, inverted: Bool = default) -> ComposeLayer
   func mixed(with: ComposeLayer, amount: Double = default) -> ComposeLayer
   func post(_: Filter) -> ComposeLayer
   func post(_: Filter...) -> ComposeLayer
@@ -3312,8 +3312,8 @@ struct DampedSpring<Value where Value : Smoothable>: Sendable
   @discardableResult mutating func advance(toward: Value, by: Double) -> Value
   init(value: Value, duration: Double = default, bounce: Double = default)
   mutating func advance(by: Double)
+  mutating func jump(to: Value)
   mutating func kick(_: Value)
-  mutating func set(_: Value)
   var bounce: Double { get set }
   var duration: Double { get set }
   var target: Value { get set }
@@ -3546,7 +3546,7 @@ struct Filter: Sendable
     case matte
     case metal
     case sand
-  static func adaptiveThreshold(window: Double? = default, bias: Double = default, invert: Bool = default) -> Filter
+  static func adaptiveThreshold(window: Double? = default, bias: Double = default, inverted: Bool = default) -> Filter
   static func antialias(amount: Double = default, threshold: Double = default, quality: RenderQuality = default) -> Filter
   static func bilateral(radius: Double = default, sigma: Double = default) -> Filter
   static func bloom(threshold: Double = default, amount: Double = default, radius: Double = default) -> Filter
@@ -3595,11 +3595,11 @@ struct Filter: Sendable
   static func levels(blackPoint: Double = default, whitePoint: Double = default, gamma: Double = default) -> Filter
   static func lineScreen(scale: Double = default, softness: Double = default, angle: Double = default, foreground: Color = default, background: Color = default) -> Filter
   static func liquidMetal(repetition: Double = default, softness: Double = default, dispersion: Double = default, distortion: Double = default, contour: Double = default, angle: Double = default, tint: Color = default, phase: Double = default) -> Filter
-  static func lumaKey(low: Double = default, high: Double = default, invert: Bool = default) -> Filter
+  static func lumaKey(low: Double = default, high: Double = default, inverted: Bool = default) -> Filter
   static func lut(_: ColorLUT, amount: Double = default) -> Filter
   static func median() -> Filter
   static func melt(colors: [Color] = default, scale: Double = default, warp: Double = default, liquify: Double = default, blend: Double = default, phase: Double = default) -> Filter
-  static func mirror(vertical: Bool = default, flip: Bool = default) -> Filter
+  static func mirror(vertical: Bool = default, flipped: Bool = default) -> Filter
   static func motionBlur(angle: Double = default, distance: Double = default) -> Filter
   static func normalMap(amount: Double = default) -> Filter
   static func oilPaint(radius: Double = default) -> Filter
@@ -3624,7 +3624,7 @@ struct Filter: Sendable
   static func temperature(amount: Double = default, tint: Double = default) -> Filter
   static func thinFilm(amount: Double = default, thickness: Double = default, variation: Double = default, ior: Double = default, scale: Double = default, shift: Double = default, quality: RenderQuality = default) -> Filter
   static func threshold(_: Double = default, softness: Double = default) -> Filter
-  static func tile(count: Double = default, mirror: Bool = default) -> Filter
+  static func tile(count: Double = default, mirrored: Bool = default) -> Filter
   static func toon(levels: Double = default, edges: Double = default) -> Filter
   static func vibrance(amount: Double = default) -> Filter
   static func vignette(amount: Double = default, radius: Double = default, softness: Double = default) -> Filter
@@ -4594,7 +4594,7 @@ struct Mesh: Sendable
   func colored(by: (Vector3, Vector3) -> Color) -> Mesh
   func colored(from: PointCloud) -> Mesh
   func data(as: MeshFileFormat, unit: ModelUnit = default, upAxis: UpAxis = default) -> Foundation.Data?
-  func detailMapped(_: Image? = default, normal: Image? = default, scale: Double = default, strength: Double = default) -> Mesh
+  func detailMapped(_: Image? = default, normal: Image? = default, scale: Double = default, amount: Double = default) -> Mesh
   func displaced(by: Image, scale: Double) -> Mesh
   func fractured(into: Int, around: Vector3, seed: Int = default) -> [Mesh]
   func fractured(into: Int, seed: Int = default) -> [Mesh]
@@ -4671,13 +4671,13 @@ struct MeshInstance: Sendable
   var rotation: Vector3 { get set }
   var scale: Vector3 { get set }
 struct MeshMaterial: Sendable
-  init(baseColor: Color = default, texture: Image? = default, wrap: TextureWrap = default, normalTexture: Image? = default, normalScale: Double = default, metallicRoughnessTexture: Image? = default, occlusionTexture: Image? = default, occlusionStrength: Double = default, emissiveTexture: Image? = default, emissiveColor: Color = default, heightTexture: Image? = default, heightScale: Double = default, triplanarScale: Double = default, detailTexture: Image? = default, detailNormalTexture: Image? = default, detailScale: Double = default, detailStrength: Double = default, metallic: Double = default, roughness: Double = default, opacity: Double = default, ior: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default)
+  init(baseColor: Color = default, texture: Image? = default, wrap: TextureWrap = default, normalTexture: Image? = default, normalScale: Double = default, metallicRoughnessTexture: Image? = default, occlusionTexture: Image? = default, occlusionStrength: Double = default, emissiveTexture: Image? = default, emissiveColor: Color = default, heightTexture: Image? = default, heightScale: Double = default, triplanarScale: Double = default, detailTexture: Image? = default, detailNormalTexture: Image? = default, detailScale: Double = default, detailAmount: Double = default, metallic: Double = default, roughness: Double = default, opacity: Double = default, ior: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default)
   var baseColor: Color { get set }
   var clearcoat: Double { get set }
   var clearcoatRoughness: Double { get set }
+  var detailAmount: Double { get set }
   var detailNormalTexture: Image? { get set }
   var detailScale: Double { get set }
-  var detailStrength: Double { get set }
   var detailTexture: Image? { get set }
   var emissiveColor: Color { get set }
   var emissiveTexture: Image? { get set }
@@ -4844,8 +4844,8 @@ struct OllinHUDCommands: Sendable, Commands
 struct OneEuroFilter<Value where Value : Smoothable>: Sendable
   init(minCutoff: Double = default, beta: Double = default, derivativeCutoff: Double = default)
   mutating func filter(_: Value, deltaTime: Double) -> Value
+  mutating func jump(to: Value)
   mutating func reset()
-  mutating func set(_: Value)
   var beta: Double { get set }
   var derivativeCutoff: Double { get set }
   var minCutoff: Double { get set }

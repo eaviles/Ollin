@@ -36,7 +36,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSwarmParams
 ///     blendMode(.add)
 ///     swarm.target = Vector2(mouseX, mouseY)
 ///     swarm.seek = mouseIsPressed ? 1.5 : 0
-///     updateSwarm(swarm)
+///     stepSwarm(swarm)
 ///     drawParticles(swarm)
 /// }
 /// ```
@@ -161,7 +161,7 @@ public final class Swarm {
     var current: ComputeBuffer<OllinParticle> { pingpong.read }
 
     /// Record one step: build the neighbor hash over the current agents, then the
-    /// steering + integration kernel. Called by `Sketch.updateSwarm`.
+    /// steering + integration kernel. Called by `Sketch.stepSwarm`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let read = pingpong.read, write = pingpong.write
         // Only the three neighborhood behaviors need to know who is nearby, so a

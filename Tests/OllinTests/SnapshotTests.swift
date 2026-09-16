@@ -2778,7 +2778,7 @@ private final class DetailMapScene: Sketch {
         }
         withState {
             translate(1.2, 0, 0)
-            drawMesh(dressed.detailMapped(grain, normal: grainBumps, scale: 7, strength: 0.9))
+            drawMesh(dressed.detailMapped(grain, normal: grainBumps, scale: 7, amount: 0.9))
         }
     }
 }
@@ -3267,7 +3267,7 @@ private final class ConcaveHullScene: Sketch {
         }
         let island = Vector2(210, 52)
         for _ in 0 ..< 16 {
-            scatter.append(island + ring(innerRadius: 0, outerRadius: 22))
+            scatter.append(island + randomVector(innerRadius: 0, outerRadius: 22))
         }
     }
 
@@ -8719,7 +8719,7 @@ private final class EffectsCombine: Sketch {
         // mask (alpha, inverted): hide the scene under an opaque disc, show it around.
         let amask = makeRenderTarget()
         withTarget(amask) { background(.clear); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 70) }
-        drawImage(scene().combined(with: amask, .mask(channel: .alpha, invert: true)).image,
+        drawImage(scene().combined(with: amask, .mask(channel: .alpha, inverted: true)).image,
                   in: Rectangle(x: 128, y: 128, width: 128, height: 128))
     }
 }
@@ -9252,7 +9252,7 @@ private final class PlanetScene: Sketch {
             material(shell)
             drawMesh(air)
         }
-        let night = lights.combined(with: scene, .mask(channel: .luminance, invert: true))
+        let night = lights.combined(with: scene, .mask(channel: .luminance, inverted: true))
         let daylight = scene.filtered(.gaussianBlur(radius: 30))
         let halo = atmosphere.combined(with: daylight, .mask(channel: .luminance))
 

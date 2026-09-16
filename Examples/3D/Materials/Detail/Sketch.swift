@@ -12,14 +12,14 @@ import Ollin
 /// The two spheres wear the same base maps; only the right one carries the
 /// detail pair. From afar they read alike. As the camera sways close, the
 /// left one goes soft while the right keeps its grain. `tiles` is how many
-/// times the detail tiles across the base; `strength` fades the pair (0 is
+/// times the detail tiles across the base; `amount` fades the pair (0 is
 /// the off switch, byte-identical to no detail at all). All maps are
 /// authored in setup from pure math, no image files.
 @main
 final class Detail: Sketch {
 
     @Param(2...24, icon: "squareshape.split.3x3") var tiles = 7.0
-    @Param(0...1, icon: "dial.medium") var strength = 0.9
+    @Param(0...1, icon: "dial.medium") var amount = 0.9
 
     var base = Image(width: 1, height: 1, color: .white)
     var baseBumps = Image(width: 1, height: 1, color: .white)
@@ -94,7 +94,7 @@ final class Detail: Sketch {
         withState {
             translate(1.25, 0, 0)
             drawMesh(dressed.detailMapped(grain, normal: grainBumps,
-                                          scale: tiles, strength: strength))
+                                          scale: tiles, amount: amount))
         }
         material(Material())
         drawLabels()

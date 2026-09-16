@@ -30,7 +30,7 @@ final class Smoothing: Sketch {
         let t = time * 0.9
         let base = Vector2(width * (0.5 + 0.30 * sin(t)),
                            height * (0.5 + 0.30 * sin(t * 2)))
-        let raw = base + ring(innerRadius: 0, outerRadius: 28 * scale)
+        let raw = base + randomVector(innerRadius: 0, outerRadius: 28 * scale)
         smooth = raw                                 // feed raw, read smoothed
 
         rawTrail.append(raw); smoothTrail.append(smooth)

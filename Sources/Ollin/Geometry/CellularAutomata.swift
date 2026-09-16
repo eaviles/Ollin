@@ -18,10 +18,10 @@ import Foundation
 ///   - generations: Rows returned, including the start row (at least 1).
 ///   - start: The first row, padded or trimmed to `width`. `nil` starts from a single
 ///     live cell at the center, the classic seed.
-///   - wrap: Whether the row's two ends neighbor each other (a ring). `false` reads
+///   - wraps: Whether the row's two ends neighbor each other (a ring). `false` reads
 ///     past the edge as dead.
 public func elementaryCA(rule: Int, width: Int, generations: Int,
-                         from start: [Bool]? = nil, wrap: Bool = true) -> [[Bool]] {
+                         from start: [Bool]? = nil, wraps: Bool = true) -> [[Bool]] {
     let width = max(1, width)
     let rule = ((rule % 256) + 256) % 256
     var row = normalizedStartRow(start, width: width, off: false) { $0[width / 2] = true }
@@ -31,8 +31,8 @@ public func elementaryCA(rule: Int, width: Int, generations: Int,
     var next = [Bool](repeating: false, count: width)
     for _ in 1 ..< max(1, generations) {
         for i in 0 ..< width {
-            let l = i > 0 ? row[i - 1] : (wrap ? row[width - 1] : false)
-            let r = i < width - 1 ? row[i + 1] : (wrap ? row[0] : false)
+            let l = i > 0 ? row[i - 1] : (wraps ? row[width - 1] : false)
+            let r = i < width - 1 ? row[i + 1] : (wraps ? row[0] : false)
             let pattern = (l ? 4 : 0) | (row[i] ? 2 : 0) | (r ? 1 : 0)
             next[i] = (rule >> pattern) & 1 == 1
         }
@@ -59,9 +59,9 @@ public func elementaryCA(rule: Int, width: Int, generations: Int,
 ///   - generations: Rows returned, including the start row (at least 1).
 ///   - start: The first row, values clamped into range, padded or trimmed to `width`.
 ///     `nil` starts from a single center cell of color 1.
-///   - wrap: Whether the row's two ends neighbor each other (a ring).
+///   - wraps: Whether the row's two ends neighbor each other (a ring).
 public func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
-                         from start: [Int]? = nil, wrap: Bool = true) -> [[Int]] {
+                         from start: [Int]? = nil, wraps: Bool = true) -> [[Int]] {
     let width = max(1, width)
     let k = min(8, max(2, colors))
     // The lookup table: digit `sum` of the code in base k, sums 0 through 3(k - 1).
@@ -76,8 +76,8 @@ public func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: In
     var next = [Int](repeating: 0, count: width)
     for _ in 1 ..< max(1, generations) {
         for i in 0 ..< width {
-            let l = i > 0 ? row[i - 1] : (wrap ? row[width - 1] : 0)
-            let r = i < width - 1 ? row[i + 1] : (wrap ? row[0] : 0)
+            let l = i > 0 ? row[i - 1] : (wraps ? row[width - 1] : 0)
+            let r = i < width - 1 ? row[i + 1] : (wraps ? row[0] : 0)
             next[i] = table[l + row[i] + r]
         }
         swap(&row, &next)
@@ -104,41 +104,41 @@ public extension Sketch {
     /// An elementary cellular automaton; see the free function of the same name. The
     /// facade mirrors it so bare calls inside a sketch resolve.
     func elementaryCA(rule: Int, width: Int, generations: Int,
-                      from start: [Bool]? = nil, wrap: Bool = true) -> [[Bool]] {
+                      from start: [Bool]? = nil, wraps: Bool = true) -> [[Bool]] {
         Ollin.elementaryCA(rule: rule, width: width, generations: generations,
-                           from: start, wrap: wrap)
+                           from: start, wraps: wraps)
     }
 
     /// A totalistic cellular automaton; see the free function of the same name. The
     /// facade mirrors it so bare calls inside a sketch resolve.
     func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
-                      from start: [Int]? = nil, wrap: Bool = true) -> [[Int]] {
+                      from start: [Int]? = nil, wraps: Bool = true) -> [[Int]] {
         Ollin.totalisticCA(code: code, colors: colors, width: width,
-                           generations: generations, from: start, wrap: wrap)
+                           generations: generations, from: start, wraps: wraps)
     }
 
     /// An elementary cellular automaton grown from a *random* start row (each cell live
     /// with probability `startDensity`), rolled on the sketch's seeded `random` so a
     /// `variation` brings the same field back.
     func elementaryCA(rule: Int, width: Int, generations: Int, startDensity: Double,
-                      wrap: Bool = true) -> [[Bool]] {
+                      wraps: Bool = true) -> [[Bool]] {
         var row = [Bool](repeating: false, count: max(1, width))
         for i in row.indices { row[i] = random(1) < startDensity }
         return Ollin.elementaryCA(rule: rule, width: width, generations: generations,
-                                  from: row, wrap: wrap)
+                                  from: row, wraps: wraps)
     }
 
     /// A totalistic cellular automaton grown from a *random* start row: each cell takes
     /// a uniform non-zero color with probability `startDensity`, else 0. Rolled on the
     /// sketch's seeded `random` so a `variation` brings the same field back.
     func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
-                      startDensity: Double, wrap: Bool = true) -> [[Int]] {
+                      startDensity: Double, wraps: Bool = true) -> [[Int]] {
         let k = min(8, max(2, colors))
         var row = [Int](repeating: 0, count: max(1, width))
         for i in row.indices where random(1) < startDensity {
             row[i] = 1 + Int(random(Double(k - 1)))
         }
         return Ollin.totalisticCA(code: code, colors: k, width: width,
-                                  generations: generations, from: row, wrap: wrap)
+                                  generations: generations, from: row, wraps: wraps)
     }
 }

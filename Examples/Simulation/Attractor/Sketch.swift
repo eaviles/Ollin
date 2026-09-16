@@ -46,7 +46,7 @@ final class Attractor_Example: Sketch {
         // that, so the parameter means the same thing on a shape two units across and one
         // that is fifty.
         flow.size = flow.extent / 150 * dots
-        updateAttractorFlow(flow)
+        stepAttractorFlow(flow)
         drawParticles(flow)
 
         blendMode(.normal)

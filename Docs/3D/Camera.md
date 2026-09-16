@@ -115,11 +115,11 @@ As with `cameraControl()`, the `target` / `radius` / `elevation` / `fieldOfView`
 | --- | --- | --- |
 | `.turntable(period:)` | cyclic | a continuous spin, one turn every `period` seconds |
 | `.sway(amplitude:period:)` | cyclic | a gentle azimuth rock, so the object is seen from a range of angles without a full spin |
-| `.pushIn(by:in:ease:)` | finite | dolly closer (scale the radius by `by`, below 1) |
-| `.pullOut(by:in:ease:)` | finite | dolly away (scale the radius by `by`, above 1) |
-| `.tilt(to:in:ease:)` | finite | sweep the elevation (rise to look down, drop to look up) |
+| `.pushIn(by:in:curve:)` | finite | dolly closer (scale the radius by `by`, below 1) |
+| `.pullOut(by:in:curve:)` | finite | dolly away (scale the radius by `by`, above 1) |
+| `.tilt(to:in:curve:)` | finite | sweep the elevation (rise to look down, drop to look up) |
 | `.orbitAndRise(period:rise:in:)` | hybrid | the spiral beauty pass: the camera turns continuously while the elevation rises |
-| `.reveal(in:ease:)` | finite | an opener: start close and low, then pull back and rise to the framed shot |
+| `.reveal(in:curve:)` | finite | an opener: start close and low, then pull back and rise to the framed shot |
 | `.handheld(amount:speed:)` | cyclic | a subtle operator breathing on all three, driven by a smooth noise field, so a held shot looks alive |
 
 ```swift

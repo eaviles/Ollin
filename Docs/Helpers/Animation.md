@@ -246,7 +246,7 @@ The projected value (`$x`) exposes a little more:
 ```swift
 $x.target          // the value being eased toward
 $x.isAnimating     // true while it's still moving
-$x.set(200)        // jump straight there, no animation
+$x.jump(to: 200)   // jump straight there, no animation
 ```
 
 The [Easing example](../../Examples/Motion/Easing/Sketch.swift) moves four dots toward the same target on different curves, so you can watch the curves separate as they move.
@@ -285,7 +285,7 @@ It works on a `Double` or a `Vector2`. Two parameters tune the feel:
 @Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
 ```
 
-Both can be changed live through the projected value (`$angle.beta = …`), so a [`@Param`](../Helpers/Parameters.md) parameter can tune them by feel. The projected value also gives you `$p.rawValue`, the last unsmoothed input, and `$p.set(v)`, which jumps there with no smoothing. The filter is timed in seconds, so it behaves the same at any frame rate.
+Both can be changed live through the projected value (`$angle.beta = …`), so a [`@Param`](../Helpers/Parameters.md) parameter can tune them by feel. The projected value also gives you `$p.rawValue`, the last unsmoothed input, and `$p.jump(to: v)`, which jumps there with no smoothing. The filter is timed in seconds, so it behaves the same at any frame rate.
 
 To smooth a value that is not a sketch property, use the public `OneEuroFilter<Value>` underneath. You own the state and step it yourself.
 
@@ -321,7 +321,7 @@ Two parameters shape the motion, and both are perceptual:
 - **`duration`** (default `0.5`) is the response time in seconds, roughly how long a settle takes.
 - **`bounce`** (default `0`) is the character of the motion. `0` is critically damped, which is the fastest possible arrival with no overshoot. Positive values overshoot and wobble, up to `1`, which rings forever. Negative values arrive slowly, as if moving through honey.
 
-The projected value exposes the physics. `$p.velocity` can be read or set. `$p.kick(impulse)` gives the value an impulse and lets it spring back, which suits a beat or a click. `$p.target` is the target, and `$p.set(v)` jumps there with no motion. It works on a `Double` or a `Vector2`.
+The projected value exposes the physics. `$p.velocity` can be read or set. `$p.kick(impulse)` gives the value an impulse and lets it spring back, which suits a beat or a click. `$p.target` is the target, and `$p.jump(to: v)` jumps there with no motion. It works on a `Double` or a `Vector2`.
 
 Each frame advances by the exact closed-form solution of the damped oscillator, not a numeric approximation, which means a spring is unconditionally stable. A slow frame can never make it explode or ring, and the motion is identical at any frame rate.
 
@@ -342,7 +342,7 @@ The [Springs example](../../Examples/Motion/Springs/Sketch.swift) runs five boun
 
 ```swift
 let move = Timeline(0.0)
-    .to(100, in: 1.5, ease: .easeOut)   // glide 0 -> 100 over 1.5s
+    .to(100, in: 1.5, curve: .easeOut)   // glide 0 -> 100 over 1.5s
     .hold(for: 0.5)                       // sit at 100 for 0.5s
     .to(0, in: 1.0)                       // glide back to 0
 // each frame:

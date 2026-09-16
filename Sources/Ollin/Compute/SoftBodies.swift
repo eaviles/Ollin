@@ -20,7 +20,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSoftBody, OllinS
 /// override func draw() {
 ///     background(.black)
 ///     if mouseIsPressed { blobs.pull(at: Vector2(mouseX, mouseY)) }
-///     updateSoftBodies(blobs)
+///     stepSoftBodies(blobs)
 ///     drawParticles(blobs)
 /// }
 /// ```
@@ -181,7 +181,7 @@ public final class SoftBodies {
 
     /// Record one frame: per substep, build the neighbor hash, fit each body's
     /// centroid + rotation, then steer, collide, and integrate every particle.
-    /// Called by `Sketch.updateSoftBodies`.
+    /// Called by `Sketch.stepSoftBodies`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let steps = max(1, min(substeps, 8))
         let dtFrame = frameDt > 0 ? min(frameDt, 1.0 / 30.0) : 1.0 / 60.0

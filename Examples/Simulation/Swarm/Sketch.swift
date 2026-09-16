@@ -59,7 +59,7 @@ final class Swarm_Example: Sketch {
         flock.seek = mouseIsPressed && !fleeing ? 1.8 : 0
         flock.flee = mouseIsPressed && fleeing ? 2.4 : 0
 
-        updateSwarm(flock)
+        stepSwarm(flock)
         drawParticles(flock)
 
         blendMode(.normal)

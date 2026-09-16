@@ -31,13 +31,13 @@ final class ArtificialLife: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0D12))
 
-        updatePhysarum(slime)
+        stepPhysarum(slime)
         drawImage(slime.image, in: right)
 
         blendMode(.add)
-        updateParticleLife(life)
+        stepParticleLife(life)
         drawParticles(life)
-        updatePrimordialParticles(pps)
+        stepPrimordialParticles(pps)
         drawParticles(pps)
         blendMode(.normal)
 

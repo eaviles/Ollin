@@ -70,12 +70,12 @@ reflectedRays(off curve: [Vector2], from source: LightSource,
               closed: Bool = false) -> [Ray2]
 
 refractedRays(through curve: [Vector2], from source: LightSource,
-              index: Double, closed: Bool = false) -> [Ray2]
+              ior: Double, closed: Bool = false) -> [Ray2]
 ```
 
 These two calls give you the rays that leave a curve when it is lit. The surface at each point is taken from its two neighbors, so the curve needs enough points to be smooth. An open curve loses its two end points, because they have no two neighbors.
 
-`refractedRays` bends each ray by Snell's law into a material of refractive `index`. A ray that meets the surface too steeply **turns back instead of crossing**, which is total internal reflection. Those rays are left out rather than faked, so the array can be shorter than the curve.
+`refractedRays` bends each ray by Snell's law into a material whose index of refraction is `ior` (water 1.33, glass about 1.5). A ray that meets the surface too steeply **turns back instead of crossing**, which is total internal reflection. Those rays are left out rather than faked, so the array can be shorter than the curve.
 
 <a name="caustic"></a>
 
@@ -86,7 +86,7 @@ caustic(off curve: [Vector2], from source: LightSource,
         closed: Bool = false) -> [Contour]
 
 caustic(through curve: [Vector2], from source: LightSource,
-        index: Double, closed: Bool = false) -> [Contour]
+        ior: Double, closed: Bool = false) -> [Contour]
 
 drawCaustic(off curve: [Vector2], from source: LightSource, closed: Bool = false)
 ```

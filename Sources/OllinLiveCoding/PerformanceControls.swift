@@ -216,7 +216,7 @@ final class PerformanceControls {
     }
 
     /// How many MIDI sources the Mac sees right now.
-    var midiSourceCount: Int { isListeningToMIDI ? midi.sources.count : 0 }
+    var midiSourceCount: Int { isListeningToMIDI ? midi.availableSources().count : 0 }
 
     // MARK: - Learning and the map
 

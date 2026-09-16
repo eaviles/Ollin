@@ -18,7 +18,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid
 /// override func setup() { pps = makePrimordialParticles(count: 12_000, radius: 36) }
 /// override func draw() {
 ///     background(Color(white: 0.05))
-///     updatePrimordialParticles(pps)
+///     stepPrimordialParticles(pps)
 ///     drawParticles(pps)
 /// }
 /// ```
@@ -81,7 +81,7 @@ public final class PPS {
     var current: ComputeBuffer<OllinParticle> { pingpong.read }
 
     /// Record one step: build the neighbor hash, then the turn/move kernel. Called by
-    /// `Sketch.updatePrimordialParticles`.
+    /// `Sketch.stepPrimordialParticles`.
     func recordStep(into drawer: Drawer) {
         let read = pingpong.read, write = pingpong.write
         hash.recordBuild(into: drawer, positions: read)

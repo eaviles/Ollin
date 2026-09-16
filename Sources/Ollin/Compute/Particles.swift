@@ -46,7 +46,7 @@ public enum ParticleStyle: Sendable, Equatable {
 /// override func setup() { background(.black); noClear() }
 /// override func draw() {
 ///     blendMode(.add); toneMap(.aces)
-///     updateParticles(sand)     // one sim step
+///     stepParticles(sand)     // one sim step
 ///     drawParticles(sand)       // additive discs
 /// }
 /// ```
@@ -56,7 +56,7 @@ public enum ParticleStyle: Sendable, Equatable {
 /// `size` (on-screen diameter, points), `life` (`float`), and the scratch
 /// `seedA`/`seedB` (`float`). Read-only: `id` (`uint` particle index), `u`
 /// (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.resolution`/`u.mouse`/…), and
-/// `custom` (`float4`, the live parameters you pass to `updateParticles(_:custom:)`).
+/// `custom` (`float4`, the live parameters you pass to `stepParticles(_:custom:)`).
 /// The shader-library helpers (`hash12`, `valueNoise`, `curlNoise`, `discSample`,
 /// `palette`, …) are available. The particle struct is `OllinParticle`.
 ///
@@ -92,7 +92,7 @@ public final class Particles {
     var current: ComputeBuffer<OllinParticle> { pingpong.read }
 
     /// Record one simulation step into `drawer` and swap the ping-pong so `current`
-    /// becomes the freshly written buffer. Called by `Sketch.updateParticles`.
+    /// becomes the freshly written buffer. Called by `Sketch.stepParticles`.
     func recordStep(into drawer: Drawer, custom: SIMD4<Float>) {
         let read = pingpong.read, write = pingpong.write
         var bytes: [UInt8] = []

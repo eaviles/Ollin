@@ -37,7 +37,7 @@ final class AttractorFlow_Figure: Sketch {
             translate(-flow.extent * 2.5, 0, 0)
             drawPointCloud(curve)
         }
-        updateAttractorFlow(flow)
+        stepAttractorFlow(flow)
         drawParticles(flow)
     }
 }

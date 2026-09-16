@@ -165,7 +165,7 @@ public struct BeatEngine: Sendable, Hashable {
 /// var counter = StepCounter(perBeat: 2)
 ///
 /// override func draw() {
-///     room.update(at: time)
+///     room.advance(to: time)
 ///     for step in counter.steps(upTo: room.beats) {
 ///         synth.play(scale[step % 5], for: 0.2)     // in time with the room
 ///     }
@@ -190,9 +190,9 @@ public final class BeatFollower {
         self.engine = BeatEngine(range: range)
     }
 
-    /// Reads whatever has been heard since the last call. Call once a frame,
-    /// handing it the sketch's own clock.
-    public func update(at time: Double) {
+    /// Carry the follower to `time`, reading whatever has been heard since the
+    /// last call. Call once a frame, handing it the sketch's own clock.
+    public func advance(to time: Double) {
         // Kept so the reads below can carry the beat forward between onsets
         // rather than answering where it was when the last one landed.
         lastUpdate = time

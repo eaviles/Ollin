@@ -137,7 +137,7 @@ ec1d089a4772  Docs/Core/Automation.md:127  cannot find '$radius' in scope
 f366797872e5  Docs/Core/Automation.md:141  cannot find '$eye' in scope
 1232b75d935e  Docs/Core/Automation.md:155  cannot find 'url' in scope
 4f9f5b4ff11a  Docs/Core/Automation.md:83  cannot find 'track' in scope
-2d3e7c3db3eb  Docs/Core/Canvas.md:172  overriding non-open instance method outside of its defining module
+2d3e7c3db3eb  Docs/Core/Canvas.md:173  overriding non-open instance method outside of its defining module
 97d72fc7c3cd  Docs/Core/Canvas.md:53  consecutive statements on a line must be separated by ';'
 eeb1b8b840a9  Docs/Core/Canvas.md:68  consecutive statements on a line must be separated by ';'
 449b8a7d3c1e  Docs/Core/Replay.md:90  cannot find 'url' in scope
@@ -304,8 +304,8 @@ a8f0d552b0f0  Docs/Drawing/Effects.md:582  cannot find 'marks' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:104  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:111  cannot find 'shore' in scope
 719a56ec44d7  Docs/Drawing/Envelopes.md:41  expected ',' separator
-7422069fe63c  Docs/Drawing/Envelopes.md:63  expected ',' separator
-f861eaf1a353  Docs/Drawing/Envelopes.md:84  expected ',' separator
+4425b7396c04  Docs/Drawing/Envelopes.md:63  expected ',' separator
+30eb1c469ae0  Docs/Drawing/Envelopes.md:84  expected ',' separator
 61c79db77675  Docs/Drawing/Envelopes.md:9  cannot find 'circlePoints' in scope
 8c4a9eb512d2  Docs/Drawing/Epicycles.md:46  expected ',' separator
 0c45ce001989  Docs/Drawing/Epicycles.md:55  expected '{' in struct
@@ -507,8 +507,8 @@ d90095682c33  Docs/Generators/Billiards.md:9  cannot find 'middle' in scope
 fdb4af4b832e  Docs/Generators/BlueNoise.md:65  use of 'poissonDisk' refers to instance method rather than global function 'poissonDisk(in:radius:candidates:maxCount:using:)' in module 'Ollin'
 cc6b7438423d  Docs/Generators/Boids.md:40  expected expression in list of expressions
 757ee2a591a8  Docs/Generators/Boids.md:48  cannot use instance member 'bounds' within property initializer; property initializers run before 'self' is available
-024aa0b2cb66  Docs/Generators/CellularAutomata.md:30  overriding non-open instance method outside of its defining module
-ad09398b6b89  Docs/Generators/CellularAutomata.md:58  overriding non-open instance method outside of its defining module
+c82a3099d5c7  Docs/Generators/CellularAutomata.md:30  overriding non-open instance method outside of its defining module
+622e432d7eb3  Docs/Generators/CellularAutomata.md:58  overriding non-open instance method outside of its defining module
 6bdadd16af82  Docs/Generators/Chladni.md:26  cannot find 'u' in scope
 911f5d0393c8  Docs/Generators/CrackGrowth.md:26  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 6864bd6e2841  Docs/Generators/CrackGrowth.md:54  expected ',' separator
@@ -635,10 +635,10 @@ d94faad4c27d  Docs/Generators/Random.md:143  expected ',' separator
 792947ff89bb  Docs/Generators/Random.md:27  expected ',' separator
 9d8d63608afc  Docs/Generators/Random.md:46  expected type before '->'
 1c51516556c8  Docs/Generators/Random.md:67  expected expression in list of expressions
-d106b67c60a2  Docs/Generators/Random.md:82  expected type before '->'
+0661df9d7da2  Docs/Generators/Random.md:82  expected type before '->'
 fd24309c1943  Docs/Generators/ShadowArt.md:40  expected ',' separator
 51ce8472de9c  Docs/Generators/ShadowArt.md:62  cannot find type 'Side' in scope
-81c164e78112  Docs/Generators/ShadowArt.md:9  cannot find 'cross' in scope
+81c164e78112  Docs/Generators/ShadowArt.md:9  cannot find 'ring' in scope
 c9184317f31d  Docs/Generators/ShapeGrammar.md:132  attribute 'private' can only be used in a non-local scope
 0f026ed628be  Docs/Generators/ShapeGrammar.md:97  consecutive statements on a line must be separated by ';'
 a0f6502f5f51  Docs/Generators/ShapePacking.md:27  expected ',' separator
@@ -723,11 +723,11 @@ deee27952e1a  Docs/Helpers/Accessibility.md:145  cannot find 'i' in scope
 3011a22a909a  Docs/Helpers/Animation.md:125  expected ',' separator
 32f8ffb273d1  Docs/Helpers/Animation.md:133  cannot find 'dots' in scope
 6682174b974c  Docs/Helpers/Animation.md:141  unary operator cannot be separated from its operand
-f3cba33ada40  Docs/Helpers/Animation.md:246  cannot find '$x' in scope
+4eb6bf83bfe1  Docs/Helpers/Animation.md:246  cannot find '$x' in scope
 822e706211a5  Docs/Helpers/Animation.md:26  expected ',' separator
 e1153bb302fc  Docs/Helpers/Animation.md:292  cannot find 'noisy' in scope
 16b9acb8ebfe  Docs/Helpers/Animation.md:330  cannot find 'target' in scope
-7e43314f0c53  Docs/Helpers/Animation.md:343  cannot find 'x' in scope
+340f89d95270  Docs/Helpers/Animation.md:343  cannot find 'x' in scope
 476cfba14ab9  Docs/Helpers/Animation.md:60  expected ',' separator
 566254870042  Docs/Helpers/Animation.md:97  expected ',' separator
 b5aa87221977  Docs/Helpers/Audio.md:111  cannot find 'Tone' in scope
@@ -766,7 +766,7 @@ c8998367df91  Docs/Helpers/Composition.md:326  cannot find 'Arpeggio' in scope
 203624b8b444  Docs/Helpers/Composition.md:371  cannot find 'MarkovChain' in scope
 7cdf0786f27e  Docs/Helpers/Composition.md:388  cannot find 'melody' in scope
 c9a9683ac462  Docs/Helpers/Composition.md:400  cannot find 'Tuning' in scope
-2704bac818dc  Docs/Helpers/Composition.md:439  cannot find 'AudioInput' in scope
+ecdb23d6df15  Docs/Helpers/Composition.md:439  cannot find 'AudioInput' in scope
 cb8c68156be1  Docs/Helpers/Composition.md:480  cannot find 'Note' in scope
 79b2cb45d17c  Docs/Helpers/Composition.md:495  cannot find 'Synth' in scope
 01f2f3e68796  Docs/Helpers/Composition.md:55  unary operator cannot be separated from its operand
@@ -824,7 +824,7 @@ c2c26248e5c8  Docs/Helpers/LiveData.md:84  cannot find 'tide' in scope
 0714efb3d0bc  Docs/Helpers/Math.md:135  expected ',' separator
 fc35f42a451a  Docs/Helpers/Math.md:168  expected ',' separator
 3e45647bc875  Docs/Helpers/Math.md:187  expected ',' separator
-aa593e7867f6  Docs/Helpers/Math.md:24  expected ',' separator
+b3812f188f90  Docs/Helpers/Math.md:24  expected ',' separator
 8e6813ce40f8  Docs/Helpers/Math.md:44  expected ',' separator
 1af5b1655501  Docs/Helpers/Math.md:60  expected ',' separator
 eaee9918e7ae  Docs/Helpers/Math.md:66  cannot find 'progress' in scope
@@ -836,7 +836,7 @@ c0829da400f9  Docs/Helpers/Parameters.md:196  cannot find '$toonBands' in scope
 c0df20275b80  Docs/Helpers/Parameters.md:223  invalid redeclaration of 'radius'
 1bd9827ae463  Docs/Helpers/Parameters.md:232  cannot find 'side' in scope
 ae1f33524b53  Docs/Helpers/Parameters.md:274  cannot find 'osc' in scope
-33176ee7e06f  Docs/Helpers/Parameters.md:289  cannot find '$radius' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:289  cannot find '$radius' in scope
 1c6c8dbec021  Docs/Helpers/Parameters.md:71  property wrappers are not yet supported in top-level code
 62c82222d99f  Docs/Helpers/Parameters.md:86  cannot find 'radius' in scope
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
@@ -907,7 +907,7 @@ d850fab201e9  Docs/Integration/Controller.md:170  cannot find 'controller' in sc
 d9384dec8a99  Docs/Integration/Controller.md:79  cannot find 'position' in scope
 a951ba918dc4  Docs/Integration/DMX.md:108  cannot find 'DMXSender' in scope
 7a4ee38fcdce  Docs/Integration/DMX.md:127  expected parameter name followed by ':'
-1403f24b006c  Docs/Integration/DMX.md:159  cannot find type 'DMXUniverse' in scope
+55af2112567b  Docs/Integration/DMX.md:159  cannot find type 'DMXUniverse' in scope
 1d000be35de5  Docs/Integration/DMX.md:175  cannot find 'DMXReceiver' in scope
 3768bca73f76  Docs/Integration/DMX.md:198  expected '{' in body of function declaration
 99b414bd7f71  Docs/Integration/DMX.md:205  cannot find 'dmx' in scope
@@ -924,7 +924,7 @@ f3e6725afb4b  Docs/Integration/Haptics.md:44  cannot find 'HapticPattern' in sco
 bbf86f125498  Docs/Integration/Haptics.md:66  cannot find 'HapticEvent' in scope
 a31b28dd34cf  Docs/Integration/Haptics.md:78  cannot find 'a' in scope
 69d667f443bf  Docs/Integration/Haptics.md:91  cannot find 'HapticPattern' in scope
-f43e581d0696  Docs/Integration/Laser.md:11  cannot convert value of type '@MainActor (Double, Double) -> Vector2' to expected argument type '[Vector2]'
+f43e581d0696  Docs/Integration/Laser.md:11  cannot find 'ring' in scope
 535107697505  Docs/Integration/Laser.md:128  cannot find 'drawLaserPreview' in scope
 4071df928a8b  Docs/Integration/Laser.md:144  cannot find 'laser' in scope
 0d50fdf5e417  Docs/Integration/Laser.md:151  cannot find 'laser' in scope
@@ -951,14 +951,14 @@ d6a82f4e607c  Docs/Integration/MIDI.md:189  cannot find 'midi' in scope
 82131413f3c3  Docs/Integration/MIDI.md:203  cannot find type 'PlayingNote' in scope
 1b93dfad6978  Docs/Integration/MIDI.md:234  expected '{' in body of function declaration
 19edb5d8f976  Docs/Integration/MIDI.md:252  cannot find 'MIDIInput' in scope
-bc4b343bf52b  Docs/Integration/MIDI.md:274  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
+31b20ced319c  Docs/Integration/MIDI.md:274  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
 2ae49bc230c5  Docs/Integration/MIDI.md:289  cannot find type 'Timecode' in scope
 c169feebbbd5  Docs/Integration/MIDI.md:308  cannot find 'MIDIInput' in scope
-b217e03bec1c  Docs/Integration/MIDI.md:333  cannot find type 'MIDIMessage' in scope
+987e475e3f82  Docs/Integration/MIDI.md:333  cannot find type 'MIDIEndpoint' in scope
 29df67a1ddf0  Docs/Integration/MIDI.md:354  cannot find 'MIDIOutput' in scope
 d239cd3c7705  Docs/Integration/MIDI.md:52  cannot find 'message' in scope
 45221e1c587c  Docs/Integration/MIDI.md:68  cannot find 'message' in scope
-50ef4cc653ba  Docs/Integration/MIDI.md:80  cannot find type 'MIDIMessage' in scope
+9b5c5703fb45  Docs/Integration/MIDI.md:80  cannot find type 'MIDIEndpoint' in scope
 e4f65cafbb75  Docs/Integration/OSC.md:107  cannot find 'osc' in scope
 ec3cf3dba0c3  Docs/Integration/OSC.md:115  cannot find 'osc' in scope
 831fac54d6a5  Docs/Integration/OSC.md:136  expected '{' in body of function declaration
@@ -985,7 +985,7 @@ e15ad158f539  Docs/Integration/Room.md:153  cannot find 'room' in scope
 c22b87bc3cc9  Docs/Integration/Room.md:92  cannot find 'room' in scope
 635f5b6b7525  Docs/Integration/Room.md:99  cannot find 'room' in scope
 afc0d297ce45  Docs/Integration/ScreenCapture.md:106  cannot find 'screen' in scope
-8be32f59f8b0  Docs/Integration/ScreenCapture.md:118  cannot find 'ScreenCapture' in scope
+df1ca7fe7d89  Docs/Integration/ScreenCapture.md:118  cannot find 'ScreenCapture' in scope
 c627d1a7bbad  Docs/Integration/ScreenCapture.md:126  cannot find 'ScreenCapture' in scope
 c67e0244b3e3  Docs/Integration/ScreenCapture.md:144  cannot find 'screen' in scope
 92f32c6a0d4c  Docs/Integration/ScreenCapture.md:150  cannot find 'screen' in scope
@@ -1062,15 +1062,15 @@ f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 2061a81c0661  Docs/Output/Spatial.md:35  cannot find 'sketch' in scope
 690a25f392d7  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
 1f2cfde3b6d6  Docs/Output/Wallpaper.md:30  '@main' attribute cannot be applied to this declaration
-ff2c522a1a1e  Docs/Shaders/Compute.md:109  cannot find 'sand' in scope
-3383bfa39439  Docs/Shaders/Compute.md:129  '@main' attribute cannot be applied to this declaration
+04f155b00209  Docs/Shaders/Compute.md:109  cannot find 'sand' in scope
+0c5eda7debcd  Docs/Shaders/Compute.md:129  '@main' attribute cannot be applied to this declaration
 b1d2e70e3760  Docs/Shaders/Compute.md:192  cannot find 'generator' in scope
 c8f47d43ef55  Docs/Shaders/Compute.md:209  'module' is inaccessible due to 'internal' protection level
 17abb921a8d1  Docs/Shaders/Compute.md:253  cannot find type 'MyParticle' in scope
 0a3d3619a9fc  Docs/Shaders/Compute.md:265  cannot find 'sim' in scope
 01d73cff8aa9  Docs/Shaders/Compute.md:292  cannot find 'focalDistance' in scope
 e2eef799045a  Docs/Shaders/Compute.md:323  cannot use instance member 'makeSpatialHash' within property initializer; property initializers run before 'self' is available
-3443c21b56ad  Docs/Shaders/Compute.md:36  '@main' attribute cannot be applied to this declaration
+0da43f988b6b  Docs/Shaders/Compute.md:36  '@main' attribute cannot be applied to this declaration
 c9f48908e8ff  Docs/Shaders/ShaderLibrary.md:13  cannot find 'source' in scope
 a938ccb90b53  Docs/Shaders/Shaders.md:118  cannot find 'metalSource' in scope
 ce9030c22f3b  Docs/Shaders/Shaders.md:128  'module' is inaccessible due to 'internal' protection level
@@ -1189,7 +1189,7 @@ db053ea5fd33  Docs/Tools/Extensions.md:123  attribute 'public' can only be used 
 43678beac50b  Docs/Tools/Extensions.md:132  cannot find 'GuidesOverlay' in scope
 ca15d2692762  Docs/Tools/Extensions.md:78  cannot find 'vignetteSource' in scope
 209408dc5cf8  Docs/Tools/OnThePhone.md:88  '@main' attribute cannot be applied to this declaration
-36adafdc11a8  Docs/Tools/ProjectGenerator.md:171  'module' is inaccessible due to 'internal' protection level
+36adafdc11a8  Docs/Tools/ProjectGenerator.md:172  'module' is inaccessible due to 'internal' protection level
 9416ce8ce603  Docs/Tools/SceneImport.md:31  cannot find 'drawPart' in scope
 ca46f27c17f3  Docs/Tools/SceneImport.md:50  attribute 'private' can only be used in a non-local scope
 7ca698702002  Docs/Tools/SceneImport.md:72  cannot find 'scene' in scope

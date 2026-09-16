@@ -33,11 +33,11 @@ final class FluidAndBlobs: Sketch {
                    strength: 5200, radius: 120)
 
         blendMode(.add)
-        updateParticleFluid(fluid)
+        stepParticleFluid(fluid)
         drawParticles(fluid)
         blendMode(.normal)
 
-        updateSoftBodies(blobs)
+        stepSoftBodies(blobs)
         drawParticles(blobs)
 
         frame(left, title: "particle fluid (SPH)")

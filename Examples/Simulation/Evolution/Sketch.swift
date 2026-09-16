@@ -50,7 +50,7 @@ final class Evolution_Example: Sketch {
         if mouseIsPressed { run.target = mouse }
 
         blendMode(.add)
-        updateEvolution(run)
+        stepEvolution(run)
         drawParticles(run)
 
         blendMode(.normal)

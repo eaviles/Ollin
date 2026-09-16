@@ -54,13 +54,13 @@ final class Flow: Sketch {
     override func draw() {
         background(.black)
         blendMode(.add)         // particles sum as light
-        updateParticles(sand)   // one GPU simulation step
+        stepParticles(sand)   // one GPU simulation step
         drawParticles(sand)     // a million additive discs
     }
 }
 ```
 
-- **`updateParticles(_:)`** records the simulation step, so the kernel runs once over every particle, on the GPU, before the frame is drawn.
+- **`stepParticles(_:)`** records the simulation step, so the kernel runs once over every particle, on the GPU, before the frame is drawn.
 - **`drawParticles(_:)`** draws the particles as sub-pixel discs. They use the same area-conserving coverage as [`drawCircle`](../Drawing/Drawing.md), so a million tiny jittered marks fade by area instead of flickering. The particles composite under the active [`blendMode`](../Drawing/Drawing.md#blendmode), and in draw order with everything else. That means you can draw particles, switch to `.normal`, and draw a caption over them.
 
 That is the whole loop. For the sandpainting look, pair it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode) and an [`Accumulator`](../Drawing/Accumulation.md#accumulator), so the particles sum as light into a running mean that converges. Draw them with the **`.light` style**, `drawParticles(sand, style: .light)`, which deposits each particle's light in proportion to its area with no perceptual remap. The default `.marks` style is ink instead, which is right over a light ground and wrong for a sum of light. Particles at or under one pixel then take a one-texel path, so a million of them cost a million fragments rather than twenty-five million. See [Depth of field from light](../Drawing/DepthOfField.md#light) for the deposit rules, and the `Examples/Compute/CurlField` and `Examples/Rendering/DepthOfField` examples.
@@ -83,7 +83,7 @@ These names are **read-only**:
 
 - `id` is this particle's index (`uint`).
 - `u` holds the per-frame constants: `u.time`, `u.dt`, `u.frameCount`, `u.resolution`, `u.mouse`, `u.particleCount`.
-- `custom` is a `float4` of [live parameters](#custom) you pass to `updateParticles`.
+- `custom` is a `float4` of [live parameters](#custom) you pass to `stepParticles`.
 
 Particles start zeroed, so `life` begins at 0, which is why the `if (life <= 0.0)` spawn pattern above seeds every particle on the first frame.
 
@@ -108,7 +108,7 @@ You can pass up to four live floats per step, such as a focal distance, a streng
 
 ```swift
 let focus = mouseIsPressed ? Float(map(mouseX, 0, width, -1, 1)) : 0
-updateParticles(sand, custom: SIMD4(focus, 0, 0, 0))
+stepParticles(sand, custom: SIMD4(focus, 0, 0, 0))
 ```
 
 ```metal
@@ -154,13 +154,13 @@ final class RD: Sketch {
 
     override func draw() {
         if !seeded { compute(seed, writing: field.current); seeded = true }   // initial state
-        updateSimulation(field)                                               // one frame of sim
+        stepSimulation(field)                                               // one frame of sim
         drawImage(field.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
     }
 }
 ```
 
-- **`updateSimulation(_:custom:)`** records the sim, so `substeps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats, which the snippet reads as `custom.x…w`.
+- **`stepSimulation(_:custom:)`** records the sim, so `substeps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats, which the snippet reads as `custom.x…w`.
 - **`field.image`** wraps the current field as an [`Image`](../Drawing/Drawing.md) for `drawImage`. Like any image, it composites in draw order, follows the transform stack, and takes `tint`. Its texels are treated as **linear** color, so write sRGB tones through `srgbToLinear` in the kernel.
 
 In the `step:` snippet these are in scope:

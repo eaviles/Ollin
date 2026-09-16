@@ -54,8 +54,8 @@ struct ElementaryCATests {
     /// grow-everywhere rule 254 reaches the far end in one step only on the ring.
     @Test func wrapControlsTheEdges() {
         let start: [Bool] = [true, false, false, false, false]
-        let ring = elementaryCA(rule: 254, width: 5, generations: 2, from: start, wrap: true)
-        let strip = elementaryCA(rule: 254, width: 5, generations: 2, from: start, wrap: false)
+        let ring = elementaryCA(rule: 254, width: 5, generations: 2, from: start, wraps: true)
+        let strip = elementaryCA(rule: 254, width: 5, generations: 2, from: start, wraps: false)
         #expect(line(ring[1]) == "11001")
         #expect(line(strip[1]) == "11000")
     }

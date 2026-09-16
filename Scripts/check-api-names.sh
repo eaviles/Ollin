@@ -34,11 +34,14 @@
 #                (keepsHighlights, usesSceneGravity) or as state (is…, has…,
 #                wants…, can…, needs…, did…). A bare adjective or an imperative
 #                (`settled`, `denoise`) is neither; `should…`/`enable…`/
-#                `disable…` are flagged as labels too. A Bool collection keeps
-#                its adjective and is not read here.
-#   time         Advancing by seconds is advance(by:); running discrete steps
-#                is step(_:). advance() with no `by:`, step(by:), tick(), and
-#                update(dt:) are the drifts this catches.
+#                `disable…` are flagged as labels too, as is a label that is a
+#                bare order (`invert:`, `flip:`, `mirror:`, `wrap:`, `clamp:`),
+#                whose house spelling is the participle or the assertion. A
+#                Bool collection keeps its adjective and is not read here.
+#   time         Advancing by seconds is advance(by:), to a clock advance(to:);
+#                running discrete steps is step(_:). advance() with no label,
+#                step(by:), tick(), update(dt:), and any update… verb are the
+#                drifts this catches (`update` says less than the call does).
 #   resource     A resource loader labels the extension withExtension:, and
 #                its `in:` bundle takes no default (a default resolves to the
 #                framework's own bundle, not the caller's).
@@ -66,6 +69,10 @@
 #                stop() stops something that runs.
 #   draining     A poll-and-clear read is a plural noun (messages(), lines());
 #                drain…/pending… are not.
+#   listing      A listing that goes and asks the outside world is available…()
+#                (availableDisplays(), availableSources()). A bare plural reads
+#                as the draining accessor or as held state, so a no-argument
+#                one returning an array is flagged.
 #
 # What it cannot see: a rule about meaning rather than spelling (`factor` only
 # for a true multiplier, a domain verb for a run-to-completion call), which
@@ -273,6 +280,14 @@ NOUNS = {"circle", "rect", "ellipse", "line", "triangle", "quad", "arc", "polygo
 STACK = {"push", "pop", "isolated", "pushMatrix", "popMatrix", "pushStyle", "popStyle", "resetMatrix"}
 VALUE = {"string", "double", "float", "integer", "boolean"}
 DESTINATION = re.compile(r"^(?:write|save|export|record|dump)")
+# A Bool label is an adjective or a third-person assertion, never a bare order.
+ORDERS = {"invert", "flip", "mirror", "wrap", "clamp", "reverse", "show", "hide",
+          "enable", "disable", "toggle", "animate", "center", "repeat", "skip",
+          "trim", "crop", "tile", "loop", "close", "open", "fill", "stroke"}
+# A listing that goes and asks the outside world is available…(), never a bare
+# plural, which reads as the draining accessor.
+LISTINGS = {"apps", "displays", "windows", "devices", "servers", "sources",
+            "destinations", "endpoints"}
 
 for d in decls:
     labels = [l for l, _, _ in d.params] if d.params else []
@@ -313,12 +328,17 @@ for d in decls:
             if re.match(r"^Bool\??$", typ) and BAD_BOOL_PREFIX.match(label):
                 fail("boolean", d, f"label `{label}: Bool` is a should/enable/disable spelling; a configuration Boolean is a third-person assertion")
                 break
+            if re.match(r"^Bool\??$", typ) and label in ORDERS:
+                fail("boolean", d, f"label `{label}: Bool` is a bare order; a configuration Boolean is a participle ({label}ed) or an assertion ({label}s)")
+                break
 
     # time
     if d.kind == "func" and d.params is not None:
         first = labels[0] if labels else None
-        if d.name == "advance" and first not in ("by", "toward"):
-            fail("time", d, f"`{d.spelled}`: advancing by seconds is advance(by:); a discrete step is step(_:)")
+        if d.name == "advance" and first not in ("by", "to", "toward"):
+            fail("time", d, f"`{d.spelled}`: advancing by seconds is advance(by:), to a clock advance(to:); a discrete step is step(_:)")
+        elif re.match(r"^update(?:[A-Z]|$)", d.name) and "Representable" not in d.owner_line:
+            fail("time", d, f"`{d.spelled}`: `update` says less than the call does; a per-frame advance is advance(by:)/advance(to:) and a discrete run is step…")
         elif d.name == "step" and labels and first != "_":
             fail("time", d, f"`{d.spelled}`: running discrete steps is step(_:), never a labeled count")
         elif d.name == "tick":
@@ -396,6 +416,11 @@ for d in decls:
     # draining
     if d.kind == "func" and re.match(r"^(?:drain|pending)[A-Z]", d.name):
         fail("draining", d, f"`{d.name}`: a poll-and-clear read is a plural noun (messages(), lines())")
+
+    # listing. Only a no-argument read of an array: `endpoints(of:)` answers about
+    # something handed to it, and a setting that happens to be plural is not a list.
+    if d.name in LISTINGS and not d.params and "[" in d.rest:
+        fail("listing", d, f"`{d.name}`: a listing that asks the system is available{d.name[0].upper()}{d.name[1:]}(); a bare plural is held state or a drain")
 
 # lifecycle, per type
 for owner, ms in members.items():

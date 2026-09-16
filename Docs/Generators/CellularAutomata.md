@@ -29,7 +29,7 @@ The GPU version of the idea is **Lenia**, a continuous form of the Game of Life.
 
 ```swift
 func elementaryCA(rule: Int, width: Int, generations: Int,
-                  from start: [Bool]? = nil, wrap: Bool = true) -> [[Bool]]
+                  from start: [Bool]? = nil, wraps: Bool = true) -> [[Bool]]
 ```
 
 ```swift
@@ -57,7 +57,7 @@ for (r, row) in rows.enumerated() {
 
 ```swift
 func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
-                  from start: [Int]? = nil, wrap: Bool = true) -> [[Int]]
+                  from start: [Int]? = nil, wraps: Bool = true) -> [[Int]]
 ```
 
 Each row holds color indices in `0 ..< colors`, so the natural way to draw it is a palette lookup per cell. Code **777** over 3 colors is a classic rule that grows irregularly. Sweeping the code with a parameter is a good way to find other codes worth drawing.

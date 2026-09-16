@@ -315,7 +315,7 @@ private final class EvolutionProbe: Sketch {
     override func draw() {
         background(.black)
         let before = run.generation
-        updateEvolution(run)
+        stepEvolution(run)
         if run.generation > before {
             bredAtFrame.append(frameCount)
             if let report = run.lastGeneration { reports.append(report) }

@@ -121,7 +121,7 @@ final class SurfaceGrain: Sketch {
         withState {
             translate(1.15, 0, 0)
             drawMesh(dressed.detailMapped(grain, normal: grainBumps,
-                                          scale: 7, strength: 0.9))
+                                          scale: 7, amount: 0.9))
         }
     }
 }

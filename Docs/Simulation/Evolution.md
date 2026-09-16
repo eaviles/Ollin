@@ -47,7 +47,7 @@ override func draw() {
     drawRect(0, 0, width, height)
 
     blendMode(.add)
-    updateEvolution(run)
+    stepEvolution(run)
     drawParticles(run)
 }
 ```

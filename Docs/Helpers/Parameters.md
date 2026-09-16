@@ -287,7 +287,7 @@ A parameter is safe to read and write from any thread. The inspector drives it f
 `$radius` has two more members:
 
 ```swift
-$radius.set(200)    // jump straight there, skipping any smoothing glide
+$radius.jump(to: 200)   // jump straight there, skipping any smoothing glide
 $radius.range       // the declared bounds (Double and Int parameters)
 ```
 

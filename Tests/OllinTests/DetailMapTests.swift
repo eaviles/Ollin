@@ -4,14 +4,14 @@ import Foundation
 import Testing
 
 /// Detail maps: the finer second texture pair tiled across the base one
-/// (`Mesh.detailMapped(_:normal:scale:strength:)`). The CPU half pins the
+/// (`Mesh.detailMapped(_:normal:scale:amount:)`). The CPU half pins the
 /// attach rule (tangents generated only when a detail normal needs them) and
 /// the spatial exporter's honest strip. The Metal-gated probes pin the
 /// contract against counterfactuals: the color map tiles at `detailScale`
 /// (more tiles at a higher scale), a neutral 128-gray map is within a step of
 /// the identity, a flat detail normal leaves the base relief untouched (the
 /// reorientation's identity, which an overwrite blend fails), a tilted detail
-/// composes *onto* the base tilt rather than replacing it, and strength 0
+/// composes *onto* the base tilt rather than replacing it, and amount 0
 /// routes down the plain textured path byte for byte.
 @Suite
 @MainActor
@@ -33,12 +33,12 @@ struct DetailMapTests {
         let color = solidMap(128, 128, 128)
         let normal = solidMap(127, 127, 255)
         let mesh = Mesh.sphere(radius: 1, segments: 8, rings: 4)
-            .detailMapped(color, normal: normal, scale: 12, strength: 0.7)
+            .detailMapped(color, normal: normal, scale: 12, amount: 0.7)
         let m = try #require(mesh.material)
         #expect(m.detailTexture === color)
         #expect(m.detailNormalTexture === normal)
         #expect(abs(m.detailScale - 12) < 1e-12)
-        #expect(abs(m.detailStrength - 0.7) < 1e-12)
+        #expect(abs(m.detailAmount - 0.7) < 1e-12)
         #expect(mesh.tangents.count == mesh.positions.count,
                 "a detail normal map needs the tangent basis, generated on attach")
         // Composes with the rest of the set in either order.
@@ -135,11 +135,11 @@ struct DetailMapTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func strengthZeroRoutesDownThePlainPath() throws {
+    func amountZeroRoutesDownThePlainPath() throws {
         // Strength 0 is the off switch: the drawer never raises the gates, so
         // the frame is byte-identical to the same mesh with no detail maps
         // attached at all (the plain textured pipeline).
-        let off = try #require(OllinApp.image(of: DetailProbe.make(.strengthZero), frame: 1))
+        let off = try #require(OllinApp.image(of: DetailProbe.make(.amountZero), frame: 1))
         let none = try #require(OllinApp.image(of: DetailProbe.make(.plain), frame: 1))
         #expect(imageBytes(off) == imageBytes(none))
     }
@@ -191,7 +191,7 @@ struct DetailMapTests {
 /// The detail render probes: a camera-facing quad, one arrangement per mode.
 private final class DetailProbe: Sketch {
     enum Mode {
-        case plain, stripesScale3, stripesScale6, neutralGray, strengthZero
+        case plain, stripesScale3, stripesScale6, neutralGray, amountZero
         case tiltedBaseFlatDetail, tiltedBaseNoDetail
         case litFlat, litBaseTilt, litBaseAndDetailTilt
         case exportStrip
@@ -261,10 +261,10 @@ private final class DetailProbe: Sketch {
             directionalLight(.white, direction: Vector3(0, 0, -1))
             drawMesh(quad().textured(solid(180, 180, 180))
                 .detailMapped(solid(128, 128, 128), scale: 4))
-        case .strengthZero:
+        case .amountZero:
             directionalLight(.white, direction: Vector3(0, 0, -1))
             drawMesh(quad().textured(solid(180, 180, 180))
-                .detailMapped(stripeDetail(), scale: 4, strength: 0))
+                .detailMapped(stripeDetail(), scale: 4, amount: 0))
         case .tiltedBaseFlatDetail:
             directionalLight(.white, direction: Vector3(-1, 0, -1))
             drawMesh(quad().textured(solid(180, 180, 180))

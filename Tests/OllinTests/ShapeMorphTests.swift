@@ -135,7 +135,7 @@ struct ShapeMorphTests {
     @Test func timelineTweensShapes() {
         let a = Shape(square(size: 100))
         let b = Shape(square(at: Vector2(200, 0), size: 100))
-        let tween = Timeline(a).to(b, in: 1, ease: .linear)
+        let tween = Timeline(a).to(b, in: 1, curve: .linear)
         tween.advance(by: 0.5)
         let mid = tween.value.contours[0]
         let center = mid.points.centroid ?? .zero

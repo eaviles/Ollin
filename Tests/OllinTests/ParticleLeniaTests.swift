@@ -191,7 +191,7 @@ private final class LeniaProbe: Sketch {
         if frameCount >= steps, finalPositions == nil {
             finalPositions = lenia.current.snapshot()?.map(\.position)
         }
-        updateParticleLenia(lenia)
+        stepParticleLenia(lenia)
         drawParticles(lenia)
     }
 }

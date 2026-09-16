@@ -403,7 +403,8 @@ public final class Eased: FrameAdvancing {
     }
 
     /// Jump straight to `value` with no animation (both the value and the target).
-    public func set(_ value: Double) {
+    /// Assigning the property eases toward a value instead.
+    public func jump(to value: Double) {
         current = value
         start = value
         targetValue = value

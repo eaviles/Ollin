@@ -263,5 +263,5 @@ private final class FlowProbe: Sketch {
         if let colors { flow.colors = colors }
     }
 
-    override func draw() { updateAttractorFlow(flow) }
+    override func draw() { stepAttractorFlow(flow) }
 }

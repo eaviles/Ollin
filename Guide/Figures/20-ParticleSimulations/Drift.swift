@@ -52,7 +52,7 @@ final class Drift: Sketch {
         drawRect(0, 0, width, height)
 
         blendMode(.add)
-        updateParticles(dust, custom: SIMD4<Float>(Float(fieldScale), Float(speed), Float(lifespan), 0))
+        stepParticles(dust, custom: SIMD4<Float>(Float(fieldScale), Float(speed), Float(lifespan), 0))
         drawParticles(dust)
     }
 }

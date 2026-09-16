@@ -43,8 +43,9 @@ public final class MIDIOutput: @unchecked Sendable {
     /// Whether the output has been opened.
     public var isOpen: Bool { core.withLock { $0.open } }
 
-    /// The MIDI destinations currently visible on the system.
-    public var destinations: [MIDIEndpoint] {
+    /// The MIDI destinations on the system right now. It asks Core MIDI on every
+    /// call, so it is a question rather than stored state.
+    public func availableDestinations() -> [MIDIEndpoint] {
         (0..<MIDIGetNumberOfDestinations()).compactMap { index in
             let destination = MIDIGetDestination(index)
             return destination != 0 ? MIDIEndpoint(destination) : nil

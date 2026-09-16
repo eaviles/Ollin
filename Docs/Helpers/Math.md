@@ -22,10 +22,10 @@ Ollin has a small and growing set of the familiar creative-coding math functions
 ### map
 
 ```swift
-map(_ value: Double, _ start1: Double, _ stop1: Double, _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
+map(_ value: Double, _ start1: Double, _ stop1: Double, _ start2: Double, _ stop2: Double, clamped: Bool = false) -> Double
 ```
 
-Re-map `value` linearly from one range onto another. The result sits at the same fraction along `start2...stop2` that `value` sat along `start1...stop1`. By default the result extrapolates past the range. Pass `clamp: true` to hold it inside `start2...stop2`.
+Re-map `value` linearly from one range onto another. The result sits at the same fraction along `start2...stop2` that `value` sat along `start1...stop1`. By default the result extrapolates past the range. Pass `clamped: true` to hold it inside `start2...stop2`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/MapAndLerp-dark.jpg">
@@ -49,7 +49,7 @@ The Euclidean distance between two points.
 
 ```swift
 let d = dist(mouseX, mouseY, width / 2, height / 2)
-let r = map(d, 0, 400, 80, 10, clamp: true) // large at the center, small toward the edges
+let r = map(d, 0, 400, 80, 10, clamped: true) // large at the center, small toward the edges
 drawCircle(width / 2, height / 2, r)
 ```
 

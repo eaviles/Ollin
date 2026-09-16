@@ -28,7 +28,7 @@ extension Vector3: Tweenable {
 ///
 /// ```swift
 /// let move = Timeline(0.0)
-///     .to(100, in: 1.5, ease: .easeOut)   // glide 0 -> 100 over 1.5s
+///     .to(100, in: 1.5, curve: .easeOut)   // glide 0 -> 100 over 1.5s
 ///     .hold(for: 0.5)                       // sit at 100 for 0.5s
 ///     .to(0, in: 1.0)                       // glide back to 0
 /// // each frame:
@@ -46,7 +46,7 @@ public final class Timeline<Value: Tweenable>: FrameAdvancing {
     private struct Segment {
         let target: Value
         let duration: Double
-        let ease: Easing
+        let curve: Easing
     }
 
     private let start: Value
@@ -59,10 +59,10 @@ public final class Timeline<Value: Tweenable>: FrameAdvancing {
     /// Begin a timeline resting at `start` (the value at clock 0).
     public init(_ start: Value) { self.start = start }
 
-    /// Glide to `value` over `duration` seconds, shaped by `ease`. Chains.
+    /// Glide to `value` over `duration` seconds, shaped by `curve`. Chains.
     @discardableResult
-    public func to(_ value: Value, in duration: Double, ease: Easing = .easeInOut) -> Timeline {
-        segments.append(Segment(target: value, duration: max(0, duration), ease: ease))
+    public func to(_ value: Value, in duration: Double, curve: Easing = .easeInOut) -> Timeline {
+        segments.append(Segment(target: value, duration: max(0, duration), curve: curve))
         return self
     }
 
@@ -70,7 +70,7 @@ public final class Timeline<Value: Tweenable>: FrameAdvancing {
     @discardableResult
     public func hold(for duration: Double) -> Timeline {
         let last = segments.last?.target ?? start
-        segments.append(Segment(target: last, duration: max(0, duration), ease: .linear))
+        segments.append(Segment(target: last, duration: max(0, duration), curve: .linear))
         return self
     }
 
@@ -93,7 +93,7 @@ public final class Timeline<Value: Tweenable>: FrameAdvancing {
         for seg in segments {
             if t < acc + seg.duration {
                 let local = seg.duration > 0 ? (t - acc) / seg.duration : 1
-                return Value.lerp(segStart, seg.target, seg.ease(local))
+                return Value.lerp(segStart, seg.target, seg.curve(local))
             }
             acc += seg.duration
             segStart = seg.target

@@ -230,7 +230,7 @@ private final class SwarmProbe: Sketch {
 
     override func draw() {
         background(.black)
-        updateSwarm(swarm)
+        stepSwarm(swarm)
         drawParticles(swarm)
     }
 }

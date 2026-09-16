@@ -139,16 +139,16 @@ struct EnvelopeTests {
     /// the two indices.
     @Test func aBendKeepsSnellsRatio() {
         let surface = (0 ... 60).map { Vector2(Double($0) * 6 - 180, 0) }
-        let index = 1.5
+        let ior = 1.5
         let angle = Double.pi / 2 + 0.6      // arriving at a slant
-        let rays = refractedRays(through: surface, from: .parallel(angle), index: index)
+        let rays = refractedRays(through: surface, from: .parallel(angle), ior: ior)
         #expect(rays.count == surface.count - 2)
         let normal = Vector2(0, 1)
         let incoming = Vector2(angle: angle)
         let sinIn = abs(incoming.cross(normal))
         for ray in rays {
             let sinOut = abs(ray.direction.normalized.cross(normal))
-            #expect(abs(sinIn - index * sinOut) < 1e-9, "\(sinIn) against \(index) times \(sinOut)")
+            #expect(abs(sinIn - ior * sinOut) < 1e-9, "\(sinIn) against \(ior) times \(sinOut)")
         }
     }
 
@@ -157,9 +157,9 @@ struct EnvelopeTests {
     @Test func aRayThatCannotCrossIsLeftOut() {
         let surface = (0 ... 40).map { Vector2(Double($0) * 6 - 120, 0) }
         // Leaving glass for air, well past the critical angle.
-        let steep = refractedRays(through: surface, from: .parallel(.pi / 2 + 1.2), index: 1 / 1.5)
+        let steep = refractedRays(through: surface, from: .parallel(.pi / 2 + 1.2), ior: 1 / 1.5)
         #expect(steep.isEmpty)
-        let shallow = refractedRays(through: surface, from: .parallel(.pi / 2 + 0.2), index: 1 / 1.5)
+        let shallow = refractedRays(through: surface, from: .parallel(.pi / 2 + 0.2), ior: 1 / 1.5)
         #expect(shallow.count == surface.count - 2)
     }
 

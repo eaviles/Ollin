@@ -38,7 +38,7 @@ final class HullTrio: Sketch {
             }
         }
         for _ in 0 ..< 26 {
-            scatter.append(Vector2(212, 76) + ring(innerRadius: 0, outerRadius: 32))
+            scatter.append(Vector2(212, 76) + randomVector(innerRadius: 0, outerRadius: 32))
         }
     }
 

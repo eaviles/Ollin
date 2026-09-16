@@ -161,7 +161,7 @@ public struct MeshMaterial: @unchecked Sendable {
     /// How strongly the detail pair applies: 1 as authored, smaller fades the
     /// detail out, 0 turns it off (the frame is then byte-identical to one
     /// with no detail maps at all).
-    public var detailStrength: Double
+    public var detailAmount: Double
 
     // The finish below is carried, not rendered. Ollin shades a mesh through
     // `material(_:)`, which is drawing state rather than something the mesh
@@ -192,7 +192,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 heightTexture: Image? = nil, heightScale: Double = 0.05,
                 triplanarScale: Double = 0,
                 detailTexture: Image? = nil, detailNormalTexture: Image? = nil,
-                detailScale: Double = 8, detailStrength: Double = 1,
+                detailScale: Double = 8, detailAmount: Double = 1,
                 metallic: Double = 0, roughness: Double = 0.5, opacity: Double = 1,
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
@@ -211,7 +211,7 @@ public struct MeshMaterial: @unchecked Sendable {
         self.detailTexture = detailTexture
         self.detailNormalTexture = detailNormalTexture
         self.detailScale = detailScale
-        self.detailStrength = detailStrength
+        self.detailAmount = detailAmount
         self.metallic = metallic
         self.roughness = roughness
         self.opacity = opacity

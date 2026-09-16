@@ -719,7 +719,7 @@ lazy var room = BeatFollower(mic)
 var counter = StepCounter(perBeat: 2)
 
 override func draw() {
-    room.update(at: time)
+    room.advance(to: time)
     for step in counter.steps(upTo: room.beats) {
         synth.play(scale[step % 5], for: 0.2)
     }

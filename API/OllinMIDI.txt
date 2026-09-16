@@ -3,6 +3,7 @@
 enum MIDIError: Error, Sendable
   case coreMIDI(Darwin.OSStatus)
 final class MIDIInput: Sendable
+  func availableSources() -> [MIDIEndpoint]
   func bind(controlChange: Int, to: Param<Double>, channel: Int? = default, from: ClosedRange<Double> = default)
   func bind(controlChange: Int, to: Param<Tempo>, channel: Int? = default, from: ClosedRange<Double> = default)
   func controlValue(_: Int, channel: Int? = default) -> Int?
@@ -16,8 +17,8 @@ final class MIDIInput: Sendable
   var heldNotes: [HeldNote] { get }
   var isRunning: Bool { get }
   var mpeZones: [MPEZone] { get set }
-  var sources: [MIDIEndpoint] { get }
 final class MIDIOutput: Sendable
+  func availableDestinations() -> [MIDIEndpoint]
   func channelPressure(_: Int, channel: Int = default)
   func close()
   func controlChange(_: Int, value: Int, channel: Int = default)
@@ -33,7 +34,6 @@ final class MIDIOutput: Sendable
   func send(sysEx: [UInt8])
   func send(timecode: Timecode)
   init(name: String = default)
-  var destinations: [MIDIEndpoint] { get }
   var isOpen: Bool { get }
 final class TempoClock: Sendable
   func progress(over: Double, phase: Double = default) -> Double

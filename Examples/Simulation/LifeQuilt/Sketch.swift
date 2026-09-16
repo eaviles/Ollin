@@ -39,7 +39,7 @@ final class LifeQuilt: Sketch {
 
     /// A grid index clustered near the center (a small disk around it).
     private func seedCell() -> (Int, Int) {
-        let p = ring(innerRadius: 0, outerRadius: 0.25)
+        let p = randomVector(innerRadius: 0, outerRadius: 0.25)
         let i = Int(map(p.x, -1, 1, 0, Double(Self.gridSize - 1)).rounded())
         let j = Int(map(p.y, -1, 1, 0, Double(Self.gridSize - 1)).rounded())
         return (clampIndex(i), clampIndex(j))

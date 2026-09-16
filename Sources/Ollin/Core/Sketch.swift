@@ -618,7 +618,7 @@ open class Sketch {
     /// Step a `Particles` system one frame (records its compute dispatch and swaps
     /// its ping-pong buffers). `custom` passes up to four live floats the kernel
     /// reads as `custom.x…w`.
-    public func updateParticles(_ particles: Particles, custom: SIMD4<Float> = .zero) {
+    public func stepParticles(_ particles: Particles, custom: SIMD4<Float> = .zero) {
         particles.recordStep(into: drawer, custom: custom)
     }
 
@@ -708,7 +708,7 @@ open class Sketch {
     /// Make a `ParticleLife` system: `count` particles of `kinds` kinds over `bounds`
     /// (the full canvas by default), interacting within `radius`, seeded from `seed`
     /// (this sketch's `variation` by default). Build it in `setup()`, then
-    /// `updateParticleLife` + `drawParticles` in `draw()`. See `ParticleLife`.
+    /// `stepParticleLife` + `drawParticles` in `draw()`. See `ParticleLife`.
     public func makeParticleLife(count: Int, kinds: Int, radius: Double,
                              bounds: Rectangle? = nil, seed: Int? = nil) -> ParticleLife {
         ParticleLife(count: count, kinds: kinds, bounds: bounds ?? self.bounds,
@@ -717,7 +717,7 @@ open class Sketch {
 
     /// Step a `ParticleLife` system one frame (builds its neighbor hash and runs its
     /// force/integration kernel).
-    public func updateParticleLife(_ life: ParticleLife) { life.recordStep(into: drawer) }
+    public func stepParticleLife(_ life: ParticleLife) { life.recordStep(into: drawer) }
 
     /// Draw a `ParticleLife` system's particles as additive discs.
     public func drawParticles(_ life: ParticleLife) {
@@ -735,7 +735,7 @@ open class Sketch {
     }
 
     /// Step a `PPS` one frame (builds its neighbor hash and runs its turn/move kernel).
-    public func updatePrimordialParticles(_ pps: PPS) { pps.recordStep(into: drawer) }
+    public func stepPrimordialParticles(_ pps: PPS) { pps.recordStep(into: drawer) }
 
     /// Draw a `PPS`'s particles as additive discs (colored by local crowd size).
     public func drawParticles(_ pps: PPS) {
@@ -744,7 +744,7 @@ open class Sketch {
 
     /// Make a `Physarum` slime-mold sim: `agents` agents on a `resolution`×`resolution`
     /// trail map, seeded from `seed` (this sketch's `variation` by default). Build it
-    /// in `setup()`, then `updatePhysarum` + `drawImage(sim.image, in:)` in `draw()`.
+    /// in `setup()`, then `stepPhysarum` + `drawImage(sim.image, in:)` in `draw()`.
     /// See `Physarum`.
     public func makePhysarum(agents: Int, resolution: Int, seed: Int? = nil) -> Physarum {
         Physarum(agents: agents, resolution: resolution, seed: seed ?? variation)
@@ -757,12 +757,12 @@ open class Sketch {
 
     /// Step a `Physarum` sim one frame (agents sense/steer/move/deposit, then the trail
     /// diffuses, decays, and colorizes).
-    public func updatePhysarum(_ physarum: Physarum) { physarum.recordStep(into: drawer) }
+    public func stepPhysarum(_ physarum: Physarum) { physarum.recordStep(into: drawer) }
 
     /// Make a `Swarm`: `count` steering agents scattered over `bounds` (the full
     /// canvas by default), each seeing others within `perceptionRadius`, seeded from
     /// `seed` (this sketch's `variation` by default). Every behavior starts at weight
-    /// zero, so set the ones you want. Build it in `setup()`, then `updateSwarm` +
+    /// zero, so set the ones you want. Build it in `setup()`, then `stepSwarm` +
     /// `drawParticles` in `draw()`. See `Swarm`.
     public func makeSwarm(count: Int, perceptionRadius: Double, colors: [Color] = [],
                       size: Double = 2.0, bounds: Rectangle? = nil,
@@ -774,7 +774,7 @@ open class Sketch {
 
     /// Step a `Swarm` one frame (builds its neighbor hash, then sums the weighted
     /// steering behaviors and moves every agent).
-    public func updateSwarm(_ swarm: Swarm) {
+    public func stepSwarm(_ swarm: Swarm) {
         swarm.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -787,7 +787,7 @@ open class Sketch {
     /// default) with one model unit drawn `spacing` points wide, seeded from `seed`
     /// (this sketch's `variation` by default). They start packed in a disc at the
     /// middle, which is where the structures grow from. Build it in `setup()`, then
-    /// `updateParticleLenia` + `drawParticles` in `draw()`. See `ParticleLenia`.
+    /// `stepParticleLenia` + `drawParticles` in `draw()`. See `ParticleLenia`.
     public func makeParticleLenia(count: Int, spacing: Double, bounds: Rectangle? = nil,
                               seed: Int? = nil) -> ParticleLenia {
         ParticleLenia(count: count, bounds: bounds ?? self.bounds, spacing: spacing,
@@ -796,7 +796,7 @@ open class Sketch {
 
     /// Step a `ParticleLenia` one frame (a fresh neighbor sort and a walk downhill on
     /// the energy field, as many times as the pace asks for).
-    public func updateParticleLenia(_ lenia: ParticleLenia) {
+    public func stepParticleLenia(_ lenia: ParticleLenia) {
         lenia.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -810,7 +810,7 @@ open class Sketch {
     /// `seed` (this sketch's `variation` by default). How far a particle can see, how
     /// close counts as a contact, and the conversion out of the recipes' published
     /// units all come from how densely `count` particles fill `bounds`, so there is
-    /// nothing else to name. Build it in `setup()`, then `updateSwarmChemistry` +
+    /// nothing else to name. Build it in `setup()`, then `stepSwarmChemistry` +
     /// `drawParticles` in `draw()`. See `SwarmChemistry`.
     public func makeSwarmChemistry(count: Int, kinds: Int = 6, size: Double = 2.6,
                                bounds: Rectangle? = nil,
@@ -821,7 +821,7 @@ open class Sketch {
 
     /// Step a `SwarmChemistry` one frame (the kinetic rule each particle's own recipe
     /// describes, and the recipes that change hands on contact).
-    public func updateSwarmChemistry(_ chemistry: SwarmChemistry) {
+    public func stepSwarmChemistry(_ chemistry: SwarmChemistry) {
         chemistry.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -832,7 +832,7 @@ open class Sketch {
 
     /// Make an `AttractorFlow`: `count` particles riding `system`, scattered through
     /// the attractor's own neighborhood from `seed` (this sketch's `variation` by
-    /// default). Build it in `setup()`, then `updateAttractorFlow` + `drawParticles`
+    /// default). Build it in `setup()`, then `stepAttractorFlow` + `drawParticles`
     /// in `draw()`. The flow is 3D, so it needs a camera. See `AttractorFlow`.
     public func makeAttractorFlow(count: Int, _ system: AttractorSystem,
                               seed: Int? = nil) -> AttractorFlow {
@@ -841,7 +841,7 @@ open class Sketch {
 
     /// Step an `AttractorFlow` one frame (advances every particle along the velocity
     /// field with fourth-order Runge-Kutta and recolors it by the speed it reached).
-    public func updateAttractorFlow(_ flow: AttractorFlow) {
+    public func stepAttractorFlow(_ flow: AttractorFlow) {
         flow.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -854,7 +854,7 @@ open class Sketch {
     /// Make an `Evolution`: `count` individuals, each carrying `genes` steering
     /// impulses, flying from `from` toward `to` and bred each generation from whoever
     /// came closest. Seeded from `seed` (this sketch's `variation` by default). Build
-    /// it in `setup()` (set `obstacles` there too), then `updateEvolution` +
+    /// it in `setup()` (set `obstacles` there too), then `stepEvolution` +
     /// `drawParticles` in `draw()`. See `Evolution`.
     public func makeEvolution(count: Int, genes: Int, from start: Vector2, to target: Vector2,
                           seed: Int? = nil) -> Evolution {
@@ -864,7 +864,7 @@ open class Sketch {
 
     /// Step an `Evolution` one frame: another step of the current trial, or, when the
     /// trial is up, the breeding pass that makes the next generation.
-    public func updateEvolution(_ evolution: Evolution) {
+    public func stepEvolution(_ evolution: Evolution) {
         evolution.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -877,7 +877,7 @@ open class Sketch {
     /// Make a `ParticleFluid`: `count` fluid particles interacting within `radius`
     /// (the fluid's resolution), seeded as a block inside `bounds` (the full canvas
     /// by default) from `seed` (this sketch's `variation` by default). Build it in
-    /// `setup()`, then `updateParticleFluid` + `drawParticles` in `draw()`. See
+    /// `setup()`, then `stepParticleFluid` + `drawParticles` in `draw()`. See
     /// `ParticleFluid`.
     public func makeParticleFluid(count: Int, radius: Double, spacing: Double? = nil,
                               bounds: Rectangle? = nil, seed: Int? = nil) -> ParticleFluid {
@@ -887,7 +887,7 @@ open class Sketch {
 
     /// Step a `ParticleFluid` one frame (its fixed substeps: predict, rebuild the
     /// neighbor hash, measure densities, apply pressure + viscosity, integrate).
-    public func updateParticleFluid(_ fluid: ParticleFluid) {
+    public func stepParticleFluid(_ fluid: ParticleFluid) {
         fluid.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -899,7 +899,7 @@ open class Sketch {
     /// Make a `SoftBodies` system: `count` squishy blobs of roughly `radius`,
     /// scattered inside `bounds` (the full canvas by default) from `seed` (this
     /// sketch's `variation` by default) so they fall into a pile. Build it in
-    /// `setup()`, then `updateSoftBodies` + `drawParticles` in `draw()`. See
+    /// `setup()`, then `stepSoftBodies` + `drawParticles` in `draw()`. See
     /// `SoftBodies`.
     public func makeSoftBodies(bodies: Int, radius: Double, spacing: Double? = nil,
                            bounds: Rectangle? = nil, seed: Int? = nil) -> SoftBodies {
@@ -909,7 +909,7 @@ open class Sketch {
 
     /// Step a `SoftBodies` system one frame (its fixed substeps: build the neighbor
     /// hash, fit each body's centroid + rotation, steer, collide, integrate).
-    public func updateSoftBodies(_ bodies: SoftBodies) {
+    public func stepSoftBodies(_ bodies: SoftBodies) {
         bodies.recordStep(into: drawer, frameDt: deltaTime)
     }
 
@@ -2362,7 +2362,7 @@ open class Sketch {
     /// Step a `Simulation` one frame: records its `substeps` kernel dispatches and
     /// swaps its ping-pong textures so `current`/`image` end on the freshly written
     /// field. `custom` passes up to four live floats the step reads as `custom.x…w`.
-    public func updateSimulation(_ simulation: Simulation, custom: SIMD4<Float> = .zero) {
+    public func stepSimulation(_ simulation: Simulation, custom: SIMD4<Float> = .zero) {
         simulation.recordUpdate(into: drawer, custom: custom)
     }
 

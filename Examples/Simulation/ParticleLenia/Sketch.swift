@@ -37,7 +37,7 @@ final class ParticleLenia_Example: Sketch {
 
         background(Color(white: 0.03))
         blendMode(.add)
-        updateParticleLenia(lenia)
+        stepParticleLenia(lenia)
         drawParticles(lenia)
 
         blendMode(.normal)

@@ -22,7 +22,7 @@ final class MIDIMonitor: Sketch {
     override func setup() {
         do { try midi.start() }
         catch { print("could not start MIDI input: \(error)") }
-        let names = midi.sources.map(\.name).joined(separator: ", ")
+        let names = midi.availableSources().map(\.name).joined(separator: ", ")
         print("Listening to MIDI sources: \(names.isEmpty ? "(none yet — plug one in)" : names)")
         noStroke()
     }
@@ -48,7 +48,7 @@ final class MIDIMonitor: Sketch {
         drawCircle(width - 120 * scale, 90 * scale, (18 + lastValue * 70) * scale)
 
         // Header.
-        let names = midi.sources.map(\.name).joined(separator: ", ")
+        let names = midi.availableSources().map(\.name).joined(separator: ", ")
         fill(Color(white: 0.95))
         textSize(30 * scale)
         drawText("MIDI monitor", 40 * scale, 70 * scale)

@@ -61,7 +61,7 @@ c75eb2a20310  Guide/12-FlocksAndSwarms.md:334  cannot find 'crowd' in scope
 4bd9e3101756  Guide/13-GrowingThings.md:308  missing argument label 'at:' in call
 750461323d36  Guide/14-FieldsAndFlow.md:156  cannot find 'x' in scope
 b4305a9b13a0  Guide/15-ShapesAsMaterial.md:218  cannot convert value of type 'Shape' to expected argument type 'Contour'
-921b58e58630  Guide/15-ShapesAsMaterial.md:237  cannot convert value of type '@MainActor (Double, Double) -> Vector2' to expected argument type 'Shape'
+921b58e58630  Guide/15-ShapesAsMaterial.md:237  cannot find 'ring' in scope
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:295  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:308  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 929df96c8f94  Guide/15-ShapesAsMaterial.md:379  cannot assign to value: 'mark' is a 'let' constant
@@ -91,16 +91,16 @@ ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instanc
 2c491a2fae9f  Guide/18-IteratedForms.md:285  reference to member 'domainColoring' cannot be resolved without a contextual type
 c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 20fd462b88a1  Guide/20-ParticleSimulations.md:103  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
-eec1a7fedd62  Guide/20-ParticleSimulations.md:125  cannot assign value of type 'ParticleLenia' to type 'SimField'
-af020a9ea16a  Guide/20-ParticleSimulations.md:149  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
-676903760389  Guide/20-ParticleSimulations.md:176  cannot assign value of type 'ParticleFluid' to type 'SimField'
-f5ca2a921568  Guide/20-ParticleSimulations.md:189  cannot assign value of type 'SoftBodies' to type 'Particles'
-eb2a383ca943  Guide/20-ParticleSimulations.md:207  cannot assign value of type 'Evolution' to type 'Particles'
+32b8b66b9cb9  Guide/20-ParticleSimulations.md:125  cannot assign value of type 'ParticleLenia' to type 'SimField'
+d509e1853460  Guide/20-ParticleSimulations.md:149  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
+91ef51c4b70a  Guide/20-ParticleSimulations.md:176  cannot assign value of type 'ParticleFluid' to type 'SimField'
+8550f01ae43f  Guide/20-ParticleSimulations.md:189  cannot assign value of type 'SoftBodies' to type 'Particles'
+48194cc99e52  Guide/20-ParticleSimulations.md:207  cannot assign value of type 'Evolution' to type 'Particles'
 0ab599f3865b  Guide/20-ParticleSimulations.md:236  cannot assign value of type 'Population' to type 'SimField'
-67848be59f80  Guide/20-ParticleSimulations.md:267  cannot assign value of type 'SwarmChemistry' to type 'SimField'
+868ac9f315b9  Guide/20-ParticleSimulations.md:267  cannot assign value of type 'SwarmChemistry' to type 'SimField'
 de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
-4bb9d03104bb  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
-0a07e471de6b  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
+c0c20b9cf154  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
+6ce476230efc  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
 4de6ac607cb1  Guide/21-3DGently.md:288  cannot find 'ringFile' in scope
 d3145c90ad5d  Guide/21-3DGently.md:429  cannot find 'knot' in scope
 3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
@@ -120,7 +120,7 @@ f0c8b217c2f5  Guide/22-Meshes.md:460  cannot convert value of type '@MainActor (
 5846f636888f  Guide/22-Meshes.md:518  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 4a4c240b29b7  Guide/22-Meshes.md:640  expected '}' in class
 81a0fe8a8940  Guide/22-Meshes.md:66  cannot find 'stage' in scope
-7357c1e61e81  Guide/22-Meshes.md:719  cannot find 'picture' in scope
+343ff7006402  Guide/22-Meshes.md:719  cannot find 'picture' in scope
 1f8436af0981  Guide/22-Meshes.md:80  cannot find 'teal' in scope
 313649b9e3e6  Guide/22-Meshes.md:803  extraneous '}' at top level
 aca544976321  Guide/22-Meshes.md:92  cannot find 'planks' in scope
@@ -198,7 +198,7 @@ ff8f4ca0b8bd  Guide/25-CharactersAndCloth.md:52  cannot find 'walker' in scope
 2cd2985c6a8e  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
 c10ff351dd09  Guide/25-CharactersAndCloth.md:84  cannot find 'car' in scope
 ed348ec0d2b1  Guide/26-SculptingWithFields.md:158  cannot find 'box' in scope
-b17151cd7343  Guide/26-SculptingWithFields.md:182  cannot find 'cross' in scope
+b17151cd7343  Guide/26-SculptingWithFields.md:182  cannot find 'ring' in scope
 2d71f427f291  Guide/26-SculptingWithFields.md:225  cannot find 'cluster' in scope
 e3dcf33a7fc7  Guide/26-SculptingWithFields.md:424  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
 36e9225ffcf6  Guide/26-SculptingWithFields.md:65  cannot find 'a' in scope
@@ -297,7 +297,7 @@ daee9e15952e  Guide/29-MakingSound.md:631  cannot find 'drums' in scope
 6e023d5c7adb  Guide/29-MakingSound.md:691  cannot find 'Progression' in scope
 42e6f390edd0  Guide/29-MakingSound.md:702  cannot find 'Tuning' in scope
 05dd2989e104  Guide/29-MakingSound.md:71  cannot find 'Patch' in scope
-3afd36744ea0  Guide/29-MakingSound.md:717  cannot find 'StepCounter' in scope
+0d8e7894998c  Guide/29-MakingSound.md:717  cannot find 'StepCounter' in scope
 47f783a8ac03  Guide/29-MakingSound.md:739  cannot find 'Sonification' in scope
 bcb4c0a45a0c  Guide/29-MakingSound.md:763  cannot find 'marker' in scope
 0b9d28d8a7a0  Guide/29-MakingSound.md:777  cannot find 'synth' in scope
@@ -328,7 +328,7 @@ f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1030  cannot find '$frame' in sco
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
 e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
 ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
-62db79c04335  Guide/31-SharingAndPerforming.md:333  no exact matches in call to instance method 'add'
+62db79c04335  Guide/31-SharingAndPerforming.md:333  cannot find 'ring' in scope
 2c3bd34c44a7  Guide/31-SharingAndPerforming.md:414  cannot find 'press' in scope
 09209a305964  Guide/31-SharingAndPerforming.md:435  cannot find 'sculpture' in scope
 426f110e9533  Guide/31-SharingAndPerforming.md:452  cannot find 'sculpture' in scope
@@ -351,8 +351,8 @@ edf95f807bfe  Guide/32-Installations.md:375  cannot find 'speed' in scope
 b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 d203209dde1c  Guide/32-Installations.md:410  cannot find 'room' in scope
 2d729c353154  Guide/32-Installations.md:495  @objc attribute used without importing module 'Foundation'
-de4072a89e93  Guide/32-Installations.md:611  expected '}' in class
-99edf79cb997  Guide/32-Installations.md:657  extraneous '}' at top level
+de4072a89e93  Guide/32-Installations.md:667  expected '}' in class
+99edf79cb997  Guide/32-Installations.md:713  extraneous '}' at top level
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand

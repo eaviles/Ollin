@@ -97,9 +97,9 @@ public struct ComposeLayer {
     /// ```
     public func masked(by aside: ComposeLayer,
                        channel: Combine.MaskChannel = .luminance,
-                       invert: Bool = false) -> ComposeLayer {
+                       inverted: Bool = false) -> ComposeLayer {
         var copy = self
-        copy.steps.append(.combine(aside: aside, op: .mask(channel: channel, invert: invert)))
+        copy.steps.append(.combine(aside: aside, op: .mask(channel: channel, inverted: inverted)))
         return copy
     }
 

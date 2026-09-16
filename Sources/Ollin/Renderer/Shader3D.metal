@@ -6541,9 +6541,9 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         float2 duv = uv * mat.detailScale;
         if (mat.detailGates.x > 0.0) {
             // The color map is data with 128 gray the neutral: the sample × 2
-            // multiplies the base color, eased in by `detailStrength`.
+            // multiplies the base color, eased in by `detailAmount`.
             float3 d = detailColorTex.sample(detailSamp, duv).rgb;
-            base *= mix(float3(1.0), d * 2.0, mat.detailStrength);
+            base *= mix(float3(1.0), d * 2.0, mat.detailAmount);
         }
         if (mat.detailGates.y > 0.0) {
             // Reoriented normal mapping (the quaternion-rotation blend): the
@@ -6564,7 +6564,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                 if (nbLen > 1e-6) { nb /= nbLen; }
             }
             float3 nd = detailNormalTex.sample(detailSamp, duv).xyz * 2.0 - 1.0;
-            nd.xy *= mat.detailStrength;
+            nd.xy *= mat.detailAmount;
             float ndLen = length(nd);
             if (ndLen > 1e-6) { nd /= ndLen; }
             // The half-vector construction: with the detail flat (0,0,1) the

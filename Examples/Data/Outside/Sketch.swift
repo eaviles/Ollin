@@ -83,7 +83,7 @@ final class Outside: Sketch {
         let gray = Color(hex: 0x8C949E)
 
         // How far into day we are, and how close to the horizon the sun sits.
-        let day = map(elevation, -12, 10, 0, 1, clamp: true)
+        let day = map(elevation, -12, 10, 0, 1, clamped: true)
         let glow = 1 - min(1, abs(elevation - 1) / 10)
 
         noStroke()
@@ -111,7 +111,7 @@ final class Outside: Sketch {
     private func drawSun(_ sun: SunPosition, at place: Place) {
         guard sun.elevation > -8 else { return }
         let at = skyPoint(azimuth: sun.azimuth, elevation: sun.elevation)
-        let low = map(sun.elevation, -2, 15, 1, 0, clamp: true)
+        let low = map(sun.elevation, -2, 15, 1, 0, clamped: true)
         let color = Color.mix(Color(hex: 0xFFF4D6), Color(hex: 0xFF9A4A), low)
         noStroke()
         for ring in stride(from: 12, through: 1, by: -1) {
@@ -125,7 +125,7 @@ final class Outside: Sketch {
     // MARK: The weather
 
     private func drawWeather(_ reading: Weather.Reading, elevation: Double) {
-        let day = map(elevation, -12, 10, 0, 1, clamp: true)
+        let day = map(elevation, -12, 10, 0, 1, clamped: true)
 
         // Wind. The direction is where it blows from, and east is on the
         // left, so a west wind carries the clouds leftward across this view.
@@ -159,7 +159,7 @@ final class Outside: Sketch {
         guard reading.condition.isPrecipitating || reading.precipitation > 0 else { return }
         let lean = -sin(toward) * min(1, reading.windSpeed / 12) * 0.35
         if reading.condition.isSnowing {
-            let flakes = Int(map(reading.snowfall, 0, 20, 60, 400, clamp: true))
+            let flakes = Int(map(reading.snowfall, 0, 20, 60, 400, clamped: true))
             fill(Color(white: 1).withAlpha(0.8))
             for i in 0..<flakes {
                 let seed = Double(i) * 0.618034
@@ -169,7 +169,7 @@ final class Outside: Sketch {
                 drawCircle(x, y, 2 + (seed - floor(seed)) * 2.5)
             }
         } else {
-            let streaks = Int(map(reading.precipitation, 0, 6, 80, 700, clamp: true))
+            let streaks = Int(map(reading.precipitation, 0, 6, 80, 700, clamped: true))
             stroke(Color(white: 0.9).withAlpha(0.35))
             strokeWeight(1.2)
             let length = 22 + reading.windSpeed * 1.5
@@ -186,7 +186,7 @@ final class Outside: Sketch {
     // MARK: The ground and the caption
 
     private func drawGround(elevation: Double) {
-        let day = map(elevation, -12, 10, 0, 1, clamp: true)
+        let day = map(elevation, -12, 10, 0, 1, clamped: true)
         noStroke()
         fill(Color.mix(Color(hex: 0x070A16), Color(hex: 0x3B4A3A), day))
         drawRect(0, height * horizon, width, height * (1 - horizon))

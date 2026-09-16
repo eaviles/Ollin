@@ -75,7 +75,7 @@ final class TheWeatherOutside: Sketch {
     func drawSky(_ reading: Weather.Reading, in panel: Rectangle) {
         let sun = reading.place.sun(at: reading.observedAt)
         let elevation = sun.elevation
-        let day = map(elevation, -12, 10, 0, 1, clamp: true)
+        let day = map(elevation, -12, 10, 0, 1, clamped: true)
         let glow = 1 - min(1, abs(elevation - 1) / 10)
 
         // Clipped to the panel, so a cloud or a streak that runs past the edge
@@ -105,7 +105,7 @@ final class TheWeatherOutside: Sketch {
             if elevation > -8 {
                 let x = map(sun.azimuth, 60, 300, w * 0.1, w * 0.9)
                 let y = h * horizon - elevation / 90 * h * 0.62
-                let low = map(elevation, -2, 15, 1, 0, clamp: true)
+                let low = map(elevation, -2, 15, 1, 0, clamped: true)
                 let color = Color.mix(Color(hex: 0xFFF4D6), Color(hex: 0xFF9A4A), low)
                 for ring in stride(from: 8, through: 1, by: -1) {
                     fill(color.withAlpha(0.02 * Double(9 - ring)))
@@ -137,7 +137,7 @@ final class TheWeatherOutside: Sketch {
             if reading.condition.isPrecipitating {
                 let toward = (reading.windDirection + 180) * .pi / 180
                 let lean = -sin(toward) * min(1, reading.windSpeed / 12) * 0.35
-                let streaks = Int(map(reading.precipitation, 0, 6, 40, 260, clamp: true))
+                let streaks = Int(map(reading.precipitation, 0, 6, 40, 260, clamped: true))
                 stroke(Color(white: 0.9).withAlpha(0.35))
                 strokeWeight(1)
                 let length = 12 + reading.windSpeed

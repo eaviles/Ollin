@@ -18,7 +18,7 @@ final class Physarum_Example: Sketch {
     }
 
     override func draw() {
-        updatePhysarum(slime)
+        stepPhysarum(slime)
         drawImage(slime.image, in: bounds)
 
         drawCaption("Physarum · 220,000 agents growing a transport network")

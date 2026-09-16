@@ -35,7 +35,7 @@ override func setup() {
 override func draw() {
     background(.black)
     blendMode(.add)
-    updateParticleLife(life)
+    stepParticleLife(life)
     drawParticles(life)
 }
 ```
@@ -65,7 +65,7 @@ override func setup() {
 
 override func draw() {
     background(Color(white: 0.06))
-    updatePrimordialParticles(pps)
+    stepPrimordialParticles(pps)
     drawParticles(pps)
 }
 ```
@@ -85,7 +85,7 @@ var slime: Physarum!
 override func setup() { slime = makePhysarum(agents: 220_000, resolution: 1024) }
 
 override func draw() {
-    updatePhysarum(slime)
+    stepPhysarum(slime)
     drawImage(slime.image, in: bounds)
 }
 ```
@@ -123,7 +123,7 @@ override func setup() {
 override func draw() {
     background(.black)
     blendMode(.add)
-    updateParticleLenia(lenia)
+    stepParticleLenia(lenia)
     drawParticles(lenia)
 }
 ```
@@ -165,7 +165,7 @@ override func draw() {
     // A translucent wipe, not a hard clear: these particles move a few points a step,
     // so a still frame of dots shows density where trails show movement.
     background(Color(white: 0.04).withAlpha(0.14))
-    updateSwarmChemistry(chem)
+    stepSwarmChemistry(chem)
     drawParticles(chem)
 }
 ```

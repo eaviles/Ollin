@@ -1126,7 +1126,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         var filter: OneEuroFilter<Double>?
         if case .smoothed(let minCutoff, let beta) = smoothing {
             var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
-            f.set((v as? Double) ?? 0)
+            f.jump(to: (v as? Double) ?? 0)
             filter = f
         }
         self.storage = OSAllocatedUnfairLock(initialState: Storage(
@@ -1138,14 +1138,14 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     /// reseat any filter so it continues from there. Used for direct restores,
     /// like the live host re-applying a tuned value across a reload, where
     /// animating in from the default would be wrong.
-    public func set(_ value: Value) {
+    public func jump(to value: Value) {
         let v = Value.clamped(value, by: constraints)
         storage.withLock { state in
             state.current = v
             state.target = v
             state.easeStart = (v as? Double) ?? 0
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
-            state.filter?.set((v as? Double) ?? 0)
+            state.filter?.jump(to: (v as? Double) ?? 0)
         }
     }
 
@@ -1543,7 +1543,7 @@ extension Param: AnyParam {
     public var stored: ParamStored { Value.stored(wrappedValue) }
     public func restore(_ stored: ParamStored) {
         guard let value = Value.restored(stored, keeping: wrappedValue) else { return }
-        set(value)
+        jump(to: value)
     }
 }
 

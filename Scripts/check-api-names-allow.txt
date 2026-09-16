@@ -24,3 +24,8 @@ resource StrokeFont.init           # `in: Bundle = .main`, documented on the ini
 
 # boolean: the wire protocol's own field name.
 boolean WebSocketFraming.Frame.fin # RFC 6455's FIN bit, read and written under its own name
+
+# listing: the finder is a running scan, so this is state it already holds
+# rather than a question put to the system. `available…()` is for the latter
+# (ScreenCapture.availableDisplays(), SerialPort.availableDevices()).
+listing EtherDreamFinder.devices   # what the listening scan has heard, not a fresh ask

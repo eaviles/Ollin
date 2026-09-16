@@ -45,9 +45,9 @@ final class TimelineCurve: Sketch {
 
         // Sample the timeline by advancing it in small steps.
         let move = Timeline(0.0)
-            .to(1.0, in: 1.2, ease: .easeInOut)
+            .to(1.0, in: 1.2, curve: .easeInOut)
             .hold(for: 0.6)
-            .to(0.25, in: 1.0, ease: .easeOutBounce)
+            .to(0.25, in: 1.0, curve: .easeOutBounce)
 
         var points: [Vector2] = []
         var clock = 0.0
@@ -73,10 +73,10 @@ final class TimelineCurve: Sketch {
         textSize(18)
         fill(ink)
         textAlign(.center, .bottom)
-        drawText(".to(1, in: 1.2, ease: .easeInOut)", plotX(0.55), plotY(1.0) - 44)
+        drawText(".to(1, in: 1.2, curve: .easeInOut)", plotX(0.55), plotY(1.0) - 44)
         textAlign(.center, .top)
         drawText(".hold(for: 0.6)", plotX(1.5), plotY(1.0) + 18)
         textAlign(.center, .bottom)
-        drawText(".to(0.25, in: 1, ease: .easeOutBounce)", plotX(2.22), plotY(1.0) - 44)
+        drawText(".to(0.25, in: 1, curve: .easeOutBounce)", plotX(2.22), plotY(1.0) - 44)
     }
 }

@@ -11,7 +11,7 @@
 - [random](#random)
 - [randomGaussian](#randomGaussian)
 - [randomVector](#randomVector)
-- [ring](#ring)
+- [randomVector, in a ring](#randomvector-ring)
 - [randomChoice](#randomChoice)
 - [shuffled](#shuffled)
 - [randomSeed](#randomSeed)
@@ -75,12 +75,12 @@ let p = randomVector(in: Rectangle(x: 0, y: 0, width: width, height: height))
 drawCircle(center: p, radius: 3)
 ```
 
-<a name="ring"></a>
+<a name="randomvector-ring"></a>
 
-#### ring
+#### randomVector, in a ring
 
 ```swift
-ring(innerRadius: Double, outerRadius: Double) -> Vector2
+randomVector(innerRadius: Double, outerRadius: Double) -> Vector2
 ```
 
 A random point in the ring between the two radii. The ring is centered on the origin, so add a center to place it elsewhere. See the `Ring` example.
@@ -91,7 +91,7 @@ A random point in the ring between the two radii. The ring is centered on the or
 </picture>
 
 ```swift
-let p = center + ring(innerRadius: 50, outerRadius: 100)      // `center` is the canvas middle
+let p = center + randomVector(innerRadius: 50, outerRadius: 100)      // `center` is the canvas middle
 drawCircle(center: p, radius: 3)
 ```
 

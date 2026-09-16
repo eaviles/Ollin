@@ -112,7 +112,7 @@ final class FilterCatalog_Example: Sketch {
                                                    0.5 + 0.22 * sin(t * 0.4)))),
                 ("mirror", .mirror(vertical: false)),
                 ("polar", .polar(amount: 1)),
-                ("tile", .tile(count: 3, mirror: true)),
+                ("tile", .tile(count: 3, mirrored: true)),
                 ("perturb", .perturb(amount: 0.04, scale: 5, phase: t)),
             ]
         case .design:

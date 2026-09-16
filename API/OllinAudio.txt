@@ -104,9 +104,9 @@ final class AudioPlayer: AudioTapSource, CaptureAudioSource, FrameAdvancing, Aud
   var isPlaying: Bool { get }
   var loops: Bool { get set }
 final class BeatFollower: Sendable
+  func advance(to: Double)
   func reset()
   func rhythm(steps: Int = default, perBeat: Double = default) -> Rhythm
-  func update(at: Double)
   init(_: any AudioSource, range: ClosedRange<Double> = default)
   var beats: Double { get }
   var isFollowing: Bool { get }

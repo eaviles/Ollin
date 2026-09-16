@@ -178,7 +178,7 @@ public struct AttractorSystem: Sendable, Equatable {
 ///     background(.black)
 ///     blendMode(.add)
 ///     cameraShowcase(target: flow.center, radius: flow.extent * 3)
-///     updateAttractorFlow(flow)
+///     stepAttractorFlow(flow)
 ///     drawParticles(flow)
 /// }
 /// ```
@@ -312,7 +312,7 @@ public final class AttractorFlow {
     /// The current particle state (what `drawParticles` draws).
     var current: ComputeBuffer<OllinPoint> { pingpong.read }
 
-    /// Record one step. Called by `Sketch.updateAttractorFlow`.
+    /// Record one step. Called by `Sketch.stepAttractorFlow`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let read = pingpong.read, write = pingpong.write
         drawer.recordDispatch(RecordedDispatch(

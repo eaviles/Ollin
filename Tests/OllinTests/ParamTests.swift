@@ -56,7 +56,7 @@ struct ParamTests {
         p.advance(by: 0.5)                   // mid-glide
         #expect(p.wrappedValue > 0 && p.wrappedValue < 100)
 
-        p.set(40)
+        p.jump(to: 40)
         #expect(p.wrappedValue == 40)        // instant
         p.advance(by: 0.5)
         #expect(p.wrappedValue == 40)        // and at rest

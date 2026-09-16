@@ -149,7 +149,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 
 | p5.js | Ollin | Notes |
 |---|---|---|
-| `map(v, 0, 100, 0, width)` | same | the clamping flag is labeled: `clamp: true` |
+| `map(v, 0, 100, 0, width)` | same | the clamping flag is labeled: `clamped: true` |
 | `constrain(v, lo, hi)` | `clamp(v, lo, hi)` | |
 | `norm(v, a, b)` | `map(v, a, b, 0, 1)` | |
 | `lerp`, `dist`, `sin`, `cos`, `atan2`, `sqrt`, `pow`, `abs`, `min`, `max`, `floor` | same | `floor` returns a `Double`; `Int(x)` truncates to a whole number |

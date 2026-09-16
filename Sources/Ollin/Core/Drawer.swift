@@ -3272,12 +3272,12 @@ final class Drawer {
         // Detail maps tile a finer second texture pair across the base one.
         // The color half needs uvs like the base texture; the normal half
         // needs the full tangent basis like a normal map. Each degrades
-        // honestly on its own; `detailStrength == 0` (or `detailScale == 0`)
+        // honestly on its own; `detailAmount == 0` (or `detailScale == 0`)
         // is the documented off switch, keeping the frame byte-identical to
         // one with no detail maps at all.
         var detailColorMapped = false, detailNormalMapped = false
         if !triplanar, !wireframe, matcap == nil, let mat = material,
-           mat.detailScale > 0, mat.detailStrength > 0,
+           mat.detailScale > 0, mat.detailAmount > 0,
            mat.detailTexture != nil || mat.detailNormalTexture != nil {
             if uvsAligned {
                 detailColorMapped = mat.detailTexture != nil
@@ -3367,7 +3367,7 @@ final class Drawer {
                 }
                 if detailColorMapped || detailNormalMapped {
                     finish.detailScale = Float(mat.detailScale)
-                    finish.detailStrength = Float(mat.detailStrength)
+                    finish.detailAmount = Float(mat.detailAmount)
                     finish.detailGates = SIMD4<Float>(detailColorMapped ? 1 : 0,
                                                       detailNormalMapped ? 1 : 0, 0, 0)
                 }

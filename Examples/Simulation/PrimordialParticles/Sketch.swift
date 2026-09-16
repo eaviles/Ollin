@@ -21,7 +21,7 @@ final class PrimordialParticles_Example: Sketch {
 
     override func draw() {
         background(Color(white: 0.06))
-        updatePrimordialParticles(pps)
+        stepPrimordialParticles(pps)
         drawParticles(pps)
 
         drawCaption("Primordial Particle System · \(pps.count) particles, one turning rule")

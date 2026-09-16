@@ -64,7 +64,7 @@ final class PlayAlong: Sketch {
         if !live { drivePulse() }
 
         let room = live ? micRoom : pulseRoom
-        room.update(at: time)
+        room.advance(to: time)
 
         // The raw onsets, kept apart from the inferred beat on purpose.
         let source: any AudioSource = live ? mic : pulse

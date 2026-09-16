@@ -285,16 +285,16 @@ final class CameraRig {
         elevationTimeline = nil
 
         switch move.kind {
-        case let .pushIn(factor, duration, ease), let .pullOut(factor, duration, ease):
-            radiusTimeline = Timeline(baseRadius).to(baseRadius * factor, in: duration, ease: ease)
-        case let .tilt(to, duration, ease):
-            elevationTimeline = Timeline(baseElevation).to(to, in: duration, ease: ease)
+        case let .pushIn(factor, duration, curve), let .pullOut(factor, duration, curve):
+            radiusTimeline = Timeline(baseRadius).to(baseRadius * factor, in: duration, curve: curve)
+        case let .tilt(to, duration, curve):
+            elevationTimeline = Timeline(baseElevation).to(to, in: duration, curve: curve)
         case let .orbitAndRise(_, rise, duration):
-            elevationTimeline = Timeline(baseElevation).to(baseElevation + rise, in: duration, ease: .easeInOut)
-        case let .reveal(duration, ease):
-            radiusTimeline = Timeline(baseRadius * 0.45).to(baseRadius, in: duration, ease: ease)
+            elevationTimeline = Timeline(baseElevation).to(baseElevation + rise, in: duration, curve: .easeInOut)
+        case let .reveal(duration, curve):
+            radiusTimeline = Timeline(baseRadius * 0.45).to(baseRadius, in: duration, curve: curve)
             let low = Swift.max(0.05, baseElevation * 0.35)
-            elevationTimeline = Timeline(low).to(baseElevation, in: duration, ease: ease)
+            elevationTimeline = Timeline(low).to(baseElevation, in: duration, curve: curve)
         case .turntable, .sway, .handheld:
             break
         }

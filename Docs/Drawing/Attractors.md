@@ -179,7 +179,7 @@ override func draw() {
     blendMode(.add)                    // let the particles pile into a density plot
     toneMap(.aces)
     cameraShowcase(target: flow.center, radius: flow.extent * 3.4)
-    updateAttractorFlow(flow)
+    stepAttractorFlow(flow)
     drawParticles(flow)                // camera-facing splats, like a point cloud
 }
 ```

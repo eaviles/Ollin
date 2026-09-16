@@ -15,11 +15,11 @@ final class DMXReceiver: Sendable
   func stop()
   func unbind(channel: Int, universe: Int = default)
   func universe(_: Int = default) -> DMXUniverse?
-  func universeNumbers() -> [Int]
   init(_: DMXProtocol = default, port: Int? = default)
   let dmxProtocol: DMXProtocol
   var boundPort: Int? { get }
   var isRunning: Bool { get }
+  var universeNumbers: [Int] { get }
 final class DMXSender
   func close()
   func send(_: DMXUniverse, universe: Int = default)

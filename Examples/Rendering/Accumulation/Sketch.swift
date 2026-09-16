@@ -74,7 +74,7 @@ final class Accumulation_Example: Sketch {
         if mouseIsPressed {
             fill(Color(white: 1, alpha: 0.05))
             for _ in 0 ..< 60 {
-                let j = ring(innerRadius: 0, outerRadius: 18 * scale)
+                let j = randomVector(innerRadius: 0, outerRadius: 18 * scale)
                 drawCircle(mouseX + j.x, mouseY + j.y, 1.2 * scale)
             }
         }

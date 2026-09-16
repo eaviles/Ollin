@@ -118,7 +118,7 @@ To find out what a machine can capture right now, ask it. All three calls need t
 ```swift
 await ScreenCapture.availableDisplays()   // [ScreenDisplay]  id, size, isMain, label
 await ScreenCapture.availableWindows()    // [ScreenWindow]   id, title, appName, bundleIdentifier, frame, label
-await ScreenCapture.apps()       // [ScreenApp]      id (pid), name, bundleIdentifier, label
+await ScreenCapture.availableApps()   // [ScreenApp]      id (pid), name, bundleIdentifier, label
 ```
 
 The calls are asynchronous, so a sketch reads them in a `Task` and keeps drawing while it waits:

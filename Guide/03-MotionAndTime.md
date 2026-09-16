@@ -108,7 +108,7 @@ let radius = map(sin(time * .tau / 4), -1, 1, 40, 220)
 drawCircle(width / 2, height / 2, radius)
 ```
 
-Read it as a sentence. It says "take this value, which lives in `-1...1`, and restate it in `40...220`". You get a breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends, so add `clamp: true` when you want the result pinned inside the target range.)
+Read it as a sentence. It says "take this value, which lives in `-1...1`, and restate it in `40...220`". You get a breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends, so add `clamped: true` when you want the result pinned inside the target range.)
 
 Its smaller sibling `lerp(a, b, t)` skips the first range entirely. Here `t` is already a `0...1` "how far along", the same `t` you fed to `Color.mix` and to ramps in [Chapter 2](02-Color.md). `lerp` returns the point that far from `a` to `b`. So `lerp(140, 940, 0.5)` is halfway, which is 540.
 
@@ -278,9 +278,9 @@ Behind it is an adaptive filter that stays steady while the signal is slow and s
 ```swift
 final class Rise: Sketch {
     let move = Timeline(0.0)
-        .to(1, in: 1.2, ease: .easeInOut)
+        .to(1, in: 1.2, curve: .easeInOut)
         .hold(for: 0.6)
-        .to(0.25, in: 1.0, ease: .easeOutBounce)
+        .to(0.25, in: 1.0, curve: .easeOutBounce)
 
     override func setup() {
         move.loops = true

@@ -23,7 +23,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid
 /// override func draw() {
 ///     background(.black)
 ///     blendMode(.add)
-///     updateParticleLife(life)
+///     stepParticleLife(life)
 ///     drawParticles(life)
 /// }
 /// ```
@@ -93,7 +93,7 @@ public final class ParticleLife {
     }
 
     /// Record one step: build the neighbor hash over the current particles, then the
-    /// force/integration kernel. Called by `Sketch.updateParticleLife`.
+    /// force/integration kernel. Called by `Sketch.stepParticleLife`.
     func recordStep(into drawer: Drawer) {
         let read = pingpong.read, write = pingpong.write
         hash.recordBuild(into: drawer, positions: read)

@@ -253,7 +253,7 @@ public extension Mesh {
     /// neutral: darker values darken, lighter ones lighten), and `normal` adds
     /// fine grain to the lighting, reoriented onto whatever the base normal
     /// map already shapes so the two reliefs compose rather than fight.
-    /// `strength` fades the pair (1 as authored, 0 off). Either map may be
+    /// `amount` fades the pair (1 as authored, 0 off). Either map may be
     /// `nil`; a normal detail needs the tangent basis, generated here
     /// (MikkTSpace) if the mesh doesn't already carry one. Composes with
     /// `textured(_:)` / `normalMapped(_:scale:)` / the rest of the map set in
@@ -264,13 +264,13 @@ public extension Mesh {
     ///     .detailMapped(grain, normal: grainBumps, scale: 12))
     /// ```
     func detailMapped(_ color: Image? = nil, normal: Image? = nil,
-                      scale: Double = 8, strength: Double = 1) -> Mesh {
+                      scale: Double = 8, amount: Double = 1) -> Mesh {
         var copy = self
         var m = copy.material ?? MeshMaterial()
         m.detailTexture = color
         m.detailNormalTexture = normal
         m.detailScale = scale
-        m.detailStrength = strength
+        m.detailAmount = amount
         copy.material = m
         if normal != nil, copy.tangents.count != copy.positions.count,
            copy.uvs.count == copy.positions.count {

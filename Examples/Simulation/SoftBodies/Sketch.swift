@@ -25,7 +25,7 @@ final class SoftBodies_Example: Sketch {
 
         background(Color(white: 0.04))
         if mouseIsPressed { blobs.pull(at: mouse) }
-        updateSoftBodies(blobs)
+        stepSoftBodies(blobs)
         drawParticles(blobs)
 
         drawCaption("Soft bodies · shape-matched jelly · drag to knead the pile")

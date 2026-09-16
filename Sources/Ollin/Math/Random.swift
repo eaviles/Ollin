@@ -89,8 +89,8 @@ public extension Sketch {
 
     /// A random point in the annulus (ring) between `innerRadius` and
     /// `outerRadius`, centered on the origin. Add a center to place it: e.g.
-    /// `center + ring(innerRadius: 50, outerRadius: 100)`.
-    func ring(innerRadius: Double, outerRadius: Double) -> Vector2 {
+    /// `center + randomVector(innerRadius: 50, outerRadius: 100)`.
+    func randomVector(innerRadius: Double, outerRadius: Double) -> Vector2 {
         let radius = random(innerRadius, outerRadius)
         let angle = random(.tau)
         return Vector2(cos(angle) * radius, sin(angle) * radius)

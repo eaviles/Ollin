@@ -20,7 +20,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSPHParams
 /// override func draw() {
 ///     background(.black)
 ///     if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
-///     updateParticleFluid(fluid)
+///     stepParticleFluid(fluid)
 ///     drawParticles(fluid)
 /// }
 /// ```
@@ -152,7 +152,7 @@ public final class ParticleFluid {
     /// Record one frame: `substeps` fixed substeps, each predicting evaluation
     /// positions, rebuilding the neighbor hash over them, measuring densities, and
     /// applying pressure + viscosity before integrating. Called by
-    /// `Sketch.updateParticleFluid`.
+    /// `Sketch.stepParticleFluid`.
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let steps = max(1, min(substeps, 8))
         let dtFrame = frameDt > 0 ? min(frameDt, 1.0 / 30.0) : 1.0 / 60.0

@@ -2,11 +2,12 @@ import CoreMIDI
 import Foundation
 
 /// A MIDI port on the system — a source you can receive from or a destination you
-/// can send to. List them with `MIDIInput.sources` / `MIDIOutput.destinations` to
+/// can send to. List them with `MIDIInput.availableSources()` /
+/// `MIDIOutput.availableDestinations()` to
 /// see what's connected and pick one by `name`.
 ///
 /// ```swift
-/// for endpoint in midi.sources { print(endpoint.name) }   // "Intech Studio: Grid", …
+/// for endpoint in midi.availableSources() { print(endpoint.name) }   // "Intech Studio: Grid", …
 /// ```
 public struct MIDIEndpoint: Sendable, Identifiable, Hashable {
     /// The endpoint's display name, e.g. `"Intech Studio: Grid"`.

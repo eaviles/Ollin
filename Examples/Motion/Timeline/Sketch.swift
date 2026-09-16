@@ -20,19 +20,19 @@ final class TimelineTour: Sketch {
 
     // One lap of the square (5.2s), a different character per side.
     let path = Timeline(TimelineTour.corners[0])
-        .to(TimelineTour.corners[1], in: 1.0, ease: .easeInOut)
+        .to(TimelineTour.corners[1], in: 1.0, curve: .easeInOut)
         .hold(for: 0.3)
-        .to(TimelineTour.corners[2], in: 1.0, ease: .easeOutBounce)
+        .to(TimelineTour.corners[2], in: 1.0, curve: .easeOutBounce)
         .hold(for: 0.3)
-        .to(TimelineTour.corners[3], in: 1.0, ease: .easeOutBack)
+        .to(TimelineTour.corners[3], in: 1.0, curve: .easeOutBack)
         .hold(for: 0.3)
-        .to(TimelineTour.corners[0], in: 1.0, ease: .easeOutElastic)
+        .to(TimelineTour.corners[0], in: 1.0, curve: .easeOutElastic)
         .hold(for: 0.3)
 
     // A breath every 1.3s: four per lap, so both timelines loop in step.
     let size = Timeline(26.0)
-        .to(40, in: 0.65, ease: .easeInOut)
-        .to(26, in: 0.65, ease: .easeInOut)
+        .to(40, in: 0.65, curve: .easeInOut)
+        .to(26, in: 0.65, curve: .easeInOut)
 
     override func setup() {
         path.loops = true

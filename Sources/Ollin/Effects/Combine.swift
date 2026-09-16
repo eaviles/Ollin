@@ -70,7 +70,7 @@ public struct Combine: Sendable {
         case shader(Shader)
         /// Keep the base only where the aux is bright (or opaque): multiply the base
         /// by the aux's `channel` value, optionally inverted.
-        case mask(channel: MaskChannel, invert: Bool)
+        case mask(channel: MaskChannel, inverted: Bool)
         /// Push the base's pixels around: offset each sample by the aux's red/green
         /// recentred to `±amount` (a fraction of the layer), the classic displacement map.
         case displace(amount: Double)
@@ -138,9 +138,9 @@ public struct Combine: Sendable {
     /// Mask: keep the base where the aux layer reads bright (or, with
     /// `channel: .alpha`, where it's opaque), fading to transparent elsewhere. Draw
     /// the mask layer in white over transparent and the base shows through just
-    /// those marks; `invert` flips it (hide where the mask is bright).
-    public static func mask(channel: MaskChannel = .luminance, invert: Bool = false) -> Combine {
-        Combine(kind: .mask(channel: channel, invert: invert))
+    /// those marks; `inverted` flips it (hide where the mask is bright).
+    public static func mask(channel: MaskChannel = .luminance, inverted: Bool = false) -> Combine {
+        Combine(kind: .mask(channel: channel, inverted: inverted))
     }
 
     /// Displace: offset the base's pixels by the aux layer, read as a vector field

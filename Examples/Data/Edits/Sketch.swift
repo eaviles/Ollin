@@ -71,7 +71,7 @@ final class Edits: Sketch {
             born: time,
             // A one-letter fix and a pasted chapter are worlds apart in bytes,
             // so the size runs on a log scale to keep both readable.
-            radius: map(log10(1 + abs(bytes)), 0, 4, 1.5, 16, clamp: true),
+            radius: map(log10(1 + abs(bytes)), 0, 4, 1.5, 16, clamped: true),
             speed: random(70, 110),
             grew: bytes >= 0,
             bot: change["bot"].bool ?? false

@@ -59,7 +59,7 @@ final class EvolutionFigure: Sketch {
 
         blendMode(.add)
         for (i, run) in runs.enumerated() where frameCount >= starts[i] {
-            updateEvolution(run)
+            stepEvolution(run)
             drawParticles(run)
         }
         blendMode(.normal)

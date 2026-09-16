@@ -167,7 +167,7 @@ func universe(_ number: Int = 1) -> DMXUniverse?
 func channel(_ channel: Int, universe: Int = 1) -> UInt8
 func level(_ channel: Int, universe: Int = 1) -> Double     // 0…1
 func color(_ channel: Int, universe: Int = 1) -> Color     // three channels
-func universeNumbers() -> [Int]                                   // what's been heard
+var universeNumbers: [Int]                                        // what's been heard
 ```
 
 The receiver lets the sketch act as a fixture. A lighting console, or another sketch, fades a channel, and `draw()` reads that channel like any other input. DMX carries continuous levels rather than events, so the read methods give the latest value only. Read it again each frame.

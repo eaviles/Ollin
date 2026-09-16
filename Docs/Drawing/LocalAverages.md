@@ -95,7 +95,7 @@ drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
 |---|---|
 | `window` | how wide the neighborhood is, in pixels. The default, `nil`, uses an eighth of the layer |
 | `bias` | the fraction below the local average a pixel must fall before it goes dark. 0.15 by default |
-| `invert` | swap the two tones |
+| `inverted` | swap the two tones |
 
 `bias` is a *fraction* rather than a distance, and that is what makes the cut survive uneven
 lighting. Light falling on a page multiplies what comes back off it, and only a test that

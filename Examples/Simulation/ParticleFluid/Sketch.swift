@@ -30,7 +30,7 @@ final class ParticleFluid_Example: Sketch {
         background(Color(white: 0.03))
         if mouseIsPressed { fluid.pull(at: mouse) }
         blendMode(.add)
-        updateParticleFluid(fluid)
+        stepParticleFluid(fluid)
         drawParticles(fluid)
 
         blendMode(.normal)

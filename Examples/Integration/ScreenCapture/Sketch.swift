@@ -89,7 +89,7 @@ final class ScreenCaptureExample: Sketch {
                 lines.append("  .display(\(display.id))   \(display.label)")
             }
             lines.append("Apps")
-            for app in await ScreenCapture.apps().prefix(12) {
+            for app in await ScreenCapture.availableApps().prefix(12) {
                 lines.append("  .app(\"\(app.name)\")")
             }
             lines.append("Windows")

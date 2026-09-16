@@ -51,7 +51,7 @@ final class ReactionDiffusion_Example: Sketch {
         if !seeded { compute(seedKernel, writing: field.current); seeded = true }
 
         // One frame of reaction-diffusion (custom.x flags a mouse-held inject).
-        updateSimulation(field, custom: SIMD4(mouseIsPressed ? 1 : 0, 0, 0, 0))
+        stepSimulation(field, custom: SIMD4(mouseIsPressed ? 1 : 0, 0, 0, 0))
 
         // Colourise the chemical field into the display texture, then draw it.
         compute(colorizeKernel, reading: field.current, writing: display)

@@ -446,7 +446,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
 
     /// Every application with a capturable window, ordered by name. Needs the
     /// screen-recording permission; returns an empty array without it.
-    public nonisolated static func apps() async -> [ScreenApp] {
+    public nonisolated static func availableApps() async -> [ScreenApp] {
         guard let content = try? await SCShareableContent
             .excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return [] }
         return content.applications

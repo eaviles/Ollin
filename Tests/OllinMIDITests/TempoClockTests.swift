@@ -154,67 +154,69 @@ struct TempoEngineTests {
     }
 }
 
-/// End-to-end over Core MIDI in-process: a `MIDIOutput` virtual source feeding a
-/// `TempoClock` through a `MIDIInput`. Soft-skips when Core MIDI isn't
-/// available (the engine tests above are the always-on guard).
-///
-/// Serialized for the reason `MIDILoopbackTests` is: the endpoints are
-/// machine-global and an input connects to every source, so two of these at
-/// once share each other's link and each teardown reconnects the other.
-@Suite(.serialized)
-struct TempoClockLoopbackTests {
+extension CoreMIDILoopback {
 
-    /// The probe comes before the clock is read: a starved task can wake past
-    /// its own deadline having never looked, and giving up then reports nothing
-    /// arrived over a value that is already there.
-    func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { return nil }
-            try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
+    /// End-to-end over Core MIDI in-process: a `MIDIOutput` virtual source feeding
+    /// a `TempoClock` through a `MIDIInput`. Soft-skips when Core MIDI isn't
+    /// available (the engine tests above are the always-on guard). It sits under
+    /// `CoreMIDILoopback` for the reason that suite's own comment gives: the
+    /// endpoints are machine-global, so this suite and `MIDILoopbackTests` cannot
+    /// run at the same time.
+    @Suite(.serialized)
+    struct TempoClockLoopbackTests {
+
+        /// The probe comes before the clock is read: a starved task can wake past
+        /// its own deadline having never looked, and giving up then reports nothing
+        /// arrived over a value that is already there.
+        func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
+            let deadline = Date().addingTimeInterval(timeout)
+            while true {
+                if let value = probe() { return value }
+                if Date() >= deadline { return nil }
+                try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
+            }
         }
-    }
 
-    @Test func followsAClockTrainAcrossTheLoopback() async {
-        let output = MIDIOutput(name: "OllinTempoTest")
-        let input = MIDIInput(name: "OllinTempoTestIn")
-        do {
-            try output.openVirtual(named: "OllinTempoTest Loopback")
-            try input.start()
-        } catch { return }   // soft-skip
-        defer { output.close(); input.stop() }
-        let clock = TempoClock(from: input)
+        @Test func followsAClockTrainAcrossTheLoopback() async {
+            let output = MIDIOutput(name: "OllinTempoTest")
+            let input = MIDIInput(name: "OllinTempoTestIn")
+            do {
+                try output.openVirtual(named: "OllinTempoTest Loopback")
+                try input.start()
+            } catch { return }   // soft-skip
+            defer { output.close(); input.stop() }
+            let clock = TempoClock(from: input)
 
-        // The input connects to the new virtual source asynchronously; resend
-        // a warmup CC until the link is live.
-        let connected = await waitFor { () -> Bool? in
-            output.controlChange(1, value: 1)
-            return input.controlValue(1) != nil ? true : nil
+            // The input connects to the new virtual source asynchronously; resend
+            // a warmup CC until the link is live.
+            let connected = await waitFor { () -> Bool? in
+                output.controlChange(1, value: 1)
+                return input.controlValue(1) != nil ? true : nil
+            }
+            guard connected == true else { return }   // soft-skip
+
+            output.send(MIDIMessage(.start))
+
+            // ~250 BPM nominal: 10 ms per tick, 30 ticks. What this test is for is
+            // the crossing, that a train sent on a real port arrives and moves a
+            // real clock. The tempo it settles at is not this test's business and
+            // cannot be: a loaded machine oversleeps unevenly, and the reading is
+            // then honestly slower than the mean, since the window is over the
+            // ticks that arrived last. The number is pinned upstairs, where the
+            // engine tests feed it timestamps of their own choosing (a steady
+            // train to a thousandth, jitter flattened, a change tracked, a jump
+            // relocked, a break survived).
+            let started = Date()
+            for _ in 0..<30 {
+                output.send(MIDIMessage(.clock))
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+            let sent = 60 / (24 * max(Date().timeIntervalSince(started) / 30, 1e-6))
+            let advanced = await waitFor { clock.beatCount >= 1 ? true : nil }
+            #expect(advanced == true)
+            #expect(clock.isPlaying)
+            #expect(clock.tempo > 1 && clock.tempo < 1000,
+                    "the clock reads \(clock.tempo) from a train sent at \(sent)")
         }
-        guard connected == true else { return }   // soft-skip
-
-        output.send(MIDIMessage(.start))
-
-        // ~250 BPM nominal: 10 ms per tick, 30 ticks. What this test is for is
-        // the crossing, that a train sent on a real port arrives and moves a
-        // real clock. The tempo it settles at is not this test's business and
-        // cannot be: a loaded machine oversleeps unevenly, and the reading is
-        // then honestly slower than the mean, since the window is over the
-        // ticks that arrived last. The number is pinned upstairs, where the
-        // engine tests feed it timestamps of their own choosing (a steady
-        // train to a thousandth, jitter flattened, a change tracked, a jump
-        // relocked, a break survived).
-        let started = Date()
-        for _ in 0..<30 {
-            output.send(MIDIMessage(.clock))
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
-        let sent = 60 / (24 * max(Date().timeIntervalSince(started) / 30, 1e-6))
-        let advanced = await waitFor { clock.beatCount >= 1 ? true : nil }
-        #expect(advanced == true)
-        #expect(clock.isPlaying)
-        #expect(clock.tempo > 1 && clock.tempo < 1000,
-                "the clock reads \(clock.tempo) from a train sent at \(sent)")
     }
 }

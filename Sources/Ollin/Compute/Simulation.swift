@@ -23,7 +23,7 @@ import simd
 ///
 /// override func draw() {
 ///     if frameCount == 0 { compute(seedKernel, writing: gray.current) }  // initial state
-///     updateSimulation(gray, custom: SIMD4(feed, kill, 0, 0))
+///     stepSimulation(gray, custom: SIMD4(feed, kill, 0, 0))
 ///     drawImage(gray.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
 /// }
 /// ```
@@ -35,7 +35,7 @@ import simd
 ///   **toroidal wrap** (the edges join), for neighbor stencils.
 /// - `gid` (`uint2`) — this cell's coordinate; `size` (`uint2`) — the field size.
 /// - `u` (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
-///   (`float4`, the live parameters from `updateSimulation(_:custom:)`), both read-only.
+///   (`float4`, the live parameters from `stepSimulation(_:custom:)`), both read-only.
 /// - the shader-library helpers (`hash12`, `valueNoise`, `srgbToLinear`, …).
 ///
 /// Fresh textures start zeroed; seed a sim's initial state with a one-shot
@@ -47,7 +47,7 @@ public final class Simulation {
     public let width: Int
     /// Field height in texels.
     public let height: Int
-    /// How many kernel steps run per `updateSimulation` call (a sim that needs many
+    /// How many kernel steps run per `stepSimulation` call (a sim that needs many
     /// small iterations per frame for stability runs them in one command buffer).
     public let substeps: Int
     private let kernel: ComputeKernel
@@ -55,7 +55,7 @@ public final class Simulation {
 
     /// Build a `width`×`height` simulation whose per-cell update is the MSL `step`
     /// body (see the type doc for the locals in scope). `substeps` kernel iterations
-    /// run per `updateSimulation` call (default 1); `format` is the texel layout
+    /// run per `stepSimulation` call (default 1); `format` is the texel layout
     /// (default `.rgba16Float`).
     public convenience init(width: Int, height: Int, substeps: Int = 1,
                             format: ComputeTextureFormat = .rgba16Float, step: String) {
@@ -89,7 +89,7 @@ public final class Simulation {
 
     /// Record `substeps` simulation steps into `drawer`, swapping the ping-pong after
     /// each so `current` ends on the freshly written field. Called by
-    /// `Sketch.updateSimulation`. `custom` is bound (always 16 bytes) at index 11.
+    /// `Sketch.stepSimulation`. `custom` is bound (always 16 bytes) at index 11.
     func recordUpdate(into drawer: Drawer, custom: SIMD4<Float>) {
         var bytes: [UInt8] = []
         withUnsafeBytes(of: custom) { bytes.append(contentsOf: $0) }

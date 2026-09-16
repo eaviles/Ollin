@@ -24,7 +24,7 @@ final class Arrows: Sketch {
         for dot in g.points {
             let p = dot.position
             let toward = (mouse - p).normalized
-            let closeness = map(dist(p.x, p.y, mouseX, mouseY), 0, reach, 1, 0, clamp: true)
+            let closeness = map(dist(p.x, p.y, mouseX, mouseY), 0, reach, 1, 0, clamped: true)
             let half = (14 + 10 * closeness) * scale
             stroke(Color(white: 0.3 + 0.55 * closeness))
             drawArrow(from: p - toward * half, to: p + toward * half)

@@ -89,8 +89,8 @@ final class Quakes: Sketch {
     private func draw(_ quake: Quake) {
         // The list fades in together, so an arrival reads as an arrival.
         let entrance = min(1, (time - builtAt) * 1.5)
-        let radius = map(quake.magnitude, 2.5, 7, 4, 26, clamp: true)
-        let deep = map(quake.depth, 0, 300, 0, 1, clamp: true)
+        let radius = map(quake.magnitude, 2.5, 7, 4, 26, clamped: true)
+        let deep = map(quake.depth, 0, 300, 0, 1, clamped: true)
         // Shallow reads warm and deep reads cool, mixed through a perceptual
         // space so the middle of the run does not swing off into green.
         let tint = Color.mix(Color(hex: 0xF2A03C), Color(hex: 0x4C7FE0), deep)

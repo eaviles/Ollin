@@ -42,7 +42,7 @@ final class SwarmChemistryFigure: Sketch {
     override func draw() {
         background(paper)
         for (i, run) in runs.enumerated() where frameCount >= starts[i] {
-            updateSwarmChemistry(run)
+            stepSwarmChemistry(run)
             drawParticles(run)
         }
         // Reading the tally stalls on the GPU, so take it once, at the end.

@@ -37,7 +37,7 @@ final class Hulls_Example: Sketch {
         }
         let island = Vector2(870, 240)
         for _ in 0 ..< 42 {
-            scatter.append(island + ring(innerRadius: 0, outerRadius: 78))
+            scatter.append(island + randomVector(innerRadius: 0, outerRadius: 78))
         }
     }
 

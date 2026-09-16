@@ -199,7 +199,7 @@ private final class ComputeProbeSketch: Sketch {
     override func draw() {
         background(.black)
         guard drawDots else { return }
-        updateParticles(dots)
+        stepParticles(dots)
         drawParticles(dots)
     }
 }
@@ -231,6 +231,6 @@ private final class SimProbeSketch: Sketch {
     let sim = Simulation(width: 4, height: 4, step: "result = value + float4(1.0);")
     override func draw() {
         background(.black)
-        updateSimulation(sim)
+        stepSimulation(sim)
     }
 }

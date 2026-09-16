@@ -78,7 +78,7 @@ final class StyleMirror: Sketch {
 
         if let painting = styler.image {
             // Crossfade by mouse: camera at the left edge, painting at the right.
-            let blend = map(mouseX, rect.x, rect.x + rect.width, 0, 1, clamp: true)
+            let blend = map(mouseX, rect.x, rect.x + rect.width, 0, 1, clamped: true)
             tint(Color(white: 1, alpha: blend))
             drawImage(painting, in: rect)
             noTint()

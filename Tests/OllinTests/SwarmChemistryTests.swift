@@ -184,7 +184,7 @@ private final class ChemistryProbe: Sketch {
 
     override func draw() {
         background(.black)
-        updateSwarmChemistry(chem)
+        stepSwarmChemistry(chem)
         drawParticles(chem)
     }
 }

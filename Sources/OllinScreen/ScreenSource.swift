@@ -108,7 +108,7 @@ public struct ScreenWindow: Sendable, Identifiable, Equatable {
 }
 
 /// An application whose windows can be captured, one entry from
-/// ``ScreenCapture/apps()``.
+/// ``ScreenCapture/availableApps()``.
 public struct ScreenApp: Sendable, Identifiable, Equatable {
     /// The process id.
     public let id: pid_t

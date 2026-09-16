@@ -62,7 +62,7 @@ final class SwarmFigure: Sketch {
 
         blendMode(.add)
         for s in [flocking, flowing, roaming] {
-            updateSwarm(s!)
+            stepSwarm(s!)
             drawParticles(s!)
         }
         blendMode(.normal)

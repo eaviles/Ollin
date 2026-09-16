@@ -74,7 +74,7 @@ public struct DampedSpring<Value: Smoothable>: Sendable {
 
     /// Jump straight to `value` at rest (value, target, and velocity all land
     /// there).
-    public mutating func set(_ newValue: Value) {
+    public mutating func jump(to newValue: Value) {
         value = newValue
         target = newValue
         velocity = newValue - newValue
@@ -212,9 +212,10 @@ public final class Sprung<Value: Smoothable>: FrameAdvancing {
         spring.kick(impulse)
     }
 
-    /// Jump straight to `value` at rest, with no animation.
-    public func set(_ value: Value) {
-        spring.set(value)
+    /// Jump straight to `value` at rest, with no animation. Assigning the property
+    /// springs toward a value instead.
+    public func jump(to value: Value) {
+        spring.jump(to: value)
     }
 
     /// Advance the spring by `dt` seconds. Called by the sketch each frame.

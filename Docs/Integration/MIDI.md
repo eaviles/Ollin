@@ -81,7 +81,7 @@ message.isNoteOn     // Bool
 MIDIInput(name: String = "Ollin")
 func start() throws
 func stop()
-var sources: [MIDIEndpoint]    // the connected devices, by name
+func availableSources() -> [MIDIEndpoint]    // the connected devices, by name
 
 // 1. Latest value of a controller (continuous knobs/faders)
 func controlValue(_ controller: Int, channel: Int? = nil) -> Int?
@@ -272,7 +272,7 @@ override func draw() {
 **Keyframes on musical time.** A [`Timeline`](../Helpers/Animation.md) whose durations are written in *beats* runs on the clock, and one line is enough to set that up. It follows `clock.beats` instead of advancing in seconds.
 
 ```swift
-let swell = Timeline(0.0).to(1.0, in: 3, ease: .easeOut).to(0.0, in: 1)   // durations in beats
+let swell = Timeline(0.0).to(1.0, in: 3, curve: .easeOut).to(0.0, in: 1)   // durations in beats
 
 override func draw() {
     swell.loops = true
@@ -334,7 +334,7 @@ override func draw() {
 MIDIOutput(name: String = "Ollin")
 func open(matching: String? = nil) throws     // a hardware destination (first matching name)
 func openVirtual(named: String? = nil) throws  // a virtual source other apps receive from
-var destinations: [MIDIEndpoint]
+func availableDestinations() -> [MIDIEndpoint]
 func send(_ message: MIDIMessage)
 func noteOn(_ note: Int, velocity: Int = 100, channel: Int = 1)
 func noteOff(_ note: Int, velocity: Int = 0, channel: Int = 1)

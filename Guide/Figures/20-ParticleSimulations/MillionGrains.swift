@@ -39,7 +39,7 @@ final class MillionGrains: Sketch {
         ]
         blendMode(.add)
         for (i, system) in systems.enumerated() {
-            updateParticles(system.0, custom: SIMD4(Float(system.2), Float(strip), Float(i), 0))
+            stepParticles(system.0, custom: SIMD4(Float(system.2), Float(strip), Float(i), 0))
             drawParticles(system.0)
         }
         blendMode(.normal)

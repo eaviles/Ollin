@@ -45,7 +45,7 @@ final class CurlField_Example: Sketch {
     override func draw() {
         background(Color(red: 0.02, green: 0.02, blue: 0.05))
         blendMode(.add)
-        updateParticles(sand)   // one GPU simulation step
+        stepParticles(sand)   // one GPU simulation step
         drawParticles(sand)     // a million additive discs
 
         blendMode(.normal)
