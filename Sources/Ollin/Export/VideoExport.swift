@@ -370,6 +370,41 @@ public extension OllinApp {
                      frames, elapsed, path, fileSizeMB(of: path)))
     }
 
+    /// Roughly what an animated GIF of this shape asks of memory, in bytes.
+    ///
+    /// The image writer keeps every frame it is handed and lays the file down
+    /// when it is finalized, so a GIF costs the whole animation at once rather
+    /// than a frame at a time, and the cost rises with the frame count. The
+    /// video writer takes the opposite shape: it encodes each frame into the
+    /// file as it arrives, so its memory does not move with the length.
+    ///
+    /// Ten bytes a pixel a frame is measured, not derived: four are the pixels
+    /// themselves and the rest is what the writer keeps beside them. Five runs
+    /// on one M2, at two sizes and four lengths, all landed within 4% of it
+    /// (`GIFMemoryTests`). It is an estimate for a sentence, not a budget.
+    internal nonisolated static func gifPeakBytes(frames: Int, width: Int, height: Int) -> Int {
+        max(0, frames) * max(0, width) * max(0, height) * 10
+    }
+
+    /// What to say before a GIF export that will ask for a large share of this
+    /// machine's memory, and nil when it is not worth a line.
+    ///
+    /// The bar is an eighth of the memory the machine has, which is where the
+    /// run starts competing with everything else open rather than merely being
+    /// large. Both ways out are named, because neither is obvious from the
+    /// flag: a narrower picture pays back with the square of the change, since
+    /// the height follows it, and the video export has no ceiling of this kind
+    /// at all.
+    internal nonisolated static func gifMemoryNote(frames: Int, width: Int, height: Int,
+                              physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> String? {
+        let peak = gifPeakBytes(frames: frames, width: width, height: height)
+        guard physicalMemory > 0, Double(peak) * 8 >= Double(physicalMemory) else { return nil }
+        return String(format:
+            "Ollin: a GIF is held whole in memory until it is written, about %.1f GB for %d frames at %d×%d. "
+            + "--gif-width %d asks for a quarter of that, and --export-video streams to the file instead.",
+            Double(peak) / 1_073_741_824, frames, width, height, max(1, width / 2))
+    }
+
     /// Render `sketch` headlessly and write an animated GIF that loops forever.
     /// The right framing is short loops at modest sizes: GIF is palette-limited
     /// (256 colors) and heavy per second next to video, so for anything long or
@@ -396,13 +431,20 @@ public extension OllinApp {
         let effectiveFPS = 1 / delay
         let effectiveFrames = max(1, Int((Double(frames) / fps * effectiveFPS).rounded()))
         if abs(effectiveFPS - fps) > 0.01 {
-            print(String(format: "Ollin: GIF delays are whole centiseconds — rendering at %.3g fps (closest to %g)",
+            print(String(format: "Ollin: GIF delays are whole centiseconds, so this renders at %.3g fps (closest to %g)",
                          effectiveFPS, fps))
         }
 
         let size = sketch.canvasSize
         let outWidth = targetWidth ?? size.width
         let outHeight = max(1, Int((Double(size.height) * Double(outWidth) / Double(size.width)).rounded()))
+
+        // The whole animation is held until the file is laid down, so a long
+        // one can ask for more than the machine has. Said before the first
+        // frame is drawn, while stopping still costs nothing.
+        if let note = gifMemoryNote(frames: effectiveFrames, width: outWidth, height: outHeight) {
+            print(note)
+        }
 
         let url = URL(fileURLWithPath: path)
         try? FileManager.default.removeItem(at: url)

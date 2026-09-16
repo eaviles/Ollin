@@ -256,6 +256,10 @@ In code it is `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is l
 
 Watch out for **full-frame motion**. A piece where every pixel moves every frame, such as a drifting field or a full-canvas texture, defeats GIF's frame-to-frame compression. Even at a modest width, such a file can reach tens of megabytes. Lowering `--fps` cuts the file roughly in proportion, and sparse motion over a stable background compresses better.
 
+A GIF is **built whole in memory** and written when the last frame is in. The system's image writer keeps every frame it is handed. So what a GIF asks for rises with the frame count, at roughly ten bytes per pixel per frame. A 150-frame loop at 1080 by 1080 asks for about 1.6 GB, and 600 frames at that size ask for six. The export prints that figure before the first frame is drawn, once it passes an eighth of the machine's memory. Stopping the run then costs nothing.
+
+There are two ways down. `--gif-width` pays back with the square, since the height follows it: halving the width quarters the memory. Or write video instead. `--export-video` encodes each frame into the file as it arrives, so its memory does not rise with the length. Measured on a 900-frame export at 1080 by 1080, the file grew from 7 MB to 67 MB. The process held 137 to 142 MB throughout. `--export-sequence` behaves the same way, one file per frame.
+
 One timing limit comes from the format itself. GIF stores each frame's delay in whole centiseconds, so the achievable rates are 50, 33.3, 25, 20, … fps. The requested `--fps` (default 25, which is exact) is rounded to the closest achievable rate, and the sketch's clock runs at *that* rate. So motion always plays back at true speed, and the clip keeps its requested duration.
 
 ### Perfect loops
