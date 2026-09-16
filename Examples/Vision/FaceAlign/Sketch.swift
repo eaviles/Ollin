@@ -49,8 +49,8 @@ final class FaceAlign: Sketch {
                 leftEye = left
                 rightEye = right
             } else {
-                $leftEye.set(left)      // jump on first lock — no glide in from zero
-                $rightEye.set(right)
+                $leftEye.jump(to: left)     // no glide in from zero on the first lock
+                $rightEye.jump(to: right)
                 hasLock = true
             }
         }
