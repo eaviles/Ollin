@@ -2603,6 +2603,7 @@ open class Sketch: Sendable
   var mouseX: Double { get }
   var mouseY: Double { get }
   var moveAxis: Vector2 { get }
+  var noiseFields: NoiseFields { get }
   var prefersReducedMotion: Bool { get }
   var pressure: Double { get }
   var pressureIsAvailable: Bool { get }
@@ -4779,6 +4780,54 @@ struct MotionField: Sendable
     init(position: Vector2, flow: Vector2)
     let flow: Vector2
     let position: Vector2
+struct NoiseFields: Sendable
+  func curlNoise(_: Double, _: Double) -> Vector2
+  func curlNoise(_: Double, _: Double, _: Double) -> Vector3
+  func curlNoise(_: Vector2) -> Vector2
+  func curlNoise(_: Vector3) -> Vector3
+  func fbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func fbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func fbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func fbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func noise(_: Double) -> Double
+  func noise(_: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, loop: Double, radius: Double = default) -> Double
+  func noise(loop: Double, radius: Double = default) -> Double
+  func ridgedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func ridgedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func ridgedFbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedFbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedNoise(_: Double) -> Double
+  func signedNoise(_: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(loop: Double, radius: Double = default) -> Double
+  func signedSimplexNoise(_: Double) -> Double
+  func signedSimplexNoise(_: Double, _: Double) -> Double
+  func signedSimplexNoise(_: Double, _: Double, _: Double) -> Double
+  func signedTilingFbm(_: Double, _: Double, detail: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedTilingNoise(_: Double, _: Double, detail: Double = default) -> Double
+  func simplexNoise(_: Double) -> Double
+  func simplexNoise(_: Double, _: Double) -> Double
+  func simplexNoise(_: Double, _: Double, _: Double) -> Double
+  func tilingFbm(_: Double, _: Double, detail: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func tilingNoise(_: Double, _: Double, detail: Double = default) -> Double
+  func turbulence(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func turbulence(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func turbulence(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func turbulence(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func warpedFbm(_: Double, _: Double, warp: Double = default, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func warpedFbm(_: Double, _: Double, warp: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func worley(_: Double, _: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
+  func worley(_: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
+  init(seed: Int)
 struct NoteLength: ParamChoices, ParamValue, Comparable, CustomStringConvertible, Decodable, Encodable, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Sendable
   func seconds(at: Tempo) -> Double
   init(beats: Double)

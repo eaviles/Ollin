@@ -7,7 +7,7 @@ import Foundation
 /// is more even in every direction, with none of the classic field's faint
 /// axis-aligned bias. Output is contrast-calibrated and mapped like the Perlin
 /// field's; a seed yields a reproducible field.
-struct SimplexNoise {
+struct SimplexNoise: Sendable {
     private var perm: [Int]   // 512 entries (a 0...255 permutation, doubled)
 
     init(seed: UInt64) { perm = PerlinNoise.permutation(seed: seed) }
@@ -117,7 +117,7 @@ struct SimplexNoise {
 /// feature point; the value at a sample is the distance to the nearest point
 /// (or the second nearest, or the gap between the two), which reads as organic
 /// cells: stone, foam, cracked earth, water caustics.
-struct WorleyNoise {
+struct WorleyNoise: Sendable {
     private var seed: UInt64
 
     init(seed: UInt64) { self.seed = seed }
@@ -202,7 +202,8 @@ public enum WorleyFeature: Sendable {
     case border
 }
 
-public extension Sketch {
+// The variant family, on the value. `Sketch` forwards these too (below).
+public extension NoiseFields {
     // MARK: Simplex noise
 
     /// 1D simplex noise at `x`, in `0...1`. A different flavor of the same
@@ -253,5 +254,34 @@ public extension Sketch {
         case .second: return f2
         case .border: return f2 - f1
         }
+    }
+}
+
+// The sketch's bare calls: each forwards to `noiseFields`.
+public extension Sketch {
+    /// 1D simplex noise at `x`, in `0...1`: smooth, seeded, even in every
+    /// direction (see `NoiseFields.simplexNoise(_:)`).
+    func simplexNoise(_ x: Double) -> Double { noiseFields.simplexNoise(x) }
+    /// 2D simplex noise at `(x, y)`, in `0...1`.
+    func simplexNoise(_ x: Double, _ y: Double) -> Double { noiseFields.simplexNoise(x, y) }
+    /// 3D simplex noise at `(x, y, z)`, in `0...1`.
+    func simplexNoise(_ x: Double, _ y: Double, _ z: Double) -> Double { noiseFields.simplexNoise(x, y, z) }
+    /// 1D signed simplex noise at `x`, in `-1...1`.
+    func signedSimplexNoise(_ x: Double) -> Double { noiseFields.signedSimplexNoise(x) }
+    /// 2D signed simplex noise at `(x, y)`, in `-1...1`.
+    func signedSimplexNoise(_ x: Double, _ y: Double) -> Double { noiseFields.signedSimplexNoise(x, y) }
+    /// 3D signed simplex noise at `(x, y, z)`, in `-1...1`.
+    func signedSimplexNoise(_ x: Double, _ y: Double, _ z: Double) -> Double { noiseFields.signedSimplexNoise(x, y, z) }
+
+    /// 2D cellular noise at `(x, y)`: the distance to the nearest seeded
+    /// feature point, which shades space into cells (see `NoiseFields.worley(_:_:feature:jitter:)`).
+    func worley(_ x: Double, _ y: Double,
+                feature: WorleyFeature = .nearest, jitter: Double = 1) -> Double {
+        noiseFields.worley(x, y, feature: feature, jitter: jitter)
+    }
+    /// 3D cellular noise at `(x, y, z)`; drift `z` and the cells reform in place.
+    func worley(_ x: Double, _ y: Double, _ z: Double,
+                feature: WorleyFeature = .nearest, jitter: Double = 1) -> Double {
+        noiseFields.worley(x, y, z, feature: feature, jitter: jitter)
     }
 }

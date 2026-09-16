@@ -22,6 +22,7 @@ de51c37794a2  Guide/02-Color.md:214  cannot find 'photo' in scope
 c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:87  cannot find 'ink' in scope
 34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
+d75cad38ad55  Guide/05-Noise.md:197  cannot find 'points' in scope
 a66bdc0e1bb2  Guide/06-GridsAndRepetition.md:182  cannot find 'star' in scope
 070c1141fb23  Guide/06-GridsAndRepetition.md:201  cannot find 'cell' in scope
 a3a4dacf7c92  Guide/06-GridsAndRepetition.md:227  cannot find 'drawTheWholePiece' in scope
@@ -274,7 +275,7 @@ bd47d0315154  Guide/29-MakingSound.md:311  cannot find 'synth' in scope
 6295ac12ab41  Guide/29-MakingSound.md:368  cannot find 'PluckedString' in scope
 34f5ea039a72  Guide/29-MakingSound.md:38  cannot find 'synth' in scope
 22d8d5879111  Guide/29-MakingSound.md:388  cannot find 'Synth' in scope
-093c643ad086  Guide/29-MakingSound.md:395  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
+093c643ad086  Guide/29-MakingSound.md:395  missing argument for parameter 'at' in call
 9ccbda15d5b2  Guide/29-MakingSound.md:426  cannot find 'Synth' in scope
 160d2675aacd  Guide/29-MakingSound.md:451  cannot find 'Synth' in scope
 987031fe875c  Guide/29-MakingSound.md:475  cannot find 'Synth' in scope

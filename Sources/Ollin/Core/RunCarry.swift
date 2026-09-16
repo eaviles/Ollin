@@ -49,9 +49,7 @@ extension Sketch {
         // the next mark.
         variation = other.variation
         rng = other.rng
-        perlin = other.perlin
-        simplex = other.simplex
-        worleyNoise = other.worleyNoise
+        noiseFields = other.noiseFields
         gaussianSpare = other.gaussianSpare
         recordedRandomSeed = other.recordedRandomSeed
         recordedNoiseSeed = other.recordedNoiseSeed

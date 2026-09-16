@@ -192,6 +192,17 @@ Three things are different about this one, and each is a small freedom. The coor
 
 That's the whole tour. You won't need most of these most days, since `noise` and `fbm` do the daily work. But when a sketch wants stone instead of clouds, or a skyline instead of hills, the right field is one call away, and every habit transfers: zoom parameter, seeding, far-apart rows, `loop:`.
 
+One last thing about the whole family, for the day a sketch asks a field a few hundred thousand times a frame. Every one of these calls lives on the sketch, and the sketch lives on the main thread. `noiseFields` is the same set of fields as a plain value, seeded exactly as the sketch is, and a value can be handed to every core at once:
+
+```swift
+let fields = noiseFields                                  // a copy, taken on the main thread
+DispatchQueue.concurrentPerform(iterations: points.count) { i in
+    heights[i] = fields.fbm(points[i].x * 0.004, points[i].y * 0.004)
+}
+```
+
+`fields.fbm` answers the same number `fbm` does, and `noiseSeed` reaches it, because the copy was taken after the seed was set. The `Rendering/LineSpray` example bends thirty-eight thousand lines a frame this way.
+
 ## Putting it together: a meadow in the wind
 
 The sketch at the top of this chapter uses everything at once, in a field of about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps don't jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:

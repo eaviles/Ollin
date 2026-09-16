@@ -2448,15 +2448,11 @@ open class Sketch {
     /// every run is recoverable by its number.
     var rng: SplitMix64
 
-    /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
-    var perlin: PerlinNoise
-
-    /// Backing field for `simplexNoise()` (see NoiseVariants.swift). Seeded
-    /// with `perlin` so `noiseSeed` reproduces every noise flavor at once.
-    var simplex: SimplexNoise
-
-    /// Backing cell field for `worley()` (see NoiseVariants.swift).
-    var worleyNoise: WorleyNoise
+    /// The noise fields behind `noise()`, `simplexNoise()`, `worley()` and the
+    /// rest of the family, as one value: what `noiseSeed(_:)` seeds, and what a
+    /// sketch hands to another thread to read the same field there (see
+    /// `NoiseFields`). Seeded from `variation` at init like `random()`.
+    public internal(set) var noiseFields: NoiseFields
 
     /// The seeds last applied through `randomSeed(_:)` / `noiseSeed(_:)` (both
     /// via `seed(_:)`), recorded so exports can embed the reproduction recipe
@@ -2524,9 +2520,7 @@ open class Sketch {
         let roll = Int.random(in: 1 ... 99_999)
         variation = roll
         rng = SplitMix64(seed: UInt64(bitPattern: Int64(roll)))
-        perlin = PerlinNoise(seed: UInt64(bitPattern: Int64(roll)))
-        simplex = SimplexNoise(seed: UInt64(bitPattern: Int64(roll)))
-        worleyNoise = WorleyNoise(seed: UInt64(bitPattern: Int64(roll)))
+        noiseFields = NoiseFields(seed: roll)
         recordedRandomSeed = roll
         recordedNoiseSeed = roll
     }

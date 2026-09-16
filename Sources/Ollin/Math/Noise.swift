@@ -4,7 +4,7 @@ import Foundation
 /// `Sketch.noise` / `Sketch.noiseSeed`. Lives on the `Sketch` instance, not as
 /// global state. Output is contrast-calibrated and mapped to `0...1`; a seed
 /// yields a reproducible field.
-struct PerlinNoise {
+struct PerlinNoise: Sendable {
     private var perm: [Int]   // 512 entries (a 0...255 permutation, doubled)
 
     init(seed: UInt64) { perm = PerlinNoise.permutation(seed: seed) }
@@ -207,17 +207,9 @@ struct PerlinNoise {
     }
 }
 
-public extension Sketch {
-    /// Seed the noise fields (`noise()`, `simplexNoise()`, `worley()`, and the
-    /// fbm family) for reproducible runs.
-    func noiseSeed(_ seed: Int) {
-        let bits = UInt64(bitPattern: Int64(seed))
-        perlin.reseed(bits)
-        simplex.reseed(bits)
-        worleyNoise.reseed(bits)
-        recordedNoiseSeed = seed
-    }
-
+// The classic family, on the value. `Sketch` forwards every one of these (below),
+// so the bare `noise(x, y)` and `noiseFields.noise(x, y)` are one number.
+public extension NoiseFields {
     /// 1D Perlin noise at `x`, in `0...1`.
     func noise(_ x: Double) -> Double { perlin.value(x, 0, 0) }
     /// 2D Perlin noise at `(x, y)`, in `0...1`.
@@ -553,13 +545,176 @@ public extension Sketch {
     func curlNoise(_ p: Vector3) -> Vector3 { curlNoise(p.x, p.y, p.z) }
 }
 
+// The sketch's bare calls: each forwards to `noiseFields`, the value under them.
 public extension Sketch {
+    /// Seed the noise fields (`noise()`, `simplexNoise()`, `worley()`, and the
+    /// fbm family) for reproducible runs.
+    func noiseSeed(_ seed: Int) {
+        noiseFields.reseed(seed)
+        recordedNoiseSeed = seed
+    }
+
+    /// 1D Perlin noise at `x`, in `0...1` (see `NoiseFields`).
+    func noise(_ x: Double) -> Double { noiseFields.noise(x) }
+    /// 2D Perlin noise at `(x, y)`, in `0...1`.
+    func noise(_ x: Double, _ y: Double) -> Double { noiseFields.noise(x, y) }
+    /// 3D Perlin noise at `(x, y, z)`, in `0...1`.
+    func noise(_ x: Double, _ y: Double, _ z: Double) -> Double { noiseFields.noise(x, y, z) }
+
+    /// 1D signed Perlin noise at `x`, in `-1...1`.
+    func signedNoise(_ x: Double) -> Double { noiseFields.signedNoise(x) }
+    /// 2D signed Perlin noise at `(x, y)`, in `-1...1`.
+    func signedNoise(_ x: Double, _ y: Double) -> Double { noiseFields.signedNoise(x, y) }
+    /// 3D signed Perlin noise at `(x, y, z)`, in `-1...1`.
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double) -> Double { noiseFields.signedNoise(x, y, z) }
+
+    /// Noise that loops as `loop` runs `0...1`, touring a closed circle through
+    /// the field so a lap lands where it started (see `NoiseFields.noise(loop:radius:)`).
+    func noise(loop: Double, radius: Double = 1) -> Double { noiseFields.noise(loop: loop, radius: radius) }
+    /// 1D noise at `x` that loops as `loop` runs `0...1`.
+    func noise(_ x: Double, loop: Double, radius: Double = 1) -> Double {
+        noiseFields.noise(x, loop: loop, radius: radius)
+    }
+    /// 2D noise at `(x, y)` that loops as `loop` runs `0...1`.
+    func noise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1) -> Double {
+        noiseFields.noise(x, y, loop: loop, radius: radius)
+    }
+    /// Signed looping noise in `-1...1` (see `noise(loop:radius:)`).
+    func signedNoise(loop: Double, radius: Double = 1) -> Double {
+        noiseFields.signedNoise(loop: loop, radius: radius)
+    }
+    /// 1D signed looping noise in `-1...1`.
+    func signedNoise(_ x: Double, loop: Double, radius: Double = 1) -> Double {
+        noiseFields.signedNoise(x, loop: loop, radius: radius)
+    }
+    /// 2D signed looping noise in `-1...1`.
+    func signedNoise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1) -> Double {
+        noiseFields.signedNoise(x, y, loop: loop, radius: radius)
+    }
+
+    /// 1D fractal (layered) noise in `0...1` (see `NoiseFields.fbm(_:octaves:gain:lacunarity:)`).
+    func fbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.fbm(x, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D fractal noise at `(x, y)`, in `0...1`.
+    func fbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.fbm(x, y, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 3D fractal noise at `(x, y, z)`, in `0...1`.
+    func fbm(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.fbm(x, y, z, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D fractal noise that loops as `loop` runs `0...1`.
+    func fbm(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+             octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.fbm(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// Signed 1D fractal noise in `-1...1`.
+    func signedFbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.signedFbm(x, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// Signed 2D fractal noise in `-1...1`.
+    func signedFbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.signedFbm(x, y, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// Signed 3D fractal noise in `-1...1`.
+    func signedFbm(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.signedFbm(x, y, z, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// Signed 2D looping fractal noise in `-1...1`.
+    func signedFbm(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.signedFbm(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+
+    /// 2D noise that tiles: the field meets itself at every edge as `u` and `v`
+    /// run `0...1` (see `NoiseFields.tilingNoise(_:_:detail:)`).
+    func tilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double {
+        noiseFields.tilingNoise(u, v, detail: detail)
+    }
+    /// 2D signed tiling noise in `-1...1`.
+    func signedTilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double {
+        noiseFields.signedTilingNoise(u, v, detail: detail)
+    }
+    /// 2D fractal noise that tiles.
+    func tilingFbm(_ u: Double, _ v: Double, detail: Double = 4,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.tilingFbm(u, v, detail: detail, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D signed tiling fractal noise in `-1...1`.
+    func signedTilingFbm(_ u: Double, _ v: Double, detail: Double = 4,
+                         octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.signedTilingFbm(u, v, detail: detail, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+
+    /// 1D ridged fractal noise in `0...1`: creases as bright lines, detail on
+    /// the crests (see `NoiseFields.ridgedFbm(_:octaves:gain:lacunarity:)`).
+    func ridgedFbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.ridgedFbm(x, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D ridged fractal noise at `(x, y)`, in `0...1`.
+    func ridgedFbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.ridgedFbm(x, y, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 3D ridged fractal noise at `(x, y, z)`, in `0...1`.
+    func ridgedFbm(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.ridgedFbm(x, y, z, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D ridged fractal noise that loops as `loop` runs `0...1`.
+    func ridgedFbm(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.ridgedFbm(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 1D turbulence in `0...1`: layered folded noise, billows with creased
+    /// seams (see `NoiseFields.turbulence(_:octaves:gain:lacunarity:)`).
+    func turbulence(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.turbulence(x, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D turbulence at `(x, y)`, in `0...1`.
+    func turbulence(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.turbulence(x, y, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 3D turbulence at `(x, y, z)`, in `0...1`.
+    func turbulence(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.turbulence(x, y, z, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D turbulence that loops as `loop` runs `0...1`.
+    func turbulence(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+                    octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.turbulence(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+
+    /// 2D domain-warped fbm: the field displaces its own coordinates, twice
+    /// over (see `NoiseFields.warpedFbm(_:_:warp:octaves:gain:lacunarity:)`).
+    func warpedFbm(_ x: Double, _ y: Double, warp: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.warpedFbm(x, y, warp: warp, octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+    /// 2D warped fbm that loops as `loop` runs `0...1`.
+    func warpedFbm(_ x: Double, _ y: Double, warp: Double = 1, loop: Double, radius: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        noiseFields.warpedFbm(x, y, warp: warp, loop: loop, radius: radius,
+                              octaves: octaves, gain: gain, lacunarity: lacunarity)
+    }
+
+    /// A divergence-free 2D flow vector at `(x, y)`, the curl of the Perlin
+    /// field (see `NoiseFields.curlNoise(_:_:)`).
+    func curlNoise(_ x: Double, _ y: Double) -> Vector2 { noiseFields.curlNoise(x, y) }
+    /// `curlNoise` sampled at the point `p`.
+    func curlNoise(_ p: Vector2) -> Vector2 { noiseFields.curlNoise(p) }
+    /// A divergence-free 3D flow vector at `(x, y, z)`, the curl of three offset
+    /// copies of the field (see `NoiseFields.curlNoise(_:_:_:)`).
+    func curlNoise(_ x: Double, _ y: Double, _ z: Double) -> Vector3 { noiseFields.curlNoise(x, y, z) }
+    /// `curlNoise` sampled at the point `p`.
+    func curlNoise(_ p: Vector3) -> Vector3 { noiseFields.curlNoise(p) }
+
     /// This sketch's noise field, as a plain function of three coordinates,
     /// answering `-1...1`. It is how something that reads noise outside
     /// `draw()` (a ``Formula`` driving a parameter, for one) sees the same field the
-    /// sketch does, so `noiseSeed()` reaches it as well.
+    /// sketch does, so `noiseSeed()` reaches it as well. For the whole family
+    /// as a value, `noiseFields`.
     func noiseField() -> Formula.NoiseField {
-        let field = perlin
-        return { x, y, z in field.signedValue(x, y, z) }
+        let fields = noiseFields
+        return { x, y, z in fields.signedNoise(x, y, z) }
     }
 }

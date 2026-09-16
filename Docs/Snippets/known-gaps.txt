@@ -588,30 +588,32 @@ ed99fde1bb0f  Docs/Generators/LSystem.md:97  cannot convert value of type 'Strin
 6ecea86ce5d1  Docs/Generators/Meander.md:68  cannot find 'river' in scope
 e0fc5d99186d  Docs/Generators/MedialAxis.md:26  expected ',' separator
 7d1a8c0e7ac4  Docs/Generators/MedialAxis.md:34  cannot find 'blob' in scope
-7b0056342e56  Docs/Generators/Noise.md:107  cannot find 'x' in scope
-70f63f323bc3  Docs/Generators/Noise.md:119  expected ',' separator
-70081d8ef017  Docs/Generators/Noise.md:130  cannot find 'x' in scope
-a2c382c85729  Docs/Generators/Noise.md:144  expected ',' separator
-72dd2efe43d8  Docs/Generators/Noise.md:164  cannot find 'p' in scope
-e7146dea4fe1  Docs/Generators/Noise.md:175  expected ',' separator
-16ff39be874f  Docs/Generators/Noise.md:182  cannot find 'x' in scope
-a64542220ed4  Docs/Generators/Noise.md:200  expected ',' separator
-be2607cb8267  Docs/Generators/Noise.md:220  cannot find 'x' in scope
-aa7fbb2117db  Docs/Generators/Noise.md:233  expected ',' separator
-88eb529b55b2  Docs/Generators/Noise.md:245  cannot find 'x' in scope
-5145b20174ad  Docs/Generators/Noise.md:257  expected ',' separator
-c2c8471ece96  Docs/Generators/Noise.md:265  cannot find 'x' in scope
-1b783e195485  Docs/Generators/Noise.md:276  expected ',' separator
-9967d3065c0c  Docs/Generators/Noise.md:302  cannot find 'x' in scope
-e13ed241945a  Docs/Generators/Noise.md:337  expected ',' separator
-5510c621a005  Docs/Generators/Noise.md:351  expected ',' separator
-fdeea8fbb768  Docs/Generators/Noise.md:37  expected ',' separator
-6836c883722c  Docs/Generators/Noise.md:43  cannot find 'x' in scope
-537a333e4b20  Docs/Generators/Noise.md:52  expected ',' separator
-ecd2f2007b89  Docs/Generators/Noise.md:67  expected ',' separator
-77902ee69ccd  Docs/Generators/Noise.md:76  cannot find 'x' in scope
-5b03facb3694  Docs/Generators/Noise.md:84  cannot find 'angle' in scope
-f8d776830ad3  Docs/Generators/Noise.md:94  expected ',' separator
+7b0056342e56  Docs/Generators/Noise.md:108  cannot find 'x' in scope
+70f63f323bc3  Docs/Generators/Noise.md:120  expected ',' separator
+70081d8ef017  Docs/Generators/Noise.md:131  cannot find 'x' in scope
+a2c382c85729  Docs/Generators/Noise.md:145  expected ',' separator
+72dd2efe43d8  Docs/Generators/Noise.md:165  cannot find 'p' in scope
+e7146dea4fe1  Docs/Generators/Noise.md:176  expected ',' separator
+16ff39be874f  Docs/Generators/Noise.md:183  cannot find 'x' in scope
+a64542220ed4  Docs/Generators/Noise.md:201  expected ',' separator
+be2607cb8267  Docs/Generators/Noise.md:221  cannot find 'x' in scope
+aa7fbb2117db  Docs/Generators/Noise.md:234  expected ',' separator
+88eb529b55b2  Docs/Generators/Noise.md:246  cannot find 'x' in scope
+5145b20174ad  Docs/Generators/Noise.md:258  expected ',' separator
+c2c8471ece96  Docs/Generators/Noise.md:266  cannot find 'x' in scope
+1b783e195485  Docs/Generators/Noise.md:277  expected ',' separator
+9967d3065c0c  Docs/Generators/Noise.md:303  cannot find 'x' in scope
+e13ed241945a  Docs/Generators/Noise.md:338  expected ',' separator
+5510c621a005  Docs/Generators/Noise.md:352  expected ',' separator
+6733df6ef143  Docs/Generators/Noise.md:366  expected type before '->'
+57934667130c  Docs/Generators/Noise.md:373  cannot find 'points' in scope
+fdeea8fbb768  Docs/Generators/Noise.md:38  expected ',' separator
+6836c883722c  Docs/Generators/Noise.md:44  cannot find 'x' in scope
+537a333e4b20  Docs/Generators/Noise.md:53  expected ',' separator
+ecd2f2007b89  Docs/Generators/Noise.md:68  expected ',' separator
+77902ee69ccd  Docs/Generators/Noise.md:77  cannot find 'x' in scope
+5b03facb3694  Docs/Generators/Noise.md:85  cannot find 'angle' in scope
+f8d776830ad3  Docs/Generators/Noise.md:95  expected ',' separator
 3833f85db6a4  Docs/Generators/Packing.md:102  use of 'packCircles' refers to instance method rather than global function 'packCircles(in:count:minRadius:maxRadius:padding:attemptsPerCircle:using:)' in module 'Ollin'
 b932a2274c97  Docs/Generators/Packing.md:35  expected expression in list of expressions
 e647d5bfc0d7  Docs/Generators/Packing.md:59  expected ',' separator
@@ -853,7 +855,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  cannot find type 'PlayingNote' in s
 7061a94dbb81  Docs/Helpers/Synthesis.md:215  cannot find 'Synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'PluckedString' in scope
 af59bd54d5b2  Docs/Helpers/Synthesis.md:259  cannot find 'Synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:286  missing argument for parameter 'at' in call
+18a9f63e8409  Docs/Helpers/Synthesis.md:286  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
 883a650f2006  Docs/Helpers/Synthesis.md:326  cannot find 'Synth' in scope
 43fbd5e77cc0  Docs/Helpers/Synthesis.md:357  cannot find 'Synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope

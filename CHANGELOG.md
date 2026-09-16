@@ -7,6 +7,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Added
 
 - **Curl noise in space.** `curlNoise(x, y, z)` and `curlNoise(_ p: Vector3)` are the three-coordinate forms of the flow field: the curl of three offset copies of the Perlin field, a flow that swirls in every direction and never gathers or drains, which is the field to bend geometry with. Both the plane and the space forms now read the field's slope in closed form rather than sampling it on either side, so a curl costs about three reads of `noise`, and the shader library has the matching `float3 curlNoise(float3)`. The `Rendering/LineSpray` example bends its sphere of rings with it. [Noise](Docs/Generators/Noise.md#curlNoise).
+- **The noise fields as a value.** `noiseFields` is the sketch's whole family of fields, Perlin, simplex and Worley with every `noise`, `fbm`, `curlNoise`, `simplexNoise`, `worley`, looping and tiling form on it, as one `NoiseFields` value seeded exactly as the sketch is. A sketch's own `noise` can only be called on the main thread; a value can be handed to every core, so `DispatchQueue.concurrentPerform` or a task group can read the same field the sketch reads, and `noiseSeed` still reaches it. `NoiseFields(seed:)` makes one anywhere. [Noise](Docs/Generators/Noise.md#noiseFields); Guide Ch 5 § *A family of fields*.
 
 ## [0.8.0] - 2026-09-16
 

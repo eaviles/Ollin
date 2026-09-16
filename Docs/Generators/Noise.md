@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Generators](./README.md) → `Noise`</sup>
+#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Generators](./README.md) → `Noise`</sup> The same fields are also a value you can hand to another thread, [`noiseFields`](#noiseFields).
 
 ---
 
@@ -27,6 +27,7 @@ Perlin `noise` is coherent, which means nearby inputs give nearby outputs. That 
 - [Choosing a scale](#scale)
 - [noiseSeed](#noiseSeed)
 - [seed](#seed)
+- [The fields as a value: `noiseFields`](#noiseFields)
 
 ### Functions
 
@@ -357,3 +358,31 @@ Seed *both* `noise` and `random` from one value. That locks the whole sketch's r
 ```swift
 seed(7)   // noise and random both reproducible
 ```
+
+<a name="noiseFields"></a>
+
+### The fields as a value: `noiseFields`
+
+```swift
+noiseFields -> NoiseFields                 // the sketch's fields, seeded as the sketch is
+NoiseFields(seed: Int)                     // the same fields, made anywhere
+```
+
+Every function on this page is a method of `NoiseFields` too, and `noiseFields` is the sketch's own copy of them. It reads exactly what the sketch reads. `noise(x, y)` on the sketch and `noiseFields.noise(x, y)` are the same number, and `noiseSeed` reaches both. The difference is what you can do with it. A sketch lives on the main thread, so its `noise` can only be called there. `NoiseFields` is a plain value that any thread can read, which is what a heavy job wants:
+
+```swift
+let fields = noiseFields                              // take a copy on the main thread
+var bent = [Vector3](repeating: .zero, count: points.count)
+bent.withUnsafeMutableBufferPointer { out in
+    DispatchQueue.concurrentPerform(iterations: points.count) { i in
+        let p = points[i]
+        out[i] = p + fields.curlNoise(p * 0.5) * 0.3   // every core reads the same field
+    }
+}
+```
+
+The copy is a value, so it keeps the seed it was taken with. Reseed the sketch and a copy taken earlier goes on reading the old field, while `noiseFields` reads the new one. Take the copy inside `draw()` when the seed can change between frames.
+
+A `Formula` reads a field through `noiseField()` instead, a plain function of three coordinates, since a formula wants one number back and nothing more. Both come from the same place.
+
+The `Rendering/LineSpray` example's `Drift` parameter bends its thirty-eight thousand lines every frame this way, one core per slice of the scene.

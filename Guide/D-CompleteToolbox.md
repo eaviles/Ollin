@@ -143,7 +143,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Smoothing | `@Smoothed` calms jittery inputs (mouse, sensors, knobs) as they arrive | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
 | `Timeline` | Keyframes with per-segment easing, for choreographed sequences | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
 | Random | Seeded `random`, Gaussian, choices (plain and weighted), shuffles | [Ch 4](04-Randomness.md) | [Random](../Docs/Generators/Random.md) |
-| Noise | `noise`, `signedNoise`, seamless `loop:` variants, layered `fbm`, `curlNoise` in the plane and in space | [Ch 5](05-Noise.md), [Ch 14](14-FieldsAndFlow.md) | [Noise](../Docs/Generators/Noise.md) |
+| Noise | `noise`, `signedNoise`, seamless `loop:` variants, layered `fbm`, `curlNoise` in the plane and in space, the whole family as a value in `noiseFields` for work off the main thread | [Ch 5](05-Noise.md), [Ch 14](14-FieldsAndFlow.md) | [Noise](../Docs/Generators/Noise.md) |
 | The noise family | `simplexNoise`, cellular `worley` (nearest / second / border readings), `ridgedFbm`, `turbulence`, `warpedFbm`, all seeded together | [Ch 5](05-Noise.md) | [Noise](../Docs/Generators/Noise.md) |
 
 ## Generative systems
