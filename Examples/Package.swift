@@ -181,6 +181,10 @@ let package = Package(
         // Complex arithmetic on both sides of the GPU: a shader colors a ratio of
         // two moving points, and draw() lays the circles it is made of over it.
         example("Shaders/ComplexPlane"),
+        // The imaginary part of a logarithm as a picture (the branch cut as a
+        // seam), and a ratio of two cubics built from moving roots.
+        example("Shaders/ImaginaryLog"),
+        example("Shaders/Meromorphic"),
         example("Rendering/ToneMapping"),
         example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),

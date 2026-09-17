@@ -207,7 +207,7 @@ for n in [-2, -1, 1, 2] {
 }
 ```
 
-That is the circle of Apollonius, the set of points where the ratio has one size. It is written in the same arithmetic the shader used. Drawn over the layer, each one lands on a ruling. The formula matters less than the agreement: the two halves match, so you can reason on whichever side is easier and paint on the other. [`Examples/Shaders/ComplexPlane`](../Examples/Shaders/ComplexPlane/Sketch.swift) moves the two points and draws both families of circles.
+That is the circle of Apollonius, the set of points where the ratio has one size. It is written in the same arithmetic the shader used. Drawn over the layer, each one lands on a ruling. The formula matters less than the agreement: the two halves match, so you can reason on whichever side is easier and paint on the other. [`Examples/Shaders/ComplexPlane`](../Examples/Shaders/ComplexPlane/Sketch.swift) moves the two points and draws both families of circles. Two more take the same ratio somewhere else. [`ImaginaryLog`](../Examples/Shaders/ImaginaryLog/Sketch.swift) feeds the imaginary part of its `clog` to a cosine palette that never completes a cycle, so the branch cut between the points shows as a soft seam. [`Meromorphic`](../Examples/Shaders/Meromorphic/Sketch.swift) builds a ratio of two cubics from six moving roots and turns the palette's frequency up until the bands pile up around the poles.
 
 ## Chains: patching without typing Metal
 

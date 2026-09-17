@@ -8824,6 +8824,48 @@
       "stillSmall": "examples/Shaders/HelloShader/still-640.jpg?v=63468476",
       "width": 1080
     },
+    "Shaders/ImaginaryLog": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.217,
+      "sound": false,
+      "source": "bc9bb2104ac13b19",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "loop": 902425,
+        "loopSmall": 175025,
+        "still": 26458,
+        "stillSmall": 10040
+      },
+      "loop": "examples/Shaders/ImaginaryLog/loop.mp4?v=3dfe9c4b",
+      "loopSmall": "examples/Shaders/ImaginaryLog/loop-640.mp4?v=10db25c4",
+      "still": "examples/Shaders/ImaginaryLog/still.jpg?v=28fbe1ed",
+      "stillSmall": "examples/Shaders/ImaginaryLog/still-640.jpg?v=5a1029c5"
+    },
+    "Shaders/Meromorphic": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.426,
+      "sound": false,
+      "source": "92ed38d31dc6837c",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "loop": 1377627,
+        "loopSmall": 361332,
+        "still": 171173,
+        "stillSmall": 66051
+      },
+      "loop": "examples/Shaders/Meromorphic/loop.mp4?v=a8b57127",
+      "loopSmall": "examples/Shaders/Meromorphic/loop-640.mp4?v=d3ca5f9a",
+      "still": "examples/Shaders/Meromorphic/still.jpg?v=29b95137",
+      "stillSmall": "examples/Shaders/Meromorphic/still-640.jpg?v=cddb858d"
+    },
     "Shaders/ShaderBlend": {
       "bytes": {
         "loop": 1127184,
