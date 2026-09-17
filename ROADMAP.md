@@ -29,14 +29,39 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 These are near-term, fairly self-contained pieces. Each one is small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
+- **Rounded corners of different sizes.** A rectangle takes one radius per corner, for a tab, a speech bubble, or a card with one square edge. The instanced box has free parameter slots to carry the four radii.
+- **Drawing part of an image.** `drawImage` takes a source rectangle inside the image. A sprite sheet, a tile set, or a film strip then draws one frame at a time, with no cropping first.
+- **A gradient that sweeps around a point.** This is the conic gradient, used for color wheels, dials, and pie charts. The sketch chooses the center and the angle the sweep starts from.
+- **Pitch bend bound to a parameter.** A parameter binds to a MIDI control change. The pitch wheel is the other continuous control on most keyboards, and it binds the same way.
+- **Points inside a shape.** A sketch scatters random points evenly inside any `Shape`, holes included, or along its outline by length. The same helper offers a blue-noise scatter inside the shape.
+- **One mesh from several.** Meshes placed by their transforms join into one mesh, with no boolean. The result is one draw call and one file for a printer.
+- **Three more filters.** A channel mixer weighs each output channel from the input channels. Lens distortion bends a layer into a barrel or a pincushion. A corner pin lays a layer onto four points.
+- **Small sketch conveniences.** `redraw()` draws one frame of a sketch that has stopped looping. A sketch can set the pointer's shape or hide it, and spherical coordinates sit beside `polar`. A file can be picked through the system's open panel, and the frame can be copied to the clipboard.
+
+See the [design notes](DESIGN-NOTES.md#small-pieces).
 
 ## Generative geometry
 
 This tier is a set of classic generative-art building blocks. Each one emits vector geometry (points, `Contour`s, `Shape`s) that feeds the existing draw, shape-boolean, hatching, and SVG paths, rather than the renderer. They follow the plotter-friendly, geometry-first pattern that the shape booleans set. All of them run off the existing seedable `random`/`noise`, so a run is reproducible. Each ships with an example. Several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder) of a work by the artist who pioneered them. The conventions for adding one are in the [design notes](DESIGN-NOTES.md#generative-geometry). The broader algorithm catalog is the [technique and algorithm helpers](#technique-and-algorithm-helpers) tier.
 
+- **An outline you can ask questions of.** `Contour` answers the tangent and normal at a fraction, the nearest point to a position, and the stretch between two fractions. It also finds where two outlines cross, simplifies a dense trace, reverses its direction, and rounds or cuts its corners. Line segments, arcs, and ellipses join `Circle` and `Rectangle` as values, each able to produce an outline and to report where it crosses another.
+- **Bending outlines.** These edits warp a shape along a curve and pull an outline toward a point while its ends stay fixed. They also smooth an outline without losing its corners, and split it where it bends sharply. Fitting a few cubic curves through a dense trace belongs here too. All of it builds on the outline questions above.
+- **The regions a drawing encloses.** Overlapping lines, circles, and outlines are split at every crossing, and each enclosed region comes back as its own `Shape`. Every region can then take its own fill, like a page in a coloring book.
+- **A shape bent into a curved patch.** A shape maps into a four-sided region whose sides are curves, such as lettering on a waving banner. This is the curved counterpart of `Rectangle.point(u:v:)`.
+- **Points in the order of a space-filling curve.** Points sort by their place along a Hilbert curve, so neighbors in the list sit near each other on the page. That gives one continuous line through a stipple, and it orders a large set with a single sort.
+- **Packing rectangles.** Rectangles of given sizes pack into a bin, for a contact sheet of photos at their own proportions, a collage, or a texture atlas.
+- **A turtle you drive from code.** A turtle moves forward, turns, lifts and lowers its pen, and returns to a saved position. Its path comes back as `Contour`s. The L-system turtle reads a string, and this one takes calls, for Logo-style drawing.
+
 ## Technique and algorithm helpers
 
 **Near-term.** This is a standing catalog of classic creative-coding techniques and algorithms as first-class helpers. It keeps growing, as the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders do. Each one lands wherever it fits the existing core. A geometry emitter goes beside the shape builders. An escape-time or field technique becomes a GPU `Generator` or shader. A simulation goes beside the compute and `SimField` paths. Each ships with an example, and each runs off the seedable `random`/`noise`, so a result reproduces. Each is implemented from the published technique, which is credited in the Techniques list of `ATTRIBUTION.md`. Many map onto the *Nature of Code* canon (vectors, forces, particles, autonomous agents, cellular automata, fractals, evolution). That makes the catalog a familiar entry point for a reader who comes from that book. The geometry-emitting recipes are flagged plotter-friendly for the pen-plotter path.
+
+- **A soft body from any shape.** The 2D physics world turns a `Shape` into a ring of particles that keeps its area, bends, and collides outline against outline. The `Physics/Blobs` example builds its bodies by hand from springs, and this makes one body a single call.
+- **Finding boxes and neighbors in 3D.** A bounds index answers which of many boxes contain a point, which overlap a rectangle, and which overlap each other. A 3D form of `SpatialIndex` answers its neighbor questions for point clouds and swarms in space.
+- **Matching two sets at the least total cost.** This finds the pairing between two sets of points with the least total distance. Particles can then gather into the letters of a word along the shortest total path, and outlines can pair the same way.
+- **Layer styles.** A layer gets a drop shadow, an inner or outer glow, a bevel, or an outline, each read from its alpha. They build on the distance field the effects already measure.
+- **Measuring color.** Helpers measure the perceptual distance between two colors, find the palette entry nearest a color, and build a histogram of an image. Ramps can also drift in hue, cooler in the shadows and warmer in the light.
+- **Slopes of a fitted field.** `RadialBasis` reports its gradient beside its value. Small numerical derivative helpers cover any function a sketch writes.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
@@ -53,6 +78,9 @@ A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for l
 2D stays the default, and 3D keeps building out on top of the pieces that already exist. Those are the camera, depth buffer, transform stack, solid primitives, and textured meshes. Meshes loaded from file also belong there, with their materials, textures, and the full surface-map set. The pieces also include the directional/point/spot light and material model, curated lighting presets, and the stylized material library (iridescent, velvet, jade, toon, gooch, …). There is also the physically-based metallic-roughness material, and image-based lighting from bundled, downloaded, or loaded HDRI environments (with a skybox backdrop). The last pieces are matcap materials (view-normal sphere-texture shading) and directional, spot, and point cast shadows. The work ahead builds on all of that:
 
 - **Soft bodies that meet themselves.** Cloth drapes, folds, and holds air. But a folded sheet passes through its own layers, and two sheets pass through each other. That happens because self-collision and cloth-against-cloth are gaps in the solver underneath, not in the API over it. Tearing is further out still. It needs a shared vertex split and a rebuilt constraint set in the middle of a simulation, which that solver cannot do at all. Both wait on the library growing them. When it does, they land as more capability on the shipped `SoftBody3D` surface. A filled jelly held by tetrahedra is *not* on this list. It was built and measured against the `pressure` a closed surface already takes, and the `pressure` form did better. A hair tier is not on the list either. The solver's hair module accepts no force, collides only with convex hulls, and needs an authored groom. The rod family already exposed carries more simulated strands in a frame than that module does. See [`DESIGN-NOTES.md`](DESIGN-NOTES.md).
+- **Lines in 3D.** Lines and polylines run between points in space, with a width measured on screen and a color per point. Solids in front of them hide them. Axis and grid helpers for orienting a scene are built from them.
+- **Sweeping and lofting.** A `Shape` sweeps along a 3D path, and it can turn and scale along the way. A surface can also loft through a series of cross-sections. A 3D path with frames that do not twist is the spine of both.
+- **Volume rendering.** A 3D grid of density draws as a glowing or light-absorbing cloud. It suits smoke from a simulation, a scanned volume, or 3D noise.
 
 
 3D mode is opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode).
@@ -74,6 +102,7 @@ See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio).
 The integration tier reaches other software (Syphon, OSC, MIDI, the virtual camera). This tier reaches the hardware and the network around the machine. That is the physical-computing tradition of the frameworks Ollin comes from:
 
 - **NDI.** NDI is the network sibling of Syphon. It sends and receives live video between machines, and it is the standard in VJ and broadcast rigs. It has no published protocol, so unlike the rest of this tier it cannot be written from a specification. It ships as a satellite over the runtime the user installs from NDI: nothing of NDI's in the repository but its MIT-licensed headers, sending first, then receiving. The reasoning against the SDK license is in the design notes.
+- **A pen plotter, driven live.** A sketch sends its paths straight to pen plotters such as the AxiDraw over their serial command set. It streams G-code to GRBL-family machines the same way. Pause, pen height, and a preview of what is left to draw come with it. This needs a plotter on the desk to write against.
 
 All of it follows the interop posture: play in someone's existing rig, do not replace it. See the [design notes](DESIGN-NOTES.md#live-rigs-physical-computing-lighting-and-network-video).
 
@@ -84,6 +113,9 @@ These are more of the platform's live signals. Each one is a `FrameSource` or a 
 - **Apple Pencil.** Tilt, azimuth, and hover on the tablet. The Pencil's force joins the pressure a sketch already reads.
 - **Body data, and where the Mac is.** Heart rate from a paired Watch, for biofeedback. The Mac's own location as a slow live input, so a weather can follow the machine.
 - **Depth from video, deeper.** The first piece is the metric checkpoint of the video depth model, once its license is settled. With it, a webcam's depth comes in meters and lifts into an `RGBDFrame` and a point cloud. The second piece is the encoder on the Neural Engine, with only the temporal head on the GPU, for twice the readings a second.
+- **Pinch and rotate.** The trackpad's pinch and rotate gestures read as plain values in `draw()`, with hooks beside the mouse's. Two-finger gestures on a phone arrive the same way.
+- **Typed text.** A sketch reads typed text through the system's input methods. Accents, dead keys, the emoji viewer, and Chinese or Japanese input then arrive as text. `key` still reports single key presses.
+- **Following a region across video.** A sketch marks a region of a camera or video frame, and the region is followed as it moves. The trackers find what they were built for, such as bodies, faces, and hands, and this follows whatever the sketch picked.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array). These are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 
@@ -93,6 +125,9 @@ These are ways a sketch leaves the window:
 
 - **Rumble on a game controller.** A game controller's motors are an output of the same kind as [haptics](Docs/Integration/Haptics.md). So they belong with haptics rather than with reading the controller. This needs a controller on the desk to write against.
 - **The rest of the sketch on the web page.** The [page export](Docs/Output/Web.md) already carries these parts of a sketch. It carries the analytic shapes, strokes and fills, text and pictures, and the composed and raymarched fields. It also carries the layered effects and the parameters as controls, and it expands strokes and fills on the page from the points the sketch gave. Some things stay with the video export. Those are the effects that are a solve or a ladder on the Mac, lit meshes, ray tracing, and compute work. Pictures that arrive as a texture every frame stay there too. This is not a browser runtime for the framework. That stays out, and the platform stance in `CLAUDE.md` says why.
+- **A sketch over the desktop.** The sketch runs in a transparent window that floats above other windows. Clicks pass through wherever the sketch drew nothing, so a piece can stay on screen while you work.
+- **A second window.** One sketch draws two views, such as the projector's picture and a control view on the laptop. Two cameras on one world are another case.
+- **Motion blur from sub-frames in an export.** An export renders several moments across the shutter for each frame and averages them. Any sketch gets motion blur this way, 2D and shader work included.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
@@ -110,6 +145,7 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
+- **A shader as paint.** A `Shader` fills or strokes a 2D shape, computed per pixel in the shape's own coordinates. The same shader can be a mesh's surface material. Pictures, patterns, and noise then become fills, with no clipping by hand.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 
@@ -118,6 +154,7 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 **Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI: nowhere in the work. The README says it ("It's a tool for making art … Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI helped build the framework, and it plays no part in what you make with it.** Not as the author of a sketch, and not at the controls either, because in generative art the parameters are the work. A palette, a density, a speed chosen by hand is the hand. Models that read the world (the [perception tier](Docs/Vision/Vision.md), depth, listening) are input, like a camera, and stay. Within that line:
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs. It lives in the live host and round-trips to Swift source.
+- **Curves and sequences as parameters.** One inspector row edits a curve by dragging its points, for a falloff or a response. Another edits a row of values as bars, for a step pattern. Both save back into the sketch like any other parameter.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 
