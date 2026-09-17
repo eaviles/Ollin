@@ -153,6 +153,7 @@ _ollin() {
             '--bitrate[the encoder'\''s bitrate]:MBPS:' \
             '--codec[the encoder]:h264|hevc|hevcWithAlpha|proRes422|proRes4444:' \
             '--gif-width[downscale the GIF to this width]:PX:' \
+            '--gif-palette[one table for the whole GIF, or one a frame]:shared|per-frame:' \
             '--size[the pixel size a widget'\''s run is drawn at]:WxH:' \
             '--exr[write a sequence in linear light instead of PNG]' \
             '--inline[write a page fragment instead of a whole file]' \

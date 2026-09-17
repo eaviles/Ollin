@@ -1,76 +1,73 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import Ollin
 
-/// A GIF is held whole in memory until the file is laid down, so its cost
-/// rises with the frame count where a video's does not. These pin the estimate
-/// the export prints against what was actually measured, and pin when it is
-/// worth printing at all.
+/// A GIF is written as it is drawn, so what it asks of memory does not move
+/// with the frame count. These read that off the writer's own books and off
+/// the process.
 @Suite
 struct GIFMemoryTests {
 
-    /// Peak physical footprint measured on one M2 while exporting the same
-    /// sketch at two sizes and four lengths, in megabytes, beside the ~120 MB
-    /// the renderer itself holds through a run of any length. The estimate is
-    /// the line through these points, so a change to it has to answer to them.
-    static let measured: [(frames: Int, width: Int, height: Int, peakMB: Double)] = [
-        (150, 480, 480, 451.5),
-        (300, 480, 480, 816.3),
-        (600, 480, 480, 1536.0),
-        (60, 1080, 1080, 817.3),
-        (120, 1080, 1080, 1536.0),
-    ]
-    static let rendererMB = 120.0
-
-    @Test
-    func theEstimateMatchesWhatWasMeasured() {
-        for run in Self.measured {
-            let estimate = Double(OllinApp.gifPeakBytes(frames: run.frames, width: run.width,
-                                                        height: run.height)) / 1_048_576
-            let observed = run.peakMB - Self.rendererMB
-            let off = abs(estimate - observed) / observed
-            #expect(off < 0.10, "\(run.frames) at \(run.width): estimated \(estimate) MB against \(observed) MB")
+    /// The bytes this process holds right now, as the kernel counts them.
+    static func footprint() -> Int {
+        var info = rusage_info_v4()
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0)
+            }
         }
+        return result == 0 ? Int(info.ri_phys_footprint) : -1
     }
 
-    @Test
-    func theEstimateRisesWithTheFrameCountAndWithTheArea() {
-        let one = OllinApp.gifPeakBytes(frames: 100, width: 480, height: 480)
-        #expect(OllinApp.gifPeakBytes(frames: 200, width: 480, height: 480) == one * 2)
-        // The height follows the width, so halving the flag quarters the cost.
-        #expect(OllinApp.gifPeakBytes(frames: 100, width: 240, height: 240) == one / 4)
+    /// A frame with a disc somewhere new in it, so no two frames are alike.
+    static func frame(side: Int, _ k: Int) -> CGImage {
+        let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8,
+                                bytesPerRow: side * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(red: 0.1, green: 0.2, blue: 0.3, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        context.setFillColor(CGColor(red: 1, green: 0.8, blue: 0.2, alpha: 1))
+        let x = Double(side) * (0.1 + 0.8 * Double(k % 50) / 49), y = Double(side) * (0.2 + 0.6 * Double(k % 7) / 6)
+        context.fillEllipse(in: CGRect(x: x - 30, y: y - 30, width: 60, height: 60))
+        return context.makeImage()!
     }
 
-    /// An ordinary short loop is the common case and must stay quiet, or the
-    /// line stops meaning anything.
-    @Test
-    func aShortLoopSaysNothing() {
-        let eightGB: UInt64 = 8 * 1024 * 1024 * 1024
-        #expect(OllinApp.gifMemoryNote(frames: 100, width: 480, height: 480,
-                                       physicalMemory: eightGB) == nil)
-        #expect(OllinApp.gifMemoryNote(frames: 25, width: 1080, height: 1080,
-                                       physicalMemory: eightGB) == nil)
+    /// The writer's buffers are sized once: the same bytes after one frame
+    /// and after sixty.
+    @Test func theWriterHoldsNoFrame() throws {
+        let path = NSTemporaryDirectory() + "ollin-gif-held-\(UUID().uuidString).gif"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let side = 240
+        let writer = try GIFWriter(path: path, width: side, height: side)
+        try writer.append(Self.frame(side: side, 0), delay: 0.04)
+        let afterOne = writer.heldBytes
+        for k in 1..<60 { try writer.append(Self.frame(side: side, k), delay: 0.04) }
+        try writer.finish()
+        #expect(writer.heldBytes == afterOne)
+        // Under twenty bytes a pixel, against the ten a frame the old writer
+        // kept for every frame of the run.
+        #expect(afterOne < side * side * 20 + 8 * 1024 * 1024)
     }
 
-    @Test
-    func aLongOneNamesTheCostAndBothWaysOut() throws {
-        let eightGB: UInt64 = 8 * 1024 * 1024 * 1024
-        let note = try #require(OllinApp.gifMemoryNote(frames: 600, width: 480, height: 480,
-                                                       physicalMemory: eightGB))
-        #expect(note.contains("1.3 GB"))       // 600 × 480 × 480 × 10 bytes
-        #expect(note.contains("--gif-width 240"))
-        #expect(note.contains("--export-video"))
-    }
-
-    /// The bar is a share of the machine, not a fixed number of bytes, so the
-    /// same export speaks on a small machine and stays quiet on a large one.
-    @Test
-    func theBarFollowsTheMachine() {
-        let frames = 200, side = 640
-        let peak = UInt64(OllinApp.gifPeakBytes(frames: frames, width: side, height: side))
-        #expect(OllinApp.gifMemoryNote(frames: frames, width: side, height: side,
-                                       physicalMemory: peak * 8 - 1) != nil)
-        #expect(OllinApp.gifMemoryNote(frames: frames, width: side, height: side,
-                                       physicalMemory: peak * 8 + 1) == nil)
+    /// The process footprint after two hundred frames is where it was after
+    /// ten. Holding the frames would have added about 175 MB at this size; the
+    /// bound is under a quarter of that, with room for whatever else the suite
+    /// is doing in the same second.
+    @Test func thePeakIsFlatInTheFrameCount() throws {
+        let path = NSTemporaryDirectory() + "ollin-gif-flat-\(UUID().uuidString).gif"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let side = 480, frames = 200
+        let writer = try GIFWriter(path: path, width: side, height: side)
+        var afterTen = 0
+        for k in 0..<frames {
+            try autoreleasepool { try writer.append(Self.frame(side: side, k), delay: 0.04) }
+            if k == 9 { afterTen = Self.footprint() }
+        }
+        let afterAll = Self.footprint()
+        try writer.finish()
+        try #require(afterTen > 0 && afterAll > 0)
+        let grew = afterAll - afterTen
+        #expect(grew < 40 * 1024 * 1024, "grew \(grew / 1_048_576) MB over 190 frames")
     }
 }

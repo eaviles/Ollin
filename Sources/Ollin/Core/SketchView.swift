@@ -3356,8 +3356,8 @@ public extension OllinApp {
                                     slowMotion: slowMotion, writesEXR: writesEXR)
             return true
         }
-        // `--export-loop <path> [--fps F] [--skip S] [--gif-width PX] [--codec C]
-        // [--bitrate MBPS] [--quality 0..1]` renders exactly one period of a
+        // `--export-loop <path> [--fps F] [--skip S] [--gif-width PX] [--gif-palette P]
+        // [--codec C] [--bitrate MBPS] [--quality 0..1]` renders exactly one period of a
         // sketch that declares `loopDuration`, as a seamlessly looping GIF or
         // video (picked by the file extension), and exits.
         if let i = args.firstIndex(of: "--export-loop"), i + 1 < args.count {
@@ -3374,7 +3374,7 @@ public extension OllinApp {
                 FileHandle.standardError.write(Data("""
                     --export-loop renders one period of a sketch that declares its loop:
                         override var loopDuration: Double? { 6 }   // seconds per lap
-                    usage: --export-loop <path.gif|.mp4|.mov> [--fps F] [--skip S] [--gif-width PX] [--codec C] [--bitrate MBPS] [--quality 0..1]
+                    usage: --export-loop <path.gif|.mp4|.mov> [--fps F] [--skip S] [--gif-width PX] [--gif-palette shared|per-frame] [--codec C] [--bitrate MBPS] [--quality 0..1]
 
                     """.utf8))
                 return true
@@ -3395,9 +3395,10 @@ public extension OllinApp {
             }
             if isGIF {
                 let width = value("--gif-width").flatMap(Int.init)
+                guard let palette = gifPalette(value("--gif-palette")) else { return true }
                 OllinApp.exportGIF(sketch, to: path, frames: frames, fps: loopFPS,
                                    width: width, skipSeconds: skip, renderQuality: renderQuality,
-                                   slowMotion: slowMotion)
+                                   slowMotion: slowMotion, palette: palette)
             } else {
                 var codec = VideoCodec.h264
                 if let name = value("--codec") {
@@ -3578,7 +3579,7 @@ public extension OllinApp {
             return true
         }
         // `--export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S]
-        // [--gif-width PX]` writes a looping animated GIF and exits.
+        // [--gif-width PX] [--gif-palette P]` writes a looping animated GIF and exits.
         if let i = args.firstIndex(of: "--export-gif"), i + 1 < args.count {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
@@ -3596,12 +3597,13 @@ public extension OllinApp {
             let width = value("--gif-width").flatMap(Int.init)
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX] [--slow-motion N]\n".utf8))
+                    "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX] [--gif-palette shared|per-frame] [--slow-motion N]\n".utf8))
                 return true
             }
+            guard let palette = gifPalette(value("--gif-palette")) else { return true }
             OllinApp.exportGIF(make(), to: args[i + 1], frames: frames, fps: fps,
                                width: width, skipSeconds: skip, renderQuality: renderQuality,
-                               slowMotion: slowMotion)
+                               slowMotion: slowMotion, palette: palette)
             return true
         }
         // `--export-grid <path.png> [--seeds N] [--columns C] [--tile PX]
@@ -4169,4 +4171,14 @@ private func paperSize(flag text: String) -> PaperSize? {
     case "portrait": return sheet.portrait
     default: return nil
     }
+}
+
+/// `--gif-palette` as a table choice: absent is the shared table, and a word
+/// that is neither spelling names both and refuses the run.
+private func gifPalette(_ flag: String?) -> GIFWriter.Palette? {
+    guard let flag else { return .shared }
+    if let palette = GIFWriter.Palette(rawValue: flag) { return palette }
+    FileHandle.standardError.write(Data(
+        "unknown --gif-palette '\(flag)': expected \(GIFWriter.Palette.allCases.map(\.rawValue).joined(separator: " or "))\n".utf8))
+    return nil
 }

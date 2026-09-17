@@ -1032,14 +1032,15 @@ da066775fa9e  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
 c71aeda5d128  Docs/Output/Export.md:172  cannot find 'sketch' in scope
 9e462dad8137  Docs/Output/Export.md:212  cannot find 'sketch' in scope
-793786ace256  Docs/Output/Export.md:344  cannot find 'sketch' in scope
-2a1e64e9e42f  Docs/Output/Export.md:364  cannot find 'sketch' in scope
-f480df453d20  Docs/Output/Export.md:380  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:400  'canvasSize' has already been overridden
-d7bc2e33fbb1  Docs/Output/Export.md:455  cannot find 'MySketch' in scope
-0ab55be9d1bf  Docs/Output/Export.md:462  cannot find 'someShape' in scope
-00955c273f6b  Docs/Output/Export.md:643  cannot find 'MySketch' in scope
-7b4f2a06de9c  Docs/Output/Export.md:670  cannot find 'MySketch' in scope
+d6af9cd76d9a  Docs/Output/Export.md:267  cannot find 'images' in scope
+793786ace256  Docs/Output/Export.md:358  cannot find 'sketch' in scope
+2a1e64e9e42f  Docs/Output/Export.md:378  cannot find 'sketch' in scope
+f480df453d20  Docs/Output/Export.md:394  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:414  'canvasSize' has already been overridden
+d7bc2e33fbb1  Docs/Output/Export.md:469  cannot find 'MySketch' in scope
+0ab55be9d1bf  Docs/Output/Export.md:476  cannot find 'someShape' in scope
+00955c273f6b  Docs/Output/Export.md:657  cannot find 'MySketch' in scope
+7b4f2a06de9c  Docs/Output/Export.md:684  cannot find 'MySketch' in scope
 a0541b6d0dfe  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 408662c0edcc  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope

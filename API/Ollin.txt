@@ -390,7 +390,7 @@ enum OllinApp: Sendable
   static func exportEXR(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default)
   static func exportEmbroidery(_: Sketch, to: String, settings: Embroidery, frame: Int = default, fps: FrameRate = default)
   static func exportGCode(_: Sketch, to: String, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
-  static func exportGIF(_: Sketch, to: String, frames: Int, fps: FrameRate = default, width: Int? = default, skipSeconds: Double = default, renderQuality: RenderQuality = default, slowMotion: SlowMotion? = default)
+  static func exportGIF(_: Sketch, to: String, frames: Int, fps: FrameRate = default, width: Int? = default, skipSeconds: Double = default, renderQuality: RenderQuality = default, slowMotion: SlowMotion? = default, palette: GIFWriter.Palette = default)
   static func exportPDF(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
   static func exportPlates(_: Sketch, to: String, profile: ICCProfile? = default, intent: RenderingIntent = default, simulatesPaper: Bool = default, frame: Int = default, fps: FrameRate = default, drawsRegistrationMarks: Bool = default, quality: RenderQuality = default, screen: (ProcessSeparation) -> ProcessSeparation = default)
   static func exportSVG(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
@@ -1141,6 +1141,22 @@ final class FrameStats: Observable
   var time: Double { get }
   var variation: Int? { get }
   var vertexCount: Int { get }
+final class GIFWriter
+  enum Palette: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+    case perFrame
+    case shared
+  func append(_: CoreGraphics.CGImage, delay: Double) throws
+  func finish() throws
+  init(path: String, width: Int, height: Int, palette: GIFWriter.Palette = default, loops: Int = default) throws
+  let height: Int
+  let loops: Int
+  let palette: GIFWriter.Palette
+  let path: String
+  let width: Int
+  struct WriteError: CustomStringConvertible, Equatable, Error, Sendable
+    let problem: String
+    var description: String { get }
+  var frameCount: Int { get }
 final class IKChain
   @discardableResult func reach(toward: Vector2, iterations: Int = default, tolerance: Double = default) -> Bool
   convenience init(from: Vector2, segments: Int, length: Double, angle: Double = default)

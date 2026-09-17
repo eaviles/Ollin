@@ -38,7 +38,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Transparent output](#transparent-output) - `background(.clear)` kept as alpha in the PNG, the sequence, the GIF, and a `proRes4444` / `hevcWithAlpha` clip
 - [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
 - [Web page](Web.md) - `--export-web`, a page that plays what the sketch drew back in a browser, standalone or inline (its own page)
-- [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
+- [Animated GIF](#animated-gif) - `--export-gif`, `--gif-palette`, `OllinApp.exportGIF`, and `GIFWriter` for frames of your own
 - [Perfect loops](#perfect-loops) - `--export-loop`, `Sketch.loopDuration`
 - [Slow motion](#slow-motion) - `--slow-motion`, `--made-frames`, a file that plays slower than the sketch ran
 - [Settled frames](#settled-frames) - `--settle`, each written frame drawn several times with the clock held, for a picture that converges
@@ -256,9 +256,23 @@ In code it is `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is l
 
 Watch out for **full-frame motion**. A piece where every pixel moves every frame, such as a drifting field or a full-canvas texture, defeats GIF's frame-to-frame compression. Even at a modest width, such a file can reach tens of megabytes. Lowering `--fps` cuts the file roughly in proportion, and sparse motion over a stable background compresses better.
 
-A GIF is **built whole in memory** and written when the last frame is in. The system's image writer keeps every frame it is handed. So what a GIF asks for rises with the frame count, at roughly ten bytes per pixel per frame. A 150-frame loop at 1080 by 1080 asks for about 1.6 GB, and 600 frames at that size ask for six. The export prints that figure before the first frame is drawn, once it passes an eighth of the machine's memory. Stopping the run then costs nothing.
+A GIF is **written as it is drawn**. Each frame goes into the file the moment it is rendered, so what an export asks of memory does not rise with its length: a 600-frame loop at 1080 by 1080 costs the same as a 20-frame one. The system's own image writer keeps every frame until the file is laid down, at about ten bytes per pixel per frame, which is why Ollin writes the format itself.
 
-There are two ways down. `--gif-width` pays back with the square, since the height follows it: halving the width quarters the memory. Or write video instead. `--export-video` encodes each frame into the file as it arrives, so its memory does not rise with the length. Measured on a 900-frame export at 1080 by 1080, the file grew from 7 MB to 67 MB. The process held 137 to 142 MB throughout. `--export-sequence` behaves the same way, one file per frame.
+The format holds 256 colors a frame. By default one table is chosen from the first frame and shared by every frame after it, so a color never shifts between frames. Colors that arrive later join that table as they come, so a piece that draws itself in over time keeps every color it gains. Only when the format's 256 are spent does a frame that needs more get a table of its own, which the frames after it share; a piece that fades in from black spends them on its first frames, so `--skip` past the fade. `--gif-palette per-frame` chooses a table for every frame from that frame alone. It is truer to a piece where every frame's colors are its own, at a table's worth of bytes a frame, and an area that changes slowly can shimmer as the table under it moves. In code it is `palette: .perFrame` on `exportGIF`.
+
+Pixels that did not change since the frame before are left alone and each frame is cropped to what moved, which is what keeps a still background cheap. A picture of few colors is coded in fewer bits per pixel.
+
+The writer is yours to drive too. `GIFWriter` takes any `CGImage`, drawn into its own size on the way in, so an extension or a sketch can write a GIF of frames it made itself:
+
+```swift
+let gif = try GIFWriter(path: "out.gif", width: 540, height: 540)
+for image in images {
+    try gif.append(image, delay: 0.04)
+}
+try gif.finish()
+```
+
+`palette:` takes `.shared` or `.perFrame`, and `loops:` says how many times the file plays, 0 forever and 1 once through.
 
 One timing limit comes from the format itself. GIF stores each frame's delay in whole centiseconds, so the achievable rates are 50, 33.3, 25, 20, … fps. The requested `--fps` (default 25, which is exact) is rounded to the closest achievable rate, and the sketch's clock runs at *that* rate. So motion always plays back at true speed, and the clip keeps its requested duration.
 

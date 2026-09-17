@@ -1,8 +1,6 @@
 import AVFoundation
 import CoreGraphics
 import Foundation
-import ImageIO
-import UniformTypeIdentifiers
 import VideoToolbox
 
 /// The codec a video export encodes with.
@@ -370,47 +368,14 @@ public extension OllinApp {
                      frames, elapsed, path, fileSizeMB(of: path)))
     }
 
-    /// Roughly what an animated GIF of this shape asks of memory, in bytes.
-    ///
-    /// The image writer keeps every frame it is handed and lays the file down
-    /// when it is finalized, so a GIF costs the whole animation at once rather
-    /// than a frame at a time, and the cost rises with the frame count. The
-    /// video writer takes the opposite shape: it encodes each frame into the
-    /// file as it arrives, so its memory does not move with the length.
-    ///
-    /// Ten bytes a pixel a frame is measured, not derived: four are the pixels
-    /// themselves and the rest is what the writer keeps beside them. Five runs
-    /// on one M2, at two sizes and four lengths, all landed within 4% of it
-    /// (`GIFMemoryTests`). It is an estimate for a sentence, not a budget.
-    internal nonisolated static func gifPeakBytes(frames: Int, width: Int, height: Int) -> Int {
-        max(0, frames) * max(0, width) * max(0, height) * 10
-    }
-
-    /// What to say before a GIF export that will ask for a large share of this
-    /// machine's memory, and nil when it is not worth a line.
-    ///
-    /// The bar is an eighth of the memory the machine has, which is where the
-    /// run starts competing with everything else open rather than merely being
-    /// large. Both ways out are named, because neither is obvious from the
-    /// flag: a narrower picture pays back with the square of the change, since
-    /// the height follows it, and the video export has no ceiling of this kind
-    /// at all.
-    internal nonisolated static func gifMemoryNote(frames: Int, width: Int, height: Int,
-                              physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> String? {
-        let peak = gifPeakBytes(frames: frames, width: width, height: height)
-        guard physicalMemory > 0, Double(peak) * 8 >= Double(physicalMemory) else { return nil }
-        return String(format:
-            "Ollin: a GIF is held whole in memory until it is written, about %.1f GB for %d frames at %d×%d. "
-            + "--gif-width %d asks for a quarter of that, and --export-video streams to the file instead.",
-            Double(peak) / 1_073_741_824, frames, width, height, max(1, width / 2))
-    }
-
     /// Render `sketch` headlessly and write an animated GIF that loops forever.
     /// The right framing is short loops at modest sizes: GIF is palette-limited
     /// (256 colors) and heavy per second next to video, so for anything long or
     /// subtle, `exportVideo` is the better tool. `width` downscales the output
     /// (height follows the canvas aspect); the canvas size is used as-is when
-    /// omitted.
+    /// omitted. Frames go into the file as they are drawn (`GIFWriter`), so the
+    /// memory of a run does not move with its length; `palette` picks one table
+    /// shared by every frame or one chosen per frame.
     ///
     /// GIF stores each frame's delay in whole centiseconds, so the achievable
     /// rates are 50, 33.3, 25, 20, … fps. The requested `fps` is quantized to
@@ -422,7 +387,8 @@ public extension OllinApp {
                           width targetWidth: Int? = nil,
                           skipSeconds: Double = 0,
                           renderQuality: RenderQuality = .detail,
-                          slowMotion: SlowMotion? = nil) {
+                          slowMotion: SlowMotion? = nil,
+                          palette: GIFWriter.Palette = .shared) {
         guard frames > 0 else { return }
         let fps = fps.framesPerSecond
         let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
@@ -439,28 +405,12 @@ public extension OllinApp {
         let outWidth = targetWidth ?? size.width
         let outHeight = max(1, Int((Double(size.height) * Double(outWidth) / Double(size.width)).rounded()))
 
-        // The whole animation is held until the file is laid down, so a long
-        // one can ask for more than the machine has. Said before the first
-        // frame is drawn, while stopping still costs nothing.
-        if let note = gifMemoryNote(frames: effectiveFrames, width: outWidth, height: outHeight) {
-            print(note)
+        let writer: GIFWriter
+        do {
+            writer = try GIFWriter(path: path, width: outWidth, height: outHeight, palette: palette)
+        } catch {
+            fatalError("Ollin: failed to create the GIF writer for \(path): \(error)")
         }
-
-        let url = URL(fileURLWithPath: path)
-        try? FileManager.default.removeItem(at: url)
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString,
-                                                                effectiveFrames, nil) else {
-            fatalError("Ollin: failed to create the GIF writer for \(path)")
-        }
-        CGImageDestinationSetProperties(destination, [
-            kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0],   // 0 = loop forever
-        ] as CFDictionary)
-        let frameProperties = [
-            kCGImagePropertyGIFDictionary: [
-                kCGImagePropertyGIFDelayTime: delay,
-                kCGImagePropertyGIFUnclampedDelayTime: delay,
-            ],
-        ] as CFDictionary
 
         print("Ollin: exporting \(effectiveFrames) frames at \(Int(effectiveFPS.rounded())) fps → \(path) (\(outWidth)×\(outHeight), gif)")
         if let motion { print(motion.note(written: effectiveFrames, fps: effectiveFPS)) }
@@ -470,27 +420,18 @@ public extension OllinApp {
             guard let cgImage = rendered.image else {
                 fatalError("Ollin: failed to read frame \(index) back")
             }
-            var frame = cgImage
-            if outWidth != size.width {
-                guard let context = CGContext(data: nil, width: outWidth, height: outHeight,
-                                              bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-                                                  | CGBitmapInfo.byteOrder32Little.rawValue) else {
-                    fatalError("Ollin: failed to downscale frame \(index)")
-                }
-                context.interpolationQuality = .high
-                context.draw(cgImage, in: CGRect(x: 0, y: 0, width: outWidth, height: outHeight))
-                guard let scaled = context.makeImage() else {
-                    fatalError("Ollin: failed to downscale frame \(index)")
-                }
-                frame = scaled
+            // The writer draws the frame into its own size, so `--gif-width`
+            // is the same call as the canvas size.
+            do {
+                try writer.append(cgImage, delay: delay)
+            } catch {
+                fatalError("Ollin: failed to write frame \(index) of \(path): \(error)")
             }
-            CGImageDestinationAddImage(destination, frame, frameProperties)
         }
-
-        guard CGImageDestinationFinalize(destination) else {
-            fatalError("Ollin: failed to finish \(path)")
+        do {
+            try writer.finish()
+        } catch {
+            fatalError("Ollin: failed to finish \(path): \(error)")
         }
         print(String(format: "Ollin: exported %d frames in %.1fs → %@ (%.1f MB)",
                      effectiveFrames, elapsed, path, fileSizeMB(of: path)))

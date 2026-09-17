@@ -108,6 +108,7 @@ public extension CommandFlag {
         .init("--bitrate", .run, .value("MBPS"), "the encoder's bitrate"),
         .init("--codec", .run, .value("h264|hevc|hevcWithAlpha|proRes422|proRes4444"), "the encoder"),
         .init("--gif-width", .run, .value("PX"), "downscale the GIF to this width"),
+        .init("--gif-palette", .run, .value("shared|per-frame"), "one table for the whole GIF, or one a frame"),
         .init("--size", .run, .value("WxH"), "the pixel size a widget's run is drawn at"),
         .init("--exr", .run, .nothing, "write a sequence in linear light instead of PNG"),
         .init("--inline", .run, .nothing, "write a page fragment instead of a whole file"),

@@ -2,6 +2,7 @@ import AVFoundation
 import CoreGraphics
 import ImageIO
 import Ollin
+import os
 import Testing
 
 /// Video and GIF export correctness: encode a short clip from a tiny
@@ -79,6 +80,62 @@ struct VideoExportTests {
         let frameProperties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         let frameGIF = frameProperties?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
         #expect(frameGIF?[kCGImagePropertyGIFDelayTime] as? Double == 0.04)
+    }
+
+    /// A GIF export's peak does not rise with its length: the same sketch at
+    /// six times the frames peaks where the short run did. Holding the frames
+    /// would have added about 90 MB at this size; the bound is well under
+    /// that, with room for whatever else the suite is doing meanwhile.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aGIFExportsPeakDoesNotRiseWithItsLength() throws {
+        let short = ollinTempPath("ollin-gif-peak-short.gif"), long = ollinTempPath("ollin-gif-peak-long.gif")
+        defer { try? FileManager.default.removeItem(atPath: short); try? FileManager.default.removeItem(atPath: long) }
+        let sampler = FootprintSampler()
+        sampler.start()
+        OllinApp.exportGIF(Wander(), to: short, frames: 20, fps: 25)
+        let shortPeak = sampler.stop()
+        sampler.start()
+        OllinApp.exportGIF(Wander(), to: long, frames: 120, fps: 25)
+        let longPeak = sampler.stop()
+        #expect(longPeak - shortPeak < 40 * 1024 * 1024,
+                "short \(shortPeak / 1_048_576) MB, long \(longPeak / 1_048_576) MB")
+        let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: long) as CFURL, nil))
+        #expect(CGImageSourceGetCount(source) == 120)
+    }
+}
+
+/// The process footprint, read every few milliseconds on a plain thread while
+/// an export runs on this one, so the peak inside the run is what is measured.
+private final class FootprintSampler: @unchecked Sendable {
+    private let state = OSAllocatedUnfairLock(initialState: (peak: 0, running: false))
+
+    func start() {
+        state.withLock { $0 = (0, true) }
+        let thread = Thread { [state] in
+            while state.withLock({ $0.running }) {
+                let now = GIFMemoryTests.footprint()
+                state.withLock { if now > $0.peak { $0.peak = now } }
+                usleep(3000)
+            }
+        }
+        thread.start()
+    }
+
+    func stop() -> Int {
+        state.withLock { $0.running = false; return $0.peak }
+    }
+}
+
+/// A disc wandering over a flat field at a size worth measuring.
+private final class Wander: Sketch {
+    override var canvasSize: CanvasSize { .square(480) }
+
+    override func draw() {
+        background(Color(red: 0.1, green: 0.2, blue: 0.3))
+        noStroke()
+        fill(Color(red: 1, green: 0.8, blue: 0.2))
+        drawCircle(width * (0.2 + 0.6 * (time * 0.7).truncatingRemainder(dividingBy: 1)),
+                   height * (0.3 + 0.4 * (time * 0.3).truncatingRemainder(dividingBy: 1)), 40)
     }
 }
 
