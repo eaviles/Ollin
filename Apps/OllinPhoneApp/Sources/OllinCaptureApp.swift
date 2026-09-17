@@ -13,7 +13,9 @@ import simd
 /// phone (SoundAnalysis, behind the Hear switch), the air it is standing in
 /// (CoreMotion's barometer, behind the Air switch), every finger on its own screen
 /// (Touch mode, no camera at all), and CoreMotion device motion, and
-/// streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
+/// streams them to a tethered Mac over USB. In Sketch mode it runs the other way
+/// as well: the screen shows a sketch the Mac is running, sent down the cable as
+/// video, and the fingers on it go back (usbmuxd → `PhoneWire.streamPort`), where an Ollin
 /// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
 struct OllinCaptureApp: App {
@@ -54,6 +56,10 @@ struct OllinCaptureApp: App {
 /// one sits, how wide it is, how hard it presses where the glass can tell, and
 /// how long it has been down. No camera session runs, which is what keeps the
 /// phone cool and its battery alive through a long set.
+///
+/// Sketch is Touch turned into a screen: the Mac sends the sketch it is running as
+/// video, the phone shows it full screen, and the fingers on the picture go back
+/// as the sketch's input. No camera runs in it either.
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
@@ -103,6 +109,8 @@ final class SensorStreamer {
     var flowInfo = ""
     var touchLive = false
     var touchInfo = ""
+    /// The mode to go back to when the person leaves Sketch mode's full screen.
+    private(set) var modeBeforeSketch: CaptureMode = .touch
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
@@ -169,6 +177,9 @@ final class SensorStreamer {
     let airSupported = AirStreamer.isSupported
 
     private var server: SensorServer?
+    /// The connection pictures arrive on. It keeps only its newest client, so a
+    /// sketch reloaded on the Mac takes the screen over from the one before it.
+    private var pictureServer: SensorServer?
     private let ar = ARStreamer()
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
@@ -186,6 +197,8 @@ final class SensorStreamer {
     /// The second streamer the screen writes into rather than only reading: in
     /// Touch mode the glass *is* the sensor, so the pad reaches it directly.
     let touch = TouchStreamer()
+    /// The sketch's picture in Sketch mode, fed from its own connection.
+    let screen = SketchScreen()
     private let sound = SoundStreamer()
     private let air = AirStreamer()
     private let motion = MotionStreamer()
@@ -231,6 +244,17 @@ final class SensorStreamer {
                 Task { @MainActor in self?.apply(request) }
             }
             self.server = server
+            // Pictures go straight to the display layer on the server's queue;
+            // anything else on this connection is a request like any other.
+            let sink = screen.sink
+            pictureServer = try SensorServer(port: PhoneWire.picturePort, keepsOnlyNewest: true,
+                                             onRequest: { [weak self] request in
+                if case .picture(let picture) = request {
+                    sink.receive(picture)
+                } else {
+                    Task { @MainActor in self?.apply(request) }
+                }
+            })
         } catch {
             status = "Couldn't open the listener: \(error.localizedDescription)"
             return
@@ -459,8 +483,14 @@ final class SensorStreamer {
     /// the other is paused first; device motion keeps streaming across the switch.
     func setMode(_ newMode: CaptureMode) {
         guard newMode != mode else { return }
+        if newMode == .sketch { modeBeforeSketch = mode }
         mode = newMode
         applyMode()
+    }
+
+    /// Leave the sketch's full screen for the mode the phone was in before it.
+    func leaveSketch() {
+        setMode(modeBeforeSketch == .sketch ? .touch : modeBeforeSketch)
     }
 
     // MARK: What the Mac asks for
@@ -518,7 +548,7 @@ final class SensorStreamer {
         case .segment: return segSupported
         case .selfie: return selfieSupported
         case .room: return meshSupported
-        case .hands, .text, .markers, .wand, .attention, .flow, .touch: return true
+        case .hands, .text, .markers, .wand, .attention, .flow, .touch, .sketch: return true
         }
     }
 
@@ -585,6 +615,11 @@ final class SensorStreamer {
             touchInfo = ""
             touch.start()
             status = "Play the pad below. No camera runs in this mode"
+        case .sketch:
+            touchLive = false
+            touchInfo = ""
+            touch.start()
+            status = "Showing the sketch the Mac is running. No camera runs in this mode"
         case .room:
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
@@ -617,6 +652,9 @@ final class SensorStreamer {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
         room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
         attention.stop(); flow.stop(); touch.stop()
+        // Whatever picture was up belongs to the mode being left; coming back to
+        // Sketch starts again from the Mac's next keyframe.
+        screen.end()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -641,6 +679,20 @@ struct ContentView: View {
     private var connected: Bool { streamer.clientCount > 0 }
 
     var body: some View {
+        Group {
+            if streamer.mode == .sketch {
+                SketchScreenView(screen: streamer.screen, touch: streamer.touch) {
+                    streamer.leaveSketch()
+                }
+            } else {
+                modes
+            }
+        }
+        .onAppear { streamer.start() }
+    }
+
+    /// Everything but the sketch's full screen: the title, the modes, the status.
+    private var modes: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 28) {
@@ -671,14 +723,14 @@ struct ContentView: View {
                 // Capture mode: one camera session at a time (rear: body/world/
                 // segment/room/hands/text/markers/wand/attention/flow, front:
                 // face/selfie), so the modes are mutually exclusive; Touch runs no
-                // camera at all. Thirteen modes outgrew the segmented control, so
-                // they wrap as five rows of chips.
+                // camera at all, and neither does Sketch. Fourteen modes outgrew the
+                // segmented control, so they wrap as five rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world])
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
                     modeRow([.wand, .attention, .flow])
-                    modeRow([.touch], padTo: 3)
+                    modeRow([.touch, .sketch], padTo: 3)
                     // Hearing and the air are switches rather than modes: neither
                     // needs a camera, so both ride beside whichever mode is on.
                     // Drawn as chips so they sit with the others, but they toggle
@@ -752,6 +804,9 @@ struct ContentView: View {
                             ? "waiting for a finger…"
                             : streamer.touchInfo,
                             ok: streamer.touchLive)
+                    case .sketch:
+                        // Drawn full screen instead; this row is never on screen.
+                        row("Sketch", "showing", ok: true)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -800,7 +855,6 @@ struct ContentView: View {
                     .padding(.bottom, 12)
             }
         }
-        .onAppear { streamer.start() }
     }
 
     /// What the phone is looking for: one line per reference, what it assumed about

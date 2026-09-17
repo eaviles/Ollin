@@ -394,6 +394,7 @@ let package = Package(
         // The phone played rather than watching: every finger on its screen lands
         // on the canvas, each tap rings out, and lifting the phone warms it.
         example("3D/Phone/PhoneTouches", [.phone]),
+        example("3D/Phone/PhoneCanvas", [.phone]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

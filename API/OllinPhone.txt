@@ -63,6 +63,7 @@ enum PhoneCaptureMode: UInt8, CaseIterable, Equatable, Hashable, Identifiable, R
   case room
   case segment
   case selfie
+  case sketch
   case text
   case touch
   case wand
@@ -169,11 +170,13 @@ enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresent
 enum PhoneRequest: Equatable, Sendable
   case library(count: Int)
   case mode(PhoneCaptureMode)
+  case picture(PhonePicture)
   case reference(PhoneReference)
   var kind: PhoneRequestKind { get }
 enum PhoneRequestKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case library
   case mode
+  case picture
   case reference
 enum PhoneSurface: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case ceiling
@@ -202,10 +205,12 @@ enum PhoneWire
   static let markerObjectExtension: String
   static let maxPayloadBytes: Int
   static let maxReferences: Int
+  static let picturePort: UInt16
   static let requestMagic: UInt32
   static let streamPort: UInt16
   static let version: UInt8
 final class PhoneDevice: FrameSource, VideoFeed, Sendable
+  @discardableResult func show(_: Sketch, frameRate: FrameRate = default) -> PhoneScreen
   func look(for: [PhoneReference])
   func marker(named: String) -> PhoneMarker?
   func pointCloud(minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) -> PointCloud?
@@ -252,6 +257,15 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var sceneMesh: PhoneSceneMesh { get }
   var sceneMeshVersion: Int? { get }
   var waitingMessage: String { get }
+final class PhoneScreen: SketchExtension, Sendable
+  func beforeDraw(_: Sketch)
+  func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
+  func stop()
+  let device: PhoneDevice
+  let frameRate: FrameRate
+  var drivesPointer: Bool { get set }
+  var isShowing: Bool { get }
+  var wantsRenderedTexture: Bool { get }
 final class PhoneSounds: Sendable
   func confidence(of: String) -> Double
   func events() -> [SoundEvent]
@@ -502,6 +516,13 @@ struct PhoneMotionSample: Equatable, Sendable
   var rotationRate: SIMD3<Float> { get set }
   var timestamp: Double { get set }
   var userAcceleration: SIMD3<Float> { get set }
+struct PhonePicture: Equatable, Sendable
+  init(width: Int, height: Int, isKeyframe: Bool, parameterSets: [Foundation.Data] = default, data: Foundation.Data)
+  var data: Foundation.Data { get set }
+  var height: Int { get set }
+  var isKeyframe: Bool { get set }
+  var parameterSets: [Foundation.Data] { get set }
+  var width: Int { get set }
 struct PhonePlane: Identifiable, Sendable
   init(id: Foundation.UUID, surface: PhoneSurface, alignment: PhonePlaneAlignment, center: Vector3, normal: Vector3, width: Double, height: Double, boundary: [Vector3])
   let alignment: PhonePlaneAlignment

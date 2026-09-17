@@ -324,8 +324,9 @@ c517bfa97332  Guide/30-Seeing.md:425  cannot find 'ScreenCapture' in scope
 ad5358257b7a  Guide/30-Seeing.md:444  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:465  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
 9f0265c15491  Guide/30-Seeing.md:61  cannot find 'FaceTracker' in scope
-2c5147e37054  Guide/31-SharingAndPerforming.md:1011  cannot find '$radius' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1030  cannot find '$frame' in scope
+f51397a62393  Guide/31-SharingAndPerforming.md:1026  cannot find '$radius' in scope
+2c5147e37054  Guide/31-SharingAndPerforming.md:1043  cannot find '$radius' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1062  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
 e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
 ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
@@ -343,8 +344,7 @@ fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in sco
 29f2f3575884  Guide/31-SharingAndPerforming.md:722  cannot find 'HapticPattern' in scope
 3f87e906c5a4  Guide/31-SharingAndPerforming.md:751  cannot find 'MyWatermark' in scope
 161ff6887e4d  Guide/31-SharingAndPerforming.md:779  cannot find 'points' in scope
-2c60fc19e1c4  Guide/31-SharingAndPerforming.md:933  cannot find '$radius' in scope
-f51397a62393  Guide/31-SharingAndPerforming.md:994  cannot find '$radius' in scope
+2c60fc19e1c4  Guide/31-SharingAndPerforming.md:965  cannot find '$radius' in scope
 32976ec86c4b  Guide/32-Installations.md:206  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:351  cannot find 'worldPoint' in scope
 edf95f807bfe  Guide/32-Installations.md:375  cannot find 'speed' in scope

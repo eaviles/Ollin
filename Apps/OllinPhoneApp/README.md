@@ -30,12 +30,15 @@ Body, World, Segment, Room, Hands, Text, Markers, Wand, Attention, and Flow use 
 rear camera; Face
 (ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
 Only one camera session runs at a time. **Touch** runs no camera at all: the
-screen is the sensor there. The app has a **Body / Face / World /
+screen is the sensor there. **Sketch** runs none either, and it is the one mode
+where the traffic is mostly the other way: the Mac sends the sketch it is running
+as HEVC video, the screen shows it full screen, and the fingers on the picture go
+back as the sketch's pointer. The app has a **Body / Face / World /
 Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow /
-Touch** toggle and runs one mode at a
+Touch / Sketch** toggle and runs one mode at a
 time. Device motion
-streams in all of them; the room's light in every mode except Selfie and Touch,
-the two with no ARKit session to measure it. **Hear** is a switch under the modes
+streams in all of them; the room's light in every mode except Selfie, Touch, and
+Sketch, the three with no ARKit session to measure it. **Hear** is a switch under the modes
 rather than a
 mode: it needs no camera, so it names the sounds around the phone beside whichever
 mode is on, and the phone asks for the microphone once. Only the labels and how
@@ -49,9 +52,15 @@ measuring, and the altimeter asks its own permission once.
   lives in the `OllinPhone` Mac target and is compiled *verbatim* into this app too
   (see `project.yml`'s `sources`). It imports only Foundation/simd — never Ollin or
   Metal — so the same source builds on both ends and the framing can't drift.
+  [`PhonePictureCoding.swift`](../../Sources/OllinPhone/PhonePictureCoding.swift) is
+  shared the same way (CoreMedia only): it rebuilds a picture off the wire into the
+  sample buffer the display layer decodes, so the Mac's tests run what the phone runs.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.
+  A second listener on `PhoneWire.picturePort` (1339) takes a sketch's pictures in
+  Sketch mode, so a picture never waits behind a sensor reading; it keeps only its
+  newest client, which is how a sketch reloaded on the Mac takes the screen over.
 - **Readings push out.** Each ARKit body/face/depth update and motion sample is
   encoded with `PhoneWire` and broadcast to the connected Mac. The device-motion
   payload is the cheap transport smoke-test: it moves the instant the wire is alive,
@@ -100,8 +109,8 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text / Markers / Wand / Attention / Flow / Touch** toggle and live
-   status.
+   Hands / Text / Markers / Wand / Attention / Flow / Touch / Sketch** toggle and
+   live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -141,7 +150,10 @@ Requirements:
    streaks colored by speed, with dust that scatters and settles. On **Touch**:
    `swift run --package-path Examples Example-3D-Phone-PhoneTouches`, then play the
    pad with both hands and every finger lands on the Mac's canvas, each tap ringing
-   out where it fell. With **Hear** switched
+   out where it fell. For **Sketch** the sketch asks for the mode itself:
+   `swift run --package-path Examples Example-3D-Phone-PhoneCanvas`, and the phone's
+   screen turns into the Mac's canvas; paint with a finger and tilt the phone to
+   pour it. The arrow in the top corner leaves the full screen. With **Hear** switched
    on beside any mode:
    `swift run --package-path Examples Example-3D-Phone-PhoneSounds`, then clap, talk,
    or knock, and each sound the phone names rings out on the Mac's canvas as it

@@ -123,7 +123,9 @@ struct TouchPad: UIViewRepresentable {
 /// A view that reports every finger on it. All four phases funnel into one
 /// report of the whole live set, because the streamer reconciles rather than
 /// following phases, and because the last release must go out as an empty set.
-final class TouchPadView: UIView {
+///
+/// Open to one subclass: in Sketch mode the pad is the picture itself.
+class TouchPadView: UIView {
     weak var streamer: TouchStreamer?
 
     override init(frame: CGRect) {

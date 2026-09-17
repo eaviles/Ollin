@@ -10949,6 +10949,11 @@
       "rendered": "2026-09-10",
       "source": "3034971cf166d2a8"
     },
+    "3D/Phone/PhoneCanvas": {
+      "reason": "needs a device at the desk: imports OllinPhone",
+      "rendered": "2026-09-17",
+      "source": "8fc9fb10d9a31a1a"
+    },
     "3D/Phone/PhoneCostume": {
       "reason": "needs a device at the desk: imports OllinPhone",
       "rendered": "2026-09-10",

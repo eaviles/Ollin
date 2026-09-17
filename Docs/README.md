@@ -157,7 +157,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Depth compositing`](./3D/DepthCompositing.md) - place 2D drawing *inside* a 3D scene, so it occludes the geometry and is occluded by it: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud)
 - [`Record3D`](./3D/Record3D.md) - `import OllinRecord3D` turns an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream
 - [`RGBD`](./3D/RGBD.md) - the one `RGBDFrame` (color + depth + intrinsics) that any depth source produces. Unproject it to a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space (`Body.lifted(through:)`).
-- [`Phone`](./3D/Phone.md) - `import OllinPhone` reads a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app, over the USB cable. The stream carries a 3D body skeleton, a face mesh with expression blendshapes, and the hands in view as 21-joint skeletons lifted to metric 3D. It also carries the recognized text lines with their corners lifted to 3D, world-facing rear-LiDAR depth (a metric point cloud with the camera's 6DoF pose), the reconstructed room as a labeled surface, a person matte, how the picture is moving as a motion field, and device motion.
+- [`Phone`](./3D/Phone.md) - `import OllinPhone` reads a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app, over the USB cable. The stream carries a 3D body skeleton, a face mesh with expression blendshapes, and the hands in view as 21-joint skeletons lifted to metric 3D. It also carries the recognized text lines with their corners lifted to 3D, world-facing rear-LiDAR depth (a metric point cloud with the camera's 6DoF pose), the reconstructed room as a labeled surface, a person matte, how the picture is moving as a motion field, and device motion. A sketch on the Mac can also put itself on the phone's screen, sent down the cable as video, with the finger on the glass as its pointer.
 
 ### Generators
 
@@ -299,7 +299,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 
 - [`Project generator`](./Tools/ProjectGenerator.md) - `ollin new` and `ollin generate`: a ready-to-run sketch folder from a few questions, with templates you can watch running before you pick one
 - [`Single-file sketches`](./Tools/SingleFile.md) - the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed
-- [`The sketch on the phone`](./Tools/OnThePhone.md) - `ollin phone`: the sketch on a paired iPhone or iPad. It is installed again on every save, with its clock and parameters carried across, and the parameters stay live on the Mac.
+- [`The sketch on the phone`](./Tools/OnThePhone.md) - `ollin phone`: the sketch on a paired iPhone or iPad. It is installed again on every save, with its clock and parameters carried across, and the parameters stay live on the Mac. Or it stays on the Mac and shows on the phone's screen, with nothing installed.
 - [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./Tools/ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
 - [`Checking the machine`](./Tools/Doctor.md) - `ollin doctor`: what this machine can run, with the line that fixes each answer; shell completions, and `--list-params` for what a sketch declares

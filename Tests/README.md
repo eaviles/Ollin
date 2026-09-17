@@ -37,7 +37,8 @@ per elapsed second. `ListeningTests` waits on the system speech stack.
 `FrameSourceTests` and `ModelTrackerTests` want the Vision compute device.
 `SpatialVideoTests` is here for a different reason than the rest: its stereo
 HEVC readback goes through the hardware video decoder, and under a full parallel
-run that wait has wedged indefinitely rather than failing. `DataFeedTests` keeps
+run that wait has wedged indefinitely rather than failing. `PhonePictureRoundTripTests`
+decodes the phone's pictures through the same decoder, so it sits beside it. `DataFeedTests` keeps
 its place even though the two rules below kill most of what looks like load: its
 last test loads through the real system rather than a stub, and that load timed
 out inside a batch of every target at once with both rules already applied.

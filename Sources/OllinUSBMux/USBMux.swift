@@ -110,6 +110,11 @@ package enum USBMux {
     private static func openSocket() throws -> Int32 {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw USBMuxError.socketUnavailable }
+        // A write to a phone that has just gone (the cable pulled, the app
+        // closed) must fail the write rather than raise SIGPIPE, whose default
+        // is to end the whole process: the sketch, not only the connection.
+        var noSignal: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size))
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
         let capacity = MemoryLayout.size(ofValue: addr.sun_path)

@@ -21,6 +21,7 @@ The sketch appears on the phone, and every save on the Mac installs the new vers
 - [What comes along](#what-comes-along)
 - [The options](#the-options)
 - [In an app of your own](#in-an-app-of-your-own)
+- [Without installing it](#without-installing-it)
 - [What it needs](#what-it-needs)
 
 ### What a save does
@@ -106,6 +107,27 @@ struct MyApp: App {
 ```
 
 The app owns the entry point, so `@main` goes on the `App` rather than on the sketch. The command's own host calls `beginInstallation` with a checkpoint every second. But a piece that runs on a tablet in a room can use a checkpoint every minute instead.
+
+### Without installing it
+
+There is a second way to put a sketch in your hand, and it installs nothing. The sketch keeps running on the Mac, and the phone shows its frames:
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Held: Sketch {
+    let device = PhoneDevice()
+
+    override func setup() {
+        device.show(self)
+    }
+}
+```
+
+The Mac compresses each frame as video and sends it down the cable to [Ollin Capture](../3D/Phone.md#the-sketch-on-the-phones-screen), which shows it full screen. The first finger on the picture is the sketch's pointer, just as it is on this page. So `mouseX`, `mouseY`, `mouseIsPressed`, and `pressure` read the same either way.
+
+The two answer different questions. Showing the picture tells you how the piece looks and plays in the hand. An edit appears as soon as the Mac has compiled it, through the live window's own reload. Installing tells you whether the phone's own GPU keeps up, and that the sketch runs with no Mac at all. Both suit a sketch in progress: showing it while you shape it, installing it when you want to know it holds.
 
 ### What it needs
 

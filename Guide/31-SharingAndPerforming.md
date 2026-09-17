@@ -831,6 +831,38 @@ ollin new Rings --kind ios-app
 
 Out comes the sketch, a host that owns the entry point, and the spec the Xcode project is written from. Run `xcodegen generate`, open the project, pick the phone, press Run. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md) offers the same kind from its menu.
 
+### Leaving it on the Mac
+
+There is a way to hold the sketch without installing it at all. It keeps running on the Mac, and the phone shows its frames. The capture app from [Chapter 27](27-DepthAndThePhone.md) is the screen:
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Pour: Sketch {
+    let device = PhoneDevice()
+
+    override var canvasSize: CanvasSize { .size(1080, 2340) }
+
+    override func setup() {
+        device.show(self)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        if mouseIsPressed {
+            drawCircle(mouseX, mouseY, 20 + pressure * 40)
+        }
+    }
+}
+```
+
+That one call asks the phone for its **Sketch** mode. From then on the Mac compresses each frame as video and sends it down the cable, and the phone shows it full screen. The first finger on the picture is the pointer, as it is in the installed app, so the same `mouseX` and `mouseIsPressed` work both ways. The canvas is the phone's own shape, nine across and nineteen and a half down.
+
+The loop is the live window's, not the phone's. Save, and the phone shows the edit as soon as the Mac has compiled it, with nothing built for the phone. The inspector and the console stay where you are working. `Examples/3D/Phone/PhoneCanvas` is the fuller version. A finger paints, and the paint falls the way you tilt the phone. The tilt is the same motion stream Chapter 27 reads.
+
+The two ways answer different questions. The picture tells you how a piece looks and plays in the hand while you are still shaping it. The installed app tells you whether the phone's own GPU keeps up, and that the piece runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
+
 ## Performing the code itself
 
 The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:

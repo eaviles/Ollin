@@ -30,9 +30,14 @@ final class SensorServer: @unchecked Sendable {
     private var connections: [ObjectIdentifier: NWConnection] = [:]
     /// What has arrived from each client and not yet made a whole frame.
     private var inbox: [ObjectIdentifier: Data] = [:]
+    /// Whether a new client replaces the ones before it. The picture connection
+    /// does: one screen shows one sketch, and the newest is the one being drawn.
+    private let keepsOnlyNewest: Bool
 
-    init(port: UInt16, onClientCountChange: (@Sendable (Int) -> Void)? = nil,
+    init(port: UInt16, keepsOnlyNewest: Bool = false,
+         onClientCountChange: (@Sendable (Int) -> Void)? = nil,
          onRequest: (@Sendable (PhoneRequest) -> Void)? = nil) throws {
+        self.keepsOnlyNewest = keepsOnlyNewest
         self.onClientCountChange = onClientCountChange
         self.onRequest = onRequest
         let params = NWParameters.tcp
@@ -55,6 +60,11 @@ final class SensorServer: @unchecked Sendable {
     }
 
     private func add(_ conn: NWConnection) {           // on queue
+        if keepsOnlyNewest {
+            for older in connections.values { older.cancel() }
+            connections.removeAll()
+            inbox.removeAll()
+        }
         connections[ObjectIdentifier(conn)] = conn
         inbox[ObjectIdentifier(conn)] = Data()
         onClientCountChange?(connections.count)
@@ -77,6 +87,8 @@ final class SensorServer: @unchecked Sendable {
             [weak self] data, _, isComplete, error in
             guard let self else { return }
             if let data, !data.isEmpty { self.take(data, from: conn) }
+            // A connection replaced by a newer one has been cancelled; stop reading it.
+            guard self.connections[ObjectIdentifier(conn)] != nil else { return }
             if isComplete || error != nil {
                 conn.cancel()
                 return

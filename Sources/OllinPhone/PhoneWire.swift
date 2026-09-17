@@ -37,6 +37,13 @@ public enum PhoneWire {
     /// can't drift between them.
     public static let streamPort: UInt16 = 1338
 
+    /// The TCP port the capture app listens on for pictures of a sketch, in
+    /// **Sketch** mode. Pictures ride a connection of their own because they are
+    /// most of what ever crosses the cable and they arrive sixty times a second:
+    /// on the sensor connection a picture would wait behind a sensor read, and a
+    /// mode request would wait behind a picture.
+    public static let picturePort: UInt16 = 1339
+
     /// Defensive upper bound on a single payload, so a garbage header can't steer
     /// a huge read (a body pose is well under a kilobyte; motion is 60 bytes).
     /// Both framings hold to it, so it is also what bounds a picture travelling
@@ -1148,6 +1155,9 @@ public enum PhoneCaptureMode: UInt8, CaseIterable, Sendable, Identifiable {
     case flow = 12
     /// No camera at all: the screen is the sensor.
     case touch = 13
+    /// No camera either: the screen shows the sketch a Mac is running, and every
+    /// finger on it goes back as that sketch's input.
+    case sketch = 14
 
     public var id: UInt8 { rawValue }
 
@@ -1167,6 +1177,7 @@ public enum PhoneCaptureMode: UInt8, CaseIterable, Sendable, Identifiable {
         case .attention: return "Attention"
         case .flow: return "Flow"
         case .touch: return "Touch"
+        case .sketch: return "Sketch"
         }
     }
 }
@@ -2592,6 +2603,10 @@ public enum PhoneRequestKind: UInt8, Sendable, CaseIterable {
     /// One reference of the library now open: a picture to look for, or a scanned
     /// object. The stream is ordered, so the frames need no index.
     case reference = 3
+    /// One picture of a sketch the Mac is running, for the phone's screen in
+    /// **Sketch** mode: compressed video, on its own connection
+    /// (`PhoneWire.picturePort`).
+    case picture = 4
 }
 
 /// One picture or object a sketch asks the phone to look for: its name, what kind
@@ -2622,18 +2637,53 @@ public struct PhoneReference: Sendable, Equatable {
     }
 }
 
+/// One picture of a sketch running on the Mac, compressed for the phone's screen.
+///
+/// The picture is HEVC, so most of them carry only what changed since the one
+/// before. A **keyframe** stands alone, and it carries the parameter sets a
+/// decoder is built from, which is what lets a phone that joins mid-stream, or a
+/// decoder that has just failed, start again at the next keyframe with nothing
+/// else to ask for. A picture that is not a keyframe carries no parameter sets.
+///
+/// `data` is the coded picture as the compressor writes it: every NAL unit behind
+/// a four-byte big-endian length. The phone hands those bytes to its decoder
+/// unchanged.
+public struct PhonePicture: Sendable, Equatable {
+    /// The coded size in pixels: the sketch's canvas, fitted under the size the
+    /// Mac sends and rounded to even numbers, which the codec needs.
+    public var width: Int
+    public var height: Int
+    /// Whether this picture stands alone.
+    public var isKeyframe: Bool
+    /// The HEVC parameter sets (video, sequence, picture) in that order; empty
+    /// unless this is a keyframe.
+    public var parameterSets: [Data]
+    /// The coded picture, length-prefixed NAL units.
+    public var data: Data
+
+    public init(width: Int, height: Int, isKeyframe: Bool, parameterSets: [Data] = [], data: Data) {
+        self.width = width
+        self.height = height
+        self.isKeyframe = isKeyframe
+        self.parameterSets = parameterSets
+        self.data = data
+    }
+}
+
 /// One decoded request, which the unit tests round-trip the way they do a message.
 public enum PhoneRequest: Sendable, Equatable {
     case mode(PhoneCaptureMode)
     /// A library of `count` references is coming; zero means look for nothing.
     case library(count: Int)
     case reference(PhoneReference)
+    case picture(PhonePicture)
 
     public var kind: PhoneRequestKind {
         switch self {
         case .mode: return .mode
         case .library: return .library
         case .reference: return .reference
+        case .picture: return .picture
         }
     }
 }
@@ -2685,6 +2735,22 @@ public extension PhoneWire {
             appendF64(&payload, reference.printedWidth)
             appendU32(&payload, UInt32(reference.contents.count))
             payload.append(reference.contents)
+        case .picture(let picture):
+            // width(4) + height(4) + flags(1) + parameter-set count(1), each set
+            // behind a 16-bit length (they are tens of bytes), then the coded
+            // picture behind a 32-bit one.
+            appendU32(&payload, UInt32(clamping: picture.width))
+            appendU32(&payload, UInt32(clamping: picture.height))
+            payload.append(picture.isKeyframe ? 1 : 0)
+            let sets = picture.parameterSets.prefix(Int(UInt8.max))
+            payload.append(UInt8(sets.count))
+            for set in sets {
+                let bytes = set.prefix(Int(UInt16.max))
+                appendU16(&payload, UInt16(bytes.count))
+                payload.append(bytes)
+            }
+            appendU32(&payload, UInt32(picture.data.count))
+            payload.append(picture.data)
         }
         var out = Data()
         appendU32(&out, requestMagic)
@@ -2723,6 +2789,30 @@ public extension PhoneWire {
             let contents = payload.subdata(in: (s + o)..<(s + o + byteCount))
             return .reference(PhoneReference(name: name, kind: kind,
                                              printedWidth: width, contents: contents))
+        case .picture:
+            guard payload.count >= 10 else { return nil }
+            let width = Int(readU32(payload, s)), height = Int(readU32(payload, s + 4))
+            guard width > 0, height > 0 else { return nil }
+            let isKeyframe = payload[s + 8] != 0
+            let setCount = Int(payload[s + 9])
+            var o = 10
+            var sets: [Data] = []
+            for _ in 0..<setCount {
+                guard payload.count >= o + 2 else { return nil }
+                let count = Int(UInt16(payload[s + o]) | (UInt16(payload[s + o + 1]) << 8)); o += 2
+                guard payload.count >= o + count else { return nil }
+                sets.append(payload.subdata(in: (s + o)..<(s + o + count)))
+                o += count
+            }
+            // A picture with nothing to decode it from is refused here rather than
+            // handed to a decoder that has no format yet.
+            guard !isKeyframe || !sets.isEmpty else { return nil }
+            guard payload.count >= o + 4 else { return nil }
+            let byteCount = Int(readU32(payload, s + o)); o += 4
+            guard byteCount > 0, payload.count >= o + byteCount else { return nil }
+            let data = payload.subdata(in: (s + o)..<(s + o + byteCount))
+            return .picture(PhonePicture(width: width, height: height, isKeyframe: isKeyframe,
+                                         parameterSets: sets, data: data))
         }
     }
 }
@@ -2784,11 +2874,12 @@ public struct PhoneLibraryInbox: Sendable, Equatable {
     public var isReceiving: Bool { expected != nil }
 
     /// Take one request. Returns the finished library on the frame that completes
-    /// a declaration, and `nil` otherwise, including for a `mode` request, which
-    /// is not library traffic and leaves a declaration in progress alone.
+    /// a declaration, and `nil` otherwise, including for a `mode` or a `picture`
+    /// request, which is not library traffic and leaves a declaration in progress
+    /// alone.
     public mutating func apply(_ request: PhoneRequest) -> [PhoneReference]? {
         switch request {
-        case .mode:
+        case .mode, .picture:
             return nil
         case .library(let count):
             guard count >= 0, count <= PhoneWire.maxReferences else { return nil }

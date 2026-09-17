@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import simd
-import Ollin
+@testable import Ollin
 @testable import OllinPhone
 
 /// Exercises the phone as a control surface over staged wire samples (GPU-free,
@@ -238,5 +238,92 @@ import Ollin
         #expect(PhoneMessageKind.air.rawValue == 17)
         #expect(PhoneMessage.touch(PhoneTouchSample(timestamp: 0, touches: [])).kind == .touch)
         #expect(PhoneMessage.air(PhoneAirSample(timestamp: 0, pressure: 0, altitude: 0)).kind == .air)
+    }
+
+    // MARK: The sketch shown on the phone
+
+    /// A sketch the fingers drive, with the hooks counted.
+    private final class Pointed: Sketch {
+        override var canvasSize: CanvasSize { .size(800, 400) }
+        var presses = 0
+        var releases = 0
+        override func mousePressed() { presses += 1 }
+        override func mouseReleased() { releases += 1 }
+    }
+
+    @Test func theFirstFingerIsTheSketchPointer() {
+        let device = PhoneDevice()
+        let sketch = Pointed()
+        sketch.setCanvasSize(width: 800, height: 400)
+        let screen = PhoneScreen(device: device, frameRate: 60,
+                                 sender: PhonePictureSender(dials: false), phoneMode: { .sketch })
+
+        // The phone's middle is the canvas's middle, and up on the glass is up.
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0), force: 0.5)], at: 1)
+        screen.beforeDraw(sketch)
+        #expect(sketch.mouseX == 400 && sketch.mouseY == 200)
+        #expect(sketch.mouseIsPressed)
+        #expect(sketch.pressure == 0.5)
+        #expect(sketch.presses == 1)
+
+        // A second finger changes nothing; the first dragged to the top-right corner does.
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(1, 1), force: 0.5),
+                             PhoneTouch(id: 2, position: Vector2(-1, -1))], at: 2)
+        screen.beforeDraw(sketch)
+        #expect(sketch.mouseX == 800 && sketch.mouseY == 0)
+
+        // A tap that came and went between two frames still presses and releases.
+        device.touches.feel([], at: 3)
+        device.touches.feel([PhoneTouch(id: 3, position: Vector2(-1, -1))], at: 3.01)
+        device.touches.feel([], at: 3.02)
+        screen.beforeDraw(sketch)
+        #expect(sketch.presses == 2 && sketch.releases == 2)
+        #expect(!sketch.mouseIsPressed)
+        #expect(sketch.mouseX == 0 && sketch.mouseY == 400)
+    }
+
+    @Test func turningThePointerOffReleasesAHeldPress() {
+        let device = PhoneDevice()
+        let sketch = Pointed()
+        sketch.setCanvasSize(width: 800, height: 400)
+        let screen = PhoneScreen(device: device, frameRate: 60,
+                                 sender: PhonePictureSender(dials: false), phoneMode: { .sketch })
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0))], at: 1)
+        screen.beforeDraw(sketch)
+        #expect(sketch.mouseIsPressed)
+        screen.drivesPointer = false
+        screen.beforeDraw(sketch)
+        #expect(!sketch.mouseIsPressed)
+        #expect(sketch.releases == 1)
+        // Nothing the fingers do reaches the pointer now.
+        device.touches.feel([PhoneTouch(id: 2, position: Vector2(1, 1))], at: 2)
+        screen.beforeDraw(sketch)
+        #expect(sketch.presses == 1)
+    }
+
+    @Test func outsideSketchModeTheFingersLeaveThePointerAlone() {
+        // On the Touch pad the glass is not the canvas, so a finger there must not
+        // press the sketch; a press held when the phone leaves is still let go.
+        let device = PhoneDevice()
+        let sketch = Pointed()
+        sketch.setCanvasSize(width: 800, height: 400)
+        var mode = PhoneCaptureMode.touch
+        let screen = PhoneScreen(device: device, frameRate: 60,
+                                 sender: PhonePictureSender(dials: false), phoneMode: { mode })
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0))], at: 1)
+        screen.beforeDraw(sketch)
+        #expect(!sketch.mouseIsPressed && sketch.presses == 0)
+        device.touches.feel([], at: 2)
+        screen.beforeDraw(sketch)
+        #expect(sketch.releases == 0)
+
+        mode = .sketch
+        device.touches.feel([PhoneTouch(id: 2, position: Vector2(0, 0))], at: 3)
+        screen.beforeDraw(sketch)
+        #expect(sketch.mouseIsPressed)
+        mode = .touch
+        device.touches.feel([], at: 4)
+        screen.beforeDraw(sketch)
+        #expect(!sketch.mouseIsPressed && sketch.releases == 1)
     }
 }

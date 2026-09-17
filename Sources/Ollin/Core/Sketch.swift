@@ -3978,7 +3978,7 @@ open class Sketch {
         self.height = height
     }
 
-    func setMouse(x: Double, y: Double) {
+    package func setMouse(x: Double, y: Double) {
         takeRecorder?.log(.pointer(x: x, y: y), at: frameCount)
         guard takePlayer == nil else { return }
         ingestMouse(x: x, y: y)
@@ -3991,7 +3991,7 @@ open class Sketch {
 
     /// The primary button from the view: the held state plus the
     /// once-per-press hooks.
-    func handleMouseButton(pressed: Bool) {
+    package func handleMouseButton(pressed: Bool) {
         takeRecorder?.log(.button(pressed: pressed), at: frameCount)
         guard takePlayer == nil else { return }
         ingestMouseButton(pressed: pressed)
@@ -4032,7 +4032,7 @@ open class Sketch {
     /// can vary at all. `canVary` latches on: a session that has felt real pressure
     /// once keeps reporting the capability even between presses, when the platform
     /// has nothing to tell us.
-    func setPressure(_ amount: Double, canVary: Bool) {
+    package func setPressure(_ amount: Double, canVary: Bool) {
         takeRecorder?.log(.pressure(amount: amount, canVary: canVary), at: frameCount)
         guard takePlayer == nil else { return }
         ingestPressure(amount, canVary: canVary)

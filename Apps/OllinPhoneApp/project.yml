@@ -34,6 +34,9 @@ targets:
       # The wire protocol is shared *verbatim* with the Mac satellite — one copy,
       # compiled into both ends. It imports only Foundation/simd, never Ollin.
       - path: ../../Sources/OllinPhone/PhoneWire.swift
+      # The picture's step between the codec and the wire, shared the same way so
+      # the Mac's tests run what the phone runs. CoreMedia only, never Ollin.
+      - path: ../../Sources/OllinPhone/PhonePictureCoding.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ollin.OllinPhoneApp

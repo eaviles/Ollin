@@ -158,6 +158,10 @@ public final class PhoneTouches {
         var elapsed: Double = 0
         var arrived: TimeInterval?
         var readings = 0
+        /// The fingers read as one pointer, while a screen is showing the sketch
+        /// on the phone, and what that pointer did since the frame last looked.
+        var pointer: PhonePointer?
+        var pointerEvents: [PhonePointer.Event] = []
     }
 
     nonisolated let state = OSAllocatedUnfairLock(initialState: State())
@@ -250,6 +254,13 @@ public final class PhoneTouches {
             state.arrived = now
             state.readings += 1
             if state.pending.count > 256 { state.pending.removeFirst(state.pending.count - 256) }
+            if var pointer = state.pointer {
+                state.pointerEvents += pointer.take(touches)
+                state.pointer = pointer
+                if state.pointerEvents.count > 256 {
+                    state.pointerEvents.removeFirst(state.pointerEvents.count - 256)
+                }
+            }
         }
     }
 
@@ -266,9 +277,48 @@ public final class PhoneTouches {
     /// nothing about them stopped being true.
     nonisolated func releaseAll() {
         state.withLock { state in
+            if var pointer = state.pointer {
+                state.pointerEvents += pointer.take([])
+                state.pointer = pointer
+            }
             guard !state.down.isEmpty else { return }
             state.down = []
             state.held = []
+        }
+    }
+
+    // MARK: The fingers as a pointer
+
+    /// Start reading the fingers as one pointer. A screen showing the sketch on
+    /// the phone turns this on, so the pointer's history begins then and a
+    /// finger that was already resting on the glass does not press.
+    nonisolated func armPointer() {
+        state.withLock { state in
+            guard state.pointer == nil else { return }
+            var pointer = PhonePointer()
+            pointer.pass(state.down.map(\.id))
+            state.pointer = pointer
+            state.pointerEvents.removeAll()
+        }
+    }
+
+    /// Stop reading the fingers as a pointer, releasing it if a finger held it.
+    /// Returns that release, so the sketch is not left pressed.
+    nonisolated func disarmPointer() -> [PhonePointer.Event] {
+        state.withLock { state in
+            guard var pointer = state.pointer else { return [] }
+            let events = state.pointerEvents + pointer.take([])
+            state.pointer = nil
+            state.pointerEvents.removeAll()
+            return events
+        }
+    }
+
+    /// What the pointer did since the last call, oldest first.
+    nonisolated func takePointerEvents() -> [PhonePointer.Event] {
+        state.withLock { state in
+            defer { state.pointerEvents.removeAll(keepingCapacity: true) }
+            return state.pointerEvents
         }
     }
 
@@ -276,5 +326,63 @@ public final class PhoneTouches {
     /// clock. The phone keeps sending, so the next reading starts it again.
     public func reset() {
         state.withLock { $0 = State() }
+    }
+}
+
+/// The fingers on the phone's screen read as one pointer, the way the phone's own
+/// canvas reads them: the first finger to land presses and drags, and it lifts
+/// when it leaves. A second finger never moves the pointer, and neither does a
+/// finger that was already down when the pointer's own finger left, so lifting
+/// one hand off a two-handed chord does not jump the pointer across the canvas.
+/// Only a finger that lands while nothing holds the pointer takes it.
+///
+/// Pure, so its laws are pinned without a phone or a sketch.
+struct PhonePointer: Sendable, Equatable {
+
+    /// One thing the pointer did, with the position on the phone's -1 to 1 scale.
+    enum Event: Sendable, Equatable {
+        case press(Vector2, force: Double?)
+        case move(Vector2, force: Double?)
+        case release(Vector2)
+    }
+
+    /// The finger holding the pointer, or `nil` while none does.
+    private(set) var holder: Int?
+    private(set) var position = Vector2.zero
+    private var force: Double?
+    /// Fingers that may never take the pointer: every other finger down while it
+    /// is held, kept until each one leaves.
+    private var passed: Set<Int> = []
+
+    /// Mark fingers as ones that may not take the pointer.
+    mutating func pass(_ ids: [Int]) { passed.formUnion(ids) }
+
+    /// Take one reading of every finger on the glass, and say what the pointer did.
+    mutating func take(_ touches: [PhoneTouch]) -> [Event] {
+        var events: [Event] = []
+        passed.formIntersection(touches.map(\.id))
+        if let holder {
+            if let finger = touches.first(where: { $0.id == holder }) {
+                if finger.position != position || finger.force != force {
+                    position = finger.position
+                    force = finger.force
+                    events.append(.move(position, force: force))
+                }
+            } else {
+                events.append(.release(position))
+                self.holder = nil
+                force = nil
+            }
+        }
+        if holder == nil, let finger = touches.first(where: { !passed.contains($0.id) }) {
+            holder = finger.id
+            position = finger.position
+            force = finger.force
+            events.append(.press(position, force: force))
+        }
+        if let holder {
+            passed.formUnion(touches.lazy.map(\.id).filter { $0 != holder })
+        }
+        return events
     }
 }
