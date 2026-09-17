@@ -112,15 +112,33 @@ struct PerlinNoise: Sendable {
 
         let value = n000 * w000 + n100 * w100 + n010 * w010 + n110 * w110
                   + n001 * w001 + n101 * w101 + n011 * w011 + n111 * w111
-        var gradient = g000 * w000 + g100 * w100 + g010 * w010 + g110 * w110
-                     + g001 * w001 + g101 * w101 + g011 * w011 + g111 * w111
+        // Summed a term at a time, in this order: one expression of eight
+        // vector products is more than a release toolchain will type-check.
+        var gradient: SIMD3<Double> = g000 * w000
+        gradient += g100 * w100
+        gradient += g010 * w010
+        gradient += g110 * w110
+        gradient += g001 * w001
+        gradient += g101 * w101
+        gradient += g011 * w011
+        gradient += g111 * w111
         // The fade's own slope along each axis, weighted by the other two.
-        gradient.x += du * ((n100 - n000) * (1 - v) * (1 - w) + (n110 - n010) * v * (1 - w)
-                            + (n101 - n001) * (1 - v) * w + (n111 - n011) * v * w)
-        gradient.y += dv * ((n010 - n000) * (1 - u) * (1 - w) + (n110 - n100) * u * (1 - w)
-                            + (n011 - n001) * (1 - u) * w + (n111 - n101) * u * w)
-        gradient.z += dw * ((n001 - n000) * (1 - u) * (1 - v) + (n101 - n100) * u * (1 - v)
-                            + (n011 - n010) * (1 - u) * v + (n111 - n110) * u * v)
+        let iu = 1 - u, iv = 1 - v, iw = 1 - w
+        let x00: Double = (n100 - n000) * iv * iw
+        let x10: Double = (n110 - n010) * v * iw
+        let x01: Double = (n101 - n001) * iv * w
+        let x11: Double = (n111 - n011) * v * w
+        gradient.x += du * (x00 + x10 + x01 + x11)
+        let y00: Double = (n010 - n000) * iu * iw
+        let y10: Double = (n110 - n100) * u * iw
+        let y01: Double = (n011 - n001) * iu * w
+        let y11: Double = (n111 - n101) * u * w
+        gradient.y += dv * (y00 + y10 + y01 + y11)
+        let z00: Double = (n001 - n000) * iu * iv
+        let z10: Double = (n101 - n100) * u * iv
+        let z01: Double = (n011 - n010) * iu * v
+        let z11: Double = (n111 - n110) * u * v
+        gradient.z += dw * (z00 + z10 + z01 + z11)
         return (value, gradient)
     }
 
