@@ -111,6 +111,25 @@ import OllinWebGate
         }
     }
 
+    /// A user shader through the library's `complex` module, cut to that
+    /// section (which pulls in `color` for the wheel): the ratio of two
+    /// moving points painted by its phase and both rulings.
+    final class Argued: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        private let ratio = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float2 z = complexPlane(uv, info.resolution, float2(0.0), 3.0);
+            float2 p = cpolar(0.8, info.time), q = cpolar(0.8, info.time + 2.3);
+            float2 f = cdiv(z - p, z - q);
+            return float4(domainColor(f, 2, 0.7), 1.0);
+        }
+        """, using: [.complex])
+        override func draw() {
+            background(.black)
+            drawImage(generate(ratio).image, 0, 0)
+        }
+    }
+
     /// A user shader run as a filter, reading the layer with `sample`.
     final class UserFilter: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -593,6 +612,7 @@ import OllinWebGate
             ("Curved", { Curved() }, 2, 1),
             ("Combined", { Combined() }, 6, 4),
             ("UserGenerator", { UserGenerator() }, 4, 2),
+            ("Argued", { Argued() }, 4, 2),
             ("UserFilter", { UserFilter() }, 4, 3),
             ("UserCombine", { UserCombine() }, 4, 1),
             ("Chained", { Chained() }, 4, 2),

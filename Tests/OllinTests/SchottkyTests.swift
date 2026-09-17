@@ -32,10 +32,10 @@ import Testing
         let map = MobiusMap.pairing(from: from, to: to, twist: 0.3)
 
         for point in [Vector2(-40, 200), Vector2(300, -120), Vector2(0, 0)] {
-            let z = ComplexValue(re: point.x, im: point.y)
+            let z = Complex(point.x, point.y)
             let image = map.apply(z)
-            let distance = ((image.re - to.center.x) * (image.re - to.center.x)
-                            + (image.im - to.center.y) * (image.im - to.center.y)).squareRoot()
+            let distance = ((image.real - to.center.x) * (image.real - to.center.x)
+                            + (image.imaginary - to.center.y) * (image.imaginary - to.center.y)).squareRoot()
             #expect(distance < to.radius, "\(point) should land inside the target")
         }
     }
@@ -47,16 +47,16 @@ import Testing
         let radius = 30.0
         let from = Circle(center: Vector2(10, -radius), radius: radius)
         let to = Circle(center: Vector2(10, radius), radius: radius)
-        let tangency = ComplexValue(re: 10, im: 0)
+        let tangency = Complex(10, 0)
 
         let map = MobiusMap.pairing(from: from, to: to, twist: 0)
         let image = map.apply(tangency)
-        #expect(abs(image.re - tangency.re) < 1e-9)
-        #expect(abs(image.im - tangency.im) < 1e-9)
+        #expect(abs(image.real - tangency.real) < 1e-9)
+        #expect(abs(image.imaginary - tangency.imaginary) < 1e-9)
 
         // The fixed point is what twist gives up: turn it and the point moves.
         let turned = MobiusMap.pairing(from: from, to: to, twist: 0.5).apply(tangency)
-        #expect(abs(turned.re - tangency.re) + abs(turned.im - tangency.im) > 1)
+        #expect(abs(turned.real - tangency.real) + abs(turned.imaginary - tangency.imaginary) > 1)
     }
 
     /// A Möbius map carries circles to circles, so composing then imaging
@@ -257,8 +257,8 @@ import Testing
         // (probe: the arrangement center region) into its partner disc.
         let map = MobiusMap.pairing(from: outer, fromExterior: true,
                                     to: inner, twist: 0)
-        let image = map.apply(ComplexValue(re: 250, im: 260))
-        let landed = Vector2(image.re, image.im)
+        let image = map.apply(Complex(250, 260))
+        let landed = Vector2(image.real, image.imaginary)
         #expect(inner.contains(landed))
 
         // And the three interior base discs sit inside the container.

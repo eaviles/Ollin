@@ -216,6 +216,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("domain-coloring",
                  note: "The domain-coloring generator tiled 2x2 at a fixed phase (no time, no random): a rational function with two placed zeros and two poles, z cubed and tan z under the conformal ruling, and log z with its branch cut. Pins the complex evaluation of every mode, the wrapping palette wheel (the last stop blending back into the first), the plane written with the imaginary axis up, and the modulus and direction rulings.",
                  make: { DomainColoringScene() }),
+    SnapshotCase("complex-plane",
+                 note: "The shader library's complex module at a fixed pair of points (no time, no random): the ratio (z - p) / (z - q) framed by complexPlane, divided by cdiv, and painted by domainColor with both rulings, then the circles of constant size and constant direction worked out with the CPU Complex value and drawn over it, where they land on the rulings. Pins the section cut (using: [.complex] pulls in color), the OKLCH wheel, both rulings, and the CPU and GPU arithmetic agreeing.",
+                 make: { ComplexPlaneScene() }),
     SnapshotCase("newton-basins",
                  note: "The Newton's-basins generator tiled 2x2 at a fixed phase (no time, no random): the three cube roots of one, five roots on a circle with the step scaled by 1.3, the cubic z^3 - 2z + 2 framed on the cycle at 0 and 1 that paints two trapped pools, and a zoom into the boundary of the cube roots. Pins the reciprocal-sum step, the landing test, the continuous step count and its contours, the palette spread over the roots, and the trapped fill.",
                  make: { NewtonBasinsScene() }),
@@ -7434,6 +7437,56 @@ private final class DomainColoringScene: Sketch {
                            width: w, height: h).image, in: tile(0, 1))
         drawImage(generate(.domainColoring(.logarithm, zoom: 0.7), width: w, height: h).image,
                   in: tile(1, 1))
+    }
+}
+
+/// The shader library's complex module beside the CPU value, at a fixed pair
+/// of points (no time, no random): the ratio (z - p) / (z - q) painted by
+/// `domainColor` with both rulings, and the circles the CPU works out for the
+/// same ratio drawn over it.
+private final class ComplexPlaneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let source = """
+    float4 shade(float2 uv, ShaderInfo info) {
+        float2 z = complexPlane(uv, info.resolution, float2(0.0), 3.0);
+        float2 p = float2(param(info, 0), param(info, 1));
+        float2 q = float2(param(info, 2), param(info, 3));
+        return float4(domainColor(cdiv(z - p, z - q), 2, 0.7), 1.0);
+    }
+    """
+
+    override func draw() {
+        background(.black)
+        let p = Complex(magnitude: 0.8, argument: 0.6)
+        let q = Complex(magnitude: 0.8, argument: 2.9)
+        let ratio = Shader(source, params: [Float(p.real), Float(p.imaginary),
+                                            Float(q.real), Float(q.imaginary)],
+                           using: [.complex])
+        drawImage(generate(ratio).image, 0, 0)
+
+        let scale = width / 3
+        func place(_ z: Complex) -> Vector2 {
+            Vector2(width / 2 + z.real * scale, height / 2 - z.imaginary * scale)
+        }
+        noFill()
+        stroke(Color(white: 1, alpha: 0.6))
+        strokeWeight(1.5)
+        let d = (p - q).magnitude
+        for n in [-2, -1, 1, 2] {
+            let k = pow(2.0, Double(n))
+            let center = (p - k * k * q) / (1 - k * k)
+            drawCircle(center: place(center), radius: k * d / abs(1 - k * k) * scale)
+        }
+        let middle = (p + q) / 2
+        let across = Complex.i * (q - p) / d
+        for step in 1 ... 5 {
+            let theta = Double(step) * .pi / 6
+            for sign in [1.0, -1.0] {
+                let center = middle + across * (sign * d / 2 * cos(theta) / sin(theta))
+                drawCircle(center: place(center), radius: d / (2 * sin(theta)) * scale)
+            }
+        }
     }
 }
 

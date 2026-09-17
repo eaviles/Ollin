@@ -9,7 +9,7 @@ import Foundation
 package enum WebShaderLibrary {
 
     /// The section names, in the order the library defines them.
-    package static let sectionNames = ["base", "hash", "noise", "color", "sdf", "domain", "visual"]
+    package static let sectionNames = ["base", "hash", "noise", "color", "sdf", "domain", "complex", "visual"]
 
     /// The sections the framework's own segments mark for the page, beyond the
     /// helper library: `shapes` (the analytic primitives' coverage, in
@@ -23,7 +23,8 @@ package enum WebShaderLibrary {
     package static let segmentSectionNames = ["shapes", "present", "combinator", "raymarch"]
 
     /// The sections `wanted` needs, with the library's own dependencies added:
-    /// `base` always, `hash` under `noise`, both under `visual`, `sdf` under
+    /// `base` always, `hash` under `noise`, both under `visual`, `color` under
+    /// `complex` (the domain coloring reads the perceptual wheel), `sdf` under
     /// `shapes`, `hash` under `present`, and `combinator`, `noise` (the 3D
     /// roughening reads value noise), and `sdf` (the cone reads `dot2`) under
     /// `raymarch`.
@@ -35,6 +36,7 @@ package enum WebShaderLibrary {
         }
         if sections.contains("noise") { sections.insert("hash") }
         if sections.contains("visual") { sections.insert("hash"); sections.insert("noise") }
+        if sections.contains("complex") { sections.insert("color") }
         if sections.contains("shapes") { sections.insert("sdf") }
         if sections.contains("present") { sections.insert("hash") }
         return sections

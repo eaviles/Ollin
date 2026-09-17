@@ -8763,6 +8763,27 @@
       "stillSmall": "examples/Rendering/ViewBoxes/still-640.jpg?v=4cef24c5",
       "width": 1080
     },
+    "Shaders/ComplexPlane": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.911,
+      "sound": false,
+      "source": "22e6ebbe245dfc52",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "loop": 3153666,
+        "loopSmall": 768533,
+        "still": 170045,
+        "stillSmall": 67981
+      },
+      "loop": "examples/Shaders/ComplexPlane/loop.mp4?v=ea4d7f41",
+      "loopSmall": "examples/Shaders/ComplexPlane/loop-640.mp4?v=3c48e3fe",
+      "still": "examples/Shaders/ComplexPlane/still.jpg?v=8302ef4b",
+      "stillSmall": "examples/Shaders/ComplexPlane/still-640.jpg?v=50d83a38"
+    },
     "Shaders/DomainWarp": {
       "bytes": {
         "loop": 1243876,

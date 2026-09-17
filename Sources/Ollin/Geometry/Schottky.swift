@@ -338,8 +338,8 @@ public func schottkyLimitSet(_ preset: KleinianPreset,
 /// degenerates or a generator fixes infinity (no isometric circle to pair).
 private func tracedSchottkyGroup(ta: Vector2, tb: Vector2, in bounds: Rectangle)
     -> (generators: [MobiusMap], bases: [(circle: Circle, exterior: Bool)])? {
-    guard let (a, b) = grandmaGenerators(ta: ComplexValue(re: ta.x, im: ta.y),
-                                         tb: ComplexValue(re: tb.x, im: tb.y))
+    guard let (a, b) = grandmaGenerators(ta: Complex(ta.x, ta.y),
+                                         tb: Complex(tb.x, tb.y))
     else { return nil }
 
     let letters = [a, b, a.inverse, b.inverse]
@@ -362,9 +362,9 @@ private func tracedSchottkyGroup(ta: Vector2, tb: Vector2, in bounds: Rectangle)
     let mid = Vector2((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
 
     let similarity = MobiusMap(
-        p: ComplexValue.real(scale),
-        q: ComplexValue(re: bounds.center.x - mid.x * scale,
-                        im: bounds.center.y - mid.y * scale),
+        p: Complex(scale),
+        q: Complex(bounds.center.x - mid.x * scale,
+                   bounds.center.y - mid.y * scale),
         r: .zero, s: .one).normalized
     let seatedGenerators = letters.map { (similarity * $0 * similarity.inverse).normalized }
     let seatedBases = raw.map { circle in

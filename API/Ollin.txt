@@ -3194,6 +3194,60 @@ struct Combine: Sendable
   static func screenSpaceReflections(amount: Double = default, maxDistance: Double = default, thickness: Double = default, roughness: Double = default, fresnel: Double = default, edgeFade: Double = default, quality: RenderQuality = default, file: String = default, line: Int = default) -> Combine
   static func seamlessClone(amount: Double = default, threshold: Double = default) -> Combine
   static func shader(_: Shader) -> Combine
+struct Complex: AdditiveArithmetic, CustomStringConvertible, Decodable, Encodable, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Numeric, Sendable, SignedNumeric
+  func rotated(by: Double) -> Complex
+  func squareRoot() -> Complex
+  init(_: Double, _: Double = default)
+  init(_: Vector2)
+  init(floatLiteral: Double)
+  init(integerLiteral: Int)
+  init(magnitude: Double, argument: Double)
+  init(real: Double, imaginary: Double)
+  init?(exactly: T)
+  static func *(_: Complex, _: Complex) -> Complex
+  static func *(_: Complex, _: Double) -> Complex
+  static func *(_: Double, _: Complex) -> Complex
+  static func *=(_: Complex, _: Complex)
+  static func +(_: Complex, _: Complex) -> Complex
+  static func +(_: Complex, _: Double) -> Complex
+  static func +(_: Double, _: Complex) -> Complex
+  static func +=(_: Complex, _: Complex)
+  static func -(_: Complex, _: Complex) -> Complex
+  static func -(_: Complex, _: Double) -> Complex
+  static func -(_: Double, _: Complex) -> Complex
+  static func -=(_: Complex, _: Complex)
+  static func /(_: Complex, _: Complex) -> Complex
+  static func /(_: Complex, _: Double) -> Complex
+  static func /(_: Double, _: Complex) -> Complex
+  static func /=(_: Complex, _: Complex)
+  static func cos(_: Complex) -> Complex
+  static func cosh(_: Complex) -> Complex
+  static func exp(_: Complex) -> Complex
+  static func log(_: Complex) -> Complex
+  static func pow(_: Complex, _: Complex) -> Complex
+  static func pow(_: Complex, _: Double) -> Complex
+  static func pow(_: Complex, _: Int) -> Complex
+  static func sin(_: Complex) -> Complex
+  static func sinh(_: Complex) -> Complex
+  static func sqrt(_: Complex) -> Complex
+  static func tan(_: Complex) -> Complex
+  static func tanh(_: Complex) -> Complex
+  static func unit(_: Double) -> Complex
+  static let i: Complex
+  static let one: Complex
+  static let zero: Complex
+  static prefix func -(_: Complex) -> Complex
+  typealias Magnitude = Double
+  var argument: Double { get }
+  var conjugate: Complex { get }
+  var description: String { get }
+  var imaginary: Double { get set }
+  var isFinite: Bool { get }
+  var magnitude: Double { get }
+  var magnitudeSquared: Double { get }
+  var real: Double { get set }
+  var reciprocal: Complex { get }
+  var vector: Vector2 { get }
 struct ComposeLayer
   func blended(_: BlendMode) -> ComposeLayer
   func cloned(from: ComposeLayer, amount: Double = default, threshold: Double = default) -> ComposeLayer
@@ -5609,6 +5663,7 @@ struct Shader: Sendable
     let rawValue: Int
     static let all: Shader.Modules
     static let color: Shader.Modules
+    static let complex: Shader.Modules
     static let domain: Shader.Modules
     static let hash: Shader.Modules
     static let noise: Shader.Modules
@@ -6223,6 +6278,7 @@ struct Vector2: ParamValue, RadialBasisPoint, RadialBasisValue, Smoothable, Twee
   func rotated(by: Double, around: Vector2) -> Vector2
   func with(x: Double) -> Vector2
   func with(y: Double) -> Vector2
+  init(_: Complex)
   init(_: Double, _: Double)
   init(angle: Double, length: Double = default)
   init(channels: [Double])

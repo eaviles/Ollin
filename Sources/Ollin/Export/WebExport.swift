@@ -1576,6 +1576,7 @@ enum WebUserShaderGLSL {
         if modules.contains(.color) { sections.insert("color") }
         if modules.contains(.sdf) { sections.insert("sdf") }
         if modules.contains(.domain) { sections.insert("domain") }
+        if modules.contains(.complex) { sections.insert("complex") }
         if modules.contains(.visual) { sections.insert("visual") }
         let library = WebShaderLibrary.translate(WebShaderSources.library, wanted: sections)
         guard library.isClean else { throw WebShaderError(diagnostics: library.unsupported) }

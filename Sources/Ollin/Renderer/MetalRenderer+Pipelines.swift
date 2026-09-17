@@ -772,15 +772,17 @@ extension MetalRenderer {
     /// `// OLLIN_LIB_BEGIN <module>` / `// OLLIN_LIB_END <module>` markers. Unmarked
     /// lines (the preamble and the always-on `base` section) are always kept; a
     /// section whose module isn't requested is dropped, trimming compile time. The
-    /// dependency `noise → hash` is resolved so a noise-only request still compiles.
+    /// dependencies `noise → hash` and `complex → color` are resolved so a request
+    /// for one alone still compiles.
     private static func filterLibModules(_ lib: String, _ modules: Shader.Modules) -> String {
         if modules == .all { return lib }   // the common case: splice everything
         var mods = modules
         if mods.contains(.noise) { mods.insert(.hash) }
         if mods.contains(.visual) { mods.insert(.hash); mods.insert(.noise) }
+        if mods.contains(.complex) { mods.insert(.color) }
         let nameToModule: [String: Shader.Modules] = [
             "hash": .hash, "noise": .noise, "color": .color, "sdf": .sdf, "domain": .domain,
-            "visual": .visual]
+            "visual": .visual, "complex": .complex]
         var out: [Substring] = []
         var skipping = false
         for line in lib.split(separator: "\n", omittingEmptySubsequences: false) {

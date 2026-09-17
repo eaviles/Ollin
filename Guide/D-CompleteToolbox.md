@@ -107,6 +107,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Vectors | `Vector2`/`Vector3` with real operators, length, normalize, lerp, rotate | [Ch 10](10-Vectors.md), [Ch 21](21-3DGently.md) | [Geometry](../Docs/Drawing/Geometry.md) |
+| Complex numbers | `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `Complex.exp`/`.log`/`.pow`/`.sqrt` and the trigonometric functions, the `Vector2` bridge; mirrored on the GPU by the shader library's `complex` module | [Ch 17](17-YourFirstShader.md), [Ch 18](18-IteratedForms.md) | [Complex](../Docs/Helpers/Complex.md) |
 | Rectangles and circles | Typed regions with fitting, insetting, and hit testing | [Ch 10](10-Vectors.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | `Grid` | Rows, columns, padding, and gutters without nested-loop boilerplate | [Ch 6](06-GridsAndRepetition.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Paths, shapes, and contours | Curved outlines you build, hold, edit, and respace with `resampled` | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |

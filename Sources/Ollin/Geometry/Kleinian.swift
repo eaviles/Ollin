@@ -28,20 +28,20 @@ import Foundation
 /// `tr(a) = ta`, `tr(b) = tb`, and a parabolic commutator, the normalization
 /// the classic limit-set figures all use. The trace of `ab` comes from the
 /// Markov identity's minus root (the plus root draws the mirror image).
-func grandmaGenerators(ta: ComplexValue, tb: ComplexValue) -> (MobiusMap, MobiusMap)? {
-    let four = ComplexValue.real(4)
-    let two = ComplexValue.real(2)
-    let twoI = ComplexValue(re: 0, im: 2)
+func grandmaGenerators(ta: Complex, tb: Complex) -> (MobiusMap, MobiusMap)? {
+    let four = Complex(4)
+    let two = Complex(2)
+    let twoI = Complex(0, 2)
 
     let product = ta * tb
-    let discriminant = (product * product - four * (ta * ta + tb * tb)).squareRoot
+    let discriminant = (product * product - four * (ta * ta + tb * tb)).squareRoot()
     let tab = (product - discriminant) / two
     guard (tab - two).magnitude > 1e-9, (tab + two).magnitude > 1e-9 else { return nil }
 
     let z0 = ((tab - two) * tb) / (tb * tab - two * ta + twoI * tab)
     guard z0.magnitude > 1e-12 else { return nil }
 
-    let fourI = ComplexValue(re: 0, im: 4)
+    let fourI = Complex(0, 4)
     let a = MobiusMap(
         p: ta / two,
         q: (ta * tab - two * tb + fourI) / ((two * tab + four) * z0),
@@ -105,8 +105,8 @@ public enum KleinianPreset: CaseIterable, Sendable {
 public func kleinianLimitSet(ta: Vector2, tb: Vector2,
                              epsilon: Double = 0.002,
                              maxDepth: Int = 60) -> Contour {
-    guard let (a, b) = grandmaGenerators(ta: ComplexValue(re: ta.x, im: ta.y),
-                                         tb: ComplexValue(re: tb.x, im: tb.y))
+    guard let (a, b) = grandmaGenerators(ta: Complex(ta.x, ta.y),
+                                         tb: Complex(tb.x, tb.y))
     else { return Contour([], closed: true) }
 
     // Generators in the tag order a, b, A, B; inverse(i) = (i + 2) mod 4.
@@ -115,7 +115,7 @@ public func kleinianLimitSet(ta: Vector2, tb: Vector2,
     // Landmark limit points per ending tag: the two commutator rotations
     // that bound the branch's arc, with the generator's own attracting
     // fixed point between them.
-    var repetends = [[ComplexValue]](repeating: [], count: 4)
+    var repetends = [[Complex]](repeating: [], count: 4)
     for tag in 0 ..< 4 {
         let first = gens[(tag + 1) % 4] * gens[(tag + 2) % 4] * gens[(tag + 3) % 4] * gens[tag]
         let last = gens[(tag + 3) % 4] * gens[(tag + 2) % 4] * gens[(tag + 1) % 4] * gens[tag]
@@ -127,8 +127,8 @@ public func kleinianLimitSet(ta: Vector2, tb: Vector2,
     let epsilonSquared = epsilon * epsilon
     var points: [Vector2] = []
 
-    func emit(_ z: ComplexValue) {
-        let point = Vector2(z.re, z.im)
+    func emit(_ z: Complex) {
+        let point = Vector2(z.real, z.imaginary)
         if let lastPoint = points.last {
             let dx = point.x - lastPoint.x, dy = point.y - lastPoint.y
             if dx * dx + dy * dy < 1e-16 { return }
@@ -140,8 +140,8 @@ public func kleinianLimitSet(ta: Vector2, tb: Vector2,
         let z0 = matrix.apply(repetends[tag][0])
         let z1 = matrix.apply(repetends[tag][1])
         let z2 = matrix.apply(repetends[tag][2])
-        let gap01 = (z1.re - z0.re) * (z1.re - z0.re) + (z1.im - z0.im) * (z1.im - z0.im)
-        let gap12 = (z2.re - z1.re) * (z2.re - z1.re) + (z2.im - z1.im) * (z2.im - z1.im)
+        let gap01 = (z1.real - z0.real) * (z1.real - z0.real) + (z1.imaginary - z0.imaginary) * (z1.imaginary - z0.imaginary)
+        let gap12 = (z2.real - z1.real) * (z2.real - z1.real) + (z2.imaginary - z1.imaginary) * (z2.imaginary - z1.imaginary)
         if (gap01 <= epsilonSquared && gap12 <= epsilonSquared) || depth >= maxDepth {
             emit(z0); emit(z1); emit(z2)
             return

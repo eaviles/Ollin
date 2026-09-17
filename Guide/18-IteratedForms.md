@@ -292,6 +292,8 @@ The size you threw away can come back as shading. `.modulus` ramps from dark to 
 
 One parameter is free. `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever.
 
+The generator paints the named functions and a rational one. For a function of your own, write it as a shader with the library's `complex` section, the way [Chapter 17](17-YourFirstShader.md#multiplying-turns-the-complex-plane) does. `domainColor` there gives it the same wheel and the same rulings.
+
 `Examples/Effects/DomainColoring` swims a pair of zeros around a pair of poles. It is the best argument for the technique that exists. The field pours from one arrangement into the next, and nothing was animated except two points.
 
 ## Putting it together: a plate of four orbits

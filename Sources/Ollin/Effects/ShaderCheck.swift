@@ -118,7 +118,7 @@ package enum ShaderCheck {
     package static func modules(named list: String) -> Shader.Modules? {
         let byName: [String: Shader.Modules] = [
             "color": .color, "hash": .hash, "noise": .noise,
-            "sdf": .sdf, "domain": .domain, "visual": .visual]
+            "sdf": .sdf, "domain": .domain, "visual": .visual, "complex": .complex]
         let trimmed = list.trimmingCharacters(in: .whitespaces).lowercased()
         if trimmed == "all" { return .all }
         if trimmed == "none" { return [] }
@@ -134,7 +134,7 @@ package enum ShaderCheck {
     package static func names(of modules: Shader.Modules) -> [String] {
         let inOrder: [(String, Shader.Modules)] = [
             ("color", .color), ("hash", .hash), ("noise", .noise),
-            ("sdf", .sdf), ("domain", .domain), ("visual", .visual)]
+            ("sdf", .sdf), ("domain", .domain), ("visual", .visual), ("complex", .complex)]
         return inOrder.filter { modules.contains($0.1) }.map(\.0)
     }
 

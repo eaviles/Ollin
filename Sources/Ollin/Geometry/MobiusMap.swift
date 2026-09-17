@@ -1,7 +1,8 @@
 import Foundation
 
-/// Complex scalars and Möbius maps: the shared machinery behind the limit-set
-/// generators (`kleinianLimitSet`, `schottkyCircles`).
+/// Möbius maps over the public `Complex` value (`Math/Complex.swift`): the
+/// shared machinery behind the limit-set generators (`kleinianLimitSet`,
+/// `schottkyCircles`).
 ///
 /// A Möbius map `z → (pz + q) / (rz + s)` is the rigid motion of the Riemann
 /// sphere. Two facts make the limit-set generators work: composition is
@@ -9,73 +10,17 @@ import Foundation
 /// Möbius map carries circles to circles, so a circle orbit stays a circle
 /// orbit forever.
 ///
-/// Internal on purpose. Sketches reach this through the generators built on
-/// it, not directly.
-
-// MARK: - Complex scalars
-
-struct ComplexValue {
-    var re: Double
-    var im: Double
-
-    static let zero = ComplexValue(re: 0, im: 0)
-    static let one = ComplexValue(re: 1, im: 0)
-
-    static func real(_ value: Double) -> ComplexValue { ComplexValue(re: value, im: 0) }
-
-    /// The point on the unit circle at `angle`.
-    static func unit(_ angle: Double) -> ComplexValue {
-        ComplexValue(re: cos(angle), im: sin(angle))
-    }
-
-    static func + (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re + b.re, im: a.im + b.im)
-    }
-
-    static func - (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re - b.re, im: a.im - b.im)
-    }
-
-    static prefix func - (a: ComplexValue) -> ComplexValue {
-        ComplexValue(re: -a.re, im: -a.im)
-    }
-
-    static func * (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re * b.re - a.im * b.im,
-                     im: a.re * b.im + a.im * b.re)
-    }
-
-    static func / (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        let d = max(b.re * b.re + b.im * b.im, 1e-300)
-        return ComplexValue(re: (a.re * b.re + a.im * b.im) / d,
-                            im: (a.im * b.re - a.re * b.im) / d)
-    }
-
-    var conjugate: ComplexValue { ComplexValue(re: re, im: -im) }
-
-    var magnitude: Double { (re * re + im * im).squareRoot() }
-
-    var magnitudeSquared: Double { re * re + im * im }
-
-    /// The principal square root: halve the argument, root the modulus.
-    var squareRoot: ComplexValue {
-        let m = magnitude
-        let angle = atan2(im, re) / 2
-        let r = m.squareRoot()
-        return ComplexValue(re: r * cos(angle), im: r * sin(angle))
-    }
-
-    var isFinite: Bool { re.isFinite && im.isFinite }
-}
+/// The maps stay internal on purpose. Sketches reach them through the
+/// generators built on them, not directly.
 
 // MARK: - Möbius maps
 
 /// A 2x2 complex matrix acting as the Möbius map z → (pz + q) / (rz + s).
 struct MobiusMap {
-    var p: ComplexValue
-    var q: ComplexValue
-    var r: ComplexValue
-    var s: ComplexValue
+    var p: Complex
+    var q: Complex
+    var r: Complex
+    var s: Complex
 
     static let identity = MobiusMap(p: .one, q: .zero, r: .zero, s: .one)
 
@@ -86,7 +31,7 @@ struct MobiusMap {
                   s: a.r * b.q + a.s * b.s)
     }
 
-    var determinant: ComplexValue { p * s - q * r }
+    var determinant: Complex { p * s - q * r }
 
     /// The adjugate: the inverse of a unit-determinant matrix.
     var inverse: MobiusMap {
@@ -97,27 +42,27 @@ struct MobiusMap {
     /// a true inverse and keeps a long word product from drifting in scale.
     /// A degenerate matrix comes back unchanged.
     var normalized: MobiusMap {
-        let root = determinant.squareRoot
+        let root = determinant.squareRoot()
         guard root.magnitude > 1e-150 else { return self }
         return MobiusMap(p: p / root, q: q / root, r: r / root, s: s / root)
     }
 
-    func apply(_ z: ComplexValue) -> ComplexValue {
+    func apply(_ z: Complex) -> Complex {
         (p * z + q) / (r * z + s)
     }
 
     /// The attracting fixed point (either fixed point when parabolic).
-    var attractingFixedPoint: ComplexValue {
+    var attractingFixedPoint: Complex {
         let trace = p + s
-        let root = (trace * trace - ComplexValue.real(4)).squareRoot
+        let root = (trace * trace - Complex(4)).squareRoot()
         if r.magnitude < 1e-12 {
             // Fixed points are infinity and q / (s − p); return the finite one.
             return q / (s - p)
         }
-        let lambda = (trace + root) / ComplexValue.real(2)
+        let lambda = (trace + root) / Complex(2)
         let k = lambda * lambda
-        let plus = ((p - s) + root) / (r * ComplexValue.real(2))
-        let minus = ((p - s) - root) / (r * ComplexValue.real(2))
+        let plus = ((p - s) + root) / (r * Complex(2))
+        let minus = ((p - s) - root) / (r * Complex(2))
         return k.magnitude > 1 ? plus : minus
     }
 
@@ -147,10 +92,10 @@ struct MobiusMap {
     /// leaves the finite plane. Callers treat that as a branch to drop: it is a
     /// measure-zero case for circles that stay clear of the pole.
     func discImage(of circle: Circle, exterior: Bool) -> (circle: Circle, exterior: Bool)? {
-        let center = ComplexValue(re: circle.center.x, im: circle.center.y)
-        let a = ComplexValue.one
+        let center = Complex(circle.center.x, circle.center.y)
+        let a = Complex.one
         let b = -center
-        let c = ComplexValue.real(center.magnitudeSquared - circle.radius * circle.radius)
+        let c = Complex(center.magnitudeSquared - circle.radius * circle.radius)
 
         let n = inverse
         // T = H · N
@@ -164,17 +109,17 @@ struct MobiusMap {
         let h11 = n.q.conjugate * t01 + n.s.conjugate * t11
 
         // A' and C' are real up to round-off; B' carries the center.
-        let aPrime = h00.re
-        let cPrime = h11.re
+        let aPrime = h00.real
+        let cPrime = h11.real
         guard abs(aPrime) > 1e-12 else { return nil }
 
-        let imageCenter = -h01 / ComplexValue.real(aPrime)
+        let imageCenter = -h01 / Complex(aPrime)
         let radiusSquared = (h01.magnitudeSquared - aPrime * cPrime) / (aPrime * aPrime)
         guard radiusSquared > 0, imageCenter.isFinite else { return nil }
         let radius = radiusSquared.squareRoot()
         guard radius.isFinite else { return nil }
 
-        return (Circle(center: Vector2(imageCenter.re, imageCenter.im), radius: radius),
+        return (Circle(center: Vector2(imageCenter.real, imageCenter.imaginary), radius: radius),
                 (aPrime < 0) != exterior)
     }
 
@@ -188,7 +133,7 @@ struct MobiusMap {
         let c = r.magnitude
         guard c > 1e-12 else { return nil }
         let center = -(s / r)
-        return Circle(center: Vector2(center.re, center.im), radius: 1 / c)
+        return Circle(center: Vector2(center.real, center.imaginary), radius: 1 / c)
     }
 
     /// The involution sending `point` to infinity (and infinity to `point`),
@@ -196,8 +141,8 @@ struct MobiusMap {
     /// the horizon" viewing transform: the plane turns inside out around the
     /// point, and whichever disc contained it becomes the picture's outside.
     static func horizon(at point: Vector2, radius: Double) -> MobiusMap {
-        let z0 = ComplexValue(re: point.x, im: point.y)
-        let r2 = ComplexValue.real(radius * radius)
+        let z0 = Complex(point.x, point.y)
+        let r2 = Complex(radius * radius)
         return MobiusMap(p: z0, q: r2 - z0 * z0, r: .one, s: -z0).normalized
     }
 
@@ -222,19 +167,19 @@ struct MobiusMap {
     static func pairing(from: Circle, fromExterior: Bool = false,
                         to: Circle, toExterior: Bool = false,
                         twist: Double) -> MobiusMap {
-        let p = ComplexValue(re: from.center.x, im: from.center.y)
-        let q = ComplexValue(re: to.center.x, im: to.center.y)
-        let rf = ComplexValue.real(from.radius)
-        let rt = ComplexValue.real(to.radius)
+        let p = Complex(from.center.x, from.center.y)
+        let q = Complex(to.center.x, to.center.y)
+        let rf = Complex(from.radius)
+        let rt = Complex(to.radius)
 
         // The twist's zero point: interior-interior folds in −u², so touching
         // discs pair parabolically at zero; the flagged cases use the plain
         // rotation, which does the same for internal tangency.
-        var rotation = ComplexValue.unit(twist)
+        var rotation = Complex.unit(twist)
         if !fromExterior && !toExterior {
             let span = q - p
             let length = span.magnitude
-            let u = length > 1e-12 ? span / ComplexValue.real(length) : ComplexValue.one
+            let u = length > 1e-12 ? span / Complex(length) : Complex.one
             rotation = -(u * u * rotation)
         }
 

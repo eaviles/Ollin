@@ -110,6 +110,7 @@ Ollin's shader library is spliced into every user shader, so you can call these 
 | **noise** | `valueNoise`, `fbm`, `gradientNoise`, `simplexNoise`, `worley` / `worley2`, `ridgedFbm`, `turbulence`, `warpedFbm`, `curlNoise` |
 | **sdf** | `smin(a, b, k)` (smooth minimum) plus the 2D distance catalog (`sdEllipse`, `sdRoundBox`, `sdSegment`, `sdStar`, `sdHeart`, `sdBezier`, …) |
 | **domain** | `rotate2D`, `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold) |
+| **complex** | a `float2` as a complex number: `cmul`, `cdiv`, `cexp`, `clog`, `cpow`, `csqrt`, the trigonometric set, `complexPlane` to frame the layer as the plane, and `domainColor` to paint a value (pulls in **color**); the CPU twin is [`Complex`](../Helpers/Complex.md) |
 
 See the **[shader library reference](./ShaderLibrary.md)** for every function with its full signature.
 

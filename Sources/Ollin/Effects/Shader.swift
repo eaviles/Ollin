@@ -55,8 +55,12 @@ public struct Shader: Sendable {
         /// The per-pixel sources and transforms behind `Visual` chains (oscillator,
         /// cellular, shape, HSV adjustments, blends), callable from any shader.
         public static let visual = Modules(rawValue: 1 << 5)
+        /// Complex arithmetic on a `float2` (`cmul`, `cdiv`, `cexp`, `clog`,
+        /// `cpow`, the trigonometric set), the `complexPlane` framing, and
+        /// `domainColor` (depends on `color`).
+        public static let complex = Modules(rawValue: 1 << 6)
         /// Every section (the default).
-        public static let all: Modules = [.color, .hash, .noise, .sdf, .domain, .visual]
+        public static let all: Modules = [.color, .hash, .noise, .sdf, .domain, .visual, .complex]
     }
 
     /// The MSL source for an inline shader (the body that defines `shade`); empty for

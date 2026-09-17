@@ -22,6 +22,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 | `.noise` | value / FBM / gradient / simplex / Worley / curl noise, ridged / turbulence / warped fbm (depends on `.hash`) | no |
 | `.sdf` | smooth-min and the 2D signed-distance catalog | no |
 | `.domain` | repeat / mirror / polar-fold space operators | no |
+| `.complex` | complex arithmetic on a `float2` (`cmul`, `cdiv`, `cexp`, `clog`, `cpow`, the trigonometric set), the `complexPlane` framing, and `domainColor` (depends on `.color`) | no |
 
 ### Contents
 
@@ -31,6 +32,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 - [Noise](#noise)
 - [Signed-distance functions](#signed-distance-functions)
 - [Domain operators](#domain-operators)
+- [Complex numbers](#complex-numbers)
 - [Visual-chain operations](#visual-chain-operations)
 - [Chaotic systems (compute only)](#chaotic-systems-compute-only)
 
@@ -171,6 +173,41 @@ float4 shade(float2 uv, ShaderInfo info) {
 ```
 
 ---
+
+## Complex numbers
+
+`using: .complex` (pulls in `.color` for the wheel). A `float2` read as a complex number, `x` the real part and `y` the imaginary part. A point of the plane is then a number, and the functions below are what a plain `*` cannot do: multiplying multiplies the lengths and *adds the angles*. The names follow C's own complex library, with `cmul` and `cdiv` for the two operators C never had to name. Every multi-valued function takes the principal branch, the argument in `(-pi, pi]`, so the seam along the negative real axis is real and shown. Each mirrors the CPU [`Complex`](../Helpers/Complex.md) value of the same meaning. A curve worked out in `draw()` lands on the pixels a shader paints.
+
+| Function | Description |
+| --- | --- |
+| `float2 cmul(float2 a, float2 b)` | the product. |
+| `float2 cdiv(float2 a, float2 b)` | the quotient. |
+| `float2 conj(float2 z)` | the mirror image across the real axis. |
+| `float2 cinv(float2 z)` | `1 / z`. |
+| `float cabs(float2 z)` | the modulus, `\|z\|` (the same as `length`). |
+| `float carg(float2 z)` | the argument, in radians. |
+| `float2 cpolar(float r, float angle)` | the number at distance `r`, turned `angle` radians: `cpolar(1.0, a)` turns whatever it multiplies by `a`. |
+| `float2 cexp(float2 z)` | `e^z`. |
+| `float2 clog(float2 z)` | the natural logarithm, `(log\|z\|, arg z)`. |
+| `float2 cpow(float2 z, float n)` | `z` to a real power; a whole `n` winds cleanly, a fraction shows the seam. |
+| `float2 cpow(float2 z, float2 w)` | `z` to a complex power, `exp(w·log z)`. |
+| `float2 csqrt(float2 z)` | the principal square root. |
+| `float2 csin(float2 z)`, `ccos`, `ctan` | the trigonometric functions. |
+| `float2 csinh(float2 z)`, `ccosh`, `ctanh` | the hyperbolic functions. |
+| `float2 complexPlane(float2 uv, float2 resolution, float2 center, float span)` | the plane under a layer's `uv`: `center` in the middle, `span` units across the shorter side, the imaginary axis **up** (a `uv` runs down the canvas, so it is negated once here). The built-in domain-coloring generator frames its plane the same way, with `span = 3 / zoom`. |
+| `float3 domainColor(float2 f, int shading, float strength)` | a value painted the way a [domain coloring](../Drawing/Effects.md#generate) paints it: the direction picks a hue off a perceptual wheel (OKLCH at one lightness, so no hue reads brighter than another), and `shading` adds what a hue cannot say. `0` is the plain phase portrait; `1` rules the size, a band from dark to light between one doubling of `\|f\|` and the next; `2` rules the direction as well, twelve sectors to the turn, so away from the zeros and poles the two rulings cross in the little squares that make "conformal" visible. `strength` (`0…1`) is how dark the rulings go. Returns straight sRGB, ready to return from `shade`. |
+| `float3 domainColor(float2 f)` | the plain phase portrait. |
+
+The transcendentals clamp their exponent, so a far-out pixel saturates instead of returning an infinity that `atan2` cannot take a direction from.
+
+```metal
+float4 shade(float2 uv, ShaderInfo info) {
+    float2 z = complexPlane(uv, info.resolution, float2(0.0), 3.0);
+    float2 p = cpolar(0.8, info.time), q = cpolar(0.8, info.time + 2.3);
+    float2 f = cdiv(z - p, z - q);              // a zero at p, a pole at q
+    return float4(domainColor(f, 2, 0.7), 1.0);
+}
+```
 
 ## Visual-chain operations
 

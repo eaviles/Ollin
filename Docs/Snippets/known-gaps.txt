@@ -752,6 +752,7 @@ d84e8726dda1  Docs/Helpers/Audio.md:46  expected '{' in body of function declara
 04783bc53bfa  Docs/Helpers/Audio.md:66  'throws' may only occur before '->'
 f3861249dc5b  Docs/Helpers/Audio.md:79  cannot find 'AudioPlayer' in scope
 138cb1923595  Docs/Helpers/Audio.md:98  expected '{' in body of function declaration
+1386e5c3ac76  Docs/Helpers/Complex.md:32  expected ',' separator
 eecd805c7383  Docs/Helpers/Composition.md:11  overriding non-open property outside of its defining module
 ae33f1820696  Docs/Helpers/Composition.md:112  cannot find 'Rhythm' in scope
 e0818eb9fe55  Docs/Helpers/Composition.md:128  cannot find type 'Rhythm' in scope
@@ -1076,8 +1077,8 @@ c8f47d43ef55  Docs/Shaders/Compute.md:209  'module' is inaccessible due to 'inte
 e2eef799045a  Docs/Shaders/Compute.md:323  cannot use instance member 'makeSpatialHash' within property initializer; property initializers run before 'self' is available
 0da43f988b6b  Docs/Shaders/Compute.md:36  '@main' attribute cannot be applied to this declaration
 c9f48908e8ff  Docs/Shaders/ShaderLibrary.md:13  cannot find 'source' in scope
-a938ccb90b53  Docs/Shaders/Shaders.md:118  cannot find 'metalSource' in scope
-ce9030c22f3b  Docs/Shaders/Shaders.md:128  'module' is inaccessible due to 'internal' protection level
+a938ccb90b53  Docs/Shaders/Shaders.md:119  cannot find 'metalSource' in scope
+ce9030c22f3b  Docs/Shaders/Shaders.md:129  'module' is inaccessible due to 'internal' protection level
 fb6fa9118c0f  Docs/Shaders/Shaders.md:85  cannot find 'metalSource' in scope
 67f26bb524cc  Docs/Shaders/Visuals.md:104  cannot find 'driver' in scope
 a25c12e1a098  Docs/Shaders/Visuals.md:146  cannot find 'chain' in scope

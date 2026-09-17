@@ -4,11 +4,11 @@
 
 ## Shaders
 
-| [![DomainWarp](https://media.ollin.art/examples/Shaders/DomainWarp/still-640.jpg?v=9c7c951f)](DomainWarp/) | [![HelloShader](https://media.ollin.art/examples/Shaders/HelloShader/still-640.jpg?v=63468476)](HelloShader/) | [![ShaderBlend](https://media.ollin.art/examples/Shaders/ShaderBlend/still-640.jpg?v=8a803d48)](ShaderBlend/) | [![ShaderFilter](https://media.ollin.art/examples/Shaders/ShaderFilter/still-640.jpg?v=2f2995ce)](ShaderFilter/) |
+| [![ComplexPlane](https://media.ollin.art/examples/Shaders/ComplexPlane/still-640.jpg?v=50d83a38)](ComplexPlane/) | [![DomainWarp](https://media.ollin.art/examples/Shaders/DomainWarp/still-640.jpg?v=9c7c951f)](DomainWarp/) | [![HelloShader](https://media.ollin.art/examples/Shaders/HelloShader/still-640.jpg?v=63468476)](HelloShader/) | [![ShaderBlend](https://media.ollin.art/examples/Shaders/ShaderBlend/still-640.jpg?v=8a803d48)](ShaderBlend/) |
 |---|---|---|---|
-| [DomainWarp](DomainWarp/) | [HelloShader](HelloShader/) | [ShaderBlend](ShaderBlend/) | [ShaderFilter](ShaderFilter/) |
-| [![VisualCatalog](https://media.ollin.art/examples/Shaders/VisualCatalog/still-640.jpg?v=45257941)](VisualCatalog/) | [![VisualSynth](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg?v=21aaaa70)](VisualSynth/) |  |  |
-| [VisualCatalog](VisualCatalog/) | [VisualSynth](VisualSynth/) |  |  |
+| [ComplexPlane](ComplexPlane/) | [DomainWarp](DomainWarp/) | [HelloShader](HelloShader/) | [ShaderBlend](ShaderBlend/) |
+| [![ShaderFilter](https://media.ollin.art/examples/Shaders/ShaderFilter/still-640.jpg?v=2f2995ce)](ShaderFilter/) | [![VisualCatalog](https://media.ollin.art/examples/Shaders/VisualCatalog/still-640.jpg?v=45257941)](VisualCatalog/) | [![VisualSynth](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg?v=21aaaa70)](VisualSynth/) |  |
+| [ShaderFilter](ShaderFilter/) | [VisualCatalog](VisualCatalog/) | [VisualSynth](VisualSynth/) |  |
 
 These examples show how to write your own GPU code. A `Shader` is a `shade(uv, info)`
 function. Ollin wraps it, compiles it, and runs it through the effect graph as a source,
@@ -26,3 +26,4 @@ the [shader library reference](../../Docs/Shaders/ShaderLibrary.md), and
 | [VisualSynth](VisualSynth/Sketch.swift) | the `Visual` chain API: a source, warps, color moves, and modulations compile into one GPU pass, and every number can animate without a recompile |
 | [VisualCatalog](VisualCatalog/Sketch.swift) | the `Visual` chain catalog on one switchable contact sheet: sources, warps, color adjustments, two-chain combines, and per-pixel modulations, chosen by a family parameter, with every tile labeled with the calls it chains |
 | [DomainWarp](DomainWarp/Sketch.swift) | runtime shader parameters: `Shader(_, params:)` takes floats that MSL reads back as `param(info, n)`, which animates a hand-written domain-warp marble with no recompile |
+| [ComplexPlane](ComplexPlane/Sketch.swift) | the shader library's `complex` module beside the CPU `Complex` value: a shader colors every pixel by the phase and size of the ratio of two moving points (`complexPlane`, `cdiv`, `domainColor`), and `draw()` works out the circles that ratio is made of and lays them over the layer, where they land on the shader's rulings |

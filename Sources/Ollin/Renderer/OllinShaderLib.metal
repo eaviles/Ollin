@@ -4,7 +4,7 @@
 // MetalRenderer.shaderSourceNames / loadLibrary / composeShaderSource), so it
 // carries the preamble, the shared CPU/GPU struct definitions, and the general
 // reusable helpers every later segment builds on (color management, hashing,
-// noise, palettes, smooth-min, and domain operators).
+// noise, palettes, smooth-min, domain operators, and complex arithmetic).
 //
 // It is ONE library, used two ways: the framework's own shader segments are
 // concatenated after it (and use these helpers directly), and a user-supplied
@@ -1192,6 +1192,106 @@ static inline float pmodPolar(thread float2 &p, float n) {
     return c;
 }
 // OLLIN_LIB_END domain
+
+// OLLIN_LIB_BEGIN complex
+// MARK: - Complex numbers
+//
+// A float2 read as a complex number: x the real part, y the imaginary part, so
+// a point of the plane is a number, and the arithmetic below is what a plain
+// `*` cannot do (multiplying adds the angles). The names follow C's own complex
+// library (cabs, carg, cexp, clog, cpow, csqrt, csin, ccos), with cmul and cdiv
+// for the two operators C never had to name. Every multi-valued function takes
+// the principal branch, the argument in (-pi, pi], so the seam along the
+// negative real axis is real and shown. The transcendentals clamp their
+// exponent so a far-out pixel saturates instead of returning an infinity that
+// atan2 cannot take a direction from. Each mirrors the CPU `Complex` value of
+// the same meaning, so a curve worked out in draw() lands on the pixels a
+// shader paints.
+
+static inline float2 cmul(float2 a, float2 b) {
+    return float2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+static inline float2 cdiv(float2 a, float2 b) {
+    float d = max(dot(b, b), 1e-24);
+    return float2(a.x * b.x + a.y * b.y, a.y * b.x - a.x * b.y) / d;
+}
+static inline float2 conj(float2 z) { return float2(z.x, -z.y); }
+static inline float2 cinv(float2 z) { return conj(z) / max(dot(z, z), 1e-24); }
+static inline float cabs(float2 z) { return length(z); }
+static inline float carg(float2 z) { return atan2(z.y, z.x); }
+// The number at distance r from the origin, turned `angle` radians.
+static inline float2 cpolar(float r, float angle) { return r * float2(cos(angle), sin(angle)); }
+static inline float2 cexp(float2 z) {
+    return exp(clamp(z.x, -60.0, 60.0)) * float2(cos(z.y), sin(z.y));
+}
+static inline float2 clog(float2 z) {
+    return float2(log(max(length(z), 1e-24)), atan2(z.y, z.x));
+}
+// z^n by polar form: a whole n winds cleanly, a fraction shows the seam.
+static inline float2 cpow(float2 z, float n) {
+    float r = length(z);
+    if (r < 1e-24) { return float2(0.0); }
+    float a = atan2(z.y, z.x);
+    return pow(r, n) * float2(cos(n * a), sin(n * a));
+}
+// z^w as exp(w log z); zero to any power is zero.
+static inline float2 cpow(float2 z, float2 w) {
+    if (dot(z, z) < 1e-48) { return float2(0.0); }
+    return cexp(cmul(w, clog(z)));
+}
+static inline float2 csqrt(float2 z) { return cpow(z, 0.5); }
+static inline float2 csin(float2 z) {
+    float y = clamp(z.y, -60.0, 60.0);
+    return float2(sin(z.x) * cosh(y), cos(z.x) * sinh(y));
+}
+static inline float2 ccos(float2 z) {
+    float y = clamp(z.y, -60.0, 60.0);
+    return float2(cos(z.x) * cosh(y), -sin(z.x) * sinh(y));
+}
+static inline float2 ctan(float2 z) { return cdiv(csin(z), ccos(z)); }
+static inline float2 csinh(float2 z) {
+    float x = clamp(z.x, -60.0, 60.0);
+    return float2(sinh(x) * cos(z.y), cosh(x) * sin(z.y));
+}
+static inline float2 ccosh(float2 z) {
+    float x = clamp(z.x, -60.0, 60.0);
+    return float2(cosh(x) * cos(z.y), sinh(x) * sin(z.y));
+}
+static inline float2 ctanh(float2 z) { return cdiv(csinh(z), ccosh(z)); }
+
+// The plane under a shader's uv: `center` in the middle, `span` units across
+// the shorter side, the imaginary axis UP. A uv's y runs down the canvas, so it
+// is negated once here, and everything downstream (a zero you place, a circle
+// you draw over the layer from draw()) reads as mathematics writes it. The
+// built-in domainColoring generator frames its plane the same way, with
+// span = 3 / zoom.
+static inline float2 complexPlane(float2 uv, float2 resolution, float2 center, float span) {
+    float aspect = resolution.x / max(resolution.y, 1.0);
+    float2 q = (uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0) * span;
+    return float2(q.x, -q.y) + center;
+}
+
+// Domain coloring of a value: the direction it points picks a hue off a
+// perceptual wheel (OKLCH at one lightness, so no hue reads brighter than
+// another), and `shading` adds what a hue cannot say. 0 is the plain phase
+// portrait; 1 rules the size, a band from dark to light between one doubling
+// of |f| and the next; 2 rules the direction as well, twelve sectors to the
+// turn, so away from the zeros and poles the two rulings cross in the little
+// squares that make "conformal" visible. `strength` (0...1) is how dark the
+// rulings go. Returns straight sRGB, ready to return from shade().
+static inline float3 domainColor(float2 f, int shading, float strength) {
+    float turn = atan2(f.y, f.x) * 0.15915494;      // arg / 2 pi, in turns
+    float3 lab = oklchToOklab(float3(0.74, 0.16, turn * 6.28318530718));
+    float3 color = clamp(oklabToLinear(lab), 0.0, 1.0);
+    if (shading > 0) {
+        float ruling = 0.55 + 0.45 * fract(log2(max(length(f), 1e-24)));
+        if (shading > 1) { ruling *= 0.6 + 0.4 * fract(turn * 12.0); }
+        color *= mix(1.0, ruling, clamp(strength, 0.0, 1.0));
+    }
+    return linearToSrgb(color);
+}
+static inline float3 domainColor(float2 f) { return domainColor(f, 0, 0.0); }
+// OLLIN_LIB_END complex
 
 // OLLIN_LIB_BEGIN visual
 // MARK: - Visual-chain operations

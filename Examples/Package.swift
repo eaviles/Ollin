@@ -178,6 +178,9 @@ let package = Package(
         // modulations, a family at a time.
         example("Shaders/VisualCatalog"),
         example("Shaders/DomainWarp"),
+        // Complex arithmetic on both sides of the GPU: a shader colors a ratio of
+        // two moving points, and draw() lays the circles it is made of over it.
+        example("Shaders/ComplexPlane"),
         example("Rendering/ToneMapping"),
         example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),
