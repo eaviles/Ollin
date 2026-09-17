@@ -51,9 +51,12 @@ struct GIFMemoryTests {
     }
 
     /// The process footprint after two hundred frames is where it was after
-    /// ten. Holding the frames would have added about 175 MB at this size; the
-    /// bound is under a quarter of that, with room for whatever else the suite
-    /// is doing in the same second.
+    /// ten. Holding the frames would have added about 175 MB at this size
+    /// (190 frames of four bytes a pixel); the bound is half of that. The
+    /// footprint is the whole process's, and the suite shares its process
+    /// with every other suite in the shard, so the room is for whatever they
+    /// allocate in the same seconds: a bound of 40 MB measured 44 on the
+    /// runner with the writer holding nothing (2026-09-17).
     @Test func thePeakIsFlatInTheFrameCount() throws {
         let path = NSTemporaryDirectory() + "ollin-gif-flat-\(UUID().uuidString).gif"
         defer { try? FileManager.default.removeItem(atPath: path) }
@@ -68,6 +71,7 @@ struct GIFMemoryTests {
         try writer.finish()
         try #require(afterTen > 0 && afterAll > 0)
         let grew = afterAll - afterTen
-        #expect(grew < 40 * 1024 * 1024, "grew \(grew / 1_048_576) MB over 190 frames")
+        let held = (frames - 10) * side * side * 4
+        #expect(grew < held / 2, "grew \(grew / 1_048_576) MB over \(frames - 10) frames that would hold \(held / 1_048_576) MB")
     }
 }

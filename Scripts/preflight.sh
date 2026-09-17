@@ -43,6 +43,10 @@
 #          product, written down under API/; a change there has to be
 #          recorded on purpose, and from 1.0 on a removal needs its shim;
 #          about a minute warm, most of it the per-target build)
+#       -> Scripts/api-diff.sh --summary (the listings against the last tag,
+#          read as a version: the bump the release needs and the shim rule,
+#          a rehearsal count before 1.0 and a gate from 1.0 on; also on any
+#          change under API/; its self-test runs first; under a second)
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
 #          silently within a day of the last hand check; about 30 s warm)
@@ -223,6 +227,20 @@ if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "api-surface" Scripts/api-surface.sh
 else
     skip "api-surface" "no framework change"
+fi
+
+# The same listings read as a version: against the last tag, what was added,
+# removed, renamed, changed, or deprecated, and the bump that costs. Before
+# 1.0 the shim rule is a count in the output; from 1.0 on a public spelling
+# that went away with no deprecated twin fails here, and a shim outside its
+# module's Deprecations.swift fails in either era. The reader's own self-test
+# runs first, so a change to it cannot pass on a wrong reading.
+api=$(grep -E '^API/' <<<"$changed")
+if [[ -n "$framework" || -n "$api" || $milestone -eq 1 ]]; then
+    run "api-diff (selftest)" Scripts/api-diff.sh --selftest
+    run "api-diff" Scripts/api-diff.sh --summary
+else
+    skip "api-diff" "no framework or API/ change"
 fi
 
 # The generated API reference: DocC over every module `.spi.yml` publishes.

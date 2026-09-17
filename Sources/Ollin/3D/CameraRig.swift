@@ -28,12 +28,6 @@ public enum CameraView: String, Sendable, CaseIterable {
     case isometric
 }
 
-public extension CameraView {
-    /// Former name for `isometric` (the same three-quarter angle).
-    @available(*, deprecated, renamed: "isometric")
-    static var corner: CameraView { .isometric }
-}
-
 /// Owns the canonical orbit pose (target, radius, azimuth, elevation, field of
 /// view) that both the interactive controller and the cinematic moves drive, and
 /// turns it into a `Camera3D` each frame.
