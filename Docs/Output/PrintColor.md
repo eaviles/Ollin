@@ -24,13 +24,15 @@ An `ICCProfile` describes what one device does with color. The built-in profiles
 ICCProfile.sRGB                                 // what an Ollin canvas is, by default
 ICCProfile.displayP3                            // what a `.wide` or `.extended` canvas is
 ICCProfile.genericCMYK                          // a generic four-ink press
+ICCProfile.adobeRGB                             // the wider RGB working space
+ICCProfile.genericGray                          // one ink, for a gray proof
 ICCProfile(contentsOf: url)                     // the shop's own profile
 ICCProfile(resource: "press", in: .module)      // one bundled with the sketch
 ICCProfile.installed()                          // every profile on this machine
 ICCProfile.installed(named: "US Web Coated (SWOP) v2")
 ```
 
-A profile reports what it is through `name`, `space`, `channelCount`, `channelNames`, and `isOutputDevice`. That is enough to build a menu of the presses a studio has installed. Profiles are values. They are `Sendable` and `Hashable`, so they are cheap to pass around and to key on.
+A profile reports what it is through `name`, `space` (`.rgb`, `.cmyk`, `.gray`, or `.lab`), `channelCount`, `channelNames`, and `isOutputDevice`. That is enough to build a menu of the presses a studio has installed. Profiles are values. They are `Sendable` and `Hashable`, so they are cheap to pass around and to key on.
 
 The generic four-ink profile is close enough to show which colors will not print well, but it does not describe any particular press. Ask the shop for its own profile before you trust a proof for a real job.
 

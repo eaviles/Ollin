@@ -114,7 +114,7 @@ A `.usdz` is a ZIP archive with extra rules. Nothing in it is compressed, and th
 | `saveScene(_:to:as:metersPerUnit:)` | the same call from inside a sketch, beside `saveMesh` |
 | `OllinApp.spatialScene(of:frame:fps:)` | one frame's 3D draw calls as a `Scene` |
 | `OllinApp.exportSpatial(_:to:frame:fps:metersPerUnit:)` | record a frame and write it |
-| `SceneFileFormat` | `.usdz` (package) or `.usda` (text layer) |
+| `SceneFileFormat` | `.usdz` (package) or `.usda` (text layer); `fileExtension` spells it, and `SceneFileFormat(fileExtension:)` reads one back |
 | `--export-usdz <path>` | the CLI flag, with `--frame N` and `--meters-per-unit U` |
 
 ## Spatial video

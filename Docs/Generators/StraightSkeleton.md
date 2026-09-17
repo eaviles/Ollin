@@ -73,6 +73,7 @@ That loop draws contour lines like a topographic map in four lines. Every ring i
 | `skeleton.maxInset` | the largest inset distance before the shape vanishes |
 | `arc.start` / `arc.end` | the segment's endpoints, where `start` is the shallower end |
 | `arc.startDistance` / `arc.endDistance` | the inset distance at each endpoint (0 at a boundary vertex) |
+| `Arc(start:end:startDistance:endDistance:)` | one segment, for a skeleton built or edited by hand |
 | `face.edgeStart` / `face.edgeEnd` | the boundary edge the face grew from |
 | `face.points` / `face.distances` | the face boundary and the inset distance at each point, 1:1 |
 | `face.contour` | the face as a plain closed `Contour` |

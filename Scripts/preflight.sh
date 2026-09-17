@@ -28,6 +28,10 @@
 #          every labeled call matches a public overload, every pointer from
 #          the contributor files lands; a rename in Sources/ stales prose the
 #          diff never touched, so this one is not scoped to the diff; ~2 s)
+#       -> Scripts/check-api-pages.sh (the same two sides the other way: every
+#          public name under API/ is named by some Docs page, or listed with
+#          its reason; a page deleted stales this whether or not the diff
+#          touched it, so it is not scoped either; ~2 s)
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #     a Guide or Docs prose change, or a framework change
@@ -171,6 +175,12 @@ run "check-names" Scripts/check-names.sh
 # API/ are what a change to the surface records, so this reads them whole:
 # a name that broke a rule a week ago is as wrong as one in this diff.
 run "check-api-names" Scripts/check-api-names.sh
+
+# And the same listings against the reference: every public name written down
+# under API/ has to be named by some page under Docs/, or be listed with its
+# reason. check-names reads a backtick back to the tree; this reads the tree
+# back to the backticks, which is the direction nothing else covers.
+run "check-api-pages" Scripts/check-api-pages.sh
 
 # The command's flags against the table the shell completes from, both ways,
 # and the checked-in completion file against what the table generates. Not

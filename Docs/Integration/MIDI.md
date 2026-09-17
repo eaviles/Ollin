@@ -71,7 +71,10 @@ message.velocity     // Int?  (note messages)
 message.controller   // Int?  (the CC number)
 message.value        // Int?  (CC value, program, pressure, or bend)
 message.isNoteOn     // Bool
+message.isNoteOff    // Bool  (a note-off, or a note-on at velocity 0)
 ```
+
+To **send** one, build it: `MIDIMessage(_:channel:)` from a kind, or `MIDIMessage(status:data1:data2:)` from the raw bytes, or `MIDIMessage(umpWord:)` from a MIDI 2.0 Universal MIDI Packet word. `umpWord` writes it back out in that form, which is what the timecode walk steps through.
 
 <a name="midiinput"></a>
 
@@ -79,9 +82,9 @@ message.isNoteOn     // Bool
 
 ```swift
 MIDIInput(name: String = "Ollin")
-func start() throws
+func start() throws                          // MIDIError.coreMIDI(status) if Core MIDI refuses
 func stop()
-func availableSources() -> [MIDIEndpoint]    // the connected devices, by name
+func availableSources() -> [MIDIEndpoint]    // the connected devices: `name`, `manufacturer`, and an `id`
 
 // 1. Latest value of a controller (continuous knobs/faders)
 func controlValue(_ controller: Int, channel: Int? = nil) -> Int?
@@ -194,9 +197,9 @@ for note in midi.heldNotes {
 
 On a plain keyboard the same read gives the wheel and the aftertouch, shared by every note on the channel. A key's own pressure (polyphonic aftertouch) counts where the keyboard sends it. Nothing changes in the sketch.
 
-**Zones.** MPE divides the sixteen channels into a lower zone running up from channel 1 and an upper zone running down from 16. Most controllers use the lower one alone. The channel at the edge is the *master*. What arrives there (a bend, a pressure, a slide) applies to every note in the zone, on top of each note's own. A controller announces its zone with a configuration message on the master channel, and the input lays itself out from it. So `mpeZones` is usually nothing to set. For a controller that does not announce, set it by hand: `midi.mpeZones = [.lower()]`.
+**Zones.** MPE divides the sixteen channels into a lower zone running up from channel 1 and an upper zone running down from 16. Most controllers use the lower one alone. The channel at the edge is the *master*. What arrives there (a bend, a pressure, a slide) applies to every note in the zone, on top of each note's own. A controller announces its zone with a configuration message on the master channel, and the input lays itself out from it. So `mpeZones` is usually nothing to set. For a controller that does not announce, set it by hand: `midi.mpeZones = [.lower()]`, or build one field by field with `MPEZone(masterChannel:memberChannels:…)`. A zone reads back what it is: `masterChannel` is the channel the shared messages arrive on, `memberChannels` the range the notes arrive on and `memberCount` how many that is, `isLower` says which end of the sixteen it runs from, and `isMember(channel:)` answers whether a channel carries notes, with `contains(channel:)` counting the master too.
 
-**Bend ranges.** A member channel's bend spans 48 semitones and the master's 2, the specification's defaults. A quarter of the wheel on a member channel is then twelve semitones. A controller that says otherwise (the pitch bend range as a registered parameter) is believed. On a member channel it sets every member's range, on the master the master's. On a channel outside any zone it sets that channel's, which is 2 semitones until told.
+**Bend ranges.** A member channel's bend spans 48 semitones and the master's 2, the specification's defaults, held on the zone as `memberPitchBendRange` and `masterPitchBendRange`. A quarter of the wheel on a member channel is then twelve semitones. A controller that says otherwise (the pitch bend range as a registered parameter) is believed. On a member channel it sets every member's range, on the master the master's. On a channel outside any zone it sets that channel's, which is 2 semitones until told.
 
 **Playing an instrument from it.** Start each note as it appears, let it go as it leaves, and every frame hand each held note the three values. That is the whole wiring; [`Synth`](../Helpers/Synthesis.md#expression) does the rest.
 
@@ -299,8 +302,13 @@ Timecode(hours:minutes:seconds:frames:frameRate:)
 Timecode(frameNumber:frameRate:)    // and Timecode(seconds:frameRate:)
 var frameNumber: Int                // frames from zero, the dropped numbers not counted
 var totalSeconds: Double            // the same on the wall clock
+var fullFrameSysEx: [UInt8]         // the whole position as one system-exclusive message
 func advanced(by frames: Int) -> Timecode
 "\(code)"                           // "01:02:03:04", or "00:10:00;02" for drop frame
+
+rate.framesPerSecond                // 24, 25, 29.97, or 30
+rate.secondsPerFrame                // one frame's length on the wall clock
+rate.isDropFrame                    // true for 29.97 drop, where two numbers a minute go unused
 ```
 
 Where a tempo clock says how fast, timecode says where. A video deck, a show controller, a lighting desk, or a DAW locked to picture sends its position as MIDI Time Code. That is hours, minutes, seconds, and frames, at one of four frame rates. A `TimecodeClock` reads it, so a sketch can chase the same timeline and land a cue on the frame:

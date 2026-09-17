@@ -60,7 +60,7 @@ Describe what is there, not how it is made. Use one or two sentences in the pres
 
 Keep the parts few, because a list of fifty shapes tells nobody what the piece looks like. Texture is not a part, so leave it out. Draw the glow around a sun and the shimmer on water, but do not name them.
 
-You can also show the words on the canvas. `drawCaption(_:)` draws one line, and `accessibleDescription.lines` holds everything the sketch has said.
+You can also show the words on the canvas. `drawCaption(_:)` draws one line, and `accessibleDescription.lines` holds everything the sketch has said. That description is a `SketchDescription`, whose `elements` are the parts in reading order, each built as `DescribedElement(name:text:region:)`. Each is a `DescribedElement` with its `name`, its `text`, the `region` it sits in when the sketch said one (which is what lets a screen reader move to it by position, and the accessibility inspector draw a box around it), and `spoken`, the one line a screen reader reads: the name, then what it looks like.
 
 ### Where the words go
 
@@ -98,7 +98,7 @@ The three kinds are named after the cone whose response is shifted:
 | `.deuteranomaly` | middle wavelength | the most common kind |
 | `.tritanomaly` | short wavelength, nearest blue | rare, and usually acquired |
 
-Severity runs from 0 to 1. At 0 nothing changes. At 1 the cone is missing rather than shifted, which is dichromacy. `.protanopia`, `.deuteranopia` and `.tritanopia` are the three kinds at full severity. Any value between is anomalous trichromacy, which is the more common case.
+A `ColorVision(_:severity:)` is one of those kinds at a `severity`, and `applied(to:)` is what puts it on a color. Severity runs from 0 to 1. At 0 nothing changes. At 1 the cone is missing rather than shifted, which is dichromacy. `.protanopia`, `.deuteranopia` and `.tritanopia` are the three kinds at full severity. Any value between is anomalous trichromacy, which is the more common case.
 
 ```swift
 ColorVision.deuteranopia            // the cone is gone
@@ -128,13 +128,13 @@ Put it behind a `@Param` toggle, and you can switch the check on and off while y
 
 ```swift
 for pair in myPalette.confusions(under: .deuteranopia) {
-    print("colors \(pair.first) and \(pair.second) are \(pair.distance) apart")
+    print("colors \(pair.first) and \(pair.second) are \(pair.distance) apart under \(pair.vision)")
 }
 
 if !myPalette.isColorblindSafe() { /* pick again */ }
 ```
 
-`confusions()` with no argument checks all three kinds at full severity. Either way the worst pair comes first, so the first entry is the one to fix.
+Each pair also carries the `vision` that brings the two together, which is the kind to say out loud when the check reports one. `confusions()` with no argument checks all three kinds at full severity. Either way the worst pair comes first, so the first entry is the one to fix.
 
 **Lightness is what keeps a pair apart.** The check measures the whole distance, lightness as well as hue, because a person judges both. To somebody with protanopia, red and green look alike in hue, but one is darker than the other, so the pair is still usable. Two colors of the same lightness that differ only in hue are the ones that merge. A red and a green matched for lightness measure 0.281 apart for average vision and 0.014 apart under the worst kind. Move them apart in lightness, and the same two hues stay 0.601 apart.
 

@@ -199,7 +199,7 @@ The flags:
 
 Exported tracks are tagged Rec. 709, so what players show matches what the canvas rendered.
 
-**HDR.** A sketch that declares [`colorOutput`](../Drawing/ColorOutput.md) `.extended` is written as **HDR10** instead, with no extra flag to pass. That means Rec. 2020 primaries, the PQ transfer, 10-bit HEVC, and the mastering-display and content-light metadata the format expects. If the codec was left at the `h264` default, it is forced to `hevc`, because eight bits cannot carry HDR. A `.wide` sketch's track is tagged P3-D65, which is the same standard range through wider primaries.
+**HDR.** A sketch that declares [`colorOutput`](../Drawing/ColorOutput.md) `.extended` (which is the setting `isHighDynamicRange` reads true for) is written as **HDR10** instead, with no extra flag to pass. `ColorOutput.referenceWhiteNits`, 203, is the luminance 1.0 stands for in that file, the standard's own reference white, so an exported clip's paper white lands where every other HDR video's does, and `ColorOutput.peakNits`, 1000, is the brightest highlight it carries and the figure the file declares it was mastered for. That means Rec. 2020 primaries, the PQ transfer, 10-bit HEVC, and the mastering-display and content-light metadata the format expects. If the codec was left at the `h264` default, it is forced to `hevc`, because eight bits cannot carry HDR. A `.wide` sketch's track is tagged P3-D65, which is the same standard range through wider primaries.
 
 **Spatial video.** A 3D sketch can be exported as [spatial video](Spatial.md#spatial-video) instead. It uses the same fixed-clock drive, but each frame is rendered from two eyes. The two views are muxed into the stereo format that Apple's platforms play with real depth.
 
@@ -311,6 +311,8 @@ Two numbers are easy to confuse, and the export prints both:
 
 - `--seconds` counts the **sketch's** own time, as it always has. Four seconds at factor 4 is a sixteen-second file.
 - `--frames` counts the frames written to the **file**. Ninety-six frames at 30 fps is 3.2 seconds of video whatever the factor is.
+
+In code the same setting is a `SlowMotion`, whose `factor` is how much longer the file runs than the sketch's own time.
 
 By default every one of those frames is drawn. The clock steps `factor` times finer, `deltaTime` shrinks to match, and the sketch is asked to draw each moment in between. That is exact and it works for any sketch, but it costs the factor's worth of render time.
 
@@ -471,10 +473,10 @@ OllinApp.exportSVG(MySketch(), to: "/tmp/hatched.svg",
                    hatching: Hatching(spacing: 6, angle: .pi / 4, crossHatches: true))
 ```
 
-Hatching transforms geometry rather than the rendered picture, so a sketch can ask for the lines directly. You can draw them on the canvas or feed them anywhere else:
+`penWidth` is the width the emitted hatch strokes are written at, the plotter's pen. `keepsOutline` strokes each hatched shape's border in its fill color as well, so the region keeps a clean edge rather than only interior lines. `usesToneDensity` scales the spacing by the fill's tone as the exporter hatches it, so a dark fill hatches densely, a light one sparsely, and a near-white one drops out; the export path alone reads it, since `lines(filling:)` always uses `spacing`. Hatching transforms geometry rather than the rendered picture, so a sketch can ask for the lines directly. You can draw them on the canvas or feed them anywhere else:
 
 ```swift
-for line in Hatching(spacing: 8).lines(filling: someShape) {
+for line in Hatching(spacing: 8, penWidth: 0.5).lines(filling: someShape) {
     drawPolyline(line)
 }
 ```

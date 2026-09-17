@@ -29,7 +29,7 @@ The drawing core then stays free of one more framework.
 
 ## Reading it
 
-`controller` is player one, taken fresh each frame. It is a snapshot rather than
+`controller` is player one as a `Controller`, taken fresh each frame. It is a snapshot rather than
 a live object, in the same way that `mouseX` is a number rather than something
 that keeps changing under you. Read it inside `draw()`.
 
@@ -45,6 +45,7 @@ that keeps changing under you. Read it inside `draw()`.
 | `anyButtonIsDown`, `anyButtonWasPressed` | for a "press anything to start" |
 | `isConnected`, `didConnect`, `didDisconnect` | whether one is there, and whether that just changed |
 | `name` | what the controller calls itself |
+| `player` | which player number the system assigned it, 1 up |
 | `batteryLevel`, `isCharging` | charge from 0 to 1, or `nil` when the pad does not report it |
 
 The three kinds of question get three shapes of answer, chosen for each question

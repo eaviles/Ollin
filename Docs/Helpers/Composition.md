@@ -83,6 +83,8 @@ tempo.seconds(of: .eighth)              // a note length in, seconds out: what `
 tempo.seconds(beats: 1.5)               // any count of beats
 tempo.seconds(bars: 8)                  // eight bars, for a `loopDuration`
 tempo.secondsPerBeat                    // 0.577 at 104
+tempo.secondsPerBar                     // four of those at the default
+tempo.beatsPerMinute                    // 104, as it was set
 tempo.bars(at: time)                    // where the music is, in bars
 ```
 
@@ -165,7 +167,7 @@ override func draw() {
 
 Write a bar out with one token per step: a note name (`C3`), a MIDI number (`36`), or `.` for a rest. `init(pattern:)` returns nil for a token it cannot read, and the literal form leaves an empty bar and says so once. `StepSequencer(.tresillo, pitch: 36)` puts one note on every strike of a rhythm, and `StepSequencer(count: 16)` is an empty bar to fill in.
 
-Each step is a `Step` with a `pitch` (nil for a rest), a `velocity`, a `probability`, and a `ratchet`. The subscript reads and writes them and wraps, so `drums[17]` is the second step of a sixteen-step bar:
+Each step is a `Step` with a `pitch` (nil for a rest, which `isRest` reads), a `velocity`, a `probability`, and a `ratchet`. The subscript reads and writes them and wraps, so `drums[17]` is the second step of a sixteen-step bar:
 
 ```swift
 drums[7] = StepSequencer.Step(42, velocity: 0.6, ratchet: 3)   // three strikes in the time of one
@@ -251,7 +253,7 @@ synth.play(chord: chord.pitches, for: 2)
 
 The qualities are: `.major` `.minor` `.diminished` `.augmented` `.sus2` `.sus4` `.fifth` `.sixth` `.minorSixth` `.dominantSeventh` `.majorSeventh` `.minorSeventh` `.minorMajorSeventh` `.halfDiminishedSeventh` `.diminishedSeventh` `.addNine` `.ninth` `.majorNinth` `.minorNinth` `.eleventh` `.thirteenth`. `Chord.Quality` is a `ParamOption` too.
 
-`inverted(_:)` moves notes from the bottom of the chord to the top. That is how one chord moves to the next without every part leaping. Inverting a chord all the way round brings it back an octave up. A negative inversion drops notes from the top to the bottom instead, which is how a close voicing is opened out. `spread(over:)` lays the chord across several octaves, because a chord packed inside one octave sounds crowded rather than rich.
+A `Chord` is a `root`, a `quality`, and an `inversion`, and `Chord.quality(_:)` reads a quality back out of a written symbol. `inverted(_:)` moves notes from the bottom of the chord to the top. That is how one chord moves to the next without every part leaping. Inverting a chord all the way round brings it back an octave up. A negative inversion drops notes from the top to the bottom instead, which is how a close voicing is opened out. `spread(over:)` lays the chord across several octaves, because a chord packed inside one octave sounds crowded rather than rich.
 
 ### Progression
 
@@ -265,7 +267,7 @@ for step in counter.steps(upTo: time * 2) {
 }
 ```
 
-It uses degrees rather than names because degrees survive a change of key. `I vi IV V` is the same progression in every key. Written that way, the quality of each chord comes from the scale instead of being spelled out. So the same four numerals come out major in a major key and minor in a minor key, with nothing changed.
+It uses degrees rather than names because degrees survive a change of key. A progression written as chord symbols instead holds them in `writtenChords`, since those chords carry their own qualities and the degrees go unused. `I vi IV V` is the same progression in every key. Written that way, the quality of each chord comes from the scale instead of being spelled out. So the same four numerals come out major in a major key and minor in a minor key, with nothing changed.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Changes-dark.jpg">
@@ -334,13 +336,13 @@ The patterns are: `.up` `.down` `.upDown` `.downUp` `.asPlayed` `.converge` `.di
 
 `.upDown` and `.downUp` do not play either end note twice in a row, so the turn sounds like a turn and not a stutter. `.asPlayed` is the only pattern that keeps the notes in the order they were given. Every other pattern sorts the notes into a ladder, so `.asPlayed` is the only way to hear a voicing you arranged by hand. `.random` is seeded and is a pure function of the step. The same seed always gives the same sequence, and adding one cannot shift anything else the sketch does at random.
 
-`order` returns one full pass of the pattern, so a sketch can draw the figure it is about to play. `notes` is the pool of notes, spread over the octaves the arpeggio covers.
+`order` returns one full pass of the pattern, so a sketch can draw the figure it is about to play. `notes` is the pool of notes, and `spreadPitches` is that pool spread over the octaves the arpeggio covers, lowest first.
 
 ---
 
 ### Arpeggiator
 
-An `Arpeggiator` is an `Arpeggio` that follows the notes as they change: whatever is held right now, played one note a step, against the beat.
+An `Arpeggiator` is an `Arpeggio` that follows the notes as they change: whatever is held right now, played one note a step, against the beat. `playing` is the figure's notes at this moment, which is what is held, or the last chord while it is latched, and empty when it is silent.
 
 ```swift
 var arp = Arpeggiator(.upDown, octaves: 2, rate: .sixteenth)
@@ -377,7 +379,7 @@ let degree = melody.next() ?? 0
 synth.play(scale[degree])
 ```
 
-It works over any hashable type, so degrees, `Pitch`es, chord qualities, and step counts all fit. There is a one-line form too. `MarkovChain(learning:order:seed:loops:)` builds the chain and learns the sequence in one step, which is what the example at the end of this page uses.
+The chain shows its work: `vocabulary` is every element it has seen, in the order it first saw them, `context` the run it will choose the next one from, and `continuations(after:)` what may follow a context with how likely each is, sorted from most likely down, since what it learned is a picture as much as a sound. It works over any hashable type, so degrees, `Pitch`es, chord qualities, and step counts all fit. There is a one-line form too. `MarkovChain(learning:order:seed:loops:)` builds the chain and learns the sequence in one step, which is what the example at the end of this page uses.
 
 `order` is how far back it looks. At order 1, each element is chosen from what followed the one before it. At order 2, it looks at the last two elements, which tracks the source more closely and invents less. When it has never seen the current context, it falls back to a shorter one. If that fails too, it falls back to how often each element appeared at all, so it always has an answer.
 
@@ -465,7 +467,7 @@ There are three things to know about it:
 - **A missed beat costs nothing.** The tempo is the middle value of the recent gaps rather than their average. One missed beat doubles one gap, which moves an average but does not move a middle value.
 - **It hears note onsets, not the beat a drummer would tap.** It follows a steady loop well, and it follows rubato playing badly. `steadiness` tells you how much to trust it.
 
-`BeatEngine` is the same mechanism with no audio input. Onset times go in, and musical time comes out. That makes it testable, and it is there for a sketch that decides for itself when a beat happened.
+`BeatEngine` is the same mechanism with no audio input. `hearBeat(at:)` says a beat was heard at a time in seconds, `memory` is how far back it weighs what it has heard, and musical time comes out. That makes it testable, and it is there for a sketch that decides for itself when a beat happened.
 
 `Examples/Audio/PlayAlong` runs a `BeatFollower` on the microphone. Once `isFollowing` comes on, it plays a note on every beat the follower reports. A generated pulse stands in until the microphone is allowed, so the whole mechanism is visible before any permission is granted.
 

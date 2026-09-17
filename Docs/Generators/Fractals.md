@@ -67,7 +67,7 @@ FractalFlame.Renderer(flame, width: Int, height: Int, seed: Int)   // the progre
 
 The flame algorithm extends the chaos game three ways.
 
-- **Variations.** Each transform follows its affine map with a weighted blend of nonlinear plane-warps. The warps are `.sinusoidal`, `.spherical`, `.swirl`, `.horseshoe`, `.polar`, `.handkerchief`, `.heart`, `.disc`, `.spiral`, `.hyperbolic`, `.diamond`, `.ex`, and `.julia`.
+- **Variations.** Each transform follows its affine map with a weighted blend of nonlinear plane-warps, each written as a `Blend(_:_:)` of a variation and its weight. The warps are `.sinusoidal`, `.spherical`, `.swirl`, `.horseshoe`, `.polar`, `.handkerchief`, `.heart`, `.disc`, `.spiral`, `.hyperbolic`, `.diamond`, `.ex`, and `.julia`.
 - **Structural coloring.** The orbit carries a color coordinate that averages toward each visited transform's palette index. Color therefore records *which maps* shaped each region.
 - **Log density.** The render accumulates a per-pixel density histogram, then shows it through a logarithm. That is why filaments, veils, and cores all stay visible at once.
 
@@ -110,7 +110,7 @@ renderer.accumulate(samples: 20_000)
 drawImage(renderer.image(), in: canvasRectangle)
 ```
 
-A plate this deep is meant to be watched as it builds up, and the `Renderer` is the live form. `quality` on the one-shot `render` is orbit samples per output pixel, sized for small stills and tests. `gamma` at its default 2 lifts the faint structure. Developing the plate normalizes each channel to a percentile ceiling, so a few hot pixels near the antenna cannot dim the plate. Both forms are deterministic for a fixed seed and sample count.
+A plate this deep is meant to be watched as it builds up, and the `Renderer` is the live form, holding the `buddhabrot` it is developing. `quality` on the one-shot `render` is orbit samples per output pixel, sized for small stills and tests. `gamma` at its default 2 lifts the faint structure. Developing the plate normalizes each channel to a percentile ceiling, so a few hot pixels near the antenna cannot dim the plate. Both forms are deterministic for a fixed seed and sample count.
 
 <a name="inversion"></a>
 
@@ -143,7 +143,7 @@ kleinianLimitSet(ta: Vector2, tb: Vector2, epsilon: Double = 0.002,
 kleinianLimitSet(_ preset: KleinianPreset, ...) -> Contour
 ```
 
-Two complex traces, carried as `Vector2(re, im)`, pick a two-generator Möbius group by the classic recipe. A depth-first walk of the group's reduced words then traces its limit set as **one ordered closed curve**. Subdivision stops when an arc drops under `epsilon`, which is measured in limit-set units that run roughly ±2 across. The points therefore come back evenly spaced along the curve, ready for a plotter. The walk uses no randomness at all.
+Two complex traces, carried as `Vector2(re, im)`, pick a two-generator Möbius group by the classic recipe, and a `KleinianPreset` hands its own pair over as `traces`. A depth-first walk of the group's reduced words then traces its limit set as **one ordered closed curve**. Subdivision stops when an arc drops under `epsilon`, which is measured in limit-set units that run roughly ±2 across. The points therefore come back evenly spaced along the curve, ready for a plotter. The walk uses no randomness at all.
 
 ```swift
 let curve = kleinianLimitSet(.lace)
@@ -165,7 +165,7 @@ schottkyCircles(ta: Vector2, tb: Vector2, in bounds: Rectangle, ...) -> [Circle]
 schottkyLimitSet(pairing: [SchottkyPairing], ...) -> [Vector2]
 ```
 
-Take an even number of circles and pair them up. A `SchottkyPairing` is the Möbius map that carries the *outside* of one circle onto the *inside* of its partner. Applying it drops whatever it touches into the partner disc, at a smaller size. Apply the pairings and their inverses in every order, and the circles nest forever. The shape they close down onto is the group's limit set.
+Take an even number of circles and pair them up. A `SchottkyPairing(from:to:twist:)` is the Möbius map that carries the *outside* of one circle onto the *inside* of its partner. A preset hands over its own arrangement through `pairings(in:)`, laid out to fill a rectangle. Applying it drops whatever it touches into the partner disc, at a smaller size. Apply the pairings and their inverses in every order, and the circles nest forever. The shape they close down onto is the group's limit set.
 
 The output is real `Circle`s rather than a flattened polyline, because a Möbius map carries a circle to a circle. `drawCircles` renders them analytically, and the vector-export path writes true circle geometry, so the whole lace goes to a plotter as circles.
 

@@ -44,7 +44,7 @@ VideoPlayer(url: URL)                       // any file URL
 VideoPlayer(resource: String, withExtension: String, in: Bundle) throws
 ```
 
-`path` throws if no file exists there, and `resource` throws if the bundle does not contain it. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target. There is no default for `in:`, because a default would resolve to Ollin's bundle, not yours.
+`path` throws `VideoError.fileNotFound` if no file exists there, and `resource` throws `VideoError.resourceNotFound` if the bundle does not contain it. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target. There is no default for `in:`, because a default would resolve to Ollin's bundle, not yours.
 
 The file's metadata loads in the background right after init, so `duration` and `size` are `nil` for the first moments and fill in shortly. Read them as optionals in `draw()`, in the same way you would read the first camera frame.
 

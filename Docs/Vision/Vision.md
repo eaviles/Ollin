@@ -46,7 +46,7 @@ final class Faces: Sketch {
 - [When there is no camera](#nocamera) - `Camera.orStill` and `StillFrames`, so a sketch still has something to read
 - [FaceTracker](#facetracker) - find faces, landmarks, and head pose
 - [Face](#face) - one detected face, and reading its parts
-- [ContourDetector](#contourdetector) - trace edges into vector contours
+- [ContourDetector](#contourdetector) - trace edges into vector contours, read as `contourTree`
 - [DetectedContours](#detectedcontours) - contours as `Contour`s and `Shape`s
 - [HandTracker](#handtracker) - find hands and their 21-joint skeletons
 - [Hand](#hand) - one detected hand, its joints and fingers
@@ -87,7 +87,7 @@ final class Faces: Sketch {
 
 ```swift
 Camera(_ device: Camera.Device = .default)
-func start() throws
+func start() throws                          // CameraError: .noDevice, .cannotAddInput, .cannotAddOutput
 func stop()
 var frame: Image? { get }
 var frameSize: Vector2? { get }
@@ -506,6 +506,8 @@ var isWorking: Bool { get }
 func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> Pick?
 ```
 
+A tracker that runs a model of its own throws when the model will not load: `PointSegmenter.Error`, `ModelTracker.Error`, `ConceptTracker.Error`, `DepthTracker.Error`, and `DepthClip.Error` are each an `.unavailable(String)` carrying the reason in a sentence worth printing, usually a missing or mismatched model file.
+
 `PointSegmenter` lifts **whatever you point at**. `SubjectSegmenter` decides for itself what stands out. This one takes direction: give it one point, and it segments the thing under that point, whatever that thing is. A click picks the mug, not the person holding it. It uses a promptable-segmentation model in three parts. `Scripts/fetch-models.sh` fetches the parts, and they are never committed. Hand the three files to the initializer.
 
 `pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRectangle(in:)` you drew it into. It answers asynchronously. It freezes the current frame and encodes that frame once, which takes about 0.2 s, and then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one arrives, and `isWorking` tells you one is on the way. A refinement reuses the frozen frame's encoding, so it also arrives in milliseconds. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point the mask must not cover, so a shift-click can remove a stray region. The model proposes three readings of every prompt (the part, the whole, and the group), and the best-scored one wins. `Pick.score` is that confidence.
@@ -556,7 +558,7 @@ struct Segmentation {
 
 ```swift
 RectangleDetector(_ source: any FrameSource, minAspectRatio: Float = 0.2,
-                  maxAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
+                  maxAspectRatio: Float = 1.0, minSize: Float = 0.1,
                   minConfidence: Float = 0.6, maxCount: Int = 8)
 var rectangles: [DetectedRectangle] { get }
 static func detect(in: Image, …) async throws -> [DetectedRectangle]
@@ -646,7 +648,7 @@ static func track(_ seed: Rectangle, across: [Image]) async throws -> [TrackedOb
 
 The other trackers *detect*, which means they find faces or rectangles on their own. This one *tracks* instead. You hand it a box that says where something is right now, and it follows that same patch from frame to frame as it moves. So it can follow an object the recognizers have no model for. It is a classical tracker with no neural model, so it runs on any Mac.
 
-Seed it from a click with `track(centeredAt:size:in:)`, or from a box you drew with `track(_:in:)`. Another detector's result works too, if you pass its `bounds(in:)`. Then read `trackedObject` each frame. Call a `track(…)` method again to re-target, or `stop()` to let go.
+Seed it from a click with `track(centeredAt:size:in:)`, or from a box you drew with `track(_:in:)`. Another detector's result works too, if you pass its `bounds(in:)`. Then read `trackedObject` each frame. Call a `track(…)` method again to re-target, or `stop()` (spelled `stopTracking()` on the object itself) to let go.
 
 ```swift
 let camera = Camera()
@@ -1107,7 +1109,7 @@ The model is not downloaded but **built**. Nobody publishes a Core ML version of
 ### DepthClip
 
 ```swift
-DepthClip(_ playback: any ClipPlayback, modelAt: URL)   // bound to a VideoPlayer
+DepthClip(_ playback: any ClipPlayback, modelAt: URL)   // anything with a currentTime and a duration
 DepthClip(url: URL, modelAt: URL)                        // a file, read by time
 var isReady: Bool { get }
 var progress: Double { get }                              // 0…1 while the pass runs
@@ -1159,7 +1161,7 @@ The recognizers report geometry in **normalized** coordinates. That is `0…1` a
   <img src="../Images/VisionMapping.jpg" alt="A normalized panel with its origin at the lower left and y up beside a canvas panel with its origin at the top left and y down, the same reported point flipped in y and scaled into the rectangle the frame was drawn in" width="680">
 </picture>
 
-The `Face` helpers (`bounds(in:)`, `landmarks(_:in:)`) do this for you. Pass the rectangle you drew the frame into, usually `camera.fittedRectangle(in: bounds)`, so the overlay sits on the picture. Set `mirrored: true` when you draw the frame flipped left to right, so the overlay flips with it. That is the natural "selfie" orientation for a front camera.
+Every result also keeps what the recognizer said, under a name ending in `Normalized`: `Face.boundingBoxNormalized`, `TrackedObject.boundingBoxNormalized`, and a trajectory's `detectedPointsNormalized` and `projectedPointsNormalized`. Reach for those when the mapping is your own, and for the helpers otherwise. The `Face` helpers (`bounds(in:)`, `landmarks(_:in:)`) do this for you. Pass the rectangle you drew the frame into, usually `camera.fittedRectangle(in: bounds)`, so the overlay sits on the picture. Set `mirrored: true` when you draw the frame flipped left to right, so the overlay flips with it. That is the natural "selfie" orientation for a front camera.
 
 To map points from a source the built-in trackers do not cover (say, a custom Core ML model), `VisionSpace` exposes the same math directly:
 

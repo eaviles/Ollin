@@ -96,6 +96,8 @@ take.install(on: sketch)                // seed + starting parameters + the play
 // ...then drive the sketch however you like; every frame replays.
 ```
 
+A take holds what it needs to stand a run up again: `sketchType` is the name of the class it was recorded from, `seed` the variation behind `random()` and `noise()`, `initialParams` every parameter's value at the first frame, `changes` the parameter moves after it with the frame each landed on, and `events` the input, each a `Take.StampedEvent` pairing a frame with the `event` that arrived on it. An event is a `Take.Event`: `pointer`, `button` and `rightButton` (which fire the press and release hooks), `buttonState` (the button alone, with no hooks, as a host widget's drag sends it), `pressure` and `stylus`, `scroll`, `modifiers`, `key`, and `keysCleared` for the moment the canvas loses the keyboard and drops what it was holding. `Take.currentVersion` is the format version a file is written at and read back against.
+
 `Take.install(on:)` prepares a fresh instance before its first frame. It applies the seed, restores the starting parameter values, and attaches the player. The player overrides the clock and feeds the recorded inputs through the same paths that live input takes, so the input hooks fire again. The runner carries recording from code and the window's playback controls: `beginTake(writingTo:)`, `finishTake()`, `replay(_:)`, and `scrub(to:)`.
 
 ### What replays, and what cannot

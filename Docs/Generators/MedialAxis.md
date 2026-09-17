@@ -55,6 +55,8 @@ Holes are kept, and the skeleton ring around each hole comes back as a closed br
 | `branch.isClosed` | whether the branch loops (a hole's ring does) |
 | `branch.contour` | the branch as a `Contour`, ready for `drawPolyline`, smoothing, or export |
 
+`Branch(points:radii:isClosed:)` builds one by hand, for a skeleton that came from somewhere else.
+
 The radii carry the thickness that a line drawing on its own does not have. The largest radius marks the deepest point of the shape, where the biggest disk fits. Walk a branch and call `drawCircle(center: p, radius: r)` at each point, and the shape comes back as a row of inscribed disks.
 
 <a name="notes"></a>

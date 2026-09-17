@@ -201,7 +201,7 @@ A feed that nobody drains keeps the newest few hundred messages and drops the ol
 
 A piece on a wall outlives any socket, so a `PushFeed` has to reconnect. The feed does all of it on its own, and a sketch only ever reads `isConnected` and `problem` to say what is happening.
 
-- A dropped connection redials after `retryEvery:` seconds, which never goes below one. A run of failures doubles the wait each time, up to eight times that. Anything that arrives puts the wait back to `retryEvery:` seconds.
+- A dropped connection redials after `retryEvery:` seconds, which the feed reads back as `retryInterval` and which never goes below one. A run of failures doubles the wait each time, up to eight times that. Anything that arrives puts the wait back to `retryEvery:` seconds.
 - A stream of server-sent events that names its own retry time is obeyed. One that labels its messages with ids is resumed with the last id seen, so a short drop loses nothing the server still holds.
 - A web socket is pinged every few seconds, so a connection that died without a word is noticed and redialed instead of being trusted. A quiet stream of events is given a minute before the same treatment.
 - `greeting:` is sent each time the connection opens, not once. A service that wants a subscribe message wants it again after every redial. That is why the greeting is part of the feed, rather than a `send(_:)` made in `setup()`.

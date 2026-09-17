@@ -42,7 +42,7 @@ final class Visuals: Sketch {
 
 The camera device is a macOS system extension, and the **Ollin Camera** app installs it once. That app is built from [`Apps/OllinCameraApp`](../../Apps/OllinCameraApp/README.md) in this repo. Launch the app from `/Applications`, then approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. After that, "Ollin Camera" appears in every app's camera menu. The device exists whether or not a sketch is running.
 
-Once the camera is installed, any Ollin process can feed it, including a plain `swift run` sketch, the live host, or anything else you run. If a sketch publishes while the camera is not installed, nothing breaks. The sketch keeps drawing, `isAvailable` stays `false`, and `unavailableReason` says what to do.
+Once the camera is installed, any Ollin process can feed it, including a plain `swift run` sketch, the live host, or anything else you run. If a sketch publishes while the camera is not installed, nothing breaks. The sketch keeps drawing, `isAvailable` stays `false`, and `unavailableReason` says what to do. Under that, the server reports a `VirtualCameraError`: `.deviceNotFound` when the extension is not installed, `.sinkStreamNotFound` when it is installed but has no stream to write to, and `.startFailed` or `.queueUnavailable` with the system's own status code when the handshake fails.
 
 <a name="publishing-your-frames"></a>
 

@@ -159,7 +159,7 @@ coin.checksPath = false
 .upright                    // travels any way, turns only about up, never tips
 .noTurning                  // slides and is shoved, never spins
 .noMoving                   // spins where it is, never travels
-[.moveX, .turnZ]            // or spell out whatever fits
+[.moveX, .moveY, .moveZ, .turnZ]   // or spell out whatever fits
 ```
 
 `.plane()` is what makes a sketch 2.5D. A sketch drawn side-on stays flat however hard things hit each other, while everything else about the world carries on in three dimensions. That includes lighting, shadows, solid drawing, and the whole collider catalog. The solver gives the body infinite mass along a locked direction, so **nothing** can move it that way. Not gravity, not a contact, not a joint, and not a velocity you set yourself. Only whole world axes can be taken away, so `.plane(normal:)` rounds its normal to the nearest axis, and there is no tilted plane. An empty set would leave a body no freedom at all, which the solver cannot express, so it reads as `.all`. To hold a body still, set `kind = .static` instead.
@@ -647,7 +647,7 @@ override func draw() {
 }
 ```
 
-`advance(by:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets the horizontal velocity the character is *trying* to walk at, and it holds that until you change it. Falling and jumping are the world's business, so the vertical part of what you pass is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. So calling it every frame while a key is held gives you a hop each time it lands, rather than flight.
+`advance(by:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets `desiredVelocity`, the horizontal velocity the character is *trying* to walk at, and it holds that until you change it. Falling and jumping are the world's business, so the vertical part of what you pass is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. So calling it every frame while a key is held gives you a hop each time it lands, rather than flight.
 
 **Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modeled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the way `withBody(_:)` does for a body.
 
@@ -660,6 +660,7 @@ Three settings decide what the geometry does to the character, and each one has 
 | `stepHeight` | The tallest step it walks up without jumping, 0.4 by default. That is a stair, a curb, or a ledge. Set it to `0` and the same stairs become a wall. |
 | `maxSlope` | The steepest slope it can climb, in radians (50° by default). A steeper face still holds it up, but it cannot get any further up. |
 | `pushStrength` | The hardest it can shove a dynamic body sideways, in newtons (100 by default). At `0` crates become immovable walls to walk around. |
+| `stickToFloorDistance` | How far it may be pulled back down onto a floor it would otherwise skip off. Without it a character walking over the crest of a slope launches for a few frames; `0` turns that off. |
 
 `stepHeight` is the distance the character probes upward, not a hard ceiling. The capsule's rounded foot catches the edge a little first, so a ledge somewhat taller than the setting may still be climbed. Give it a clear margin rather than tuning it to the exact centimetre.
 
@@ -671,7 +672,8 @@ Whether a push actually shifts something depends on `pushStrength` against what 
 | --- | --- |
 | `isOnGround` | Standing on ground it can walk on. Use it to gate a jump, or to swap a walk cycle for a falling pose. |
 | `groundState` | The full answer. `.onGround`, `.onSteepSlope` (held, but too steep to climb), `.notSupported` (touching something that can't hold it), `.inAir`. |
-| `groundNormal` | The surface under its feet, to lean a drawn figure into a slope. |
+| `groundNormal` | The surface under its feet, to lean a drawn figure into a slope. `isSlopeTooSteep(_:)` answers whether a normal is one it could walk on. |
+| `groundVelocity` | How fast the ground itself is moving, so a character on a moving platform rides along with it. |
 | `groundBody` | What it is standing on, or `nil` in the air. A moving platform carries the character along with it. |
 | `velocity` | What it is *trying* to do. That is its intent, including the fall and the jump. |
 | `actualVelocity` | What the world let it do, measured from the ground actually covered. |
@@ -691,7 +693,7 @@ A character is swept through the world by hand rather than simulated as a body, 
 if lookout.isTouching(walker.body) { /* standing on the platform */ }
 ```
 
-The stand-in is deliberately kept out of `world.bodies`, the same way the ground slab is. A drawing loop over the bodies then does not render a capsule where the sketch draws its own figure. The stand-in's `position` is its own center, while `walker.position` reads the feet.
+A world lists what it holds: `bodies`, `characters`, `vehicles`, `ragdolls`, `softBodies`, and `tensegrities`. The stand-in is deliberately kept out of `world.bodies`, the same way the ground slab is. A drawing loop over the bodies then does not render a capsule where the sketch draws its own figure. The stand-in's `position` is its own center, while `walker.position` reads the feet.
 
 Teleport with `position`, which also re-reads what is underfoot on the spot. `stop()` clears both the walking velocity and any speed carried from a fall. Characters collide with each other as well as with the scenery.
 
@@ -790,7 +792,7 @@ Two numbers stand in for the whole drivetrain:
 - **`engineTorque`** (500 N·m by default) is how hard the engine pulls. More of it spins the wheels sooner rather than accelerating the vehicle harder, because grip sets the limit, not power.
 - **`topSpeed`** (30 units/s) is the gearing. Top gear at the engine's redline turns the driven wheels this fast. So it is a limit the vehicle approaches on a flat straight, rather than a speed it is guaranteed. Winding it down gears the vehicle for pull instead of pace.
 
-Both can be changed while driving. The gearbox shifts itself, and `gear` reads which one it picked: `-1` reverse, `0` neutral, `1` first, and up from there. `rpm` reads how fast the engine is turning, which is what you drive an engine sound from.
+Both can be changed while driving. The gearbox shifts itself, and `gear` reads which one it picked: `-1` reverse, `0` neutral, `1` first, and up from there. `rpm` reads how fast the engine is turning, which is what you drive an engine sound from, and `clutch` how far the clutch is engaged, `0` slipping to `1` locked, which dips through a change and while pulling away. Each wheel's own `spinRate` is how fast it is turning, in radians a second.
 
 #### Reading it back
 
@@ -904,7 +906,7 @@ override func draw() {
 
 The figure simulates in world space. Draw the scene without a transform of your own if you want it to land where the bodies are.
 
-**What the fit finds.** The shape of each limb comes from the mesh rather than from bone lengths. The vertices a joint pulls hardest on are gathered in that joint's own frame, and a capsule is fitted along the direction they spread. A torso comes out thick and a forearm thin, even though the two bones are a similar length. `ragdoll.limbs` reports what it found: `name`, `body`, `parent`, `collider`, and where the shape sits inside the body. `withLimb(_:)` poses the transform stack onto a limb's fitted shape, so you can draw the capsules beside the skin:
+**What the fit finds.** The shape of each limb comes from the mesh rather than from bone lengths. The vertices a joint pulls hardest on are gathered in that joint's own frame, and a capsule is fitted along the direction they spread. A torso comes out thick and a forearm thin, even though the two bones are a similar length. `ragdoll.limbs` reports what it found: `name`, `body`, `parent`, `collider`, and where the shape sits inside the body, as `shapeCenter`, `shapeAxis`, and `shapeAngle`. `withLimb(_:)` poses the transform stack onto a limb's fitted shape, so you can draw the capsules beside the skin:
 
 ```swift
 for limb in ragdoll.limbs {
@@ -1063,7 +1065,7 @@ world.advance(by: deltaTime)
 drawSoftBody(rope)                                        // a tube along the rope
 ```
 
-The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `positions`, and `nearestVertex(to:)` all speak in indices into the polyline you handed over. `drawSoftBody(_:)` sweeps a tube of `thickness` along it, which is also how far the rope stands off whatever it lies on.
+The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `positions`, and `nearestVertex(to:)` all speak in indices into the polyline you handed over. The rope reports itself as a `Rope3D`: `segmentCount` rods, one fewer than its points, its `thickness`, how many `sides` the drawn tube carries, and the `restLength` it was built to be, which is what a stretched rope is measured against. `drawSoftBody(_:)` sweeps a tube of `thickness` along it, which is also how far the rope stands off whatever it lies on.
 
 **Two parameters shape it**, both scale-free. One setting means the same thing on a twig and on a mooring line.
 
@@ -1170,6 +1172,8 @@ Three more numbers shape what the rest of the cloth may do. All three are **leng
 
 Two parameters work while the sketch runs. `swayScale` multiplies every leash at once, so one slider lets a whole cape out. `followsSkin` turns the leashes off entirely, and only the parts held exactly on the skin keep following. That is how you let a cape go loose without rebuilding it.
 
+A soft body keeps the `sourceMesh` it was built from, unchanged in its own local space (a rope was built from a polyline instead, so its is empty and `Rope3D.points` is what it was made from), and `isSkinned` says whether a skeleton carries any of that surface, which is what makes `follow(_:)` mean anything. `particlePositions` and `particleVelocities` are the simulated particles themselves, shorter than `positions` wherever the source mesh had coincident vertices.
+
 **Call `follow(_:)` before `advance(by:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that easing, and a call after the step leaves the cloth a frame behind. `snap(to:)` is the other call. It puts every carried particle exactly where the skeleton says, and stops it dead. That is what you need for a figure that was *stood* somewhere rather than *moved* there. The cloth then arrives with the figure instead of being dragged across the room.
 
 A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and rides in a snapshot. A snapshot writes down what the closures decided, because it cannot carry the closures themselves. Its own gap is the one every soft body has. A cape **does not collide with itself**, so it passes through its own folds and through any other cloth on the same figure.
@@ -1274,7 +1278,7 @@ override func setup() {
 }
 ```
 
-The snapshot's own `bodyCount` and `jointCount` say what is in it before anything is restored. `PhysicsSnapshot(data:)`, `init(contentsOf:)`, and `init(resource:in:)` read one back. Anything that is not a snapshot is refused rather than half-read. A snapshot that stops short leaves the world already standing untouched.
+The snapshot's own `bodyCount` and `jointCount` say what is in it before anything is restored. `PhysicsSnapshot(data:)`, `init(contentsOf:)`, and `init(resource:in:)` read one back. Anything that is not a snapshot is refused rather than half-read, throwing `PhysicsSnapshot.Failure.unreadable`. A snapshot that stops short leaves the world already standing untouched.
 
 **Restoring is exact.** A restored body is in the same pose, moving at the same speed, and spinning the same way. If it had settled it is still asleep, so a saved heap does not shudder back into shape on the way in. A world stepped on from a restore lands exactly where the one that was never interrupted does. It goes through the ordinary `addBody` and `connect` calls, so a restored world is one you could have built by hand. A joint also keeps the zero it was made at. A door saved standing half open is still half open, and it still stops where it used to.
 

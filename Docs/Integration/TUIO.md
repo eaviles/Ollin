@@ -78,7 +78,7 @@ for piece in surface.objects {
 `TUIOReceiver` opens a socket and keeps the surface up to date behind it.
 
 ```swift
-let surface = TUIOReceiver()              // port 3333, what trackers use by default
+let surface = TUIOReceiver()              // TUIOReceiver.defaultPort, 3333, what trackers use
 let surface = TUIOReceiver(port: 3334)    // when the tracker was told otherwise
 try surface.start()
 ```

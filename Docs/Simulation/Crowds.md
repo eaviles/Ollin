@@ -67,7 +67,7 @@ For each neighbor, a walker finds the velocities that would bring the two of the
 
 ### Walkers
 
-`crowd.agents` is an array of `Crowd.Agent`, and you can add, remove, and change agents between steps as you like. `add(at:goal:radius:maxSpeed:group:)` appends one and returns its index.
+`crowd.agents` is an array of `Crowd.Agent`, built as `Agent(at:goal:radius:maxSpeed:group:)`, and you can add, remove, and change agents between steps as you like. `add(at:goal:radius:maxSpeed:group:)` appends one and returns its index.
 
 - **`position`** is where the walker's center is.
 - **`velocity`** is the velocity it took on the last step, in points per second. It starts at zero. Setting it is a shove the walker then corrects.

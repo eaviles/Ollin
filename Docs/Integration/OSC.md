@@ -84,7 +84,7 @@ UDP does not acknowledge delivery, so `send` returns right away and never waits 
 
 ```swift
 OSCReceiver(port: Int)        // port 0 = let the system pick (read it from boundPort)
-func start() throws
+func start() throws           // OSCError.invalidPort for a port outside 0…65535
 func stop()
 
 // 1. Latest value per address (continuous controls)
@@ -164,7 +164,7 @@ Binding still means typing each address into the other app and keeping it in ste
 OSCBundle(_ timeTag: OSCTimeTag = .immediate, messages: [OSCMessage])
 ```
 
-A bundle groups messages that belong together, and the group is sent as one datagram. It also carries a time tag that says when the messages take effect. That tag is usually `.immediate`. Send a bundle the same way you send a message:
+A bundle groups messages that belong together, and the group is sent as one datagram: `elements` is what it holds, each an `OSCPacket` that is either a `.message` or a `.bundle`, since a bundle may hold bundles as well as messages. It also carries a time tag that says when the messages take effect. That tag is usually `.immediate`, which `isImmediate` reads back. Send a bundle the same way you send a message:
 
 ```swift
 out.send(OSCBundle(.immediate, messages: [

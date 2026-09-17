@@ -88,7 +88,7 @@ directly.
 
 ### Export size
 
-`canvasSize` is the resolution a sketch renders and exports at, in whole pixels, because a canvas is an integer grid. Its type is `CanvasSize`, and it defaults to `.square1080`, a 1:1 square of 1080×1080. Override it on a subclass with one of the named presets below, as in `override var canvasSize: CanvasSize { .uhd4K }`:
+`canvasSize` is the resolution a sketch renders and exports at, in whole pixels, because a canvas is an integer grid. Its type is `CanvasSize`, and it defaults to `Sketch.defaultSize`, which is `.square1080`, a 1:1 square of 1080×1080. (`cgSize` hands the same size to anything that speaks Core Graphics.) Override it on a subclass with one of the named presets below, as in `override var canvasSize: CanvasSize { .uhd4K }`:
 
 | Constant | Pixels | Aspect | Good for |
 |---|---|---|---|

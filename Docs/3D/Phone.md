@@ -267,6 +267,7 @@ for line in device.latestTexts {
     line.worldCorners                // [Vector3], metric ARKit world space (needs LiDAR)
     line.worldCenter                 // Vector3, the quad's center
     line.worldWidth                  // Double, meters along the reading direction
+    line.worldHeight                 // Double, how tall it stands, 0 when it did not lift
     line.worldTransform              // simd_float4x4?, the line's placement matrix
 }
 device.latestText                    // PhoneText?, the line filling the most of the picture
@@ -287,7 +288,7 @@ Each find arrives as a `PhoneMarker` in ARKit world space, the same fixed world 
 ```swift
 for marker in device.latestMarkers where marker.isTracked {
     marker.name                      // String, the reference file's own name
-    marker.kind                      // .image or .object
+    marker.kind                      // .image or .object (isImage / isObject read the same)
     marker.width                     // Double, meters (what it really measures)
     marker.placement                 // simd_float4x4, ready for transform(_:)
     marker.position                  // Vector3, the middle of it
@@ -344,6 +345,7 @@ if let state = device.latestState {
     state.mode                       // PhoneCaptureMode, what it is running
     state.isSupported                // false when the hardware isn't there
     state.referenceCount             // how many things it is looking for
+    state.isLookingForAnything       // whether that count is more than none
     state.referencesAreDeclared      // true when the sketch sent them
     state.status                     // the sentence on the phone's own screen
     state.notes                      // what it could not use, in plain sentences
@@ -380,6 +382,7 @@ wand.across                          // Vector3, right across the screen
 wand.isPressed                       // Bool, a finger is on the pad now
 wand.pressCount                      // Int, presses so far, never falls
 wand.touch                           // Vector2?, -1...1 across and up, nil when free
+wand.quarterTurns                    // Int, the clockwise turns that stood the hold upright (portrait is 1)
 ```
 
 `ray` is what a sketch usually reads. It starts at the phone and runs in the direction the phone points, so [`Ray3`](../Drawing/Geometry.md#ray3) answers what the person is pointing at:
@@ -470,6 +473,8 @@ world.correction  // the whole fix so far: placed = correction * reported
 
 Two rules limit what the correction may do. First, a frame that finds too little to match, or that needs a jump rather than a nudge, is **held back**. The cloud still goes in, at the fix earlier frames established, and `applied` reads false. Second, a direction the geometry does not pin down is left alone rather than guessed. So sweeping one blank wall corrects across the wall and never slides along it.
 
+`align(_:from:settings:)` runs the same fit and reports the pose without merging anything, for a sketch that wants to decide for itself whether to keep the frame.
+
 The fit costs about half of what merging the frame costs. It stops as soon as a round stops moving the cloud, so a well-tracked frame needs only one or two rounds. `CloudAlignment.Settings` holds the parameters: how many points to fit through, how many rounds, how far to look, and the two guards. The defaults suit a hand-held sweep at a few centimeters per voxel.
 
 Apply `world.correction` to anything else the phone reports in the same space, so that it lands where the fused cloud does:
@@ -498,7 +503,7 @@ update.keyframe             // the keyframe this frame became, if it was worth k
 update.loop                 // set when the scan recognized a place
 
 scan.cloud                  // the fused points, as WorldCloud's
-scan.keyframes              // every kept moment: pose, reported pose, what it saw
+scan.keyframes              // every kept moment: pose, reportedPose (before correction), what it saw
 scan.loops                  // every place recognized so far
 scan.correction             // placed = correction * reported, straightenings included
 ```
@@ -515,13 +520,22 @@ if let loop = update.loop {
 }
 ```
 
+**A fit is bounded.** `CloudAlignment.Settings` carries what a fit will believe: `minOverlap` is the least overlap to trust, `maxShift` the biggest move to accept in world units, and `maxTurn` the biggest turn in radians. A frame that asks for more than those is a mistake rather than a drift, so the fit is refused and the frame goes in where it was reported.
+
 **The search has a limit.** The search compares position and viewing direction, and `searchRadius`, 1.5 m by default, bounds it. A scan that drifts further than that before it returns will not find the earlier keyframe. Each candidate is then fitted twice: wide, then narrow. The wide pass finds an error too big for the narrow pass to see. The narrow pass is the one that is scored, and a candidate that scores badly is refused.
 
 **A flat wall can defeat the fit.** A camera facing one flat wall can slide along that wall and turn about its normal. Every such pose fits the wall equally well. Three of the six reported numbers are then unmeasured, and they record drift as though it were measured. Overlap and leftover error both look perfect. Only the fit's conditioning reveals this. It is reported as `stability` on `CloudAlignment`, and a match under `matching.minStability` is refused. That is why a room with objects in it is easier to scan than a bare corridor.
 
 **A straightened scan is rebuilt from the keyframes.** So `keyframeDetail`, 4 cm by default, sets the detail the finished scan holds. It also sets the memory the keyframes cost. Use a value near the fusion `voxelSize` for the most detail, or several times it to stay light. Frames after the last keyframe are not kept, so they are not laid down again. The sweep replaces their detail as it continues.
 
-The remaining parameters are on `ScanGraph.Settings`. They set the distance between keyframes, how far back to look, and how many candidates to fit. They also set how much the two views must agree, and the distance at which a turn is weighed. Leave that last one unset and the scan supplies it.
+The remaining parameters are on `ScanGraph.Settings`, read and written as `scan.settings`:
+
+- `keyframeDistance` and `keyframeTurn` are how far the camera has to move, in meters, or turn, in radians, before the sweep keeps another keyframe.
+- `separation` is how many keyframes back to start looking, since the ones just behind are neighbors rather than a place returned to, and `candidates` is how many old keyframes one new one is tested against. `neighborhood` folds that many keyframes either side of a candidate in with it, so the match is made against a patch of the room rather than one narrow view.
+- `minOverlap` is the least the two clouds have to agree, 0 to 1, `maxError` the most a believed match may leave over in meters, and `maxViewAngle` how differently the camera may have been facing. Two views of one place from opposite sides share almost no surface, so a match between them is far more likely to be a mistake than a memory.
+- `minSnap` is how much a match has to disagree with where things already stand before the scan is straightened. Below it the match is kept as a measurement and nothing moves.
+- `turnScale` is how far from the camera a turn is weighed when the scan is straightened, which is what makes radians and meters comparable. Leave it nil and the scan takes it from what the camera actually saw. Set it too small in a big room and the straightening trades a turn it should have fixed for a move it should not have made, so the scan comes out square but turned.
+- `reach` is how much wider the first of the two matching passes looks than the second, `alignment` is the fit each arriving frame gets, and `matching` the harder fit a candidate place gets.
 
 Without a phone, `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan` walks a made-up room twice, side by side. The left half aligns frame by frame. The right half also closes loops. The true walls are drawn over both.
 
@@ -563,7 +577,7 @@ scan.mesh(of: .floor, .table)        // Mesh, only the labels you ask for
 scan.mesh { surface in ... }         // Mesh, painted a color per triangle
 ```
 
-It also carries what you need to frame the room and report on it. Those are `chunks`, `chunkCount`, `vertexCount`, `triangleCount`, `bounds`, `center`, `isEmpty`, and `foundSurfaces`, which lists the labels the scan has actually produced.
+It also carries what you need to frame the room and report on it. Those are `chunks`, `chunkCount`, `vertexCount`, `triangleCount`, `bounds`, `center`, `isEmpty`, and `foundSurfaces`, which lists the labels the scan has actually produced. A chunk is a `PhoneSceneChunk`, one block of the room as ARKit maintains it, and it holds the raw arrays: `positions` in world meters, `normals` paired with them by index, `indices`, `surfaces` (what the phone thinks each triangle is, one per triangle, empty when the scan carries no classification), and its own `triangleCount`.
 
 A label is a `PhoneSurface`: `wall`, `floor`, `ceiling`, `table`, `seat`, `window`, `door`, or `unclassified`. ARKit decides what a surface is only once it has seen enough of it, so **early in a scan almost everything is `unclassified`**. That is expected behaviour, not a fault. A sketch that depends on labels should say so while the room fills in. `foundSurfaces` tells you which labels are available.
 
@@ -716,6 +730,8 @@ if let attention = device.latestSaliency {
     attention.salience(at: p, in: rect)  // Double 0…1, the pull under a canvas point
     attention.regions                    // [PhoneSalientRegion], what stands out
     attention.strongestRegion            // PhoneSalientRegion?, the model's best
+    attention.heatWidth                  // Int, the heat map's own coarse pixel size
+    attention.heatHeight
     for region in attention.regions {
         region.bounds(in: rect)          // Rectangle, the box mapped into the frame
         region.confidence                // Double 0…1, the model's trust
@@ -743,6 +759,7 @@ if let motion = device.latestFlow {
     motion.vector(at: p, in: rect)           // Vector2, how far the picture under p moved, in canvas points
     motion.samples(in: rect, every: 36)      // [MotionField.Sample], a grid of them to draw as arrows
     motion.averageFlow(in: rect)             // Vector2, the global drift (a pan reads as one direction)
+    motion.averageFlowNormalized             // the same drift in 0…1 of the frame, y up
     motion.interval                          // Double, seconds between the two frames measured
     motion.field                             // MotionField, the Mac tracker's own value
     motion.size                              // Vector2, the map's resolution
@@ -916,7 +933,7 @@ Tilt the phone and `gravity` swings. That is a one-line check that the connectio
 
 - **The wire runs both ways, in two tag spaces.** Sensor frames go up; requests (a mode, a library of references) come back down. Both use the same 12-byte framing, and both number their kinds from 1, because a frame's direction is decided by which end reads it rather than by its bytes. The one place the two framings part is the magic word, so a frame written the wrong way down the cable fails at its header instead of decoding as whatever happens to share its number.
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick that cross-language tools use. It is a length-prefixed stream of tagged binary messages, `PhoneWire`. That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing cannot drift between them.
-- **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338. Record3D uses port 1337. Wi-Fi is deliberately left out.
+- **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, which `PhoneDevice.streamPort` spells. Record3D uses port 1337, as `Record3DDevice.streamPort`. Wi-Fi is deliberately left out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, with its root at the lens. The skeleton is in model space, with its root at the origin. The [world fusion](#world-fusion) step lifts a sweep into one fixed world cloud by applying each frame's `latestPose`. It fuses the clouds from several poses into a single *registered* scene. Two more steps, [keeping a long sweep registered](#drift) and [recognizing a place already scanned](#loops), correct ARKit's own drift on top of that. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed. A 256×192 frame is ~196 KB, which is comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
 - **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, how the picture is moving, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, what the phone hears, every finger on its screen, and the air around it. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.

@@ -146,7 +146,7 @@ drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
 { "name": "eye", "parts": { "x": "frame.x + frame.width / 2", "y": "height / 2" } }
 ```
 
-`Automation.parts(of:)` names the parts that a stored value carries. `Automation.applying(_:to:)` puts the worked-out numbers back into a stored value, and that is how a track of parts becomes a whole value again. See [a parameter of more than one number](../Helpers/Formula.md#a-parameter-of-more-than-one-number).
+A `Track` works its parts out the same way it works out a whole value: `partValues(at:)` hands back the number each part holds at a position, keyed by the part's name, with every part reading `time` as that position so a track always agrees with the clock driving it. `Automation.readableNames` is the set of names a formula may read. `Automation.parts(of:)` names the parts that a stored value carries. `Automation.applying(_:to:)` puts the worked-out numbers back into a stored value, and that is how a track of parts becomes a whole value again. See [a parameter of more than one number](../Helpers/Formula.md#a-parameter-of-more-than-one-number).
 
 ### The file
 
@@ -163,7 +163,7 @@ The `--automation <file>` flag attaches a file to a standalone run or to any exp
 swift run --package-path Examples Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
 ```
 
-A file is loaded before `setup()` runs. So when the sketch also writes a track for the same parameter, the sketch's track replaces the one from the file. Ollin refuses a file written in a *newer* format than this version understands, rather than guessing at what it means. An older file still reads, because each layout so far has only added to the one before it.
+A file is loaded before `setup()` runs. So when the sketch also writes a track for the same parameter, the sketch's track replaces the one from the file. Ollin refuses a file written in a *newer* format than this version understands, throwing `AutomationError.incompatibleVersion` rather than guessing at what it means. `Automation.currentVersion` is the one this build writes, and `version` is the one a loaded file declared. In code, `setTrack(_:)` adds a track, replacing whatever already drove that parameter. An older file still reads, because each layout so far has only added to the one before it.
 
 Standalone runs, every export path, and OllinLive all read the flag. When no flag names a file, OllinLive also looks for the sketch's sibling file, `Sketch.automation.json` beside `Sketch.swift`. The live host installs the file's tracks again after every reload. Its [timeline panel](../Tools/Timeline.md) lets you edit those tracks by hand and writes them back to the same file.
 

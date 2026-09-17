@@ -31,6 +31,7 @@ A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to e
 
 ```swift
 WFCTile(_ sockets: [Int], weight: Double = 1)   // [top, right, bottom, left]
+WaveFunctionCollapse(tiles: [WFCTile], columns: Int, rows: Int)
 ```
 
 ```swift
@@ -142,7 +143,7 @@ Two practical notes follow. First, **draw the result a rectangle at a time rathe
 
 #### What it's for, and what it isn't
 
-**The sample should be small and use few colors**: pixel art or a hand-drawn motif, tens of pixels a side, a handful of colors. Patches are matched by exact color equality. A photograph has a distinct color in nearly every patch, so nearly every patch is unique. Nothing then overlaps anything else, and the solve has nothing to choose between. A sample past 256 colors or 1024 patterns is refused with a note saying so, rather than grinding away.
+**The sample should be small and use few colors**: pixel art or a hand-drawn motif, tens of pixels a side, a handful of colors. Patches are matched by exact color equality. A photograph has a distinct color in nearly every patch, so nearly every patch is unique. Nothing then overlaps anything else, and the solve has nothing to choose between. A sample past `OverlappingWFC.maxColors` (256) or `OverlappingWFC.maxPatterns` (1024) is refused with a note saying so, rather than grinding away.
 
 **A solve can fail, and failures begin above about 50 pixels a side.** A contradiction is a cell left with no fitting pattern. Each one restarts the whole solve, `attempts` times, and then `wfc` returns `nil`. This is a limit of the technique, not of the implementation. The problem is NP-hard in general, so success rates fall off sharply as the output grows. Solve a smaller texture, loosen the sample, or drop `patternSize` to `2`.
 

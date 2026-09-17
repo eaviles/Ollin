@@ -82,7 +82,7 @@ A child takes each gene from one parent or the other with an even chance. Then e
 |---|---|
 | `start`, `target` | Where a trial begins, and the point a flight is selected for reaching. |
 | `targetRadius` | How close to the target counts as arrived. |
-| `obstacles` | Up to eight `Rectangle` walls that stop a flight. |
+| `obstacles` | Up to eight `Rectangle` walls that stop a flight. `Evolution.maxObstacles` is that ceiling, which the kernel's fixed-size list sets. |
 | `tournament` | How many rivals a parent is the best of. A larger value is stronger selection, so the run converges sooner and explores less. Default 4. |
 | `mutationRate` | The chance that a gene is nudged as it is copied. Default 0.04. |
 | `mutationAmount` | How far a nudge may move a gene. Genes lie in `-1...1`. Default 0.35. |
@@ -171,7 +171,7 @@ let filled = g.isSet(3, chance: 0.3)                       // yes or no
 
 Read a gene through one of those calls rather than by hand. The mapping from `0...1` into the value you want then stays in one place. An index past the end wraps round to the start rather than trapping. So a sketch that grows a new trait still draws while you widen the genome. Two traits that read the same gene move together, which is worth knowing when a drawing suddenly starts repeating itself.
 
-`Population` also accepts genomes you already have (`Population(_:seed:)`), so you can resume a run or start from a hand-written point.
+`setting(_:to:)` returns a copy with one gene changed, for nudging a genome by hand, and `Genome(_:)` builds one from numbers you already have. `Population` also accepts genomes you already have (`Population(_:seed:)`), so you can resume a run or start from a hand-written point, and `population.genomes` is the handful it is holding now, which is what a sketch draws.
 
 <a id="mixing"></a>
 ### Mixing and mutation

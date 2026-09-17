@@ -22,7 +22,8 @@ A `Color` is three numbers chosen for the eye. A `Spectrum` is the physical curv
 someColor.spectrum                 // the reflectance curve behind a color
 spectrum.color                     // and back: the color it shows in daylight
 Color(spectrum, alpha: 0.5)        // the initializer form; alpha rides along
-Spectrum(samples: values)          // raw: 81 samples, 380...780 nm
+Spectrum(samples: values)          // raw: Spectrum.sampleCount samples, 380...780 nm
+                                   // (Spectrum.wavelengths are the nanometers they sit on)
 spectrum.intensity(at: 550)        // interpolated between the 5 nm grid points
 Spectrum.white                     // flat 1
 Spectrum.black                     // flat 0

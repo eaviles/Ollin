@@ -138,6 +138,7 @@ override func draw() {
 | `sigmaG` | how narrow that preference is (a small value is strict, and a strict preference makes a sharp edge) | 0.15 |
 | `cRep` | how hard two particles closer than one unit push apart | 1 |
 | `speed` | model time per second of wall clock | 1 |
+| `maxStep` | the largest step the model is integrated at, in model time. A faster `speed` splits the frame into as many steps as it takes rather than taking a coarser one | 0.1 |
 
 The two force terms pull against each other, and each one does a single job. Growth is the only term that attracts. Repulsion is the only term that acts at very short range. The kernel is a *ring*, so two particles in the same place add almost nothing to each other's field. Growth on its own would therefore leave them on top of each other.
 
@@ -170,6 +171,8 @@ override func draw() {
 }
 ```
 
+A `SwarmChemistry.Recipe` is those eight, and it reads back field by field: `perception`, `normalSpeed`, `maxSpeed`, `cohesion`, `alignment`, `separation`, `randomSteering`, and `pace`. `Recipe.ranges` is the bounds each of them is drawn and mutated within, `Recipe.random(using:)` draws one inside them, and `Recipe(perception:normalSpeed:maxSpeed:cohesion:alignment:separation:randomSteering:pace:)` writes one out by hand (`Recipe(_:)` reads the same eight from an array, which is how a recipe copied off a web page comes in).
+
 | Parameter | Meaning | Default |
 | --- | --- | --- |
 | `transmits` | whether recipes copy on contact at all (false freezes them into a plain mixture of kinds) | true |
@@ -186,6 +189,8 @@ The color of a particle is its recipe. Cohesion, alignment, and separation are d
 <img src="../../Guide/Images/20-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 Read the state back with `snapshotLineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `snapshotLineageCounts()` reports how many particles each opening line still holds, which is the scoreboard the model never keeps for itself. All three wait until the GPU has caught up, so call them a few times a second rather than every frame.
+
+The world itself carries the numbers that convert and pace it: `stepRate` is how many model steps a second (60 is one step a frame on a 60 Hz display, and the published units are per step, so this is what makes a shared recipe mean the same thing at any frame rate), `lengthScale` this world's spacing over the published one's, `perceptionLimit` the furthest any recipe can see and also the neighbor search's cell size, `contactRadius` how close two particles must come to count as a meeting, and `openingRecipes` the lines it started with, one per kind. `size` and `opacity` are how the dots draw.
 
 **Recipes are stored in the published units**, so a recipe written down anywhere means the same behavior here. That takes a conversion, because those ranges were chosen for a world whose particles sit about fifty units apart. The units also carry length, since separation is measured in length² per step². Ollin works the conversion out from how densely `count` particles fill `bounds`, and it derives the sight radius and the contact distance the same way. A particle then sees about as many others as a particle in the published world did, and there is nothing else for you to set. If a recipe went in unconverted, separation would come out several times too strong and the swarm would blow apart.
 

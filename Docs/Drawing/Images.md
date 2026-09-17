@@ -176,7 +176,7 @@ Load a bundled asset with the `resource:` initializer. `in:` has no default on p
 let texture = Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
-`Image(cgImage:)` wraps a `CGImage` you already have in memory. It can be one you rendered yourself, decoded elsewhere, or built procedurally, so anything that produces a `CGImage` becomes drawable.
+`currentCGImage()` is the pixels as they stand now, edits through the `[x, y]` subscript included, where `cgImage` is always the original decode. It is what interop that must see the live pixels (Vision, Core Image) should ask for. `Image(cgImage:)` goes the other way and wraps a `CGImage` you already have in memory. It can be one you rendered yourself, decoded elsewhere, or built procedurally, so anything that produces a `CGImage` becomes drawable.
 
 `resized(width:height:)` hands back a copy at another pixel size, resampled with high-quality interpolation. It is the call to make before handing a large picture to something that reads every pixel, such as a stipple, a dither, a mosaic, or a string-art winding, which want a copy of a few hundred pixels a side. It reads the CPU pixels, so it applies to a picture decoded from a file or authored pixel by pixel; an image wrapping a live texture comes back as a blank of the requested size. Setup-time work, so keep the result.
 

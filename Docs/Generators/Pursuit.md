@@ -26,7 +26,7 @@ Nothing here is random, so the same start always runs the same chase. What comes
 
 #### Building a chase
 
-`Pursuit` is a class you build once and then step. Take a few steps a frame to watch the chase draw itself, or work out the whole chase at once with `run()`.
+`Pursuit` is a class you build once and then step. Take a few steps a frame to watch the chase draw itself, or work out the whole chase at once with `run()`. `stepsTaken` counts how far it has gone.
 
 ```swift
 final class Spirals: Sketch {
@@ -50,7 +50,7 @@ final class Spirals: Sketch {
 
 `ring(sides:center:radius:)` builds the classic figure. `chasing:` says how many places around the ring the target sits, and 1 is the classic value. Half of `sides` sends every runner straight at the one opposite it, so there is no spiral at all.
 
-For any other arrangement, build the runners yourself. Each runner names the index of the runner it follows, and a runner that follows nobody holds its heading and runs straight.
+For any other arrangement, build the runners yourself. Each runner names the index of the runner it follows, and a runner that follows nobody holds its heading and runs straight. `.chasing(_:from:speed:)` and `.holding(_:from:speed:)` are the two shorthands; `Runner(position:chases:speed:heading:)` takes all four at once, for a runner whose opening heading matters under a `maxTurn`.
 
 ```swift
 let chase = Pursuit(runners: [.holding(Vector2(0, 1), from: Vector2(300, 200), speed: 0.5),

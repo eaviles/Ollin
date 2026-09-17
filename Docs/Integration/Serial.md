@@ -176,7 +176,7 @@ func analog(_ pin: Int) -> Double?                 // A0 is 0; the latest readin
 func analog(_ pin: Int, default: Double) -> Double
 func digital(_ pin: Int, pullUp: Bool = false) -> Bool?
 func digital(_ pin: Int, pullUp: Bool = false, default: Bool) -> Bool
-func messages() -> [FirmataMessage]                // every decoded message since the last call
+func messages() -> [FirmataMessage]                // every decoded message since the last call (.sysex carries a board's own)
 
 func write(_ pin: Int, _ value: Bool)              // digital out
 func write(_ pin: Int, _ level: Double)            // PWM, 0...1
@@ -188,7 +188,7 @@ func send(text: String)
 func bind(analog pin: Int, to param: Param<Double>)
 func unbind(analog pin: Int)
 
-var firmware: FirmataFirmware?                     // what the board said it runs, once it has
+var firmware: FirmataFirmware?                     // name, majorVersion, minorVersion, once it has said
 var port: SerialPort
 ```
 

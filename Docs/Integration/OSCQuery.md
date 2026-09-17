@@ -83,7 +83,7 @@ A parameter becomes a node at `/name`, or at `/Group/name` when it declares a gr
 
 A strip of colors is served as a container of color methods rather than one node. A client that knows nothing about palettes still gets a color well per stop. Writing a child replaces that one color and leaves the stop where it sits. A hidden parameter, one whose [show rule](../Helpers/Parameters.md#show-rules) currently fails, stays in the tree and keeps taking values, as it keeps following an OSC binding.
 
-`?HOST_INFO` answers with the server's `NAME`, the `EXTENSIONS` it speaks (`ACCESS`, `VALUE`, `RANGE`, and `DESCRIPTION`; the WebSocket `LISTEN` stream is not offered, so a client polls for changes), and `OSC_PORT` with `OSC_TRANSPORT` set to `UDP`.
+`?HOST_INFO` answers with the server's `NAME`, the `EXTENSIONS` it speaks (`ACCESS`, `VALUE`, `RANGE`, and `DESCRIPTION`; the WebSocket `LISTEN` stream is not offered, so a client polls for changes), and `OSC_PORT` with `OSC_TRANSPORT` set to `UDP`. In code that answer is an `OSCQueryHostInfo`, with `name`, `extensions`, `oscPort`, and `oscTransport`.
 
 <a name="writing-a-value"></a>
 
@@ -114,7 +114,7 @@ curl 'http://localhost:9000/Shape/radius?VALUE'    # {"VALUE":[180]}
 curl 'http://localhost:9000/?HOST_INFO'            # who serves, and the OSC port
 ```
 
-Inside the sketch, `namespace()` returns the same tree as an `OSCQueryNode`, the value the server hands out. A node has its `fullPath`, `type`, `access`, `description`, `value` (an array of `OSCQueryValue`, one per type tag), `range` (an array of `OSCQueryRange` with `min`, `max`, or `values`), and `contents` when it is a container. `node(at:)` walks to a path and `methods` lists every leaf in address order. `OSCQueryNode` is `Codable` under the protocol's own attribute names, so it also decodes what another OSCQuery server publishes.
+Inside the sketch, `namespace()` returns the same tree as an `OSCQueryNode`, the value the server hands out. A node has its `fullPath`, `type`, `access`, `description`, `value` (an array of `OSCQueryValue`, one per type tag), `range` (an array of `OSCQueryRange` with `min`, `max`, or `values`), and `contents` when it is a container, which `isContainer` answers. `node(at:)` walks to a path and `methods` lists every leaf in address order. `OSCQueryNode` is `Codable` under the protocol's own attribute names, so it also decodes what another OSCQuery server publishes.
 
 <a name="trying-it"></a>
 

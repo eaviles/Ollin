@@ -58,7 +58,7 @@ In the performance host a cue answers to a controller, as a host preference, the
 
 The sheet round-trips through JSON, and the live hosts keep it in `Sketch.cues.json` beside `Sketch.swift`, the way the timeline keeps `Sketch.automation.json`. OllinLive reads the file at launch and re-installs the sheet across every reload, so an edit to the code never loses a cue. Every save and delete from the card writes the file. OllinLiveCoding does the same for an open document, and keeps an untitled buffer's cues in memory until the buffer is saved somewhere.
 
-A sketch running on its own names its file: `loadCues(from:)` reads one and `saveCues(to:)` writes one. The example loads the sheet from its bundle in `setup()` when a host has not installed one first. `CueSheet.load(from:)` and `write(to:)` are the same pair on the value. A file written by a newer format is refused rather than misread.
+A sketch running on its own names its file: `loadCues(from:)` reads one and `saveCues(to:)` writes one. The example loads the sheet from its bundle in `setup()` when a host has not installed one first. `CueSheet.load(from:)` and `write(to:)` are the same pair on the value, and `store(_:)` puts a cue into a sheet, replacing one of the same name where it stands and putting a new name at the end. A file written by a newer format is refused rather than misread: `CueSheet.currentVersion` is what this build writes, `version` what the file declared, and `CueSheet.LoadError.newerVersion` what the load throws.
 
 ### A cue on the command line
 

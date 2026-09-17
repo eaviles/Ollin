@@ -93,6 +93,8 @@ Both take effect on the next frame in which the field steps.
 Each of these effects comes from the simulation itself, not from a filter.
 
 - **Edge darkening.** Leave a wet stroke alone and its rim darkens as it sits. The wet edge sheds water, and the interior replenishes it, which carries pigment outward. `edgeDarkening` sets the strength, and 0 turns it off.
+A `Paint` is a flat `.color` or a `.gradient`, and `solidColor` reads the flat one back, or nil for a gradient.
+
 - **Dry-brush.** Set `dryBrush` above zero (try `0.4...0.6`). Paint then lands only where the paper's tooth rises above the threshold, so strokes skip and break up.
 - **Backruns.** Blot a wash, then *hold* a clean-water touch in it. The water floods back through the damp paint and pushes pigment ahead of it into a pale bloom with a dark, branching edge. A single tap only nudges the paint. The bloom comes from holding the wet brush, which means painting the drop over consecutive frames.
 - **Granulation.** Paint with a granulating pigment, such as `.frenchUltramarine` or `.burntUmber`, and the wash dries speckled along the sheet's texture.

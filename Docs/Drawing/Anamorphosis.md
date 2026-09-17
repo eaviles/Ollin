@@ -57,7 +57,7 @@ let mirror = Anamorphosis(
 
 The picture is carried at **true size**. A picture 280 wide wraps 280 of arc around the mirror, and one 70 tall stands 70 tall on it. Nothing is squeezed before the reflection gets to it. `lift` raises the whole band up the glass. With no lift the picture sits on the page. Its lower edge then does not move at all, and those marks land exactly on the mirror's own circle. Raising the picture moves the plate away from the glass and stretches it farther out, which is how most finished plates look.
 
-`footprint` is the circle the mirror stands on. Draw it as a guide while you work.
+`footprint` is the circle the mirror stands on. Draw it as a guide while you work. Three more read the setup back: `eyeSpot` is where the viewer stands on the page alone, `eyeDistance` how far that is from the mirror's axis, and `facingAngle` the direction the middle of the picture is wrapped to, which is the angle from the mirror toward the eye when `facing` was left nil.
 
 <a name="mapping"></a>
 

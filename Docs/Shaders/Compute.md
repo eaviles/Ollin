@@ -185,6 +185,7 @@ A `ComputeTexture` is the storage behind a sim. It is a persistent 2-D texture t
 ```swift
 let tex = ComputeTexture(width: 512, height: 512)                 // .rgba16Float by default
 let single = ComputeTexture(width: 256, height: 256, format: .r32Float)
+// the other formats: .r16Float, .rgba8Unorm, .rgba32Float
 ```
 
 You can run a kernel that **writes** a texture, one thread per texel, with the write texture bound at `texture(0)`. You can also run one that **reads one texture and writes another**. That is the ping-pong form, where `texture(0)` is the source and `texture(1)` is the destination:
@@ -354,7 +355,7 @@ override func draw() {
 }
 ```
 
-A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, and the `OllinSpatialGrid` at 5. Your own buffers follow at 6 and up. `ParticleLife` binds its interaction matrix at 6. The scatter's within-cell order is set by a GPU atomic race. A query that *sums* over neighbors, a force for example, is therefore reproducible only up to float rounding. The neighbor *set*, and any count of it, is order-independent. See `Examples/Compute/NeighborSearch`.
+A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, and the `OllinSpatialGrid` at 5, which the hash holds as `gridBuffer` and whose shape it reports as `gridWidth` and `gridHeight`, the cells across and down. Your own buffers follow at 6 and up. `ParticleLife` binds its interaction matrix at 6. The scatter's within-cell order is set by a GPU atomic race. A query that *sums* over neighbors, a force for example, is therefore reproducible only up to float rounding. The neighbor *set*, and any count of it, is order-independent. See `Examples/Compute/NeighborSearch`.
 
 <a id="notes"></a>
 ### Notes

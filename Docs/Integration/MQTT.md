@@ -61,9 +61,9 @@ let bus = MQTTClient(host: "192.168.1.20", port: 1883,
 try? bus.connect()
 ```
 
-`connect()` returns as soon as the attempt starts. `isConnected` turns true when the broker answers, usually within a frame or two on a local network, so a sketch reads it rather than waiting on it. If the broker refuses, `lastError` says why in a sentence worth printing, and nothing keeps trying: a refusal is an answer.
+`connect()` returns as soon as the attempt starts. `isConnected` turns true when the broker answers, usually within a frame or two on a local network, so a sketch reads it rather than waiting on it. If the broker refuses, `lastError` says why in a sentence worth printing, and nothing keeps trying: a refusal is an answer. `connect()` itself throws only `MQTTError.invalidPort`, for a port outside 0…65535, since everything after that is an answer from the broker rather than a mistake in the call.
 
-Every client on a broker needs a name of its own, and two clients sharing one name push each other off. `clientID:` defaults to a fresh name each run for that reason. Pass your own only when the broker's rules ask for one.
+Every client on a broker needs a name of its own, and two clients sharing one name push each other off. `clientID:` defaults to a fresh name each run for that reason, which is `MQTTClient.randomClientID()`: a fixed prefix and a random tail, inside the 23 characters every broker must accept. Pass your own only when the broker's rules ask for one.
 
 <a name="topics"></a>
 
@@ -80,7 +80,7 @@ A topic is levels separated by `/`, such as `home/kitchen/temperature`. A publis
 
 Two rules are easy to miss, and both are worth knowing before you write a filter. `#` covers the parent level, so `sport/#` matches `sport` as well as everything under it. And a filter beginning with a wildcard never reaches a topic beginning with `$`, which is where a broker keeps its own statistics: to read those you ask for `$SYS/#` by name.
 
-`MQTTTopic.matches(_:filter:)` is the same rule as a public function, for a sketch that wants to sort what it has already drained.
+`MQTTTopic.matches(_:filter:)` is the same rule as a public function, for a sketch that wants to sort what it has already drained, and `MQTTTopic.isValid(_:)` says whether a filter is well formed before it is sent. `subscriptions` is what the client is subscribed to now.
 
 <a name="reading"></a>
 

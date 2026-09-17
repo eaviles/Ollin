@@ -74,6 +74,7 @@ A handful of parameters set the look. You can pass each one to a factory, and ea
 | `jitter` | a small random nudge each step, so a symmetric ring breaks and folds |
 | `growthRate` | extra nodes added at random edges each step, for faster and more asymmetric growth |
 | `maxNodes` | a ceiling on the node count. Growth stops and the line settles once it is reached |
+| `hasFixedEnds` | for an open path, whether the two endpoints are pinned where they started |
 | `bounds` | an optional rectangle the nodes stay inside |
 
 Repulsion is broad-phased through a uniform spatial hash, so the cost stays close to linear in the node count. See the `DifferentialGrowth` example.

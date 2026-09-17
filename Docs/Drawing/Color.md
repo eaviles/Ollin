@@ -288,6 +288,7 @@ Name a `PaletteFormat` when the automatic guess is wrong:
 
 ```swift
 loadPalettes("swatches.txt", format: .hexLines)   // one palette, even with commas on a line
+loadPalettes("library.ase", format: .ase)        // Adobe's own swatch file
 loadPalettes("grid.csv", format: .csv)
 ```
 

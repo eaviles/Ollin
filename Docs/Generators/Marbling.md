@@ -30,7 +30,7 @@ var bath = Marbling()                 // spacing: 4 by default
 var fine = Marbling(spacing: 2)      // smoother, heavier outlines
 ```
 
-`Marbling` is a value type. Operations mutate it in place, so a copied bath is a snapshot, and you can rake that copy separately. `spacing` is the refinement grain. As a transform stretches an outline, its segments subdivide until none is longer than about that distance. The new points land exactly on the transformed curve. `inks` is the ordered stack, oldest first, and each `MarbledInk` in it carries a fillable `shape` and its `color`.
+`Marbling` is a value type. Operations mutate it in place, so a copied bath is a snapshot, and you can rake that copy separately. `spacing` is the refinement grain. As a transform stretches an outline, its segments subdivide until none is longer than about that distance. The new points land exactly on the transformed curve. `inks` is the ordered stack, oldest first, and each `MarbledInk(shape:color:)` in it carries a fillable `shape` and its `color`.
 
 ```swift
 var bath = Marbling()

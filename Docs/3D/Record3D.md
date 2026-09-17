@@ -49,7 +49,7 @@ Record3DRecording(data: Data) throws          // raw .r3d bytes already in memor
 Record3DRecording(resource: String, withExtension: String, in: Bundle) throws
 ```
 
-`path` throws if no file exists there, and `resource` throws if the bundle does not contain it. Pass your own bundle as `in:`, usually `.module`, because a default value would resolve to Ollin's bundle rather than yours. Opening a recording parses the archive's directory and metadata up front. The color and depth of each frame decode only when you ask for that frame, so loading is cheap. It stays cheap until you ask for one.
+Each throws a `Record3DError`: `.fileNotFound` or `.resourceNotFound` when nothing is there, `.notAnArchive`, `.missingEntry`, `.malformedMetadata`, or `.decodeFailed` when the file is not what it claims, and `.frameOutOfRange` when a frame asked for is past the end. Pass your own bundle as `in:`, usually `.module`, because a default value would resolve to Ollin's bundle rather than yours. Opening a recording parses the archive's directory and metadata up front. The color and depth of each frame decode only when you ask for that frame, so loading is cheap. It stays cheap until you ask for one.
 
 ```swift
 var frameCount: Int          // RGBD frames in the recording
@@ -173,7 +173,7 @@ struct CameraIntrinsics {
 
 - **The `.r3d` format.** A `.r3d` is a ZIP. It holds a `metadata` JSON with the camera intrinsics, the capture resolution, and the frame rate. For each frame it holds a JPEG color image, an LZFSE-compressed float32 depth map in meters, and an LZFSE-compressed confidence map. Ollin reads this clean-room from the format's public structure, using Apple-native frameworks only. It uses a small hand-written ZIP reader over `Data`, `Compression` for LZFSE, and ImageIO for JPEG. The `record3d` library that documents the format is LGPL-2.1. It is credited, never copied.
 - **Depth grids.** LiDAR depth is 256×192, and TrueDepth depth is 640×480. The grid is not stored explicitly, so it is recovered from the sample count and the capture aspect. Both orientations, landscape and portrait, are handled.
-- **The USB stream.** The live path uses Record3D's USB streaming over the standard `usbmuxd` device tunnel, on TCP port 1337. Each frame starts with a small header of sizes, intrinsics, and pose. JPEG color, LZFSE float32 depth, optional confidence, and a JSON metadata trailer follow the header. The wire format is read clean-room from its public structure, the same stance as for the file format.
+- **The USB stream.** The live path uses Record3D's USB streaming over the standard `usbmuxd` device tunnel, on TCP port 1337, which `Record3DDevice.streamPort` spells. Each frame starts with a small header of sizes, intrinsics, and pose. JPEG color, LZFSE float32 depth, optional confidence, and a JSON metadata trailer follow the header. The wire format is read clean-room from its public structure, the same stance as for the file format.
 - **Capturing.** Use the Record3D app on a LiDAR or TrueDepth iPhone. For files, share the `.r3d` from the phone. AirDrop is the simplest way. For live use, enable USB streaming and connect the cable.
 - **The wider sensor stream.** Record3D covers world-facing color and depth. [Phone](../3D/Phone.md) reads Ollin's own iOS capture app over the same USB tunnel. The same phone gives you a live 3D body skeleton, a face mesh with expression blendshapes, person segmentation, device motion, and pose-fused world scanning.
 

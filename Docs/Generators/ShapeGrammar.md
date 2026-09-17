@@ -47,7 +47,7 @@ final class Lattice: Sketch {
 }
 ```
 
-`Piece` takes a `Rectangle`, a list of corners, or a `Contour`. The bare call `shapeGrammar(_:generations:)` on a sketch does the same thing, using the sketch's own seeded `random`, which means `seed(_:)` makes the design reproducible.
+`Piece` takes a `Rectangle`, a list of corners, or a `Contour`. The bare calls `shapeGrammar(_:generations:)` and `drawShapeGrammar(_:generations:)` on a sketch do the same thing, using the sketch's own seeded `random`, which means `seed(_:)` makes the design reproducible.
 
 <a name="rules"></a>
 
@@ -127,7 +127,7 @@ The size limit gives a third exact fact. **No piece a run leaves is smaller than
 
 #### Growing it a sweep at a time
 
-`run(generations:)` does the sweeps for you. To watch a design build instead, hold the pieces and the random source yourself.
+`run(generations:)` does the sweeps for you. A run also stops once the design holds `maxPieces`, give or take whatever one last rule hands back. That is a backstop against a grammar that never settles, not a target. To watch a design build instead, hold the pieces and the random source yourself.
 
 ```swift
 private var cells: [ShapeGrammar.Piece] = []

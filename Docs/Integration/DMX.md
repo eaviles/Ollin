@@ -53,7 +53,7 @@ rig.set(10, color: .red)             // channels 10, 11, 12 = R, G, B
 rig.clear()                          // all dark
 ```
 
-A `DMXUniverse` is a plain value of 512 bytes, one byte per channel. The channels are numbered 1 to 512, which is how every console and fixture manual numbers them. Reading a channel outside that range returns 0. Writing outside it does nothing, so an off-by-one error never crashes the sketch during a performance.
+A `DMXUniverse` is a plain value of 512 bytes (`DMXUniverse.channelCount`), one byte per channel. The channels are numbered 1 to 512, which is how every console and fixture manual numbers them. Reading a channel outside that range returns 0. Writing outside it does nothing, so an off-by-one error never crashes the sketch during a performance.
 
 `set(_:level:)` takes a level in the 0…1 range that the rest of a sketch already works in and scales it to the wire's 0…255. `set(_:color:)` writes a `Color`'s red, green, and blue to three consecutive channels, and `color(_:)` reads three channels back as a `Color`.
 
@@ -71,7 +71,7 @@ rig.set(wash, color: .white, dimmer: 0.5)        // dimmer on its dimmer channel
 rig.set(head, .pan, level: 0.25)                 // one role directly
 ```
 
-A fixture is a start address plus the roles of its channels, in order. Take those roles from the channel-mode table in the fixture's manual. The roles are `.dimmer`, `.red`, `.green`, `.blue`, `.white`, `.amber`, `.uv`, `.pan`, `.tilt`, `.strobe`, and `.unused` for a slot the sketch does not drive. The presets cover the common pars: `.dimmer`, `.rgb`, `.rgbw`, and `.drgb`, each at an address. `nextAddress` places the next fixture directly after the last one.
+A fixture is a start address plus the roles of its channels, in order. Take those roles from the channel-mode table in the fixture's manual. The roles are `.dimmer`, `.red`, `.green`, `.blue`, `.white`, `.amber`, `.uv`, `.pan`, `.tilt`, `.strobe`, and `.unused` for a slot the sketch does not drive. The presets cover the common pars: `.dimmer`, `.rgb`, `.rgbw`, and `.drgb`, each at an address. `nextAddress` places the next fixture directly after the last one, which it works out from `channelCount`, the number of channels the fixture occupies.
 
 `set(_:color:dimmer:)` writes a color through the fixture's layout. On an RGBW fixture the part shared by red, green, and blue moves to the white channel, which is the classic RGBW split. A pale wash then comes from the white emitter instead of from all three color emitters at once. A fixture with a `.dimmer` channel takes the `dimmer` value on that channel. A fixture without one has its color scaled by `dimmer` instead, so `dimmer` means brightness either way.
 
@@ -93,7 +93,7 @@ var priority: Int                        // sACN source priority 0…200, 100 by
 var maxRate: Double                  // transmit ceiling, 44 packets/s per universe
 ```
 
-Plain `DMXSender()` needs no configuration. It uses sACN, which multicasts each universe to that universe's standard group address. Any sACN node on the network that listens to that universe picks it up, so you name no address at all. Art-Net 4 sends DMX as unicast, so there the node's IP address is the one thing you name. The two protocols also number universes differently. On sACN the numbers run 1 to 63999. On Art-Net the universe number is the 15-bit port-address, 1 to 32767, which packs the net, sub-net, and universe switches into one number.
+Plain `DMXSender()` needs no configuration. Both ends read back which wire they speak as `dmxProtocol`, which is `.sACN` or `.artNet`, and a sender that was given an address holds it as `host`. It uses sACN, which multicasts each universe to that universe's standard group address. Any sACN node on the network that listens to that universe picks it up, so you name no address at all. Art-Net 4 sends DMX as unicast, so there the node's IP address is the one thing you name. The two protocols also number universes differently. On sACN the numbers run 1 to 63999. On Art-Net the universe number is the 15-bit port-address, 1 to 32767, which packs the net, sub-net, and universe switches into one number.
 
 Call `send` every frame with whatever the sketch computed. The sender handles the packet timing that both specs ask for. Changed data goes out at once, capped at `maxRate` so the sender never exceeds what a DMX gateway can output. Unchanged data is re-sent a few times, so a receiver that missed one packet still reaches the same values. After that, a keep-alive packet goes out about every 0.9 s, so nodes know the source is still there. The sender also handles sequence numbers, sACN's source identity (the CID), and priorities.
 
@@ -148,7 +148,7 @@ Each call places its LEDs in a different way.
 
 Each LED averages a small patch of the canvas around its point, **in linear light**. So a patch that is half black and half white reads as the gray that looks halfway to the eye. The default `sampleRadius` covers the patch the LED stands for. That is half the LED spacing on a strip, and half the cell on a matrix, kept between 1 and 32 pixels. Pass an explicit radius to override it.
 
-On the wire, a universe holds **whole LEDs** only. An LED's channels never cross a universe boundary, so 170 RGB pixels (or 128 RGBW) fill a universe. The channels left over at the end of a universe stay dark, and a longer run continues on the next universe number. That is the layout pixel controllers expect, so patch the controller to the numbers that `universes` reports. The channels of each LED follow `layout`, and colors are written through the fixture path. So an `[.red, .green, .blue, .white]` layout gets the RGBW white split, and `brightness` scales the light for RGB and RGBW layouts alike. The returned `Fixture` tells you where everything landed. It carries its `positions` and its `universes`. It also carries `address(ofLED:)`, which reads one LED back off the wire, and the drawn preview in the LEDMapping example uses that.
+On the wire, a universe holds **whole LEDs** only. An LED's channels never cross a universe boundary, so 170 RGB pixels (or 128 RGBW) fill a universe. The channels left over at the end of a universe stay dark, and a longer run continues on the next universe number. That is the layout pixel controllers expect, so patch the controller to the numbers that `universes` reports. The channels of each LED follow `layout`, and colors are written through the fixture path. So an `[.red, .green, .blue, .white]` layout gets the RGBW white split, and `brightness` scales the light for RGB and RGBW layouts alike. The returned `Fixture` tells you where everything landed. It carries its `positions`, its `universes`, and its `ledCount`. It also carries `address(ofLED:)`, which reads one LED back off the wire, and the drawn preview in the LEDMapping example uses that. The map keeps every run it was given as `fixtures`.
 
 The map drives lights, so it runs only in a live window. A headless export renders no frames to a window, so the map sends nothing. Frame-sharing behaves the same way in an export. The **LEDMapping** example (`Examples/Integration/LEDMapping`) runs the whole path on loopback. It lights a drawn strip and panel from what a receiver reads back.
 
@@ -159,7 +159,7 @@ The map drives lights, so it runs only in a live window. A headless export rende
 ```swift
 DMXReceiver()                            // sACN on its standard port 5568
 DMXReceiver(.artNet)                     // Art-Net on 6454
-func start() throws                      // hear unicast sent to this Mac
+func start() throws                      // hear unicast sent to this Mac (DMXError.invalidPort)
 func start(universes: [Int]) throws      // also join those sACN multicast groups
 func stop()
 

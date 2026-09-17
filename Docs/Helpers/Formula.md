@@ -169,7 +169,7 @@ try Formula("sin(tine)", variables: ["time"])
 // FormulaError: 'tine' is not a value or a function; the values here are time (at character 5)
 ```
 
-`usesNoise` reports whether the formula reads a noise field. `value(_:noise:)` takes one, and `sketch.noiseField()` returns the sketch's own field.
+`usesNoise` reports whether the formula reads a noise field. `value(_:noise:)` takes one as a `Formula.NoiseField`, which is a closure from `(x, y, z)` to a signed `-1...1`, and `sketch.noiseField()` returns the sketch's own. With none, every formula reads one shared field at a fixed seed.
 
 ### When the text is wrong
 

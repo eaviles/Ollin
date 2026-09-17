@@ -103,7 +103,7 @@ let arrival = HapticPattern.hum(0.8, intensity: 0.5, fadeIn: 0.6)
     .over(.tap(intensity: 1, sharpness: 0.9).delayed(by: 0.6))
 ```
 
-`duration` reports how long a pattern lasts, and it counts the tail of the last hum. `isEmpty` says whether there is anything to play at all.
+`duration` reports how long a pattern lasts, and it counts the tail of the last hum, which each event reports as its own `endTime`. `isEmpty` says whether there is anything to play at all.
 
 <a name="playing-it"></a>
 
@@ -161,6 +161,7 @@ A trackpad is not a small speaker, so a pattern is planned into knocks before it
 
 ```swift
 TrackpadPlan.knocks(for: pattern, strength: 1)   // [TrackpadKnock]
+TrackpadKnock(time: 0.25, feel: .crisp)          // one, built by hand
 TrackpadKnock.time                               // seconds from the start
 TrackpadKnock.feel                               // .soft, .level, or .crisp
 ```
@@ -168,9 +169,9 @@ TrackpadKnock.feel                               // .soft, .level, or .crisp
 Four rules make the plan, and each one is a choice you should know about:
 
 - **Sharpness picks the feeling.** Under a third is `.soft`, over two thirds is `.crisp`, and the rest is `.level`.
-- **Strength becomes density.** The hardware has one strength. So a strong hum arrives as a fast run of knocks, and a weak hum as a slow run. The rate runs from 6 knocks a second up to 30. The hand reads a faster run as a stronger buzz. For the same reason, a fade thins the run rather than lowering it.
-- **Anything under the strength floor is dropped**, so a pattern that fades to nothing ends in silence instead of one stray knock.
-- **Knocks closer than 20 ms are dropped.** Inside one pattern the plan drops them, and across patterns the player does. This is what stops a sketch that calls every frame from building a backlog it cannot feel.
+- **Strength becomes density.** The hardware has one strength. So a strong hum arrives as a fast run of knocks, and a weak hum as a slow run. The rate runs from `TrackpadPlan.slowestHum`, 6 knocks a second, up to `TrackpadPlan.fastestHum`, 30. The hand reads a faster run as a stronger buzz. For the same reason, a fade thins the run rather than lowering it.
+- **Anything under the strength floor is dropped** (`TrackpadPlan.silenceFloor`), so a pattern that fades to nothing ends in silence instead of one stray knock.
+- **Knocks closer than `TrackpadPlan.minSpacing`, 20 ms, are dropped.** Inside one pattern the plan drops them, and across patterns the player does. This is what stops a sketch that calls every frame from building a backlog it cannot feel.
 
 The plan is a pure function of the pattern, so a sketch can draw it. [`HapticRidges`](../../Examples/Integration/HapticRidges/Sketch.swift) draws its plan along its bottom edge. That is the quickest way to see what a pattern will really ask of the hardware.
 

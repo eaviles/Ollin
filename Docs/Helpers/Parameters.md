@@ -149,7 +149,7 @@ struct Opacity: ParamValue {
 @Param("Fade", constraints: .init(range: 0...1, step: 0.25)) var fade = Opacity(1)
 ```
 
-A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
+The built-in constraint types are there to borrow: `ParamNumericConstraints` for anything on a slider or a stepper, `ParamRangeConstraints` for a two-thumb range (whose `outer` is the span the two thumbs move inside), `ParamVectorConstraints` and `ParamVector3Constraints` for a point, `ParamRectangleConstraints` for a rectangle or a set of insets, and `ParamSwatchConstraints` for a palette or a ramp. Each carries the bounds its control needs and a `style` where the control has more than one shape (`ParamVectorStyle.fields` against `.pad`, for instance). A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
 
 ```swift
 extension Param where Value == Opacity {
@@ -185,7 +185,7 @@ A sketch with many parameters usually has a few that are useful but not needed a
 @Param(-2...2, group: .folded("Advanced")) var orbit = 0.0
 ```
 
-One `.folded` member folds the whole group, so the other members can keep the plain spelling. Click the header to open or close the group. The hosts remember that state per sketch, so a group you opened is open the next time that sketch runs. The default (unnamed) group cannot fold. Folding is display only. A parameter behind a closed header still holds, persists, and restores its value. OSC or MIDI keep driving it, exactly as they drive a hidden row.
+One `.folded` member folds the whole group, so the other members can keep the plain spelling (a `ParamGroup` carries the `name` and whether it `isFolded`). Click the header to open or close the group. The hosts remember that state per sketch, so a group you opened is open the next time that sketch runs. The default (unnamed) group cannot fold. Folding is display only. A parameter behind a closed header still holds, persists, and restores its value. OSC or MIDI keep driving it, exactly as they drive a hidden row.
 
 <a name="show-rules"></a>
 

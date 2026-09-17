@@ -280,6 +280,7 @@ It works on a `Double` or a `Vector2`. Two parameters tune the feel:
 
 - **`minCutoff`** (default `1`): lower it to cut jitter while the signal is slow, at the cost of a little more lag.
 - **`beta`** (default `0.007`): raise it to cut lag while the signal moves fast.
+- **`derivativeCutoff`** (default `1`): the cutoff for the filter's own speed estimate. The paper's value is almost always right.
 
 ```swift
 @Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
@@ -290,7 +291,7 @@ Both can be changed live through the projected value (`$angle.beta = …`), so a
 To smooth a value that is not a sketch property, use the public `OneEuroFilter<Value>` underneath. You own the state and step it yourself.
 
 ```swift
-var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.02)
+var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.02, derivativeCutoff: 1)
 let clean = filter.filter(noisy, deltaTime: deltaTime)
 ```
 

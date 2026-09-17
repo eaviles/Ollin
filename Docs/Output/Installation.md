@@ -202,6 +202,8 @@ A piece on a wall usually runs in a building, and a building is open only for pa
 Installation(schedule: .open(from: 10, to: 18))
 ```
 
+(`Installation.off` is the only one whose `runsUnattended` is false. Anything you build by hand is something you mean to leave running.)
+
 Outside those hours the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the piece comes back where it stopped. The clock adds up only the frames it drew, so a night off costs it nothing. The state is saved on the way into the dark, so a piece that checkpoints also survives the night.
 
 <picture>
@@ -232,11 +234,15 @@ The two halves go in one list, so you can mix them. A part with nothing on scree
 Installation(schedule: [.from(9, "morning"), .from(13, "afternoon"), .dark(from: 20)])
 ```
 
+A schedule is a value of its own. `Schedule.always` is the one that never goes dark, `periods` is the list it was built from, `period(at:)` says which part a moment falls in, `shows(at:)` whether anything is on screen then, and `nextChange(at:)` when the next part starts, which is what the piece sleeps until. Each `Schedule.Period` carries its own `name`, its starting `Time` (an `hour` and a `minute`, or `minutes` past midnight), and whether it `shows` anything.
+
 `scheduledPeriod` and `scheduledProgress` read the same anywhere, at a desk as much as on a wall. So you can work on a piece that changes through the day at any hour of it. Going dark is the half that needs the installation, because only a piece that owns its window can take the screen away.
 
 ### Fitting the wall
 
 A projector is almost never square to the surface it is aimed at. It hangs from a beam, or sits on a shelf to one side. So the picture lands as a trapezoid a few degrees out of true.
+
+The four dragged corners are a `Projection.Corners`, in fractions of the display, and `Projection.direct` is the projection that warps nothing: square corners, the whole canvas, no fade. `Corners.fit` is the untouched rectangle and `Corners.filling` the one stretched to the display's edges, and `isFit` says which of the two a set of corners still is.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/FittingTheWall-dark.jpg">
@@ -274,11 +280,11 @@ Installation(projection: .init(visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6
                                blend: Insets(left: 0.2)))
 ```
 
-`visibleRegion` is the part of the canvas this machine carries, in fractions of the canvas. `blend` is how far the fade reaches in from each edge, in the same fractions.
+`visibleRegion` is the part of the canvas this machine carries, in fractions of the canvas, and `Projection.wholeCanvas` is the default: all of it, which is what one machine on its own carries. `blend` is how far the fade reaches in from each edge, in the same fractions, and `blendCurve` is how that fade is shaped, 1 a straight line and 2 an S that spends longer at full brightness and longer at nothing. Two is the number the published work uses, and the one to leave alone until you see a band you do not like.
 
 The units are the same on purpose. Both machines are told about the same fifth of the same canvas. So both machines compute the same fade across the same part of the wall, and the two fades add up to exactly one coat.
 
-The fade is applied to light rather than to a pixel value, which is what makes the sum exact. `gamma` tells Ollin what your projector does with the standard curve, and 2.2 is that curve. Change it when a lined-up overlap still looks brighter or darker than the picture beside it.
+The fade is applied to light rather than to a pixel value, which is what makes the sum exact. `gamma` tells Ollin what your projector does with the standard curve, and `Projection.standardGamma`, 2.2, is that curve. Change it when a lined-up overlap still looks brighter or darker than the picture beside it.
 
 #### What it does and does not touch
 

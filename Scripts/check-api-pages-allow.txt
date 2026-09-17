@@ -1,0 +1,71 @@
+# Exceptions to Scripts/check-api-pages.sh, one per line: `<class> <what>`,
+# where what is a dotted API path (`Owner.member`, `Owner.*` for all of them,
+# or a glob), or a source file, which covers every public type declared in it.
+# The reason goes after a `#`. An entry that matches nothing under API/ fails
+# the check, so this list cannot outlive what it excuses. A name missing
+# because the reference is a page short is never listed here: the page is
+# written instead.
+#
+# Four classes. The first three are the same shape, a name that is public
+# because another module has to compile against it rather than because a
+# sketch calls it; the fourth is a set the reference names as a set.
+
+# wire: a protocol both ends encode. The phone app, the room's peers, the
+# browser's remote panel, and the laser and lighting devices each read and
+# write these structures, and the framework and the app must agree on them to
+# the byte, so they are public. A sketch reads the friendly value the wire
+# decodes into (PhoneHand, RoomValue, LaserPath) and never spells the payload.
+wire Sources/OllinPhone/PhoneWire.swift      # the phone stream's frames, headers, and samples, encoded on both sides
+wire Sources/OllinRemote/RemoteWire.swift    # the remote panel's messages and its WebSocket framing
+wire Sources/OllinRoom/RoomWire.swift        # the room protocol: what one machine sends the others
+wire Sources/OllinRoom/RoomTransport.swift   # the transport seam under it
+wire Sources/OllinRoom/LocalNetworkTransport.swift  # the Bonjour transport that carries it
+wire Sources/OllinLaser/EtherDreamWire.swift # the DAC's own protocol, down to its status bytes
+wire Sources/OllinDMX/SACNPacket.swift       # sACN's packet, as E1.31 lays it out
+wire Sources/OllinDMX/ArtNetPacket.swift     # Art-Net's packet, as its specification lays it out
+
+# host: public because Ollin's own host apps are their own modules. OllinLive,
+# the gallery, OllinLiveCoding and the screen saver drive the runner, read the
+# stats, and draw the inspector and the timeline from these; a sketch does not.
+# The hosts have their own pages under Docs/Tools/, which document what they
+# do rather than the types their windows are built from.
+host Sources/Ollin/Core/SketchView.swift     # the runner and the canvas view the hosts embed
+host Sources/Ollin/Live/TimelineModel.swift  # the timeline panel's model, driven by the panel
+host Sources/Ollin/Live/Inspector.swift      # the shared inspector's own chrome and palette
+host Sources/Ollin/Live/FrameStats.swift     # the numbers behind the hosts' stats surfaces
+host Sources/Ollin/Live/WindowChrome.swift   # the title-bar accessory and the window customizer
+host Sources/Ollin/Live/CuesCard.swift        # the cue card the hosts draw over the stage
+host AnyParam.*                              # the type-erased parameter a host reads; a sketch writes @Param
+host ParamHandle.*                           # the same handle, held across a reload
+host ParamControl.*                          # which control a host draws for a parameter, and its bounds
+host ParamStored.*                           # the persisted payload's own cases, under the values that persist
+host Param.groupIsFolded                     # whether the inspector drew this group folded
+host Param.isShown                           # whether the inspector drew this row at all
+
+# catalog: a set the reference names as a set. The page says what the values
+# are and how to reach them, and listing every one of them would be a copy of
+# the enum rather than a page. Where the set is somebody else's (ARKit's blend
+# shapes, Vision's joints), the page says whose it is.
+catalog Ink.*                                # the risograph ink line, 78 of them, reached through Ink.catalog and Ink.named(_:)
+catalog HandJoint.*                          # Vision's 21 hand joints: the wrist and four per finger
+catalog BodyJoint.*                          # Vision's 2D body joints
+catalog BodyJoint3D.*                        # the 3D skeleton's 17, a different set from the 2D one
+catalog DetectedBarcode.Symbology.*          # the barcode symbologies Vision reads, an open set of static constants
+
+# reading: a value the framework hands the sketch, built by whatever reads the
+# outside world. Its initializer is public because the reader is in another
+# module (or the wire's decoder is), and a sketch never writes one: it reads
+# what arrived. The page documents the reading, not the way to forge one.
+reading Phone*.init                          # the phone's readings, decoded from the stream
+reading TUIO*.init                           # a cursor, object, or blob as the table reported it
+reading Bluetooth*.init                      # a peripheral, service, or reading the scan found
+reading Firmata*.init                        # what the board answered
+reading SerialDevice.init                    # a port the system listed
+reading RoomClockSample.init                 # one exchange with a peer's clock
+reading SoundEvent.init                      # what the classifier heard
+reading OSCPacket.init                       # a packet as it arrived on the wire
+reading GlyphPair.init                       # a kerning pair read out of a font
+host OllinHUDCommands.*                      # the ⌘/ stats panel's menu commands, added by a host's Scene
+host OllinCameraCommands.*                   # the camera menu a host adds to its own window
+host VariationCardView.*                     # the seed-picker card a host draws over the stage
+host SwiftUICore.View.*                      # a SwiftUI modifier the hosts' own panels use

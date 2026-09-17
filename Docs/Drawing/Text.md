@@ -284,6 +284,8 @@ let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtIn
 textFont(serif)
 ```
 
+A `StrokeFont` measures itself in the font's own units, which `unitsPerEm` divides to turn into a fraction of the em: `ascentUnits`, `descentUnits`, `lineGapUnits`, and `spaceAdvanceUnits` are the raw numbers, and `ascent`, `descent`, and `leading` the same three as fractions, so multiplying by the rendered `textSize` gives points. `advanceUnits(for:)` is one character's pen advance and `lineAdvanceUnits(of:)` a whole line's, both in font units. Each glyph is a `StrokeGlyph`, whose `polylines` are the pen paths the stroke follows.
+
 `StrokeFont(resource:in:)` loads a font bundled beside your sketch, and you pass `.module` for a `swift run` sketch's resources. `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors, for example [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts). For the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map, and each font there has its own license to check. Ollin ships only the parser and the one Hershey default.
 
 <a name="perglyph"></a>
@@ -639,7 +641,7 @@ Example: `Examples/Text/HangingStops`.
 textMissingCharacters(_ string: String) -> [Character]
 ```
 
-The characters the current font cannot draw, in the order they appear.
+The characters the current font cannot draw, in the order they appear. `OutlineFont.missingCharacters(in:)` asks one loaded face the same question without making it the active font.
 
 For an **outline** font this asks the whole system. The result is empty unless no installed face has the character at all, and then the character draws as a box rather than vanishing. For a **bitmap** or **stroke** font this is the question that matters. Those fonts have only the glyphs in their own file, and anything else advances the pen and draws nothing.
 
@@ -655,7 +657,7 @@ Example: `Examples/Text/Scripts`. It carries a private-use code point that no in
 
 ### BitmapFont
 
-A `BitmapFont` is a value type. It holds a table of `BitmapGlyph`s, each a small bit grid, plus the layout metrics `pixelHeight`, `baseline`, and `lineHeight`. The built-in font is **Cozette**, described above.
+A `BitmapFont` is a value type. It holds a table of `BitmapGlyph`s, each a small bit grid placed by its own `xOffset` and `yOffset` from the pen, plus the layout metrics `pixelHeight`, `baseline`, and `lineHeight`. `spaceAdvance` is the pen advance for a space when the font has no glyph for one, and `kerning` is the pair table a `.fnt` brings, which `kerning(between:_:)` reads for two characters. `inkWidth(of:)` measures a string's lit pixels rather than its advance, which is what centering ASCII art wants. The built-in font is **Cozette**, described above.
 
 Load your own pixel font from a **BDF** file, the standard bitmap-font format that the X11 catalog and Cozette ship in:
 

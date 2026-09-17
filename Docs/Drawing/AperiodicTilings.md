@@ -82,7 +82,7 @@ Wang tiles are squares with a color on each edge. They are placed without rotati
 
 `wangTiling` fills a `columns × rows` grid in scanline order, driven by the seeded `random`. Each cell is chosen from the tiles that match its west and north neighbors, and the choice is weighted by `weight`. `WangTiling.completeSet(colors: n)` builds the full set of `n⁴` tiles, which can never dead-end. A hand-built set can dead-end, so the fill is retried up to `attempts` times. A `nil` result means no attempt succeeded.
 
-The result carries `tiles`, `columns`/`rows`, row-major `indices`, and `tile(column:row:)`. `drawWangTiling` renders each cell as four triangles that meet at the center, one per edge in that edge's color (the classic picture). The `colors` array is indexed by edge color id:
+The result carries `tiles`, `columns`/`rows`, row-major `indices`, `tile(column:row:)`, and `tileIndex(column:row:)` for the index alone. `drawWangTiling` renders each cell as four triangles that meet at the center, one per edge in that edge's color (the classic picture). The `colors` array is indexed by edge color id:
 
 ```swift
 seed(7)
@@ -144,7 +144,7 @@ Every tile in a patch is congruent with the others and has the same handedness. 
 | Member | Meaning |
 | --- | --- |
 | `points` | The outline (14 corners straight, more when curved). |
-| `metatile` | Which of the nine substitution types the tile descends from. This is the natural coloring key. |
+| `metatile` | Which of the nine substitution types the tile descends from, as a `Spectre.Metatile`: `.gamma`, `.delta`, `.theta`, `.lambda`, `.xi`, `.pi`, `.sigma`, `.phi`, or `.psi`, after the Greek letters the paper names them by. This is the natural coloring key. |
 | `isOdd` | Whether the tile is one of the rare mystic partners, which are rotated 30° from every other tile. |
 | `shape` / `contour` | Fillable `Shape` / closed `Contour`. |
 

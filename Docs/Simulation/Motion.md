@@ -56,6 +56,7 @@ override func draw() {
         stroke(.black); strokeWeight(4)
         drawLine(.zero, pendulum.bob1)
         drawLine(pendulum.bob1, pendulum.bob2)
+        // pendulum.velocity1 and .velocity2 are the two arms' angular speeds
     }
 }
 ```
@@ -113,7 +114,7 @@ Read positions through **`bob1`** and **`bob2`**. Both are relative to the pivot
 
 ### `NBody`: gravity at scale
 
-In an `NBody`, every body pulls on every other body. That one rule produces orbits, spiral shear, tidal tails, and mergers. `NBody` holds a public `bodies` array of `NBody.Body` values, each with `position`, `velocity`, and `mass`. You may change the array freely between steps. `advance(by:)` advances the whole system.
+In an `NBody`, every body pulls on every other body. That one rule produces orbits, spiral shear, tidal tails, and mergers. `NBody(bodies:gravity:theta:softening:)` takes the bodies and the constants, and it holds a public `bodies` array of `NBody.Body` values, each with `position`, `velocity`, and `mass`. You may change the array freely between steps. `advance(by:)` advances the whole system.
 
 Three parameters shape the physics:
 

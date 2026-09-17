@@ -188,7 +188,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from. One of `.wave(Waveform)`, `.plucked(PluckedString)`, `.struck(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, `.sampled(Sampler)`, or `.wavetable(WavetableScan)`. See [Physical models](#physical-models), [Patch](#patch), [Sampled instruments](#sampled-instruments) and [Wavetables](#wavetables) |
+| `source` | what the note is built from, as a `VoiceSource`. One of `.wave(Waveform)`, `.plucked(PluckedString)`, `.struck(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, `.sampled(Sampler)`, `.wavetable(WavetableScan)`, or `.granular(GrainCloud)`. See [Physical models](#physical-models), [Patch](#patch), [Sampled instruments](#sampled-instruments) and [Wavetables](#wavetables) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -208,7 +208,7 @@ The geometric waves are corrected as they are produced. A sawtooth therefore sti
 
 A wave is a shape repeated over and over. A physical model works out the thing itself as it goes, so what you hear comes out of the model rather than being dialed in.
 
-There are four models, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going** instead. That note lasts as long as you keep driving it, and it can change while it sounds. `Synth.pressure` is that driving, and it is the difference this section is really about.
+Each model carries its own presets, and two of them share a name for the same reason: `BowedString.sustained` is a light bow a long way along the string, `BlownTube.reedy` a tube bitten tight, and `Envelope.sustained` the envelope that stays out of the way of either. There are four models, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going** instead. That note lasts as long as you keep driving it, and it can change while it sounds. `Synth.pressure` is that driving, and it is the difference this section is really about.
 
 #### A plucked string
 
@@ -417,7 +417,7 @@ An operator's `level` means one of two things, depending on where it sits. On an
 | `.mixed(with:)` | both sounding at once, added together |
 | `.fedBack(_:)` | its output operators pushing themselves |
 | `.level(_:)` / `.ratio(_:)` | balancing one against another |
-| `operators` / `count` | reading a patch back |
+| `operators` / `count` | reading a patch back, each one saying whether it `reachesOutput` and which operator it is `modulatedBy` |
 
 | Named | What it sounds like |
 |---|---|
@@ -427,6 +427,8 @@ An operator's `level` means one of two things, depending on where it sits. On an
 | `.glass` | pushed at a ratio just off a whole number, so it drifts against itself |
 | `.buzz` | one operator pushing itself |
 | `.struck` | a body and a strike heard together |
+
+Three of those are wrapped as whole voices to play straight away: `Voice.fmBell`, `Voice.fmBrass`, and `Voice.fmBuzz`.
 
 #### Why modulation rather than a filter
 
@@ -463,7 +465,7 @@ Ollin bundles one small instrument, so you can hear this working without downloa
 
 #### Why the instrument is set separately from the voice
 
-A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time. That is why a [`ModalBody`](#physical-models) caps at sixteen tones and a [`Patch`](#patch) at eight operators. Recordings are megabytes on the heap and cannot ride along. So the recordings live on the `Synth` and the `Voice` says only how to play them.
+A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time. That is why a [`ModalBody`](#physical-models) caps at sixteen tones (`ModalBody.maxModes`) and a [`Patch`](#patch) at eight operators (`Patch.maxOperators`). Recordings are megabytes on the heap and cannot ride along. So the recordings live on the `Synth` and the `Voice` says only how to play them.
 
 | Member | What it does |
 |---|---|
@@ -482,7 +484,7 @@ let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)   // bundled with t
 let other = SampledInstrument(contentsOf: url)                 // anywhere on disk
 ```
 
-The format is **SFZ**, a plain text file listing regions. Each region names an audio file and the notes it answers to, with the audio beside it. It is the format most freely licensed libraries ship in.
+The format is **SFZ**, a plain text file listing regions. Each region names an audio file and the notes it answers to, with the audio beside it. That region arrives as a `SampledInstrument.Recording`: the samples, the `rootKey` it was recorded at, and the `lowKey` to `highKey` range it answers over, which defaults to the root note and nothing else. It is the format most freely licensed libraries ship in.
 
 Ollin reads the opcodes that decide which file plays and at what pitch. They are `sample`, `lokey` / `hikey` / `key`, `pitch_keycenter`, `lovel` / `hivel`, `tune`, `transpose`, `volume`, and the loop points. SFZ has hundreds of others covering filters, envelopes, round robins and modulation.
 
@@ -494,6 +496,9 @@ Ollin reads the opcodes that decide which file plays and at what pitch. They are
 
 ```swift
 let bar = SampledInstrument.builtIn!
+bar.recordingCount                             // how many recordings it holds
+bar.recordingRoots                             // the note each was recorded at
+bar.recordingIndex(for: 60)                    // which one a note plays
 let slow = bar.recording(at: 0, over: 0...127).stretched(by: 4)
 synth.instrument = SampledInstrument(recordings: [slow])
 ```
@@ -834,7 +839,7 @@ let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: 
 synth.reverb = Reverb(stairwell, mix: 0.4, preDelay: 0.02)
 ```
 
-A room is what it does to a click. Clap once in a stairwell and what comes back is the stairwell: every surface and every distance, all at once. That recording is an impulse response. An instrument played through it is heard in that room, because every sample of the sound starts its own copy of the click's answer. `ImpulseResponse` is the answer written down, and `Reverb(room)` is the convolution reverb that plays through it. It sits in the chain like any other reverb, the `reverb` view reaches it, and it reaches an [export](#sound-in-an-export).
+A room is what it does to a click. Clap once in a stairwell and what comes back is the stairwell: every surface and every distance, all at once. That recording is an impulse response. An instrument played through it is heard in that room, because every sample of the sound starts its own copy of the click's answer. `ImpulseResponse` is the answer written down, and `Reverb(room)` is the convolution reverb that plays through it, which is the chain's `.convolution` kind. It sits in the chain like any other reverb, the `reverb` view reaches it, and it reaches an [export](#sound-in-an-export).
 
 | Where a room comes from | What it is |
 |---|---|
@@ -843,6 +848,8 @@ A room is what it does to a click. Clap once in a stairwell and what comes back 
 | `.decay(seconds: 3, damping: 0.6)` | fading noise, the plainest room there is. `seconds` is how long it takes to fall silent, and `damping` is how much faster the top end goes |
 | `ImpulseResponse(seconds: 2) { t, noise in ... }` | drawn from a rule. The closure is asked for every sample, with the time since the click and a noise value it may use or ignore |
 | `.reversed()` | the same room run backward, the reverse reverb of a thousand records |
+
+A response reads itself back as `channels` (one or two of them, with `channelCount` saying which), `sampleRate`, and `duration`. `ImpulseResponse.maxSeconds` is the longest room a reverb takes, twenty seconds, past which it is a drone rather than a room, and a longer response is cut there.
 
 A drawn room is whatever the rule says:
 
@@ -866,7 +873,7 @@ Equalizer(lowGain: -6, highGain: 3)         // thinner and brighter
 Equalizer.lowCut(below: 300)                // when a sound is muddy
 ```
 
-There are three controls. Two of them are the bottom and the top, and the third goes wherever the problem is. Gains are in decibels, so zero leaves the sound untouched. A few decibels is a much bigger change than it looks on the page. The presets are `.warm`, `.bright`, and `.scooped`.
+There are three controls. Two of them are the bottom and the top, `lowGain` below `lowEdge` and `highGain` above `highEdge`, both edges in Hz. The third goes wherever the problem is: `midGain` at `midFrequency`, with `midWidth` deciding how narrow that band is, around 1 for a broad tilt and past 5 for a notch aimed at one thing. Gains are in decibels, so zero leaves the sound untouched. A few decibels is a much bigger change than it looks on the page. The presets are `.warm`, `.bright`, and `.scooped`.
 
 #### Distortion
 

@@ -56,6 +56,8 @@ A mark is built from four types, each doing one thing:
 
 ```swift
 struct StrokeInput {
+    init(speed: Double = 0, pressure: Double = 0.5,
+         direction: Vector2 = Vector2(1, 0), distance: Double = 0)
     var speed: Double        // canvas points per second, smoothed
     var pressure: Double     // 0...1, smoothed
     var direction: Vector2   // unit heading
@@ -100,7 +102,7 @@ StrokeDynamics.pressure(light: 0.1)                // width only
 StrokeDynamics.uniform                             // neither
 ```
 
-A `StrokeDynamics` is the brush, with one response per axis. Both responses are multipliers, matching `strokeProfile`. Width scales `strokeWeight`, opacity scales the stroke color's alpha, and `1` leaves either one as set.
+A `StrokeDynamics` is the brush, with one response per axis, and `multipliers(for:)` is what a recorded mark calls for each point: both answers at once, each clamped to the range its response promises. Both responses are multipliers, matching `strokeProfile`. Width scales `strokeWeight`, opacity scales the stroke color's alpha, and `1` leaves either one as set.
 
 Naming each axis says what each one does, and it lets the two come from different measurements:
 
@@ -234,7 +236,7 @@ drawPolyline(points)
 
 `strokeBrush(_:)` is style. You set it once and it is held, like `strokeCap` or `strokeProfile`, and `noStrokeBrush()` goes back to the ribbon. It applies wherever a path is stroked: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawArc`, `drawMark`, and the outlines of `drawShape` and `drawPolygon`. The analytic shapes, such as `drawCircle` and `drawRect`, have no path to walk. They keep drawing a continuous outline, and they say so once.
 
-The stamp takes its **size** from `strokeWeight` and its **color** from `stroke`. A brush decides texture, not weight or color, so you can swap brushes without re-tuning anything else.
+Each named brush is a `Brush(_:spacing:sizeJitter:angle:angleJitter:…)` underneath, so a brush of your own is that initializer with a `Brush.Tip` and the jitter you want. The stamp takes its **size** from `strokeWeight` and its **color** from `stroke`. A brush decides texture, not weight or color, so you can swap brushes without re-tuning anything else.
 
 ### The parameters
 

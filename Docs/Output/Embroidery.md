@@ -31,7 +31,7 @@ Five steps sit between your draw calls and the file:
 - **Fills sew as rows.** `fillSpacing` is the distance between the rows, 0.4 mm by default, and `fillAngle` is their direction. The rows connect end to end, so the thread stays down across a fill. Pass `fillSpacing: nil` to sew only each fill's outline. Rows 0.4 mm apart are a dense, solid fill, and wider rows show the ground between them.
 - **Each color is a thread, in draw order.** A new thread starts whenever the color changes. What was drawn later is sewn later, so it lies on top. A sketch that wants fewer thread changes draws each color's shapes together. A gradient sews in the middle color of its ramp.
 - **Everything is clipped.** A `withClip` region cuts the stitches the same way it cuts the render. Nothing past the canvas edge reaches the hoop.
-- **Touching ends merge, and the order is planned.** Open paths whose ends meet within `joinTolerance` millimeters sew as one path. Within each thread, a nearest-neighbor walk reorders the paths to shorten the jumps. Ordering changes only the jumps, never what is sewn.
+- **Touching ends merge, and the order is planned.** Open paths whose ends meet within `joinTolerance` millimeters sew as one path. Within each thread, a nearest-neighbor walk reorders the paths to shorten the jumps, which `optimizesTravel` turns off. Ordering changes only the jumps, never what is sewn.
 
 A hop from one path to the next is a stitch when it is within the pitch. Otherwise it is a jump, with the thread carried over. Raster images have no stitches, so they are skipped.
 
@@ -50,7 +50,7 @@ plan.size          // the design in millimeters, margin included
 plan.dst()         // the file's bytes
 ```
 
-`Stitch.position` stays in canvas coordinates, so you can draw the plan over the sketch with no conversion. Each stitch carries a `kind`: a `.stitch`, a `.jump`, or a `.colorChange`. From outside a sketch, `OllinApp.stitching(of:settings:)` plans a whole frame, fills and colors included, and `threads` lists the colors in the order the machine asks for them. The `Export/Embroidery` example draws a leaf and its stitches side by side.
+`Stitch.position` stays in canvas coordinates, so you can draw the plan over the sketch with no conversion. Each stitch carries a `kind`: a `.stitch`, a `.jump`, or a `.colorChange`. A `Stitch(position:kind:)` is one of them, so a plan can be built or edited by hand. From outside a sketch, `OllinApp.stitching(of:settings:)` plans a whole frame, fills and colors included. That `Stitching` carries the same counts plus `threads`, the colors in the order the machine asks for them, `colorChanges`, how many times it stops for one, and `jumpCount`, how many jumps it makes. The `Export/Embroidery` example draws a leaf and its stitches side by side.
 
 ### From the command line
 

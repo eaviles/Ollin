@@ -149,11 +149,13 @@ withState {
 ```swift
 struct Harmonograph {
     struct Pendulum {           // amplitude * sin(frequency * tau * t + phase) * exp(-damping * t)
+        init(amplitude: Double = 1, frequency: Double, phase: Double = 0, damping: Double = 0)
         var amplitude: Double   // starting half-swing, canvas units
         var frequency: Double   // full swings per unit of time
         var phase: Double       // radians
         var damping: Double     // decay per unit of time; 0.01...0.05 is the classic range
     }
+    init(x: [Pendulum], y: [Pendulum])
     var x: [Pendulum]           // summed into the horizontal position
     var y: [Pendulum]           // summed into the vertical
 
@@ -184,6 +186,7 @@ struct Spirolateral {
     var closingRepeats: Int?    // how many it takes to come home, nil if never
     var closes: Bool
     var netTurn: Double         // how far one run turns the walker
+    var runDisplacement: Vector2 // where one run leaves the walker, from where it started
     var center: Vector2?        // the point the figure turns about
     var length: Double
 }

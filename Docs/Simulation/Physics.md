@@ -131,6 +131,8 @@ var position: Vector2          // where it is now
 var velocity: Vector2 { get }  // implicit, as a per-step displacement
 var radius: Double             // collision radius (0 = a non-colliding point)
 var mass: Double               // heavier resists being pushed
+var inverseMass: Double        // 1 / mass, the weight a constraint shares a correction by
+var acceleration: Vector2      // force gathered for the next step (applyForce is the way in)
 var pinned: Bool               // held in place (an anchor)
 var userData: Any?             // hang your own data off it
 

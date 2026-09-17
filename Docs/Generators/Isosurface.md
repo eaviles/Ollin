@@ -38,7 +38,7 @@ field.add(at: other, radius: 30, strength: 1.4)
 let mesh = field.mesh(resolution: 56)
 ```
 
-`radius` is the size a ball has **on its own**, so a single ball meshes to a sphere of exactly that radius. Bring a second ball within reach and the two fields add together. The value in the gap then rises above what either ball makes there alone. The surface swells across the gap, so the pair fuses into one skin. Pull the two apart and the bridge between them thins and breaks.
+`balls` is the list, in the order they were added, so a sketch can move or drop one after the fact. `radius` is the size a ball has **on its own**, so a single ball meshes to a sphere of exactly that radius. Bring a second ball within reach and the two fields add together. The value in the gap then rises above what either ball makes there alone. The surface swells across the gap, so the pair fuses into one skin. Pull the two apart and the bridge between them thins and breaks.
 
 Three parameters control the merging:
 
@@ -109,7 +109,7 @@ Some corner arrangements can be stitched in more than one way. If two neighborin
 
 #### Sharp features: dual contouring
 
-Marching cubes puts every vertex on an edge of the grid. A corner of the field that falls inside a cube can therefore only come out as a bevel across it. A block reads as a pebble at any resolution you can afford. `method: .dualContouring` puts one vertex inside each cube instead, where the field's own normals say the surface is:
+Marching cubes, `method: .marchingCubes`, which is the default, puts every vertex on an edge of the grid. A corner of the field that falls inside a cube can therefore only come out as a bevel across it. A block reads as a pebble at any resolution you can afford. `method: .dualContouring` puts one vertex inside each cube instead, where the field's own normals say the surface is:
 
 ```swift
 let block = isosurface(at: 0, in: box, resolution: 24, method: .dualContouring) { p in

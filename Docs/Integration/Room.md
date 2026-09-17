@@ -148,7 +148,7 @@ let angle = room.time * speed     // in step everywhere
 let angle = time * speed          // this machine's own clock, drifting from the rest
 ```
 
-One machine owns the clock, and the others ask it for the time a few times a second. The owner is the machine whose name sorts first, so every machine picks the same one with no election. Each estimate allows for the time the answer spent on the wire. Ollin believes the quickest of several answers, because a slow answer is a delayed one.
+One machine owns the clock, and the others ask it for the time a few times a second. The owner is the machine whose name sorts first, so every machine picks the same one with no election. Each estimate is a `RoomClockSample`, and it allows for the time the answer spent on the wire, which it carries as `roundTrip`. Ollin believes the quickest of several answers, because a slow answer is a delayed one.
 
 ```swift
 room.ownsClock     // whether this machine keeps the clock

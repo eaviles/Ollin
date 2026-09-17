@@ -102,7 +102,16 @@ final class SlowFrameLog: SketchExtension {
 }
 ```
 
-`FrameProfile` holds three groups of values. The first group is the four times (`cpuDrawMS`, `cpuEncodeMS`, `gpuMS`, `waitMS`). The second is the submitted work (`drawCalls`, `passes`, `computeDispatches`, `batches`), and the third is the geometry each path drew. `cpuMS` is the sum of the two CPU times, and `tessellatedVertices` is the sum of every vertex the CPU built this frame.
+`FrameProfile` holds three groups of values. The first group is the four times (`cpuDrawMS`, `cpuEncodeMS`, `gpuMS`, `waitMS`). The second is the submitted work (`drawCalls`, `passes`, `computeDispatches`, `batches`). The third is the geometry, one count per path the frame drew:
+
+- `triangleVertices` through the tessellated fills, `fringeVertices` through the stroke expander, and `clipVertices` for clip regions, which draw into the stencil rather than the canvas and still cost tessellation.
+- `sdfInstances`, one quad and one struct write for each analytic shape, and `fieldQuads`, one covering quad for each composed SDF field, 2D or raymarched.
+- `imageVertices` for the textured quads (images and depth backdrops) and `glyphVertices` for text through the glyph atlas.
+- `meshVertices` for 3D triangle meshes and `pointSplats` for instanced point-cloud splats.
+
+`cpuMS` is the sum of the two CPU times, `tessellatedVertices` the sum of every vertex the CPU built this frame, and `hasData` is false until a frame has actually been measured, which is what an overlay reads before it draws anything.
+
+The same three geometry totals reach an extension more cheaply on `FrameInfo` itself: `vertexCount` is what the CPU tessellated, `sdfCount` the instanced analytic shapes, and `pointCount` the GPU-resident splats and particle discs, which live in no CPU array at all.
 
 The counts reflect what was drawn, not what was recorded, so a batch the renderer skipped does not appear in them.
 

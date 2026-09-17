@@ -68,7 +68,7 @@ A swap always brings a fresh instance, because the code lives in a new library a
 - The canvas keeps what is piled on it, which is the whole point for a piece drawn with `noClear()`.
 - `time` and `frameCount` go on, as they do across any swap.
 - `random()` and the noise fields carry on where they were, rather than restarting their sequence.
-- The `@Saved` properties come across, matched by name. This is the same mark that carries state across a relaunch, so one annotation covers both.
+- The `@Saved` properties come across, matched by name. This is the same mark that carries state across a relaunch, so one annotation covers both. `savedProperties()` lists them, each as a `SavedHandle` naming the `property` it stands for, which is how a host writes the set down and reads it back (`encodedValue()` and `decodeValue(from:)` on the wrapper do the two halves).
 - The extensions the sketch installed for itself and the automation it wrote come across, since the `extend` and `automate` calls that made them are not going to run again.
 - `reloaded()` fires, as it does after any swap.
 - Everything else is a fresh instance's declared value: a stored property you did not mark is back where the file puts it.

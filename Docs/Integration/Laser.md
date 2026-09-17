@@ -30,7 +30,7 @@ final class Ring: Sketch {
 }
 ```
 
-Both wire formats here are written from their published specifications, so nothing is vendored. The [ILDA Image Data Transfer Format](https://www.ilda.com/resources/StandardsDocs/ILDA_IDTF14_rev011.pdf) covers files, and the [Ether Dream](https://ether-dream.com/protocol.html) DAC protocol covers the network.
+Both wire formats here are written from their published specifications, so nothing is vendored. The [ILDA Image Data Transfer Format](https://www.ilda.com/resources/StandardsDocs/ILDA_IDTF14_rev011.pdf) covers files (Ollin writes `ILDAFile.formatCode` 5, 2D coordinates in true color at 8 bytes a point, up to `ILDAFile.maxPointsPerFrame` a frame, past which a frame is written truncated and the truncation reported), and the [Ether Dream](https://ether-dream.com/protocol.html) DAC protocol covers the network.
 
 ### Contents
 
@@ -119,7 +119,7 @@ Five things happen here, and each one is something a laser needs rather than som
 | 40K | 40,000 | better hobby heads and small professional ones |
 | 60K | 60,000 | professional scanners |
 
-The stream also reports what the frame cost: `points.count`, `litCount`, `blankedCount`, `drawnLength` and `travelLength` in field units, and `duration` in seconds.
+Each of those points is a `LaserPoint(_:color:)`, or a `LaserPoint(blankedAt:)`, and a blanked one is what carries the beam between separate paths without drawing a line between them, which `isBlanked` reads. A `LaserPath(_:color:closed:)` is one path before the optimizer walks it. The stream also reports what the frame cost: `points.count`, `pathCount` (how many paths were left after empty ones were dropped), `litCount`, `blankedCount`, `drawnLength` and `travelLength` in field units, and `duration` in seconds.
 
 <a name="seeing-it-without-a-laser"></a>
 
@@ -157,7 +157,7 @@ laser.safety.stallTimeout = 0.5        // seconds before a stale frame is blanke
 
 The stopped-beam guard blanks a run of lit points that stays inside `stationaryRadius`. That catches a beam effect, a shape far smaller than it looks, and a frame that turned out to be a single point. Its limit sits well above `cornerDwell`, which holds points at a corner on purpose. The stall timeout covers the case a sketch cannot cover itself. The sketch stopped or crashed, and the projector is still playing the last thing it was given.
 
-The defaults are careful, including a brightness ceiling of half. `LaserSafety.unguarded` turns every guard off, for a bench where the beam goes into a meter rather than a room. Nothing in the framework selects it for you.
+`guarded(_:)` is that pass itself, over a whole `LaserStream` or a bare point list, and `LaserSafety.blankHold()` is what a projector plays when it has nothing to draw: a blanked hold at the field center, so the mirrors have somewhere to be with the beam off. `isArmed` says whether the gate is open, and `lastError` what went wrong on the wire, if anything has. The defaults are careful, including a brightness ceiling of half. `LaserSafety.unguarded` turns every guard off, for a bench where the beam goes into a meter rather than a room. Nothing in the framework selects it for you.
 
 <a name="sending-it"></a>
 
@@ -179,7 +179,7 @@ try finder.start()
 if let dac = finder.devices.first { laser.connect(to: dac) }
 ```
 
-A DAC that announced itself also says how big its buffer is and how fast it will scan. Those numbers are taken from it rather than assumed. Listening on the local network makes macOS ask for its Local Network permission once. The request is attributed to whatever launched the sketch.
+A DAC that announced itself also says how big its buffer is and how fast it will scan. Those numbers are taken from it rather than assumed. Under the projector, `EtherDreamDAC(host:port:)` is the connection itself, and it reads back its `host` and `port`, the `bufferCapacity` it holds, the `headroom` it keeps empty so a late reply never runs it dry, the `maxBatch` it puts in one command, the `pointsPerSecond` it is scanning at, the `pointsSent` since the connection opened, and `lastError` if anything has gone wrong. Listening on the local network makes macOS ask for its Local Network permission once. The request is attributed to whatever launched the sketch.
 
 Then `send` a frame each `draw()`:
 

@@ -10,7 +10,7 @@ That difference is what the feature is for. A mesh puts vertices where its *shap
 
 <img src="../../Guide/Images/23-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each wearing the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
-Every point comes back as a `SurfaceSample`. A sample holds more than the position. It also carries the direction the surface faces there, the texture coordinate, and the triangle the point landed on.
+Every point comes back as a `SurfaceSample(position:normal:uv:triangle:barycentric:)`. A sample holds more than the position. It also carries the direction the surface faces there, the texture coordinate, the triangle the point landed on, and where in that triangle it fell.
 
 ### Contents
 

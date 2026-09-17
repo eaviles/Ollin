@@ -49,7 +49,7 @@ lSystem(_ system: LSystem, iterations: Int,
         in bounds: Rectangle? = nil, padding: Double = 60) -> [Contour]
 ```
 
-`drawLSystem` strokes an L-system with the current `stroke`. `lSystem` returns its `[Contour]` line-work instead, so you can color it, transform it, or feed it onward. Both **scale and center the result to fill `bounds`**, which is the whole canvas by default, leaving a `padding` margin. A preset therefore fills the frame whatever its iteration count. For a stochastic system both draw from the seeded `random`, so `seed(_:)` fixes the form.
+`drawLSystem` strokes an L-system with the current `stroke`. `lSystem` returns its `[Contour]` line-work instead, so you can color it, transform it, or feed it onward. Both **scale and center the result to fill `bounds`**, which is the whole canvas by default, leaving a `padding` margin. A preset therefore fills the frame whatever its iteration count. For a stochastic system both draw from the seeded `random`, so `seed(_:)` fixes the form. `isStochastic` says whether a grammar is one of those, which is true as soon as any symbol has more than one production.
 
 ```swift
 seed(3)
@@ -179,7 +179,7 @@ Each rule is one string, in the notation the literature uses:
        A(s)    :   s > 0.02  ->  F(s)[+A(s/2)]
 ```
 
-- The **predecessor** is a module with *names* for its parameters. The condition and the successor may use those names, and a name may appear only once.
+- The **predecessor** is an `LSystemModule(letter:parameters:)`, a letter with *names* for its parameters. The condition and the successor may use those names, and a name may appear only once.
 - The **condition** is optional. Write `*`, or leave it out, for a rule that always applies. A false condition is not an error. The rule simply does not apply, and the next rule is tried.
 - The **successor** is the modules that replace the predecessor, with an expression wherever a number goes.
 - The **weight** is optional, and [Choosing among rules](#weights) explains it.

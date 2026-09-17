@@ -64,7 +64,7 @@ Capturing the microphone needs the user's permission, and `start()` requests it 
 ### AudioPlayer
 
 ```swift
-AudioPlayer(path: String, fftSize: Int = 1024, smoothing: Float = 0.8) throws
+AudioPlayer(path: String, fftSize: Int = 1024, smoothing: Float = 0.8) throws   // AudioError.resourceNotFound / .couldNotDecode
 AudioPlayer(url: URL, …) throws
 AudioPlayer(resource: String, withExtension: String, in: Bundle, …) throws
 func play()
@@ -143,7 +143,7 @@ The analysis hears the source's own sound, before volume shaping, so `volume = 0
 
 ### Reading audio
 
-Every source exposes the same read surface, which forwards to its [`AudioAnalyzer`](#audioanalyzer):
+Every source is an `AudioSource`, and they all expose the same read surface, which forwards to its [`AudioAnalyzer`](#audioanalyzer):
 
 ```swift
 var amplitude: Float                       // smoothed overall loudness, ~0...1
@@ -154,6 +154,8 @@ var mid: Float                              // energy in 250–2000 Hz
 var treble: Float                           // energy in 2000–8000 Hz
 func magnitude(in range: ClosedRange<Double>) -> Float   // average over a Hz range
 var smoothing: Float                        // response damping, 0...1
+var beatSensitivity: Float                  // how far the flux must rise to count as a beat (1.5)
+let binCount: Int                           // frequency bins in `spectrum`: half the FFT size
 ```
 
 `spectrum` has `fftSize / 2` bins. Each bin spans `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but not normalized, so scale them as you like for drawing. You can also use [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first. That means a scope trace drawn from it stays continuous, no matter how the audio arrives in chunks. `smoothing` trades responsiveness for steadiness: 0 is raw and jittery, and a value near 1 is heavily damped. You can change it live.

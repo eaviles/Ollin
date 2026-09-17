@@ -50,6 +50,11 @@ The values can be `Double`s, `Vector2`s, `Vector3`s, or `Color`s, and the points
 `Vector2` or `Vector3`. All the channels of a value share one solve, so a field of colors
 costs the same as a field of numbers.
 
+A type of your own joins them by conforming: a `RadialBasisPoint` says how many axes it has
+(`axisCount`), hands one over by index (`component(_:)`), and measures a `distance(to:)`
+another; a `RadialBasisValue` says how many numbers it carries (`channelCount`), hands them
+over as `channels`, and builds itself back from them with `init(channels:)`.
+
 The initializer returns `nil` when the points cannot define a field. That happens when
 there are no points, or when the two lists have different lengths. It also happens when two
 points in the same place carry different values, or when all the points sit on one straight
@@ -133,7 +138,7 @@ drawCircle(best.values[0], best.values[1], best.values[2])
 | `rate` | how far a step moves a parameter, in that parameter's own units |
 | `tolerance` | the walk settles once a step improves the cost by less than this |
 
-The result carries the best setting found, its cost, and how many steps it took. It also
+The result carries the best `setting` found, its `cost`, and how many `steps` it took. It also
 tells you whether it `isSettled` on its own rather than running out of steps. A walk that used
 every step may need more steps, or a larger `rate`.
 

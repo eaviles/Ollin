@@ -85,7 +85,7 @@ work, like a generator, so call it in `draw()`.
 let sea = makeOceanField(.swell, resolution: 512)
 ```
 
-`resolution` is how many texels the field carries along each side (256 by default). The
+`resolution` is how many texels the field carries along each side (256 by default), rounded to the nearest power of two between 32 and 1024, which `Ocean.roundedResolution(_:)` works out and reports. The
 value is rounded to the nearest power of two between 32 and 1024, because that is what the
 transform works on. A higher resolution carries finer chop and costs more passes.
 
@@ -136,7 +136,7 @@ which cell it is. It then reads the field to find where the water has carried it
 - `reflectance`, how much light the surface returns when you look straight down at it (0.02 is water)
 - `sparkle` and `sparkleTightness`, the sun's own highlight
 
-Four presets are built in: `.open`, `.tropical`, `.dusk`, and `.ink`.
+Four presets are built in: `.open`, `.tropical`, `.dusk`, and `.ink`. Copy one and change a field, or build a look from nothing with `WaterSurface(deep:shallow:sky:…)`, whose every argument has a default.
 
 With an environment set (`environment(.sky(...))` or a loaded HDRI), the surface reflects that
 environment, so the water and the sky behind it agree. The first directional light in the

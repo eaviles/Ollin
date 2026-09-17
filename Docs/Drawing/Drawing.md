@@ -175,6 +175,8 @@ The named profiles cover the common marks:
 | `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`. The mark is widest where the path runs across the nib, and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
 | `.values([...])` | Evenly spaced multipliers along the path, interpolated between them. Use it for a width curve you write by hand, or one recorded from an input. |
 
+The closure form is a `StrokeProfile(_:)` over the path fraction, and `StrokeProfile(directional:)` sees the heading at that point as well, which is how `.nib` knows which way the pen is running. A profile answers one point at a time, so calling it (`profile(0.5)`, or `profile(0.5, heading)`) is how a sketch asks for the `multiplier` at a place along the path.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
   <img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
@@ -203,7 +205,7 @@ A profile shapes a stroke by where you are along a finished path. A mark being d
 
 ```swift
 strokeDash(_ lengths: [Double], phase: Double = 0)   // dash, gap, dash, gap, in points along the path
-strokeDash(_ dash: StrokeDash)                       // .dashes(_:gap:), .dots(spacing:), or a pattern of your own
+strokeDash(_ dash: StrokeDash)                       // .dashes(_:gap:), .dots(spacing:), or StrokeDash([12, 8], phase: 0)
 noStrokeDash()
 ```
 

@@ -54,6 +54,7 @@ The result holds a fixed `center` and a list of `terms`. The `center` is the ave
 
 ```swift
 struct Epicycles.Term {
+    init(frequency: Int, amplitude: Double, phase: Double)
     var frequency: Int     // whole turns per lap; negative spins the other way
     var amplitude: Double  // the circle's radius
     var phase: Double      // the angle it starts from

@@ -48,7 +48,7 @@ The laws are necessary but not sufficient. They check one vertex at a time, so t
 
 ### CreasePattern
 
-A pattern is a list of `Crease` values. Each crease is a line from `start` to `end`, with an `assignment` of `.mountain`, `.valley`, `.boundary` (the edge of the sheet), or `.cut`.
+A pattern is a list of `Crease` values, each built as `Crease(from:to:_:)`: a line from `start` to `end` with an `assignment` of `.mountain`, `.valley`, `.boundary` (the edge of the sheet), or `.cut`. `isFold` is true for the two that fold, which is how a drawing pass tells a score line from an edge or a cut.
 
 ```swift
 let sheet = CreasePattern.miura(columns: 8, rows: 5)
@@ -117,6 +117,10 @@ The pattern is easy to recognize on the page. Every zigzag fold running down the
 sheet.fold = 0.5 * (1 - cos(time))       // open and close it
 for panel in sheet.facets { ... }        // four corners each, still flat
 sheet.size                               // width, length, and height
+sheet.cellWidth                          // one parallelogram across, as folded
+sheet.cellLength                         // and down the sheet, shortening to nothing
+sheet.cellShift                          // how far it steps sideways: the zigzag
+sheet.flatPoint(column: 2, row: 1)       // where a vertex sits on the unfolded sheet
 ```
 
 Nothing stretches at any point in that movement. Every crease is exactly as long folded as it is flat, and every panel stays the same parallelogram it was cut as. That is what makes it a *rigid* folding rather than a picture of one. It is also why the fold works in metal and plastic as well as in paper.
@@ -125,7 +129,7 @@ Nothing stretches at any point in that movement. Every crease is exactly as long
 
 ### Rotating squares
 
-Rotating squares are the plainest useful kirigami. Cut a grid of squares and leave a thin strip of material at every corner. When you pull the sheet, the squares turn one way and then the other, and square holes open between them.
+Rotating squares are the plainest useful kirigami, and `CreasePattern.rotatingSquares(columns:rows:)` writes the cut sheet in units of one square. Cut a grid of squares and leave a thin strip of material at every corner. When you pull the sheet, the squares turn one way and then the other, and square holes open between them.
 
 ```swift
 var lattice = RotatingSquares(columns: 6, rows: 6, side: 90, ligament: 6)

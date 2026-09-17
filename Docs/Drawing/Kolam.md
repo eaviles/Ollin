@@ -69,7 +69,7 @@ The design keeps the `grid` it was built on. That means `design.grid.cells` and 
 
 #### Walls
 
-A `Kolam.Mirror` is a short wall between two neighboring dots. You name it after the dot it sits against, counting from the top-left dot.
+A `Kolam.Mirror` is a short wall between two neighboring dots. You name it after the dot it sits against, counting from the top-left dot, and `isUpright` says which of the two walls it is: true for one standing between the dot and its right neighbor, false for one lying between the dot and the one below.
 
 ```swift
 Kolam.Mirror.rightOf(column: 2, row: 1)   // standing between this dot and its right neighbor

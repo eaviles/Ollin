@@ -81,7 +81,7 @@ Two things about it are honest rather than convenient:
 - **The spacing is a wish, not a promise.** The system decides when it comes back for more pictures, and it will not come back every minute for anybody. A quarter of an hour is the shortest spacing worth asking for, and a piece that would look wrong a few minutes late should not be a widget.
 - **The whole run is held at once.** Every picture is drawn before any of them is shown, so `count` is a handful and not a hundred.
 
-The moments land on a grid counted from midnight rather than from whenever the system happened to ask. A quarter-hour piece therefore steps at the quarter hours, and the next run carries on the same grid instead of starting one of its own. A spacing that does not divide the day has one short step at midnight.
+`span` is how long one pass covers, which is the last picture's moment minus the first's. `moments(from:)` is the whole list a pass draws for, `gridMoment(atOrBefore:)` the grid step a moment falls on, and `WidgetTimeline.timeOfDay(at:)` the seconds since midnight of one. The moments land on a grid counted from midnight rather than from whenever the system happened to ask. A quarter-hour piece therefore steps at the quarter hours, and the next run carries on the same grid instead of starting one of its own. A spacing that does not divide the day has one short step at midnight.
 
 One consequence follows from the grid: a piece whose own period divides the spacing is caught in the same place every time, so it never appears to move at all. A run every fifteen minutes cannot show you anything that repeats every fifteen minutes.
 
@@ -107,7 +107,7 @@ for frame in frames {
 }
 ```
 
-Each picture gets a sketch of its own, made fresh and drawn once. Nothing carries from one to the next, which is what makes a moment draw the same picture whether it opened a run or closed one.
+Each of those is a `WidgetFrame(date:image:)`, the moment and the picture drawn for it. Each picture gets a sketch of its own, made fresh and drawn once. Nothing carries from one to the next, which is what makes a moment draw the same picture whether it opened a run or closed one.
 
 ### Building it
 

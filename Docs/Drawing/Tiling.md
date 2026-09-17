@@ -29,7 +29,7 @@ hexGrid(columns: Int, rows: Int,
         padding: Insets = .zero, gutter: Double = 0) -> HexGrid
 ```
 
-This builds a `columns × rows` honeycomb over the canvas. Use `HexGrid(in: someRectangle, …)` for a sub-region. A hexagon cannot stretch the way a `Grid` cell can, so the block keeps its true aspect ratio. The block is sized to fit the padded bounds and centered in them. `orientation` picks pointy-top or flat-top. With `.pointy`, each row shifts by half a hex. With `.flat`, each column shifts. `gutter` opens a gap between neighbors.
+This builds a `columns × rows` honeycomb over the canvas. Use `HexGrid(in: someRectangle, …)` for a sub-region. A hexagon cannot stretch the way a `Grid` cell can, so the block keeps its true aspect ratio. The block is sized to fit the padded bounds and centered in them. `orientation` picks pointy-top or flat-top. With `.pointy`, each row shifts by half a hex. With `.flat`, each column shifts. `gutter` opens a gap between neighbors, and `hexSize` is the full center-to-corner size of one lattice hex before the gutter shrinks the drawn cell. A `TriangleGrid` reports itself the same way, as `edgeLength` and `rowHeight`.
 
 Each `HexGrid.Cell` carries its `column` and `row`, its `center`, and its six `corners`, ready to draw. The corners are also available as a `contour`. Loop over `cells` to draw the grid:
 
@@ -124,7 +124,7 @@ You can read the maze back as geometry in these ways:
 
 - `walls(in: rect)` returns the line work, ready to stroke. Collinear wall segments are merged into single long runs, which keeps the result clean for stroking, hatching, and plotter SVG. `drawMaze` strokes it in one call.
 - `solution(fromColumn:fromRow:toColumn:toRow:)` returns the unique path between two cells. `longestPath()` returns the maze's diameter, and its two ends make the natural entrance and exit.
-- `contour(of:in:)` lays a cell path over a rectangle as a polyline through the cell centers. `isOpen(_:column:row:)` reads a single passage.
+- `contour(of:in:)` lays a cell path over a rectangle as a polyline through the cell centers. `isOpen(_:column:row:)` reads a single passage, in a `Maze.Direction` of `.north`, `.south`, `.east`, or `.west`, each of which knows its `opposite`.
 
 ```swift
 seed(9)

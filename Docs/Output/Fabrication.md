@@ -70,7 +70,7 @@ if check.isPrintable {
 }
 ```
 
-`MeshPrintCheck` reports `isClosed`, `isConsistentlyOriented`, and `isInsideOut`. It also reports three counts. The `boundaryEdgeCount` is the number of edges with a hole on one side. The `nonManifoldEdgeCount` is the number of edges where more than two triangles meet. The `degenerateTriangleCount` is the number of triangles with no area. It also reports the `size` and `volume` that the file will describe. `problems` lists whatever went wrong in plain words, and `isPrintable` combines all of it into one answer.
+`MeshPrintCheck` reports `isClosed`, `isConsistentlyOriented`, and `isInsideOut`. It also reports three counts. The `boundaryEdgeCount` is the number of edges with a hole on one side. The `nonManifoldEdgeCount` is the number of edges where more than two triangles meet. The `degenerateTriangleCount` is the number of triangles with no area. It also reports the `vertexCount` and `triangleCount` that will be written, and the `size` and `volume` that the file will describe. `problems` lists whatever went wrong in plain words, and `isPrintable` combines all of it into one answer.
 
 Everything it reports describes the mesh *as it would be written*, after the merging and the winding pass. So the counts will not match the mesh's own `positions` and `triangleCount`. That is deliberate, because on the raw numbers every Ollin generator would read as broken.
 

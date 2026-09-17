@@ -40,6 +40,7 @@ The construction is that simple: **the envelope is where consecutive lines cross
 
 ```swift
 struct Ray2 {
+    init(origin: Vector2, direction: Vector2)
     var origin: Vector2
     var direction: Vector2
     func point(at t: Double) -> Vector2

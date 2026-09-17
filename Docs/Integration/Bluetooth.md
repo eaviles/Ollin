@@ -32,7 +32,7 @@ final class Pulse: Sketch {
 - [Finding a device](#finding-a-device) - scanning the room, and the ways to name a device
 - [Connecting, and staying connected](#connecting) - waiting is the default
 - [Reading](#reading) - the latest value, or every arrival since the last frame
-- [Values and their formats](#values) - the bytes mean nothing until a characteristic says what they are
+- [Values and their formats](#values) - the bytes mean nothing until a characteristic's `format` says what they are. An identifier is a `BluetoothUUID`, whose `shortNumber` is the 16-bit one the standard assigned (nil for a device's own long identifier) and whose `isWellFormed` says whether the text given was an identifier at all
 - [The catalog](#catalog) - the standard services and values, already named
 - [Binding to a `@Param`](#binding) - a sensor drives a parameter
 - [Asking and writing](#asking-and-writing) - reading on demand, polling, and writing back
@@ -121,7 +121,7 @@ device.number(.heartRateMeasurement)            // Double?
 device.number(.heartRateMeasurement, default: 60)
 device.int(.batteryLevel)                       // Int?
 device.text(.manufacturerName)                  // String?
-device.bool(myButton)                           // Bool?
+device.bool(myButton)                           // Bool?, the reading's own isOn
 device.bytes(myOwnValue)                        // [UInt8]?
 device.data(myOwnValue)                         // Data?
 device.latest(.temperature)                     // BluetoothReading?

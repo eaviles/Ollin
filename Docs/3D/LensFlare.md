@@ -96,7 +96,7 @@ Lens.heliar.multicoated()            // ghosts in different colors instead of on
 Lens.heliar.multicoated(from: 480, to: 620)
 ```
 
-- **`stopped(to:)`** closes the iris to an f-number, which shrinks every ghost together. A ghost is a picture of the opening the light came through, so a smaller opening gives a smaller ghost.
+- **`stopped(to:)`** closes the iris to an f-number, which shrinks every ghost together. A ghost is a picture of the opening the light came through, so a smaller opening gives a smaller ghost. It sets the lens's `fStop`, which is `nil` while the iris sits wide open at the opening the prescription gives it. A `Lens` also carries its `coatingWavelength` in nanometers, the wavelength its anti-reflective coating is tuned for: a coating cancels its own wavelength best and the ones either side of it least, which is why the ghosts come out colored rather than gray. Around 550 is the usual choice, the middle of what the eye sees best. Each `LensInterface` in the stack carries its own `coating` thickness, and the one with `isIris` set is the adjustable opening that shapes every ghost and the star.
 - **`multicoated()`** coats each exposed surface for a different wavelength, the way a modern lens is made. One coating everywhere gives every ghost the same color, which is the single magenta cast of an older lens. A spread of coatings puts a lens's ghosts in greens, ambers, and blues.
 
 <a id="prescription"></a>

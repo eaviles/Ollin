@@ -85,7 +85,7 @@ pattern.step(12)
 drawMesh(pattern.displaced(by: 0.06))     // the pattern as relief
 ```
 
-`values` holds the concentration at each vertex, in the same order as `mesh.positions`, so you can drive anything with it. `displaced(by:)` is the quick way to see it.
+`values` holds the concentration at each vertex, in the same order as `mesh.positions`, so you can drive anything with it. `spread` and `secondSpread` are how fast the two chemicals travel, and keeping the second well under the first is what makes a pattern form at all, since the pattern's scale comes out of the gap between them. `displaced(by:)` is the quick way to see it.
 
 Two things about the pace of a chemical growth are worth knowing.
 
@@ -107,6 +107,10 @@ Both `MeshGrowth` and `MeshReactionDiffusion` weld coincident vertices first. Ol
 | `repulsionRadius` | how near separate parts may come | past about `3 × edgeLength` it starts pushing on neighbors that are properly that close, so the form inflates instead of folding |
 | `maxVertices` | the ceiling on the vertex count | growth stops there and the surface only relaxes, so this sets how far a form develops |
 | `settleSteps` | opening chemistry run all at once on the first step | `.chemical` only. The pattern arrives formed instead of organizing during the growth |
+
+Three more set how firmly the surface holds itself together while it grows: `springStrength` is how hard an edge pulls back toward the length it wants, `repulsion` how hard unconnected parts push each other apart, and `relaxation` how much a vertex is evened out against its neighbors, kept in the surface so spacing evens without the shape smoothing away. `chemistrySteps` is how many chemistry steps run per growth step under `.chemical`, since the pattern has to develop faster than the surface moves or it never gets ahead of the growth it is steering.
+
+As it runs, the surface reports on itself: `vertexCount` is how many vertices it holds, `stepCount` how many steps have run, and `growthField` the growth rate at each vertex as it stood on the last step, 0 to 1 and empty before the first step. A `MeshReactionDiffusion` keeps its two chemicals the same way, `values` and `substrate`, both lined up with `mesh.positions`, and `seedPatches(count:radius:)` lights the pattern with the standard seed, half substrate and a quarter reagent rather than pure reagent.
 
 `edgeLength` defaults to the mean edge length of the mesh you start from. So a coarse starting mesh grows coarse folds, and a fine one grows fine folds. Passing a starting mesh is usually all the setup you need.
 

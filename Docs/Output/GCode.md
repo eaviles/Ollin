@@ -29,7 +29,7 @@ GCode(.plotter(), paper: .a3.landscape, margin: 15)
 GCode(.laser(), paper: .usLetter)
 ```
 
-`PaperSize` carries the ISO A series from `.a0` to `.a6` and the US `.usLetter`, `.usLegal`, and `.usTabloid`. All are in millimeters and portrait, like the sheet in the ream. `.landscape` turns one, and `PaperSize(width:height:)` spells a size that is not on the list. With a sheet, the drawn width is the sheet's less the margin on both sides. The planner also holds the drawing to the sheet's height. A canvas taller than the sheet's shape scales down to fit rather than running off the page, and comes out narrower than the sheet. The drawing keeps the margin corner as its origin either way. A narrower fit therefore sits at the left of the page rather than centered on it. The program's header names the sheet.
+`PaperSize` carries the ISO A series from `.a0` through `.a1` and `.a2` to `.a6` and the US `.usLetter`, `.usLegal`, and `.usTabloid`. All are in millimeters and portrait, like the sheet in the ream. `.landscape` turns one, and `PaperSize(width:height:)` spells a size that is not on the list. `canvasSize(dpi:)` turns a sheet into the canvas to draw it at, counting the pixels from the millimeters rather than the rounded points, so A4 at 300 dpi is 2480 by 3508, the size a print shop expects. With a sheet, the drawn width is the sheet's less the margin on both sides. The planner also holds the drawing to the sheet's height. A canvas taller than the sheet's shape scales down to fit rather than running off the page, and comes out narrower than the sheet. The drawing keeps the margin corner as its origin either way. A narrower fit therefore sits at the left of the page rather than centered on it. The program's header names the sheet.
 
 ### The three machines
 
@@ -42,7 +42,7 @@ GCode(.laser(power: 0.6, passes: 2), width: 150)       // 60% power, cut twice
 GCode(.mill(depth: 3, depthPerPass: 0.5), width: 150)  // six passes per path
 ```
 
-- **`.plotter`** lifts the pen between paths. By default it moves a Z axis, which most pen machines read as a virtual pen lift, raising to Z5 and lowering to Z0 at 2400 mm/min. A machine that drives its pen with a servo takes `.servo(up:down:)` instead. The two numbers are written as the S word, the same word a laser uses for power. A short pause follows, so the servo lands before the head moves.
+- **`.plotter`** lifts the pen between paths. By default it moves a Z axis (`.zAxis(up:down:)`), which most pen machines read as a virtual pen lift, raising to Z5 and lowering to Z0 at 2400 mm/min. A machine that drives its pen with a servo takes `.servo(up:down:)` instead. The two numbers are written as the S word, the same word a laser uses for power. A short pause follows, so the servo lands before the head moves.
 - **`.laser`** writes power as the S word, scaled by `powerScale` (1000 on most hobby controllers). Travels are rapids, and a laser controller fires only during feed moves, so the beam is off between paths without any extra command. `mode: .dynamic` scales power with the actual head speed, so corners do not scorch. `.constant` holds the power steady. `passes` repeats each path in place, which lets you cut through in several light passes.
 - **`.mill`** cuts `depth` millimeters into the stock, at most `depthPerPass` per lap. Travels happen at `safeHeight` above the stock. Plunges use `plungeFeed` and cuts use `feed`. A closed loop plunges deeper on each lap without retracting.
 
@@ -57,7 +57,7 @@ Four steps sit between your draw calls and the file, and a machine needs each on
 - **Strokes plot along their centerlines.** A pen has one width, so `strokeWeight` does not carry over. Fills contribute their outlines. Pass a `Hatching` to shade them as line work instead, exactly as the [SVG export](./Export.md#hatching-solid-fills-for-a-pen-plotter) does.
 - **Everything is clipped.** A `withClip` region cuts the line work the same way it cuts the render. Nothing past the canvas edge reaches the bed.
 - **Touching ends merge.** Open paths whose ends meet within `joinTolerance` millimeters become one path. The pen then stays down across a line that you drew as many short calls. A merged path whose own ends meet closes into a loop.
-- **The order is planned.** `ordered` is on by default. With it on, a greedy nearest-neighbor walk from the origin reorders the paths. The walk reverses a path when its far end is closer, and it enters a closed loop at whichever point is nearest. Ordering changes only the travel, never what is drawn.
+- **The order is planned.** `optimizesTravel` is on by default. With it on, a greedy nearest-neighbor walk from the origin reorders the paths. The walk reverses a path when its far end is closer, and it enters a closed loop at whichever point is nearest. Ordering changes only the travel, never what is drawn.
 
 Raster images have no line work, so they are skipped, and the file's header notes this. A 3D scene has none either, until [`lineDrawing(of:)`](../3D/LineDrawing.md) writes it down as paths with what the surfaces hide taken out; those are drawn like any other line work and come out here with everything else. The header also records the [reproduction recipe](./Export.md#reproducibility-metadata), the canvas-to-millimeter mapping, and the measured draw and travel lengths.
 

@@ -95,7 +95,7 @@ The work is proportional to the number of edges drawn times their length, so it 
 
 Vertices that sit at the same place are welded first, since a mesh drawn with hard edges holds a copy of each corner per face and without welding every edge would look like a boundary. Each face is then projected, and its turn on the canvas says which way it faces. An edge is kept if it has one face (a boundary), if its two faces face opposite ways (a silhouette), or if their normals differ by more than `creaseAngle` (a crease).
 
-Each kept edge is then walked. At every step the point is tested against the faces that could cover it, found through a grid of the canvas, by asking whether any of them is nearer at that point. Where the answer changes between two steps, the change is pinned down by halving. What comes back is the stretches that can be seen, joined end to end into as few paths as they allow so a pen lifts as rarely as it can.
+Each kept edge is then walked. At every step the point is tested against the faces that could cover it, found through a grid of the canvas, by asking whether any of them is nearer at that point. Where the answer changes between two steps, the change is pinned down by halving. What comes back is the stretches that can be seen, joined end to end into as few paths as they allow so a pen lifts as rarely as it can. The `LineDrawing` carries them as `paths`, and the stretches that were covered as `hidden`, which is what a dashed construction line is drawn from.
 
 <a id="notes"></a>
 ### Notes

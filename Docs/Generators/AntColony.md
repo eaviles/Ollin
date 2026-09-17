@@ -47,7 +47,7 @@ AntColony(cities: [Vector2], ants: Int? = nil, alpha: Double = 1,
 
 #### Searching
 
-`step()` runs one full colony iteration. Every ant walks a tour from its own random start, then the map evaporates, then every tour deposits pheromone, and finally `bestTour` and `bestLength` update. `iterations` counts how many iterations have run. One or two per frame reads as a search you can watch, and a few dozen usually settle a small scatter. The best tour never gets worse, so you can stop whenever the web looks done.
+`step()` runs one full colony iteration. Every ant walks a tour from its own random start, then the map evaporates, then every tour deposits pheromone, and finally `bestTour` and `bestLength` update. `iterations` counts how many iterations have run, and `stepCount` the full steps behind them. One or two per frame reads as a search you can watch, and a few dozen usually settle a small scatter. The best tour never gets worse, so you can stop whenever the web looks done.
 
 <a name="drawing"></a>
 

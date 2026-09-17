@@ -13,7 +13,7 @@ A recording captures a live run while you play it. The frames are written as the
 ```swift
 override func keyPressed() {
     guard key == "r" else { return }
-    if isRecording {
+    if isRecording {                     // recordingElapsed is how long it has been running
         stopRecording()
     } else {
         startRecording()
