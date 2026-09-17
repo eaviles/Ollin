@@ -234,6 +234,10 @@
     "Recreations/GeorgNees": [
       "Recreations/GeorgNees/Schotter"
     ],
+    "Recreations/HassanSharif": [
+      "Recreations/HassanSharif/DotsLinesForms",
+      "Recreations/HassanSharif/AngularLines"
+    ],
     "Recreations/JaredTarbell": [
       "Recreations/JaredTarbell/Substrate"
     ],
@@ -607,6 +611,14 @@
       ],
       "image": "groups/Recreations-GeorgNees.jpg?v=58be61c0",
       "imageSmall": "groups/Recreations-GeorgNees-640.jpg?v=7288a62b"
+    },
+    "Recreations/HassanSharif": {
+      "of": [
+        "Recreations/HassanSharif/DotsLinesForms",
+        "Recreations/HassanSharif/AngularLines"
+      ],
+      "image": "groups/Recreations-HassanSharif.jpg?v=a183100e",
+      "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=08d27318"
     },
     "Recreations/JaredTarbell": {
       "of": [
@@ -8256,6 +8268,48 @@
       "stillBecause": "holds still",
       "stillSmall": "examples/Recreations/GeorgNees/Schotter/still-640.jpg?v=01911a6c",
       "width": 1080
+    },
+    "Recreations/HassanSharif/AngularLines": {
+      "width": 1620,
+      "height": 1080,
+      "length": "18.0s",
+      "seconds": 18.0,
+      "frame": 840,
+      "motion": 4.247,
+      "sound": false,
+      "source": "817a87f9fc8aeed4",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "loop": 849802,
+        "loopSmall": 292430,
+        "still": 133660,
+        "stillSmall": 45140
+      },
+      "loop": "examples/Recreations/HassanSharif/AngularLines/loop.mp4?v=994bccd4",
+      "loopSmall": "examples/Recreations/HassanSharif/AngularLines/loop-640.mp4?v=316c73d0",
+      "still": "examples/Recreations/HassanSharif/AngularLines/still.jpg?v=e2d1c827",
+      "stillSmall": "examples/Recreations/HassanSharif/AngularLines/still-640.jpg?v=27b46338"
+    },
+    "Recreations/HassanSharif/DotsLinesForms": {
+      "width": 1620,
+      "height": 1080,
+      "length": "15.0s",
+      "seconds": 15.0,
+      "frame": 720,
+      "motion": 1.079,
+      "sound": false,
+      "source": "066d273be44663ce",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "loop": 747815,
+        "loopSmall": 263922,
+        "still": 124011,
+        "stillSmall": 41696
+      },
+      "loop": "examples/Recreations/HassanSharif/DotsLinesForms/loop.mp4?v=eb8eab8c",
+      "loopSmall": "examples/Recreations/HassanSharif/DotsLinesForms/loop-640.mp4?v=52fb17c2",
+      "still": "examples/Recreations/HassanSharif/DotsLinesForms/still.jpg?v=6214eed6",
+      "stillSmall": "examples/Recreations/HassanSharif/DotsLinesForms/still-640.jpg?v=eb6e9c6b"
     },
     "Recreations/JaredTarbell/Substrate": {
       "bytes": {

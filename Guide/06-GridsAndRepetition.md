@@ -465,6 +465,7 @@ The circles on the number line are Lester Ford's, from a 1938 paper about approx
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and the two named above.
 - The Rojo homages in [`Examples/Recreations/VicenteRojo/`](../Examples/Recreations/VicenteRojo/): `Negaciones` is one letter on a grid of panels, each a different negation of it, painted over one at a time. `MexicoBajoLaLluvia` is a grid that covers the square, every cell painted and one mark set on it, with the diagonal deciding the kind.
 - The Winiarski homage [`Obszar`](../Examples/Recreations/RyszardWiniarski/Obszar/Sketch.swift): a grid in which the only decision left in each cell is a throw, filled cell by cell from whichever corner chance drew, so the grid is the whole of the rule and the picture is its record.
+- The Sharif homage [`DotsLinesForms`](../Examples/Recreations/HassanSharif/DotsLinesForms/Sketch.swift): a table whose every cell is its column's line laid over its row's, so the grid is a multiplication table of marks, drawn three times across one sheet as dots, as lines, and as squares.
 - Next door: [Chapter 7](07-Tiles.md) keeps the grid and changes what goes in the cells, so that neighboring cells have to agree with each other.
 
 ---

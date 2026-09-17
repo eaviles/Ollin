@@ -883,5 +883,11 @@ let package = Package(
         // of two dice, after Ryszard Winiarski.
         example("Recreations/RyszardWiniarski/Obszar"),
         example("Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"),
+        // One table of numbers drawn as dots, as lines, and as squares with the
+        // lines inside, picked on a draft paper hung beside it; and sheets of
+        // angular lines through numbered crossings, one painted large on a red
+        // canvas, after Hassan Sharif.
+        example("Recreations/HassanSharif/DotsLinesForms"),
+        example("Recreations/HassanSharif/AngularLines"),
     ]
 )
