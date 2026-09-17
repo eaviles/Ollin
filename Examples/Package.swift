@@ -896,5 +896,11 @@ let package = Package(
         // two pages of one Owen Schuh notebook spread.
         example("Recreations/OwenSchuh/CountingTheRationals"),
         example("Recreations/OwenSchuh/DiagonalArgument"),
+        // A family of mirror reliefs cut from the circle, triangle to decagon,
+        // set piece by piece and lit by a moving lamp; and maze panels painted
+        // on the back of the glass and turned over, after Monir Shahroudy
+        // Farmanfarmaian.
+        example("Recreations/MonirFarmanfarmaian/MirrorFamily"),
+        example("Recreations/MonirFarmanfarmaian/BehindGlass"),
     ]
 )

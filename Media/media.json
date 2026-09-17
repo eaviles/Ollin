@@ -254,6 +254,10 @@
     "Recreations/ManuelFelguerez": [
       "Recreations/ManuelFelguerez/MaquinaEstetica"
     ],
+    "Recreations/MonirFarmanfarmaian": [
+      "Recreations/MonirFarmanfarmaian/MirrorFamily",
+      "Recreations/MonirFarmanfarmaian/BehindGlass"
+    ],
     "Recreations/OsamuSato": [
       "Recreations/OsamuSato/Totem",
       "Recreations/OsamuSato/Alphabet"
@@ -659,6 +663,14 @@
       ],
       "image": "groups/Recreations-ManuelFelguerez.jpg?v=497089cb",
       "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3"
+    },
+    "Recreations/MonirFarmanfarmaian": {
+      "of": [
+        "Recreations/MonirFarmanfarmaian/MirrorFamily",
+        "Recreations/MonirFarmanfarmaian/BehindGlass"
+      ],
+      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=19877e6d",
+      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=15da7df0"
     },
     "Recreations/OsamuSato": {
       "of": [
@@ -8442,6 +8454,48 @@
       "still": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still.jpg?v=793c7a6e",
       "stillSmall": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=6305ae9f",
       "width": 1080
+    },
+    "Recreations/MonirFarmanfarmaian/BehindGlass": {
+      "width": 1080,
+      "height": 1080,
+      "length": "18.0s",
+      "seconds": 18.0,
+      "frame": 1100,
+      "motion": 24.988,
+      "sound": false,
+      "source": "236c9a6fa751644f",
+      "rendered": "2026-09-17",
+      "bytes": {
+        "loop": 2477796,
+        "loopSmall": 684442,
+        "still": 279230,
+        "stillSmall": 96726
+      },
+      "loop": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/loop.mp4?v=4e5c4b16",
+      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/loop-640.mp4?v=c680d601",
+      "still": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/still.jpg?v=d8fbc307",
+      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/still-640.jpg?v=3cb6caa2"
+    },
+    "Recreations/MonirFarmanfarmaian/MirrorFamily": {
+      "width": 1080,
+      "height": 1080,
+      "length": "15.0s",
+      "seconds": 15.0,
+      "frame": 600,
+      "motion": 6.9,
+      "sound": false,
+      "source": "26609e2977c4bd91",
+      "rendered": "2026-09-17",
+      "bytes": {
+        "loop": 4012579,
+        "loopSmall": 995017,
+        "still": 237980,
+        "stillSmall": 83321
+      },
+      "loop": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/loop.mp4?v=d2a3fbc4",
+      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/loop-640.mp4?v=f6d23083",
+      "still": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/still.jpg?v=64def699",
+      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/still-640.jpg?v=199d7977"
     },
     "Recreations/OsamuSato/Alphabet": {
       "bytes": {
