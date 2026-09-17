@@ -258,6 +258,10 @@
       "Recreations/OsamuSato/Totem",
       "Recreations/OsamuSato/Alphabet"
     ],
+    "Recreations/OwenSchuh": [
+      "Recreations/OwenSchuh/CountingTheRationals",
+      "Recreations/OwenSchuh/DiagonalArgument"
+    ],
     "Recreations/RyszardWiniarski": [
       "Recreations/RyszardWiniarski/Obszar",
       "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
@@ -663,6 +667,14 @@
       ],
       "image": "groups/Recreations-OsamuSato.jpg?v=8010bd2b",
       "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=44f367b6"
+    },
+    "Recreations/OwenSchuh": {
+      "of": [
+        "Recreations/OwenSchuh/CountingTheRationals",
+        "Recreations/OwenSchuh/DiagonalArgument"
+      ],
+      "image": "groups/Recreations-OwenSchuh.jpg?v=71dfa447",
+      "imageSmall": "groups/Recreations-OwenSchuh-640.jpg?v=316d6303"
     },
     "Recreations/RyszardWiniarski": {
       "of": [
@@ -8470,6 +8482,48 @@
       "still": "examples/Recreations/OsamuSato/Totem/still.jpg?v=cb35af55",
       "stillSmall": "examples/Recreations/OsamuSato/Totem/still-640.jpg?v=538b7d5a",
       "width": 1080
+    },
+    "Recreations/OwenSchuh/CountingTheRationals": {
+      "width": 920,
+      "height": 1200,
+      "length": "20.0s",
+      "seconds": 20.0,
+      "frame": 900,
+      "motion": 31.433,
+      "sound": false,
+      "source": "6340a788cd7fe840",
+      "rendered": "2026-09-17",
+      "bytes": {
+        "loop": 1192169,
+        "loopSmall": 516397,
+        "still": 206035,
+        "stillSmall": 85070
+      },
+      "loop": "examples/Recreations/OwenSchuh/CountingTheRationals/loop.mp4?v=af86f87a",
+      "loopSmall": "examples/Recreations/OwenSchuh/CountingTheRationals/loop-640.mp4?v=a4aec7ba",
+      "still": "examples/Recreations/OwenSchuh/CountingTheRationals/still.jpg?v=b2df826f",
+      "stillSmall": "examples/Recreations/OwenSchuh/CountingTheRationals/still-640.jpg?v=fe9774fd"
+    },
+    "Recreations/OwenSchuh/DiagonalArgument": {
+      "width": 920,
+      "height": 1200,
+      "length": "17.0s",
+      "seconds": 17.0,
+      "frame": 800,
+      "motion": 4.418,
+      "sound": false,
+      "source": "ce923c669a22787e",
+      "rendered": "2026-09-17",
+      "bytes": {
+        "loop": 1031005,
+        "loopSmall": 472037,
+        "still": 223846,
+        "stillSmall": 90536
+      },
+      "loop": "examples/Recreations/OwenSchuh/DiagonalArgument/loop.mp4?v=a7db4678",
+      "loopSmall": "examples/Recreations/OwenSchuh/DiagonalArgument/loop-640.mp4?v=98e983b8",
+      "still": "examples/Recreations/OwenSchuh/DiagonalArgument/still.jpg?v=424904d6",
+      "stillSmall": "examples/Recreations/OwenSchuh/DiagonalArgument/still-640.jpg?v=e4720d01"
     },
     "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami": {
       "width": 1080,

@@ -890,5 +890,10 @@ let package = Package(
         // canvas, after Hassan Sharif.
         example("Recreations/HassanSharif/DotsLinesForms"),
         example("Recreations/HassanSharif/AngularLines"),
+        // The table of fractions woven and counted along its diagonals, and
+        // the diagonal argument built out of a list of colored digits, after
+        // two pages of one Owen Schuh notebook spread.
+        example("Recreations/OwenSchuh/CountingTheRationals"),
+        example("Recreations/OwenSchuh/DiagonalArgument"),
     ]
 )

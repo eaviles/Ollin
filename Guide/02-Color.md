@@ -369,6 +369,7 @@ The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, and `ColorVision`.
 - [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
+- The Schuh homages in [`Examples/Recreations/OwenSchuh/`](../Examples/Recreations/OwenSchuh/): both pages use color as a code. A digit is one step of a ten-step scale, so a number can be read off the picture and a page of arithmetic comes out as a piece of cloth.
 - [Drawing](../Docs/Drawing/Drawing.md): every place a `Paint` can go.
 
 ---
