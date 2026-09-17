@@ -1134,6 +1134,17 @@ enum SiteHero {
         runFragment(layer.sim.inject, [front.tex, seed.tex], rows, s0);
         var step = layer.sim.step, extraTex = [];
         if (layer.sim.modStep !== undefined) { step = layer.sim.modStep; extraTex = [results[layer.sim.mod] || blank]; }
+        // The steps tap past the border through the texture's wrap mode, as the Mac
+        // taps through the field's sampler: the two scratch textures the steps read
+        // wrap as the field says while the steps run, and clamp again after, since
+        // the pool hands them to passes that expect a clamped edge.
+        var wrapS = layer.sim.wx ? gl.REPEAT : gl.CLAMP_TO_EDGE, wrapT = layer.sim.wy ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+        function setWrap(tex, ws, wt) {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, ws);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wt);
+        }
+        setWrap(s0.tex, wrapS, wrapT); setWrap(s1.tex, wrapS, wrapT);
         var read = s0, n = layer.sim.n;
         for (var i = 0; i < n; i++) {
           var write = (i === n - 1) ? back : (read === s0 ? s1 : s0);
@@ -1141,6 +1152,7 @@ enum SiteHero {
           runFragment(step, [read.tex].concat(extraTex), rows, write);
           read = write;
         }
+        setWrap(s0.tex, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE); setWrap(s1.tex, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
         s.age += 1;
         s.flipped = !s.flipped;
         return back.tex;

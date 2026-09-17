@@ -12,9 +12,14 @@
 // A SimField renders the drawn seed marks into one texture, then the renderer runs
 // these passes on its persistent front buffer: `inject` composites the seeds onto the
 // state, then a step fragment advances it. params[0] is the texel size, params[1] the
-// sim's parameters. Neighbor reads wrap toroidally (fract of the uv), except where a
-// sim's physics forbids it: ripples clamp (rings don't teleport) and the sandpile is
-// open (grains fall off the edge).
+// sim's parameters. A neighbor tap is the plain offset `uv + d * t`, and what lies
+// past the border is the *sampler's* answer: the renderer binds the field's edge rule
+// (repeat for a torus, the default; clamp-to-edge for walls; per axis) for every sim
+// that reads its neighbors this way, so the taps carry no edge branch and a tap at a
+// texel center lands on the same texel under either sampler. The sims whose physics
+// fix their boundary keep the clamping image sampler: ripples absorb at the rim
+// (rings don't teleport), the sandpile is open (grains fall off the edge), and the
+// falling sand and Schelling's board guard their own bounds.
 
 // inject: overwrite the field state where a seed mark was drawn (by the seed's alpha),
 // so drawing into a SimField seeds/forces it; undrawn texels keep their state and
@@ -27,6 +32,20 @@ fragment float4 ollin_sim_inject(PresentOut in [[stage_in]],
     float4 s = state.sample(samp, in.uv);
     float4 d = seed.sample(samp, in.uv);
     return float4(mix(s.rgb, ollin_unpremul(d), d.a), 1.0);
+}
+
+// The data inject, for a `Sim.shader` field with no inject kernel of its own: the
+// same alpha composite as `ollin_sim_inject`, but the state's own alpha is kept
+// rather than forced to 1, since a kernel of the sketch's own may store a fourth
+// channel of data there.
+fragment float4 ollin_sim_inject_data(PresentOut in [[stage_in]],
+                                      texture2d<float> state [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    return float4(mix(s.rgb, ollin_unpremul(d), d.a), s.a);
 }
 
 // The ripples inject: a drawn mark's brightness is *added* to the height
@@ -192,7 +211,7 @@ fragment float4 ollin_sim_reaction_diffusion(PresentOut in [[stage_in]],
     float2 t = params[0].xy;
     float feed = params[1].x, kill = params[1].y;
     float2 uv = in.uv;
-#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
+#define TAP(DX, DY) src.sample(samp, uv + float2(float(DX), float(DY)) * t, level(0.0)).xy
     float2 c = src.sample(samp, uv).xy;
     float2 lap = -c
         + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
@@ -221,7 +240,7 @@ fragment float4 ollin_sim_reaction_diffusion_modulated(PresentOut in [[stage_in]
     float feed = mix(params[1].x, params[1].z, m);
     float kill = mix(params[1].y, params[1].w, m);
     float2 uv = in.uv;
-#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
+#define TAP(DX, DY) src.sample(samp, uv + float2(float(DX), float(DY)) * t, level(0.0)).xy
     float2 c = src.sample(samp, uv).xy;
     float2 lap = -c
         + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
@@ -248,7 +267,7 @@ fragment float4 ollin_sim_predator_prey(PresentOut in [[stage_in]],
     float2 t = params[0].xy;
     float h = max(params[1].x, 0.001), k = params[1].y, m = params[1].z, dt = params[1].w;
     float2 uv = in.uv;
-#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
+#define TAP(DX, DY) src.sample(samp, uv + float2(float(DX), float(DY)) * t, level(0.0)).xy
     float2 c = src.sample(samp, uv).xy;
     float2 lap = -c
         + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
@@ -270,7 +289,7 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
                                constant float4 *params [[buffer(0)]]) {
     float2 t = params[0].xy;
     float2 uv = in.uv;
-#define ALIVE(DX, DY) step(0.5, src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).r)
+#define ALIVE(DX, DY) step(0.5, src.sample(samp, uv + float2(float(DX), float(DY)) * t, level(0.0)).r)
     float n = ALIVE(-1, -1) + ALIVE(0, -1) + ALIVE(1, -1) + ALIVE(-1, 0)
             + ALIVE(1, 0) + ALIVE(-1, 1) + ALIVE(0, 1) + ALIVE(1, 1);
 #undef ALIVE
@@ -465,7 +484,7 @@ fragment float4 ollin_sim_cyclic(PresentOut in [[stage_in]],
         for (int dx = -range; dx <= range; dx += 1) {
             if (dx == 0 && dy == 0) { continue; }
             if (!moore && abs(dx) + abs(dy) > range) { continue; }
-            float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+            float2 p = uv + float2(float(dx), float(dy)) * t;
             count += (ollin_cell_state(src, samp, p, top) == next) ? 1.0 : 0.0;
         }
     }
@@ -498,7 +517,7 @@ fragment float4 ollin_sim_excitable(PresentOut in [[stage_in]],
             for (int dx = -range; dx <= range; dx += 1) {
                 if (dx == 0 && dy == 0) { continue; }
                 if (!moore && abs(dx) + abs(dy) > range) { continue; }
-                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                float2 p = uv + float2(float(dx), float(dy)) * t;
                 firing += (ollin_cell_state(src, samp, p, top) == 1.0) ? 1.0 : 0.0;
             }
         }
@@ -522,7 +541,7 @@ fragment float4 ollin_sim_brain(PresentOut in [[stage_in]],
     float2 t = params[0].xy;
     float2 uv = in.uv;
 #define FIRING(DX, DY) ((ollin_cell_state(src, samp, \
-        fract(uv + float2(float(DX), float(DY)) * t), 2.0) == 2.0) ? 1.0 : 0.0)
+        uv + float2(float(DX), float(DY)) * t, 2.0) == 2.0) ? 1.0 : 0.0)
     float n = FIRING(-1, -1) + FIRING(0, -1) + FIRING(1, -1) + FIRING(-1, 0)
             + FIRING(1, 0) + FIRING(-1, 1) + FIRING(0, 1) + FIRING(1, 1);
 #undef FIRING
@@ -558,7 +577,7 @@ fragment float4 ollin_sim_hodgepodge(PresentOut in [[stage_in]],
         for (int dx = -1; dx <= 1; dx += 1) {
             if (dx == 0 && dy == 0) { continue; }
             if (!moore && abs(dx) + abs(dy) > 1) { continue; }
-            float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+            float2 p = uv + float2(float(dx), float(dy)) * t;
             float v = rint(src.sample(samp, p, level(0.0)).r * n);   // wrapped: see ollin_cell_state
             S += v;
             A += (v > 0.5 && v < n - 0.5) ? 1.0 : 0.0;
@@ -606,7 +625,7 @@ fragment float4 ollin_sim_forest_fire(PresentOut in [[stage_in]],
             for (int dx = -1; dx <= 1; dx += 1) {
                 if (dx == 0 && dy == 0) { continue; }
                 if (!moore && abs(dx) + abs(dy) > 1) { continue; }
-                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                float2 p = uv + float2(float(dx), float(dy)) * t;
                 burning += (ollin_cell_state(src, samp, p, top) > 1.5) ? 1.0 : 0.0;
             }
         }
@@ -642,7 +661,7 @@ fragment float4 ollin_sim_wireworld(PresentOut in [[stage_in]],
         for (int dy = -1; dy <= 1; dy += 1) {
             for (int dx = -1; dx <= 1; dx += 1) {
                 if (dx == 0 && dy == 0) { continue; }
-                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                float2 p = uv + float2(float(dx), float(dy)) * t;
                 heads += (ollin_cell_state(src, samp, p, top) > 2.5) ? 1.0 : 0.0;
             }
         }
@@ -777,10 +796,10 @@ fragment float4 ollin_sim_ising(PresentOut in [[stage_in]],
     bool mine = fmod(cell.x + cell.y, 2.0) == fmod(params[0].z, 2.0);
     float spin = s * 2.0 - 1.0;
     float around = 0.0;
-    around += ollin_cell_state(src, samp, fract(uv + float2(t.x, 0.0)), 1.0) * 2.0 - 1.0;
-    around += ollin_cell_state(src, samp, fract(uv - float2(t.x, 0.0)), 1.0) * 2.0 - 1.0;
-    around += ollin_cell_state(src, samp, fract(uv + float2(0.0, t.y)), 1.0) * 2.0 - 1.0;
-    around += ollin_cell_state(src, samp, fract(uv - float2(0.0, t.y)), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, uv + float2(t.x, 0.0), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, uv - float2(t.x, 0.0), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, uv + float2(0.0, t.y), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, uv - float2(0.0, t.y), 1.0) * 2.0 - 1.0;
     float change = 2.0 * spin * (around + field);
     bool flip = change <= 0.0;
     if (!flip && temperature > 0.0) {
@@ -819,7 +838,7 @@ fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
             float qq = q * (1.0 - q);
             if (qq <= 0.0) continue;                     // ring edges (and the site itself) weigh 0
             float w = rings[int(ringPos)] * exp(4.0 - 1.0 / qq);   // exponential kernel core
-            sum += w * src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t),
+            sum += w * src.sample(samp, in.uv + float2(float(dx), float(dy)) * t,
                                   level(0.0)).r;   // wrapped: see ollin_cell_state
             weight += w;
         }
@@ -866,7 +885,7 @@ fragment float4 ollin_sim_smooth_life(PresentOut in [[stage_in]],
             float ring = clamp(l - ri + 0.5, 0.0, 1.0);          // 0 in the disc, 1 in the ring
             float rim = 1.0 - clamp(l - ra + 0.5, 0.0, 1.0);     // 1 inside the outer circle
             float wi = 1.0 - ring, wo = ring * rim;
-            float f = src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t),
+            float f = src.sample(samp, in.uv + float2(float(dx), float(dy)) * t,
                                  level(0.0)).r;   // wrapped: see ollin_cell_state
             inner += wi * f; innerWeight += wi;
             outer += wo * f; outerWeight += wo;

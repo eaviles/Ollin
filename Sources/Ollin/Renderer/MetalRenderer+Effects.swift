@@ -275,14 +275,21 @@ extension MetalRenderer {
                         target.texture = slot.flipped ? slot.histB : slot.histA
                     }
                 } else if let slot = feedbackSlot(for: sf, width: pw, height: ph,
-                                                  fill: initialNoiseFill(sf.sim, into: cb),
-                                                  into: cb) {
+                                                  fill: initialNoiseFill(sf.sim, format: target.pixelFormat,
+                                                                         into: cb),
+                                                  format: target.pixelFormat, into: cb) {
                     target.texture = slot.flipped ? slot.b : slot.a
                 }
                 continue
             }
-            guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless),
-                  let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled) else { continue }
+            // The seed pair follows the field's precision: the geometry pipelines the
+            // marks draw through are built for the target's format, and an attachment
+            // of another format reads back as noise (alpha 1.875 on a full mark, seen
+            // once when a `.float32` field drew into a half-float seed).
+            guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless,
+                                           format: target.pixelFormat),
+                  let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled,
+                                                  format: target.pixelFormat) else { continue }
             // Render this frame's drawn seed marks into `seed` (cleared transparent so
             // an empty block seeds nothing and the field just evolves). Shared by both
             // the single-field sims and the fluid.
@@ -344,13 +351,18 @@ extension MetalRenderer {
                 // its storage is the same single pair, so it shares the slot, the flip,
                 // and the repeat arm above.
                 let rest = sf.sim.restState
+                let format = target.pixelFormat
                 guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
                                               restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
                                                                        blue: Double(rest.z), alpha: Double(rest.w)),
-                                              fill: initialNoiseFill(sf.sim, into: cb),
-                                              into: cb) else { continue }
+                                              fill: initialNoiseFill(sf.sim, format: format, into: cb),
+                                              format: format, into: cb) else { continue }
                 let front = slot.flipped ? slot.b : slot.a
                 let back  = slot.flipped ? slot.a : slot.b
+                // The field can be read back from here on: the reader blits the
+                // front of this slot, which after the flip below is the state this
+                // frame leaves. Weak, so a field outliving its renderer reads nil.
+                sf.reader = { [weak self] field in self?.readField(field) }
                 if let turing = sf.sim.turingConfig {
                     runMultiScaleTuring(turing.scales, state: front, seed: seed, output: back,
                                         width: pw, height: ph, into: cb, pooled: pooled)
@@ -363,8 +375,20 @@ extension MetalRenderer {
                     let modulation = sf.modulation.flatMap { map in
                         drawer.renderTargets.contains(where: { $0 === map }) ? map.texture : nil
                     }
+                    // A kernel's extra layers: the ones drawn this frame, a blank for
+                    // the rest, so `input(info, i)` always reads something defined.
+                    let inputs: [MTLTexture] = sf.sim.userKernel == nil ? [] :
+                        sf.inputs.prefix(SimField.maxInputs).map { layer in
+                            (drawer.renderTargets.contains(where: { $0 === layer }) ? layer.texture : nil)
+                                ?? blankInput()
+                        }
+                    // The edge rule rides the sampler: a sim that taps its neighbors
+                    // through the field's sampler wraps or clamps as the field says,
+                    // and one whose physics fix its boundary keeps the image sampler.
+                    let sampler = sf.sim.honorsEdge ? simSampler(for: sf.edge) : imageSampler
                     runSimulation(sf.sim, state: front, seed: seed, output: back,
-                                  modulation: modulation, age: slot.age,
+                                  modulation: modulation, inputs: inputs, age: slot.age,
+                                  sampler: sampler, format: format,
                                   width: pw, height: ph, into: cb, pooled: pooled)
                     slot.age += 1
                 }
@@ -794,7 +818,7 @@ extension MetalRenderer {
              .contour, .cmykHalftone, .normalMap, .relight, .iridescence, .glitter,
              .thinFilm, .diffraction, .scanlines, .glitch, .crt, .kaleidoscope, .swirl,
              .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
-             .flutedGlass, .water, .paperTexture, .melt, .fieldMap:
+             .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows:
             return nil
         }
     }
@@ -1545,17 +1569,49 @@ extension MetalRenderer {
     /// two scratch textures and landing the last step in `output` (the back buffer).
     /// All fragment passes on the effect pipeline, reading/writing the float field.
     private func runSimulation(_ sim: Sim, state: MTLTexture, seed: MTLTexture, output: MTLTexture,
-                               modulation: MTLTexture? = nil, age: Int = 0,
+                               modulation: MTLTexture? = nil, inputs: [MTLTexture] = [], age: Int = 0,
+                               sampler: MTLSamplerState? = nil, format: MTLPixelFormat? = nil,
                                width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
-        guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled),
-              let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
+        // The scratch pair matches the field's precision, or a `.float32` state would
+        // lose its low bits on every pass through a half-float intermediate.
+        guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled, format: format),
+              let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled, format: format) else { return }
         let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let steps = max(1, sim.substeps)
+        if let kernel = sim.userKernel {
+            // A kernel of the sketch's own: its inject (or the data inject) lays the
+            // marks onto the state, then its step runs the substeps. The kernels read
+            // the state through the field's edge sampler and see the pass index, the
+            // age, and the substep count in the rows the wrapper appends after their
+            // own parameters.
+            func simRows(pass: Int) -> [SIMD4<Float>] {
+                [SIMD4(texel.x, texel.y, Float(pass), Float(age)),
+                 SIMD4(Float(steps), Float(inputs.count), 0, 0)]
+            }
+            if let inject = kernel.inject {
+                encodeUserShader(inject, variant: .simInject, inputs: [state, seed] + inputs, output: s0,
+                                 width: width, height: height, into: cb,
+                                 format: format, sampler: sampler, extraRows: simRows(pass: 0))
+            } else {
+                encodeEffectFragment(sim.injectFragment, inputs: [state, seed], output: s0,
+                                     params: [texel], into: cb, format: format, sampler: sampler)
+            }
+            var read = s0
+            for i in 0..<steps {
+                let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
+                encodeUserShader(kernel.step, variant: .simStep, inputs: [read] + inputs, output: write,
+                                 width: width, height: height, into: cb,
+                                 format: format, sampler: sampler, extraRows: simRows(pass: i))
+                read = write
+            }
+            return
+        }
         // Inject the seed marks onto the current state (composited by the seed's
         // alpha, or added, per the sim's inject fragment). The sim's parameter rows
         // ride along for the injects that read one (the sandpile's pour); the rest
         // never look past the texel row.
         encodeEffectFragment(sim.injectFragment, inputs: [state, seed], output: s0,
-                             params: [texel] + sim.params, into: cb)
+                             params: [texel] + sim.params, into: cb, format: format, sampler: sampler)
         // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
         // back buffer. Read and write are always distinct, so there's no in-pass hazard.
         // With a modulation map (and a sim that has a modulated variant), the map rides
@@ -1568,7 +1624,6 @@ extension MetalRenderer {
             step = (sim.stepFragment, [])
         }
         var read = s0
-        let steps = max(1, sim.substeps)
         for i in 0..<steps {
             let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
             // The texel row's z and w carry the pass index and the field's frame
@@ -1576,9 +1631,83 @@ extension MetalRenderer {
             // block tiling and friction coin). Every other step reads only xy.
             let row = SIMD4<Float>(texel.x, texel.y, Float(i), Float(age))
             encodeEffectFragment(step.name, inputs: [read] + step.extra, output: write,
-                                 params: [row] + sim.params, into: cb)
+                                 params: [row] + sim.params, into: cb, format: format, sampler: sampler)
             read = write
         }
+    }
+
+    /// The sampler a simulation field's `edge` binds for its passes: the image
+    /// sampler's filtering (linear, no anisotropy, the passes name level 0) with the
+    /// address mode per axis the field asked for. One per edge shape, kept.
+    func simSampler(for edge: FieldEdge) -> MTLSamplerState? {
+        let key = (edge.wrapsX ? 1 : 0) | (edge.wrapsY ? 2 : 0)
+        if let cached = simSamplers[key] { return cached }
+        let desc = MTLSamplerDescriptor()
+        desc.minFilter = .linear
+        desc.magFilter = .linear
+        desc.mipFilter = .linear
+        desc.sAddressMode = edge.wrapsX ? .repeat : .clampToEdge
+        desc.tAddressMode = edge.wrapsY ? .repeat : .clampToEdge
+        guard let sampler = device.makeSamplerState(descriptor: desc) else { return nil }
+        simSamplers[key] = sampler
+        return sampler
+    }
+
+    /// The 1x1 transparent-black texture a kernel's missing input binds.
+    private func blankInput() -> MTLTexture {
+        if let blank = blankInputTexture { return blank }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: 1, height: 1, mipmapped: false)
+        desc.usage = [.shaderRead]
+        desc.storageMode = .shared
+        let tex = device.makeTexture(descriptor: desc)!
+        var zero: [UInt16] = [0, 0, 0, 0]
+        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &zero, bytesPerRow: 8)
+        blankInputTexture = tex
+        return tex
+    }
+
+    /// Read a simulation field's current state back to the CPU: the front of its slot
+    /// (the state the last stepped frame left), copied on the GPU into a shared buffer
+    /// (`getBytes` on a private texture is not a path every Mac GPU offers) and waited
+    /// for, then widened to `Float` per channel. `nil` for a field this renderer has
+    /// not stepped, or whose sim keeps its state elsewhere (the fluid, watercolor,
+    /// self-warp pipelines).
+    func readField(_ field: SimField) -> FieldSnapshot? {
+        guard let slot = feedbackSlots[ObjectIdentifier(field)], slot.owner === field else { return nil }
+        let tex = slot.flipped ? slot.b : slot.a
+        let w = slot.w, h = slot.h
+        let bytesPerPixel = slot.format == .rgba32Float ? 16 : 8
+        let bytesPerRow = w * bytesPerPixel
+        let byteCount = bytesPerRow * h
+        guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let cb = commandQueue.makeCommandBuffer(),
+              let blit = cb.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: w, height: h, depth: 1),
+                  to: buffer, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        let count = w * h
+        var values = [SIMD4<Float>](repeating: .zero, count: count)
+        if slot.format == .rgba32Float {
+            let floats = buffer.contents().bindMemory(to: Float.self, capacity: count * 4)
+            for i in 0..<count {
+                values[i] = SIMD4(floats[i * 4], floats[i * 4 + 1], floats[i * 4 + 2], floats[i * 4 + 3])
+            }
+        } else {
+            let halves = buffer.contents().bindMemory(to: UInt16.self, capacity: count * 4)
+            for i in 0..<count {
+                values[i] = SIMD4(Float(Float16(bitPattern: halves[i * 4])),
+                                  Float(Float16(bitPattern: halves[i * 4 + 1])),
+                                  Float(Float16(bitPattern: halves[i * 4 + 2])),
+                                  Float(Float16(bitPattern: halves[i * 4 + 3])))
+            }
+        }
+        return FieldSnapshot(width: w, height: h, values: values)
     }
 
     /// Evolve a fluid `SimField` one frame: splat the drawn `seed` (its color into the
@@ -1935,12 +2064,14 @@ extension MetalRenderer {
     /// multi-scale Turing field, seeded random states for the state automata (their
     /// `stateSeedFill`). Handed to `feedbackSlot` so it applies exactly once, when
     /// the pair is first allocated.
-    private func initialNoiseFill(_ sim: Sim, into cb: MTLCommandBuffer) -> ((MTLTexture) -> Void)? {
+    private func initialNoiseFill(_ sim: Sim, format: MTLPixelFormat? = nil,
+                                  into cb: MTLCommandBuffer) -> ((MTLTexture) -> Void)? {
         if let turing = sim.turingConfig {
             return { tex in
                 let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
                 self.encodeEffectFragment("ollin_sim_turing_seed", inputs: [], output: tex,
-                                          params: [texel, SIMD4(Float(turing.seed), 0, 0, 0)], into: cb)
+                                          params: [texel, SIMD4(Float(turing.seed), 0, 0, 0)], into: cb,
+                                          format: format)
             }
         }
         if let fill = sim.stateSeedFill {
@@ -1949,7 +2080,7 @@ extension MetalRenderer {
                 self.encodeEffectFragment("ollin_sim_state_seed", inputs: [], output: tex,
                                           params: [texel, SIMD4(Float(fill.seed), Float(fill.levels),
                                                                 Float(fill.empty), 0)],
-                                          into: cb)
+                                          into: cb, format: format)
             }
         }
         return nil
@@ -2110,7 +2241,8 @@ extension MetalRenderer {
     func encodeEffectFragment(_ fragment: String, inputs: [MTLTexture],
                                       output: MTLTexture, params: [SIMD4<Float>],
                                       into cb: MTLCommandBuffer,
-                                      format: MTLPixelFormat? = nil) {
+                                      format: MTLPixelFormat? = nil,
+                                      sampler: MTLSamplerState? = nil) {
         guard let state = try? pipeline(.effect(fragment, format: format)) else { return }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
@@ -2119,7 +2251,7 @@ extension MetalRenderer {
         guard let enc = countedEncoder(cb, pass) else { return }
         enc.setRenderPipelineState(state)
         for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
-        enc.setFragmentSamplerState(imageSampler, index: 0)
+        enc.setFragmentSamplerState(sampler ?? imageSampler, index: 0)
         let p = params.isEmpty ? [SIMD4<Float>(repeating: 0)] : params
         p.withUnsafeBytes { enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -2135,8 +2267,11 @@ extension MetalRenderer {
     private func encodeUserShader(_ shader: Shader, variant: UserShaderVariant,
                                   inputs: [MTLTexture], output: MTLTexture,
                                   width: Int, height: Int,
-                                  into cb: MTLCommandBuffer) {
-        let (state, hash) = userShaderState(for: shader, variant: variant)
+                                  into cb: MTLCommandBuffer,
+                                  format: MTLPixelFormat? = nil,
+                                  sampler: MTLSamplerState? = nil,
+                                  extraRows: [SIMD4<Float>] = []) {
+        let (state, hash) = userShaderState(for: shader, variant: variant, format: format)
         guard let state else {
             if let err = userShaderErrors[hash] {
                 currentUserShaderError = err   // surfaced to the host after the frame
@@ -2156,7 +2291,9 @@ extension MetalRenderer {
             deltaTime: frameComputeUniforms.dt,
             frame: frameComputeUniforms.frameCount,
             paramCount: UInt32(min(shader.params.count, Int(OLLIN_SHADER_PARAM_COUNT))))
-        let params = shader.paddedParams
+        // A simulation kernel's rows (texel, pass, age, substeps, inputs) follow the
+        // user's own, at the row index the wrapper reads them from.
+        let params = shader.paddedParams + extraRows
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
@@ -2165,7 +2302,7 @@ extension MetalRenderer {
         guard let enc = countedEncoder(cb, pass) else { return }
         enc.setRenderPipelineState(state)
         for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
-        enc.setFragmentSamplerState(imageSampler, index: 0)
+        enc.setFragmentSamplerState(sampler ?? imageSampler, index: 0)
         params.withUnsafeBytes { enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
         enc.setFragmentBytes(&u, length: MemoryLayout<OllinShaderUniforms>.stride, index: 1)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -2176,14 +2313,18 @@ extension MetalRenderer {
     /// the composed-source hash, returned alongside). Returns `(nil, hash)` on a compile
     /// error, recording it in `userShaderErrors[hash]` so it isn't retried every frame.
     private func userShaderState(for shader: Shader,
-                                 variant: UserShaderVariant) -> (MTLRenderPipelineState?, UInt64) {
+                                 variant: UserShaderVariant,
+                                 format: MTLPixelFormat? = nil) -> (MTLRenderPipelineState?, UInt64) {
         let resolved = resolveUserShaderSource(shader)
         let sourceName = shader.diagnosticSourceName
         let startLine = shader.diagnosticStartLine
         let (composed, offset) = MetalRenderer.composeUserShaderSource(
             userSource: resolved.source, modules: shader.modules, variant: variant,
             sourceName: sourceName, sourceStartLine: startLine)
-        let hash = MetalRenderer.fnv1a(composed)
+        // The output format is part of the pipeline, so a kernel over a `.float32`
+        // field and the same kernel over a half-float one are two states.
+        let format = format ?? linearFormat
+        let hash = MetalRenderer.fnv1a(composed + "\n// format \(format.rawValue)")
         if let p = userShaderPipelines[hash] { return (p, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
         // An include the resolver could not honor is reported as the shader's error
@@ -2209,7 +2350,7 @@ extension MetalRenderer {
             desc.vertexFunction = vfn
             desc.fragmentFunction = ffn
             desc.rasterSampleCount = 1
-            desc.colorAttachments[0].pixelFormat = linearFormat
+            desc.colorAttachments[0].pixelFormat = format
             let state = try device.makeRenderPipelineState(descriptor: desc)
             userShaderPipelines[hash] = state
             return (state, hash)
@@ -2561,13 +2702,16 @@ extension MetalRenderer {
     }
 
     /// Acquire a single-sample linear-float intermediate for a filter result.
-    func acquireFilterTexture(width: Int, height: Int, pooled: Bool) -> MTLTexture? {
-        guard pooled else { return makeFilterTexture(width: width, height: height) }
+    func acquireFilterTexture(width: Int, height: Int, pooled: Bool,
+                              format: MTLPixelFormat? = nil) -> MTLTexture? {
+        let format = format ?? linearFormat
+        guard pooled else { return makeFilterTexture(width: width, height: height, format: format) }
         let slot = filterTexNext; filterTexNext += 1
         var pool = filterTexPool[frameIndex]
-        if slot < pool.count, pool[slot].w == width, pool[slot].h == height { return pool[slot].tex }
-        guard let tex = makeFilterTexture(width: width, height: height) else { return nil }
-        let entry = (tex, width, height)
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height,
+           pool[slot].format == format { return pool[slot].tex }
+        guard let tex = makeFilterTexture(width: width, height: height, format: format) else { return nil }
+        let entry = (tex, width, height, format)
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
         filterTexPool[frameIndex] = pool
         return tex
@@ -2623,9 +2767,9 @@ extension MetalRenderer {
 
     /// A single-sample linear-float texture for an intermediate filter result:
     /// sampled, MPS-written, and fragment-rendered, so it carries all three usages.
-    func makeFilterTexture(width: Int, height: Int) -> MTLTexture? {
+    func makeFilterTexture(width: Int, height: Int, format: MTLPixelFormat? = nil) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+            pixelFormat: format ?? linearFormat, width: width, height: height, mipmapped: false)
         desc.usage = [.shaderRead, .shaderWrite, .renderTarget]
         desc.storageMode = .private
         return device.makeTexture(descriptor: desc)

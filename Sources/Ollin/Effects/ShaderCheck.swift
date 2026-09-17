@@ -5,9 +5,11 @@ import Metal
 package struct ShaderCheckReport: Sendable {
 
     /// What the shader is, which follows from how many layers it reads: none makes it a
-    /// generator, one a filter, two a combine. The same rule the effect graph uses.
+    /// generator, one a filter, two a combine. The same rule the effect graph uses. A
+    /// kernel for a `Sim.shader` field reads the field's cells instead (`cell`), and an
+    /// inject kernel this frame's marks (`mark`).
     package enum Shape: String, Sendable, CaseIterable {
-        case generator, filter, combine
+        case generator, filter, combine, simulation, inject
 
         /// How the shape reads in a sentence, for the line the command prints.
         package var reason: String {
@@ -15,6 +17,8 @@ package struct ShaderCheckReport: Sendable {
             case .generator: return "it reads no layer"
             case .filter: return "it reads one layer"
             case .combine: return "it reads two layers"
+            case .simulation: return "it reads the field's cells"
+            case .inject: return "it reads the field's marks"
             }
         }
     }
@@ -78,6 +82,8 @@ package enum ShaderCheck {
         case .generator: variant = .generator
         case .filter: variant = .filter
         case .combine: variant = .combine
+        case .simulation: variant = .simStep
+        case .inject: variant = .simInject
         }
         let (composed, offset) = MetalRenderer.composeUserShaderSource(
             userSource: resolved.source, modules: modules, variant: variant,
@@ -138,9 +144,12 @@ package enum ShaderCheck {
         return inOrder.filter { modules.contains($0.1) }.map(\.0)
     }
 
-    /// What the shader is, from the layer readers it calls. `sampleAux` needs a second
-    /// layer, `sample` a first, and a shader that calls neither takes none.
+    /// What the shader is, from the layer readers it calls. `mark` reads a field's
+    /// marks and `cell` its cells, so those are the two simulation kernels; `sampleAux`
+    /// needs a second layer, `sample` a first, and a shader that calls none takes none.
     package static func inferredShape(of source: String) -> ShaderCheckReport.Shape {
+        if calls("mark", in: source) { return .inject }
+        if calls("cell", in: source) { return .simulation }
         if calls("sampleAux", in: source) || calls("sampleAuxRaw", in: source) { return .combine }
         if calls("sample", in: source) || calls("sampleRaw", in: source) { return .filter }
         return .generator

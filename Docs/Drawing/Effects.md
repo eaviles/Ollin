@@ -42,6 +42,7 @@ override func draw() {
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
 - [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback)
+- [Sim.shader](#simfield-shader) - a simulation of your own: a kernel you write, the inject, the field's edge and precision, arrows, readback
 - [compose / layer](#compose) - declare a stack of layers as one block
 - [aside](#aside) - a helper layer that feeds another layer's effect
 - [Notes](#notes)
@@ -164,6 +165,7 @@ layer.filtered(.vibrance(amount: 0.6))
 
 #### Stylize & optical
 
+- **`.arrows(spacing:scale:color:width:)`** a two-channel layer drawn as arrows: the picture of a wind, a gradient, or any field whose red is an x and green a y. One arrow per cell of `spacing` pixels reads the vector at the cell's center in the layer's own units, times `scale` into pixels, and draws it from that center as a shaft with two barbs, `width` pixels wide, in `color`. A vector longer than the spacing is cut to it, so the arrows say direction and `scale` says how much of the size is shown, and one shorter than half a pixel draws nothing. The result is ink over transparency, so it composites over the field it reads or over anything else. Its usual partner is a [`Sim.shader`](#simfield-shader) field holding a velocity, and the `Simulation/Wind` example draws one that way.
 - **`.antialias(amount:threshold:quality:)`** smooth the stair-stepped edges of a layer that a fragment shader wrote pixel by pixel. Ollin anti-aliases the shapes you draw. A [`generate(_:)`](#generate) pattern, a raymarched field, an [imported shader](../Tools/ShaderImport.md), or a finished chain is different. Each writes a final color per pixel and carries no coverage, so a hard edge inside one comes out as a staircase. This pass works from the image alone. It finds each edge by brightness, follows it to both ends, and reads the layer back a fraction of a pixel across it. That turns the steps into a ramp.
 
   `threshold` is the contrast an edge needs before the pass touches it at all. A lower value reaches fainter edges and costs more, and a layer with nothing over that contrast comes back byte for byte. `quality` is how far the pass may follow one edge. `amount` is how much of the result to keep, so `amount: 0` hands the layer back unchanged.
@@ -688,7 +690,7 @@ override func draw() {
 
 ### makeSimField(_:) and Sim
 
-Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer. The layer evolves every frame by reading its own neighborhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying color. You do not write the kernel. Pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
+Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer. The layer evolves every frame by reading its own neighborhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying color. Pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**. When the catalog has no rule for you, [write the kernel yourself](#simfield-shader) and the field runs it the same way.
 
 A `SimField` is **persistent** like `Feedback`, so make it once in `setup()` and hold it. Each frame the marks you draw in `withField` land on the field's current state. The renderer then steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
@@ -790,7 +792,70 @@ override func draw() {
 - `field.modulation` attaches a layer whose brightness re-tunes the sim per texel, for the sims that support one, which today is `.reactionDiffusion` above. Set it once and draw into the layer each frame. Attach a drawn or generated layer, not a `filtered(_:)` output. Filters resolve after the sims each frame, so a filtered map would always be a frame stale.
 - `field.image` is the evolved field, and `field.filtered(_:)` recolors or post-processes it like any layer.
 - `scale` sets the field's internal resolution: lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
-- See `Simulation/GrayScott` (reaction-diffusion), `Simulation/Automata` (seven automata behind one rule picker), `Simulation/Fluid`, and `Simulation/Watercolor`.
+- `edge` is what a cell on the border reads when its rule looks past the field. The default, `.wrapping`, makes the field a torus, so a glider that leaves on the right comes back on the left. `.clamped` is walls: a read past the edge returns the border cell, which insulates a diffusing quantity and frames an automaton. `FieldEdge(wrapsX: true, wrapsY: false)` wraps one axis only. The sims that read their neighbors honor it (reaction-diffusion, predator-prey, Life, Lenia, SmoothLife, the state automata, Ising, and a kernel of your own), and the ones whose physics fix their boundary keep it whatever the field says (ripples, the sandpile, the falling sand, Schelling's board, and the fluid, Turing, watercolor, and self-warp pipelines). Settable live.
+- `precision` is how exactly the state keeps a number: half float by default, which holds a whole number exactly only to 2048, and `.float32` for a state that counts, sums, or carries an id.
+- `field.snapshot()` reads the field back to the CPU as a `FieldSnapshot`, every cell's four channels exactly as stored (`snap[x, y]`, `width`, `height`, `values`). Called from `draw()` it holds the state the last frame left, and the read waits for the GPU, so it is for a measurement a frame (a sum, the busiest cell, a number handed to sound or a plotter), never for drawing the field, which `image` does with no round trip.
+- See `Simulation/GrayScott` (reaction-diffusion), `Simulation/Automata` (seven automata behind one rule picker), `Simulation/Fluid`, `Simulation/Watercolor`, and `Simulation/Wind` (a kernel of your own).
+
+<a id="simfield-shader"></a>
+#### A simulation of your own: `Sim.shader`
+
+The catalog is a set of kernels somebody already wrote. `Sim.shader` runs one you write, and the field treats it exactly like the others: the same seeding by drawing, the same `image` and `filtered(_:)`, the same persistence across frames.
+
+The kernel is a [`Shader`](../Shaders/Shaders.md) whose `shade(uv, info)` returns the cell's **next state** from its neighborhood. The state is data, so what you return is stored as it is, with no color conversion either way, and what you read comes back the same. The readers:
+
+| Reader | Returns |
+| --- | --- |
+| `cell(info)` | the cell being stepped, as stored |
+| `cell(info, dx, dy)` | the neighbor `dx` cells across and `dy` down (positive down, like the canvas), through the field's `edge` |
+| `sampleRaw(info, p)` | the state at any position `p` in `uv`, for a read that is not a whole cell away |
+| `input(info, i)`, `input(info, i, p)` | the field's extra `inputs` layer `i`, as stored |
+| `param(info, i)` | your own `params`, as in every shader |
+
+`info.texel` is one cell in `uv` units, `info.resolution` the field in cells, `info.pass` which of the `substeps` this is, `info.substeps` how many there are, and `info.age` how many frames the field has run. Here is the Game of Life again, written by hand:
+
+```swift
+let life = Sim.shader(Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float n = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx != 0 || dy != 0) { n += step(0.5, cell(info, dx, dy).r); }
+        }
+    }
+    float me = step(0.5, cell(info).r);
+    float alive = (n == 3.0 || (me > 0.5 && n == 2.0)) ? 1.0 : 0.0;
+    return float4(alive, alive, alive, 1.0);
+}
+"""))
+```
+
+It produces the built-in `.gameOfLife()` cell for cell, which is the test that pins it.
+
+**How a mark enters the field** is a second kernel, `inject:`. Without one, the marks a `withField` block draws are laid onto the state by their alpha: a white disc writes 1 into the cells it covers, black writes 0, and the state's own alpha is kept. With one, your shader runs instead, once per frame before the steps, reading the current state through `cell` and this frame's marks through **`mark(info)`**: the mark's color in linear light, as every sim reads its marks, with its coverage in `.a`. That is how a mark *adds* to a cell instead of replacing it, pushes a velocity the way a brush moved, or means different things by its color. The region a kernel acts on is whatever the block drew, so a circle, a line, or a rectangle drawn there is that shape stepped by the inject:
+
+```swift
+let step = Shader("float4 shade(float2 uv, ShaderInfo info) { return cell(info); }")
+let pushed = Sim.shader(step, inject: Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float4 me = cell(info);
+    float4 m = mark(info);                                  // this frame's marks, coverage in .a
+    float2 push = float2(param(info, 0), param(info, 1));   // the brush's motion, handed in as params
+    return float4(me.xy + push * m.a, me.zw);
+}
+""", params: [0.4, 0.0]))                                    // this frame's motion, from the sketch
+```
+
+The rest of the shape:
+
+- **`substeps`** runs the step that many times a frame, for a rule that wants to settle faster than once a frame. **`rest`** is the state every cell starts at, `(0, 0, 0, 1)` unless you say otherwise.
+- **`inputs`** are extra layers the kernels read with `input(info, i)`, up to four. Like `modulation`, each is a per-frame layer: draw or generate it every frame before reading the field, and it arrives exactly as stored. A layer not drawn this frame reads as zero, and a `filtered(_:)` output cannot be an input, since filters resolve after the sims.
+- **`edge`** and **`precision`** are the field's, above. A kernel that counts wants `.float32`; a plate that must not leak wants `.clamped`.
+- **`.arrows`** draws a two-channel state as arrows, and **`snapshot()`** reads any state back as numbers.
+- A compile error is reported at the file and line you wrote the kernel in, the field keeps its last state, and a later clean compile picks it up again, the way every user shader behaves. `ollin check` reads a kernel file as the `simulation` shape (it calls `cell`) or the `inject` shape (it calls `mark`).
+- A field running a kernel of your own is not carried to the [web page](../Output/Web.md) yet; the export names it as the call that stopped it.
+
+See `Simulation/Wind` for a wind carrying dust under two kernels, and Guide chapter 19 for the walk through it.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

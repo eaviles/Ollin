@@ -255,6 +255,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-simfield-modulated", frame: 150,
                  note: "The modulated sibling of effects-simfield: the same fixed dot-grid seed under a half-black, half-white modulation layer, spot regime on the left sliding to maze/coral on the right, evolved to frame 150 and recoloured. Pins the modulated step variant: the map layer resolved before the sim passes, the per-texel feed/kill lerp from the params row's z/w, and one continuous field wearing two regimes with the pattern crossing the boundary instead of seaming at it.",
                  make: { EffectsSimFieldModulated() }),
+    SnapshotCase("effects-simfield-shader", frame: 40,
+                 note: "A Sim.shader field: a heat kernel of the sketch's own (a four-neighbor blend that cools, three substeps a frame) under a clamped edge, fed by an inject kernel that adds a hot disc where the marks land, with a per-frame input layer that shades one side of the plate colder, evolved to frame 40 and recolored. Pins the user-kernel wrapper end to end: the cell readers through the field's edge sampler (the clamped rim keeps the heat in, a wrapping one would leak it across), the mark reader of the inject variant, the input layer bound at its slot, the sim rows the wrapper appends after the user's parameters, and the raw tail that stores the state as returned.",
+                 make: { EffectsSimFieldShader() }),
+    SnapshotCase("effects-arrows", frame: 30,
+                 note: "A two-channel field drawn as arrows over its own recoloring: a Sim.shader kernel that turns a wind slowly around the center and adds a swirl from a noise layer, read through .arrows at 30-pixel spacing over a .gradientMap of its speed. Pins the arrows fragment (cell centers, the shaft and barbs as segment distances over the 3x3 neighborhood, the shown length held to the spacing) and its pass description.",
+                 make: { EffectsArrows() }),
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
@@ -10465,5 +10471,93 @@ private final class DualContouringScene: Sketch {
                 drawMesh(mesh)
             }
         }
+    }
+}
+
+/// A heat plate run by a kernel of the sketch's own: each substep blends a cell
+/// toward the mean of its four neighbors and cools it a little, under a clamped edge
+/// (an insulated plate, the heat stays in), with an inject kernel that *adds* a hot
+/// disc wherever a mark lands rather than replacing the cell, and an input layer that
+/// shades the right third of the plate colder every frame. Recolored through a magma
+/// ramp. Pins the user-kernel wrapper end to end.
+private final class EffectsSimFieldShader: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var plate: SimField!
+
+    override func setup() {
+        let step = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float4 me = cell(info);
+            float around = (cell(info, -1, 0).r + cell(info, 1, 0).r
+                          + cell(info, 0, -1).r + cell(info, 0, 1).r) * 0.25;
+            float cold = input(info, 0).r;                 // the shaded side loses heat faster
+            float heat = mix(me.r, around, 0.5) * (0.995 - cold * 0.02);
+            return float4(heat, 0.0, 0.0, 1.0);
+        }
+        """)
+        let inject = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float4 me = cell(info);
+            float4 m = mark(info);
+            return float4(me.r + m.a * m.r * 2.0, 0.0, 0.0, 1.0);
+        }
+        """)
+        plate = makeSimField(.shader(step, inject: inject, substeps: 3), scale: 0.5, edge: .clamped)
+    }
+
+    override func draw() {
+        background(.black)
+        let shade = makeRenderTarget()
+        withTarget(shade) {
+            noStroke(); fill(.white)
+            drawRect(width * 2 / 3, 0, width / 3, height)
+        }
+        plate.inputs = [shade]
+        withField(plate) {
+            noStroke()
+            let t = Double(frameCount)
+            fill(.white)
+            drawCircle(60 + t * 3, 128 + sin(t * 0.3) * 60, 10)     // a hot brush crossing the plate
+            fill(Color(white: 0.5))
+            drawCircle(24, 24, 14)                                   // a warm corner, refilled every frame
+        }
+        drawImage(plate.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// A wind that turns: a kernel of the sketch's own relaxes a two-channel field toward
+/// a direction that swings with the frame count, stirred by a noise layer generated
+/// each frame (the same one, so the swirl is a fixed weather), and the picture is its speed through a ramp with the field's own
+/// arrows over it.
+private final class EffectsArrows: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var wind: SimField!
+
+    override func setup() {
+        let step = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float4 me = cell(info);
+            float a = float(info.age) * 0.05;
+            float2 want = float2(cos(a), sin(a)) * (0.6 + 0.4 * sin(uv.x * 6.283));
+            float2 swirl = (input(info, 0).xy - 0.5) * 0.8;
+            float2 v = mix(me.xy, want + swirl, 0.15);
+            return float4(v, 0.0, 1.0);
+        }
+        """)
+        wind = makeSimField(.shader(step), scale: 0.5)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        wind.inputs = [generate(.noise(scale: 3, sharpness: 0.3))]
+        withField(wind) {}
+        let speed = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float s = length(sampleRaw(info, uv).xy);
+            return float4(float3(clamp(s, 0.0, 1.0)), 1.0);
+        }
+        """)
+        drawImage(wind.filtered(.shader(speed)).filtered(.gradientMap(.viridis)).image, 0, 0)
+        drawImage(wind.filtered(.arrows(spacing: 30, scale: 22, color: .white, width: 1.5)).image, 0, 0)
     }
 }

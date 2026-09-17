@@ -2951,3 +2951,48 @@ fragment float4 ollin_gen_gabor(PresentOut in [[stage_in]],
     float t = clamp(0.5 + 0.5 * ollin_gabor_sum(g, p) * g.norm, 0.0, 1.0);
     return mix(params[4], params[3], t);
 }
+
+// arrows: a two-channel field drawn as arrows, one per cell of `spacing` pixels
+// (params[1].x), the vector at the cell's center (red across, green down, the
+// field's own units) scaled by params[1].y into pixels and drawn from that center
+// as a shaft with two barbs, params[1].z wide, in params[2] (linear rgb + alpha).
+// A pixel asks the arrows of its own cell and the eight around it, which is every
+// arrow that can reach it once a shaft is held to the spacing (a longer vector is
+// cut to it, since the arrows say direction and the scale says how much is drawn).
+// Coverage is a one-pixel ramp about the half width, so the ink anti-aliases and
+// composites over anything; a vector shorter than half a pixel draws nothing.
+fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float2 size = 1.0 / texel;
+    float spacing = max(2.0, params[1].x);
+    float scale = params[1].y;
+    float width = max(0.5, params[1].z);
+    float4 color = params[2];
+    float2 p = in.uv * size;
+    float2 home = floor(p / spacing);
+    float coverage = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float2 c = (home + float2(float(dx), float(dy)) + 0.5) * spacing;
+            if (c.x < 0.0 || c.y < 0.0 || c.x >= size.x || c.y >= size.y) { continue; }
+            float2 v = src.sample(samp, c * texel, level(0.0)).xy * scale;
+            float len = length(v);
+            if (len < 0.5) { continue; }
+            float shown = min(len, spacing * 0.9);
+            float2 dir = v / len;
+            float2 head = c + dir * shown;
+            float d = sdSegment(p, c, head);
+            float barb = min(shown * 0.4, spacing * 0.3);
+            float2 n = float2(-dir.y, dir.x);
+            float2 b1 = head - dir * barb + n * barb * 0.55;
+            float2 b2 = head - dir * barb - n * barb * 0.55;
+            d = min(d, min(sdSegment(p, head, b1), sdSegment(p, head, b2)));
+            coverage = max(coverage, 1.0 - smoothstep(width * 0.5 - 0.5, width * 0.5 + 0.5, d));
+        }
+    }
+    float a = color.a * coverage;
+    return float4(color.rgb * a, a);
+}

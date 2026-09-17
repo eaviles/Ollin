@@ -3385,18 +3385,25 @@ open class Sketch {
     }
 
     /// Make a full-canvas simulation field that evolves by `sim` each frame (see
-    /// `SimField`/`Sim`): reaction-diffusion, Game of Life, and other fields. Like
-    /// `makeFeedback()`, it's **persistent**: create it once in `setup()` and store it.
-    /// `scale` is the field's internal resolution as a fraction of the canvas; lower
-    /// it for coarser features and chunkier cells.
-    public func makeSimField(_ sim: Sim, scale: Double = 1) -> SimField {
+    /// `SimField`/`Sim`): reaction-diffusion, Game of Life, other fields, or a kernel of
+    /// your own (`Sim.shader`). Like `makeFeedback()`, it's **persistent**: create it once
+    /// in `setup()` and store it. `scale` is the field's internal resolution as a fraction
+    /// of the canvas; lower it for coarser features and chunkier cells. `edge` is what a
+    /// cell on the border reads past the field (a torus by default, walls with `.clamped`;
+    /// see `FieldEdge`), and `precision` how exactly the state keeps a number (`.float32`
+    /// for a state that counts; see `LayerPrecision`).
+    public func makeSimField(_ sim: Sim, scale: Double = 1, edge: FieldEdge = .wrapping,
+                             precision: LayerPrecision = .float16) -> SimField {
         SimField(sim: sim, width: Int(width.rounded()), height: Int(height.rounded()),
-                 scale: scale, drawer: drawer)
+                 scale: scale, drawer: drawer, edge: edge, precision: precision)
     }
 
     /// Make a simulation field of an explicit pixel size, rather than the canvas size.
-    public func makeSimField(_ sim: Sim, width: Int, height: Int, scale: Double = 1) -> SimField {
-        SimField(sim: sim, width: width, height: height, scale: scale, drawer: drawer)
+    public func makeSimField(_ sim: Sim, width: Int, height: Int, scale: Double = 1,
+                             edge: FieldEdge = .wrapping,
+                             precision: LayerPrecision = .float16) -> SimField {
+        SimField(sim: sim, width: width, height: height, scale: scale, drawer: drawer,
+                 edge: edge, precision: precision)
     }
 
     /// Draw into `field` to seed or force its simulation: the marks land on the field's

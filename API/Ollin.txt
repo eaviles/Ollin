@@ -144,10 +144,15 @@
   static func buildOptional(_: [ComposeLayer]?) -> [ComposeLayer]
 class SimField
   func filtered(_: Filter) -> RenderTarget
+  func snapshot() -> FieldSnapshot?
   let height: Int
+  let precision: LayerPrecision
   let scale: Double
   let width: Int
+  static let maxInputs: Int
+  var edge: FieldEdge { get set }
   var image: Image { get }
+  var inputs: [RenderTarget] { get set }
   var modulation: RenderTarget? { get set }
   var sim: Sim { get set }
 enum ArcMode: Equatable, Hashable
@@ -2298,8 +2303,8 @@ open class Sketch: Sendable
   func makePrimordialParticles(count: Int, radius: Double, bounds: Rectangle? = default, seed: Int? = default) -> PPS
   func makeRenderTarget(scale: Double = default, precision: LayerPrecision = default) -> RenderTarget
   func makeRenderTarget(width: Int, height: Int, scale: Double = default, precision: LayerPrecision = default) -> RenderTarget
-  func makeSimField(_: Sim, scale: Double = default) -> SimField
-  func makeSimField(_: Sim, width: Int, height: Int, scale: Double = default) -> SimField
+  func makeSimField(_: Sim, scale: Double = default, edge: FieldEdge = default, precision: LayerPrecision = default) -> SimField
+  func makeSimField(_: Sim, width: Int, height: Int, scale: Double = default, edge: FieldEdge = default, precision: LayerPrecision = default) -> SimField
   func makeSoftBodies(bodies: Int, radius: Double, spacing: Double? = default, bounds: Rectangle? = default, seed: Int? = default) -> SoftBodies
   func makeSpatialHash(in: Rectangle? = default, radius: Double, count: Int) -> SpatialHash
   func makeSwarm(count: Int, perceptionRadius: Double, colors: [Color] = default, size: Double = default, bounds: Rectangle? = default, seed: Int? = default) -> Swarm
@@ -3581,6 +3586,18 @@ struct Epicycles: Equatable, Sendable
 struct Erosion: Sendable
   static func hydraulic(drops: Int = default, inertia: Double = default, capacity: Double = default, deposition: Double = default, erosion: Double = default, evaporation: Double = default, minSlope: Double = default, radius: Double = default, gravity: Double = default, maxSteps: Int = default) -> Erosion
   static func thermal(talus: Double = default, amount: Double = default, iterations: Int = default) -> Erosion
+struct FieldEdge: Equatable, Sendable
+  init(wrapsX: Bool, wrapsY: Bool)
+  static let clamped: FieldEdge
+  static let wrapping: FieldEdge
+  var wrapsX: Bool { get set }
+  var wrapsY: Bool { get set }
+struct FieldSnapshot: Sendable
+  init(width: Int, height: Int, values: [SIMD4<Float>])
+  let height: Int
+  let values: [SIMD4<Float>]
+  let width: Int
+  subscript(_: Int, _: Int) -> SIMD4<Float> { get }
 struct Filter: Sendable
   enum Dispersion: Equatable, Sendable
     case axial
@@ -3626,6 +3643,7 @@ struct Filter: Sendable
     case sand
   static func adaptiveThreshold(window: Double? = default, bias: Double = default, inverted: Bool = default) -> Filter
   static func antialias(amount: Double = default, threshold: Double = default, quality: RenderQuality = default) -> Filter
+  static func arrows(spacing: Double = default, scale: Double = default, color: Color = default, width: Double = default) -> Filter
   static func bilateral(radius: Double = default, sigma: Double = default) -> Filter
   static func bloom(threshold: Double = default, amount: Double = default, radius: Double = default) -> Filter
   static func boxBlur(radius: Double = default) -> Filter
@@ -5795,6 +5813,7 @@ struct Sim: Sendable
   static func sandpile(pour: Int = default, topplings: Int = default) -> Sim
   static func schelling(preference: Double = default, vacancy: Double = default, mobility: Double = default, passes: Int = default, seed: Double = default) -> Sim
   static func selfWarp(amount: Double = default, refresh: Double = default, decay: Double = default, smoothing: Double = default) -> Sim
+  static func shader(_: Shader, inject: Shader? = default, substeps: Int = default, rest: SIMD4<Float> = default) -> Sim
   static func smoothLife(radius: Int = default, birth: ClosedRange<Double> = default, survival: ClosedRange<Double> = default, intervalSoftness: Double = default, cellSoftness: Double = default) -> Sim
   static func watercolor(pigments: [WatercolorPigment] = default, edgeDarkening: Double = default, backruns: Bool = default, dryBrush: Double = default, absorbency: Double = default, grain: Double = default, paperSeed: Double = default, paperColor: Color = default, substeps: Int = default) -> Sim
   static func wireworld() -> Sim

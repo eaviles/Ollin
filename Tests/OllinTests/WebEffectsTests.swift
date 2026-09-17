@@ -601,6 +601,26 @@ import OllinWebGate
         }
     }
 
+    /// The Game of Life with a blinker laid across the right edge, two pixels a
+    /// cell: on the torus the Mac runs it oscillates forever, and the page must wrap
+    /// its steps the same way or the three cells die at the seam.
+    final class Wrapped: Sketch {
+        override var canvasSize: CanvasSize { .square(96) }
+        var field: SimField!
+        override func setup() { field = makeSimField(.gameOfLife(), scale: 0.5) }
+        override func draw() {
+            background(.black)
+            withField(field) {
+                noStroke(); fill(.white)
+                if frameCount == 1 {
+                    for x in [47, 0, 1] { drawRect(Double(x) * 2, 24 * 2, 2, 2) }
+                    for y in [47, 0, 1] { drawRect(30 * 2, Double(y) * 2, 2, 2) }
+                }
+            }
+            drawImage(field.image, 0, 0)
+        }
+    }
+
     // MARK: The browser
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
@@ -622,6 +642,7 @@ import OllinWebGate
             ("Wired", { Wired() }, 30, 28),
             ("Sorted", { Sorted() }, 8, 6),
             ("Quenched", { Quenched() }, 8, 6),
+            ("Wrapped", { Wrapped() }, 8, 5),
             ("Posted", { Posted() }, 4, 2),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
             ("Filmed", { Filmed() }, 4, 2),

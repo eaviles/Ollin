@@ -574,7 +574,19 @@ final class MetalRenderer {
     /// user code), so a shader recompiles only when its source changes, not per frame.
     /// A *failed* compile is cached too (`userShaderErrors`) so a broken shader doesn't
     /// retry every frame; the cache is cleared on a framework-shader reload.
-    enum UserShaderVariant { case generator, filter, combine }
+    /// What a user `Shader` is compiled as: the three effect-graph shapes, and the two
+    /// kernels of a `Sim.shader` field (the step over the state, the inject that lays
+    /// this frame's marks onto it), whose wrapper reads the state as data.
+    enum UserShaderVariant { case generator, filter, combine, simStep, simInject }
+    /// The samplers a simulation field's edge rule binds for its step passes, keyed by
+    /// `FieldEdge` (bit 0 wraps x, bit 1 wraps y): the image sampler's filtering with
+    /// the address mode the field asked for, so a tap past the border wraps or clamps
+    /// in the sampler and the shaders carry no edge branch. Built on first use.
+    var simSamplers: [Int: MTLSamplerState] = [:]
+    /// A 1x1 transparent-black texture bound where a `Sim.shader` kernel's `inputs`
+    /// name a layer that was not drawn this frame, so `input(info, i)` reads zero and
+    /// never an unbound slot. Made on first use.
+    var blankInputTexture: MTLTexture?
     var userShaderLibraries: [UInt64: MTLLibrary] = [:]
     var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
     var userShaderErrors: [UInt64: ShaderCompileError] = [:]
@@ -1090,7 +1102,7 @@ final class MetalRenderer {
     /// per-frame acquisition cursor, reset at the start of the effects graph.
     var targetTexPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int, format: MTLPixelFormat)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
-    var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
+    var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int, format: MTLPixelFormat)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     /// The `rg32Float` pair a measured distance field ping-pongs through, pooled on the
     /// same ring discipline (a flood writes them every pass, so sharing one across frames

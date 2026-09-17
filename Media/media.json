@@ -10038,6 +10038,27 @@
       "stillSmall": "examples/Simulation/Watercolor/still-640.jpg?v=c450ffd5",
       "width": 1080
     },
+    "Simulation/Wind": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.843,
+      "sound": false,
+      "source": "85ba824490f57148",
+      "rendered": "2026-09-17",
+      "bytes": {
+        "loop": 2063286,
+        "loopSmall": 484933,
+        "still": 60557,
+        "stillSmall": 28481
+      },
+      "loop": "examples/Simulation/Wind/loop.mp4?v=6568bfc7",
+      "loopSmall": "examples/Simulation/Wind/loop-640.mp4?v=24d36efe",
+      "still": "examples/Simulation/Wind/still.jpg?v=4c19bf4c",
+      "stillSmall": "examples/Simulation/Wind/still-640.jpg?v=32bbace9"
+    },
     "Text/Columns": {
       "bytes": {
         "still": 99736,

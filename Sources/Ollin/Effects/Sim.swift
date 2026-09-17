@@ -58,6 +58,9 @@ public struct Sim: Sendable {
                        passes: Int, seed: Double)
         case ising(temperature: Double, field: Double, sweeps: Int, seed: Double)
         case selfWarp(SelfWarpConfig)
+        /// A kernel of the sketch's own: `step` runs every substep over the state,
+        /// `inject` (or the data inject when nil) lays this frame's marks onto it.
+        case shader(step: Shader, inject: Shader?, substeps: Int, rest: SIMD4<Float>)
     }
 
     let kind: Kind
@@ -752,6 +755,55 @@ public struct Sim: Sendable {
                          sweeps: max(1, min(32, sweeps)), seed: seed))
     }
 
+    /// A simulation of your own: a Metal function you write, run over the field every
+    /// frame in place of a built-in rule. The kernel is a `Shader` whose `shade(uv, info)`
+    /// returns the cell's **next state** from its neighborhood, read through `cell(info)`
+    /// (the cell itself) and `cell(info, dx, dy)` (a neighbor, `dy` positive downward like
+    /// the canvas), or `sampleRaw(info, p)` at any position; the state is data, so what
+    /// you return is stored as it is, with no color conversion either way. `info.texel`
+    /// is one cell in `uv` units, `info.pass` which of the `substeps` this is, and
+    /// `info.age` how many frames the field has run. The field's `edge` decides what a
+    /// read past the border returns (a torus by default, walls with `.clamped`), and its
+    /// `precision` how exactly a number keeps (`.float32` for a state that counts).
+    ///
+    /// ```swift
+    /// let life = Sim.shader(Shader("""
+    /// float4 shade(float2 uv, ShaderInfo info) {
+    ///     float n = 0.0;
+    ///     for (int dy = -1; dy <= 1; dy++)
+    ///         for (int dx = -1; dx <= 1; dx++)
+    ///             if (dx != 0 || dy != 0) n += step(0.5, cell(info, dx, dy).r);
+    ///     float me = step(0.5, cell(info).r);
+    ///     float alive = (n == 3.0 || (me > 0.5 && n == 2.0)) ? 1.0 : 0.0;
+    ///     return float4(alive, alive, alive, 1.0);
+    /// }
+    /// """))
+    /// ```
+    ///
+    /// **How a drawn mark enters the field** is the second kernel. Without one, the
+    /// marks a `withField` block draws are laid onto the state by their alpha (a white
+    /// disc writes 1 into the cells it covers, black writes 0, and the state's own
+    /// alpha is kept), which seeds an automaton or paints a value. With `inject:`, a
+    /// shader of yours runs instead, once per frame before the steps, reading the
+    /// current state through `cell` and this frame's marks through `mark(info)` (the
+    /// mark's color in linear light, as every sim reads its marks, with its coverage
+    /// in `.a`): that is how a mark *adds* to a cell rather than replacing it, pushes a
+    /// velocity where a brush moved, or means different things by its color. The
+    /// region a kernel acts on is whatever the block drew, so a circle, a line, or a
+    /// rectangle drawn there is that shape stepped by the inject.
+    ///
+    /// `substeps` runs the step that many times a frame (a diffusion that wants to
+    /// settle faster than one step a frame), `rest` is the state every cell starts at,
+    /// and the field's `inputs` are extra layers the kernels read with `input(info, i)`.
+    /// A compile error is reported at the file and line you wrote the kernel in, the
+    /// field keeps its last state, and a later clean compile picks it up again. See
+    /// `Filter.arrows` for reading a two-channel state as arrows, and
+    /// `SimField.snapshot()` for reading the numbers back.
+    public static func shader(_ step: Shader, inject: Shader? = nil, substeps: Int = 1,
+                              rest: SIMD4<Float> = SIMD4(0, 0, 0, 1)) -> Sim {
+        Sim(kind: .shader(step: step, inject: inject, substeps: max(1, substeps), rest: rest))
+    }
+
     // MARK: Renderer hooks (internal)
 
     /// The seeded random start a state automaton needs, or `nil` for sims that rest
@@ -830,6 +882,7 @@ public struct Sim: Sendable {
         case let .ising(_, _, sweeps, _):
             return sweeps * 2               // two checkerboard passes make one sweep
         case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
+        case let .shader(_, _, substeps, _): return max(1, substeps)
         }
     }
 
@@ -865,6 +918,7 @@ public struct Sim: Sendable {
                                                             // random mix (stateSeedFill)
         case .ising:             return SIMD4(0, 0, 0, 1)   // unused: starts as a seeded
                                                             // random mix (stateSeedFill)
+        case let .shader(_, _, _, rest): return rest
         case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
                                                             // and primes its own state
         }
@@ -893,6 +947,7 @@ public struct Sim: Sendable {
         case .schelling:         return "ollin_sim_schelling"
         case .ising:             return "ollin_sim_ising"
         case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
+        case .shader:            return ""   // unused: the kernel is the sketch's own Shader
         }
     }
 
@@ -926,6 +981,7 @@ public struct Sim: Sendable {
         case .wireworld:        return "ollin_sim_inject_wire"     // four levels, snapped
         case .schelling:        return "ollin_sim_inject_kinds"    // three levels, snapped
         case .ising:            return "ollin_sim_inject_spins"    // two levels, snapped
+        case .shader:           return "ollin_sim_inject_data"     // by alpha, the state's own alpha kept
         default:                return "ollin_sim_inject"
         }
     }
@@ -992,6 +1048,32 @@ public struct Sim: Sendable {
             return [SIMD4(Float(temperature), Float(field), Float(seed), Float(sweeps))]
         case .selfWarp:
             return []   // unused: self-warp binds per-pass parameters itself
+        case .shader:
+            return []   // the kernel's own `params` ride the user-shader buffer
+        }
+    }
+
+    /// The sketch's own kernels, for a `.shader` sim: the step, and the inject when one
+    /// was given (nil means the data inject, `ollin_sim_inject_data`).
+    var userKernel: (step: Shader, inject: Shader?)? {
+        if case let .shader(step, inject, _, _) = kind { return (step, inject) }
+        return nil
+    }
+
+    /// Whether the field's `edge` decides what this sim reads past the border. True for
+    /// every sim that taps its neighbors through the field's sampler; false for the sims
+    /// whose physics fix their boundary (ripples absorb at a clamped rim, the sandpile is
+    /// open, the falling sand is a closed box, Schelling's board is bounded) and for the
+    /// multi-pass pipelines (fluid, Turing, watercolor, self-warp), which bind their own.
+    var honorsEdge: Bool {
+        switch kind {
+        case .reactionDiffusion, .predatorPrey, .gameOfLife, .lenia, .smoothLife,
+             .cyclic, .excitable, .briansBrain, .forestFire, .hodgepodge, .wireworld,
+             .ising, .shader:
+            return true
+        case .ripples, .fluid, .multiScaleTuring, .sandpile, .fallingSand, .watercolor,
+             .schelling, .selfWarp:
+            return false
         }
     }
 }

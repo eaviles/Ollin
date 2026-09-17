@@ -343,6 +343,8 @@ The layered-effects substrate: render targets, the filter catalog, generators, f
 - ``ShaderCompileError``
 - ``Sim``
 - ``SimField``
+- ``FieldEdge``
+- ``FieldSnapshot``
 - ``SprayLine``
 - ``TuringScale``
 - ``Visual``

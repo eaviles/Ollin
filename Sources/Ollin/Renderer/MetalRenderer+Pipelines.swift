@@ -850,6 +850,57 @@ extension MetalRenderer {
             }
 
             """
+        case .simStep, .simInject:
+            // A simulation kernel reads its field as data through the field's own
+            // sampler, which carries the edge rule (wrap or clamp per axis), so no
+            // reader clamps its coordinate: what lies past the border is the
+            // sampler's answer. `in0` is the state, `in1` this frame's marks (the
+            // inject only), `ex0...ex3` the field's extra input layers.
+            layerFields = "    float2 uv; float2 texel; uint pass; uint substeps; uint age; uint inputCount;\n"
+                + "    texture2d<float> in0; sampler in0samp;\n"
+                + (variant == .simInject ? "    texture2d<float> in1;\n" : "")
+                + "    texture2d<float> ex0; texture2d<float> ex1; texture2d<float> ex2; texture2d<float> ex3;\n"
+            sampleReaders = """
+            // The cell being stepped, as stored.
+            inline float4 cell(thread const ShaderInfo &info) {
+                return info.in0.sample(info.in0samp, info.uv, level(0.0));
+            }
+            // The neighbor `dx` cells across and `dy` down (positive down, like the
+            // canvas), through the field's edge rule.
+            inline float4 cell(thread const ShaderInfo &info, int dx, int dy) {
+                return info.in0.sample(info.in0samp, info.uv + float2(float(dx), float(dy)) * info.texel, level(0.0));
+            }
+            // The state at any position in uv, as stored.
+            inline float4 sampleRaw(thread const ShaderInfo &info, float2 p) {
+                return info.in0.sample(info.in0samp, p, level(0.0));
+            }
+            // One of the field's extra input layers, as stored, at `p` or at the cell.
+            inline float4 input(thread const ShaderInfo &info, int i, float2 p) {
+                switch (i) {
+                case 0: return info.ex0.sample(info.in0samp, p, level(0.0));
+                case 1: return info.ex1.sample(info.in0samp, p, level(0.0));
+                case 2: return info.ex2.sample(info.in0samp, p, level(0.0));
+                default: return info.ex3.sample(info.in0samp, p, level(0.0));
+                }
+            }
+            inline float4 input(thread const ShaderInfo &info, int i) {
+                return input(info, i, info.uv);
+            }
+
+            """ + (variant == .simInject ? """
+            // This frame's drawn marks at the cell: the mark's color in linear light
+            // (straight, not premultiplied) with its coverage in `.a`; zero where
+            // nothing was drawn.
+            inline float4 mark(thread const ShaderInfo &info) {
+                float4 d = info.in1.sample(info.in0samp, info.uv, level(0.0));
+                return float4(ollin_unpremul(d), d.a);
+            }
+            inline float4 mark(thread const ShaderInfo &info, float2 p) {
+                float4 d = info.in1.sample(info.in0samp, p, level(0.0));
+                return float4(ollin_unpremul(d), d.a);
+            }
+
+            """ : "")
         }
         return """
         struct OllinUserVertexOut { float4 position [[position]]; float2 uv; };
@@ -913,7 +964,31 @@ extension MetalRenderer {
                 + "                                    sampler ollin_samp [[sampler(0)]],\n"
             layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
                 + "    info.in1 = ollin_src1; info.in1samp = ollin_samp;\n"
+        case .simStep, .simInject:
+            // The state at texture 0, the marks at 1 (inject only), the extra input
+            // layers from there on; the sim's own rows follow the user's parameters in
+            // the same buffer (`extraRows` in `encodeUserShader`).
+            let first = variant == .simInject ? 2 : 1
+            textureParams = "                                    texture2d<float> ollin_src0 [[texture(0)]],\n"
+                + (variant == .simInject ? "                                    texture2d<float> ollin_src1 [[texture(1)]],\n" : "")
+                + (0..<4).map { "                                    texture2d<float> ollin_ex\($0) [[texture(\(first + $0))]],\n" }.joined()
+                + "                                    sampler ollin_samp [[sampler(0)]],\n"
+            layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
+                + (variant == .simInject ? "    info.in1 = ollin_src1;\n" : "")
+                + "    info.ex0 = ollin_ex0; info.ex1 = ollin_ex1; info.ex2 = ollin_ex2; info.ex3 = ollin_ex3;\n"
+                + "    info.uv = in.uv;\n"
+                + "    info.texel = ollin_params[OLLIN_SHADER_PARAM_ROWS].xy;\n"
+                + "    info.pass = uint(ollin_params[OLLIN_SHADER_PARAM_ROWS].z);\n"
+                + "    info.age = uint(ollin_params[OLLIN_SHADER_PARAM_ROWS].w);\n"
+                + "    info.substeps = uint(ollin_params[OLLIN_SHADER_PARAM_ROWS + 1].x);\n"
+                + "    info.inputCount = uint(ollin_params[OLLIN_SHADER_PARAM_ROWS + 1].y);\n"
         }
+        // A picture's shader returns straight sRGB, which the layer stores as
+        // premultiplied linear; a simulation kernel returns the next state, which is
+        // data and is stored exactly as returned.
+        let finish = (variant == .simStep || variant == .simInject)
+            ? "    return shade(in.uv, info);\n"
+            : "    float4 c = shade(in.uv, info);\n    return float4(srgbToLinear(c.rgb) * c.a, c.a);\n"
         return """
         fragment float4 ollin_user_fragment(OllinUserVertexOut in [[stage_in]],
         \(textureParams)                                    constant float4 *ollin_params [[buffer(0)]],
@@ -926,9 +1001,7 @@ extension MetalRenderer {
             info.frame = ollin_u.frame;
             info.paramCount = ollin_u.paramCount;
             for (uint i = 0u; i < OLLIN_SHADER_PARAM_ROWS; ++i) info.params[i] = ollin_params[i];
-        \(layerAssign)    float4 c = shade(in.uv, info);
-            return float4(srgbToLinear(c.rgb) * c.a, c.a);
-        }
+        \(layerAssign)\(finish)}
         """
     }
 

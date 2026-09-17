@@ -146,6 +146,7 @@ let package = Package(
         example("Simulation/SelfWarp"),
         example("Simulation/Ripples"),
         example("Simulation/Watercolor"),
+        example("Simulation/Wind"),
         example("Simulation/Attractor"),
         example("Simulation/Breeding"),
         example("Simulation/Evolution"),

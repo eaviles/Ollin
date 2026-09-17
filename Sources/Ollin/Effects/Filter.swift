@@ -174,6 +174,9 @@ public struct Filter: Sendable {
         /// Map luminance through a baked 256-step color ramp (linear, straight alpha),
         /// blended over the original by `amount`.
         case gradientMap(lut: [SIMD4<Float>], amount: Double)
+        /// A two-channel field drawn as arrows: one per `spacing` pixels, the vector
+        /// (red across, green down) times `scale` in pixels, `width` pixels wide.
+        case arrows(spacing: Double, scale: Double, color: SIMD4<Float>, width: Double)
         /// Show the layer as a printing condition reproduces it, read from a lattice
         /// baked once per condition (`nil` when its profiles could not be read, which
         /// leaves the layer alone). `warning`, when present, replaces every color the
@@ -531,6 +534,27 @@ public struct Filter: Sendable {
     }
 
     /// Gradient map through a `Colormap` (viridis, magma, turbo, …).
+    /// A two-channel layer drawn as arrows: the picture of a wind, a gradient, a
+    /// velocity, or any field whose red is an x and green a y. One arrow per cell of
+    /// `spacing` pixels reads the vector at the cell's center, in the field's own units
+    /// (a `Sim.shader` state stores whatever its kernel wrote; a `.gradient` or
+    /// `.distanceField` layer its direction), times `scale` into pixels, and draws it
+    /// from that center as a shaft with two barbs, `width` pixels wide, in `color`.
+    /// A vector longer than the spacing is cut to it, so the arrows say direction and
+    /// `scale` says how much of the magnitude is shown; one shorter than half a pixel
+    /// draws nothing. The result is ink over transparency, so it composites over the
+    /// field it reads or over anything else, and a stack of two filters (`.gradientMap`
+    /// under `.arrows`) is the usual picture of a two-channel simulation.
+    ///
+    /// ```swift
+    /// drawImage(wind.filtered(.arrows(spacing: 24, scale: 40)).image, 0, 0)
+    /// ```
+    public static func arrows(spacing: Double = 24, scale: Double = 1, color: Color = .white,
+                              width: Double = 1.5) -> Filter {
+        Filter(kind: .arrows(spacing: max(2, spacing), scale: scale, color: color.linearRGBA,
+                             width: max(0.5, width)))
+    }
+
     public static func gradientMap(_ colormap: Colormap, amount: Double = 1) -> Filter {
         Filter(kind: .gradientMap(lut: bakeLUT { colormap.color(at: $0) },
                                   amount: min(max(amount, 0), 1)))

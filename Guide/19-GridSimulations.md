@@ -536,6 +536,42 @@ You draw the whole scene into the field, background and all, and composite the f
 
 One practical note: the motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal, and a camera or video frame drawn into the field works just as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
 
+## A rule of your own
+
+Every field so far ran a rule somebody else wrote. The catalog is long, but sooner or later you want a rule it does not have: a heat that spreads, a wind that carries something, an automaton with your own table. `Sim.shader` takes a kernel you write and runs it in the same loop, with the same seeding by drawing, the same `image`, the same memory from frame to frame.
+
+The kernel is a [`Shader`](17-YourFirstShader.md), and its `shade` returns the cell's **next state** from its neighborhood. `cell(info)` is the cell itself and `cell(info, dx, dy)` a neighbor, `dy` positive downward like the canvas. Here is Life again, in nine lines of Metal:
+
+```swift
+let life = Sim.shader(Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float n = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx != 0 || dy != 0) { n += step(0.5, cell(info, dx, dy).r); }
+        }
+    }
+    float me = step(0.5, cell(info).r);
+    float alive = (n == 3.0 || (me > 0.5 && n == 2.0)) ? 1.0 : 0.0;
+    return float4(alive, alive, alive, 1.0);
+}
+"""))
+```
+
+It matches the built-in `.gameOfLife()` cell for cell, which is how you know the readers mean what they say. The state is *data*: nothing you return is treated as a color, and nothing you read has been. A cell can hold a temperature, a velocity, a count, whatever four numbers your rule needs.
+
+The second kernel is how a drawn mark gets in. Without one, a mark lands the way it does for the catalog: laid onto the state by its alpha, white writing 1 and black 0. With `inject:`, your own shader runs where the marks landed, reading them through `mark(info)`, and that is what turns a brush into a force. A mark can *add* heat instead of setting it. It can push a wind the way the mouse moved, with the motion handed in as the shader's parameters. The region it acts on is whatever the block drew, so a circle, a line, or a rectangle in `withField` is that shape stepped by your rule:
+
+```swift
+plate = makeSimField(.shader(heatStep, inject: addHeat, substeps: 4), scale: 0.25, edge: .clamped)
+```
+
+<img src="Images/19-GridSimulations/OwnRule.jpg" alt="A heat plate run by a hand-written kernel: a brush's trail glows orange through magenta on black, spread and cooling, with white arrows showing the heat running down its own slope toward the cold" width="560">
+
+That line carries the two other choices a field of your own makes you think about. **`edge`** is what a cell on the border reads when it looks past the field. The default wraps, which is why a glider that leaves Life's right edge comes back on the left. `.clamped` puts walls there: a read past the edge returns the border cell, which for a diffusing quantity is an insulated boundary. Nothing leaks out of this plate. The catalog's neighbor-reading sims honor the same setting, so Life on a clamped field has corners. **`precision`** is how exactly a number keeps. Half float, the default, holds a whole number exactly only to about two thousand, so a rule that *counts* wants `.float32`.
+
+Two more things round the kit out. A two-channel state reads as a picture through `.arrows`, which is what drew the white arrows above from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late, so a sketch can hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch: a wind that carries dust, a drag that pushes it, a noise layer handed in as an `input` that stirs it, the edge switched live, the arrows over the dust, and the mean speed read back twice a second.
+
 ## Putting it together: the organism
 
 The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
@@ -599,6 +635,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 ## Go deeper
 
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every parameter, seeding semantics, and field scale.
+- [A simulation of your own](../Docs/Drawing/Effects.md#simfield-shader): the kernel contract, the readers, the inject, `edge`, `precision`, `inputs`, `.arrows`, and `snapshot()`.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (twelve rules on a picker, Wireworld, Schelling's board, the Ising model, and the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).

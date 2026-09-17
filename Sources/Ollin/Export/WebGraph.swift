@@ -257,6 +257,11 @@ struct WebSimNode: Hashable {
     /// a modulated variant and the map was drawn this frame.
     var modulation: Int?
     var modulatedStep: String?
+    /// Which axes wrap when a step taps past the border: the field's edge for a sim
+    /// that reads its neighbors through the field's sampler, neither for one whose
+    /// physics fix its boundary (the page's textures clamp unless told otherwise).
+    var wrapsX: Bool = true
+    var wrapsY: Bool = true
 }
 
 /// The blend modes as the page numbers them.
@@ -984,12 +989,14 @@ final class WebGraphRecorder {
                 if let fill = sim.stateSeedFill {
                     seedFill = [Float(fill.seed), Float(fill.levels), Float(fill.empty)]
                 }
+                let edge = sim.honorsEdge ? field.edge : .clamped
                 let simNode = WebSimNode(inject: sim.injectFragment, step: sim.stepFragment,
                                          substeps: max(1, sim.substeps),
                                          rest: [rest.x, rest.y, rest.z, rest.w], seedFill: seedFill,
                                          paramOffset: r.offset, paramRows: r.rows,
                                          modulation: modulation,
-                                         modulatedStep: modulation == nil ? nil : sim.modulatedStepFragment)
+                                         modulatedStep: modulation == nil ? nil : sim.modulatedStepFragment,
+                                         wrapsX: edge.wrapsX, wrapsY: edge.wrapsY)
                 layer.kind = .sim(simNode, clear: clearOf(target), items: try items(for: target))
             case .ocean:
                 throw refuse("an ocean field")
@@ -1231,7 +1238,8 @@ extension WebGraph {
                 d["t"] = "sim"; d["clear"] = clear; d["items"] = items(list)
                 var s: [String: Any] = ["inject": sim.inject, "step": sim.step, "n": sim.substeps,
                                         "rest": sim.rest, "seed": sim.seedFill,
-                                        "p": sim.paramOffset, "r": sim.paramRows]
+                                        "p": sim.paramOffset, "r": sim.paramRows,
+                                        "wx": sim.wrapsX ? 1 : 0, "wy": sim.wrapsY ? 1 : 0]
                 if let m = sim.modulation, let ms = sim.modulatedStep { s["mod"] = m; s["modStep"] = ms }
                 d["sim"] = s
             }

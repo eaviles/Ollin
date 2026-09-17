@@ -81,6 +81,8 @@ extension Filter {
         case let .gradientMap(lut, amount):
             return pass("ollin_fx_gradient_map", [f(amount, 0, 0, 0)],
                         inputs: [.layer(0), .table(lut)])
+        case let .arrows(spacing, scale, color, width):
+            return pass("ollin_fx_arrows", [texel, f(spacing, scale, width, 0), color])
         case let .lut(table, amount):
             // The curves form is a strip, the same kind of table a gradient
             // map reads; a cube is a 3D texture the renderer keeps by contents.
