@@ -4,17 +4,17 @@
 
 ## Recreations
 
-| [![BridgetRiley](https://media.ollin.art/groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab)](BridgetRiley/) | [![CaseyReas](https://media.ollin.art/groups/Recreations-CaseyReas-640.jpg?v=b8690208)](CaseyReas/) | [![FriederNake](https://media.ollin.art/groups/Recreations-FriederNake-640.jpg?v=61e41a0e)](FriederNake/) | [![GeorgNees](https://media.ollin.art/groups/Recreations-GeorgNees-640.jpg?v=7288a62b)](GeorgNees/) |
+| [![BridgetRiley](https://media.ollin.art/groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab)](BridgetRiley/) | [![CaseyReas](https://media.ollin.art/groups/Recreations-CaseyReas-640.jpg?v=b8690208)](CaseyReas/) | [![FriederNake](https://media.ollin.art/groups/Recreations-FriederNake-640.jpg?v=61e41a0e)](FriederNake/) | [![Gego](https://media.ollin.art/groups/Recreations-Gego-640.jpg?v=8aaeb575)](Gego/) |
 |---|---|---|---|
-| [BridgetRiley](BridgetRiley/) | [CaseyReas](CaseyReas/) | [FriederNake](FriederNake/) | [GeorgNees](GeorgNees/) |
-| [![HassanSharif](https://media.ollin.art/groups/Recreations-HassanSharif-640.jpg?v=08d27318)](HassanSharif/) | [![JaredTarbell](https://media.ollin.art/groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52)](JaredTarbell/) | [![JohnWhitney](https://media.ollin.art/groups/Recreations-JohnWhitney-640.jpg?v=1f957730)](JohnWhitney/) | [![JosefAlbers](https://media.ollin.art/groups/Recreations-JosefAlbers-640.jpg?v=b6022648)](JosefAlbers/) |
-| [HassanSharif](HassanSharif/) | [JaredTarbell](JaredTarbell/) | [JohnWhitney](JohnWhitney/) | [JosefAlbers](JosefAlbers/) |
-| [![ManfredMohr](https://media.ollin.art/groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3)](ManuelFelguerez/) | [![MonirFarmanfarmaian](https://media.ollin.art/groups/Recreations-MonirFarmanfarmaian-640.jpg?v=15da7df0)](MonirFarmanfarmaian/) | [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) |
-| [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) | [MonirFarmanfarmaian](MonirFarmanfarmaian/) | [OsamuSato](OsamuSato/) |
-| [![OwenSchuh](https://media.ollin.art/groups/Recreations-OwenSchuh-640.jpg?v=316d6303)](OwenSchuh/) | [![RyszardWiniarski](https://media.ollin.art/groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836)](RyszardWiniarski/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) | [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) |
-| [OwenSchuh](OwenSchuh/) | [RyszardWiniarski](RyszardWiniarski/) | [SolLeWitt](SolLeWitt/) | [VeraMolnar](VeraMolnar/) |
-| [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=8659ae06)](VicenteRojo/) |  |  |  |
-| [VicenteRojo](VicenteRojo/) |  |  |  |
+| [BridgetRiley](BridgetRiley/) | [CaseyReas](CaseyReas/) | [FriederNake](FriederNake/) | [Gego](Gego/) |
+| [![GeorgNees](https://media.ollin.art/groups/Recreations-GeorgNees-640.jpg?v=7288a62b)](GeorgNees/) | [![HassanSharif](https://media.ollin.art/groups/Recreations-HassanSharif-640.jpg?v=08d27318)](HassanSharif/) | [![JaredTarbell](https://media.ollin.art/groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52)](JaredTarbell/) | [![JohnWhitney](https://media.ollin.art/groups/Recreations-JohnWhitney-640.jpg?v=1f957730)](JohnWhitney/) |
+| [GeorgNees](GeorgNees/) | [HassanSharif](HassanSharif/) | [JaredTarbell](JaredTarbell/) | [JohnWhitney](JohnWhitney/) |
+| [![JosefAlbers](https://media.ollin.art/groups/Recreations-JosefAlbers-640.jpg?v=b6022648)](JosefAlbers/) | [![ManfredMohr](https://media.ollin.art/groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3)](ManuelFelguerez/) | [![MonirFarmanfarmaian](https://media.ollin.art/groups/Recreations-MonirFarmanfarmaian-640.jpg?v=15da7df0)](MonirFarmanfarmaian/) |
+| [JosefAlbers](JosefAlbers/) | [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) | [MonirFarmanfarmaian](MonirFarmanfarmaian/) |
+| [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) | [![OwenSchuh](https://media.ollin.art/groups/Recreations-OwenSchuh-640.jpg?v=316d6303)](OwenSchuh/) | [![RyszardWiniarski](https://media.ollin.art/groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836)](RyszardWiniarski/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) |
+| [OsamuSato](OsamuSato/) | [OwenSchuh](OwenSchuh/) | [RyszardWiniarski](RyszardWiniarski/) | [SolLeWitt](SolLeWitt/) |
+| [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) | [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=8659ae06)](VicenteRojo/) |  |  |
+| [VeraMolnar](VeraMolnar/) | [VicenteRojo](VicenteRojo/) |  |  |
 
 These sketches **recreate the work of past computer artists**. Each one rebuilds a piece to learn from it, and shows what a modern framework brings to it.
 
@@ -44,4 +44,5 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Hassan Sharif**](HassanSharif/). One table of picked numbers drawn three times across a sheet, as the dots a line touches, as the line, and as the line inside its square, with the draft paper of numbers hung beside it; and sheets of small angular lines through numbered crossings, one of them chosen and painted as a black band across a red canvas.
 - [**Owen Schuh**](OwenSchuh/). Two pages of a notebook where a digit is a color: the table of fractions woven as cloth and counted along its diagonals, and a list of numbers whose diagonal builds the number that is on no line of it.
 - [**Monir Shahroudy Farmanfarmaian**](MonirFarmanfarmaian/). A family of polygons cut from the circle, triangle to decagon, each set piece by piece in tilted mirror and painted glass and lit by a moving lamp; and a maze of spiral channels painted on the back of a pane, lines first and silver last, then turned over.
+- [**Gego**](Gego/). A net of irregular triangles tied by hand, hung from the ceiling at a few points and left to gravity, drawn as wire that thins as it goes away from you; and a drawing without paper, a bent lattice hanging a little off the wall whose shadow under a crossing lamp is the drawing.
 

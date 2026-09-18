@@ -903,5 +903,10 @@ let package = Package(
         // Farmanfarmaian.
         example("Recreations/MonirFarmanfarmaian/MirrorFamily"),
         example("Recreations/MonirFarmanfarmaian/BehindGlass"),
+        // A net of wire tied by hand, hung from the ceiling and drooping into
+        // the room; and a drawing without paper, a bent wire lattice hanging a
+        // little way off the wall whose shadow is the drawing, after Gego.
+        example("Recreations/Gego/Reticularea", [.physics]),
+        example("Recreations/Gego/DrawingWithoutPaper"),
     ]
 )

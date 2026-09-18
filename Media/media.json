@@ -231,6 +231,10 @@
     "Recreations/FriederNake": [
       "Recreations/FriederNake/HommageAPaulKlee"
     ],
+    "Recreations/Gego": [
+      "Recreations/Gego/Reticularea",
+      "Recreations/Gego/DrawingWithoutPaper"
+    ],
     "Recreations/GeorgNees": [
       "Recreations/GeorgNees/Schotter"
     ],
@@ -612,6 +616,14 @@
       ],
       "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
       "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e"
+    },
+    "Recreations/Gego": {
+      "of": [
+        "Recreations/Gego/Reticularea",
+        "Recreations/Gego/DrawingWithoutPaper"
+      ],
+      "image": "groups/Recreations-Gego.jpg?v=c28b2b32",
+      "imageSmall": "groups/Recreations-Gego-640.jpg?v=8aaeb575"
     },
     "Recreations/GeorgNees": {
       "of": [
@@ -8297,6 +8309,48 @@
       "stillBecause": "holds still",
       "stillSmall": "examples/Recreations/FriederNake/HommageAPaulKlee/still-640.jpg?v=4b1402e3",
       "width": 1080
+    },
+    "Recreations/Gego/DrawingWithoutPaper": {
+      "width": 1080,
+      "height": 1080,
+      "length": "18.0s",
+      "seconds": 18.0,
+      "frame": 700,
+      "motion": 2.405,
+      "sound": false,
+      "source": "a303dce59f6cdd41",
+      "rendered": "2026-09-18",
+      "bytes": {
+        "loop": 2731052,
+        "loopSmall": 618713,
+        "still": 87616,
+        "stillSmall": 31603
+      },
+      "loop": "examples/Recreations/Gego/DrawingWithoutPaper/loop.mp4?v=17f71191",
+      "loopSmall": "examples/Recreations/Gego/DrawingWithoutPaper/loop-640.mp4?v=5a76f6ea",
+      "still": "examples/Recreations/Gego/DrawingWithoutPaper/still.jpg?v=690c62f1",
+      "stillSmall": "examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=6f9e40e6"
+    },
+    "Recreations/Gego/Reticularea": {
+      "width": 1080,
+      "height": 1080,
+      "length": "14.0s",
+      "seconds": 14.0,
+      "frame": 660,
+      "motion": 4.912,
+      "sound": false,
+      "source": "0b451d76a0d76f52",
+      "rendered": "2026-09-18",
+      "bytes": {
+        "loop": 9966732,
+        "loopSmall": 2472413,
+        "still": 133110,
+        "stillSmall": 45247
+      },
+      "loop": "examples/Recreations/Gego/Reticularea/loop.mp4?v=af31e9a7",
+      "loopSmall": "examples/Recreations/Gego/Reticularea/loop-640.mp4?v=51a82469",
+      "still": "examples/Recreations/Gego/Reticularea/still.jpg?v=d1eeb4a7",
+      "stillSmall": "examples/Recreations/Gego/Reticularea/still-640.jpg?v=520d08a4"
     },
     "Recreations/GeorgNees/Schotter": {
       "bytes": {

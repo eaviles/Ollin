@@ -322,6 +322,7 @@ Vectors are the physics notation the 1880s settled on, mostly at the hands of Jo
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (dots racing to a click), and `Smoothing` (a chased value with a filter instead of physics); plus [`Examples/Shapes/Arrows`](../Examples/Shapes/Arrows/Sketch.swift), a field of `drawArrow` marks leaning toward the cursor with the head geometry swept around a ring.
 - A look ahead: [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) runs this chapter's correction three ways at once, and [Chapter 12](12-FlocksAndSwarms.md) takes it apart.
+- The Gego homage [`DrawingWithoutPaper`](../Examples/Recreations/Gego/DrawingWithoutPaper/Sketch.swift): a projection worked out in two lines of vector arithmetic. Each bit of wire hangs a known distance off the wall, and where the ray from the lamp through it meets the wall is its shadow, which is the whole of the picture.
 
 ---
 

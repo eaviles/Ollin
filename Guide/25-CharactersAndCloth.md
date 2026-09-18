@@ -604,6 +604,7 @@ The cloth and the ropes are the one part with an academic line you can follow. P
 - [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancy, including every parameter on the suspension and the cloth solver, and what a snapshot keeps for each.
 - Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its parameters live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft` and `Rigging` (cloth, cloth on water, and ropes), `Chain` and `Bagatelle` (ropes and degrees of freedom), and `Yard`, which is this sketch with a saved world, an animated figure, and rather more going on.
+- The Gego homage [`Reticularea`](../Examples/Recreations/Gego/Reticularea/Sketch.swift): a soft body whose mesh the sketch builds rather than loads, an irregular net of triangles held at eight of its vertices and left to hang. It shows `pinned:` doing the hanging, `move(_:to:)` drifting those held points so the air moves the whole net, and `positions` read back each frame to draw the thing the solver arrived at.
 
 ---
 
