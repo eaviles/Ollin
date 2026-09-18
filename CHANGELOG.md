@@ -6,6 +6,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **Surfaces in the depth-of-field spray.** `SprayQuad` puts a face in a `LineSpray` scene beside its wires: the parallelogram two edges span from a corner, sampled over its area, set through `setQuads(_:)`. Lines and quads scatter into one accumulator and print as one picture. A quad's `light` is the whole quad's, not a brightness per unit of area, which is the rule a line already kept. `LineSpray.picture` is an image the quads read through each quad's own `pictureBounds`, so a photograph or a sheet of glyphs becomes an object made of light for the lens to throw out of focus. Purely additive: nothing in the line path changed.
+
 - **MIDI files in and out.** `MIDIFile` reads a Standard MIDI File into notes a sketch can play or draw, and writes one back out, so a piece written elsewhere runs in a sketch and a phrase a sketch worked out opens in a sequencer. Formats 0, 1, and 2, the tempo map read from either side with `beats(at:)` and `seconds(at:)`, plus control changes, pitch bends, programs, names, and markers. A `Synth` will also write down what it is asked to play: `startRecording(tempo:name:)` and `stopRecording()` hand back a take. It lives in `OllinAudio`, since a file arrives as notes rather than as messages.
 
 ## [0.9.0] - 2026-09-18

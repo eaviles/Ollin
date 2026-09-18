@@ -61,10 +61,26 @@ SprayLine(from: a, to: b, color: .orange, endColor: .white, intensity: 2, weight
 - A line's light per pass is its `light`, however many points draw it. Every point carries its share of that light. This keeps the exposure the same under either sampling mode.
 - `light` is the whole segment's, not a brightness per unit of it. Length never enters the exposure: a metre-long line and a millimetre-long one at the same `light` lay down the same light per pass. A scene that works in light per unit length multiplies by its own extent before handing the number over. A line whose ends are the same point puts every sample in one place, which is how a dot is drawn.
 - `sampling` picks how a pass divides its points among the lines. `.byLength(pointsPerPass:)` gives every line points in proportion to its length times its `weight`, and never fewer than one. So a long line is drawn as densely as a short one. `.perLine(n)` gives every line the same count.
+- Under `.perLine(n)` every primitive gets `n` points, a quad as much as a line. Under `.byLength(pointsPerPass:)` the quads draw from a **pool of their own**, shared by area times `weight`, because a length and an area are not the same units and one budget split between them would mean nothing: the number is the same one, spent twice.
 - A scene of dots wants `.perLine(n)`. Under `.byLength` a share is the length times the `weight`, so a dot's share is zero however heavy it is. It falls to the floor of one point a pass. Its light is still right, since that one point carries all of it, but it fills in far more slowly than a line does. Where every line is a dot there is no length to share out, and each gets one point whatever `pointsPerPass` says.
 - `pointSize` is the diameter that each sample's light spreads over, in canvas points. The total light is the same at any size, so a larger size softens the grain without changing the exposure. The default of 1 is a one-pixel point, which is the cheapest to draw.
+- `spray.setQuads(_:)` puts **surfaces** in the same spray. A `SprayQuad` is the parallelogram two edges span from a corner, sampled over its area rather than along a length, so a scene can be made of faces instead of a wireframe of one. Lines and quads scatter into the same accumulator in the same pass and print together: one picture, not two.
+- A quad's `light` is the **whole quad's**, exactly as a line's is. Scaling a quad spreads the same light over more surface rather than making it brighter, so a scene that works in light per unit area multiplies by its own extent on the way in.
+- `spray.picture` is an `Image` the quads read. Each quad's `pictureBounds` names the patch of it that belongs to that quad, in `0...1`, and the quad's light is multiplied by what it finds there, so a photograph or a sheet of glyphs becomes an object made of light for the lens to throw out of focus. The texels are read as linear light, the units a quad's own `light` is in. A quad with no `pictureBounds` reads nothing and stands on its light alone.
+- `spray.lines` and `spray.quads` are the scene as it was last given, for reading back what a sketch put in.
 - `spray.image` is the running mean as an `Image` in linear light, for when you would rather print it yourself.
 - `spray.setLines(_:)` swaps in a new scene and restarts the average. It is built to be called every frame. The same lines again cost nothing and leave the average alone, which is what lets a sketch that rebuilds its scene each draw converge under `--settle`. Lines that moved restart it, and while every line keeps its point count (always under `.perLine`) nothing is allocated: the point table is kept and the records are rewritten into a ring of buffers the frames in flight are not reading. A scene whose point counts change, a different number of lines or `.byLength` shares that rounded differently, rebuilds the table.
+
+```swift
+spray.setQuads([
+    SprayQuad(corner: Vector3(-2, -1, 0), edge1: Vector3(4, 0, 0), edge2: Vector3(0, 0, 4),
+              color: .white, intensity: 0.4),                      // a lit floor
+    SprayQuad(corner: Vector3(-1, 0, 1), edge1: Vector3(2, 0, 0), edge2: Vector3(0, 2, 0),
+              light: SIMD3(repeating: 1),
+              pictureBounds: Rectangle(x: 0, y: 0, width: 1, height: 1)),   // a picture, defocused
+])
+spray.picture = loadImage("poster.jpg", in: .module)
+```
 
 The `Rendering/LineSpray` example draws a whole scene through it, with the camera, the lens, and the print settings as parameters.
 

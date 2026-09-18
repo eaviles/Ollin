@@ -237,6 +237,82 @@ struct LightAccumulationTests {
         #expect(moved.spray.passes == 3 * moved.spray.passesPerFrame, "a lens change restarts the average")
     }
 
+    @Test func sprayQuadPointCounts() {
+        let quads = [
+            SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0)),      // area 1
+            SprayQuad(corner: .zero, edge1: Vector3(2, 0, 0), edge2: Vector3(0, 2, 0)),      // area 4
+            SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0), weight: 3),
+            SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(2, 0, 0)),      // parallel: no area
+        ]
+        #expect(quads.map(\.area) == [1, 4, 1, 0])
+        #expect(LineSpray.quadPointCounts(for: quads, sampling: .perLine(25)) == [25, 25, 25, 25])
+        // Weighted areas 1, 4, 3, 0 over a hundred points: 12, 50, 37, and one.
+        #expect(LineSpray.quadPointCounts(for: quads, sampling: .byLength(pointsPerPass: 100)) == [12, 50, 37, 1])
+    }
+
+    @Test func sprayQuadLightAndToneAreOneNumber() {
+        let corner = Vector3(0, 0, 0), e1 = Vector3(1, 0, 0), e2 = Vector3(0, 1, 0)
+        let named = SprayQuad(corner: corner, edge1: e1, edge2: e2, color: .white, intensity: 0.4)
+        let given = SprayQuad(corner: corner, edge1: e1, edge2: e2, light: SIMD3(repeating: 0.4))
+        #expect(named == given, "a tone times a brightness is the light it stands for")
+        #expect(SprayQuad(corner: corner, edge1: e1, edge2: e2).light == SIMD3(repeating: 1))
+        #expect(SprayQuad(corner: corner, edge1: e1, edge2: e2).pictureBounds == nil)
+    }
+
+    /// A quad's light is the whole quad's, however many points draw it and
+    /// whatever its area, which is the line's law one dimension up.
+    @Test func aQuadsLightIsSpreadOverItsOwnPoints() {
+        let small = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0),
+                              light: SIMD3(repeating: 2))
+        let large = SprayQuad(corner: .zero, edge1: Vector3(10, 0, 0), edge2: Vector3(0, 10, 0),
+                              light: SIMD3(repeating: 2))
+        let counts = LineSpray.quadPointCounts(for: [small, large], sampling: .byLength(pointsPerPass: 1010))
+        let records = LineSpray.quadRecords(for: [small, large], counts: counts)
+        for (record, count) in zip(records, counts) {
+            #expect(abs(Double(record.corner.w) - 1 / Double(count)) < 1e-6,
+                    "each point carries one \(count)th of its quad's light")
+            // What a pass deposits is the share times the count: the light itself,
+            // the same for a quad of one square unit and one of a hundred.
+            #expect(abs(Double(record.light.x) * Double(record.corner.w) * Double(count) - 2) < 1e-5)
+        }
+    }
+
+    @Test func aQuadCarriesThePatchOfThePictureItReads() {
+        let plain = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0))
+        let read = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0),
+                             pictureBounds: Rectangle(x: 0.25, y: 0.5, width: 0.25, height: 0.5))
+        let records = LineSpray.quadRecords(for: [plain, read], counts: [1, 1])
+        #expect(records[0].texture.z == 0 && records[0].texture.w == 0,
+                "a patch of no size is what tells the kernel to read no picture")
+        #expect(records[1].texture == SIMD4<Float>(0.25, 0.5, 0.25, 0.5))
+    }
+
+    /// The surfaces reach the GPU through their own kernel and land in the same
+    /// picture as the lines: a scene of quads alone draws light, and the two
+    /// together draw more of it than either does by itself.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func quadsAndLinesScatterIntoOnePicture() throws {
+        func ink(lines: Bool, quads: Bool) throws -> Double {
+            let sketch = QuadSpraySketch()
+            sketch.wantsLines = lines
+            sketch.wantsQuads = quads
+            let image = try #require(OllinApp.image(of: sketch, frame: 3))
+            return linearSum(of: image)
+        }
+        let linesOnly = try ink(lines: true, quads: false)
+        let quadsOnly = try ink(lines: false, quads: true)
+        let both = try ink(lines: true, quads: true)
+
+        #expect(quadsOnly > 0, "a scene of surfaces alone draws light")
+        #expect(linesOnly > 0)
+        #expect(both > linesOnly, "the surfaces add to the wires rather than replacing them")
+        // One accumulator, one pass count, one picture: what the two draw
+        // together is what they draw apart, added. The slack is the print's,
+        // since the sum is read after the curve rather than before it.
+        #expect(abs(both - (linesOnly + quadsOnly)) < (linesOnly + quadsOnly) * 0.1,
+                "lines \(linesOnly) and quads \(quadsOnly) should add to about \(both)")
+    }
+
     /// A moving scene: `setLines` every frame with the same lines leaves the
     /// average alone (a settled export converges), moved lines restart it and
     /// reach the GPU (the light's centroid follows them), and while the point
@@ -607,6 +683,40 @@ private final class MovingSpraySketch: Sketch {
         camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
         if frameCount == 1 { tableAtFirstDraw = spray.pointTable }
         spray.setLines(lines(frame: frameCount - 1))
+        drawLineSpray(spray)
+        drawImage(spray.developed(exposure: 40).image, 0, 0)
+    }
+}
+
+/// A spray of a ring of lines, a pair of quads, or both, for reading what each
+/// contributes to one picture.
+private final class QuadSpraySketch: Sketch {
+    var spray: LineSpray!
+    var wantsLines = true, wantsQuads = true
+    override var canvasSize: CanvasSize { .square(96) }
+
+    override func setup() {
+        let lines = wantsLines ? (0 ..< 12).map { i -> SprayLine in
+            let a = Double(i) / 12 * .tau
+            return SprayLine(from: Vector3(cos(a) * 2, sin(a) * 2, 0),
+                             to: Vector3(cos(a + 0.5) * 2, sin(a + 0.5) * 2, 0.5),
+                             light: SIMD3(repeating: 0.4))
+        } : []
+        spray = makeLineSpray(lines, sampling: .perLine(200), passesPerFrame: 3,
+                              bokeh: Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02))
+        if wantsQuads {
+            spray.setQuads([
+                SprayQuad(corner: Vector3(-1.5, -1.5, 0), edge1: Vector3(3, 0, 0),
+                          edge2: Vector3(0, 3, 0), light: SIMD3(repeating: 0.4)),
+                SprayQuad(corner: Vector3(-0.5, -0.5, 0.5), edge1: Vector3(1, 0, 0),
+                          edge2: Vector3(0, 1, 0), light: SIMD3(repeating: 0.4)),
+            ])
+        }
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
         drawLineSpray(spray)
         drawImage(spray.developed(exposure: 40).image, 0, 0)
     }

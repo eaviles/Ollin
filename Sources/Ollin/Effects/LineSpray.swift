@@ -55,6 +55,64 @@ public struct SprayLine: Sendable, Equatable {
     public var length: Double { start.distance(to: end) }
 }
 
+/// A flat surface in the spray, sampled over its area.
+///
+/// Where a ``SprayLine`` is a wire, a quad is a face: the parallelogram spanned
+/// by two edges from one corner. Its points land anywhere on it, so a scene
+/// made of quads is a scene of surfaces rather than a wireframe of one.
+///
+/// ```swift
+/// SprayQuad(corner: Vector3(-1, 0, -1),
+///           edge1: Vector3(2, 0, 0), edge2: Vector3(0, 0, 2),
+///           color: .white, intensity: 0.6)   // a lit floor, two units square
+/// ```
+///
+/// The light follows the same law a line's does: `light` is the **whole quad's**
+/// radiance per pass, not a brightness per unit of area. Scaling a quad spreads
+/// the same light over more surface rather than making it brighter, so a scene
+/// that works in light per unit area multiplies by its own extent on the way in.
+public struct SprayQuad: Sendable, Equatable {
+    /// The corner the two edges run from, world space.
+    public var corner: Vector3
+    /// One edge from `corner`. With `edge2` it spans the surface.
+    public var edge1: Vector3
+    /// The other edge from `corner`.
+    public var edge2: Vector3
+    /// Linear RGB radiance emitted per pass over the whole quad, with no
+    /// ceiling, so a quad can shine well past white.
+    public var light: SIMD3<Double>
+    /// The patch of the spray's ``LineSpray/picture`` this quad reads, in
+    /// `0...1` across it, or nil to read none and stand on its `light` alone.
+    public var pictureBounds: Rectangle?
+    /// Under length sampling, this quad's share of the pass's points relative
+    /// to its area. Ignored by per-line sampling.
+    public var weight: Double
+
+    /// A quad carrying `light` (linear RGB radiance per pass) over its surface.
+    public init(corner: Vector3, edge1: Vector3, edge2: Vector3,
+                light: SIMD3<Double>, pictureBounds: Rectangle? = nil, weight: Double = 1) {
+        self.corner = corner
+        self.edge1 = edge1
+        self.edge2 = edge2
+        self.light = light
+        self.pictureBounds = pictureBounds
+        self.weight = max(0, weight)
+    }
+
+    /// A quad named as a tone and a brightness: `color` (an sRGB `Color`) times
+    /// `intensity` (a linear multiplier) becomes its light.
+    public init(corner: Vector3, edge1: Vector3, edge2: Vector3,
+                color: Color = .white, intensity: Double = 1,
+                pictureBounds: Rectangle? = nil, weight: Double = 1) {
+        self.init(corner: corner, edge1: edge1, edge2: edge2,
+                  light: color.linearRGB * intensity, pictureBounds: pictureBounds, weight: weight)
+    }
+
+    /// The surface's area in world units, the length of the cross product of
+    /// its two edges. A quad whose edges are parallel has none.
+    public var area: Double { edge1.cross(edge2).length }
+}
+
 /// The lens a `LineSpray` scatters through: how far the plane of focus sits, how
 /// fast the blur grows away from it, and how the light fades with distance.
 ///
@@ -139,6 +197,25 @@ public final class LineSpray {
     /// The lens. Changing it restarts the average.
     public var bokeh: Bokeh
 
+    /// A picture the quads read, or nil. Each ``SprayQuad`` names the patch of
+    /// it that belongs to the quad through `pictureBounds`, and its light is
+    /// multiplied by what it finds there, so a photograph or a sheet of glyphs
+    /// becomes an object made of light for the lens to throw out of focus.
+    ///
+    /// The texels are read as **linear** light, the same units a quad's own
+    /// `light` is in. Changing the picture restarts the average.
+    public var picture: Image? {
+        didSet {
+            guard picture !== oldValue else { return }
+            pictureSource = picture.map(ImageComputeTexture.init)
+            reset()
+        }
+    }
+
+    /// The picture as the dispatch binds it, built once when it is set rather
+    /// than wrapped again every frame.
+    private var pictureSource: ImageComputeTexture?
+
     /// The diameter, in canvas points, each sample's light spreads over. The total
     /// light is the same at any size (a wider point is dimmer), so this softens
     /// the grain without changing the exposure. 1 is the reference's one-pixel
@@ -150,6 +227,9 @@ public final class LineSpray {
 
     /// The lines, as given.
     public private(set) var lines: [SprayLine]
+
+    /// The quads, as given. Empty unless a scene has surfaces in it.
+    public private(set) var quads: [SprayQuad] = []
 
     /// How the points are shared out.
     public let sampling: Sampling
@@ -187,6 +267,19 @@ public final class LineSpray {
         reset()
     }
 
+    /// Replace the quads, the surfaces beside the lines. Restarts the average
+    /// when they changed; the same quads again leave it alone, exactly as
+    /// ``setLines(_:)`` does, and for the same reason.
+    ///
+    /// Lines and quads are one picture: both scatter into the same accumulator
+    /// in the same pass, so a scene mixes wires and surfaces and prints once.
+    public func setQuads(_ quads: [SprayQuad]) {
+        guard quads != self.quads else { return }
+        self.quads = quads
+        quadsChanged = true
+        reset()
+    }
+
     // The GPU side: the line records, one line index per point, and the points.
     //
     // The records live in a ring of `MetalRenderer.maxFramesInFlight` buffers,
@@ -200,6 +293,18 @@ public final class LineSpray {
     private var pointLines: ComputeBuffer<UInt32>?
     private var counts: [Int] = []
     private var pointsPerPass = 0
+    // The same three for the quads, kept apart because a surface's share is its
+    // area and a line's is its length, which are not the same units.
+    private var quadBuffers: [ComputeBuffer<OllinSprayQuad>] = []
+    private var quadSlot = 0
+    private var quadBuffer: ComputeBuffer<OllinSprayQuad>? { quadBuffers.isEmpty ? nil : quadBuffers[quadSlot] }
+    private var pointQuads: ComputeBuffer<UInt32>?
+    private var quadCounts: [Int] = []
+    private var quadPointsPerPass = 0
+    private var quadsChanged = false
+    /// The quads' own mark, kept apart from the lines' so one refresh cannot
+    /// consume the frame the other is testing against.
+    private var lastQuadWriteFrame = -1
     private var points: PingPong<OllinParticle>?
     private var pointsAllocated = 0
     private var lastSignature: Signature?
@@ -217,6 +322,7 @@ public final class LineSpray {
         var pointSize: Double
         var width: Int, height: Int
         var lines: Int
+        var quads: Int
     }
 
     init(lines: [SprayLine], sampling: Sampling, passesPerFrame: Int, bokeh: Bokeh,
@@ -227,6 +333,7 @@ public final class LineSpray {
         self.bokeh = bokeh
         self.accumulator = accumulator
         rebuild()
+        rebuildQuads()
     }
 
     /// Lay the lines out for the GPU from scratch: each line's record with its
@@ -246,6 +353,49 @@ public final class LineSpray {
         lineSlot = 0
         pointLines = ComputeBuffer(table)
         pointsPerPass = table.count
+    }
+
+    /// The same, for the surfaces: each quad's record with its share, and the
+    /// point-to-quad table a thread reads to find the quad it belongs to.
+    private func rebuildQuads() {
+        guard !quads.isEmpty else {
+            quadBuffers = []; quadSlot = 0; quadCounts = []; pointQuads = nil; quadPointsPerPass = 0
+            return
+        }
+        quadCounts = LineSpray.quadPointCounts(for: quads, sampling: sampling)
+        var table: [UInt32] = []
+        table.reserveCapacity(quadCounts.reduce(0, +))
+        for (i, n) in quadCounts.enumerated() {
+            table.append(contentsOf: repeatElement(UInt32(i), count: n))
+        }
+        quadBuffers = [ComputeBuffer(LineSpray.quadRecords(for: quads, counts: quadCounts))]
+        quadSlot = 0
+        pointQuads = ComputeBuffer(table)
+        quadPointsPerPass = table.count
+    }
+
+    /// The quad twin of `refresh`, on the same once-a-frame rule and the same
+    /// ring, so a scene whose surfaces move every frame costs no allocation
+    /// while their point counts hold.
+    private func refreshQuads(frame: Int) {
+        guard quadsChanged else { return }
+        quadsChanged = false
+        let newCounts = quads.isEmpty ? [] : LineSpray.quadPointCounts(for: quads, sampling: sampling)
+        guard newCounts == quadCounts, !quadBuffers.isEmpty else {
+            rebuildQuads()
+            lastQuadWriteFrame = frame
+            return
+        }
+        let records = LineSpray.quadRecords(for: quads, counts: quadCounts)
+        if frame != lastQuadWriteFrame {
+            quadSlot = (quadSlot + 1) % MetalRenderer.maxFramesInFlight
+            lastQuadWriteFrame = frame
+        }
+        if quadSlot < quadBuffers.count {
+            quadBuffers[quadSlot].replaceContents(records)
+        } else {
+            quadBuffers.append(ComputeBuffer(records))
+        }
     }
 
     /// Bring the GPU side up to date with lines set since the last pass, at
@@ -308,6 +458,45 @@ public final class LineSpray {
         }
     }
 
+    /// Points per quad for one pass: the same for every quad, or shared by area.
+    ///
+    /// Under length sampling the quads draw from a pool of their own rather
+    /// than from the lines', because a length and an area are not the same
+    /// units and a budget shared between them would mean nothing. The number
+    /// is the same one, spent twice.
+    static func quadPointCounts(for quads: [SprayQuad], sampling: Sampling) -> [Int] {
+        switch sampling {
+        case .perLine(let n):
+            return Array(repeating: max(1, n), count: quads.count)
+        case .byLength(let total):
+            let weighted = quads.map { $0.area * $0.weight }
+            let sum = weighted.reduce(0, +)
+            guard sum > 0 else { return Array(repeating: 1, count: quads.count) }
+            let perUnit = Double(max(1, total)) / sum
+            return weighted.map { max(1, Int((perUnit * $0).rounded(.down))) }
+        }
+    }
+
+    /// The GPU records: each quad's corner and edges, its light, the patch of
+    /// the picture it reads, and its share of a pass (`corner.w`, one over its
+    /// point count), which is what keeps the light the whole quad's.
+    static func quadRecords(for quads: [SprayQuad], counts: [Int]) -> [OllinSprayQuad] {
+        var records: [OllinSprayQuad] = []
+        records.reserveCapacity(quads.count)
+        for (i, quad) in quads.enumerated() {
+            let bounds = quad.pictureBounds
+            records.append(OllinSprayQuad(
+                corner: SIMD4<Float>(Float(quad.corner.x), Float(quad.corner.y), Float(quad.corner.z),
+                                     1 / Float(counts[i])),
+                edge1: SIMD4<Float>(Float(quad.edge1.x), Float(quad.edge1.y), Float(quad.edge1.z), 0),
+                edge2: SIMD4<Float>(Float(quad.edge2.x), Float(quad.edge2.y), Float(quad.edge2.z), 0),
+                light: SIMD4<Float>(Float(quad.light.x), Float(quad.light.y), Float(quad.light.z), 0),
+                texture: SIMD4<Float>(Float(bounds?.x ?? 0), Float(bounds?.y ?? 0),
+                                      Float(bounds?.width ?? 0), Float(bounds?.height ?? 0))))
+        }
+        return records
+    }
+
     /// The scatter kernel: one thread per point per pass. Reads its line, picks a
     /// spot along it and a spot in the bokeh ball around that spot in camera
     /// space, fades by attenuation, projects through the camera, and writes the
@@ -365,36 +554,133 @@ public final class LineSpray {
         }
         """)
 
+    /// The quad scatter kernel: one thread per point per pass over the surfaces.
+    ///
+    /// The same lens and the same deposit as the lines'. What differs is the
+    /// sample: two numbers place it anywhere on the parallelogram, and the same
+    /// two read the picture at the matching spot, so a texel travels with the
+    /// place it belongs to rather than with the thread.
+    static let quadKernel = ComputeKernel(entry: "ollin_quad_spray", """
+        struct OllinQuadSprayParams {
+            OllinCameraMatrices camera;
+            float4 lens;   // x focal distance, y strength, z minimum size, w power
+            float4 misc;   // x attenuation, y point size, z points per pass, w seed
+            float4 where;  // x first particle this dispatch writes, yzw unused
+        };
+
+        kernel void ollin_quad_spray(device const OllinSprayQuad *quads [[buffer(0)]],
+                                     device const uint *quadOf [[buffer(1)]],
+                                     device OllinParticle *out [[buffer(2)]],
+                                     texture2d<float> picture [[texture(0)]],
+                                     constant OllinComputeUniforms &u [[buffer(10)]],
+                                     constant OllinQuadSprayParams &p [[buffer(11)]],
+                                     uint id [[thread_position_in_grid]]) {
+            if (id >= u.particleCount) { return; }
+            uint perPass = max(uint(p.misc.z), 1u);
+            OllinSprayQuad quad = quads[quadOf[id % perPass]];
+
+            // Fresh randomness per point per frame, from small seed parts.
+            float3 seed = float3(float(id & 4095u), float(id >> 12u), p.misc.w);
+            float su = hash13(seed);
+            float sv = hash13(seed + float3(3.7, 8.1, 2.3));
+            float3 world = quad.corner.xyz + su * quad.edge1.xyz + sv * quad.edge2.xyz;
+            float3 light = quad.light.xyz * quad.corner.w;
+
+            // The picture, read where the sample landed. A patch of no size
+            // means the quad carries no picture and its light stands alone.
+            if (quad.texture.z > 0.0 && quad.texture.w > 0.0) {
+                constexpr sampler pictureSampler(filter::linear, address::clamp_to_edge);
+                float2 uv = quad.texture.xy + float2(su, sv) * quad.texture.zw;
+                light *= picture.sample(pictureSampler, uv, level(0)).rgb;
+            }
+
+            // Into camera space; the defocus is measured along the view axis.
+            float3 eye = (p.camera.view * float4(world, 1.0)).xyz;
+            float defocus = abs(-eye.z - p.lens.x);
+            float radius = max(pow(defocus, p.lens.w) * p.lens.y, p.lens.z);
+            eye += ballSample(seed + float3(7.3, 1.9, 4.1)) * radius;
+            light *= exp(-defocus * p.misc.x);
+
+            float4 screen = ollin_project_eye(p.camera, eye, u.resolution);
+            OllinParticle o;
+            o.velocity = float2(0.0);
+            o.life = 1.0;
+            o.seedA = 0.0;
+            o.seedB = 0.0;
+            uint slot = uint(p.where.x) + id;
+            if (screen.w <= 0.0) {          // behind the camera: draw nothing
+                o.position = float2(-16.0);
+                o.size = 0.0;
+                o.color = float4(0.0);
+                out[slot] = o;
+                return;
+            }
+            float size = max(p.misc.y, 1e-3);
+            o.position = screen.xy;
+            o.size = size;
+            o.color = float4(light, 1.27323954474 / (size * size));
+            out[slot] = o;
+        }
+        """)
+
     /// One frame: reset if anything the picture depends on changed, scatter
     /// `passesPerFrame` passes of points, and add them into the accumulator.
     func record(into drawer: Drawer, camera: Camera3D, width: Double, height: Double,
                 seed: Float, frame: Int) {
         refresh(frame: frame)
-        guard let lineBuffer, let pointLines, pointsPerPass > 0 else { return }
+        refreshQuads(frame: frame)
+        let lineCount = pointsPerPass * passesPerFrame
+        let quadCount = quadPointsPerPass * passesPerFrame
+        let count = lineCount + quadCount
+        guard count > 0 else { return }
+
         let signature = Signature(camera: camera, bokeh: bokeh, pointSize: pointSize,
-                                  width: Int(width), height: Int(height), lines: lines.count)
+                                  width: Int(width), height: Int(height),
+                                  lines: lines.count, quads: quads.count)
         if signature != lastSignature {
             lastSignature = signature
             accumulator.reset()
         }
-        let count = pointsPerPass * passesPerFrame
         if points == nil || pointsAllocated != count {
             points = PingPong(count: count)
             pointsAllocated = count
         }
         guard let points else { return }
 
-        var params = ComputeParams()
-        params.append(camera: camera, aspect: height > 0 ? width / height : 1)
-        params.append(SIMD4<Float>(Float(bokeh.focalDistance), Float(bokeh.strength),
-                                   Float(bokeh.minSize), Float(bokeh.power)))
-        params.append(SIMD4<Float>(Float(bokeh.attenuation), Float(pointSize),
-                                   Float(pointsPerPass), seed))
+        // The lens and the print are the same for both, so the two dispatches
+        // differ only in where they start writing and how many points a pass
+        // spreads over their own primitive.
+        func lensParams(perPass: Int, at offset: Int) -> ComputeParams {
+            var params = ComputeParams()
+            params.append(camera: camera, aspect: height > 0 ? width / height : 1)
+            params.append(SIMD4<Float>(Float(bokeh.focalDistance), Float(bokeh.strength),
+                                       Float(bokeh.minSize), Float(bokeh.power)))
+            params.append(SIMD4<Float>(Float(bokeh.attenuation), Float(pointSize),
+                                       Float(perPass), seed))
+            if offset >= 0 { params.append(SIMD4<Float>(Float(offset), 0, 0, 0)) }
+            return params
+        }
+
         let write = points.write
-        drawer.recordDispatch(RecordedDispatch(
-            kernel: LineSpray.kernel, threadCount: count,
-            buffers: [lineBuffer, pointLines, write], params: params.bytes))
+        if let lineBuffer, let pointLines, lineCount > 0 {
+            drawer.recordDispatch(RecordedDispatch(
+                kernel: LineSpray.kernel, threadCount: lineCount,
+                buffers: [lineBuffer, pointLines, write],
+                params: lensParams(perPass: pointsPerPass, at: -1).bytes))
+        }
+        if let quadBuffer, let pointQuads, quadCount > 0 {
+            // A 1-D dispatch that also binds a picture, so it takes the 2-D
+            // form with a height of one, the way every textured kernel here does.
+            drawer.recordDispatch(RecordedDispatch(
+                kernel: LineSpray.quadKernel, gridWidth: quadCount, gridHeight: 1,
+                textures: [pictureSource],
+                buffers: [quadBuffer, pointQuads, write],
+                params: lensParams(perPass: quadPointsPerPass, at: lineCount).bytes))
+        }
         points.swap()
+
+        // One accumulator, one pass count, one picture: the wires and the
+        // surfaces are the same image and print together.
         drawer.withAccumulator(accumulator, passes: passesPerFrame) {
             drawer.blendMode(.add)
             drawer.recordParticles(write, count: count, style: .light)

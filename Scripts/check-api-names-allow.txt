@@ -10,6 +10,7 @@
 magnitude Environment.*            # the image-based light: its intensity scales the light the environment casts
 magnitude Generator.godRays        # shafts of light; coreIntensity and intensity are the light's
 magnitude SprayLine.*              # a line of light for a LineSpray; each end has an intensity
+magnitude SprayQuad.*              # a surface of light in the same spray; its tone times an intensity is its light
 magnitude HapticEvent.*            # Core Haptics' own vocabulary (hapticIntensity beside hapticSharpness), a physical quantity
 magnitude HapticPattern.*          # the same: a pattern's intensity is the haptic engine's own dial
 

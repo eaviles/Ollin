@@ -1307,6 +1307,21 @@ typedef struct {
     simd_float4 endColor;    // linear radiance at `end` (w unused)
 } OllinSprayLine;
 
+// One quad in a `LineSpray` scene: a parallelogram spanned by two edges from a
+// corner, sampled over its area rather than along a length. `corner.w` carries
+// 1 / (points on this quad per pass), so every point deposits its share and a
+// quad's light per pass is its color whatever its point count, the same law the
+// lines keep. `texture` is the patch of the spray's picture the quad reads, as
+// origin xy and size zw in 0...1; a size of zero reads no picture and the light
+// stands alone. Stride 80 (five float4 rows), one row wider than the line's.
+typedef struct {
+    simd_float4 corner;      // xyz world space; w = 1 / points per pass on this quad
+    simd_float4 edge1;       // xyz world space, from the corner; w unused
+    simd_float4 edge2;       // xyz world space, from the corner; w unused
+    simd_float4 light;       // linear radiance over the whole quad (w unused)
+    simd_float4 texture;     // xy origin, zw size, in 0...1; zw zero reads no picture
+} OllinSprayQuad;
+
 // A uniform-grid spatial hash over a toroidal 2-D domain (the GPU neighbor-search
 // primitive `SpatialHash` builds and every particle-interaction sim queries).
 // Cells tile `worldSize` exactly (`worldSize = float2(gridW, gridH) * cellSize`), so

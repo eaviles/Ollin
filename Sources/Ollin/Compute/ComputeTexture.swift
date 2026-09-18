@@ -61,6 +61,22 @@ protocol ComputeTextureBindable: AnyObject {
     func metalTexture(for device: MTLDevice) -> MTLTexture?
 }
 
+/// Binds a picture a sketch already has to a compute dispatch, resolving it
+/// through the image's own linear upload rather than a second one. Every kind of
+/// `Image` answers there, a decoded file as readily as a layer or another
+/// kernel's output, and the result is cached on the image, so a picture bound
+/// every frame is uploaded once.
+final class ImageComputeTexture: ComputeTextureBindable {
+    let image: Image
+
+    init(_ image: Image) { self.image = image }
+
+    var width: Int { image.width }
+    var height: Int { image.height }
+
+    func metalTexture(for device: MTLDevice) -> MTLTexture? { image.linearTexture(for: device) }
+}
+
 /// A persistent, GPU-resident 2-D texture a compute kernel reads and writes each
 /// frame — the texture-half companion to `ComputeBuffer`. It's the storage behind
 /// ping-pong simulations (reaction-diffusion, cellular automata, fluid) and image

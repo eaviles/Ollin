@@ -1233,6 +1233,7 @@ final class LineSpray: Sendable
   func developed(exposure: Double, ground: Color = default) -> RenderTarget
   func reset()
   func setLines(_: [SprayLine])
+  func setQuads(_: [SprayQuad])
   let accumulator: Accumulator
   let sampling: LineSpray.Sampling
   var bokeh: Bokeh { get set }
@@ -1240,7 +1241,9 @@ final class LineSpray: Sendable
   var lines: [SprayLine] { get }
   var passes: Int { get }
   var passesPerFrame: Int { get set }
+  var picture: Image? { get set }
   var pointSize: Double { get set }
+  var quads: [SprayQuad] { get }
 final class Meander
   func step()
   func step(_: Int)
@@ -5920,6 +5923,16 @@ struct SprayLine: Equatable, Sendable
   var length: Double { get }
   var light: SIMD3<Double> { get set }
   var start: Vector3 { get set }
+  var weight: Double { get set }
+struct SprayQuad: Equatable, Sendable
+  init(corner: Vector3, edge1: Vector3, edge2: Vector3, color: Color = default, intensity: Double = default, pictureBounds: Rectangle? = default, weight: Double = default)
+  init(corner: Vector3, edge1: Vector3, edge2: Vector3, light: SIMD3<Double>, pictureBounds: Rectangle? = default, weight: Double = default)
+  var area: Double { get }
+  var corner: Vector3 { get set }
+  var edge1: Vector3 { get set }
+  var edge2: Vector3 { get set }
+  var light: SIMD3<Double> { get set }
+  var pictureBounds: Rectangle? { get set }
   var weight: Double { get set }
 struct StatusChip: Sendable, View
   init(status: InspectorStatus)
