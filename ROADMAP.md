@@ -145,7 +145,6 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
-- **An aperture with a shape.** An out-of-focus highlight in the sandpainting lens is always a round disc. Weighting a sample's light by a picture read where it lands in the aperture plane would give the highlight the aperture's own form instead.
 - **A shader as paint.** A `Shader` fills or strokes a 2D shape, computed per pixel in the shape's own coordinates. The same shader can be a mesh's surface material. Pictures, patterns, and noise then become fills, with no clipping by hand.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).

@@ -217,10 +217,11 @@ b37a8b2335f9  Docs/Drawing/Curves.md:53  expected type before '->'
 8971faf1bee4  Docs/Drawing/Curves.md:66  expected type before '->'
 793884e6c153  Docs/Drawing/Curves.md:78  expected type before '->'
 29396a5f03fe  Docs/Drawing/Curves.md:91  expected type before '->'
-b785ec4fb130  Docs/Drawing/DepthOfField.md:111  cannot find 'samples' in scope
-92f7d6441007  Docs/Drawing/DepthOfField.md:128  value of type '@MainActor (Light) -> ()' has no member 'developed'
+b785ec4fb130  Docs/Drawing/DepthOfField.md:133  cannot find 'samples' in scope
+92f7d6441007  Docs/Drawing/DepthOfField.md:150  value of type '@MainActor (Light) -> ()' has no member 'developed'
 381fce610bdb  Docs/Drawing/DepthOfField.md:54  cannot find 'a' in scope
-8216fb6bb298  Docs/Drawing/DepthOfField.md:73  cannot find 'spray' in scope
+94548f0a96c2  Docs/Drawing/DepthOfField.md:72  cannot find 'spray' in scope
+8216fb6bb298  Docs/Drawing/DepthOfField.md:95  cannot find 'spray' in scope
 671a77e4a4db  Docs/Drawing/DistanceFields.md:106  cannot find 'field' in scope
 f217cb6898e7  Docs/Drawing/DistanceFields.md:140  cannot find 'field' in scope
 20760d26b2ab  Docs/Drawing/DistanceFields.md:154  cannot find 'marks' in scope

@@ -66,6 +66,27 @@ SprayLine(from: a, to: b, color: .orange, endColor: .white, intensity: 2, weight
 - `pointSize` is the diameter that each sample's light spreads over, in canvas points. The total light is the same at any size, so a larger size softens the grain without changing the exposure. The default of 1 is a one-pixel point, which is the cheapest to draw.
 - `spray.setQuads(_:)` puts **surfaces** in the same spray. A `SprayQuad` is the parallelogram two edges span from a corner, sampled over its area rather than along a length, so a scene can be made of faces instead of a wireframe of one. Lines and quads scatter into the same accumulator in the same pass and print together: one picture, not two.
 - A quad's `light` is the **whole quad's**, exactly as a line's is. Scaling a quad spreads the same light over more surface rather than making it brighter, so a scene that works in light per unit area multiplies by its own extent on the way in.
+- `bokeh.aperture` is the **shape light scatters through**, which is what a point too far from focus turns into. `.round` is the default and the ball every picture was made with before there was a choice. `.blades(6)` is an iris of six straight blades, the hexagonal sparkle a real camera draws; `.blades(count:rotation:)` turns it. Fewer than three blades reads round, since there is no shape to scatter in.
+- `.picture(_:)` takes any `Image` as the aperture instead, read across the hole: where the picture is dark, no light passes. That covers an iris a sketch **drew** for itself and one it **loaded**, since a render target's `image` and a decoded file are the same thing here. Ollin bundles no masks.
+
+```swift
+spray.bokeh.aperture = .blades(6)                       // hexagonal sparkles
+spray.bokeh.aperture = .blades(count: 5, rotation: .pi / 10)
+
+let iris = makeRenderTarget(width: 128, height: 128)    // or drawn, and animated
+withTarget(iris) {
+    background(.black)
+    fill(.white)
+    drawPolygon((0 ..< 7).map { i in
+        let a = Double(i) / 7 * .tau
+        return Vector2(64 + cos(a) * blades, 64 + sin(a) * blades)
+    })
+}
+spray.bokeh.aperture = .picture(iris.image)
+```
+
+- An aperture moves **where** a sample lands, never **how much** light it carries. A hexagon, a triangle and the round ball print the same total light; what changes is the shape it is spread into. A mask is the exception by its nature, since what it darkens does not pass.
+- A flat aperture spreads a little wider than the round one at the same `strength`. The ball is a volume, so its projection crowds the middle, while a hole is flat and even across itself. Blades also scatter in the aperture's own plane rather than through a ball, so they carry no depth jitter.
 - `spray.picture` is an `Image` the quads read. Each quad's `pictureBounds` names the patch of it that belongs to that quad, in `0...1`, and the quad's light is multiplied by what it finds there, so a photograph or a sheet of glyphs becomes an object made of light for the lens to throw out of focus. The texels are read as linear light, the units a quad's own `light` is in. A quad with no `pictureBounds` reads nothing and stands on its light alone.
 - `spray.lines` and `spray.quads` are the scene as it was last given, for reading back what a sketch put in.
 - `spray.image` is the running mean as an `Image` in linear light, for when you would rather print it yourself.

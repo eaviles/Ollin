@@ -161,6 +161,36 @@ static inline float3 ballSample(float3 seed) {
     float phi = h.z * 6.28318530718;
     return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta) * r;
 }
+// A point in a regular polygon of `sides` blades inscribed in the unit circle,
+// turned by `rotation`: the iris a lens scatters light through when its blades
+// are straight. Uniform over the polygon's area and exact, with no rejection
+// and nothing thrown away, because every wedge of a regular polygon has the
+// same area: one draw picks the wedge, two more place the sample in that
+// wedge's triangle (the square root is what makes a triangle's own sampling
+// uniform rather than bunched at its apex). Returned in the aperture plane
+// with no depth, since an aperture is a hole in a plane rather than a volume.
+static inline float3 bladeSample(float3 seed, uint sides, float rotation) {
+    float3 h = hash33(seed);
+    float step = 6.28318530718 / float(sides);
+    float wedge = floor(h.x * float(sides));
+    float a0 = rotation + wedge * step;
+    float a1 = a0 + step;
+    float edge = sqrt(h.y);
+    float along = h.z;
+    float2 corner0 = float2(cos(a0), sin(a0));
+    float2 corner1 = float2(cos(a1), sin(a1));
+    float2 point = edge * ((1.0 - along) * corner0 + along * corner1);
+    return float3(point, 0.0);
+}
+
+// A point in the unit square, for an aperture whose shape is a picture rather
+// than a count of blades: the mask is read at the same spot the sample takes,
+// so what the picture is dark at, the lens does not pass.
+static inline float3 maskSample(float3 seed, thread float2 &uv) {
+    float3 h = hash33(seed);
+    uv = float2(h.x, h.y);
+    return float3(h.x * 2.0 - 1.0, h.y * 2.0 - 1.0, 0.0);
+}
 // OLLIN_LIB_END hash
 
 // OLLIN_LIB_BEGIN noise

@@ -121,6 +121,89 @@ public struct SprayQuad: Sendable, Equatable {
 /// the sample's distance from the focal plane along the camera's axis. Summing
 /// millions of those samples *is* the blur: a line on the focal plane stays
 /// crisp, one far from it dissolves, and nothing is filtered afterward.
+/// The shape a lens scatters light through: the hole an out-of-focus highlight
+/// takes the form of.
+///
+/// A sample is pushed to a random spot inside the aperture, so the aperture is
+/// what a point of light too far from focus turns into. The default is round,
+/// which is the ball every lens here scattered in before there was a choice.
+/// An iris of straight blades gives the polygonal highlight a real camera does:
+/// six blades for the hexagonal sparkle, five for the pentagon, three for a
+/// triangle, and enough of them to be round again.
+///
+/// ```swift
+/// spray.bokeh.aperture = .blades(6)                    // hexagonal sparkles
+/// spray.bokeh.aperture = .blades(count: 5, rotation: .pi / 10)
+/// ```
+///
+/// A shape no number of straight blades describes is drawn or loaded instead:
+/// ``picture(_:)`` takes any `Image`, which is as readily a small render target
+/// a sketch drew its own iris into as a file it loaded. Nothing is bundled.
+///
+/// ```swift
+/// let iris = makeRenderTarget(width: 128, height: 128)
+/// withTarget(iris) {
+///     background(.black)
+///     fill(.white)
+///     drawPolygon((0 ..< 6).map { ... })
+/// }
+/// spray.bokeh.aperture = .picture(iris.image)
+/// ```
+///
+/// Unchecked rather than checked `Sendable` because a drawn or loaded aperture
+/// is an `Image`, which is a reference the main actor owns. The lens travels
+/// with the spray, and a `LineSpray` is main-actor bound, so the reference
+/// never crosses to another thread; equality is that same identity, since two
+/// pictures are the same aperture when they are the same picture.
+public enum Aperture: @unchecked Sendable, Equatable {
+    /// The round default: a uniform spot in a ball, the scatter every picture
+    /// made before there was a choice.
+    case round
+    /// An iris of `count` straight blades, turned by `rotation` radians. Three
+    /// or more; below that there is no shape to scatter in and it reads round.
+    case blades(count: Int, rotation: Double)
+    /// A shape drawn or loaded: the image is read across the aperture, and a
+    /// sample's light is multiplied by what it finds, so white passes and black
+    /// stops. Only the red channel is read, since a mask has one number.
+    case picture(Image)
+
+    /// An iris of `count` straight blades, unturned: `.blades(6)` is the
+    /// hexagonal highlight.
+    public static func blades(_ count: Int) -> Aperture { .blades(count: count, rotation: 0) }
+
+    /// How the kernel reads it: the blade count, or zero for round and for a
+    /// picture, which the kernel tells apart by whether one is bound.
+    var bladeCount: Int {
+        guard case .blades(let count, _) = self else { return 0 }
+        return count >= 3 ? count : 0
+    }
+
+    /// The turn on the blades, radians.
+    var rotation: Double {
+        guard case .blades(_, let rotation) = self else { return 0 }
+        return rotation
+    }
+
+    /// The mask this aperture reads, if it is one.
+    var picture: Image? {
+        guard case .picture(let image) = self else { return nil }
+        return image
+    }
+
+    public static func == (a: Aperture, b: Aperture) -> Bool {
+        switch (a, b) {
+        case (.round, .round):
+            return true
+        case (.blades(let aCount, let aTurn), .blades(let bCount, let bTurn)):
+            return aCount == bCount && aTurn == bTurn
+        case (.picture(let aImage), .picture(let bImage)):
+            return aImage === bImage
+        default:
+            return false
+        }
+    }
+}
+
 public struct Bokeh: Sendable, Equatable {
     /// Distance from the camera to the plane of focus, along the view axis, in
     /// world units.
@@ -139,9 +222,13 @@ public struct Bokeh: Sendable, Equatable {
     /// multiplied by `exp(-attenuation × defocus)`. 0 keeps every sample at full
     /// light.
     public var attenuation: Double
+    /// The shape light scatters through, round unless told otherwise. See
+    /// ``Aperture``.
+    public var aperture: Aperture = .round
 
     public init(focalDistance: Double, strength: Double = 0.05, minSize: Double = 0.015,
-                power: Double = 1, attenuation: Double = 0) {
+                power: Double = 1, attenuation: Double = 0, aperture: Aperture = .round) {
+        self.aperture = aperture
         self.focalDistance = max(0, focalDistance)
         self.strength = max(0, strength)
         self.minSize = max(0, minSize)
@@ -215,6 +302,13 @@ public final class LineSpray {
     /// The picture as the dispatch binds it, built once when it is set rather
     /// than wrapped again every frame.
     private var pictureSource: ImageComputeTexture?
+
+    /// The aperture's mask, bound the same way. Rebuilt when the lens changes
+    /// to an aperture drawn or loaded rather than described by a blade count.
+    private var apertureSource: ImageComputeTexture?
+    /// The aperture the mask was built for, so it is wrapped again only when
+    /// the lens actually changed shape.
+    private var apertureShape: Aperture = .round
 
     /// The diameter, in canvas points, each sample's light spreads over. The total
     /// light is the same at any size (a wider point is dimmer), so this softens
@@ -506,11 +600,13 @@ public final class LineSpray {
             OllinCameraMatrices camera;
             float4 lens;   // x focal distance, y strength, z minimum size, w power
             float4 misc;   // x attenuation, y point size, z points per pass, w seed
+            float4 hole;   // x blades (0 none), y rotation, z 1 when a mask is bound
         };
 
         kernel void ollin_line_spray(device const OllinSprayLine *lines [[buffer(0)]],
                                      device const uint *lineOf [[buffer(1)]],
                                      device OllinParticle *out [[buffer(2)]],
+                                     texture2d<float> mask [[texture(0)]],
                                      constant OllinComputeUniforms &u [[buffer(10)]],
                                      constant OllinSprayParams &p [[buffer(11)]],
                                      uint id [[thread_position_in_grid]]) {
@@ -528,7 +624,23 @@ public final class LineSpray {
             float3 eye = (p.camera.view * float4(world, 1.0)).xyz;
             float defocus = abs(-eye.z - p.lens.x);
             float radius = max(pow(defocus, p.lens.w) * p.lens.y, p.lens.z);
-            eye += ballSample(seed + float3(7.3, 1.9, 4.1)) * radius;
+            // The aperture: the shape the sample is scattered through, which is
+            // what a point too far from focus turns into. Round is the ball,
+            // untouched; blades place the sample in the polygon exactly; a
+            // mask takes the square and lets the picture say what passes.
+            float3 spot = seed + float3(7.3, 1.9, 4.1);
+            uint blades = uint(p.hole.x);
+            if (blades >= 3u) {
+                eye += bladeSample(spot, blades, p.hole.y) * radius;
+            } else if (p.hole.z > 0.5) {
+                float2 uv;
+                float3 offset = maskSample(spot, uv);
+                constexpr sampler maskSampler(filter::linear, address::clamp_to_edge);
+                eye += offset * radius;
+                light *= mask.sample(maskSampler, uv, level(0)).r;
+            } else {
+                eye += ballSample(spot) * radius;
+            }
             light *= exp(-defocus * p.misc.x);
 
             float4 screen = ollin_project_eye(p.camera, eye, u.resolution);
@@ -566,12 +678,14 @@ public final class LineSpray {
             float4 lens;   // x focal distance, y strength, z minimum size, w power
             float4 misc;   // x attenuation, y point size, z points per pass, w seed
             float4 where;  // x first particle this dispatch writes, yzw unused
+            float4 hole;   // x blades (0 none), y rotation, z 1 when a mask is bound
         };
 
         kernel void ollin_quad_spray(device const OllinSprayQuad *quads [[buffer(0)]],
                                      device const uint *quadOf [[buffer(1)]],
                                      device OllinParticle *out [[buffer(2)]],
                                      texture2d<float> picture [[texture(0)]],
+                                     texture2d<float> mask [[texture(1)]],
                                      constant OllinComputeUniforms &u [[buffer(10)]],
                                      constant OllinQuadSprayParams &p [[buffer(11)]],
                                      uint id [[thread_position_in_grid]]) {
@@ -598,7 +712,23 @@ public final class LineSpray {
             float3 eye = (p.camera.view * float4(world, 1.0)).xyz;
             float defocus = abs(-eye.z - p.lens.x);
             float radius = max(pow(defocus, p.lens.w) * p.lens.y, p.lens.z);
-            eye += ballSample(seed + float3(7.3, 1.9, 4.1)) * radius;
+            // The aperture: the shape the sample is scattered through, which is
+            // what a point too far from focus turns into. Round is the ball,
+            // untouched; blades place the sample in the polygon exactly; a
+            // mask takes the square and lets the picture say what passes.
+            float3 spot = seed + float3(7.3, 1.9, 4.1);
+            uint blades = uint(p.hole.x);
+            if (blades >= 3u) {
+                eye += bladeSample(spot, blades, p.hole.y) * radius;
+            } else if (p.hole.z > 0.5) {
+                float2 uv;
+                float3 offset = maskSample(spot, uv);
+                constexpr sampler maskSampler(filter::linear, address::clamp_to_edge);
+                eye += offset * radius;
+                light *= mask.sample(maskSampler, uv, level(0)).r;
+            } else {
+                eye += ballSample(spot) * radius;
+            }
             light *= exp(-defocus * p.misc.x);
 
             float4 screen = ollin_project_eye(p.camera, eye, u.resolution);
@@ -629,6 +759,10 @@ public final class LineSpray {
                 seed: Float, frame: Int) {
         refresh(frame: frame)
         refreshQuads(frame: frame)
+        if bokeh.aperture != apertureShape {
+            apertureShape = bokeh.aperture
+            apertureSource = bokeh.aperture.picture.map(ImageComputeTexture.init)
+        }
         let lineCount = pointsPerPass * passesPerFrame
         let quadCount = quadPointsPerPass * passesPerFrame
         let count = lineCount + quadCount
@@ -658,13 +792,18 @@ public final class LineSpray {
             params.append(SIMD4<Float>(Float(bokeh.attenuation), Float(pointSize),
                                        Float(perPass), seed))
             if offset >= 0 { params.append(SIMD4<Float>(Float(offset), 0, 0, 0)) }
+            params.append(SIMD4<Float>(Float(bokeh.aperture.bladeCount), Float(bokeh.aperture.rotation),
+                                       apertureSource == nil ? 0 : 1, 0))
             return params
         }
 
         let write = points.write
         if let lineBuffer, let pointLines, lineCount > 0 {
+            // A 1-D dispatch that may bind an aperture mask, so it takes the
+            // 2-D form with a height of one, as every textured kernel here does.
             drawer.recordDispatch(RecordedDispatch(
-                kernel: LineSpray.kernel, threadCount: lineCount,
+                kernel: LineSpray.kernel, gridWidth: lineCount, gridHeight: 1,
+                textures: [apertureSource],
                 buffers: [lineBuffer, pointLines, write],
                 params: lensParams(perPass: pointsPerPass, at: -1).bytes))
         }
@@ -673,7 +812,7 @@ public final class LineSpray {
             // form with a height of one, the way every textured kernel here does.
             drawer.recordDispatch(RecordedDispatch(
                 kernel: LineSpray.quadKernel, gridWidth: quadCount, gridHeight: 1,
-                textures: [pictureSource],
+                textures: [pictureSource, apertureSource],
                 buffers: [quadBuffer, pointQuads, write],
                 params: lensParams(perPass: quadPointsPerPass, at: lineCount).bytes))
         }

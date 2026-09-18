@@ -155,6 +155,12 @@ class SimField
   var inputs: [RenderTarget] { get set }
   var modulation: RenderTarget? { get set }
   var sim: Sim { get set }
+enum Aperture: Equatable, Sendable
+  case blades(count: Int, rotation: Double)
+  case picture(Image)
+  case round
+  static func ==(_: Aperture, _: Aperture) -> Bool
+  static func blades(_: Int) -> Aperture
 enum ArcMode: Equatable, Hashable
   case chord
   case open
@@ -2890,7 +2896,8 @@ struct BitmapGlyph: Equatable, Sendable
   let xOffset: Int
   let yOffset: Int
 struct Bokeh: Equatable, Sendable
-  init(focalDistance: Double, strength: Double = default, minSize: Double = default, power: Double = default, attenuation: Double = default)
+  init(focalDistance: Double, strength: Double = default, minSize: Double = default, power: Double = default, attenuation: Double = default, aperture: Aperture = default)
+  var aperture: Aperture { get set }
   var attenuation: Double { get set }
   var focalDistance: Double { get set }
   var minSize: Double { get set }

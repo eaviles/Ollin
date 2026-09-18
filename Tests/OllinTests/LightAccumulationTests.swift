@@ -313,6 +313,146 @@ struct LightAccumulationTests {
                 "lines \(linesOnly) and quads \(quadsOnly) should add to about \(both)")
     }
 
+    @Test func apertureReadsAsItsShape() {
+        #expect(Aperture.round.bladeCount == 0)
+        #expect(Aperture.blades(6).bladeCount == 6)
+        #expect(Aperture.blades(6).rotation == 0)
+        #expect(Aperture.blades(count: 5, rotation: 0.3).rotation == 0.3)
+        // Under three there is no shape to scatter in, so it reads round.
+        #expect(Aperture.blades(2).bladeCount == 0)
+        #expect(Aperture.blades(0).bladeCount == 0)
+        #expect(Aperture.round.picture == nil && Aperture.blades(6).picture == nil)
+        #expect(Bokeh(focalDistance: 8).aperture == .round, "a lens is round unless told otherwise")
+        #expect(Aperture.blades(6) == Aperture.blades(count: 6, rotation: 0))
+        #expect(Aperture.blades(6) != Aperture.blades(7))
+        #expect(Aperture.blades(6) != .round)
+    }
+
+    /// A drawn or loaded aperture is the same aperture only while it is the
+    /// same picture, which is what a lens compares to know it changed.
+    @Test func anApertureIsThePictureItWasGiven() throws {
+        let one = try #require(Image(width: 4, height: 4, premultipliedRGBA: [UInt8](repeating: 255, count: 64)))
+        let two = try #require(Image(width: 4, height: 4, premultipliedRGBA: [UInt8](repeating: 255, count: 64)))
+        #expect(Aperture.picture(one) == Aperture.picture(one))
+        #expect(Aperture.picture(one) != Aperture.picture(two), "same pixels, different picture")
+        #expect(Aperture.picture(one) != .round)
+        #expect(Aperture.picture(one).bladeCount == 0, "a mask is not described by a blade count")
+        #expect(Aperture.picture(one).picture === one)
+    }
+
+    /// The round aperture is the scatter every picture was made with before
+    /// there was a choice, so a lens that does not ask for a shape has to draw
+    /// exactly what it drew before. This is the law that lets the aperture ship
+    /// without moving a single committed image.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theRoundApertureDrawsWhatItAlwaysDrew() throws {
+        let plain = try #require(OllinApp.image(of: MovingSpraySketch(), frame: 3))
+        let asked = MovingSpraySketch()
+        asked.aperture = .round
+        let same = try #require(OllinApp.image(of: asked, frame: 3))
+        #expect(pixelsEqual(plain, same), "asking for round must draw what asking for nothing draws")
+    }
+
+    /// An aperture moves where a sample lands, never how much light it
+    /// carries: every sample deposits its line's share whatever hole it went
+    /// through, so a hexagon, a triangle and the round ball print the same
+    /// total light. Read below the print's ceiling, or a shape that crowds its
+    /// middle clips and reads short of one that does not.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theApertureShapesTheLightWithoutChangingIt() throws {
+        func ink(_ aperture: Aperture) throws -> Double {
+            let sketch = AperturePointSketch()
+            sketch.aperture = aperture
+            sketch.printExposure = 1.2
+            return linearSum(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+        }
+        let round = try ink(.round)
+        let six = try ink(.blades(6))
+        let three = try ink(.blades(3))
+        #expect(abs(six - round) < round * 0.03, "round \(round), six blades \(six)")
+        #expect(abs(three - round) < round * 0.03, "round \(round), three blades \(three)")
+    }
+
+    /// The blades draw their own shape, and turning them turns it. A triangle
+    /// is lopsided left to right; half a turn of its step mirrors it, and a
+    /// whole step is the same iris again. The round ball leans neither way.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theBladesDrawTheirShapeAndTurnWithIt() throws {
+        func lean(_ aperture: Aperture) throws -> Double {
+            let sketch = AperturePointSketch()
+            sketch.aperture = aperture
+            return horizontalLean(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+        }
+        let round = try lean(.round)
+        let straight = try lean(.blades(3))
+        let mirrored = try lean(.blades(count: 3, rotation: .pi / 3))
+        let wholeStep = try lean(.blades(count: 3, rotation: 2 * .pi / 3))
+
+        #expect(abs(round) < 0.15, "a ball is symmetric either way: \(round)")
+        #expect(abs(straight) > 0.3, "a triangle leans: \(straight)")
+        #expect(straight * mirrored < 0, "half a step mirrors it: \(straight) against \(mirrored)")
+        #expect(abs(wholeStep - straight) < abs(straight) * 0.35,
+                "a whole step is the same iris: \(wholeStep) against \(straight)")
+    }
+
+    /// An aperture drawn or loaded is a mask the lens reads across its hole:
+    /// where the picture is dark, no light passes. This is the tier that
+    /// covers an iris a sketch drew into a render target and a photographed
+    /// one alike, since both arrive as an `Image`.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDrawnApertureLetsLightThroughWhereItIsOpen() throws {
+        let side = 32
+        /// A mask filled on one side, dark on the other, or filled throughout.
+        func mask(open: (Int) -> Bool) throws -> Image {
+            var bytes = [UInt8](repeating: 0, count: side * side * 4)
+            for y in 0 ..< side {
+                for x in 0 ..< side where open(x) {
+                    let i = (y * side + x) * 4
+                    bytes[i] = 255; bytes[i + 1] = 255; bytes[i + 2] = 255; bytes[i + 3] = 255
+                }
+            }
+            return try #require(Image(width: side, height: side, premultipliedRGBA: bytes))
+        }
+        func ink(_ aperture: Aperture) throws -> Double {
+            let sketch = AperturePointSketch()
+            sketch.aperture = aperture
+            sketch.printExposure = 1.2
+            return linearSum(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+        }
+        func lean(_ aperture: Aperture) throws -> Double {
+            let sketch = AperturePointSketch()
+            sketch.aperture = aperture
+            return horizontalLean(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+        }
+
+        // A hole stopped all the way down passes nothing, which is also what
+        // the canvas reads with no light on it at all: the print's own floor.
+        let shut = try ink(.picture(try mask { _ in false }))
+        let wideOpen = try ink(.picture(try mask { _ in true }))
+        let half = try ink(.picture(try mask { $0 >= side / 2 }))
+        #expect(wideOpen > shut, "an open hole passes light and a shut one does not")
+
+        // Measured above that floor, a hole open on half its width passes half
+        // the light, which is the mask being read per sample rather than once.
+        let openLight = wideOpen - shut, halfLight = half - shut
+        #expect(abs(halfLight / openLight - 0.5) < 0.08,
+                "half a hole passes \(halfLight / openLight) of what the whole one does")
+
+        // And it throws that light to the side it is open on: the mark's own
+        // center moves that way, which is what says the picture is read at the
+        // spot the sample took rather than merely thinning it everywhere.
+        func center(_ aperture: Aperture) throws -> Double {
+            let sketch = AperturePointSketch()
+            sketch.aperture = aperture
+            return centroidX(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+        }
+        let openRight = try center(.picture(try mask { $0 >= side / 2 }))
+        let openLeft = try center(.picture(try mask { $0 < side / 2 }))
+        let openWide = try center(.picture(try mask { _ in true }))
+        #expect(openRight > openWide + 1, "open on the right: \(openRight) against \(openWide)")
+        #expect(openLeft < openWide - 1, "open on the left: \(openLeft) against \(openWide)")
+    }
+
     /// A moving scene: `setLines` every frame with the same lines leaves the
     /// average alone (a settled export converges), moved lines restart it and
     /// reach the GPU (the light's centroid follows them), and while the point
@@ -400,6 +540,76 @@ struct LightAccumulationTests {
     }
 
     /// The sum of linear luminance over every pixel (the light the frame holds).
+    /// Whether two renders are the same picture, byte for byte.
+    private func pixelsEqual(_ a: CGImage, _ b: CGImage) -> Bool {
+        guard a.width == b.width, a.height == b.height,
+              let left = a.dataProvider?.data as Data?, let right = b.dataProvider?.data as Data?
+        else { return false }
+        return left == right
+    }
+
+    /// Which way the light leans: the ink-weighted skew in x about its own
+    /// center, scaled by its own spread, so it says the shape's lopsidedness
+    /// rather than its size or where it sits. A shape symmetric left to right
+    /// reads about zero. Pixels under a tenth of the brightest are left out,
+    /// since the print's dither floor covers the whole canvas and would
+    /// otherwise outweigh the mark being read.
+    private func horizontalLean(of image: CGImage, vertical: Bool = false) -> Double {
+        guard let data = image.dataProvider?.data as Data? else { return 0 }
+        let bytesPerRow = image.bytesPerRow, width = image.width, height = image.height
+        var peak = 0.0
+        data.withUnsafeBytes { raw in
+            for y in 0 ..< height {
+                for x in 0 ..< width { peak = max(peak, Double(raw[y * bytesPerRow + x * 4])) }
+            }
+        }
+        guard peak > 0 else { return 0 }
+        let floor = peak * 0.35
+        var weight = 0.0, first = 0.0, second = 0.0, third = 0.0
+        data.withUnsafeBytes { raw in
+            for y in 0 ..< height {
+                for x in 0 ..< width {
+                    let value = Double(raw[y * bytesPerRow + x * 4])
+                    guard value >= floor else { continue }
+                    let position = vertical ? Double(y) : Double(x)
+                    weight += value
+                    first += value * position
+                    second += value * position * position
+                    third += value * position * position * position
+                }
+            }
+        }
+        guard weight > 0 else { return 0 }
+        let mean = first / weight
+        let variance = second / weight - mean * mean
+        guard variance > 1e-9 else { return 0 }
+        let cube = third / weight - 3 * mean * second / weight + 2 * mean * mean * mean
+        return cube / (variance * variance.squareRoot())
+    }
+
+    /// How wide the light sits, in pixels: twice the intensity-weighted spread
+    /// about its own center, which reads a shape's extent without a threshold
+    /// to pick and without caring where on the canvas it landed.
+    private func discWidth(of image: CGImage) -> Double {
+        guard let data = image.dataProvider?.data as Data? else { return 0 }
+        let bytesPerRow = image.bytesPerRow, width = image.width, height = image.height
+        var weight = 0.0, meanX = 0.0, meanSquare = 0.0
+        data.withUnsafeBytes { raw in
+            for y in 0 ..< height {
+                for x in 0 ..< width {
+                    let value = Double(raw[y * bytesPerRow + x * 4]) / 255
+                    guard value > 0 else { continue }
+                    weight += value
+                    meanX += value * Double(x)
+                    meanSquare += value * Double(x) * Double(x)
+                }
+            }
+        }
+        guard weight > 0 else { return 0 }
+        let center = meanX / weight
+        return 2 * (meanSquare / weight - center * center).squareRoot()
+    }
+
     private func linearSum(of image: CGImage) -> Double {
         let d = pixels(of: image)
         var sum = 0.0
@@ -656,6 +866,7 @@ private final class SpraySketch: Sketch {
 private final class MovingSpraySketch: Sketch {
     var spray: LineSpray!
     var sampling: LineSpray.Sampling = .perLine(200)
+    var aperture: Aperture = .round
     var shift: (Int) -> Double = { _ in 0 }
     var stretch: (Int) -> Double = { _ in 1 }
     /// The point table as built in `setup()`, read on the first draw.
@@ -674,8 +885,12 @@ private final class MovingSpraySketch: Sketch {
     }
 
     override func setup() {
+        // The spray takes its per-frame seed from the sketch's own generator,
+        // so two renders repeat each other only if that does.
+        randomSeed(7)
         spray = makeLineSpray(lines(frame: 0), sampling: sampling, passesPerFrame: 3,
-                              bokeh: Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02))
+                              bokeh: Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02,
+                                           aperture: aperture))
     }
 
     override func draw() {
@@ -719,5 +934,31 @@ private final class QuadSpraySketch: Sketch {
         camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
         drawLineSpray(spray)
         drawImage(spray.developed(exposure: 40).image, 0, 0)
+    }
+}
+
+/// A single point of light well off the plane of focus, so what lands on the
+/// canvas is the shape of the hole it was scattered through. The point is a
+/// line whose ends are the same place, which is how a dot is drawn.
+private final class AperturePointSketch: Sketch {
+    var spray: LineSpray!
+    var aperture: Aperture = .round
+    var printExposure = 6.0
+    override var canvasSize: CanvasSize { .square(96) }
+
+    override func setup() {
+        randomSeed(7)
+        let dot = Vector3(0, 0, 0)
+        spray = makeLineSpray([SprayLine(from: dot, to: dot, light: SIMD3(repeating: 3))],
+                              sampling: .perLine(4000), passesPerFrame: 4,
+                              bokeh: Bokeh(focalDistance: 2, strength: 0.09, minSize: 0.01,
+                                           aperture: aperture))
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
+        drawLineSpray(spray)
+        drawImage(spray.developed(exposure: printExposure).image, 0, 0)
     }
 }
