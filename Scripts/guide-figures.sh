@@ -19,4 +19,8 @@
 # the callers, which is how a session on a loaded machine turns it down.
 
 cd "$(dirname "$0")/.." || exit 1
-exec swift run OllinGuideFigures ${OLLIN_FIGURE_JOBS:+--jobs "$OLLIN_FIGURE_JOBS"} "$@"
+# An array, because zsh does not split an unquoted expansion: the conditional
+# form hands the runner one argument reading "--jobs 2", which it refuses.
+jobs=()
+[[ -n "$OLLIN_FIGURE_JOBS" ]] && jobs=(--jobs "$OLLIN_FIGURE_JOBS")
+exec swift run OllinGuideFigures $jobs "$@"

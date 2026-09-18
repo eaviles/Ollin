@@ -22,6 +22,7 @@ You need macOS 26+ with a Metal-capable GPU and a Swift 6 toolchain.
 - A change to the public API fails preflight until you run `Scripts/api-surface.sh --record` and commit the rewritten listing under `API/` with it. That diff is how a reviewer sees what the surface gained, lost, or renamed; the changelog names a rename by both names. `Scripts/api-diff.sh` reads that listing against the last tag and says what the change means for the next version; `--changelog` prints the skeleton of the entry. `Scripts/check-api-pages.sh` reads the same listing the other way and fails when a public name is named by no page under `Docs/`, so a new name arrives with somewhere to read about it.
 - A new capability ships with an example, a test, and a `Docs/` page. The full ship checklist is in `CLAUDE.md`.
 - A change a user would notice gets a line under *Unreleased* in [`CHANGELOG.md`](CHANGELOG.md). A rename names both the old and the new spelling in that line.
+- `Scripts/release-smoke.sh` builds Ollin the way somebody who only has a tag does: it generates the project `ollin new --remote` writes, lets SwiftPM fetch the framework from GitHub at a published tag, builds it, and renders one frame headless. It runs when a release is cut, and you can run it any time to check that the route still works.
 
 ## Examples and attribution
 
