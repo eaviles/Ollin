@@ -42,6 +42,7 @@ final class Wired: Sketch {
 - [Timecode (TimecodeClock)](#timecode-timecodeclock) - chase a timeline sent as MIDI Time Code
 - [MIDIOutput](#midioutput) - send notes and control changes
 - [Testing without hardware](#testing-without-hardware) - loopback and the monitor
+- [Files, not cables](#files-not-cables) - where a `.mid` file is read and written
 
 <a name="midimessage--kinds"></a>
 
@@ -374,6 +375,14 @@ override func draw() { out.controlChange(7, value: Int(level * 127)) }
 You can test MIDI with nothing but the Mac in front of you. The **MIDILoopback** example (`Examples/Integration/MIDILoopback`) opens a virtual source, sends control changes to itself, and draws the value it reads back. What you see on screen is the round trip. It also shows parameter smoothing. The incoming value arrives in jumps, and the circle glides toward each new value.
 
 To bring in real gear, connect a controller and run the **MIDIMonitor** example (`Examples/Integration/MIDIMonitor`). It listens to every device and prints and draws each message, so you can find out what a knob or pad sends by touching it. You can reconfigure many controllers, especially the endless-encoder kind, in their own editor software. The monitor shows what yours is set to.
+
+---
+
+### Files, not cables
+
+This page is about gear playing live. A `.mid` file on disk is the other thing the word MIDI names, and it lives one library over, in [`MIDI files`](../Helpers/MIDIFiles.md): `MIDIFile` reads a Standard MIDI File into notes a sketch plays or draws, and writes one back out, so a phrase a sketch worked out opens in a sequencer.
+
+It sits in `OllinAudio` because a file arrives as music rather than as messages. Its notes are `ScheduledNote` values, which is what a `Synth` plays and what every pattern type in [`Composition`](../Helpers/Composition.md) hands back, so nothing has to be translated in between.
 
 ---
 

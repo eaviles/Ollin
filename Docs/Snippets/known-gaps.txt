@@ -736,7 +736,6 @@ b2be1fcf6add  Docs/Helpers/Animation.md:293  cannot find 'noisy' in scope
 340f89d95270  Docs/Helpers/Animation.md:344  cannot find 'x' in scope
 476cfba14ab9  Docs/Helpers/Animation.md:60  expected ',' separator
 566254870042  Docs/Helpers/Animation.md:97  expected ',' separator
-b5aa87221977  Docs/Helpers/Audio.md:111  cannot find 'Tone' in scope
 89fac67e9339  Docs/Helpers/Audio.md:123  expected '{' in body of function declaration
 16eb10b4a5c4  Docs/Helpers/Audio.md:130  unary operator cannot be separated from its operand
 a64ccfb3bf3e  Docs/Helpers/Audio.md:148  expected '{' in body of function declaration
@@ -745,37 +744,31 @@ a64ccfb3bf3e  Docs/Helpers/Audio.md:148  expected '{' in body of function declar
 0793adb933ae  Docs/Helpers/Audio.md:189  cannot find 'source' in scope
 8baa306b8120  Docs/Helpers/Audio.md:198  cannot find 'source' in scope
 07dc4d1d581d  Docs/Helpers/Audio.md:204  cannot find 'source' in scope
-87706317ada6  Docs/Helpers/Audio.md:221  cannot find type 'DetectedPitch' in scope
 f44a930653f7  Docs/Helpers/Audio.md:229  cannot find 'mic' in scope
 d038472b7a0a  Docs/Helpers/Audio.md:239  cannot find 'source' in scope
-7d35425da57f  Docs/Helpers/Audio.md:259  cannot find 'AudioAnalyzer' in scope
+7d35425da57f  Docs/Helpers/Audio.md:259  cannot find 'ptr' in scope
 d84e8726dda1  Docs/Helpers/Audio.md:46  expected '{' in body of function declaration
-481598802e2e  Docs/Helpers/Audio.md:55  cannot find 'AudioInput' in scope
 50a5507e3270  Docs/Helpers/Audio.md:66  'throws' may only occur before '->'
-f3861249dc5b  Docs/Helpers/Audio.md:79  cannot find 'AudioPlayer' in scope
+f3861249dc5b  Docs/Helpers/Audio.md:79  call can throw, but errors cannot be thrown out of a property initializer
 138cb1923595  Docs/Helpers/Audio.md:98  expected '{' in body of function declaration
 1386e5c3ac76  Docs/Helpers/Complex.md:32  expected ',' separator
 eecd805c7383  Docs/Helpers/Composition.md:11  overriding non-open property outside of its defining module
-ae33f1820696  Docs/Helpers/Composition.md:114  cannot find 'Rhythm' in scope
-e0818eb9fe55  Docs/Helpers/Composition.md:130  cannot find type 'Rhythm' in scope
-610bbb3f1144  Docs/Helpers/Composition.md:157  cannot find type 'StepSequencer' in scope
+ae33f1820696  Docs/Helpers/Composition.md:114  cannot convert value of type '(Double, Double) -> Double' to expected argument type 'Int'
+610bbb3f1144  Docs/Helpers/Composition.md:157  cannot find 'tempo' in scope
 b649f2fd0e00  Docs/Helpers/Composition.md:172  cannot find 'drums' in scope
-4ace39d8548a  Docs/Helpers/Composition.md:203  cannot find 'Scale' in scope
 519aae003eba  Docs/Helpers/Composition.md:216  cannot find 'synth' in scope
 753766af24f5  Docs/Helpers/Composition.md:224  value of type 'Double' has no member 'chord'
-27479b610893  Docs/Helpers/Composition.md:239  cannot find type 'Scale' in scope
-1c4882af5dd7  Docs/Helpers/Composition.md:249  cannot find 'Chord' in scope
-03a0d1ae69b1  Docs/Helpers/Composition.md:262  cannot find 'Progression' in scope
-0e063ace55bd  Docs/Helpers/Composition.md:295  cannot find 'Progression' in scope
-78335acf0789  Docs/Helpers/Composition.md:305  cannot find type 'Chord' in scope
-c8998367df91  Docs/Helpers/Composition.md:328  cannot find 'Arpeggio' in scope
-5a6ca0548e2d  Docs/Helpers/Composition.md:347  cannot find 'Arpeggiator' in scope
-203624b8b444  Docs/Helpers/Composition.md:373  cannot find 'MarkovChain' in scope
+1c4882af5dd7  Docs/Helpers/Composition.md:249  cannot find 'synth' in scope
+03a0d1ae69b1  Docs/Helpers/Composition.md:262  cannot find 'counter' in scope
+0e063ace55bd  Docs/Helpers/Composition.md:295  cannot convert value of type 'Character?' to expected argument type 'Scale'
+c8998367df91  Docs/Helpers/Composition.md:328  cannot find 'synth' in scope
+5a6ca0548e2d  Docs/Helpers/Composition.md:347  cannot find 'midi' in scope
+203624b8b444  Docs/Helpers/Composition.md:373  cannot find 'synth' in scope
 7cdf0786f27e  Docs/Helpers/Composition.md:390  cannot find 'melody' in scope
-c9a9683ac462  Docs/Helpers/Composition.md:402  cannot find 'Tuning' in scope
-ecdb23d6df15  Docs/Helpers/Composition.md:441  cannot find 'AudioInput' in scope
-cb8c68156be1  Docs/Helpers/Composition.md:482  cannot find 'Note' in scope
-79b2cb45d17c  Docs/Helpers/Composition.md:497  cannot find 'Synth' in scope
+c9a9683ac462  Docs/Helpers/Composition.md:402  cannot find 'synth' in scope
+ecdb23d6df15  Docs/Helpers/Composition.md:441  cannot find 'room' in scope
+cb8c68156be1  Docs/Helpers/Composition.md:482  missing argument label '_animatableValue:' in subscript
+79b2cb45d17c  Docs/Helpers/Composition.md:497  overriding non-open property outside of its defining module
 01f2f3e68796  Docs/Helpers/Composition.md:55  unary operator cannot be separated from its operand
 b749134545cc  Docs/Helpers/Cues.md:36  value of optional type 'Character?' must be unwrapped to refer to member 'wholeNumberValue' of wrapped base type 'Character'
 a92b3e5e1377  Docs/Helpers/Data.md:106  cannot find 'table' in scope
@@ -785,7 +778,7 @@ fbd5f6e76076  Docs/Helpers/Data.md:157  overriding non-open instance method outs
 39bcf57fe500  Docs/Helpers/Data.md:190  cannot find 'json' in scope
 54526e1ce130  Docs/Helpers/Data.md:195  cannot infer contextual base in reference to member 'text'
 d0c0dee9ea81  Docs/Helpers/Data.md:210  cannot find 'json' in scope
-8b218a4941b3  Docs/Helpers/Data.md:227  cannot find 'Bundle' in scope
+8b218a4941b3  Docs/Helpers/Data.md:227  'module' is inaccessible due to 'internal' protection level
 90b941060901  Docs/Helpers/Data.md:238  expected ',' separator
 5f14f0e76908  Docs/Helpers/Data.md:33  overriding non-open instance method outside of its defining module
 c74a7fcc46d5  Docs/Helpers/Data.md:42  'module' is inaccessible due to 'internal' protection level
@@ -813,8 +806,8 @@ f0cd6be6aef9  Docs/Helpers/Input.md:48  consecutive statements on a line must be
 8367ed789b5b  Docs/Helpers/Input.md:55  unary operator cannot be separated from its operand
 8e0b26210e84  Docs/Helpers/Input.md:67  consecutive statements on a line must be separated by ';'
 d7ff958d42d5  Docs/Helpers/Listening.md:104  cannot find 'ears' in scope
-14edaccb0736  Docs/Helpers/Listening.md:125  cannot find 'SoundClassifier' in scope
-7abdd4aad5ea  Docs/Helpers/Listening.md:138  cannot find 'waitFor' in scope
+14edaccb0736  Docs/Helpers/Listening.md:125  cannot find 'mic' in scope
+7abdd4aad5ea  Docs/Helpers/Listening.md:138  'module' is inaccessible due to 'internal' protection level
 3296b31fc920  Docs/Helpers/Listening.md:62  cannot find 'speech' in scope
 4d25b9462e40  Docs/Helpers/Listening.md:7  cannot find 'flash' in scope
 75ac024f0f27  Docs/Helpers/Listening.md:82  cannot find 'speech' in scope
@@ -826,6 +819,12 @@ bfa36d7f3c9e  Docs/Helpers/Listening.md:96  cannot find 'ears' in scope
 221a2611a33f  Docs/Helpers/LiveData.md:228  cannot convert value of type 'Character?' to expected dictionary value type 'String'
 3090fa110e2e  Docs/Helpers/LiveData.md:32  expected ',' separator
 c2c26248e5c8  Docs/Helpers/LiveData.md:84  cannot find 'tide' in scope
+55722fc7743a  Docs/Helpers/MIDIFiles.md:104  cannot find 'now' in scope
+51500ca6ced2  Docs/Helpers/MIDIFiles.md:11  'module' is inaccessible due to 'internal' protection level
+b4c3903406bd  Docs/Helpers/MIDIFiles.md:135  errors thrown from here are not handled
+9c3561da79ed  Docs/Helpers/MIDIFiles.md:147  errors thrown from here are not handled
+f915388f1eb2  Docs/Helpers/MIDIFiles.md:176  cannot find 'synth' in scope
+8f3726bdcd34  Docs/Helpers/MIDIFiles.md:54  'module' is inaccessible due to 'internal' protection level
 545d4e2f1553  Docs/Helpers/Math.md:113  cannot find 'angle' in scope
 7b68eee41292  Docs/Helpers/Math.md:127  cannot find 'palette' in scope
 0714efb3d0bc  Docs/Helpers/Math.md:135  expected ',' separator
@@ -847,44 +846,31 @@ d5eb0c2ff7b4  Docs/Helpers/Parameters.md:289  cannot find '$radius' in scope
 1c6c8dbec021  Docs/Helpers/Parameters.md:71  property wrappers are not yet supported in top-level code
 62c82222d99f  Docs/Helpers/Parameters.md:86  cannot find 'radius' in scope
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
-c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'Sonification' in scope
-7b95326d799b  Docs/Helpers/Sonification.md:32  cannot find 'Sonification' in scope
-3343e913935a  Docs/Helpers/Sonification.md:53  cannot find 'Sonification' in scope
+c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
+7b95326d799b  Docs/Helpers/Sonification.md:32  cannot find 'numbers' in scope
+3343e913935a  Docs/Helpers/Sonification.md:53  cannot find 'numbers' in scope
 306833112ab4  Docs/Helpers/Sonification.md:72  cannot infer contextual base in reference to member 'extremes'
 f04e1f957599  Docs/Helpers/Sonification.md:9  cannot find 'table' in scope
-ce617da83e59  Docs/Helpers/Synthesis.md:112  cannot find type 'PlayingNote' in scope
+ce617da83e59  Docs/Helpers/Synthesis.md:112  expected '{' in body of function declaration
 69561a5ccbb1  Docs/Helpers/Synthesis.md:125  cannot find 'synth' in scope
 0325ad3f60c8  Docs/Helpers/Synthesis.md:153  cannot find 'synth' in scope
-456d01440e84  Docs/Helpers/Synthesis.md:170  cannot find 'Synth' in scope
-7061a94dbb81  Docs/Helpers/Synthesis.md:215  cannot find 'Synth' in scope
-46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'PluckedString' in scope
-af59bd54d5b2  Docs/Helpers/Synthesis.md:259  cannot find 'Synth' in scope
+46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'synth' in scope
 18a9f63e8409  Docs/Helpers/Synthesis.md:286  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
-883a650f2006  Docs/Helpers/Synthesis.md:326  cannot find 'Synth' in scope
-43fbd5e77cc0  Docs/Helpers/Synthesis.md:357  cannot find 'Synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
-16966f9a8316  Docs/Helpers/Synthesis.md:398  cannot find 'Patch' in scope
+16966f9a8316  Docs/Helpers/Synthesis.md:398  cannot find 'synth' in scope
 c1f052f4e696  Docs/Helpers/Synthesis.md:458  cannot find 'synth' in scope
-31b379e5f09d  Docs/Helpers/Synthesis.md:482  cannot find 'SampledInstrument' in scope
-4922ed6c5c66  Docs/Helpers/Synthesis.md:497  cannot find 'SampledInstrument' in scope
+31b379e5f09d  Docs/Helpers/Synthesis.md:482  'module' is inaccessible due to 'internal' protection level
+4922ed6c5c66  Docs/Helpers/Synthesis.md:497  cannot find 'synth' in scope
 24dde6741b45  Docs/Helpers/Synthesis.md:537  cannot find 'synth' in scope
 62e4396a9788  Docs/Helpers/Synthesis.md:54  expected ',' separator
-e9c718de9c52  Docs/Helpers/Synthesis.md:569  cannot find 'Wavetable' in scope
 1f7e4eaa6eb9  Docs/Helpers/Synthesis.md:588  cannot find 'synth' in scope
 71128f7d3f0d  Docs/Helpers/Synthesis.md:62  cannot find 'synth' in scope
 17733d0868da  Docs/Helpers/Synthesis.md:665  cannot find 'synth' in scope
 704965646449  Docs/Helpers/Synthesis.md:70  cannot find 'synth' in scope
-f4786d659208  Docs/Helpers/Synthesis.md:722  cannot find 'Envelope' in scope
-8094d9793ee0  Docs/Helpers/Synthesis.md:751  cannot find 'Voice' in scope
 c23316c59aa8  Docs/Helpers/Synthesis.md:776  cannot find 'synth' in scope
 a0885de8f8fa  Docs/Helpers/Synthesis.md:78  cannot find 'wasDown' in scope
 6ec305c76a35  Docs/Helpers/Synthesis.md:807  cannot find 'synth' in scope
-b7224671e713  Docs/Helpers/Synthesis.md:816  cannot find 'Delay' in scope
-a225fd492d30  Docs/Helpers/Synthesis.md:829  cannot find 'Reverb' in scope
-03eb878f64f8  Docs/Helpers/Synthesis.md:837  cannot find 'ImpulseResponse' in scope
-7ac3cbca95d8  Docs/Helpers/Synthesis.md:856  cannot find 'ImpulseResponse' in scope
-5b6c5d04a165  Docs/Helpers/Synthesis.md:871  cannot find 'Equalizer' in scope
-20c352650fbd  Docs/Helpers/Synthesis.md:880  cannot find 'Distortion' in scope
+03eb878f64f8  Docs/Helpers/Synthesis.md:837  'module' is inaccessible due to 'internal' protection level
 2f022144c85f  Docs/Helpers/Synthesis.md:888  cannot find 'synth' in scope
 4673980e7486  Docs/Helpers/Synthesis.md:908  cannot find 'synth' in scope
 b011e4ff81ce  Docs/Helpers/Synthesis.md:927  cannot find 'synth' in scope
@@ -948,24 +934,24 @@ d7796974210e  Docs/Integration/Link.md:105  value of type '(UnsafePointer<CChar>
 5bd88c4dbca3  Docs/Integration/Link.md:66  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'tempo'
 a52e2bd97757  Docs/Integration/Link.md:86  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'tempo'
 e351de54086a  Docs/Integration/Link.md:92  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'isPlaying'
-ac1bbc556674  Docs/Integration/MIDI.md:104  cannot find 'midi' in scope
-c9eb55c85c1a  Docs/Integration/MIDI.md:110  cannot find 'midi' in scope
-4b13b642dca5  Docs/Integration/MIDI.md:116  cannot find 'midi' in scope
-5a8b66a9cc02  Docs/Integration/MIDI.md:137  expected '{' in body of function declaration
-8c24eb50dea9  Docs/Integration/MIDI.md:147  cannot find 'midi' in scope
-9c84b9ce0054  Docs/Integration/MIDI.md:171  cannot find type 'MPEZone' in scope
-d6a82f4e607c  Docs/Integration/MIDI.md:192  cannot find 'midi' in scope
-82131413f3c3  Docs/Integration/MIDI.md:206  cannot find type 'PlayingNote' in scope
-1b93dfad6978  Docs/Integration/MIDI.md:237  expected '{' in body of function declaration
-19edb5d8f976  Docs/Integration/MIDI.md:255  cannot find 'MIDIInput' in scope
-31b20ced319c  Docs/Integration/MIDI.md:277  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
-6ef097e7940f  Docs/Integration/MIDI.md:292  cannot find type 'Timecode' in scope
-c169feebbbd5  Docs/Integration/MIDI.md:316  cannot find 'MIDIInput' in scope
-987e475e3f82  Docs/Integration/MIDI.md:341  cannot find type 'MIDIEndpoint' in scope
-29df67a1ddf0  Docs/Integration/MIDI.md:362  cannot find 'MIDIOutput' in scope
-d239cd3c7705  Docs/Integration/MIDI.md:52  cannot find 'message' in scope
-7f26d708f6c2  Docs/Integration/MIDI.md:68  cannot find 'message' in scope
-09b99eed83af  Docs/Integration/MIDI.md:83  cannot find type 'MIDIEndpoint' in scope
+ac1bbc556674  Docs/Integration/MIDI.md:105  cannot find 'midi' in scope
+c9eb55c85c1a  Docs/Integration/MIDI.md:111  cannot find 'midi' in scope
+4b13b642dca5  Docs/Integration/MIDI.md:117  cannot find 'midi' in scope
+5a8b66a9cc02  Docs/Integration/MIDI.md:138  expected '{' in body of function declaration
+8c24eb50dea9  Docs/Integration/MIDI.md:148  cannot find 'midi' in scope
+9c84b9ce0054  Docs/Integration/MIDI.md:172  cannot find type 'MPEZone' in scope
+d6a82f4e607c  Docs/Integration/MIDI.md:193  cannot find 'midi' in scope
+82131413f3c3  Docs/Integration/MIDI.md:207  cannot find 'midi' in scope
+1b93dfad6978  Docs/Integration/MIDI.md:238  expected '{' in body of function declaration
+19edb5d8f976  Docs/Integration/MIDI.md:256  cannot find 'MIDIInput' in scope
+31b20ced319c  Docs/Integration/MIDI.md:278  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
+6ef097e7940f  Docs/Integration/MIDI.md:293  cannot find type 'Timecode' in scope
+c169feebbbd5  Docs/Integration/MIDI.md:317  cannot find 'MIDIInput' in scope
+987e475e3f82  Docs/Integration/MIDI.md:342  cannot find type 'MIDIEndpoint' in scope
+29df67a1ddf0  Docs/Integration/MIDI.md:363  cannot find 'MIDIOutput' in scope
+d239cd3c7705  Docs/Integration/MIDI.md:53  cannot find 'message' in scope
+7f26d708f6c2  Docs/Integration/MIDI.md:69  cannot find 'message' in scope
+09b99eed83af  Docs/Integration/MIDI.md:84  cannot find type 'MIDIEndpoint' in scope
 e4f65cafbb75  Docs/Integration/OSC.md:107  cannot find 'osc' in scope
 ec3cf3dba0c3  Docs/Integration/OSC.md:115  cannot find 'osc' in scope
 831fac54d6a5  Docs/Integration/OSC.md:136  expected '{' in body of function declaration
@@ -1226,7 +1212,7 @@ bdca8b7007b6  Docs/Vision/Vision.md:1130  cannot find type 'VideoPlayer' in scop
 bf93c06e1fd8  Docs/Vision/Vision.md:1168  expected ',' separator
 ab4b590c81f4  Docs/Vision/Vision.md:1176  expected ',' separator
 ccec96273f8d  Docs/Vision/Vision.md:1187  cannot find 'FaceTracker' in scope
-dabd491a4320  Docs/Vision/Vision.md:1197  cannot find 'waitFor' in scope
+dabd491a4320  Docs/Vision/Vision.md:1197  cannot find 'image' in scope
 1eeb10f31606  Docs/Vision/Vision.md:120  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 b37d2de5f126  Docs/Vision/Vision.md:1207  cannot find 'minimumScore' in scope
 1cb517a75c42  Docs/Vision/Vision.md:1220  cannot find 'bodies' in scope

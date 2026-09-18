@@ -3636,6 +3636,27 @@
       "stillSmall": "examples/Audio/Levels/still-640.jpg?v=eb28c921",
       "width": 1080
     },
+    "Audio/MIDIFiles": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.484,
+      "sound": true,
+      "source": "487e6d37656e57b8",
+      "rendered": "2026-09-18",
+      "bytes": {
+        "loop": 944746,
+        "loopSmall": 223593,
+        "still": 99221,
+        "stillSmall": 45341
+      },
+      "loop": "examples/Audio/MIDIFiles/loop.mp4?v=1771d680",
+      "loopSmall": "examples/Audio/MIDIFiles/loop-640.mp4?v=9f5a02f5",
+      "still": "examples/Audio/MIDIFiles/still.jpg?v=919378a5",
+      "stillSmall": "examples/Audio/MIDIFiles/still-640.jpg?v=b243bd5d"
+    },
     "Audio/Movement": {
       "bytes": {
         "loop": 1109811,

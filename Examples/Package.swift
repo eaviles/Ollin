@@ -638,6 +638,7 @@ let package = Package(
         // A drum machine's grid with swing, chance, and ratchets, and an
         // arpeggiator climbing the chord of the bar under it.
         example("Audio/Sequencer", [.audio]),
+        example("Audio/MIDIFiles", [.audio]),
         // An instrument of our own: a hand-written .sfz over three recordings
         // the folder's own script generates.
         example("Audio/OwnSampler", [.audio], resources: [.copy("Hum.sfz"), .copy("hum-c3.wav"), .copy("hum-c4.wav"), .copy("hum-g4.wav")], exclude: ["make-samples.py"]),

@@ -41,6 +41,9 @@ public final class Synth: AudioSource {
     /// What a sketch asked for while it was being exported, and the clock those
     /// requests are measured against. All three are untouched on the live path.
     var recorded: [RecordedNote] = []
+    /// What the sketch is playing, written down as music, while a recording
+    /// runs. Nil unless one was started.
+    var recording: MIDIRecording?
     /// Where the instrument was and where it was heard from, whenever either
     /// changed. Empty unless the sketch placed it, which is what keeps an
     /// export of an unplaced instrument exactly what it was before.
@@ -505,6 +508,10 @@ public final class Synth: AudioSource {
     /// `seconds` is the note's length where it has one, because an export may
     /// render at a different sample rate from the hardware.
     private func emit(_ event: SynthEvent, seconds: Double = 0) {
+        // Written down before anything else happens to it, so a recording
+        // catches the same notes whether they are going to the speakers or
+        // into an export.
+        recording?.write(event, seconds: seconds)
         guard !isRecordingForExport else {
             var recordedEvent = event
             recordedEvent.durationSeconds = seconds

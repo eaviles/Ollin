@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **MIDI files in and out.** `MIDIFile` reads a Standard MIDI File into notes a sketch can play or draw, and writes one back out, so a piece written elsewhere runs in a sketch and a phrase a sketch worked out opens in a sequencer. Formats 0, 1, and 2, the tempo map read from either side with `beats(at:)` and `seconds(at:)`, plus control changes, pitch bends, programs, names, and markers. A `Synth` will also write down what it is asked to play: `startRecording(tempo:name:)` and `stopRecording()` hand back a take. It lives in `OllinAudio`, since a file arrives as notes rather than as messages.
+
 ## [0.9.0] - 2026-09-18
 
 ### Added

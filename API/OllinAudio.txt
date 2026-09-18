@@ -185,6 +185,7 @@ final class SpeechListener: Sendable
 final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, TransportMutable, AudioSource, Sendable
   @discardableResult func noteOn(_: Pitch, velocity: Double = default) -> PlayingNote
   @discardableResult func play(_: Pitch, velocity: Double = default, for: Double? = default, after: Double = default) -> PlayingNote
+  @discardableResult func stopRecording() -> MIDIFile
   func advance(by: Double)
   func allNotesOff()
   func bend(_: PlayingNote, semitones: Double)
@@ -197,8 +198,10 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   func play(_: [ScheduledNote], tempo: Tempo = default, from: Double? = default)
   func play(chord: [Pitch], velocity: Double = default, for: Double? = default, after: Double = default)
   func press(_: PlayingNote, _: Double)
+  func recordedSoFar() -> MIDIFile
   func slide(_: PlayingNote, _: Double)
   func start()
+  func startRecording(tempo: Tempo = default, name: String = default)
   func stop()
   func unplace()
   init(_: Voice = default, polyphony: Int = default, fftSize: Int = default)
@@ -212,6 +215,7 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   var grainSource: GrainSource? { get set }
   var hearingRange: ClosedRange<Double> { get set }
   var instrument: SampledInstrument? { get set }
+  var isRecording: Bool { get }
   var isRunning: Bool { get }
   var pitchBend: Double { get set }
   var position: Vector3? { get }
@@ -500,6 +504,77 @@ struct Limiter: Decodable, Encodable, Equatable, Hashable, Sendable
   init(ceiling: Double = default, release: Double = default)
   var ceiling: Double { get set }
   var release: Double { get set }
+struct MIDIFile: Equatable, Hashable, Sendable
+  enum Division: CustomStringConvertible, Equatable, Hashable, Sendable
+    case perQuarter(Int)
+    case perSecond(framesPerSecond: Double, ticksPerFrame: Int)
+    var description: String { get }
+  enum Format: Int, CustomStringConvertible, Equatable, Hashable, RawRepresentable, Sendable
+    case oneTrack
+    case parallelTracks
+    case separatePatterns
+    var description: String { get }
+  func beats(at: Double) -> Double
+  func data() -> Foundation.Data
+  func notes(from: Double, to: Double) -> [ScheduledNote]
+  func seconds(at: Double) -> Double
+  func tempo(at: Double) -> Tempo
+  func timeSignature(at: Double) -> MIDIFile.TimeSignature
+  func write(to: String) throws
+  init(_: [ScheduledNote], tempo: Tempo = default, name: String = default, channel: Int = default)
+  init(contentsOf: String) throws
+  init(data: Foundation.Data) throws
+  init(format: MIDIFile.Format = default, division: MIDIFile.Division = default, name: String = default, tracks: [MIDIFile.Track] = default, tempoChanges: [MIDIFile.TempoChange] = default, timeSignatures: [MIDIFile.TimeSignature] = default, markers: [MIDIFile.Marker] = default)
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
+  struct ControlChange: Equatable, Hashable, Sendable
+    init(beat: Double, controller: Int, value: Double)
+    var beat: Double { get set }
+    var controller: Int { get set }
+    var value: Double { get set }
+  struct Marker: Equatable, Hashable, Sendable
+    init(beat: Double, text: String)
+    var beat: Double { get set }
+    var text: String { get set }
+  struct PitchBend: Equatable, Hashable, Sendable
+    init(beat: Double, position: Double)
+    var beat: Double { get set }
+    var position: Double { get set }
+  struct ReadError: CustomStringConvertible, Equatable, Error, Sendable
+    let offset: Int?
+    let problem: String
+    var description: String { get }
+  struct TempoChange: Equatable, Hashable, Sendable
+    init(beat: Double, tempo: Tempo)
+    var beat: Double { get set }
+    var tempo: Tempo { get set }
+  struct TimeSignature: CustomStringConvertible, Equatable, Hashable, Sendable
+    init(beat: Double = default, count: Int = default, unit: NoteLength = default)
+    var barLength: NoteLength { get }
+    var beat: Double { get set }
+    var count: Int { get set }
+    var description: String { get }
+    var unit: NoteLength { get set }
+  struct Track: Equatable, Hashable, Sendable
+    init(_: [ScheduledNote], name: String = default, channel: Int = default, program: Int? = default, controls: [MIDIFile.ControlChange] = default, bends: [MIDIFile.PitchBend] = default)
+    var bends: [MIDIFile.PitchBend] { get set }
+    var channel: Int { get set }
+    var controls: [MIDIFile.ControlChange] { get set }
+    var isEmpty: Bool { get }
+    var lastBeat: Double { get }
+    var name: String { get set }
+    var notes: [ScheduledNote] { get set }
+    var program: Int? { get set }
+  var division: MIDIFile.Division { get set }
+  var duration: Double { get }
+  var format: MIDIFile.Format { get set }
+  var lastBeat: Double { get }
+  var markers: [MIDIFile.Marker] { get set }
+  var name: String { get set }
+  var notes: [ScheduledNote] { get }
+  var tempo: Tempo { get }
+  var tempoChanges: [MIDIFile.TempoChange] { get set }
+  var timeSignatures: [MIDIFile.TimeSignature] { get set }
+  var tracks: [MIDIFile.Track] { get set }
 struct MarkovChain<Element where Element : Hashable, Element : Sendable>: Sendable
   func continuations(after: [Element]) -> [(element: Element, probability: Double)]
   init(learning: [Element], order: Int = default, seed: Int = default, loops: Bool = default)

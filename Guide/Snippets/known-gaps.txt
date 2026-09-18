@@ -302,8 +302,11 @@ daee9e15952e  Guide/29-MakingSound.md:631  cannot find 'drums' in scope
 47f783a8ac03  Guide/29-MakingSound.md:739  cannot find 'Sonification' in scope
 bcb4c0a45a0c  Guide/29-MakingSound.md:763  cannot find 'marker' in scope
 0b9d28d8a7a0  Guide/29-MakingSound.md:777  cannot find 'synth' in scope
-2e02aee3d33f  Guide/29-MakingSound.md:807  expected '}' in class
-60aef06efea1  Guide/29-MakingSound.md:896  extraneous '}' at top level
+244efe4a3c2a  Guide/29-MakingSound.md:807  cannot find type 'ScheduledNote' in scope
+dcc76ca1f705  Guide/29-MakingSound.md:821  cannot find 'MIDIFile' in scope
+3781d3ae3cfc  Guide/29-MakingSound.md:846  cannot find 'synth' in scope
+2e02aee3d33f  Guide/29-MakingSound.md:865  expected '}' in class
+60aef06efea1  Guide/29-MakingSound.md:954  extraneous '}' at top level
 e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
 096f6e921b2a  Guide/30-Seeing.md:108  cannot find 'BodyTracker3D' in scope
 373aa36a22f2  Guide/30-Seeing.md:127  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]

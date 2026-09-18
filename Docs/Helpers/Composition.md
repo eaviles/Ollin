@@ -538,4 +538,4 @@ The Euclidean rhythms come from Bjorklund's algorithm for spacing pulses in a sp
 
 ---
 
-<sup>[Synthesis](./Synthesis.md) covers the sound a note makes. [MIDI](../Integration/MIDI.md) covers running on an external clock.</sup>
+<sup>[Synthesis](./Synthesis.md) covers the sound a note makes. [MIDI files](./MIDIFiles.md) covers a piece read from or written to disk. [MIDI](../Integration/MIDI.md) covers running on an external clock.</sup>

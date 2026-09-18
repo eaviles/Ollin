@@ -798,6 +798,64 @@ Which means the sound reproduces exactly the way the picture does. Export the sa
 The two halves of this section meet, which is worth saying because it would be easy to assume they don't. Placing works by rewiring the audio graph, and an export has no audio graph to rewire. So where each instrument was and where it was heard from get written down as the frames are drawn, exactly the way the notes are. The finished soundtrack is rendered through a listener at the end. A chime that walks past your left ear on screen walks past your left ear in the file. Place from the first frame if you want that. The soundtrack machine is built once, and its shape is fixed then. An instrument that starts playing before it is ever placed will tell you so, rather than quietly coming out in the middle.
 
 
+## Taking the piece with you: MIDI files
+
+A sketch that works out music is a sketch that has music to lose. The composition types answer a step number and vanish when the window closes, and that is fine for a piece that is meant to be different every run. It is not fine for a phrase you liked. A Standard MIDI File is how music travels between programs, every sequencer and notation program reads and writes one, and a sketch can do both.
+
+Writing one takes the notes you already have:
+
+```swift
+var phrase: [ScheduledNote] = []
+var bar = 0.0
+while bar < 32 {
+    phrase += sequencer.events(upTo: bar)
+    bar += 4
+}
+try MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
+```
+
+That is the whole of it. `events(upTo:)` hands back `ScheduledNote` values, and that is what a file is made of, so nothing has to be converted. The arpeggiator, the Markov chain, the progression, and the sonification all answer in the same values, which means any of them can be written out the same way.
+
+Reading one gives you the same values back:
+
+```swift
+let song = try MIDIFile(resource: "prelude", in: .module)
+
+override func draw() {
+    let now = song.beats(at: time)
+    let ahead = song.beats(at: time + deltaTime)
+    synth.play(song.notes(from: now, to: ahead), tempo: song.tempo(at: now), from: now)
+}
+```
+
+Which is the same shape as the look-ahead pair from the sequencer: ask for the notes up to where the music will be at the end of the frame, and play them from where it is now. A file is one more thing that answers when you ask it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/MIDIFileFigure-dark.jpg">
+  <img src="Images/29-MakingSound/MIDIFileFigure.jpg" alt="Two blocks. Top: four bars of a file as a piano roll, long blue bars for held chords on channel one and short red marks climbing above them for a figure on channel two, vertical lines at each bar, and a chord name written above each bar. Bottom: the same four bars on two horizontal rulers, one counted in beats with ticks evenly spaced and one counted in seconds with the first half of the ticks bunched together and the second half spread twice as far apart, sloping lines joining each position on the first ruler to the same position on the second" width="680">
+</picture>
+
+The top of the figure is a real file drawn as a piano roll, and everything in it came out of the file rather than out of the sketch that wrote it: the parts, their channels, the bar lines from its own time signature, the chord names from the markers it carries. Reading is not an approximation of what was written. It is the same music.
+
+The bottom half is the part worth slowing down for. Every position in a MIDI file is a beat, never a second, for exactly the reason the composition types own no clock: a beat is what survives somebody opening the file and deciding it should go faster. What joins the two is the tempo map, which is a list of the places the speed changes, and `beats(at:)` and `seconds(at:)` walk it from either side. In the figure the piece drops to half speed at beat eight, so the second half of the bars take twice as long on the clock while sitting exactly where they were in the music. If you divided by one tempo instead, everything after that point would be wrong, and it would be wrong in the way that is hard to see: a playhead drifting slowly out of the picture it is meant to be marking.
+
+A file carries more than notes. Control changes, the pitch wheel, the program each part asks for, the names, and markers all come back, and markers are the useful surprise: a name at a beat is somewhere to hang a change of scene, put there by whoever wrote the music rather than by you.
+
+The last direction is live. A `Synth` will write down what it is asked to play, so a take improvised at the keyboard can be opened somewhere else:
+
+```swift
+override func keyPressed() {
+    switch key {
+    case "r": synth.startRecording(tempo: 96, name: "Take")
+    case "s": try? synth.stopRecording().write(to: "take.mid")
+    default: break
+    }
+}
+```
+
+The notes keep the timing they were played with, down to the wait each one was asked with, so a swung pattern arrives swung. The tempo you give it decides where the bar lines fall around what was played, and nothing else. `Examples/Audio/MIDIFiles` runs the whole circle: it composes eight bars, writes them to a file, forgets them, reads the file back, and everything you then see and hear comes off disk.
+
+
 ## Putting it together: the music box
 
 The finished sketch plays by itself and draws what it plays. Three voices, one clock, three rhythms, one key. Make `MySketches/MusicBox.swift` and run it, because the picture is the smaller half of this one.
@@ -989,10 +1047,11 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Grains](../Docs/Helpers/Synthesis.md#grains): the whole cloud setting by setting, the six shapes, where a sound can come from, and what a strict clock and a full pile do.
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
 - [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, the step counter under all of them, and the [step sequencer](../Docs/Helpers/Composition.md#stepsequencer) and [arpeggiator](../Docs/Helpers/Composition.md#arpeggiator) that read the beat you hand them.
+- [MIDI files](../Docs/Helpers/MIDIFiles.md): reading a `.mid` file into notes, writing one back out, the tempo map read from either side, what is carried and what is passed over, and recording a take off a live `Synth`.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Sequencer` (a drum machine's grid with an arpeggiator under it), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Sequencer` (a drum machine's grid with an arpeggiator under it), `MIDIFiles` (eight bars written to a `.mid` file and played back from it), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 
