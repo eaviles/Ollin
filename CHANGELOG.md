@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-18
+
 ### Added
 
 - **The published release is checked the way a stranger gets it.** `Scripts/release-smoke.sh` generates the project `ollin new --remote` writes, lets SwiftPM fetch the framework from GitHub at a published tag, builds it, and renders one frame headless, so a tag nobody outside this repository could fetch, build, or draw from fails at the release rather than in somebody's terminal. It runs when a release is cut, and `--selftest` proves its ink law goes red on a blank frame.
@@ -332,7 +334,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/eaviles/Ollin/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/eaviles/Ollin/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/eaviles/Ollin/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/eaviles/Ollin/compare/0.5.0...0.6.0
