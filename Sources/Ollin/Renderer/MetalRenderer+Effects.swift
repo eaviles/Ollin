@@ -2938,52 +2938,175 @@ extension MetalRenderer {
             uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth + step budget)
         }
 
-        // 3D mesh lighting (per-frame), bound to the mesh fragment per mesh batch
-        // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
-        // keeps the byte-identical normal-as-color path.
-        var lighting = drawer.makeLighting()
-        // Many lights: turn the tiled path on for this pass when the frame culled a
-        // grid over exactly this view. A render target of its own proportions draws
-        // its own camera view, so unless it happens to be the same size it falls
-        // through to the frame's first `OLLIN_MAX_LIGHTS` instead.
-        let gridSize = passTarget.map { SIMD2<Float>(Float($0.pixelWidth), Float($0.pixelHeight)) }
-            ?? renderSize ?? attachmentSize
-        applyLightGrid(to: &lighting, width: Int(gridSize.x), height: Int(gridSize.y))
-        // Image-based lighting: when an environment baked successfully this frame (resolved
-        // by the caller before this pass), light the physically-based materials through its
-        // maps. Otherwise leave iblEnabled 0 — the flat-ambient path, byte-identical.
-        if lighting.enabled != 0, drawer.environment != nil, currentIBL != nil {
-            lighting.iblEnabled = 1
-            // The user intensity times the per-environment auto-exposure normalization.
-            lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
-            lighting.iblMaxMip = Float(currentIBLMaxMip)
-            lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
-        } else {
-            lighting.iblEnabled = 0   // noLights() stays flat; no environment → flat ambient
+        // Every device-side decision a lighting uniform needs, applied the same way
+        // to the frame's own light set and to each scoped one (see `Drawer.LightState`).
+        // Read-only but for the renderer's own texture-array caches, so resolving a
+        // second set neither disturbs the first nor draws anything.
+        func resolvedLighting(set: Int) -> OllinLighting {
+            // 3D mesh lighting for one light set, bound to the mesh fragment per mesh
+            // batch below. `enabled` is 0 when that set set no light, so the mesh
+            // fragment keeps the byte-identical normal-as-color path. One function, so
+            // the frame's own set and a scoped one can never be resolved differently.
+            var lighting = drawer.makeLighting(set: set)
+            // Many lights: turn the tiled path on for this pass when the frame culled a
+            // grid over exactly this view. A render target of its own proportions draws
+            // its own camera view, so unless it happens to be the same size it falls
+            // through to the frame's first `OLLIN_MAX_LIGHTS` instead.
+            let gridSize = passTarget.map { SIMD2<Float>(Float($0.pixelWidth), Float($0.pixelHeight)) }
+                ?? renderSize ?? attachmentSize
+            applyLightGrid(to: &lighting, width: Int(gridSize.x), height: Int(gridSize.y), set: set)
+            // Image-based lighting: when an environment baked successfully this frame (resolved
+            // by the caller before this pass), light the physically-based materials through its
+            // maps. Otherwise leave iblEnabled 0, the flat-ambient path, byte-identical.
+            if lighting.enabled != 0, drawer.environment != nil, currentIBL != nil {
+                lighting.iblEnabled = 1
+                // The user intensity times the per-environment auto-exposure normalization.
+                lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
+                lighting.iblMaxMip = Float(currentIBLMaxMip)
+                lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+            } else {
+                lighting.iblEnabled = 0   // noLights() stays flat; no environment → flat ambient
+            }
+            // Area lights (rect/disk/tube) shade through the LTC tables: resolve them once per
+            // frame so `ltcEnabled` gates the fragment's reads. The tables bind below with a
+            // never-sampled stand-in when absent, so the declared textures are never missing.
+            let setLights: [Light] = drawer.activeLights(inSet: set)
+            if lighting.enabled != 0,
+               setLights.contains(where: { (l: Light) -> Bool in
+                   l.kind == .rectangle || l.kind == .disk || l.kind == .tube }) {
+                lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+            }
+            // Light shaping (IES profiles / cookies): bake the frame's arrays once so the
+            // gates open only when a packed light references a layer. The `makeLighting`
+            // call above rebuilt `usedIESProfiles`/`usedLightCookies`, so the lists match
+            // the packed indices. Same stand-in-binding discipline as the LTC tables.
+            if lighting.enabled != 0, !drawer.usedIESProfiles.isEmpty {
+                lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+            }
+            if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
+                lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
+            }
+            // Atmosphere: the renderer owns the quality-to-budget mapping, so the volumetric
+            // march's step count resolves here (export lifts the automatic `.default` to
+            // `.detail` through `effectiveQuality`, like the PCSS taps).
+            if lighting.fogColor.w > 0 {
+                lighting.fogParams2.x = Float(resolveVolumetricSteps(drawer.volumetricQualitySetting))
+            }
+            // Shadows only apply when the shadow pass actually populated a map / structure
+            // (the render/image paths); the accumulation/texture paths pass nil, so clear the
+            // caster index there and bind the 1×1 / dummy stand-ins so the fragment never
+            // reads them. A directional/spot caster populates the 2D map, a point caster the
+            // cube, or, on a ray-tracing device, the acceleration structure.
+            // Clear the caster only when nothing can use it: a marched SDF field self-shadows
+            // analytically (no map), so it keeps the caster index even when the map pass didn't
+            // run. Meshes still see no shadow without a map (they'd sample the all-lit dummy).
+            if shadowMap == nil && shadowCube == nil && shadowAccel == nil && drawer.sdf3DGroups.isEmpty {
+                lighting.shadowLight = -1
+            }
+            // A ray-traced point or area caster: switch the fragment to the RT path (shadowKind 2)
+            // and resolve the sketch's quality tier to a concrete ray count for this GPU. The
+            // structure is bound whenever *any* caster traces against it, so the flip asks
+            // whether the primary is one of the kinds that trace: a directional key beside a
+            // traced point light keeps its own 2D map.
+            if shadowAccel != nil, lighting.shadowKind == 1 || casterGPUKind(lighting) >= 3 {
+                lighting.shadowKind = 2
+                lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+                // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
+                // about its center (the shadowSoftness dial; 0.5 default = the physical
+                // extent); the packing left the 2D map's linearization term there.
+                if casterGPUKind(lighting) >= 3 {
+                    lighting.shadowDepthB = Float(drawer.shadowSoftnessAmount * 2)
+                }
+            } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
+                // A directional/spot 2D caster runs PCSS (soft shadows): it budgets texture taps,
+                // not rays, and the count is hardware-independent (cheap samples on any GPU).
+                lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
+            }
+            // The caster list follows those device-side decisions: slot 0 mirrors them, and
+            // every extra caster takes what its own kind needs (or drops, with no map, cube,
+            // or structure to read).
+            finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
+                                  renderedCube: shadowCube != nil, traced: shadowAccel != nil)
+            // Ray-traced reflections: a physically-based metal traces the caster accel for its
+            // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
+            // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is
+            // set only when the shadow pass actually built a reflection accel on a tracing device.
+            // When the pre-pass traced (and, live, accumulated) the reflection off-screen, the
+            // fragments sample that texture by screen position instead of tracing inline (the
+            // anti-aliased path); the scale is 1 while the layer renders at full resolution.
+            if reflectAccel != nil { lighting.rtReflections = 1 }
+            if let deferredReflection {
+                lighting.rtReflectionDeferred = 1
+                lighting.rtReflectionScale = deferredReflection.scale
+            }
+            // Caustics: the resolved photon layer this frame's caustics pass produced
+            // (nil keeps `causticsEnabled` 0 and every carrier's branch untaken,
+            // byte-identical). Main canvas only, like the deferred reflection; the
+            // scale is 1 while the layer renders at full resolution.
+            // The scene behind the glass (`sceneThroughGlass()`): the layer this frame's
+            // pre-pass drew with every transmissive surface taken out, read by a transmissive
+            // fragment along its own refracted direction. nil keeps `sceneBehind.x` 0 and
+            // every carrier's branch untaken, byte-identical. The view projection is the one
+            // the layer was actually drawn with, so an exit point lands on the texel it
+            // holds; the layer's top mip drives the roughness blur, and the fade band is a
+            // fixed fraction of the frame. The inverse turns the layer's depth back into
+            // scene points, the ground a solid body's exiting ray walks to.
+            if let sceneBehind {
+                lighting.sceneBehind = SIMD4(1, Float(sceneBehind.texture.mipmapLevelCount - 1),
+                                             Float(sceneBehindEdgeFade), 0)
+                lighting.sceneViewProjection = sceneBehind.viewProjection
+                lighting.sceneInverseViewProjection = sceneBehind.inverseViewProjection
+            }
+            if caustics != nil {
+                lighting.causticsEnabled = 1
+                lighting.causticsScale = 1.0
+            }
+            // Global illumination: the probe field this frame's GI pass resolved (nil keeps
+            // `giOrigin.w` 0 and every carrier's GI branch untaken, byte-identical). The
+            // renderer owns the hardware check, so this is set only when that pass actually
+            // updated the atlases on a tracing device.
+            packGI(gi, into: &lighting, intensity: drawer.giIntensity)
+            // A directional/spot caster has each field render into the 2D map (so meshes receive it
+            // from there); a point/ray-traced caster has no map a field can render into, so the lit
+            // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
+            // for a point/RT caster with fields); 0 keeps the mesh path byte-identical.
+            lighting.fieldCasterCount = resolveFieldCasterCount(lighting, drawer)
+            // How they resolve it: sample a precomputed half-res field-shadow texture by screen
+            // position (the live RenderQuality path) when one was rendered this frame, else the inline
+            // per-pixel march (full-res / export, byte-identical). The viewport scales the screen uv.
+            if halfResFieldShadow != nil {
+                lighting.fieldShadowMode = 1
+                lighting.fieldShadowScale = Float(resolveRaymarchScale(drawer.raymarchQualitySetting))
+            }
+            // Contact shadows: the mask the pre-pass marched this frame, sampled by the
+            // mesh fragments by screen position. nil = the pass didn't run (no caster,
+            // no camera, or a pass that never runs pre-passes: targets, accumulation,
+            // texture handoff), so the gate zeroes and the fragments' sample branch is
+            // untaken, byte-identical. The scale is 1 while the mask renders full-res.
+            if contactShadow != nil {
+                lighting.contactShadow.y = 1.0
+                lighting.contactShadow.z = Float(resolveContactShadowSteps())
+            } else {
+                lighting.contactShadow.x = 0
+            }
+            return lighting
         }
-        // Area lights (rect/disk/tube) shade through the LTC tables: resolve them once per
-        // frame so `ltcEnabled` gates the fragment's reads. The tables bind below with a
-        // never-sampled stand-in when absent, so the declared textures are never missing.
-        if lighting.enabled != 0,
-           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
-            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        var lighting = resolvedLighting(set: 0)
+        // The scoped sets resolved up front: the shaping/LTC texture arrays they share
+        // are baked while resolving, so every set must have packed before the first
+        // draw binds one. A frame with no scoped set resolves once, as it always did.
+        var setLighting: [Int: OllinLighting] = [:]
+        for set in 1 ... max(drawer.lightSets.count, 1) where set <= drawer.lightSets.count {
+            setLighting[set] = resolvedLighting(set: set)
         }
-        // Light shaping (IES profiles / cookies): bake the frame's arrays once so the
-        // gates open only when a packed light references a layer. The `makeLighting`
-        // call above rebuilt `usedIESProfiles`/`usedLightCookies`, so the lists match
-        // the packed indices. Same stand-in-binding discipline as the LTC tables.
-        if lighting.enabled != 0, !drawer.usedIESProfiles.isEmpty {
-            lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+        /// The uniform a batch's light set shades against.
+        func resolved(forSet set: Int) -> OllinLighting {
+            set == 0 ? lighting : (setLighting[set] ?? lighting)
         }
-        if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
-            lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
-        }
-        // Atmosphere: the renderer owns the quality-to-budget mapping, so the volumetric
-        // march's step count resolves here (export lifts the automatic `.default` to
-        // `.detail` through `effectiveQuality`, like the PCSS taps).
-        if lighting.fogColor.w > 0 {
-            lighting.fogParams2.x = Float(resolveVolumetricSteps(drawer.volumetricQualitySetting))
-        }
+        let shadowTexture = shadowMap ?? ensureDummyShadowMap()
+        let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
+        // When the mesh fragments are compiled with RT shadows, an acceleration structure
+        // is always part of their signature, so bind the real one this frame or a dummy
         // Skybox backdrop: when the environment shows as the scene's background, fill the
         // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
         // disabled, so the depth-tested meshes composite in front and a mirror's reflection
@@ -3021,107 +3144,6 @@ extension MetalRenderer {
             profile.drawCalls += 1   // the skybox backdrop
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }
-        // Shadows only apply when the shadow pass actually populated a map / structure
-        // (the render/image paths); the accumulation/texture paths pass nil, so clear the
-        // caster index there and bind the 1×1 / dummy stand-ins so the fragment never
-        // reads them. A directional/spot caster populates the 2D map, a point caster the
-        // cube — or, on a ray-tracing device, the acceleration structure.
-        // Clear the caster only when nothing can use it: a marched SDF field self-shadows
-        // analytically (no map), so it keeps the caster index even when the map pass didn't
-        // run. Meshes still see no shadow without a map (they'd sample the all-lit dummy).
-        if shadowMap == nil && shadowCube == nil && shadowAccel == nil && drawer.sdf3DGroups.isEmpty {
-            lighting.shadowLight = -1
-        }
-        // A ray-traced point or area caster: switch the fragment to the RT path (shadowKind 2)
-        // and resolve the sketch's quality tier to a concrete ray count for this GPU. The
-        // structure is bound whenever *any* caster traces against it, so the flip asks
-        // whether the primary is one of the kinds that trace: a directional key beside a
-        // traced point light keeps its own 2D map.
-        if shadowAccel != nil, lighting.shadowKind == 1 || casterGPUKind(lighting) >= 3 {
-            lighting.shadowKind = 2
-            lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
-            // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
-            // about its center (the shadowSoftness dial; 0.5 default = the physical
-            // extent); the packing left the 2D map's linearization term there.
-            if casterGPUKind(lighting) >= 3 {
-                lighting.shadowDepthB = Float(drawer.shadowSoftnessAmount * 2)
-            }
-        } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
-            // A directional/spot 2D caster runs PCSS (soft shadows): it budgets texture taps,
-            // not rays, and the count is hardware-independent (cheap samples on any GPU).
-            lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
-        }
-        // The caster list follows those device-side decisions: slot 0 mirrors them, and
-        // every extra caster takes what its own kind needs (or drops, with no map, cube,
-        // or structure to read).
-        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
-                              renderedCube: shadowCube != nil, traced: shadowAccel != nil)
-        // Ray-traced reflections: a physically-based metal traces the caster accel for its
-        // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
-        // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is
-        // set only when the shadow pass actually built a reflection accel on a tracing device.
-        // When the pre-pass traced (and, live, accumulated) the reflection off-screen, the
-        // fragments sample that texture by screen position instead of tracing inline (the
-        // anti-aliased path); the scale is 1 while the layer renders at full resolution.
-        if reflectAccel != nil { lighting.rtReflections = 1 }
-        if let deferredReflection {
-            lighting.rtReflectionDeferred = 1
-            lighting.rtReflectionScale = deferredReflection.scale
-        }
-        // Caustics: the resolved photon layer this frame's caustics pass produced
-        // (nil keeps `causticsEnabled` 0 and every carrier's branch untaken,
-        // byte-identical). Main canvas only, like the deferred reflection; the
-        // scale is 1 while the layer renders at full resolution.
-        // The scene behind the glass (`sceneThroughGlass()`): the layer this frame's
-        // pre-pass drew with every transmissive surface taken out, read by a transmissive
-        // fragment along its own refracted direction. nil keeps `sceneBehind.x` 0 and
-        // every carrier's branch untaken, byte-identical. The view projection is the one
-        // the layer was actually drawn with, so an exit point lands on the texel it
-        // holds; the layer's top mip drives the roughness blur, and the fade band is a
-        // fixed fraction of the frame. The inverse turns the layer's depth back into
-        // scene points, the ground a solid body's exiting ray walks to.
-        if let sceneBehind {
-            lighting.sceneBehind = SIMD4(1, Float(sceneBehind.texture.mipmapLevelCount - 1),
-                                         Float(sceneBehindEdgeFade), 0)
-            lighting.sceneViewProjection = sceneBehind.viewProjection
-            lighting.sceneInverseViewProjection = sceneBehind.inverseViewProjection
-        }
-        if caustics != nil {
-            lighting.causticsEnabled = 1
-            lighting.causticsScale = 1.0
-        }
-        // Global illumination: the probe field this frame's GI pass resolved (nil keeps
-        // `giOrigin.w` 0 and every carrier's GI branch untaken, byte-identical). The
-        // renderer owns the hardware check, so this is set only when that pass actually
-        // updated the atlases on a tracing device.
-        packGI(gi, into: &lighting, intensity: drawer.giIntensity)
-        // A directional/spot caster has each field render into the 2D map (so meshes receive it
-        // from there); a point/ray-traced caster has no map a field can render into, so the lit
-        // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
-        // for a point/RT caster with fields); 0 keeps the mesh path byte-identical.
-        lighting.fieldCasterCount = resolveFieldCasterCount(lighting, drawer)
-        // How they resolve it: sample a precomputed half-res field-shadow texture by screen
-        // position (the live RenderQuality path) when one was rendered this frame, else the inline
-        // per-pixel march (full-res / export, byte-identical). The viewport scales the screen uv.
-        if halfResFieldShadow != nil {
-            lighting.fieldShadowMode = 1
-            lighting.fieldShadowScale = Float(resolveRaymarchScale(drawer.raymarchQualitySetting))
-        }
-        // Contact shadows: the mask the pre-pass marched this frame, sampled by the
-        // mesh fragments by screen position. nil = the pass didn't run (no caster,
-        // no camera, or a pass that never runs pre-passes: targets, accumulation,
-        // texture handoff), so the gate zeroes and the fragments' sample branch is
-        // untaken, byte-identical. The scale is 1 while the mask renders full-res.
-        if contactShadow != nil {
-            lighting.contactShadow.y = 1.0
-            lighting.contactShadow.z = Float(resolveContactShadowSteps())
-        } else {
-            lighting.contactShadow.x = 0
-        }
-        let shadowTexture = shadowMap ?? ensureDummyShadowMap()
-        let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
-        // When the mesh fragments are compiled with RT shadows, an acceleration structure
-        // is always part of their signature, so bind the real one this frame or a dummy
         // that's never traced (the fragment only traces it when shadowKind == 2).
         // Bind one acceleration structure at fragment buffer 3: the fragment traces it for
         // both the point shadow (shadowKind 2) and the reflection (rtReflections); when both
@@ -3181,7 +3203,8 @@ extension MetalRenderer {
         // the SDF field buffers, IBL, LTC, light shaping, sheen, contact shadow,
         // the deferred reflection layer, and the GI atlases. The comments on
         // each binding live here, once.
-        func bindLitMeshFragment(_ batchFinish: OllinMaterial) {
+        func bindLitMeshFragment(_ batchFinish: OllinMaterial, set: Int) {
+            var batchLighting = resolved(forSet: set)
             // Shadow maps at fragment textures 1 (2D, directional/spot) and 2
             // (cube, point): the real map when that caster is active, a 1×1 dummy
             // otherwise (`lighting.shadowLight`/`shadowKind` gate the sampling).
@@ -3192,12 +3215,12 @@ extension MetalRenderer {
             // stores linear distance, read with `.sample`, manual PCF in-shader).
             if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
             if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
-            encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
-            // Many lights: the frame's whole light set (buffer 8) and the per-tile
-            // index lists (buffer 9). Read only past `OLLIN_MAX_LIGHTS`
-            // (`lighting.sceneLightCount` gates it); a one-element stand-in otherwise,
-            // so the declared arguments are never missing.
-            bindLightGrid(encoder)
+            encoder.setFragmentBytes(&batchLighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+            // Many lights: this set's whole light list (buffer 8) and the per-tile
+            // index lists (buffer 9) its own cull wrote. Read only past
+            // `OLLIN_MAX_LIGHTS` (`sceneLightCount` gates it); a one-element stand-in
+            // otherwise, so the declared arguments are never missing.
+            bindLightGrid(encoder, set: set)
             // The surface finish (shading model + Blinn-Phong/rim/subsurface/
             // iridescence) is one uniform bound per batch.
             var finish = batchFinish
@@ -3495,10 +3518,10 @@ extension MetalRenderer {
                 // ambient's deferred branch reads the fragment's zero stand-in sample
                 // and quietly leaves the raw environment in place of the traced scene
                 // (a blinding silhouette rim wherever the environment outshines it).
-                var fieldLighting = lighting
+                var fieldLighting = resolved(forSet: batch.lightSet)
                 fieldLighting.rtReflectionDeferred = 0
                 encoder.setFragmentBytes(&fieldLighting, length: MemoryLayout<OllinLighting>.stride, index: 2)
-                bindLightGrid(encoder)   // many lights, exactly as the mesh carriers
+                bindLightGrid(encoder, set: batch.lightSet)   // many lights, exactly as the mesh carriers
                 var finish3D = batch.finish
                 encoder.setFragmentBytes(&finish3D, length: MemoryLayout<OllinMaterial>.stride, index: 3)
                 encoder.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)
@@ -3732,7 +3755,7 @@ extension MetalRenderer {
                     var grid = batch.gridParams
                     encoder.setFragmentBytes(&grid, length: MemoryLayout<OllinGridParams>.stride, index: 0)
                 } else if !meshWireframe && !meshMatcap {
-                    bindLitMeshFragment(batch.finish)
+                    bindLitMeshFragment(batch.finish, set: batch.lightSet)
                 }
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
@@ -3796,7 +3819,7 @@ extension MetalRenderer {
                                             index: 4)
                     copies = batch.meshInstanceCount
                 }
-                bindLitMeshFragment(batch.finish)
+                bindLitMeshFragment(batch.finish, set: batch.lightSet)
                 profile.countDraw(batch.kind, batch.instancedVertexCount * copies)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0,
                                        vertexCount: batch.instancedVertexCount,
@@ -3829,7 +3852,7 @@ extension MetalRenderer {
                 var fieldModel = batch.fieldTransform
                 encoder.setVertexBytes(&fieldModel, length: MemoryLayout<simd_float4x4>.stride,
                                        index: 6)
-                bindLitMeshFragment(batch.finish)
+                bindLitMeshFragment(batch.finish, set: batch.lightSet)
                 // Counts what was recorded (copies placed); the visible count
                 // lives on the GPU and never round-trips.
                 profile.countDraw(batch.kind, fieldHandle.copyCount)
@@ -3867,7 +3890,7 @@ extension MetalRenderer {
                 if var u3 = uniforms3D {
                     encoder.setMeshBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
                 }
-                bindLitMeshFragment(batch.finish)
+                bindLitMeshFragment(batch.finish, set: batch.lightSet)
                 profile.countDraw(batch.kind, strandField.bladeCount)
                 encoder.drawMeshThreadgroups(
                     MTLSize(width: tiling.tilesX, height: tiling.tilesZ, depth: 1),
@@ -3887,10 +3910,11 @@ extension MetalRenderer {
                       let draw = batch.oceanDraw,
                       let fieldTexture = draw.field.layer.texture,
                       let u3 = uniforms3D else { continue }
-                let environment = lighting.iblEnabled != 0 ? currentIBLSkyboxTexture : nil
+                let oceanLighting = resolved(forSet: batch.lightSet)
+                let environment = oceanLighting.iblEnabled != 0 ? currentIBLSkyboxTexture : nil
                 encoder.setRenderPipelineState(state)
                 var oceanParams = makeOceanParams(draw, batch: batch, drawer: drawer,
-                                                  view: u3.view, lighting: lighting,
+                                                  view: u3.view, lighting: oceanLighting,
                                                   environment: environment != nil)
                 let oceanLength = MemoryLayout<OllinOceanParams>.stride
                 encoder.setVertexBytes(&oceanParams, length: oceanLength, index: 8)

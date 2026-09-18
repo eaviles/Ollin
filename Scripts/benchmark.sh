@@ -17,6 +17,8 @@
 #             drawable (the fullscreen sphere-tracer runs in the main pass).
 #   lights  : what the per-tile light grid buys. A courtyard of lamps rendered with the
 #             grid culling and with every tile taking every light, at a sweep of counts.
+#   lightsets: what per-batch lighting costs and buys. A hall of rooms drawn as one light
+#             set holding every lamp, and as one set per room, at the same geometry.
 #
 # Usage:
 #   Scripts/benchmark.sh                 # all benchmarks at their default resolutions
@@ -41,8 +43,9 @@ case "${1:-all}" in
   strands)  filter="StrandBenchmarkTests" ;;
   ocean)    filter="OceanBenchmarkTests" ;;
   lights)   filter="ManyLightsBenchmarkTests" ;;
+  lightsets) filter="LightSetBenchmarkTests" ;;
   all)      filter="BenchmarkTests" ;;   # substring matches all suites
-  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field|strands|ocean|lights] [resolution]" >&2; exit 1 ;;
+  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field|strands|ocean|lights|lightsets] [resolution]" >&2; exit 1 ;;
 esac
 [ "${2:-}" != "" ] && export OLLIN_BENCH_RES="$2"
 

@@ -1932,6 +1932,7 @@ open class Sketch: Sendable
   final static func main()
   final static let defaultSize: CanvasSize
   func add()
+  func addLight(_: Light)
   func aerialPerspective(density: Double? = default, haziness: Double = default, heightFalloff: Double = default, sun: Vector3? = default)
   func after(_: Double) -> Bool
   func ambientLight(_: Color)
@@ -2574,6 +2575,8 @@ open class Sketch: Sendable
   func withClip(_: Shape, _: () -> Void)
   func withFeedback(_: Feedback, _: (Image) -> Void)
   func withField(_: SimField, force: Vector2 = default, _: () -> Void)
+  func withLights(_: LightingPreset, _: () -> Void)
+  func withLights(_: [Light], ambient: Color? = default, _: () -> Void)
   func withMotion(_: String, _: () -> Void)
   func withMotion(file: String = default, line: Int = default, _: () -> Void)
   func withState(_: () -> Void)
@@ -2582,6 +2585,7 @@ open class Sketch: Sendable
   func withTarget(_: Feedback, _: () -> Void)
   func withTarget(_: RenderTarget, _: () -> Void)
   func withViewBox(_: Rectangle, fit: ImageFit = default, _: () -> Void)
+  func withoutLights(_: () -> Void)
   func worley(_: Double, _: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   func worley(_: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   open func draw()

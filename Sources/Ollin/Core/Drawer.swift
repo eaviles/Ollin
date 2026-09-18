@@ -210,6 +210,13 @@ struct GeometryBatch {
     /// establishes, and for a `.clipPop` the level being dismantled. A change opens
     /// a fresh batch, like a blend-mode change.
     var clipLevel: Int = 0
+    /// Which light set this run shades against (see `Drawer.LightState`): 0 is the
+    /// frame's own, and `n` is `Drawer.lightSets[n - 1]`. Carried only on the lit
+    /// kinds (`GeometryKind.readsLighting`), and a change opens a fresh batch, like
+    /// a blend mode or a surface finish, so the renderer can bind one `OllinLighting`
+    /// per run. 0 everywhere in a frame that set no scoped lights, which is what
+    /// keeps such a frame byte-identical.
+    var lightSet: Int = 0
     /// The recorded `Batch` a `.retained` reference batch replays; `nil` otherwise.
     /// The reference consumes no frame geometry (its starts equal the next batch's),
     /// so it never disturbs the run-length counts around it.
@@ -218,6 +225,20 @@ struct GeometryBatch {
     /// it was the identity, so the encode keeps the flag-gated shader branch
     /// untaken and the replay is byte-identical to the recording.
     var retainedTransform: matrix_float3x3?
+}
+
+extension GeometryKind {
+    /// Whether a run of this kind shades against a light set, and so carries a
+    /// `lightSet` index that breaks the batch when it changes. The 2D kinds, the
+    /// point splats, the clip markers, and a retained replay never read lighting.
+    var readsLighting: Bool {
+        switch self {
+        case .mesh3D, .meshInstanced, .meshField, .strands, .ocean, .sdfGroup3D:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 extension GeometryBatch {
@@ -498,18 +519,81 @@ final class Drawer {
             SourcePickTarget(site: site, transform: transform, region: region))
     }
 
-    /// Lights for the 3D mesh material, set this frame (see `Light`). Per-frame
-    /// state like the camera — reset each frame, accumulated by `addLight`.
-    private(set) var lights: [Light] = []
+    /// One light set: the lamps, the flat ambient, and the on/off mode in force at
+    /// the moment a mesh was drawn. Drawing state (saved and restored by
+    /// `withState`), so a block that sets its own lamps lights only what it draws.
+    /// Equatable so two batches under identical lighting share one set.
+    struct LightState: Equatable {
+        var lights: [Light] = []
+        var ambient: Color?
+        var mode: LightingMode = .auto
+    }
+
+    /// The light state in force right now: drawing state, on the state stack. The
+    /// *frame's* set (the one at stack depth 0) still accumulates over the whole
+    /// `draw()`, exactly as the per-frame lights always did; a set made inside a
+    /// `withState` block is captured as its own when a mesh batch opens under it.
+    var lightState = LightState()
+
+    /// The distinct *scoped* light sets this frame's mesh batches recorded, in
+    /// first-use order. A batch's `lightSet` is 0 for the frame's own set and
+    /// `i + 1` for `lightSets[i]`; the renderer packs one `OllinLighting` per set
+    /// and binds the batch's. Reset each frame with the geometry.
+    private(set) var lightSets: [LightState] = []
+
+    /// How many light sets one frame may hold past its own. Each is another packed
+    /// uniform and another linear comparison when a batch looks for its set, and
+    /// past the inline lamp count another tile cull with its own pair of ring
+    /// buffers, so the count is bounded rather than open. Sixteen in all is well
+    /// past the cases the feature is for (a room or two with its own lamps, a flat
+    /// overlay) and cheap enough not to think about. Beyond it the extras draw under
+    /// the frame's own set with a note, rather than failing.
+    static let maxScopedLightSets = 15
+
+    /// The lamps of the frame's own set, which is what `addLight` accumulates and what every
+    /// frame-level system (the shadow pass, fog shafts, the flare, caustics, the
+    /// traced export) reads. A scoped set's lamps reach the meshes it draws and
+    /// nothing else.
+    var lights: [Light] { baseLightState.lights }
 
     /// Ambient light for the 3D mesh material — a flat term added to every lit
-    /// surface (see `ambientLight`). Per-frame state; `nil` means none.
-    private(set) var ambientLightColor: Color?
+    /// surface (see `ambientLight`). The frame's own set's value; `nil` means none.
+    var ambientLightColor: Color? { baseLightState.ambient }
+
+    /// The light state at stack depth 0: the frame's own set. While the stack is
+    /// empty that is simply the live state; inside a `withState` block it is the
+    /// bottom entry's, which is what keeps the frame's rig accumulating whatever a
+    /// block does to its own lamps.
+    var baseLightState: LightState { stateStack.first?.lightState ?? lightState }
+
+    /// The set a mesh batch opening right now belongs to: 0 for the frame's own
+    /// set, else the scoped set's index in `lightSets` plus one (appending it if
+    /// this is its first use). Only the lit kinds ask, so a 2D frame never builds
+    /// a set at all.
+    func resolveLightSet() -> Int {
+        let live = lightState
+        guard !stateStack.isEmpty, live != baseLightState else { return 0 }
+        if let i = lightSets.firstIndex(of: live) { return i + 1 }
+        guard lightSets.count < Drawer.maxScopedLightSets else {
+            noteOnce("a frame holds its own light set plus \(Drawer.maxScopedLightSets) more; the extras drew under the frame's.")
+            return 0
+        }
+        lightSets.append(live)
+        return lightSets.count
+    }
+
+    /// The light state a set index names (0 = the frame's own), or the frame's own
+    /// when an index outruns the list (nothing should, but a reader is never wrong).
+    func lightState(forSet set: Int) -> LightState {
+        guard set > 0, set - 1 < lightSets.count else { return baseLightState }
+        return lightSets[set - 1]
+    }
 
     /// The distinct IES profiles this frame's packed lights reference, in layer
-    /// order (a packed light's `shaping.x` indexes this list). Rebuilt by every
-    /// `makeLighting` call from the active lights, so repeated calls within a
-    /// frame agree; the renderer bakes its profile texture array from it.
+    /// order (a packed light's `shaping.x` indexes this list). A frame-wide union
+    /// across every light set, appended to as each set packs and cleared with the
+    /// geometry, so repeated `makeLighting` calls agree and two sets' profiles
+    /// share one array; the renderer bakes its profile texture array from it.
     private(set) var usedIESProfiles: [IESProfile] = []
 
     /// The distinct light cookies this frame's packed spots reference, in layer
@@ -535,13 +619,14 @@ final class Drawer {
     /// its decal texture array from it, the `usedLightCookies` arrangement.
     private(set) var usedDecals: [Decal] = []
 
-    /// How the 3D mesh material is lit this frame.
+    /// How the 3D mesh material is lit, per light set, so a scoped set can be
+    /// `.off` (a flat, unlit body) while the frame around it stays lit.
     enum LightingMode {
         case auto    // nothing set → the default rig (solids look shaded out of the box)
         case custom  // the sketch set its own lights/ambient
         case off     // `noLights()` → flat, unlit surfaces
     }
-    private(set) var lightingMode: LightingMode = .auto
+    var lightingMode: LightingMode { baseLightState.mode }
 
     /// The image-based-lighting environment set this frame (see `Environment`), or `nil`
     /// for none. Per-frame state like the lights; when set, the renderer bakes its IBL
@@ -783,11 +868,17 @@ final class Drawer {
     /// set, and the sketch's own once it sets any. What the renderer packs, and
     /// what a spatial export writes out, so the two can't disagree about which
     /// lights the frame had.
-    var activeLights: [Light] {
-        switch lightingMode {
+    var activeLights: [Light] { activeLights(in: baseLightState) }
+
+    /// The same for one light set by index (0 = the frame's own).
+    func activeLights(inSet set: Int) -> [Light] { activeLights(in: lightState(forSet: set)) }
+
+    /// The same for one light set: what that set's meshes actually shade against.
+    func activeLights(in state: LightState) -> [Light] {
+        switch state.mode {
         case .off: []
         case .auto: environment != nil ? [] : Drawer.defaultLights
-        case .custom: resolvedLights
+        case .custom: resolvedLights(state.lights)
         }
     }
 
@@ -797,10 +888,13 @@ final class Drawer {
     /// kind packs byte-identically. Every reader that wants a light's *place* reads
     /// this (the packer through `activeLights`, the lens flare, the ocean's sun);
     /// a reader that only asks a light's kind may read `lights` as set.
-    var resolvedLights: [Light] {
-        lights.contains { $0.frame == .camera }
-            ? lights.map { $0.resolved(in: camera3D) }
-            : lights
+    var resolvedLights: [Light] { resolvedLights(lights) }
+
+    /// The same for one set's own lamps.
+    func resolvedLights(_ set: [Light]) -> [Light] {
+        set.contains { $0.frame == .camera }
+            ? set.map { $0.resolved(in: camera3D) }
+            : set
     }
 
     /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
@@ -921,6 +1015,9 @@ final class Drawer {
     /// The clip level of the currently-open batch, so a push/pop opens a fresh batch
     /// even when kind, blend, and depth are unchanged.
     private var currentBatchClip = 0
+    /// The light set of the currently-open batch, so a change of lamps opens a fresh
+    /// one even when kind, blend, depth, and clip are unchanged (see `lightSet`).
+    private var currentBatchLightSet = 0
     /// Whether the main canvas needs a stencil attachment this frame (a clip was
     /// pushed outside any target). Per-frame, like the geometry; targets carry their
     /// own `needsStencil` flag instead.
@@ -1127,6 +1224,7 @@ final class Drawer {
         let savedBatchBlend = currentBatchBlend
         let savedBatchDepth = currentBatchDepth
         let savedBatchClip = currentBatchClip
+        let savedBatchLightSet = currentBatchLightSet
         var savedTargets: [TargetFrame] = []
         var savedClips: [ClipFrame] = []
         swap(&savedTargets, &targetStack)
@@ -1135,6 +1233,7 @@ final class Drawer {
         activeClipLevel = 0
         currentKind = nil
         currentBatchClip = 0
+        currentBatchLightSet = 0
         isRecordingBatch = true
         pushState()
         transform = matrix_identity_float3x3
@@ -1167,6 +1266,7 @@ final class Drawer {
         currentBatchBlend = savedBatchBlend
         currentBatchDepth = savedBatchDepth
         currentBatchClip = savedBatchClip
+        currentBatchLightSet = savedBatchLightSet
         return recorded
     }
 
@@ -1265,10 +1365,13 @@ final class Drawer {
     /// the clip level changes; a no-op while all four are unchanged, so it's cheap
     /// to call per primitive.
     func ensureBatch(_ kind: GeometryKind) {
+        let set = kind.readsLighting ? resolveLightSet() : 0
         guard currentKind != kind || currentBatchBlend != currentBlend
             || currentBatchDepth != currentDepth
-            || currentBatchClip != activeClipLevel else { return }
+            || currentBatchClip != activeClipLevel
+            || currentBatchLightSet != set else { return }
         currentKind = kind
+        currentBatchLightSet = set
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchClip = activeClipLevel
@@ -1281,7 +1384,8 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -1313,6 +1417,7 @@ final class Drawer {
     private func beginMeshBatch(material: MeshMaterial?, finish: OllinMaterial,
                                 wireframe: Bool = false, matcap: Image? = nil,
                                 grid: Bool = false, gridParams: OllinGridParams = OllinGridParams()) {
+        currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -1325,7 +1430,8 @@ final class Drawer {
                                      material: material, finish: finish,
                                      meshWireframe: wireframe, meshGrid: grid,
                                      gridParams: gridParams, matcap: matcap,
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
         currentKind = nil
     }
 
@@ -1334,12 +1440,14 @@ final class Drawer {
     /// unchanged — the finish is bound per batch as one uniform, so a change in
     /// `material(_:)` breaks the batch (like a blend-mode change does).
     private func ensureSolidMeshBatch(_ m: Material) {
+        let set = resolveLightSet()
         if currentKind == .mesh3D, currentBatchBlend == currentBlend,
            currentBatchDepth == currentDepth, currentBatchMaterial == m,
-           currentBatchClip == activeClipLevel {
+           currentBatchClip == activeClipLevel, currentBatchLightSet == set {
             return
         }
         currentKind = .mesh3D
+        currentBatchLightSet = set
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchMaterial = m
@@ -1354,7 +1462,8 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      finish: m.gpuMaterial(), target: currentTarget,
-                                     clipLevel: activeClipLevel))
+                                     clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
     }
 
     /// Open a new `.sdfGroup3D` batch when the blend, depth, or surface finish changes;
@@ -1362,12 +1471,14 @@ final class Drawer {
     /// the solid meshes, the finish is bound per batch as one `OllinMaterial` uniform,
     /// so a `material(_:)` change must break the batch for the fragment to see it.
     func ensureSDF3DBatch(_ m: Material) {
+        let set = resolveLightSet()
         if currentKind == .sdfGroup3D, currentBatchBlend == currentBlend,
            currentBatchDepth == currentDepth, currentBatchMaterial == m,
-           currentBatchClip == activeClipLevel {
+           currentBatchClip == activeClipLevel, currentBatchLightSet == set {
             return
         }
         currentKind = .sdfGroup3D
+        currentBatchLightSet = set
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchMaterial = m
@@ -1382,7 +1493,8 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      finish: m.gpuMaterial(), target: currentTarget,
-                                     clipLevel: activeClipLevel))
+                                     clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
     }
 
     /// Remove the live ground-grid chrome again, once the on-screen render has
@@ -1876,6 +1988,10 @@ final class Drawer {
         var currentBlend: BlendMode
         var currentDepth: Float?
         var symmetryFolds: [matrix_float3x3]?
+        /// The lamps, ambient, and lighting mode in force. Stacked like the blend
+        /// and the depth, so a block that sets its own lamps lights only what it
+        /// draws; the bottom entry is the frame's own set (`baseLightState`).
+        var lightState: LightState
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -2209,11 +2325,17 @@ final class Drawer {
     /// Add a light to this frame's 3D scene (see `Light`). Per-frame, like the
     /// camera; meshes drawn after it shade through the material model. Taking control
     /// of the lights this way replaces the default rig.
-    func addLight(_ light: Light) { lights.append(light); lightingMode = .custom }
+    func addLight(_ light: Light) {
+        lightState.lights.append(light)
+        lightState.mode = .custom
+    }
 
     /// Set the ambient (flat fill) light for this frame's 3D scene. Setting it
     /// replaces the default rig (an ambient alone is a flat, unshaded fill).
-    func ambientLight(_ color: Color) { ambientLightColor = color; lightingMode = .custom }
+    func ambientLight(_ color: Color) {
+        lightState.ambient = color
+        lightState.mode = .custom
+    }
 
     /// Place a decal for this frame: a projection box centered at `position`,
     /// stamping the picture along `direction` onto whatever mesh surfaces sit
@@ -2285,9 +2407,9 @@ final class Drawer {
     /// Turn off lighting for this frame: meshes draw flat in their `fill` color
     /// (unlit), overriding the auto-lit default.
     func noLights() {
-        lights.removeAll(keepingCapacity: true)
-        ambientLightColor = nil
-        lightingMode = .off
+        lightState.lights.removeAll(keepingCapacity: true)
+        lightState.ambient = nil
+        lightState.mode = .off
     }
 
     /// Set the material's specular highlight strength (`0` matte; `~0.5` glossy).
@@ -2641,13 +2763,18 @@ final class Drawer {
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
     /// lights and ambient.
-    func makeLighting() -> OllinLighting {
+    func makeLighting() -> OllinLighting { makeLighting(set: 0) }
+
+    /// The same for one light set (0 = the frame's own): the lamps, the ambient, and
+    /// the mode come from that set, while everything that belongs to the *frame*
+    /// rather than to a set (the camera, the atmosphere, the environment, the
+    /// reflection and specular-filter constants) reads the same values whichever
+    /// set asks. A frame with no scoped set calls this for set 0 alone and packs
+    /// exactly the bytes it always did.
+    func makeLighting(set: Int) -> OllinLighting {
+        let state = lightState(forSet: set)
         var u = OllinLighting()
         u.shadowLight = -1   // no shadows unless a caster is found below
-        // Rebuilt below while packing; cleared first so the `.off`/`.auto` paths
-        // leave no stale layers for the renderer's texture-array caches.
-        usedIESProfiles.removeAll(keepingCapacity: true)
-        usedLightCookies.removeAll(keepingCapacity: true)
         if let eye = camera3D?.eye {
             u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
         }
@@ -2699,7 +2826,7 @@ final class Drawer {
             u.fogParams2 = SIMD4<Float>(0, Float(camera3D?.far ?? 0), 0, 0)
         }
         let ambient: Color
-        switch lightingMode {
+        switch state.mode {
         case .off:
             u.enabled = 0
             return u   // flat, unlit; lights/ambient/shadows unused
@@ -2709,9 +2836,9 @@ final class Drawer {
             // ambient). A sketch that wants both adds its own lights (→ `.custom`).
             ambient = environment != nil ? .black : Drawer.defaultAmbient
         case .custom:
-            ambient = ambientLightColor ?? .black
+            ambient = state.ambient ?? .black
         }
-        let activeLights = self.activeLights
+        let activeLights = self.activeLights(in: state)
         u.enabled = 1
         // The reflection chain's length. Packed always (the shader reads it only past the
         // shipped pair, and only with `rtReflections` on), so it needs no renderer gate.
@@ -2734,7 +2861,7 @@ final class Drawer {
         u.ambient = SIMD4<Float>(Float(Color.srgbToLinear(ambient.red)),
                                  Float(Color.srgbToLinear(ambient.green)),
                                  Float(Color.srgbToLinear(ambient.blue)), 0)
-        let packed = packedLights()
+        let packed = packedLights(in: state)
         let count = min(packed.count, Int(OLLIN_MAX_LIGHTS))
         u.lightCount = Int32(count)
         // A C fixed-size array imports as a homogeneous tuple; fill it through a
@@ -2766,7 +2893,15 @@ final class Drawer {
         // point light casts from any slot: the renderer hands each point caster its own
         // cube of the cube-map array, or traces every one of them against the frame's one
         // acceleration structure.
-        if castsShadows, let camera = camera3D {
+        // Casting belongs to the frame's own set. A caster is a depth pass over the
+        // whole scene into its own layer of one map array, a cube of one cube array,
+        // and a far-plane the renderer measures and files under the caster's index in
+        // *its* light list, all three keyed by a light's position in the set that
+        // holds it. A scoped set therefore lights its meshes and throws nothing, and
+        // leaves the list empty rather than naming a slot whose map was rendered from
+        // another set's lamp. What it does still receive: an unlit set needs no
+        // shadow at all, and a lit one reads the frame's ambient and its own lamps.
+        if castsShadows, set == 0, let camera = camera3D {
             let target = camera.target.simd3
             // The eye→target distance (the orbit radius) is the scene-size proxy that
             // frames the box / fits the frustum, matching what the camera frames.
@@ -2973,8 +3108,13 @@ final class Drawer {
     /// cookie layers here is what keeps the frame's texture arrays in step with it;
     /// the assignment only ever appends, so calling this twice in a frame is the same
     /// as calling it once.
-    func packedLights() -> [OllinLight] {
-        let active = activeLights
+    func packedLights() -> [OllinLight] { packedLights(in: baseLightState) }
+
+    /// The same for one light set. The shaping layer indices are the *frame's*
+    /// (`usedIESProfiles` / `usedLightCookies` are a union across the sets), so two
+    /// sets' profiles share one baked texture array.
+    func packedLights(in state: LightState) -> [OllinLight] {
+        let active = activeLights(in: state)
         if active.count > Int(OLLIN_MAX_SCENE_LIGHTS) {
             noteOnce("a frame holds up to \(Int(OLLIN_MAX_SCENE_LIGHTS)) lights; the extras were skipped.")
         }
@@ -3618,6 +3758,7 @@ final class Drawer {
                                           gpuInstances: ComputeBindable? = nil,
                                           gpuCount: Int = 0) {
         guard vertexRange.count > 0 else { return }
+        currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .meshInstanced, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -3635,7 +3776,8 @@ final class Drawer {
                                      meshInstanceStart: instanceStart,
                                      meshInstanceCount: instanceCount,
                                      finish: currentMaterial.gpuMaterial(),
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
         currentKind = nil
     }
 
@@ -3678,6 +3820,7 @@ final class Drawer {
             return
         }
         currentTarget?.needsDepth = true
+        currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .meshField, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -3690,7 +3833,8 @@ final class Drawer {
                                      field: field,
                                      fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
                                      finish: currentMaterial.gpuMaterial(),
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
         currentKind = nil
     }
 
@@ -3720,6 +3864,7 @@ final class Drawer {
             return
         }
         currentTarget?.needsDepth = true
+        currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .strands, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -3732,7 +3877,8 @@ final class Drawer {
                                      fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
                                      strandField: field,
                                      finish: currentMaterial.gpuMaterial(),
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
         currentKind = nil
     }
 
@@ -3792,6 +3938,7 @@ final class Drawer {
         let draw = OceanDraw(field: field, water: water,
                              segments: min(512, max(2, segments)),
                              tiles: min(16, max(1, tiles)))
+        currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .ocean, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -3803,7 +3950,8 @@ final class Drawer {
                                      blendMode: currentBlend, depth: currentDepth,
                                      fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
                                      oceanDraw: draw,
-                                     target: currentTarget, clipLevel: activeClipLevel))
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
         currentKind = nil
     }
 
@@ -4000,10 +4148,12 @@ final class Drawer {
         }
         // Lights are per-frame like the camera (set in `draw()` each frame). They
         // reset here but *not* in `background()`, which only wipes geometry mid-frame
-        // while the camera/lights stay — matching the camera's lifetime.
-        lights.removeAll(keepingCapacity: true)
-        ambientLightColor = nil
-        lightingMode = .auto
+        // while the camera/lights stay, matching the camera's lifetime. The scoped
+        // sets and the baked shaping layers go with the geometry that recorded them.
+        lightState = LightState()
+        lightSets.removeAll(keepingCapacity: true)
+        usedIESProfiles.removeAll(keepingCapacity: true)
+        usedLightCookies.removeAll(keepingCapacity: true)
         // Decals are per-frame like the lights: place them each `draw()`.
         placedDecals.removeAll(keepingCapacity: true)
         usedDecals.removeAll(keepingCapacity: true)
@@ -4289,7 +4439,8 @@ final class Drawer {
                                      tintColor: tintColor,
                                      currentBlend: currentBlend,
                                      currentDepth: currentDepth,
-                                     symmetryFolds: symmetryFolds))
+                                     symmetryFolds: symmetryFolds,
+                                     lightState: lightState))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -4328,6 +4479,7 @@ final class Drawer {
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth
         symmetryFolds = s.symmetryFolds
+        lightState = s.lightState
     }
 
     // MARK: Batches

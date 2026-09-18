@@ -35,6 +35,13 @@ extension MetalRenderer {
         let height: Int
     }
 
+    /// The ring/export key for one (frame slot, light set) pair. Negative keys are
+    /// the export path's, which has no ring.
+    static func gridKey(frame index: Int?, set: Int) -> Int {
+        guard let index else { return -1 - set }
+        return index * (Drawer.maxScopedLightSets + 1) + set
+    }
+
     /// A never-read one-element buffer for the two light-grid bindings, so the
     /// fragments' declared arguments are always satisfied on an untiled frame (the
     /// `ltcEnabled` stand-in discipline, for buffers).
@@ -55,12 +62,32 @@ extension MetalRenderer {
     func encodeLightCull(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                          renderWidth: Int, renderHeight: Int,
                          frameIndex: Int?) -> LightGrid? {
-        currentLightGrid = nil
+        currentLightGrids.removeAll(keepingCapacity: true)
+        // One cull per light set that outruns the inline array: a set is its own
+        // light list, so it is its own cull and its own pair of buffers (the cost
+        // the per-set lighting note predicted). A frame with one set runs exactly
+        // the one cull it always ran, over the same buffers.
+        for set in 0 ... drawer.lightSets.count {
+            if let grid = encodeLightCull(drawer, set: set, into: commandBuffer,
+                                          renderWidth: renderWidth, renderHeight: renderHeight,
+                                          frameIndex: frameIndex) {
+                currentLightGrids[set] = grid
+            }
+        }
+        return currentLightGrids[0]
+    }
+
+    /// Cull one light set. Returns nil when that set is on the inline path.
+    private func encodeLightCull(_ drawer: Drawer, set: Int,
+                                 into commandBuffer: MTLCommandBuffer,
+                                 renderWidth: Int, renderHeight: Int,
+                                 frameIndex: Int?) -> LightGrid? {
+        let state = drawer.lightState(forSet: set)
         // The count first, so an ordinary 3D frame does not pack its lights a second
         // time to be told it has few of them.
         guard renderWidth > 0, renderHeight > 0, let camera = drawer.camera3D,
-              drawer.activeLights.count > Int(OLLIN_MAX_LIGHTS) else { return nil }
-        let packed = drawer.packedLights()
+              drawer.activeLights(in: state).count > Int(OLLIN_MAX_LIGHTS) else { return nil }
+        let packed = drawer.packedLights(in: state)
         guard packed.count > Int(OLLIN_MAX_LIGHTS) else { return nil }
         guard let cull = try? libraryComputePipeline("ollin_light_cull") else { return nil }
 
@@ -73,8 +100,9 @@ extension MetalRenderer {
         // as the unculled one.
         let stride = packed.count + 1
 
-        guard let lights = lightBuffer(at: frameIndex, for: packed.count),
-              let tiles = lightTileBuffer(at: frameIndex, for: tilesX * tilesY * stride) else { return nil }
+        let key = MetalRenderer.gridKey(frame: frameIndex, set: set)
+        guard let lights = lightBuffer(at: key, for: packed.count),
+              let tiles = lightTileBuffer(at: key, for: tilesX * tilesY * stride) else { return nil }
         packed.withUnsafeBytes { raw in
             lights.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
@@ -108,10 +136,9 @@ extension MetalRenderer {
         compute.endEncoding()
         profile.computeDispatches += 1
 
-        currentLightGrid = LightGrid(lights: lights, tiles: tiles, count: packed.count,
-                                     tilesX: tilesX, tilesY: tilesY, stride: stride,
-                                     width: renderWidth, height: renderHeight)
-        return currentLightGrid
+        return LightGrid(lights: lights, tiles: tiles, count: packed.count,
+                         tilesX: tilesX, tilesY: tilesY, stride: stride,
+                         width: renderWidth, height: renderHeight)
     }
 
     /// Turn the tiled path on in a lighting uniform for a pass of this size: which
@@ -122,8 +149,9 @@ extension MetalRenderer {
     /// which is a render target with its own proportions and so its own camera view,
     /// falls through to the frame's first `OLLIN_MAX_LIGHTS` rather than reading a
     /// grid built for a picture it isn't drawing.
-    func applyLightGrid(to lighting: inout OllinLighting, width: Int, height: Int) {
-        guard let grid = currentLightGrid, grid.width == width, grid.height == height else {
+    func applyLightGrid(to lighting: inout OllinLighting, width: Int, height: Int,
+                        set: Int = 0) {
+        guard let grid = currentLightGrids[set], grid.width == width, grid.height == height else {
             lighting.sceneLightCount = 0   // nothing bound: every fragment stays inline
             return
         }
@@ -138,18 +166,19 @@ extension MetalRenderer {
     /// lit mesh tail. Always bound, real or stand-in, so the fragments' declared
     /// arguments are satisfied whether or not the frame went tiled; the uniform's
     /// `sceneLightCount` is what decides whether they are ever read.
-    func bindLightGrid(_ encoder: MTLRenderCommandEncoder) {
+    func bindLightGrid(_ encoder: MTLRenderCommandEncoder, set: Int = 0) {
         let stand = lightStandIn()
-        encoder.setFragmentBuffer(currentLightGrid?.lights ?? stand, offset: 0, index: 8)
-        encoder.setFragmentBuffer(currentLightGrid?.tiles ?? stand, offset: 0, index: 9)
+        let grid = currentLightGrids[set]
+        encoder.setFragmentBuffer(grid?.lights ?? stand, offset: 0, index: 8)
+        encoder.setFragmentBuffer(grid?.tiles ?? stand, offset: 0, index: 9)
     }
 
     /// What the cull decided, tile by tile: each tile's list of light indices, read
     /// back out of the buffer the last `encodeLightCull` filled (so it says anything
     /// only once that command buffer has completed). Nothing in a render reads this;
     /// it is how the tests check that the grid culls, and culls the right lights.
-    func lightTileLists() -> [[Int]] {
-        guard let grid = currentLightGrid else { return [] }
+    func lightTileLists(set: Int = 0) -> [[Int]] {
+        guard let grid = currentLightGrids[set] else { return [] }
         let words = grid.tiles.contents().bindMemory(to: UInt32.self,
                                                      capacity: grid.tilesX * grid.tilesY * grid.stride)
         return (0 ..< grid.tilesX * grid.tilesY).map { tile in
@@ -159,31 +188,21 @@ extension MetalRenderer {
         }
     }
 
-    /// The frame's light buffer: the ring slot at `index`, or the export buffer.
-    private func lightBuffer(at index: Int?, for count: Int) -> MTLBuffer? {
+    /// One set's light buffer at a ring/export key (see `gridKey`).
+    private func lightBuffer(at key: Int, for count: Int) -> MTLBuffer? {
         let needed = max(count, 1) * MemoryLayout<OllinLight>.stride
-        guard let index else {
-            if let buffer = lightExportBuffer, buffer.length >= needed { return buffer }
-            lightExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
-            return lightExportBuffer
-        }
-        if let buffer = lightBuffers[index], buffer.length >= needed { return buffer }
-        lightBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
-        return lightBuffers[index]
+        if let buffer = lightBuffers[key], buffer.length >= needed { return buffer }
+        lightBuffers[key] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return lightBuffers[key]
     }
 
     /// The frame's tile-list buffer, sized in uints. Shared storage: the GPU writes it
     /// and the fragments read it in the same frame, and nothing on the CPU reads it
     /// outside the tests that check what the cull decided.
-    private func lightTileBuffer(at index: Int?, for words: Int) -> MTLBuffer? {
+    private func lightTileBuffer(at key: Int, for words: Int) -> MTLBuffer? {
         let needed = max(words, 1) * MemoryLayout<UInt32>.stride
-        guard let index else {
-            if let buffer = lightTileExportBuffer, buffer.length >= needed { return buffer }
-            lightTileExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
-            return lightTileExportBuffer
-        }
-        if let buffer = lightTileBuffers[index], buffer.length >= needed { return buffer }
-        lightTileBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
-        return lightTileBuffers[index]
+        if let buffer = lightTileBuffers[key], buffer.length >= needed { return buffer }
+        lightTileBuffers[key] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return lightTileBuffers[key]
     }
 }

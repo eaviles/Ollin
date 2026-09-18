@@ -101,3 +101,117 @@ struct ManyLightsBenchmarkTests {
         print("=== end ===\n")
     }
 }
+
+/// What per-batch lighting costs, and what it buys, **gated by `OLLIN_BENCH=1`**.
+/// A hall of rooms, each with its own lamps, drawn two ways at the same geometry and
+/// the same total lamp count: as one light set holding every lamp (what a frame could
+/// do before), and as one set per room. Both numbers come out of one process,
+/// alternating, because a per-process figure drifts by tens of percent.
+///
+/// There are two effects pulling opposite ways, which is why this is worth measuring
+/// rather than guessing. Splitting costs batches: a room's meshes cannot merge with
+/// the next room's, so each set is its own run with its own uniform, and past the
+/// inline count each is its own tile cull. Splitting also saves shading: a room's
+/// surfaces pay for its own lamps rather than every lamp in the hall.
+///
+/// Run via `Scripts/benchmark.sh lightsets [resolution]`.
+@Suite(.serialized)
+struct LightSetBenchmarkTests {
+
+    /// `rooms` rooms in a row, each a box on a strip of floor with `lampsPerRoom`
+    /// point lights over it. `split` draws each room under its own light set; with it
+    /// off every lamp goes into the frame's one set, which is what a frame held
+    /// before per-batch lighting. The two draw the same geometry and the same lamps.
+    final class RoomsScene: Sketch {
+        var rooms = 8
+        var lampsPerRoom = 2
+        var split = true
+
+        private func lamps(of room: Int) -> [Light] {
+            let x = (Double(room) / Double(max(rooms - 1, 1)) - 0.5) * 60
+            return (0..<lampsPerRoom).map { k in
+                .point(Color(hue: Double(room) / Double(rooms), saturation: 0.7, brightness: 1),
+                       at: Vector3(x, 3 + Double(k) * 0.6, Double(k) * 2 - 1),
+                       intensity: 1.7)
+            }
+        }
+
+        private func room(_ index: Int) {
+            let x = (Double(index) / Double(max(rooms - 1, 1)) - 0.5) * 60
+            fill(Color(white: 0.55))
+            withState { translate(x, -0.05, 0); drawBox(width: 7, height: 0.1, depth: 12) }
+            fill(Color(white: 0.7))
+            for k in 0..<4 {
+                withState {
+                    translate(x + Double(k % 2) * 2 - 1, 1.1, Double(k / 2) * 4 - 2)
+                    drawBox(width: 1.8, height: 2.0, depth: 1.8)
+                }
+            }
+        }
+
+        override func draw() {
+            background(.black)
+            camera(.perspective(eye: Vector3(0, 26, 40), target: Vector3(0, 1.5, 0),
+                                fieldOfView: .pi / 4.2))
+            noLights()
+            ambientLight(Color(white: 0.02))
+            if split {
+                for i in 0..<rooms {
+                    withLights(lamps(of: i), ambient: Color(white: 0.02)) { room(i) }
+                }
+            } else {
+                for i in 0..<rooms { for lamp in lamps(of: i) { addLight(lamp) } }
+                for i in 0..<rooms { room(i) }
+            }
+        }
+    }
+
+    @Test(.benchmark)
+    @MainActor
+    func lightSetBenchmark() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { print("benchmark: no Metal device"); return }
+        let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device))
+        let iters = 30
+        let canvas = Int(Sketch.defaultSize.cgSize.width)
+        let res = Int(ProcessInfo.processInfo.environment["OLLIN_BENCH_RES"] ?? "") ?? canvas
+
+        func gb(_ bytes: UInt64) -> String { String(format: "%.0f GB", Double(bytes) / 1_073_741_824) }
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        print("\n=== Ollin per-batch lighting benchmark ===")
+        print("Mac: \(ShadowBenchmarkTests.sysctl("hw.model") ?? "?") - \(ShadowBenchmarkTests.sysctl("machdep.cpu.brand_string") ?? "?") - \(gb(ProcessInfo.processInfo.physicalMemory)) RAM - macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)")
+        print("GPU: \(device.name) - \(ShadowBenchmarkTests.gpuFamily(device)) - \(device.hasUnifiedMemory ? "unified" : "discrete") memory")
+        print("benchmark resolution: \(res)x\(res) px  (set OLLIN_BENCH_RES to override)\n")
+
+        let viewport = SIMD2<Float>(Float(res), Float(res))
+        print("  rooms | lamps | one set | per room | change | batches")
+        print("--------+-------+---------+----------+--------+--------")
+        for (rooms, perRoom) in [(2, 2), (4, 2), (8, 2), (4, 4), (8, 8)] {
+            var times: [Bool: Double] = [:]
+            var batches: [Bool: Int] = [:]
+            for split in [false, true] {
+                let sketch = RoomsScene()
+                sketch.rooms = rooms
+                sketch.lampsPerRoom = perRoom
+                sketch.split = split
+                sketch.setCanvasSize(width: Double(res), height: Double(res))
+                sketch.setup()
+                sketch.advance(time: 1, deltaTime: 1.0 / 60, frameRate: 60)
+                sketch.performDraw()
+                batches[split] = sketch.drawer.batches.count
+                times[split] = renderer.benchmarkGPUMilliseconds(sketch.drawer, viewport: viewport,
+                                                                 width: res, height: res,
+                                                                 iterations: iters)
+            }
+            let one = times[false] ?? 0, many = times[true] ?? 0
+            let change = one > 0 ? (many / one - 1) * 100 : 0
+            print(String(format: "  %5d | %5d | %7.2f | %8.2f | %+5.0f%% | %d vs %d",
+                         rooms, rooms * perRoom, one, many, change,
+                         batches[false] ?? 0, batches[true] ?? 0))
+        }
+        print("\n(one set: every lamp in the hall lights every surface. per room: each")
+        print(" room's surfaces read its own lamps alone, which is a different picture")
+        print(" as well as a different cost.)")
+        print("=== end ===\n")
+    }
+}

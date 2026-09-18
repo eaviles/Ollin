@@ -747,17 +747,22 @@ final class MetalRenderer {
     /// Allocated only once a frame carries more than `OLLIN_MAX_LIGHTS`, so an
     /// ordinary 3D frame pays nothing for them. `lightGridStandIn` is the never-read
     /// one-element buffer the fragments' declared arguments take otherwise.
-    var lightBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
-    var lightExportBuffer: MTLBuffer?
-    var lightTileBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
-    var lightTileExportBuffer: MTLBuffer?
+    /// Keyed by ring slot *and* light set (`MetalRenderer.gridKey`): two sets past
+    /// the inline count are two culls, and an in-flight frame may still be reading
+    /// either, so they never share a buffer.
+    var lightBuffers: [Int: MTLBuffer] = [:]
+    var lightTileBuffers: [Int: MTLBuffer] = [:]
     var lightGridStandIn: MTLBuffer?
 
-    /// The tiled light grid this frame resolved (nil on the inline path), set by
-    /// `encodeLightCull` at the top of the frame and read by every lit pass that
-    /// binds it. Frame state, like the resolved IBL: one cull, one grid, every pass
-    /// of that size shading against the same lists.
-    var currentLightGrid: LightGrid?
+    /// The tiled light grids this frame resolved, by light set (empty on the inline
+    /// path), filled by `encodeLightCull` at the top of the frame and read by every
+    /// lit pass that binds one. Frame state, like the resolved IBL: one cull per set
+    /// that needs one, and every pass of that size shades against the same lists.
+    var currentLightGrids: [Int: LightGrid] = [:]
+
+    /// The frame's own set's grid, which is what every reader outside the per-batch bind
+    /// means by "the frame's grid".
+    var currentLightGrid: LightGrid? { currentLightGrids[0] }
 
     /// Parallel rings + export buffers for instanced mesh draws: the local-space
     /// base-mesh vertices (`OllinMeshVertex`) and the per-copy placements

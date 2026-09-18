@@ -1281,9 +1281,73 @@ open class Sketch {
     /// after using your own lights, or to make the intent visible in a sketch.
     public func lights() { lightingPreset(.standard) }
 
-    /// Turn off lighting for this frame: solids draw flat in their `fill` color
-    /// (unlit), overriding the auto-lit default.
+    /// Turn off lighting: solids draw flat in their `fill` color (unlit),
+    /// overriding the auto-lit default. Drawing state, saved by `withState`, so a
+    /// block can go flat while the frame around it stays lit; that scoped form is
+    /// `withoutLights { }`.
     public func noLights() { drawer.noLights() }
+
+    /// Add one `Light` value to this frame's rig, the single-value form of
+    /// `lightingPreset` and the unscoped twin of `withLights`. The named calls above
+    /// (`pointLight`, `spotLight`, …) are sugar over it; reach for this when the
+    /// lamps are values a sketch built or stored.
+    ///
+    /// ```swift
+    /// for lamp in lamps { addLight(lamp) }
+    /// ```
+    public func addLight(_ light: Light) { drawer.addLight(light) }
+
+    /// Run `body` with these lamps and nothing else: the meshes it draws shade
+    /// against exactly `lights` (and `ambient`, where given), whatever the frame's
+    /// own rig is, and the rig comes back afterwards. A frame can hold several of
+    /// these, so two rooms each carry their own lamps:
+    ///
+    /// ```swift
+    /// directionalLight(.white, direction: Vector3(-1, -1, -0.5))   // the frame's key
+    /// drawMesh(hall)
+    /// withLights([.point(Color(red: 1, green: 0.8, blue: 0.6), at: lampA)]) {
+    ///     drawMesh(roomA)                                          // warm, its own lamp
+    /// }
+    /// withLights([.point(Color(red: 0.6, green: 0.8, blue: 1), at: lampB)]) {
+    ///     drawMesh(roomB)                                          // cool, its own lamp
+    /// }
+    /// ```
+    ///
+    /// It is `withState { noLights(); … }` with the clearing step built in, which is
+    /// the step that is easy to forget (without it the lamps *add* to the frame's).
+    /// The frame's own set still owns the shadow casters, the atmosphere, the
+    /// environment and the lens flare: a scoped set's lamps light the meshes it
+    /// draws and throw nothing. Each set is another packed uniform, and a frame
+    /// holds its own plus fifteen.
+    public func withLights(_ lights: [Light], ambient: Color? = nil, _ body: () -> Void) {
+        withState {
+            drawer.noLights()
+            if let ambient { drawer.ambientLight(ambient) }
+            for light in lights { drawer.addLight(light) }
+            body()
+        }
+    }
+
+    /// `withLights` from a ready-made `LightingPreset`: `.noir` over one body while
+    /// the frame keeps its own rig.
+    public func withLights(_ preset: LightingPreset, _ body: () -> Void) {
+        withLights(preset.lights, ambient: preset.ambient, body)
+    }
+
+    /// Run `body` unlit: the meshes it draws come out flat in their `fill` color
+    /// while the frame around them stays lit: a hologram, a flat overlay, a
+    /// diagram standing in a shaded scene.
+    ///
+    /// ```swift
+    /// drawMesh(stage)                       // lit by the frame's lamps
+    /// withoutLights { drawMesh(hologram) }  // flat, in its fill color
+    /// ```
+    public func withoutLights(_ body: () -> Void) {
+        withState {
+            drawer.noLights()
+            body()
+        }
+    }
 
     /// Light this frame through an image-based-lighting `Environment` — a bundled CC0
     /// HDRI (`.studio`, `.sunset`, `.day`, …), your own (`Environment.hdri(path:)`), or a

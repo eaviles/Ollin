@@ -17,6 +17,7 @@ This group covers the light kinds, curated rigs, and cast shadows.
 | Sketch | What it shows |
 | --- | --- |
 | [Lighting](Lighting/) | The three light kinds placed by hand to shade solids: a fixed directional key, an orbiting point bulb, and a sweeping spot. A row of spheres shows rising `specularSharpness`. |
+| [LightSets](LightSets/) | One frame, several lighting rigs. Three rooms side by side, each lit by `withLights` from its own fixture: a swinging warm bulb, a cold overhead strip, a green glow out of the floor. Every back wall carries the same plate drawn `withoutLights`, so the three walls come out warm, cold and green while the three plates come out identical. |
 | [LightingPresets](LightingPresets/) | One call relights the whole scene. The curated `LightingPreset`s (`.standard`/`.threePoint`/`.goldenHour`/`.noir`/`.studio`/`.moonlight`) cycle over one still life, plus a custom rig built in the sketch. Click or press a key to step. |
 | [Shadows](Shadows/) | Directional cast shadows. Solids drop shadows onto a floor and onto one another through `castShadows()`. |
 | [SpotShadow](SpotShadow/) | A spot light as the shadow caster. A perspective shadow map is fit to its cone, so the solids inside the beam drop crisp shadows. |

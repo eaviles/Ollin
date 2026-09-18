@@ -331,6 +331,55 @@ The `reach` is what did that. A lamp with no bound can arrive anywhere, so it st
 
 A few things stay on the frame's first eight lights on purpose. Shadows are the big one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Sixty-four shadow-casting lamps is not a feature, it's a stall. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
 
+## One frame, several rigs
+
+Everything so far treats the lights as a property of the frame. Set a key and a fill at the top of `draw()`, and every solid drawn after them is lit by them. That is the right default, and most scenes never want anything else.
+
+Some do. A stage with a hologram standing on it, where the hologram is meant to look like light rather than like a thing light falls on. Two rooms along a corridor, each with its own fixture. A diagram floating in a lit room, which should stay legible whatever the room is doing.
+
+Lamps are drawing state, the same as the fill and the blend mode. The lights in force when a solid is drawn are the lights that shade it, so a block can have its own:
+
+```swift
+withLights([.point(Color(kelvin: 2700), at: Vector3(-4.25, 2.1, 0), intensity: 7, reach: 7)]) {
+    withState { translate(-4.25, 0.6, 0); drawBox(size: 1.2) }      // warm, its own bulb
+}
+withLights([.tube(Color(kelvin: 6800), from: Vector3(-1.7, 3, 0), to: Vector3(1.7, 3, 0),
+                  radius: 0.07, intensity: 34)]) {
+    withState { translate(0, 0.6, 0); drawBox(size: 1.2) }          // cold, its own strip
+}
+```
+
+<img src="Images/21-3DGently/LightSets.jpg" alt="Three small rooms side by side on a dark floor, each with the same sphere, box, and torus in it. The left room is lit warm orange by a small bulb, the middle one cold grey-blue by a strip along its ceiling, the right one green by a glow low in the floor. Each room's back wall carries the same white plate, and all three plates are the same plain white" width="680">
+
+Nothing from the left room reaches the middle one. The dividers in that picture are twelve centimeters of painted board, nowhere near enough to stop a lamp. What stops it is that the middle room's walls were drawn under a different set of lights. The blocks take a `LightingPreset` too, so `withLights(.noir) { … }` puts one body under a whole rig while the frame keeps another.
+
+The other half is the flat one. `withoutLights` draws its block unlit, in the plain `fill` color, while the scene around it stays shaded:
+
+```swift
+drawBox(size: 3)                                   // lit by the frame's lamps
+withoutLights {
+    withState { translate(0, 3, 0); drawSphere(radius: 0.8) }   // flat, in its fill color
+}
+```
+
+The white plate on each back wall in the picture is one `withoutLights` block, one fill color, three rooms. The walls behind those plates are warm, cold, and green. The plates are identical. That is the whole difference between a lit surface and an unlit one, in one glance. It is also how the little bulbs are drawn. A light source should read as a source, not as one more ball with a highlight on it.
+
+Both calls are `withState` with one extra step, the clearing. Without it the lamps would *add* to the frame's rig rather than replace it. That is the mistake that is easy to make by hand. `withState { noLights(); pointLight(…); drawMesh(…) }` is the same thing written out.
+
+Three things stay with the frame's own rig rather than following a block.
+
+**The shadows.** A caster renders its own pass over the whole scene, and the map it writes is keyed to the light list it came from. So `castShadows()` casts from the frame's rig. A scoped set's lamps light what the block draws and throw nothing. The frame's shadows still land on whatever a scoped set drew. That is usually what you wanted: the room's little bulb is not the sun.
+
+**The environment, the air, and the lens flare.** These belong to the world rather than to a rig, so they are set once. A `withoutLights` block turns its own image-based lighting off along with everything else. That is why a flat body stays flat even under an HDRI.
+
+**Lamps set the ordinary way.** A light set outside any block joins the frame's rig, wherever in `draw()` you set it, exactly as before. Nothing about a sketch you have already written changes.
+
+A frame holds its own rig plus fifteen. Each one is another set of lights the renderer packs. Past the eight-lamp mark from the last section, each is also another pass of that tile arithmetic. So the count is bounded. Past fifteen the extras quietly draw under the frame's own, and Ollin says so once.
+
+The cost goes both ways. Splitting a frame into rigs costs a little: a room's solids can no longer be drawn in one go with the next room's. It also saves a lot: a surface pays for its own room's lamps instead of every lamp in the building. On an M2, a hall of eight rooms with eight lamps each renders in 2.3 ms as eight rigs. As one rig of sixty-four lamps it takes 13.3 ms. With two lamps each it is about 1.2 against 4.0. At two rooms and four lamps in all, the two are within the noise of each other. They are different pictures as well as different costs, so this is a tool to reach for rather than a tax to avoid.
+
+`3D/Lighting/LightSets` is the three rooms from the figure, with the bulb swinging and the floor glow breathing.
+
 ## Air you can see
 
 Everything so far shows a light only where it lands. Real air shows the light on its way. Dust and haze catch a beam mid-flight, which is why a projector's cone hangs visibly over a cinema audience. It's why sun through a window is a slanted block of bright air. Two calls give a scene that air.

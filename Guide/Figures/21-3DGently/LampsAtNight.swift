@@ -3,7 +3,7 @@
 // Guide figure (Chapter 21): what a `reach` is for, and what it buys. Three
 // panels of the same courtyard, each rendered on its own through
 // `OllinApp.image(of:)` and drawn here as read-back pixels, because each panel
-// needs its own light set and one frame carries one. Left: twelve lamps with no
+// needs its own camera and one frame carries one. Left: twelve lamps with no
 // reach, every one of them carrying the whole courtyard, which is one flat wash
 // with no night in it. Middle: the same twelve with a reach, each owning a pool.
 // Right: sixty-four of them, which the plain path could not have held at all.
