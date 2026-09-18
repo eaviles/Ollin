@@ -119,6 +119,26 @@ public struct Timecode: Sendable, Equatable, Hashable {
     }
 }
 
+/// Timecodes compare by the moment they name, so a cue test is a comparison
+/// and a pair of them is a range:
+///
+/// ```swift
+/// if clock.timecode >= cueIn && clock.timecode < cueOut { drawTitle() }
+/// if (cueIn...cueOut).contains(clock.timecode) { drawTitle() }
+/// ```
+///
+/// The comparison runs on the wall clock (`totalSeconds`), so two timecodes
+/// counted at different rates still answer honestly about which came first.
+/// Two that name the very same moment at different rates are ordered by rate,
+/// which is what keeps the order total: `<` and `==` never disagree.
+extension Timecode: Comparable {
+    public static func < (lhs: Timecode, rhs: Timecode) -> Bool {
+        let a = lhs.totalSeconds, b = rhs.totalSeconds
+        if a != b { return a < b }
+        return lhs.frameRate.rawValue < rhs.frameRate.rawValue
+    }
+}
+
 extension Timecode: CustomStringConvertible {
     /// `hh:mm:ss:ff`, with a semicolon before the frames where the rate drops,
     /// the way a broadcast display writes it.

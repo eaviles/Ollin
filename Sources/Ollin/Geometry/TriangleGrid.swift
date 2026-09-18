@@ -107,15 +107,10 @@ public struct TriangleGrid: Equatable, Hashable, Sendable {
         return Cell(column: column, row: row, pointsUp: up, center: center, vertices: vertices)
     }
 
-    /// Every cell, row-major (left to right, top to bottom).
-    public var cells: [Cell] {
-        var out = [Cell]()
-        out.reserveCapacity(columns * rows)
-        for row in 0..<rows {
-            for column in 0..<columns { out.append(cell(column: column, row: row)) }
-        }
-        return out
-    }
+    /// Every cell, row-major (left to right, top to bottom), as an array. The
+    /// grid is itself a collection of its cells, so `for cell in grid` walks
+    /// the same order without building one.
+    public var cells: [Cell] { Array(self) }
 
     /// The up-to-three cells sharing an edge with `cell` (fewer at the grid's
     /// rim): its left and right neighbors, plus the row below (for an
@@ -144,5 +139,20 @@ public extension Sketch {
                       padding: Insets = .zero, gutter: Double = 0) -> TriangleGrid {
         TriangleGrid(in: bounds, columns: columns, rows: rows,
                      padding: padding, gutter: gutter)
+    }
+}
+
+/// A triangle grid is its cells in row-major order, so it reads as one: `for cell in
+/// grid`, `grid.count`, `grid[0]`, `grid.first`, `map`, and `filter` all work
+/// without building the `cells` array first. Each triangle is worked out as it is
+/// asked for, so iterating allocates nothing.
+extension TriangleGrid: RandomAccessCollection {
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { columns * rows }
+    public subscript(position: Int) -> Cell {
+        // A cell is worked out rather than stored, so nothing traps on its own:
+        // without this, `grid[-1]` would answer for a column left of the grid.
+        precondition(position >= 0 && position < endIndex, "TriangleGrid index out of range")
+        return cell(column: position % columns, row: position / columns)
     }
 }

@@ -41,6 +41,15 @@ for cell in hexes.cells {
 }
 ```
 
+Both grids are `RandomAccessCollection`s of their cells, in the same row-major order, so looping the grid itself says it shorter and builds no array along the way:
+
+```swift
+let hexes = hexGrid(columns: 12, rows: 10, padding: 40)
+for cell in hexes { drawPolygon(cell.corners) }
+let howMany = hexes.count                     // columns × rows
+let near = hexes.filter { $0.center.distance(to: bounds.center) < 200 }
+```
+
 A hex grid costs you something a square grid gives you for free, since its cells cannot stretch. The hex-native math is what makes that trade worth it, and every cell carries the axial coordinates (`q`, `r`) that this math runs on:
 
 - `distance(from:to:)` counts steps between neighbors, so cells at equal distances form true concentric rings. A square grid cannot produce that honeycomb falloff.

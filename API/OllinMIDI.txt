@@ -113,7 +113,7 @@ struct MPEZone: Equatable, Hashable, Sendable
   var memberChannels: ClosedRange<Int> { get set }
   var memberCount: Int { get }
   var memberPitchBendRange: Double { get set }
-struct Timecode: CustomStringConvertible, Equatable, Hashable, Sendable
+struct Timecode: Comparable, CustomStringConvertible, Equatable, Hashable, Sendable
   enum FrameRate: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
     case fps24
     case fps25
@@ -130,6 +130,7 @@ struct Timecode: CustomStringConvertible, Equatable, Hashable, Sendable
   init(quarterFrameValues: [Int])
   init(seconds: Double, frameRate: Timecode.FrameRate)
   init?(fullFrameSysEx: [UInt8])
+  static func <(_: Timecode, _: Timecode) -> Bool
   var description: String { get }
   var frameNumber: Int { get }
   var frameRate: Timecode.FrameRate { get set }

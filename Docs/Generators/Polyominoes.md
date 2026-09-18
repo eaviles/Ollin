@@ -35,6 +35,19 @@ struct Polyomino {
     static let pentominoNames: [String]
     static let tetrominoes: [Polyomino]    // the five, I O T S L
 }
+extension Polyomino: RandomAccessCollection {}   // its Cells, in reading order
+```
+
+A piece is its squares, so it reads as one: `for cell in piece`, `piece.count`, `piece.isEmpty`, `piece.first`, `map`, `filter`, and `piece.contains(cell)` all work without reaching for `cells`. The squares are normalized and sorted down the rows then across, so the walk is the same order every time and two spellings of one shape walk alike.
+
+```swift
+let ell = Polyomino(["X.", "X.", "XX"])
+let howMany = ell.count                      // 4 squares
+for cell in ell {
+    drawRect(Double(cell.column) * 40, Double(cell.row) * 40, 40, 40)
+}
+let hasCorner = ell.contains(Polyomino.Cell(1, 2))   // true
+let lastRow = ell.map(\.row).max()           // 2
 ```
 
 The clearest way to write a piece is to draw it:

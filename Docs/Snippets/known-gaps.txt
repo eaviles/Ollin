@@ -14,26 +14,26 @@
 # names its prose establishes; it is spliced into every probe from that page.
 
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1441  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1464  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1509  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1527  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1554  cannot find 'paint' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1583  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1599  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1619  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1650  cannot find 'rock' in scope
-c8abc89c9034  Docs/3D/3D.md:1674  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1720  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1485  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1508  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1553  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1571  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1598  cannot find 'paint' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1627  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1643  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1663  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1694  cannot find 'rock' in scope
+c8abc89c9034  Docs/3D/3D.md:1718  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1764  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
 7de5e54328c1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
 d1d9e1bb1524  Docs/3D/3D.md:423  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this declaration
-a5b3460feb06  Docs/3D/3D.md:886  cannot find 'e' in scope
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
-59a8691ecc04  Docs/3D/3D.md:927  overriding declaration requires an 'override' keyword
-03e5bc13e5b1  Docs/3D/3D.md:944  cannot call value of non-function type 'Double'
+a5b3460feb06  Docs/3D/3D.md:930  cannot find 'e' in scope
+59a8691ecc04  Docs/3D/3D.md:971  overriding declaration requires an 'override' keyword
+03e5bc13e5b1  Docs/3D/3D.md:988  cannot call value of non-function type 'Double'
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
@@ -329,25 +329,25 @@ f0183ad35e80  Docs/Drawing/Geometry.md:288  cannot find 'scan' in scope
 a26850bfb449  Docs/Drawing/Geometry.md:303  expected ',' separator
 873b3abaf9b5  Docs/Drawing/Geometry.md:331  cannot find 'Distribution' in scope
 f0b0c6b3213b  Docs/Drawing/Geometry.md:340  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:354  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:382  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:405  cannot infer contextual base in reference to member 'all'
+02e6dae30b9f  Docs/Drawing/Geometry.md:366  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:394  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:417  cannot infer contextual base in reference to member 'all'
 754645c0ed85  Docs/Drawing/Geometry.md:42  expected ',' separator
-23b6891ea8c2  Docs/Drawing/Geometry.md:425  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-4875c0c14dcf  Docs/Drawing/Geometry.md:445  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:465  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:483  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:490  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:496  cannot find 'shape' in scope
-1eb6f12247fb  Docs/Drawing/Geometry.md:509  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:523  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:535  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:541  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:559  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:566  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-eb39bc6e25d9  Docs/Drawing/Geometry.md:579  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:593  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:635  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+23b6891ea8c2  Docs/Drawing/Geometry.md:437  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+e472a0d6d590  Docs/Drawing/Geometry.md:457  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:501  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:531  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:538  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:544  cannot find 'shape' in scope
+1eb6f12247fb  Docs/Drawing/Geometry.md:557  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:571  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:583  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:589  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:607  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:614  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+eb39bc6e25d9  Docs/Drawing/Geometry.md:627  expected '{' in body of function declaration
+ef0ca3825a40  Docs/Drawing/Geometry.md:641  expected ',' separator
+0551b7294c44  Docs/Drawing/Geometry.md:683  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 336a733604c7  Docs/Drawing/GlyphMosaic.md:29  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:41  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:53  expected ',' separator
@@ -479,12 +479,12 @@ af3d21d28505  Docs/Drawing/Text.md:664  cannot find 'url' in scope
 c070ed9fef26  Docs/Drawing/Text.md:698  cannot find 'someURL' in scope
 0c40e450fdd4  Docs/Drawing/Text.md:81  expected ',' separator
 943b9c98f82d  Docs/Drawing/Text.md:91  cannot find 'tracker' in scope
-747e14bbf9a7  Docs/Drawing/Tiling.md:111  expected ',' separator
-64c9e67ab4cd  Docs/Drawing/Tiling.md:144  expected expression in list of expressions
+747e14bbf9a7  Docs/Drawing/Tiling.md:120  expected ',' separator
+64c9e67ab4cd  Docs/Drawing/Tiling.md:153  expected expression in list of expressions
 d636aad52dcc  Docs/Drawing/Tiling.md:26  expected type before '->'
-a623381847c7  Docs/Drawing/Tiling.md:50  cannot find 'hexes' in scope
-40e35db479ba  Docs/Drawing/Tiling.md:65  expected type before '->'
-ae60e65806dc  Docs/Drawing/Tiling.md:87  expected expression in list of expressions
+a623381847c7  Docs/Drawing/Tiling.md:59  cannot find 'hexes' in scope
+40e35db479ba  Docs/Drawing/Tiling.md:74  expected type before '->'
+ae60e65806dc  Docs/Drawing/Tiling.md:96  expected expression in list of expressions
 7f54562cf658  Docs/Drawing/Truchet.md:27  expected expression in list of expressions
 e7bef7b419af  Docs/Drawing/Truchet.md:53  expected expression in list of expressions
 159c0380ce18  Docs/Drawing/Truchet.md:85  expected expression in list of expressions
@@ -627,11 +627,11 @@ ebc933bb3ada  Docs/Generators/Percolation.md:27  'rng' is inaccessible due to 'i
 4e0fe4ccca0e  Docs/Generators/Percolation.md:50  expected ',' separator
 595ce8fbf367  Docs/Generators/Percolation.md:66  cannot find 'rect' in scope
 7839f95b3c93  Docs/Generators/Percolation.md:73  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'outlines'
-07a3bed3e511  Docs/Generators/Polyominoes.md:24  cannot find type 'Cell' in scope
-d3fe3995c966  Docs/Generators/Polyominoes.md:54  expected '{' in body of function declaration
-ab7e012a71fa  Docs/Generators/Polyominoes.md:60  cannot find 'piece' in scope
-13b924352d3f  Docs/Generators/Polyominoes.md:72  expected ',' separator
-b1f4940d8cdd  Docs/Generators/Polyominoes.md:87  cannot find 'palette' in scope
+b1f4940d8cdd  Docs/Generators/Polyominoes.md:100  cannot find 'palette' in scope
+b603758b765e  Docs/Generators/Polyominoes.md:24  cannot find type 'Cell' in scope
+d3fe3995c966  Docs/Generators/Polyominoes.md:67  expected '{' in body of function declaration
+ab7e012a71fa  Docs/Generators/Polyominoes.md:73  cannot find 'piece' in scope
+13b924352d3f  Docs/Generators/Polyominoes.md:85  expected ',' separator
 5e04a9b57049  Docs/Generators/Random.md:104  expected ',' separator
 2be403eae386  Docs/Generators/Random.md:116  cannot find 'palette' in scope
 fb4f62830a44  Docs/Generators/Random.md:126  expected ',' separator
@@ -947,10 +947,11 @@ d6a82f4e607c  Docs/Integration/MIDI.md:193  cannot find 'midi' in scope
 1b93dfad6978  Docs/Integration/MIDI.md:238  expected '{' in body of function declaration
 19edb5d8f976  Docs/Integration/MIDI.md:256  cannot find 'MIDIInput' in scope
 31b20ced319c  Docs/Integration/MIDI.md:278  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
-6ef097e7940f  Docs/Integration/MIDI.md:293  cannot find type 'Timecode' in scope
-c169feebbbd5  Docs/Integration/MIDI.md:317  cannot find 'MIDIInput' in scope
-987e475e3f82  Docs/Integration/MIDI.md:342  cannot find type 'MIDIEndpoint' in scope
-29df67a1ddf0  Docs/Integration/MIDI.md:363  cannot find 'MIDIOutput' in scope
+3164313c9f84  Docs/Integration/MIDI.md:293  cannot find type 'Timecode' in scope
+c169feebbbd5  Docs/Integration/MIDI.md:319  cannot find 'MIDIInput' in scope
+83d72bfa5e0c  Docs/Integration/MIDI.md:338  cannot find 'Timecode' in scope
+987e475e3f82  Docs/Integration/MIDI.md:356  cannot find type 'MIDIEndpoint' in scope
+29df67a1ddf0  Docs/Integration/MIDI.md:377  cannot find 'MIDIOutput' in scope
 d239cd3c7705  Docs/Integration/MIDI.md:53  cannot find 'message' in scope
 7f26d708f6c2  Docs/Integration/MIDI.md:69  cannot find 'message' in scope
 09b99eed83af  Docs/Integration/MIDI.md:84  cannot find type 'MIDIEndpoint' in scope

@@ -10,6 +10,60 @@ struct TimecodeTests {
 
     // MARK: The value
 
+    // MARK: Ordering
+
+    @Test func timecodesOrderByTheMomentTheyName() {
+        let rate = Timecode.FrameRate.fps25
+        let early = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 12, frameRate: rate)
+        let late = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 13, frameRate: rate)
+        #expect(early < late)
+        #expect(late > early)
+        #expect(!(early < early))
+        #expect(Swift.min(late, early) == early)
+        #expect([late, early].sorted() == [early, late])
+        #expect((early...late).contains(early))
+        #expect((early...late).contains(late))
+        #expect(!(early..<late).contains(late))
+    }
+
+    /// The comparison runs on the wall clock, so two rates answer honestly
+    /// about which moment came first rather than about which frame number is
+    /// larger. Frame 30 at 30 fps is one second in; frame 30 at 24 fps is a
+    /// quarter of a second later, and the larger frame number is the earlier
+    /// moment here.
+    @Test func timecodesAtDifferentRatesCompareOnTheWallClock() {
+        let atThirty = Timecode(frameNumber: 30, frameRate: .fps30)
+        let atTwentyFour = Timecode(frameNumber: 30, frameRate: .fps24)
+        #expect(atThirty.frameNumber == atTwentyFour.frameNumber)
+        #expect(atThirty.totalSeconds < atTwentyFour.totalSeconds)
+        #expect(atThirty < atTwentyFour)
+    }
+
+    /// Comparable wants a total order: `<` and `==` must never disagree. Two
+    /// timecodes naming the very same wall-clock moment at different rates are
+    /// not equal, so exactly one of them has to sort first.
+    @Test func sameMomentAtTwoRatesStillSortsOneWay() {
+        let atThirty = Timecode(hours: 1, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)
+        let atTwentyFive = Timecode(hours: 1, minutes: 0, seconds: 0, frames: 0, frameRate: .fps25)
+        #expect(atThirty.totalSeconds == atTwentyFive.totalSeconds)
+        #expect(atThirty != atTwentyFive)
+        #expect((atThirty < atTwentyFive) != (atTwentyFive < atThirty))
+        // Rate breaks the tie, in the order the protocol numbers them.
+        #expect(atTwentyFive < atThirty)
+    }
+
+    /// The order agrees with the clock across a whole run at every rate, which
+    /// is the property a cue test leans on.
+    @Test func orderFollowsTheFrameCountAtEveryRate() {
+        for rate in Timecode.FrameRate.allCases {
+            let codes = stride(from: 0, to: 4000, by: 137).map {
+                Timecode(frameNumber: $0, frameRate: rate)
+            }
+            #expect(codes.sorted() == codes)
+            for (a, b) in zip(codes, codes.dropFirst()) { #expect(a < b) }
+        }
+    }
+
     @Test func fieldsRoundTripThroughTheFrameNumberAtEveryRate() {
         for rate in Timecode.FrameRate.allCases {
             for frame in stride(from: 0, to: 30 * 3600 * 2, by: 97) {

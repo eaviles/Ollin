@@ -60,7 +60,9 @@ public struct Polyomino: Hashable, Sendable {
         self.init(cells: found)
     }
 
-    /// How many squares the piece is made of.
+    /// How many squares the piece is made of. The collection conformance below
+    /// supplies this too, and identically; it stays spelled out because the
+    /// recorded public surface reads a conformance's members as gone.
     public var count: Int { cells.count }
     /// How many columns the piece spans.
     public var columns: Int { (cells.map(\.column).max() ?? -1) + 1 }
@@ -388,4 +390,16 @@ public extension Sketch {
         Ollin.tilePolyominoes(pieces, covering: region, reuse: reuse,
                               reflections: reflections, using: &rng)
     }
+}
+
+/// A piece is its squares in reading order, so it reads as one: `for cell in
+/// piece`, `piece.count`, `piece.isEmpty`, `piece.first`, `map`, `filter`, and
+/// `piece.contains(cell)` all work without reaching for `cells`. The squares
+/// are normalized to start at zero and sorted down the rows then across, so
+/// the walk is the same order every time and two pieces of the same shape walk
+/// alike.
+extension Polyomino: RandomAccessCollection {
+    public var startIndex: Int { cells.startIndex }
+    public var endIndex: Int { cells.endIndex }
+    public subscript(position: Int) -> Cell { cells[position] }
 }

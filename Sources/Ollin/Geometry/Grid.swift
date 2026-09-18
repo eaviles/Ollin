@@ -181,14 +181,25 @@ public struct Grid: Equatable, Hashable, Sendable {
         return out
     }
 
-    /// Every cell, row-major. Loop this to draw into each.
-    public var cells: [Cell] {
-        var out = [Cell]()
-        out.reserveCapacity(columns * rows)
-        for row in 0..<rows {
-            for column in 0..<columns { out.append(cell(column: column, row: row)) }
-        }
-        return out
+    /// Every cell, row-major, as an array. The grid is itself a collection of
+    /// its cells, so `for cell in grid` walks the same order without building
+    /// one; reach for this when an array is what you need.
+    public var cells: [Cell] { Array(self) }
+}
+
+/// A grid is its cells in row-major order, so it reads as one: `for cell in
+/// grid`, `grid.count`, `grid[0]`, `grid.first`, `map`, `filter`, and
+/// `grid.randomElement(using: &randomness)` all work without building the
+/// `cells` array first. Each cell is worked out as it is asked for, so
+/// iterating a grid allocates nothing.
+extension Grid: RandomAccessCollection {
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { columns * rows }
+    public subscript(position: Int) -> Cell {
+        // A cell is worked out rather than stored, so nothing traps on its own:
+        // without this, `grid[-1]` would answer for a column left of the grid.
+        precondition(position >= 0 && position < endIndex, "Grid index out of range")
+        return cell(column: position % columns, row: position / columns)
     }
 }
 

@@ -349,6 +349,18 @@ Leaving `columns` out picks the near-square count. `gutter` defaults to 1% of th
 - **Points:** `points` is every dot (`[Point]`, row-major). Each one carries a `column`, a `row`, and a `position`, laid out according to the grid's `distribution` (below). Use `point(column:row:)` for one.
 - **Cells:** `cells` is every cell (`[Cell]`, row-major). Each one carries a `column`, a `row`, a true `center`, and a `frame` rectangle. Use `cell(column:row:)` for one.
 
+A grid *is* its cells, so it is a `RandomAccessCollection` of `Cell` in that same row-major order. Looping the grid itself is the short way to say it, and it works each cell out as it is asked for, so it builds no array at all:
+
+```swift
+let g = grid(columns: 12, rows: 8, padding: 40)
+for cell in g { drawRect(cell.frame) }         // the same cells, nothing allocated
+let howMany = g.count                          // columns × rows
+let diagonal = g.filter { $0.column == $0.row }
+let one = g.randomElement(using: &randomness)  // one cell, on the sketch's seed
+```
+
+`cells` is still there for when an array is what you need. `HexGrid` and `TriangleGrid` read the same way.
+
 Loop over whichever you are drawing, and the indices come with it, so a checkerboard or a hue-by-position is still one loop:
 
 ```swift
@@ -450,7 +462,31 @@ var length: Double              // distance along the segments (closed: plus the
 func point(at t: Double) -> Vector2   // the point a fraction t (0...1) along, by walked length
 var midpoint: Vector2           // point(at: 0.5)
 func resampled(spacing: Double) -> Contour   // points respaced evenly along the walk
+func contains(_ point: Vector2) -> Bool      // is the point inside the outline?
 ```
+
+A contour is a run of points, and it says so: it is a `RandomAccessCollection` of its `Vector2`s, so the standard library reaches it without a detour through `points`.
+
+```swift
+let contour = Contour([Vector2(60, 60), Vector2(260, 80), Vector2(200, 240)])
+for point in contour { drawCircle(center: point, radius: 3) }
+let howMany = contour.count            // how many points
+let rightmost = contour.map(\.x).max()  // the rightmost x
+let middle = contour.centroid          // where the points average out, nil when empty
+let backwards = Array(contour.reversed())
+```
+
+`points` is still the settable side: read through the collection, write through `points`.
+
+Two calls on a contour answer geometric questions rather than membership ones, and they match their `Shape` namesakes:
+
+```swift
+let outline = Contour([Vector2(60, 60), Vector2(260, 80), Vector2(200, 240)])
+let inside = outline.contains(mouse)                      // inside the outline?
+let isAVertex = outline.points.contains(Vector2(60, 60))  // one of my own points?
+```
+
+`centroid` comes from the shared `Vector` surface, so it is the mean of the *points*. That is a different question from [`Shape.centroid`](#shape), which is where a filled region balances. A run of points crowded along one edge pulls the first and not the second.
 
 The walk helpers measure *along* the contour. That is why they land mid-stroke even when the points are spaced unevenly, as in a `textToShapes` glyph or a two-point diagonal. `midpoint` is the anchor to style each contour by. Color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
 
@@ -474,6 +510,18 @@ let outer = [Vector2(60, 60), Vector2(260, 60), Vector2(260, 260), Vector2(60, 2
 let hole  = [Vector2(120, 120), Vector2(200, 120), Vector2(200, 200), Vector2(120, 200)]
 fill(.black)
 drawShape(Shape(outer: outer, holes: [hole]))      // a square frame
+```
+
+A shape is its contours in order, and it says so too: it is a `RandomAccessCollection` of `Contour`, so `for contour in shape`, `shape.count`, and `shape.first` work without reaching for `contours`. The elements are contours, not points, so flattening walks every point:
+
+```swift
+let frame = [Vector2(60, 60), Vector2(260, 60), Vector2(260, 260), Vector2(60, 260)]
+let window = [Vector2(120, 120), Vector2(200, 120), Vector2(200, 200), Vector2(120, 200)]
+let shape = Shape(outer: frame, holes: [window])
+for contour in shape { drawPolyline(contour.points) }
+let howManyContours = shape.count           // how many contours
+let everyPoint = shape.flatMap { $0 }       // every point of every contour
+let outlineLength = shape.map(\.length).reduce(0, +)
 ```
 
 **Fill winding.** A `Shape` carries a `winding` rule (`FillWinding`) that decides which regions are inside the fill. The default is `.evenOdd`, where a contour's direction does not matter, which is the simple rule for hand-built shapes. The other is `.nonZero`, where direction *does* matter and a self-overlapping outline still fills. Font outlines use `.nonZero`, so glyph shapes from [`textToShapes`](../Drawing/Text.md#texttoshapes) set it. Pass the rule to `Shape(contours:winding:)`.

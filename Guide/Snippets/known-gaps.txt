@@ -103,7 +103,7 @@ de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '
 c0c20b9cf154  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
 6ce476230efc  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
 4de6ac607cb1  Guide/21-3DGently.md:288  cannot find 'ringFile' in scope
-d3145c90ad5d  Guide/21-3DGently.md:429  cannot find 'knot' in scope
+d3145c90ad5d  Guide/21-3DGently.md:478  cannot find 'knot' in scope
 3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
 3cd0f225fa98  Guide/22-Meshes.md:198  cannot find 'dents' in scope
 2f43cec1c527  Guide/22-Meshes.md:214  cannot find 'paint' in scope

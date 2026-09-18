@@ -42,7 +42,7 @@ public extension Contour {
         guard let first = points.first else { return .zero }
         let total = length
         guard total > 0 else { return first }
-        var remaining = min(max(t, 0), 1) * total
+        var remaining = Swift.min(Swift.max(t, 0), 1) * total
         var walk = Array(points.dropFirst())
         if isClosed { walk.append(first) }
         var previous = first
@@ -62,6 +62,19 @@ public extension Contour {
     /// for styling per contour, like coloring each strand of a tiling by a
     /// field sampled at its middle.
     var midpoint: Vector2 { point(at: 0.5) }
+
+    /// Whether `point` lies inside the outline, by even-odd crossings. The
+    /// contour is treated as closed the way a fill treats it, so an open one
+    /// still answers about the region its points enclose; a contour of fewer
+    /// than three points encloses nothing and answers false.
+    ///
+    /// This is the geometric question, matching `Shape.contains(_:)`. To ask
+    /// the *membership* question a collection would answer, whether a point is
+    /// one of the contour's own vertices, say so: `contour.points.contains(p)`.
+    func contains(_ point: Vector2) -> Bool {
+        guard points.count >= 3 else { return false }
+        return Shape.contains(points, point)
+    }
 
     /// A copy whose points march an even `spacing` apart along the walked
     /// path (arc length), keeping `isClosed`. Points that arrive unevenly
@@ -338,4 +351,31 @@ public extension Shape {
         }
         return points.first ?? .zero
     }
+}
+
+// MARK: - Points and contours as collections
+
+/// A contour is an ordered run of points, so it reads as one: `for point in
+/// contour`, `contour.count`, `contour.first`, `contour.enumerated()`, `map`,
+/// `reversed()`, `Array(contour)`, and `contour.centroid` (the mean of the
+/// points, from the shared `Vector` surface) all work without reaching for
+/// `points`. Writing still goes through `points`, which is the settable side.
+///
+/// Note the two centers are different questions and answer differently:
+/// `contour.centroid` is where the points average out, while `Shape.centroid`
+/// is where the filled region balances. A run of points crowded along one
+/// edge pulls the first and not the second.
+extension Contour: RandomAccessCollection {
+    public var startIndex: Int { points.startIndex }
+    public var endIndex: Int { points.endIndex }
+    public subscript(position: Int) -> Vector2 { points[position] }
+}
+
+/// A shape is its contours in order, so `for contour in shape`, `shape.count`,
+/// `shape.first`, and `map` work without reaching for `contours`. The elements
+/// are contours, not points: `shape.flatMap { $0 }` walks every point.
+extension Shape: RandomAccessCollection {
+    public var startIndex: Int { contours.startIndex }
+    public var endIndex: Int { contours.endIndex }
+    public subscript(position: Int) -> Contour { contours[position] }
 }

@@ -305,6 +305,8 @@ var frameNumber: Int                // frames from zero, the dropped numbers not
 var totalSeconds: Double            // the same on the wall clock
 var fullFrameSysEx: [UInt8]         // the whole position as one system-exclusive message
 func advanced(by frames: Int) -> Timecode
+cueIn < cueOut                      // Comparable, by the moment it names
+(cueIn...cueOut).contains(code)     // so a cue window is a range
 "\(code)"                           // "01:02:03:04", or "00:10:00;02" for drop frame
 
 rate.framesPerSecond                // 24, 25, 29.97, or 30
@@ -330,6 +332,18 @@ override func draw() {
 ```
 
 **How it reads the wire.** A running sender spells its position in eight *quarter-frame* messages, four to a frame, so a whole time arrives every two frames. The clock counts every message as a quarter of a frame in the direction the pieces run, and re-anchors on each completed set. A deck shuttling backward sends them in reverse, and the position runs backward with it. `seconds` is therefore exact at every message and glides at the frame rate between them. The glide stops just short of the next message, so a late one never runs it backward. A *full-frame* message, the one a deck sends when it locates or stops, sets the position outright. Half a second of silence means the transport stopped, and the position holds where it was.
+
+**Cue points are comparisons.** A `Timecode` is `Comparable`, so a cue test is `<` and a window is a range, with no detour through `totalSeconds`:
+
+```swift
+let cueIn = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 0, frameRate: .fps25)
+let cueOut = cueIn.advanced(by: 50)                  // two seconds later at 25
+
+if let now = timecode.timecode, (cueIn..<cueOut).contains(now) { drawTitle() }
+cues.sorted()                                        // in the order they play
+```
+
+The comparison runs on the wall clock, so two timecodes counted at different rates still answer honestly about which came first, even where the larger frame number is the earlier moment. Two that name the very same moment at different rates are ordered by rate, which is what keeps the order total: `<` and `==` never disagree.
 
 **Frame rates.** `Timecode.FrameRate` is the four the protocol names: `.fps24`, `.fps25`, `.fps30Drop`, and `.fps30`. Drop frame counts thirty frames a second over video that runs at 29.97. It skips frame numbers 0 and 1 at the top of every minute except each tenth, so the labels stay on the wall clock. `frameNumber` and `totalSeconds` account for that, and a drop-frame timecode prints with a semicolon before the frames, the way a broadcast display does.
 

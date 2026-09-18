@@ -194,7 +194,7 @@ public extension Contour {
     func smoothed(iterations: Int = 2) -> Contour {
         guard iterations > 0, points.count >= 2 else { return self }
         var result = points
-        for _ in 0..<min(iterations, 10) {
+        for _ in 0..<Swift.min(iterations, 10) {
             result = chaikinPass(result, closed: isClosed)
         }
         return Contour(result, closed: isClosed)

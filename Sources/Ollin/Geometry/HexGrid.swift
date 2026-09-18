@@ -142,15 +142,10 @@ public struct HexGrid: Equatable, Hashable, Sendable {
                     center: center, radius: radius, corners: corners)
     }
 
-    /// Every cell, row-major (left to right, top to bottom).
-    public var cells: [Cell] {
-        var out = [Cell]()
-        out.reserveCapacity(columns * rows)
-        for row in 0..<rows {
-            for column in 0..<columns { out.append(cell(column: column, row: row)) }
-        }
-        return out
-    }
+    /// Every cell, row-major (left to right, top to bottom), as an array. The
+    /// grid is itself a collection of its cells, so `for cell in grid` walks
+    /// the same order without building one.
+    public var cells: [Cell] { Array(self) }
 
     /// The cell holding axial coordinates `q`, `r`, or nil when it falls
     /// outside the grid.
@@ -251,5 +246,20 @@ public extension Sketch {
                  padding: Insets = .zero, gutter: Double = 0) -> HexGrid {
         HexGrid(in: bounds, columns: columns, rows: rows,
                 orientation: orientation, padding: padding, gutter: gutter)
+    }
+}
+
+/// A hex grid is its cells in row-major order, so it reads as one: `for cell in
+/// grid`, `grid.count`, `grid[0]`, `grid.first`, `map`, and `filter` all work
+/// without building the `cells` array first. Each hexagon is worked out as it is
+/// asked for, so iterating allocates nothing.
+extension HexGrid: RandomAccessCollection {
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { columns * rows }
+    public subscript(position: Int) -> Cell {
+        // A cell is worked out rather than stored, so nothing traps on its own:
+        // without this, `grid[-1]` would answer for a column left of the grid.
+        precondition(position >= 0 && position < endIndex, "HexGrid index out of range")
+        return cell(column: position % columns, row: position / columns)
     }
 }

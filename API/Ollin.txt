@@ -3313,7 +3313,8 @@ struct ComputeParams: Sendable
   mutating func append(camera: Camera3D, aspect: Double)
   var bytes: [UInt8] { get }
   var isEmpty: Bool { get }
-struct Contour: Tweenable, Equatable, Sendable
+struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+  func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> [Contour]
   func point(at: Double) -> Vector2
   func resampled(spacing: Double) -> Contour
@@ -3322,10 +3323,13 @@ struct Contour: Tweenable, Equatable, Sendable
   init(_: [Vector2], closed: Bool = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   static func lerp(_: Contour, _: Contour, _: Double) -> Contour
+  subscript(_: Int) -> Vector2 { get }
+  var endIndex: Int { get }
   var isClosed: Bool { get set }
   var length: Double { get }
   var midpoint: Vector2 { get }
   var points: [Vector2] { get set }
+  var startIndex: Int { get }
 struct CosinePalette: Sendable
   func color(at: Double) -> Color
   init(a: CosinePalette.RGB, b: CosinePalette.RGB, c: CosinePalette.RGB, d: CosinePalette.RGB)
@@ -4018,7 +4022,7 @@ struct Gradient: Equatable, Hashable, Sendable
   static func radial(center: Vector2, radius: Double, _: [Color], in: ColorSpace = default) -> Gradient
   var geometry: Gradient.Geometry { get set }
   var ramp: Ramp { get set }
-struct Grid: Equatable, Hashable, Sendable
+struct Grid: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
   enum Distribution: Equatable, Hashable, Sendable
     case center
     case spanning
@@ -4039,11 +4043,14 @@ struct Grid: Equatable, Hashable, Sendable
     let column: Int
     let position: Vector2
     let row: Int
+  subscript(_: Int) -> Grid.Cell { get }
   var cellHeight: Double { get }
   var cellSize: Vector2 { get }
   var cellWidth: Double { get }
   var cells: [Grid.Cell] { get }
+  var endIndex: Int { get }
   var points: [Grid.Point] { get }
+  var startIndex: Int { get }
 struct HalftoneDot: Sendable
   let center: Vector2
   let color: Color
@@ -4096,7 +4103,7 @@ struct Heightfield: Sendable
   static func diamondSquare(size: Int, roughness: Double = default, using: R) -> Heightfield
   subscript(_: Int, _: Int) -> Double { get set }
   var values: [Double] { get set }
-struct HexGrid: Equatable, Hashable, Sendable
+struct HexGrid: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
   enum Orientation: CaseIterable, Equatable, Hashable, Sendable
     case flat
     case pointy
@@ -4122,7 +4129,10 @@ struct HexGrid: Equatable, Hashable, Sendable
     let radius: Double
     let row: Int
     var contour: Contour { get }
+  subscript(_: Int) -> HexGrid.Cell { get }
   var cells: [HexGrid.Cell] { get }
+  var endIndex: Int { get }
+  var startIndex: Int { get }
 struct Hitomezashi: Equatable, Sendable
   init(grid: Grid, probability: Double = default, using: R)
   init(grid: Grid, rowBits: [Bool], columnBits: [Bool])
@@ -5274,7 +5284,7 @@ struct PointCloud: Sendable
   var isEmpty: Bool { get }
   var points: [PointCloud.Point] { get set }
   var spreadRadius: Double { get }
-struct Polyomino: Equatable, Hashable, Sendable
+struct Polyomino: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
   func mirrored() -> Polyomino
   func orientations(reflections: Bool = default) -> [Polyomino]
   func outlines(cellSize: Double, origin: Vector2 = default) -> [Contour]
@@ -5291,10 +5301,13 @@ struct Polyomino: Equatable, Hashable, Sendable
     static func <(_: Polyomino.Cell, _: Polyomino.Cell) -> Bool
     var column: Int { get set }
     var row: Int { get set }
+  subscript(_: Int) -> Polyomino.Cell { get }
   var columns: Int { get }
   var count: Int { get }
+  var endIndex: Int { get }
   var isEmpty: Bool { get }
   var rows: Int { get }
+  var startIndex: Int { get }
 struct PolyominoPlacement: Equatable, Hashable, Sendable
   func outlines(cellSize: Double, origin: Vector2 = default) -> [Contour]
   init(piece: Int, shape: Polyomino, at: Polyomino.Cell)
@@ -5735,7 +5748,7 @@ struct ShadowArt: Sendable
   var count: Int { get }
   var mesh: Mesh { get }
   var voxelSize: Double { get }
-struct Shape: Tweenable, Equatable, Sendable
+struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> Shape
   func fractured(into: Int, around: Vector2, seed: Int = default) -> [Shape]
@@ -5756,10 +5769,13 @@ struct Shape: Tweenable, Equatable, Sendable
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   init(outer: [Vector2], holes: [[Vector2]])
   static func lerp(_: Shape, _: Shape, _: Double) -> Shape
+  subscript(_: Int) -> Contour { get }
   var area: Double { get }
   var bounds: Rectangle? { get }
   var centroid: Vector2 { get }
   var contours: [Contour] { get set }
+  var endIndex: Int { get }
+  var startIndex: Int { get }
   var winding: FillWinding { get set }
 struct ShapeGrammar: Sendable
   enum Axis: Equatable, Hashable, Sendable
@@ -6284,7 +6300,7 @@ struct Triangle: Equatable, Sendable
   var contour: Contour { get }
   var points: [Vector2] { get }
   var shape: Shape { get }
-struct TriangleGrid: Equatable, Hashable, Sendable
+struct TriangleGrid: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
   func cell(column: Int, row: Int) -> TriangleGrid.Cell
   func neighbors(of: TriangleGrid.Cell) -> [TriangleGrid.Cell]
   init(in: Rectangle, columns: Int, rows: Int, padding: Insets = default, gutter: Double = default)
@@ -6300,8 +6316,11 @@ struct TriangleGrid: Equatable, Hashable, Sendable
     let row: Int
     let vertices: [Vector2]
     var contour: Contour { get }
+  subscript(_: Int) -> TriangleGrid.Cell { get }
   var cells: [TriangleGrid.Cell] { get }
+  var endIndex: Int { get }
   var rowHeight: Double { get }
+  var startIndex: Int { get }
 struct TuringScale: Equatable, Sendable
   init(activatorRadius: Double, inhibitorRadius: Double, amount: Double, weight: Double = default, symmetry: Int = default, variationRadius: Double? = default)
   static func rosette(_: Int) -> [TuringScale]
