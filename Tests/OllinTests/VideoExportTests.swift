@@ -106,14 +106,31 @@ struct VideoExportTests {
 
 /// The process footprint, read every few milliseconds on a plain thread while
 /// an export runs on this one, so the peak inside the run is what is measured.
+///
+/// It is the whole process's number, which the suite shares with every other
+/// suite in its shard, so only the difference between two runs measured back
+/// to back means anything here, and even that is at the mercy of what a
+/// neighbor allocates in the same seconds. `GIFMemoryTests` used to read the
+/// same number and had to stop; see the note there.
 private final class FootprintSampler: @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (peak: 0, running: false))
+
+    /// The bytes this process holds right now, as the kernel counts them.
+    static func footprint() -> Int {
+        var info = rusage_info_v4()
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0)
+            }
+        }
+        return result == 0 ? Int(info.ri_phys_footprint) : -1
+    }
 
     func start() {
         state.withLock { $0 = (0, true) }
         let thread = Thread { [state] in
             while state.withLock({ $0.running }) {
-                let now = GIFMemoryTests.footprint()
+                let now = Self.footprint()
                 state.withLock { if now > $0.peak { $0.peak = now } }
                 usleep(3000)
             }
