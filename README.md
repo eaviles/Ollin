@@ -12,7 +12,7 @@ Ollin is for generative art, live visuals, and installations. A sketch runs on t
 
 The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org), the typed core of [OPENRNDR](https://openrndr.org), and the simple structure of [openFrameworks](https://openframeworks.cc), reimplemented in Swift idioms rather than ported (see [Influences & attribution](#influences--attribution)). *Ollin* (OH-leen) is the Aztec glyph for movement, the seventeenth day sign of the calendar.
 
-Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
+Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin. From openFrameworks or OPENRNDR, [Appendix E](Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) covers the big moves.
 
 - **Platform:** macOS 26+ and Swift 6.3+ (Xcode 26), on any Mac that runs them. Apple platforms only, [by design](#why-apple-only)
 - **Rendering:** Metal, built on Foundation / SwiftUI / MetalKit / simd; no package dependencies; the C/C++ libraries it does use (Box2D, Jolt, libtess2, Clipper2, Syphon, and a few smaller pieces) are vendored under `External/` with licenses intact and provenance recorded ([details](ATTRIBUTION.md#bundled-third-party-code))

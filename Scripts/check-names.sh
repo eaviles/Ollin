@@ -63,8 +63,8 @@
 # Appendix C to Apple types the code never spells as an identifier, live in
 # Scripts/check-names-allow.txt, one per line with a comment saying which
 # class it belongs to. The p5 column of a comparison table is skipped without
-# being listed: a table whose first header cell names p5, Processing or
-# openFrameworks has a foreign first column by construction.
+# being listed: a table whose first header cell names p5, Processing,
+# openFrameworks or OPENRNDR has a foreign first column by construction.
 #
 # About two seconds. Run it on every change, since a rename in Sources/ stales
 # prose the diff never touched; preflight does.
@@ -98,7 +98,7 @@ PHRASE = re.compile(r"^[A-Z][a-z]+(?: [a-z]+)+$")
 POINTER = re.compile(r"(?:Docs|Guide)/[A-Za-z0-9_./-]+\.md(?:#[A-Za-z0-9_-]+)?")
 SELECTOR = re.compile(r"^((?:[A-Za-z_][A-Za-z0-9_]*\.)*)\.?([A-Za-z_][A-Za-z0-9_]*)\(((?:(?:[A-Za-z_][A-Za-z0-9_]*|_):)*)(…|\.\.\.)?\)$")
 PLACEHOLDER = re.compile(r"^(?:my|your)[A-Z]|(?:My|Your)[A-Z]|^yourthing$", re.I)
-FOREIGN_TABLE = re.compile(r"\bp5(?:\.js)?\b|Processing|openFrameworks", re.I)
+FOREIGN_TABLE = re.compile(r"\bp5(?:\.js)?\b|Processing|openFrameworks|OPENRNDR", re.I)
 CODE_EXT = {".swift", ".metal", ".h", ".c", ".cpp", ".mm", ".m", ".py", ".sh", ".js", ".yml", ".yaml", ".json", ".txt", ".plist", ".entitlements", ".html", ".css", ".toml"}
 FLAG_ROOTS = ("Sources/", "Scripts/", "Apps/", "Tests/", ".github/")
 TOP = ("Sources", "Tests", "Scripts", "Examples", "Docs", "Guide", "API", "External", "Apps", "Media", "Logo", "Web")

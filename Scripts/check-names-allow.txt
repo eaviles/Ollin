@@ -21,6 +21,13 @@ CENTER
 
 # Other frameworks, formats, and languages the prose compares against or quotes.
 ofSignedNoise                   # openFrameworks
+ofFbo                           # openFrameworks, named in Appendix E's prose
+ofShader                        # openFrameworks, named in Appendix E's prose
+ofMesh                          # openFrameworks, named in Appendix E's prose
+ofFloatColor                    # openFrameworks, named in Appendix E's prose
+pointAtLength                   # OPENRNDR, named in Appendix E's prose
+isolatedWithTarget              # OPENRNDR, named in Appendix E's prose
+DoubleParameter                 # OPENRNDR (orx-parameters), named in Appendix E's prose
 dashoffset                      # SVG's stroke-dashoffset
 println                         # Arduino
 analogRead                      # Arduino

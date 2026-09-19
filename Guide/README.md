@@ -46,7 +46,7 @@ Four chapters are better with hardware beyond the Mac, and every one of them sta
 
 Work along in the live-reload host, `swift run OllinLive path/to/YourSketch.swift`. It recompiles your sketch on save, so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
-If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
+If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin, and [Appendix E](E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
 ## Contents
 
@@ -103,6 +103,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 - **[B. Just enough math, visually](B-JustEnoughMath.md).** Every math idea in the guide, each with a picture.
 - **[C. Coming from p5.js and Processing](C-ComingFromP5.md).** A side-by-side translation.
 - **[D. The complete toolbox](D-CompleteToolbox.md).** Everything Ollin can do, one line each, with where it's taught and where it's documented.
+- **[E. Coming from openFrameworks and OPENRNDR](E-ComingFromOpenFrameworksAndOPENRNDR.md).** The big moves from either one, each as a pair of code.
 
 ---
 

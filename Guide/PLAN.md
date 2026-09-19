@@ -44,6 +44,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | B. Just enough math, visually | `B-JustEnoughMath.md` | done |
 | C. Coming from p5.js and Processing | `C-ComingFromP5.md` | done |
 | D. The complete toolbox | `D-CompleteToolbox.md` | done |
+| E. Coming from openFrameworks and OPENRNDR | `E-ComingFromOpenFrameworksAndOPENRNDR.md` | done |
 
 Statuses: `not started` → `figures` (figure sketches built and rendered) → `drafted` (prose written) → `done` (humanized, audited, committed). Appendices B and D keep growing with the chapters: a session that adds a chapter also adds its math ideas to B (an entry with a picture) and gives its new capabilities rows in D and in the coverage matrix.
 
@@ -304,6 +305,8 @@ Draws from: `Docs/Integration/DMX.md`, `Docs/Integration/MQTT.md`, `Docs/Output/
 **C. Coming from p5.js and Processing.** The translation table (`circle()` → `drawCircle`, `createCanvas` → `canvasSize`, `push`/`pop` → `withState { }`, `random` seeds, `noise`, classes, the loop), what's the same, what's idiomatically different, and the habits worth dropping. This is also the roadmap's migration-guide item; writing this appendix completes it. Decided 2026-07-08: C owns the p5/Processing framing outright, and the session that writes it also refocuses `Docs/Swift.md` into the pure language quick-reference (today it's titled "Swift for p5.js newcomers", which is C's job): move the p5 comparisons here, keep the language mechanics there, cross-link both ways.
 
 **D. The complete toolbox.** The 100%-coverage surface, generated from the matrix below: every capability, one plain-words line, where the Guide teaches it (if it does), and its Docs page. Doubles as the guide's index of the framework.
+
+**E. Coming from openFrameworks and OPENRNDR.** The big moves only, never a second call-by-call dictionary. Decided 2026-09-19: Appendix C stays the one exhaustive map, because p5 is where most people learn, and the two other lineages get this shorter page of their own. Each move is what you reach for there, the Ollin way, and what is different, with a small pair of code (C++ or Kotlin, then Swift). openFrameworks: the app shape and the missing `update`, a single color against two inks, `withState`, an `ofFbo` as a layer, `ofShader` as `shade` in Metal, the camera as a call, the C++ loop-by-reference habit, the addons as satellites, projectGenerator as `ollin new`, and rebuilding as live reload. OPENRNDR: Kotlin (not Java), the program as a sketch, no public drawer, the value types, the degrees trap in `rotate`, the compositor, shade styles, and the orx modules. It closes on what stays behind: the other platforms, the browser, and the older addon ecosystems. Every foreign name was checked against the openFrameworks, openrndr and orx checkouts, and a foreign name the prose writes outside a fence or a foreign table column is listed in `Scripts/check-names-allow.txt`. E sits after D rather than beside C because three gates and CLAUDE.md read `D-CompleteToolbox.md` by name.
 
 ## Feature-coverage matrix
 
@@ -686,7 +689,7 @@ Homes are given as the chapter numbers this Guide has today. The splits above re
 | Rendering/color frontier (GPU-driven) | Ch 16/22 |
 | Authoring/editor tooling | Ch 31 |
 | Collaboration and multi-device | future chapter beside Ch 31 |
-| Learning (user guide, migration guide, tutorials) | this Guide itself; migration guide = Appendix C |
+| Learning (user guide, migration guide, tutorials) | this Guide itself; migration guides = Appendix C (p5.js, Processing) and Appendix E (openFrameworks, OPENRNDR) |
 | Extension ecosystem (ollinx-*) | a future "Extending Ollin" appendix |
 | Profiling and GPU debugging | Appendix D note, future appendix |
 | Swift Playgrounds, visionOS, AR | a future part or appendix, when the platforms land |

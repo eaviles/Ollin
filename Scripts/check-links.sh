@@ -86,7 +86,7 @@ def note(where, msg):
 
 # --------------------------------------------------------------- the corpus
 chapters = sorted(GUIDE.glob("[0-9]*.md"))
-appendices = sorted(GUIDE.glob("[A-D]-*.md"))
+appendices = sorted(GUIDE.glob("[A-E]-*.md"))
 pages = chapters + appendices + [GUIDE / "README.md"]
 authoring = [GUIDE / "PLAN.md", GUIDE / "AUTHORING.md"]
 docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
@@ -163,7 +163,7 @@ for c in chapters:
 title = {}
 for c in chapters + appendices:
     for line in lines[c]:
-        m = re.match(r"^# (?:(\d+)|Appendix ([A-D]))\.\s+(.+?)\s*$", line)
+        m = re.match(r"^# (?:(\d+)|Appendix ([A-E]))\.\s+(.+?)\s*$", line)
         if m:
             title[c] = (m.group(1) or m.group(2), m.group(3))
             break

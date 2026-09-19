@@ -44,7 +44,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 files=("$@")
 if [ ${#files[@]} -eq 0 ]; then
-    files=(Guide/[0-9]*.md Guide/[A-D]-*.md Docs/**/*.md README.md)
+    files=(Guide/[0-9]*.md Guide/[A-E]-*.md Docs/**/*.md README.md)
 fi
 
 python3 - "${files[@]}" <<'PY'

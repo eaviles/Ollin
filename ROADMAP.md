@@ -14,7 +14,7 @@ Here are a few things to know before you pick something up:
 - The items under [Up next](#up-next) are the most self-contained, so they tend to make the best first contributions.
 - Some sections carry a rough priority tag. The tag **Near-term** marks well-scoped items that make good next pickups. The tag **Later** marks bigger items that depend on earlier work. A section with no tag is substantial and wanted, but it is not the next thing to pick up. Speculative ideas live under [Further out / exploratory](#further-out--exploratory), and the platform-gated legs live under [On the horizon](#on-the-horizon).
 
-If you come from p5.js or Processing, [the Guide's Appendix C](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin. The page [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
+If you come from p5.js or Processing, [the Guide's Appendix C](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin, and [Appendix E](Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) covers the big moves from openFrameworks and OPENRNDR. The page [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
 
 ## Toward 1.0
 

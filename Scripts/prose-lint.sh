@@ -17,4 +17,4 @@ command -v vale >/dev/null 2>&1 || { echo "vale is not installed (brew install v
 if [ $# -gt 0 ]; then
     exec vale "$@"
 fi
-exec vale Guide/README.md Guide/[0-9]*.md Guide/[A-D]-*.md Docs
+exec vale Guide/README.md Guide/[0-9]*.md Guide/[A-E]-*.md Docs

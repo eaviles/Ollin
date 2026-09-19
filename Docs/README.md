@@ -6,7 +6,7 @@
 
 This is the reference for Ollin's drawing surface and helpers. The bare calls you write in `draw()` forward to an internal `Drawer` (see [How it works](../README.md#how-it-works)). Everything on these pages is callable bare inside a `Sketch`.
 
-If you are new to Swift, start with the [Swift quick reference](./Swift.md). It covers just enough of the language to be productive in `draw()`. If you come from p5.js or Processing, [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
+If you are new to Swift, start with the [Swift quick reference](./Swift.md). It covers just enough of the language to be productive in `draw()`. If you come from p5.js or Processing, [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin. [Appendix E](../Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR.
 
 ### The catalog
 

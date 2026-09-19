@@ -561,6 +561,10 @@ public enum HTML {
         case "js", "javascript", "json":
             keywords = ["const", "let", "var", "function", "return", "import", "export", "true", "false", "null"]
             lineComment = "//"
+        case "kotlin", "kt":
+            keywords = ["fun", "val", "var", "class", "object", "data", "return", "if", "else", "for", "in",
+                        "while", "when", "import", "override", "true", "false", "null", "this"]
+            lineComment = "//"
         default:
             return escape(code)
         }

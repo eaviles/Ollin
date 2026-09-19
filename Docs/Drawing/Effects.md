@@ -893,8 +893,8 @@ It is pure sugar over the substrate. `compose` makes a [`renderTarget`](#rendert
 The layer modifiers chain in any order:
 
 - `.post(_:)` runs a filter over the layer before it composites. Chain calls, or pass several to `.post(_:_:)`, to stack filters: `.post(.threshold()).post(.bloom())`.
-- `.blend(_:)` sets the [blend mode](../Drawing/Drawing.md#blendMode) the layer composites with (default `.normal`).
-- `.scale(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`makeRenderTarget(scale:)`](#rendertarget). Lower it for a layer a blur or glow will soften anyway.
+- `.blended(_:)` sets the [blend mode](../Drawing/Drawing.md#blendMode) the layer composites with (default `.normal`).
+- `.scaled(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`makeRenderTarget(scale:)`](#rendertarget). Lower it for a layer a blur or glow will soften anyway.
 
 Notes:
 
