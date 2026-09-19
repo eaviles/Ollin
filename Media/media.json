@@ -9054,6 +9054,27 @@
       "stillSmall": "examples/Rendering/ViewBoxes/still-640.jpg?v=4cef24c5",
       "width": 1080
     },
+    "Shaders/BlackHole": {
+      "width": 1920,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.184,
+      "sound": false,
+      "source": "6c50c25a7eec3074",
+      "rendered": "2026-09-19",
+      "bytes": {
+        "loop": 2407370,
+        "loopSmall": 595855,
+        "still": 103705,
+        "stillSmall": 38239
+      },
+      "loop": "examples/Shaders/BlackHole/loop.mp4?v=bfec4147",
+      "loopSmall": "examples/Shaders/BlackHole/loop-640.mp4?v=7363a484",
+      "still": "examples/Shaders/BlackHole/still.jpg?v=0baceb66",
+      "stillSmall": "examples/Shaders/BlackHole/still-640.jpg?v=8be167a9"
+    },
     "Shaders/ComplexPlane": {
       "width": 1080,
       "height": 1080,

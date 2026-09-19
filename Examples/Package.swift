@@ -186,6 +186,10 @@ let package = Package(
         // seam), and a ratio of two cubics built from moving roots.
         example("Shaders/ImaginaryLog"),
         example("Shaders/Meromorphic"),
+        // Light bent round a black hole: the camera and the sky in one shader
+        // file, the light paths and the disk's physics in the file it includes.
+        example("Shaders/BlackHole",
+                resources: [.copy("blackhole.metal"), .copy("physics.metal")]),
         example("Rendering/ToneMapping"),
         example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),

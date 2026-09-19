@@ -786,6 +786,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("planet",
                  note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a sphere wears them under one directional sun, and the night lights are drawn into a second layer and masked by the darkness of the lit one (Combine.mask, inverted), so the terminator decides where a city shows. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written), the layer mask, and the bloom. The kernels are read from the example's own .metal files. t = 0, one world, deterministic.",
                  make: { PlanetScene() }),
+    SnapshotCase("black-hole",
+                 note: "A black hole drawn by its own user shader (the Shaders/BlackHole example's blackhole.metal and the physics.metal it includes, read from the example's folder): every pixel's ray bent by the orbit equation for light, the thin disk crossed where the ray's plane meets it (the far side standing over the hole and under it), each crossing shining as a black body at the temperature the Page-Thorne flux gives it shifted by g (blue-white where the disk turns toward the camera, red where it turns away), the lensed star field and the beacon's ring, four rays a pixel, tone-mapped and bloomed as the example does. The disk's clock at 0, so the texture is fixed; deterministic.",
+                 make: { BlackHoleScene() }),
     SnapshotCase("ocean",
                  note: "A wave field (oceanField) drawn as water (drawOcean): the spectrum pass, the inverse Fourier ladder, and the resolve run on the GPU, then a grid with no geometry buffers reads the field for where each corner has moved. Pins the whole chain, the per-pixel normal read off the field (the light running over the water), the body color, the Fresnel sky mix, the sun sparkle, and foam where the crests fold. No environment (the flat sky color path), t = 0, one seed, deterministic.",
                  make: { OceanScene() }),
@@ -9401,6 +9404,36 @@ private final class PlanetScene: Sketch {
             drawImage(night.filtered(.bloom(threshold: 0.12, amount: 0.7,
                                             radius: 14)).image, 0, 0)
         }
+    }
+}
+
+/// A black hole: the example's own shader at a small size, the disk's clock at 0,
+/// four rays a pixel, tone-mapped and bloomed as the example does.
+private final class BlackHoleScene: Sketch {
+    override var canvasSize: CanvasSize { .size(320, 180) }
+
+    private static let folder = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()      // OllinTests
+        .deletingLastPathComponent()      // Tests
+        .deletingLastPathComponent()      // the repository
+        .appendingPathComponent("Examples/Shaders/BlackHole")
+
+    override func setup() {
+        toneMap(.aces)
+    }
+
+    override func draw() {
+        background(.black)
+        guard let text = try? String(contentsOf: Self.folder.appendingPathComponent("blackhole.metal"),
+                                     encoding: .utf8) else { return }
+        let radians = Float.pi / 180
+        let lens = Shader(text, params: [
+            26, 7 * radians, 0, 38 * radians, 3, 14,
+            4500, 1, 0.7, 0.8, 0, 0.35,
+            0, 1.5, .pi, -7 * radians,
+            4,
+        ], file: Self.folder.appendingPathComponent("Sketch.swift").path)
+        drawImage(generate(lens).filtered(.bloom(threshold: 0.9, amount: 0.35, radius: 5)).image, 0, 0)
     }
 }
 

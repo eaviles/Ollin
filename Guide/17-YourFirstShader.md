@@ -288,6 +288,8 @@ A file that is not there is reported before the compiler is asked. So is a loop 
 
 You do not need an include for Ollin's own library. `palette`, `fbm`, `smin` and the rest are already there in every shader.
 
+A file of its own also gives you something to test. [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) draws light bending round a black hole. Its physics sits in `physics.metal`: the path light takes past the hole, the disk's heat, and the color of that heat. The picture is `blackhole.metal`, which includes it. Since the physics knows nothing of the screen, a test can load that file alone. The tests check it against answers worked out on paper, such as where a star behind the hole shows as a ring.
+
 ## Trying a shader on its own
 
 A shader is compiled by the sketch that uses it. So the usual way to find out whether it compiles is to launch something that draws it, and the first sign that it does not is a layer that stays blank.
@@ -431,7 +433,7 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-GridSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
-- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), and [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift).
+- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift), and [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) (the heaviest shader in the set, split across two files).
 
 ---
 

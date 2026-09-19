@@ -4,13 +4,13 @@
 
 ## Shaders
 
-| [![ComplexPlane](https://media.ollin.art/examples/Shaders/ComplexPlane/still-640.jpg?v=50d83a38)](ComplexPlane/) | [![DomainWarp](https://media.ollin.art/examples/Shaders/DomainWarp/still-640.jpg?v=9c7c951f)](DomainWarp/) | [![HelloShader](https://media.ollin.art/examples/Shaders/HelloShader/still-640.jpg?v=63468476)](HelloShader/) | [![ImaginaryLog](https://media.ollin.art/examples/Shaders/ImaginaryLog/still-640.jpg?v=5a1029c5)](ImaginaryLog/) |
+| [![BlackHole](https://media.ollin.art/examples/Shaders/BlackHole/still-640.jpg?v=8be167a9)](BlackHole/) | [![ComplexPlane](https://media.ollin.art/examples/Shaders/ComplexPlane/still-640.jpg?v=50d83a38)](ComplexPlane/) | [![DomainWarp](https://media.ollin.art/examples/Shaders/DomainWarp/still-640.jpg?v=9c7c951f)](DomainWarp/) | [![HelloShader](https://media.ollin.art/examples/Shaders/HelloShader/still-640.jpg?v=63468476)](HelloShader/) |
 |---|---|---|---|
-| [ComplexPlane](ComplexPlane/) | [DomainWarp](DomainWarp/) | [HelloShader](HelloShader/) | [ImaginaryLog](ImaginaryLog/) |
-| [![Meromorphic](https://media.ollin.art/examples/Shaders/Meromorphic/still-640.jpg?v=cddb858d)](Meromorphic/) | [![ShaderBlend](https://media.ollin.art/examples/Shaders/ShaderBlend/still-640.jpg?v=8a803d48)](ShaderBlend/) | [![ShaderFilter](https://media.ollin.art/examples/Shaders/ShaderFilter/still-640.jpg?v=2f2995ce)](ShaderFilter/) | [![VisualCatalog](https://media.ollin.art/examples/Shaders/VisualCatalog/still-640.jpg?v=45257941)](VisualCatalog/) |
-| [Meromorphic](Meromorphic/) | [ShaderBlend](ShaderBlend/) | [ShaderFilter](ShaderFilter/) | [VisualCatalog](VisualCatalog/) |
-| [![VisualSynth](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg?v=21aaaa70)](VisualSynth/) |  |  |  |
-| [VisualSynth](VisualSynth/) |  |  |  |
+| [BlackHole](BlackHole/) | [ComplexPlane](ComplexPlane/) | [DomainWarp](DomainWarp/) | [HelloShader](HelloShader/) |
+| [![ImaginaryLog](https://media.ollin.art/examples/Shaders/ImaginaryLog/still-640.jpg?v=5a1029c5)](ImaginaryLog/) | [![Meromorphic](https://media.ollin.art/examples/Shaders/Meromorphic/still-640.jpg?v=cddb858d)](Meromorphic/) | [![ShaderBlend](https://media.ollin.art/examples/Shaders/ShaderBlend/still-640.jpg?v=8a803d48)](ShaderBlend/) | [![ShaderFilter](https://media.ollin.art/examples/Shaders/ShaderFilter/still-640.jpg?v=2f2995ce)](ShaderFilter/) |
+| [ImaginaryLog](ImaginaryLog/) | [Meromorphic](Meromorphic/) | [ShaderBlend](ShaderBlend/) | [ShaderFilter](ShaderFilter/) |
+| [![VisualCatalog](https://media.ollin.art/examples/Shaders/VisualCatalog/still-640.jpg?v=45257941)](VisualCatalog/) | [![VisualSynth](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg?v=21aaaa70)](VisualSynth/) |  |  |
+| [VisualCatalog](VisualCatalog/) | [VisualSynth](VisualSynth/) |  |  |
 
 These examples show how to write your own GPU code. A `Shader` is a `shade(uv, info)`
 function. Ollin wraps it, compiles it, and runs it through the effect graph as a source,
@@ -31,3 +31,4 @@ the [shader library reference](../../Docs/Shaders/ShaderLibrary.md), and
 | [ComplexPlane](ComplexPlane/Sketch.swift) | the shader library's `complex` module beside the CPU `Complex` value: a shader colors every pixel by the phase and size of the ratio of two moving points (`complexPlane`, `cdiv`, `domainColor`), and `draw()` works out the circles that ratio is made of and lays them over the layer, where they land on the shader's rulings |
 | [ImaginaryLog](ImaginaryLog/Sketch.swift) | the imaginary part of a logarithm as a picture: `clog` of the ratio of two turning points through a cosine `palette` that never completes a cycle, so the branch cut between the points shows as a soft seam, and `draw()` can mark that segment with `Complex` |
 | [Meromorphic](Meromorphic/Sketch.swift) | a ratio of two cubic polynomials built from six roots that `draw()` moves as `Complex` values, multiplied out with `cmul` and painted by the phase of its `clog` through a palette whose frequency is a parameter: tame at one, bands piling up around the poles when wild |
+| [BlackHole](BlackHole/Sketch.swift) | light bent round a black hole by the orbit equation for light, traced backward from every pixel: the shadow, the far side of the disk standing over the hole and under it, stars smeared into arcs, and one star behind the hole seen as a ring. The disk shines as a black body at the temperature its radius gives it, shifted blue-white where it turns toward the camera and red where it turns away. The physics lives in `physics.metal`, which the picture's `blackhole.metal` includes and the tests read on its own |

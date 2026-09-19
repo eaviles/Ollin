@@ -158,6 +158,8 @@ Ollin's own shader library needs no include, because it is already spliced into 
 
 Under OllinLive, an edit to the helper reloads the shaders that read it. Working on the helper is the same loop as working on the shader.
 
+[`Examples/Shaders/BlackHole`](../../Examples/Shaders/BlackHole/Sketch.swift) splits one shader this way. Its picture, `blackhole.metal`, includes `physics.metal`, which holds the light paths and the disk's physics and knows nothing of the screen. That split is what lets a test compile the physics into a [compute kernel](./Compute.md) of its own and check it against closed forms.
+
 ### Reading a library from somewhere else
 
 A path that starts with `/` or `~` is taken as it is. A shader can therefore read a shader library cloned anywhere on the machine:
