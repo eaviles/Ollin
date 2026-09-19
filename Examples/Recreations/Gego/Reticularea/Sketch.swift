@@ -1,6 +1,6 @@
 //  Recreation after Gego (Gertrud Goldschmidt) - the Reticulárea, first hung in
 //  June 1969 in Sala 8 of the Museo de Bellas Artes, Caracas: an environment of
-//  stainless steel and aluminium wire, modules with a triangular base tied to
+//  stainless steel and aluminum wire, modules with a triangular base tied to
 //  one another by hand, spanning the ceiling and coming down the walls.
 //  A homage, not a reproduction, and not affiliated with or endorsed by the
 //  artist or her estate.
@@ -20,7 +20,7 @@ import OllinPhysics
 ///
 /// Gego trained as an architect and spent her life among people making a very
 /// orderly kind of geometric art, and the net is what she did instead. There is
-/// no module repeated here, no centre, and no row: the triangles are all
+/// no module repeated here, no center, and no row: the triangles are all
 /// different sizes and all different shapes, and which of them is missing is as
 /// much of the work as which of them is there. The parts of it are lines, and
 /// a line has no inside, so what you are looking at is closer to a drawing that
@@ -29,7 +29,7 @@ import OllinPhysics
 /// So the net is built the way that description asks for rather than as a grid.
 /// `nodes` points are scattered by `stipple`, which spreads them evenly and
 /// then lets a density pull them into knots and clearings, and `delaunay` joins
-/// each one to its neighbours. Every triangle that comes out is kept unless it
+/// each one to its neighbors. Every triangle that comes out is kept unless it
 /// is too big for a hand to have tied it or unless the opening rule takes it
 /// away, and what is left is a fabric of triangles with holes torn through it
 /// and an edge that frays instead of stopping. Those triangles are handed
@@ -38,9 +38,9 @@ import OllinPhysics
 /// the net up.
 ///
 /// It is hung by eight ties: the vertex nearest each one is carried to it and
-/// held, six of them on the ceiling and two a metre below it out at the sides,
+/// held, six of them on the ceiling and two a meter below it out at the sides,
 /// and gravity does the rest. The air in the room moves the ties a few
-/// centimetres, slowly and never twice the same way, which is enough to keep
+/// centimeters, slowly and never twice the same way, which is enough to keep
 /// the whole net breathing. There is no surface to shade, so each wire is drawn
 /// as a line on the canvas through `project`, thinner and paler the further it
 /// is from the eye, with the far wires laid down before the near ones. Each
@@ -59,12 +59,12 @@ final class Reticularea: Sketch {
     /// How much of the net is taken away: at nought a whole fabric of
     /// triangles, further up a net with more and more torn out of it.
     @Param(0 ... 0.5, icon: "circle.dotted") var openings = 0.18
-    /// How hard the air moves in the room, in centimetres of drift at the ties.
+    /// How hard the air moves in the room, in centimeters of drift at the ties.
     @Param(0 ... 12, icon: "wind") var air = 4.0
     /// The turn of the eye around the room, in degrees a second.
     @Param(-8 ... 8, icon: "camera.rotate") var orbit = 2.4
 
-    // The room the net hangs in, in metres. There is a good deal more net than
+    // The room the net hangs in, in meters. There is a good deal more net than
     // the ties are spread over, and that slack is what makes it hang in folds
     // and come down the walls instead of stretching flat like a canopy.
     let span = Vector2(9.0, 7.2)
@@ -100,7 +100,7 @@ final class Reticularea: Sketch {
             0.35 + 0.65 * pow(noise(p.x * 0.34 + 11, p.y * 0.34 - 7), 1.6)
         }
 
-        // Every point joined to its neighbours. What comes back fills the
+        // Every point joined to its neighbors. What comes back fills the
         // convex hull of the scatter, which is a shape no hand would make, so
         // the triangles that are too big to have been tied are dropped: that
         // takes the long slivers along the hull with it and leaves an edge that
@@ -160,7 +160,7 @@ final class Reticularea: Sketch {
     }
 
     /// The points the net is tied at. Six on the ceiling, scattered rather
-    /// than ranked, and two a metre below it out at the far sides, which is
+    /// than ranked, and two a meter below it out at the far sides, which is
     /// what pulls the net down out of the ceiling and into the room.
     func tieItUp() {
         guard let net else { return }

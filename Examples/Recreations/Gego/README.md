@@ -4,7 +4,7 @@
 
 ## Gego
 
-| [![DrawingWithoutPaper](https://media.ollin.art/examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=6f9e40e6)](DrawingWithoutPaper/) | [![Reticularea](https://media.ollin.art/examples/Recreations/Gego/Reticularea/still-640.jpg?v=520d08a4)](Reticularea/) |  |  |
+| [![DrawingWithoutPaper](https://media.ollin.art/examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=a8475e98)](DrawingWithoutPaper/) | [![Reticularea](https://media.ollin.art/examples/Recreations/Gego/Reticularea/still-640.jpg?v=3a9ba4cc)](Reticularea/) |  |  |
 |---|---|---|---|
 | [DrawingWithoutPaper](DrawingWithoutPaper/) | [Reticularea](Reticularea/) |  |  |
 
@@ -27,14 +27,14 @@ Learn more:
 - [*Gego: Measuring Infinity*](https://www.guggenheim.org/wp-content/uploads/2023/03/press-kit-gego-measuring-infinity-20230331.pdf), the retrospective organized with the Fundación Gego, at Museo Jumex in Mexico City (2022), the Guggenheim in New York (2023) and the Guggenheim in Bilbao (2023 to 2024)
 - [*Dibujos sin papel (ca. 1976–88)*](https://www.guggenheim-bilbao.eus/en/exhibition/dibujos-sin-papel-ca-1976-88), on how the drawings without paper were made and how they hang
 - [*Gego: An Unruly Artist in a Class of Her Own*](https://gagosian.com/quarterly/2023/04/05/essay-gego-an-unruly-artist-in-a-class-of-her-own/), on her training, her distance from the kinetic artists around her, and her refusal of the word sculpture
-- [*Reticulárea*](https://www.macba.cat/en/obra/r4344-reticularea/) at MACBA, a drawing from the year of the installation, described as a network of centreless nodules
+- [*Reticulárea*](https://www.macba.cat/en/obra/r4344-reticularea/) at MACBA, a drawing from the year of the installation, described as a network of centerless nodules
 - [*Gego's Reticulárea: Transcending Space and Time*](https://yalebooks.yale.edu/2014/02/17/gegos-reticularea-transcending-space-and-time/), on the work as an environment rather than an object
 - [*Gego: Measuring Infinity*](https://brooklynrail.org/2023/05/artseen/Gegos-Measuring-Infinity/) reviewed in the Brooklyn Rail, which notices the darkened junctions where the wires are reinforced
 - Mónica Amor, *Another Geometry: Gego's Reticulárea, 1969–1982*, in October 113 (2005), the closest reading of what kind of geometry the net is
 
 ### Recreations here
 
-- [**Reticularea**](Reticularea/): after the *Reticulárea* (1969 to 1982). A net tied out of irregular triangles, hung at eight points, six on the ceiling and two a metre below it out at the sides, and left to gravity. The points it is built on are scattered with a density that knots up in some places and opens out in others, joined to their neighbours, and any triangle too big for a hand to have tied is dropped, which is what leaves the edge frayed rather than cut. The triangles that remain are the net, and they are handed to the simulation exactly as they are drawn, so nothing invisible holds it up. There is a good deal more net than the ties are spread over, so it has to fall into folds and come down at the sides. The air in the room moves the ties, and the whole net moves with them. `nodes` is how fine the net is, `openings` how much of it was left out, `air` how much the room moves, and `orbit` how fast you walk around it. Drag a wire to take hold of it.
+- [**Reticularea**](Reticularea/): after the *Reticulárea* (1969 to 1982). A net tied out of irregular triangles, hung at eight points, six on the ceiling and two a meter below it out at the sides, and left to gravity. The points it is built on are scattered with a density that knots up in some places and opens out in others, joined to their neighbors, and any triangle too big for a hand to have tied is dropped, which is what leaves the edge frayed rather than cut. The triangles that remain are the net, and they are handed to the simulation exactly as they are drawn, so nothing invisible holds it up. There is a good deal more net than the ties are spread over, so it has to fall into folds and come down at the sides. The air in the room moves the ties, and the whole net moves with them. `nodes` is how fine the net is, `openings` how much of it was left out, `air` how much the room moves, and `orbit` how fast you walk around it. Drag a wire to take hold of it.
 
   ```sh
   swift run Example-Recreations-Gego-Reticularea
@@ -47,7 +47,7 @@ Learn more:
   swift run Example-Recreations-Gego-Reticularea --export-svg b.svg --frame 780 --param orbit=0 --seed 4181
   ```
 
-- [**DrawingWithoutPaper**](DrawingWithoutPaper/): after the *Dibujos sin papel* (about 1976 to 1988). A lattice of wire that used to be a grid, bent out of true by hand, hanging a few centimetres off the wall while a lamp crosses in front of it. Every point of the wire carries how far off the wall it is, and its shadow is where the ray from the lamp through that point lands, so the frame, which stands off furthest, is thrown furthest, and the shadow is never a copy of the piece. Wires go in one at a time until the piece is made, and then it hangs. The air moves the wire by a millimetre and the shadow by rather more, which is the thing the work is about. `pace` is how fast it is made, `lampDistance` how far the lamp stands off the wall, `sweep` how long it takes to cross, and `air` how much the room moves.
+- [**DrawingWithoutPaper**](DrawingWithoutPaper/): after the *Dibujos sin papel* (about 1976 to 1988). A lattice of wire that used to be a grid, bent out of true by hand, hanging a few centimeters off the wall while a lamp crosses in front of it. Every point of the wire carries how far off the wall it is, and its shadow is where the ray from the lamp through that point lands, so the frame, which stands off furthest, is thrown furthest, and the shadow is never a copy of the piece. Wires go in one at a time until the piece is made, and then it hangs. The air moves the wire by a millimeter and the shadow by rather more, which is the thing the work is about. `pace` is how fast it is made, `lampDistance` how far the lamp stands off the wall, `sweep` how long it takes to cross, and `air` how much the room moves.
 
   ```sh
   swift run Example-Recreations-Gego-DrawingWithoutPaper

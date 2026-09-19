@@ -909,5 +909,12 @@ let package = Package(
         // little way off the wall whose shadow is the drawing, after Gego.
         example("Recreations/Gego/Reticularea", [.physics]),
         example("Recreations/Gego/DrawingWithoutPaper"),
+        // A square of lamps lit a pattern at a time by a walk through the
+        // Galois field of 2^32 elements; and a frieze of eighteen lamp panels
+        // across a store front, stepping through all 262,143 nonzero states
+        // of an 18-bit field and sending them to a real wall over DMX, after
+        // Vladimir Bonačić.
+        example("Recreations/VladimirBonacic/DynamicObject"),
+        example("Recreations/VladimirBonacic/NamaFrieze", [.dmx]),
     ]
 )

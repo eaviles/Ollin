@@ -13,7 +13,7 @@
 import Ollin
 
 /// A drawing without paper (Gego, about 1976 to 1988). A lattice of wire bent
-/// by hand, hanging a few centimetres off the wall, and a lamp that crosses it.
+/// by hand, hanging a few centimeters off the wall, and a lamp that crosses it.
 /// The piece is the small dark thing; the drawing is the shadow.
 ///
 /// Gego called these drawings rather than sculptures, and meant it. The wire
@@ -37,19 +37,19 @@ import Ollin
 /// `pace` a second until the piece is made, and then it hangs while the lamp
 /// goes on crossing it, so the same wire draws a wide loose shadow at one
 /// moment and a tight one at another. The air in the room moves the piece a
-/// millimetre or two, which the shadow magnifies into something you can see:
+/// millimeter or two, which the shadow magnifies into something you can see:
 /// that difference between what the wire does and what the shadow does is the
 /// whole of it.
 @main
 final class DrawingWithoutPaper: Sketch {
     /// How many wires go in a second while the piece is being made.
     @Param(0.4 ... 12, icon: "timer") var pace = 1.6
-    /// How far the lamp stands off the wall, in centimetres. Closer throws the
+    /// How far the lamp stands off the wall, in centimeters. Closer throws the
     /// shadow further out and pulls it about more as the lamp crosses.
     @Param(70 ... 600, icon: "lightbulb") var lampDistance = 150.0
     /// How long the lamp takes to cross the wall and come back, in seconds.
     @Param(6 ... 90, icon: "arrow.left.and.right") var sweep = 26.0
-    /// How much the air moves the piece, in millimetres.
+    /// How much the air moves the piece, in millimeters.
     @Param(0 ... 8, icon: "wind") var air = 2.4
 
     let wall = Color(hex: 0xE8E4DA)
@@ -101,7 +101,7 @@ final class DrawingWithoutPaper: Sketch {
                 let wobble = Vector2(signedNoise(u * 4.3, v * 4.3 + 40) * 24,
                                      signedNoise(u * 4.3 + 80, v * 4.3) * 21)
                 rowPoints.append(at + wobble)
-                // Off the wall between two and ten centimetres, deeper toward
+                // Off the wall between two and ten centimeters, deeper toward
                 // one corner, so the shadow of one end of a wire is thrown
                 // further than the shadow of the other.
                 rowLift.append(2.0 + 8.0 * pow(noise(u * 1.7 + 5, v * 1.7 - 3), 1.3))
@@ -211,7 +211,7 @@ final class DrawingWithoutPaper: Sketch {
         let lamp = self.lamp
         let made = min(wires.count, 1 + Int(time * pace))
 
-        // The air in the room. The piece moves by a millimetre or two and the
+        // The air in the room. The piece moves by a millimeter or two and the
         // shadow moves by rather more, which is the thing to watch.
         let breath = Vector2(signedNoise(time * 0.23) , signedNoise(time * 0.19 + 12)) * air
 

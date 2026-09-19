@@ -286,6 +286,10 @@
       "Recreations/VicenteRojo/Negaciones",
       "Recreations/VicenteRojo/MexicoBajoLaLluvia"
     ],
+    "Recreations/VladimirBonacic": [
+      "Recreations/VladimirBonacic/DynamicObject",
+      "Recreations/VladimirBonacic/NamaFrieze"
+    ],
     "Rendering": [
       "Rendering/Grassland",
       "Rendering/MeshField",
@@ -622,8 +626,8 @@
         "Recreations/Gego/Reticularea",
         "Recreations/Gego/DrawingWithoutPaper"
       ],
-      "image": "groups/Recreations-Gego.jpg?v=c28b2b32",
-      "imageSmall": "groups/Recreations-Gego-640.jpg?v=8aaeb575"
+      "image": "groups/Recreations-Gego.jpg?v=0aa239d3",
+      "imageSmall": "groups/Recreations-Gego-640.jpg?v=8b5f0f3e"
     },
     "Recreations/GeorgNees": {
       "of": [
@@ -731,6 +735,14 @@
       ],
       "image": "groups/Recreations-VicenteRojo.jpg?v=4afe3aa1",
       "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=8659ae06"
+    },
+    "Recreations/VladimirBonacic": {
+      "of": [
+        "Recreations/VladimirBonacic/DynamicObject",
+        "Recreations/VladimirBonacic/NamaFrieze"
+      ],
+      "image": "groups/Recreations-VladimirBonacic.jpg?v=03c683fe",
+      "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b"
     },
     "Rendering": {
       "of": [
@@ -8316,20 +8328,20 @@
       "length": "18.0s",
       "seconds": 18.0,
       "frame": 700,
-      "motion": 2.405,
+      "motion": 2.4,
       "sound": false,
-      "source": "a303dce59f6cdd41",
-      "rendered": "2026-09-18",
+      "source": "20f32bb2ab08e11c",
+      "rendered": "2026-09-19",
       "bytes": {
-        "loop": 2731052,
-        "loopSmall": 618713,
-        "still": 87616,
-        "stillSmall": 31603
+        "loop": 2748858,
+        "loopSmall": 611337,
+        "still": 86935,
+        "stillSmall": 31184
       },
-      "loop": "examples/Recreations/Gego/DrawingWithoutPaper/loop.mp4?v=17f71191",
-      "loopSmall": "examples/Recreations/Gego/DrawingWithoutPaper/loop-640.mp4?v=5a76f6ea",
-      "still": "examples/Recreations/Gego/DrawingWithoutPaper/still.jpg?v=690c62f1",
-      "stillSmall": "examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=6f9e40e6"
+      "loop": "examples/Recreations/Gego/DrawingWithoutPaper/loop.mp4?v=0949a993",
+      "loopSmall": "examples/Recreations/Gego/DrawingWithoutPaper/loop-640.mp4?v=18c6e25f",
+      "still": "examples/Recreations/Gego/DrawingWithoutPaper/still.jpg?v=9d9190ce",
+      "stillSmall": "examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=a8475e98"
     },
     "Recreations/Gego/Reticularea": {
       "width": 1080,
@@ -8337,20 +8349,20 @@
       "length": "14.0s",
       "seconds": 14.0,
       "frame": 660,
-      "motion": 4.912,
+      "motion": 3.826,
       "sound": false,
-      "source": "0b451d76a0d76f52",
-      "rendered": "2026-09-18",
+      "source": "3a5432100e9e2986",
+      "rendered": "2026-09-19",
       "bytes": {
-        "loop": 9966732,
-        "loopSmall": 2472413,
-        "still": 133110,
-        "stillSmall": 45247
+        "loop": 9512624,
+        "loopSmall": 2225989,
+        "still": 112851,
+        "stillSmall": 37784
       },
-      "loop": "examples/Recreations/Gego/Reticularea/loop.mp4?v=af31e9a7",
-      "loopSmall": "examples/Recreations/Gego/Reticularea/loop-640.mp4?v=51a82469",
-      "still": "examples/Recreations/Gego/Reticularea/still.jpg?v=d1eeb4a7",
-      "stillSmall": "examples/Recreations/Gego/Reticularea/still-640.jpg?v=520d08a4"
+      "loop": "examples/Recreations/Gego/Reticularea/loop.mp4?v=b06121ef",
+      "loopSmall": "examples/Recreations/Gego/Reticularea/loop-640.mp4?v=372e5137",
+      "still": "examples/Recreations/Gego/Reticularea/still.jpg?v=4ef58e2d",
+      "stillSmall": "examples/Recreations/Gego/Reticularea/still-640.jpg?v=3a9ba4cc"
     },
     "Recreations/GeorgNees/Schotter": {
       "bytes": {
@@ -8811,6 +8823,48 @@
       "loopSmall": "examples/Recreations/VicenteRojo/Negaciones/loop-640.mp4?v=3108053f",
       "still": "examples/Recreations/VicenteRojo/Negaciones/still.jpg?v=cc0414e3",
       "stillSmall": "examples/Recreations/VicenteRojo/Negaciones/still-640.jpg?v=49392fc3"
+    },
+    "Recreations/VladimirBonacic/DynamicObject": {
+      "width": 1080,
+      "height": 1080,
+      "length": "16.0s",
+      "seconds": 16.0,
+      "frame": 660,
+      "motion": 67.742,
+      "sound": false,
+      "source": "b344fb3a402f0212",
+      "rendered": "2026-09-19",
+      "bytes": {
+        "loop": 1986726,
+        "loopSmall": 907380,
+        "still": 240975,
+        "stillSmall": 86488
+      },
+      "loop": "examples/Recreations/VladimirBonacic/DynamicObject/loop.mp4?v=2b9553cb",
+      "loopSmall": "examples/Recreations/VladimirBonacic/DynamicObject/loop-640.mp4?v=bff9005c",
+      "still": "examples/Recreations/VladimirBonacic/DynamicObject/still.jpg?v=769fc689",
+      "stillSmall": "examples/Recreations/VladimirBonacic/DynamicObject/still-640.jpg?v=5e47dbad"
+    },
+    "Recreations/VladimirBonacic/NamaFrieze": {
+      "width": 1920,
+      "height": 1080,
+      "length": "18.0s",
+      "seconds": 18.0,
+      "frame": 1023,
+      "motion": 8.844,
+      "sound": false,
+      "source": "b6d5e5a7c02bf5a7",
+      "rendered": "2026-09-19",
+      "bytes": {
+        "loop": 840851,
+        "loopSmall": 188576,
+        "still": 39348,
+        "stillSmall": 13602
+      },
+      "loop": "examples/Recreations/VladimirBonacic/NamaFrieze/loop.mp4?v=6d937167",
+      "loopSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/loop-640.mp4?v=496d4208",
+      "still": "examples/Recreations/VladimirBonacic/NamaFrieze/still.jpg?v=0515ecbe",
+      "stillSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=45dafcd1"
     },
     "Rendering/Accumulation": {
       "bytes": {

@@ -768,6 +768,7 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [Widget](../Docs/Output/Widget.md): the three targets a widget needs and why, the run and its grid, the clock a picture is drawn on, `--export-widget`, and the signing order the extension depends on.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
+- The Bonačić homage [`NamaFrieze`](../Examples/Recreations/VladimirBonacic/NamaFrieze/Sketch.swift): a light frieze from 1969 that ran 36 meters across a department store, drawn to scale and sent back out as eighteen dimmer channels, so the same universe that lights the picture can light a wall.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what the devices write in a payload, the two service levels, retained values, the last will, and the reconnection.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.

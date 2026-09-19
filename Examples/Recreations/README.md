@@ -4,7 +4,7 @@
 
 ## Recreations
 
-| [![BridgetRiley](https://media.ollin.art/groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab)](BridgetRiley/) | [![CaseyReas](https://media.ollin.art/groups/Recreations-CaseyReas-640.jpg?v=b8690208)](CaseyReas/) | [![FriederNake](https://media.ollin.art/groups/Recreations-FriederNake-640.jpg?v=61e41a0e)](FriederNake/) | [![Gego](https://media.ollin.art/groups/Recreations-Gego-640.jpg?v=8aaeb575)](Gego/) |
+| [![BridgetRiley](https://media.ollin.art/groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab)](BridgetRiley/) | [![CaseyReas](https://media.ollin.art/groups/Recreations-CaseyReas-640.jpg?v=b8690208)](CaseyReas/) | [![FriederNake](https://media.ollin.art/groups/Recreations-FriederNake-640.jpg?v=61e41a0e)](FriederNake/) | [![Gego](https://media.ollin.art/groups/Recreations-Gego-640.jpg?v=8b5f0f3e)](Gego/) |
 |---|---|---|---|
 | [BridgetRiley](BridgetRiley/) | [CaseyReas](CaseyReas/) | [FriederNake](FriederNake/) | [Gego](Gego/) |
 | [![GeorgNees](https://media.ollin.art/groups/Recreations-GeorgNees-640.jpg?v=7288a62b)](GeorgNees/) | [![HassanSharif](https://media.ollin.art/groups/Recreations-HassanSharif-640.jpg?v=08d27318)](HassanSharif/) | [![JaredTarbell](https://media.ollin.art/groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52)](JaredTarbell/) | [![JohnWhitney](https://media.ollin.art/groups/Recreations-JohnWhitney-640.jpg?v=1f957730)](JohnWhitney/) |
@@ -13,8 +13,8 @@
 | [JosefAlbers](JosefAlbers/) | [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) | [MonirFarmanfarmaian](MonirFarmanfarmaian/) |
 | [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) | [![OwenSchuh](https://media.ollin.art/groups/Recreations-OwenSchuh-640.jpg?v=316d6303)](OwenSchuh/) | [![RyszardWiniarski](https://media.ollin.art/groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836)](RyszardWiniarski/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) |
 | [OsamuSato](OsamuSato/) | [OwenSchuh](OwenSchuh/) | [RyszardWiniarski](RyszardWiniarski/) | [SolLeWitt](SolLeWitt/) |
-| [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) | [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=8659ae06)](VicenteRojo/) |  |  |
-| [VeraMolnar](VeraMolnar/) | [VicenteRojo](VicenteRojo/) |  |  |
+| [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) | [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=8659ae06)](VicenteRojo/) | [![VladimirBonacic](https://media.ollin.art/groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b)](VladimirBonacic/) |  |
+| [VeraMolnar](VeraMolnar/) | [VicenteRojo](VicenteRojo/) | [VladimirBonacic](VladimirBonacic/) |  |
 
 These sketches **recreate the work of past computer artists**. Each one rebuilds a piece to learn from it, and shows what a modern framework brings to it.
 
@@ -45,4 +45,5 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Owen Schuh**](OwenSchuh/). Two pages of a notebook where a digit is a color: the table of fractions woven as cloth and counted along its diagonals, and a list of numbers whose diagonal builds the number that is on no line of it.
 - [**Monir Shahroudy Farmanfarmaian**](MonirFarmanfarmaian/). A family of polygons cut from the circle, triangle to decagon, each set piece by piece in tilted mirror and painted glass and lit by a moving lamp; and a maze of spiral channels painted on the back of a pane, lines first and silver last, then turned over.
 - [**Gego**](Gego/). A net of irregular triangles tied by hand, hung from the ceiling at a few points and left to gravity, drawn as wire that thins as it goes away from you; and a drawing without paper, a bent lattice hanging a little off the wall whose shadow under a crossing lamp is the drawing.
+- [**Vladimir Bonačić**](VladimirBonacic/). A square of lamps lit a pattern at a time by a walk through a finite field, the pattern read and set in binary on its back; and a frieze of eighteen lamp panels across a store front at night, stepping through every state of an 18-bit field and sending them to a real wall.
 

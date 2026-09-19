@@ -88,6 +88,9 @@ DEVICE_MODULES=(OllinPhone OllinRecord3D OllinScreen OllinMIDI
                 OllinMQTT)
 # The ones that need a device without importing a library for it.
 DEVICE_SKETCHES=(Input/Pen Audio/Listening Audio/PlayAlong)
+# The ones that import a device library as an output they leave off unless
+# asked, so they draw everything with nothing plugged in.
+DRAWS_ALONE=(Recreations/VladimirBonacic/NamaFrieze)
 
 upload=1
 force=0
@@ -132,6 +135,9 @@ digest_of() {
 # What this example is waiting for before anybody can take its picture.
 held_back() {
   local sketch=$ROOT/Examples/$1/Sketch.swift
+  for alone in $DRAWS_ALONE; do
+    [[ $1 == $alone ]] && { echo ""; return; }
+  done
   for module in $DEVICE_MODULES; do
     grep -q "^import $module\$" $sketch && { echo "needs a device at the desk: imports $module"; return; }
   done
