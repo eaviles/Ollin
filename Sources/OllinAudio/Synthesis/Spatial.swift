@@ -58,7 +58,7 @@ public extension Synth {
 
     /// How far away a sound has to be before it stops getting quieter, in scene
     /// units. Past this it holds its level rather than fading to nothing.
-    var hearingRange: ClosedRange<Double> {
+    var hearingDistance: ClosedRange<Double> {
         get { placementRange }
         set {
             placementRange = newValue

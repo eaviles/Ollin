@@ -93,7 +93,7 @@ final class WavetableFrames: Sketch {
     private func drawLevels(top: Double) {
         let table = Wavetable.basic
         let takes: [(String, Int)] = [
-            ("every harmonic: a low note", Wavetable.length / 2 - 1),
+            ("every harmonic: a low note", Wavetable.samplesPerCycle / 2 - 1),
             ("sixteen: a middle note", 16),
             ("four: a high note", 4),
         ]

@@ -169,10 +169,10 @@ struct TimecodeTests {
         let landed = spell(code, into: &engine, from: 10)
         #expect(engine.frameRate == .fps25)
         #expect(engine.frames(at: landed) == Double(code.frameNumber) + 1.75)
-        #expect(engine.timecode(at: landed) == code.advanced(by: 1))
-        engine.handle(piece: 0, value: code.advanced(by: 2).quarterFrameValue(piece: 0), at: landed + 0.01)
+        #expect(engine.timecode(at: landed) == code.advanced(byFrames: 1))
+        engine.handle(piece: 0, value: code.advanced(byFrames: 2).quarterFrameValue(piece: 0), at: landed + 0.01)
         #expect(engine.frames(at: landed + 0.01) == Double(code.frameNumber) + 2)
-        #expect(engine.timecode(at: landed + 0.01) == code.advanced(by: 2))
+        #expect(engine.timecode(at: landed + 0.01) == code.advanced(byFrames: 2))
     }
 
     @Test func thePositionGlidesBetweenPiecesAndNeverRunsBack() {
@@ -209,8 +209,8 @@ struct TimecodeTests {
         #expect(engine.isReceiving(at: 5.2))
         #expect(engine.frameRate == .fps30Drop)
         // Rolling from there: the first complete set re-anchors.
-        let landed = spell(code.advanced(by: 10), into: &engine, from: 6)
-        #expect(engine.timecode(at: landed) == code.advanced(by: 11))
+        let landed = spell(code.advanced(byFrames: 10), into: &engine, from: 6)
+        #expect(engine.timecode(at: landed) == code.advanced(byFrames: 11))
     }
 
     @Test func piecesInReverseRunThePositionBackward() {

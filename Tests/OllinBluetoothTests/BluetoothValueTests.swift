@@ -131,12 +131,12 @@ struct BluetoothValueTests {
     }
 
     @Test func aDiscoveredIdentifierComesBackNamedWhenTheStandardNamesIt() {
-        let known = BluetoothCharacteristic.standard(for: BluetoothUUID("2A19"))
+        let known = BluetoothCharacteristic.known(for: BluetoothUUID("2A19"))
         #expect(known.name == "Battery")
         #expect(known.format == .uint8)
 
         // Anything else keeps its number and its bytes.
-        let mine = BluetoothCharacteristic.standard(for: BluetoothUUID("ABCD"))
+        let mine = BluetoothCharacteristic.known(for: BluetoothUUID("ABCD"))
         #expect(mine.name == "ABCD")
         #expect(mine.format == .raw)
     }
@@ -152,14 +152,14 @@ struct BluetoothValueTests {
         let beats = BluetoothReading(characteristic: .heartRateMeasurement, bytes: [0x00, 72])
         #expect(beats.number == 72)
         #expect(beats.int == 72)
-        #expect(beats.isOn == true)
+        #expect(beats.bool == true)
         #expect(beats.text == nil)
         #expect(beats.data == Data([0x00, 72]))
 
         // A raw value has no number, so on or off falls back to its first byte.
         let raw = BluetoothReading(characteristic: BluetoothCharacteristic("ABCD"), bytes: [0x00])
         #expect(raw.number == nil)
-        #expect(raw.isOn == false)
+        #expect(raw.bool == false)
     }
 
     @Test func everyCatalogEntryIsWellFormedAndDistinct() {

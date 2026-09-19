@@ -24,7 +24,7 @@ enum BluetoothRadioState: Equatable, Hashable, Sendable
 final class BluetoothDevice: Sendable
   convenience init(_: BluetoothPeripheral)
   convenience init(id: Foundation.UUID)
-  convenience init(named: String)
+  convenience init(matching: String)
   convenience init(service: BluetoothService)
   convenience init(target: BluetoothDevice.Target)
   enum Target: Equatable, Hashable, Sendable
@@ -79,7 +79,7 @@ struct BluetoothCharacteristic: CustomStringConvertible, Equatable, Hashable, Se
   let id: BluetoothUUID
   let name: String
   static func ==(_: BluetoothCharacteristic, _: BluetoothCharacteristic) -> Bool
-  static func standard(for: BluetoothUUID) -> BluetoothCharacteristic
+  static func known(for: BluetoothUUID) -> BluetoothCharacteristic
   static let batteryLevel: BluetoothCharacteristic
   static let bodySensorLocation: BluetoothCharacteristic
   static let firmwareRevision: BluetoothCharacteristic
@@ -106,9 +106,9 @@ struct BluetoothReading: Sendable
   let bytes: [UInt8]
   let characteristic: BluetoothCharacteristic
   let time: Foundation.Date
+  var bool: Bool? { get }
   var data: Foundation.Data { get }
   var int: Int? { get }
-  var isOn: Bool? { get }
   var number: Double? { get }
   var text: String? { get }
 struct BluetoothService: CustomStringConvertible, Equatable, Hashable, Sendable

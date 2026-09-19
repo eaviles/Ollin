@@ -70,7 +70,7 @@ import Testing
     @MainActor
     private func placed(at position: Vector3?, range: ClosedRange<Double> = 1...50) -> [Float] {
         let synth = Synth(.bell)
-        synth.hearingRange = range
+        synth.hearingDistance = range
         return record(synth, seconds: 1.5) { synth, elapsed in
             if let position { synth.place(at: position, heardFrom: Self.listener()) }
             if elapsed == 0 { synth.play(72, velocity: 0.9, for: 1.0) }
@@ -142,7 +142,7 @@ import Testing
         #expect(nearLevel > 2 * farLevel, "near \(nearLevel), far \(farLevel)")
     }
 
-    /// `hearingRange` is the distance a sound stops fading over, so the same
+    /// `hearingDistance` is the distance a sound stops fading over, so the same
     /// position at two ranges is two loudnesses.
     @MainActor
     @Test func theHearingRangeIsWhatSetsHowFarASoundCarries() {
@@ -253,7 +253,7 @@ import Testing
     @MainActor
     @Test func nothingIsRecordedWhenTheSketchIsJustRunning() {
         let synth = Synth(.bell)
-        synth.hearingRange = 2...30
+        synth.hearingDistance = 2...30
         #expect(synth.recordedPoses.isEmpty)
         #expect(synth.placementRange == 2...30)
     }

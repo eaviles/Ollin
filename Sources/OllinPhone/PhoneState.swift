@@ -43,7 +43,7 @@ public struct PhoneState: Sendable, Equatable {
     public let referencesAreDeclared: Bool
 
     /// The sentence the phone's own screen is showing.
-    public let status: String
+    public let statusMessage: String
 
     /// What the phone could not use and what it assumed, one plain sentence each:
     /// a picture too flat to be found, a file it could not read, a width it had to
@@ -53,13 +53,13 @@ public struct PhoneState: Sendable, Equatable {
     /// Stage a reading with no phone attached (the tests and the Guide figure do).
     public init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = true,
                 referenceCount: Int = 0, referencesAreDeclared: Bool = false,
-                status: String = "", notes: [String] = []) {
+                statusMessage: String = "", notes: [String] = []) {
         self.timestamp = timestamp
         self.mode = mode
         self.isSupported = isSupported
         self.referenceCount = referenceCount
         self.referencesAreDeclared = referencesAreDeclared
-        self.status = status
+        self.statusMessage = statusMessage
         self.notes = notes
     }
 
@@ -70,7 +70,7 @@ public struct PhoneState: Sendable, Equatable {
         isSupported = sample.isSupported
         referenceCount = sample.referenceCount
         referencesAreDeclared = sample.referencesAreDeclared
-        status = sample.status
+        statusMessage = sample.status
         notes = sample.notes
     }
 

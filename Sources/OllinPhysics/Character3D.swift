@@ -17,10 +17,10 @@ internal import CJolt
 /// var heading = Vector3.zero
 /// if isKeyDown(.leftArrow)  { heading.x -= 1 }
 /// if isKeyDown(.rightArrow) { heading.x += 1 }
-/// walker.move(heading.normalized * 3)
+/// walker.walk(at: heading.normalized * 3)
 /// if isKeyDown(.space) { walker.jump() }
 /// world.advance(by: deltaTime)
-/// withCharacter(walker) { drawCapsule(height: 1.2, radius: 0.3) }
+/// withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
 /// ```
 ///
 /// `position` is the character's *feet*, so a figure drawn standing on the
@@ -211,15 +211,15 @@ public final class Character3D {
     /// the keys, passing `.zero` to stand still:
     ///
     /// ```swift
-    /// walker.move(heading.normalized * walkSpeed)
+    /// walker.walk(at: heading.normalized * walkSpeed)
     /// ```
-    public func move(_ velocity: Vector3) {
+    public func walk(at velocity: Vector3) {
         desiredVelocity = velocity
     }
 
     /// Walk across the ground plane at `x` units per second east and `z` units
     /// per second south.
-    public func move(x: Double, z: Double) {
+    public func walk(x: Double, z: Double) {
         desiredVelocity = Vector3(x, 0, z)
     }
 

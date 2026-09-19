@@ -20,7 +20,7 @@ import os
 @main
 final class TrajectoryTracking: Sketch {
     let feed = BallFeed()
-    lazy var tracker = TrajectoryTracker(feed, trajectoryLength: 8)
+    lazy var tracker = TrajectoryTracker(feed, minObservationCount: 8)
 
     /// Arcs linger a moment after their last sighting, fading out, so the
     /// overlay doesn't flicker frame to frame.

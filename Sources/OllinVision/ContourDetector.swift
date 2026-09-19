@@ -92,7 +92,7 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     /// for line art and documents). Set at creation.
     public let detectsDarkOnLight: Bool
     /// Edge contrast boost, `0…3` (higher finds fainter edges, and more noise).
-    public let contrastAdjustment: Float
+    public let contrastFactor: Float
 
     private let lock = OSAllocatedUnfairLock<DetectedContours>(initialState: .empty)
     private let status = VisionStatus("contour detection")
@@ -122,19 +122,19 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
 
     /// Trace contours in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1) {
+    public init(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastFactor: Float = 1) {
         self.detectsDarkOnLight = detectsDarkOnLight
-        self.contrastAdjustment = contrastAdjustment
+        self.contrastFactor = contrastFactor
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Trace contours in a still image, once.
     public static func detect(in image: Image,
                               detectsDarkOnLight: Bool = true,
-                              contrastAdjustment: Float = 1,
+                              contrastFactor: Float = 1,
                               maxDimension: Int = 1024) async throws -> DetectedContours {
         let request = ContourDetector.makeRequest(darkOnLight: detectsDarkOnLight,
-                                                  contrast: contrastAdjustment,
+                                                  contrast: contrastFactor,
                                                   maxDimension: maxDimension)
         let observation = try await request.perform(on: image.currentCGImage())
         return decode(observation)
@@ -147,7 +147,7 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
         // live feed doesn't need every pixel of edge detail.
         guard status.isAvailable else { return }
         let request = ContourDetector.makeRequest(darkOnLight: detectsDarkOnLight,
-                                                  contrast: contrastAdjustment,
+                                                  contrast: contrastFactor,
                                                   maxDimension: 512)
         do {
             let observation = try await request.perform(on: cgImage)

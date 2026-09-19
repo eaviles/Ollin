@@ -388,6 +388,14 @@ public final class EtherDreamDAC: @unchecked Sendable {
 /// permission once, attributed to whatever launched the sketch.
 public final class EtherDreamFinder: @unchecked Sendable {
 
+    /// What `start()` could not do. The listener either comes up or says why:
+    /// a finder that quietly did nothing is indistinguishable from a network
+    /// with no projector on it.
+    public enum StartError: Error, Equatable, Sendable {
+        /// The port the protocol broadcasts on is not a port number.
+        case badPort(Int)
+    }
+
     private let queue = DispatchQueue(label: "com.ollin.laser.finder")
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
     private let found = OSAllocatedUnfairLock<[String: EtherDreamDevice]>(initialState: [:])
@@ -407,7 +415,11 @@ public final class EtherDreamFinder: @unchecked Sendable {
         guard !isRunning else { return }
         let parameters = NWParameters.udp
         parameters.allowLocalEndpointReuse = true
-        guard let port = NWEndpoint.Port(rawValue: UInt16(EtherDreamWire.broadcastPort)) else { return }
+        guard let port = NWEndpoint.Port(rawValue: UInt16(EtherDreamWire.broadcastPort)) else {
+            // The line below throws for the same class of failure, so returning
+            // here would leave `isRunning` false with nothing said.
+            throw StartError.badPort(EtherDreamWire.broadcastPort)
+        }
         let listener = try NWListener(using: parameters, on: port)
         listener.newConnectionHandler = { [weak self] connection in
             self?.accept(connection)

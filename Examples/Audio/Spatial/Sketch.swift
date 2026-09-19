@@ -72,7 +72,7 @@ final class Spatial: Sketch {
 
         let walkerAt = Vector3(cos(time * walkSpeed) * 3.2, 0, sin(time * walkSpeed) * 3.2)
         walker.place(at: walkerAt, heardFrom: eye)
-        walker.hearingRange = 1...range
+        walker.hearingDistance = 1...range
 
         // The walker plays as it goes, so there is always something moving.
         if time - lastStep > 0.42 {
@@ -84,7 +84,7 @@ final class Spatial: Sketch {
 
         for index in posts.indices {
             posts[index].synth.place(at: posts[index].at, heardFrom: eye)
-            posts[index].synth.hearingRange = 1...range
+            posts[index].synth.hearingDistance = 1...range
 
             // A post answers when the walker comes near it.
             let apart = (walkerAt - posts[index].at).length

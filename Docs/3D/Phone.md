@@ -165,7 +165,7 @@ if let pose = body.worldTransform(ofJoint: .head) {
 
 ### The person's size, and what the camera saw
 
-Each body carries two more readings. `scaleFactor` relates the person's estimated height to the default rig, where 1 is the default and a smaller person gives a smaller factor. A figure's parts can use it to size themselves to whoever steps in front of the camera. `isJointTracked(_:)` says whether the camera actually observed a joint this frame. The rig fills unseen joints in from their neighbors, and those joints report `false`. So a sketch can tint a guessed joint differently from an observed one.
+Each body carries two more readings. `scaleFactor` relates the person's estimated height to the default rig, where 1 is the default and a smaller person gives a smaller factor. A figure's parts can use it to size themselves to whoever steps in front of the camera. `isObserved(_:)` says whether the camera actually observed a joint this frame. The rig fills unseen joints in from their neighbors, and those joints report `false`. So a sketch can tint a guessed joint differently from an observed one.
 
 `latestBodies` is the whole set. It is empty when nobody is in view, so a person leaving clears the sketch instead of freezing the last pose. ARKit follows one body today, and the list keeps the API ready if that number grows.
 
@@ -348,7 +348,7 @@ if let state = device.latestState {
     state.referenceCount             // how many things it is looking for
     state.isLookingForAnything       // whether that count is more than none
     state.referencesAreDeclared      // true when the sketch sent them
-    state.status                     // the sentence on the phone's own screen
+    state.statusMessage              // the sentence on the phone's own screen
     state.notes                      // what it could not use, in plain sentences
 }
 ```

@@ -72,7 +72,7 @@ final class Faces: Sketch {
 - [Saliency](#saliency) - the heat map, regions, and point query
 - [ConceptTracker](#concepttracker) - score any phrases you type against the picture
 - [ModelTracker](#modeltracker) - run your own Core ML model over the frames
-- [ModelOutput](#modeloutput) - its decoded surfaces: labels, objects, map
+- [ModelOutput](#modeloutput) - its decoded surfaces: classifications, objects, map
 - [ClassMask](#classmask) - a semantic segmenter's output: every pixel named
 - [DepthTracker](#depthtracker) - depth that holds still, from a video depth model
 - [DepthClip](#depthclip) - the whole clip's depth, read ahead of time and answered by clip time
@@ -266,7 +266,7 @@ for face in faces.faces {
 </picture>
 
 ```swift
-ContourDetector(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1)
+ContourDetector(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastFactor: Float = 1)
 var latest: DetectedContours { get }
 var count: Int { get }
 func contours(in: Rectangle, mirrored: Bool = false) -> [Contour]
@@ -286,7 +286,7 @@ override func draw() {
 }
 ```
 
-`detectsDarkOnLight` (the default) traces dark shapes on a light background, which suits line art and documents. `contrastAdjustment` (`0…3`) boosts faint edges at the cost of more noise. Point the camera at high-contrast subjects for the cleanest result. Like every tracker, it also runs once on a still image (`ContourDetector.detect(in:)`).
+`detectsDarkOnLight` (the default) traces dark shapes on a light background, which suits line art and documents. `contrastFactor` (`0…3`) boosts faint edges at the cost of more noise. Point the camera at high-contrast subjects for the cleanest result. Like every tracker, it also runs once on a still image (`ContourDetector.detect(in:)`).
 
 <a name="detectedcontours"></a>
 
@@ -502,7 +502,7 @@ func include(_: Vector2, in: Rectangle)      // the pick must also cover this
 func exclude(_: Vector2, in: Rectangle)      // the pick must not cover this
 func clear()
 var pick: Pick? { get }                      // matte, cutout, score, bounds(in:)
-var isWorking: Bool { get }
+var isPicking: Bool { get }
 func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> Pick?
 ```
 
@@ -510,7 +510,7 @@ A tracker that runs a model of its own throws when the model will not load: `Poi
 
 `PointSegmenter` lifts **whatever you point at**. `SubjectSegmenter` decides for itself what stands out. This one takes direction: give it one point, and it segments the thing under that point, whatever that thing is. A click picks the mug, not the person holding it. It uses a promptable-segmentation model in three parts. `Scripts/fetch-models.sh` fetches the parts, and they are never committed. Hand the three files to the initializer.
 
-`pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRectangle(in:)` you drew it into. It answers asynchronously. It freezes the current frame and encodes that frame once, which takes about 0.2 s, and then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one arrives, and `isWorking` tells you one is on the way. A refinement reuses the frozen frame's encoding, so it also arrives in milliseconds. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point the mask must not cover, so a shift-click can remove a stray region. The model proposes three readings of every prompt (the part, the whole, and the group), and the best-scored one wins. `Pick.score` is that confidence.
+`pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRectangle(in:)` you drew it into. It answers asynchronously. It freezes the current frame and encodes that frame once, which takes about 0.2 s, and then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one arrives, and `isPicking` tells you one is on the way. A refinement reuses the frozen frame's encoding, so it also arrives in milliseconds. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point the mask must not cover, so a shift-click can remove a stray region. The model proposes three readings of every prompt (the part, the whole, and the group), and the best-scored one wins. `Pick.confidence` is that confidence.
 
 `Pick` carries the same frame-aligned `matte` and `cutout` pair the other segmenters publish. It also carries `bounds(in:)`, the picked thing's box mapped into the rectangle you name. The still-image `detect(in:at:avoiding:)` takes its points in image pixel coordinates, and it returns `nil` when the prompt matches nothing.
 
@@ -690,15 +690,15 @@ func center(in: Rectangle, mirrored: Bool = false) -> Vector2
 <img src="../../Guide/Images/30-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
 
 ```swift
-TrajectoryTracker(_ source: any FrameSource, trajectoryLength: Int = 10,
+TrajectoryTracker(_ source: any FrameSource, minObservationCount: Int = 10,
                   minObjectRadius: Double? = nil, maxObjectRadius: Double? = nil)
 var trajectories: [DetectedTrajectory] { get }
 func reset()
 static func detect(across: [Image], frameRate: Double = 30,
-                   trajectoryLength: Int = 10) async throws -> [[DetectedTrajectory]]
+                   minObservationCount: Int = 10) async throws -> [[DetectedTrajectory]]
 ```
 
-`ObjectTracker` follows a patch you point at. This one watches for **ballistic motion** on its own. Anything small that flies along a parabola comes back as a `DetectedTrajectory`, an arc of points with the fitted curve. A thrown ball and a bounce both count. It is classical, with no neural model, so it runs on any Mac. It needs two things. The camera must be held still, because a moving camera turns the whole scene into motion. It also needs a little time, because an arc is reported only once the object has been seen `trajectoryLength` times.
+`ObjectTracker` follows a patch you point at. This one watches for **ballistic motion** on its own. Anything small that flies along a parabola comes back as a `DetectedTrajectory`, an arc of points with the fitted curve. A thrown ball and a bounce both count. It is classical, with no neural model, so it runs on any Mac. It needs two things. The camera must be held still, because a moving camera turns the whole scene into motion. It also needs a little time, because an arc is reported only once the object has been seen `minObservationCount` times.
 
 ```swift
 let camera = Camera()
@@ -803,7 +803,7 @@ Two practical notes apply. First, magnitudes are conservative estimates, and the
 
 ```swift
 ImageClassifier(_ source: any FrameSource, minConfidence: Double = 0.1)
-var labels: [Classification] { get }
+var classifications: [Classification] { get }
 var topClassification: Classification? { get }
 func confidence(of label: String) -> Double
 static func detect(in: Image, minConfidence: Double = 0.1) async throws -> [Classification]
@@ -825,7 +825,7 @@ override func draw() {
 }
 ```
 
-`labels` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other way to read the result is by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered, so a concept below the floor still reads its true, small value. That is the parameter-shaped form: "how much does this look like a plant" can drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
+`classifications` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other way to read the result is by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered, so a concept below the floor still reads its true, small value. That is the parameter-shaped form: "how much does this look like a plant" can drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
 
 Two things about the vocabulary are worth knowing. It is hierarchical, so one clear subject also scores every broader label above it: a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of the vocabulary every frame, mostly near zero. So `minConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
 
@@ -912,9 +912,9 @@ ConceptTracker(_ source: any FrameSource,
 ConceptTracker(imageModelAt: URL, textModelAt: URL, vocabularyAt: URL,
                concepts: [String] = [])       // bound to no source; still images only
 var concepts: [String] { get set }            // the phrases being scored
-var labels: [Classification] { get }          // shares over the concepts, strongest first
+var classifications: [Classification] { get } // shares over the concepts, strongest first
 var topClassification: Classification? { get }
-func confidence(of phrase: String) -> Double  // one phrase's share, 0…1
+func share(of phrase: String) -> Double       // one phrase's share, 0…1
 func similarity(of phrase: String) -> Double  // the raw cosine, unshared
 var imageEmbedding: [Double]? { get }         // the frame as a unit vector
 func embedding(of phrase: String) async throws -> [Double]
@@ -933,7 +933,7 @@ lazy var ideas = ConceptTracker(camera,
     concepts: ["a spooky scene", "a cheerful scene"])
 
 override func draw() {
-    let spooky = ideas.confidence(of: "a spooky scene")   // 0…1, updates each frame
+    let spooky = ideas.share(of: "a spooky scene")        // 0…1, updates each frame
 }
 ```
 
@@ -941,7 +941,7 @@ It uses a contrastive image-text model in two halves. An image encoder runs over
 
 The scores are relative to the concept set: they are the phrases' shares of the picture, and they sum to 1. A single phrase on its own always reads 1, so provide contrasts to get meaningful scores. For example, "How spooky does the room look" is the spooky phrase's share against a cheerful one. `similarity(of:)` is the raw cosine instead, for mapping the space yourself. Matching pairs typically land around 0.2 to 0.4.
 
-Phrases can change while the sketch runs. Set `concepts`, or query `confidence(of:)` with a phrase it has not seen. The new phrase joins the set and reads 0 until its text encoding completes, within one or two frames. `imageEmbedding` and `embedding(of:)` expose the unit vectors under the scores, and you compare them with a dot product. Loading and availability behave like [`ModelTracker`](#modeltracker). The first-ever load specializes the models for this Mac and can take several seconds. `isLoaded` flips when they are ready, and a missing file surfaces through `unavailableReason`.
+Phrases can change while the sketch runs. Set `concepts`, or query `share(of:)` with a phrase it has not seen. The new phrase joins the set and reads 0 until its text encoding completes, within one or two frames. `imageEmbedding` and `embedding(of:)` expose the unit vectors under the scores, and you compare them with a dot product. Loading and availability behave like [`ModelTracker`](#modeltracker). The first-ever load specializes the models for this Mac and can take several seconds. `isLoaded` flips when they are ready, and a missing file surfaces through `unavailableReason`.
 
 <a name="modeltracker"></a>
 
@@ -951,7 +951,7 @@ Phrases can change while the sketch runs. Set `concepts`, or query `confidence(o
 ModelTracker(_ source: any FrameSource, modelAt: URL)
 ModelTracker(_ source: any FrameSource, model: MLModel)   // a model you configured yourself
 ModelTracker(modelAt: URL)                                // bound to no source; still images only
-var labels: [Classification] { get }                      // classifier outputs, strongest first
+var classifications: [Classification] { get }             // classifier outputs, strongest first
 var topClassification: Classification? { get }
 func confidence(of: String) -> Double
 var objects: [Detection] { get }                     // object-detector outputs
@@ -1002,7 +1002,7 @@ The `StyleMirror` example's model is not fetched at all. You train it yourself f
 
 ```swift
 struct ModelOutput {
-    var labels: [Classification]     // classifier outputs, strongest first
+    var classifications: [Classification]  // classifier outputs, strongest first
     var objects: [Detection]    // detector outputs
     var map: Image?                  // image-typed output, white-alpha
     var image: Image?          // image-typed output, full color

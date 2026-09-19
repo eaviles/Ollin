@@ -171,9 +171,11 @@ public final class FirmataBoard: @unchecked Sendable {
         if changed { send(FirmataCodec.setMode(pin: pin, mode: mode)) }
     }
 
-    /// How often the board samples and reports its analog pins, in
-    /// milliseconds (StandardFirmata's default is 19).
-    public func setSamplingInterval(_ milliseconds: Int) {
+    /// How often the board samples and reports its analog pins, in seconds
+    /// (the firmware's own default is 0.019). It is rounded to the nearest
+    /// millisecond on the wire, and held at one at the least.
+    public func sampleEvery(_ seconds: Double) {
+        let milliseconds = max(1, Int((seconds * 1000).rounded()))
         state.withLock { $0.samplingInterval = milliseconds }
         send(FirmataCodec.samplingInterval(milliseconds))
     }

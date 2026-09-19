@@ -42,6 +42,8 @@ final class EtherDreamDAC: Sendable
   var stallTimeout: Double { get set }
   var status: EtherDreamStatus? { get }
 final class EtherDreamFinder: Sendable
+  enum StartError: Equatable, Error, Sendable
+    case badPort(Int)
   func start() throws
   func stop()
   init()
@@ -59,7 +61,7 @@ final class LaserProjector: Sendable
   func disconnect()
   init()
   var isArmed: Bool { get }
-  var isConnected: Bool { get }
+  var isPlaying: Bool { get }
   var lastError: String? { get }
   var optimizer: LaserOptimizer { get set }
   var safety: LaserSafety { get set }
@@ -152,8 +154,8 @@ struct LaserSafety: Sendable
   static func blankHold(count: Int = default) -> [LaserPoint]
   static var unguarded: LaserSafety { get }
   var maxBrightness: Double { get set }
+  var maxStationaryPoints: Int { get set }
   var stallTimeout: Double { get set }
-  var stationaryLimit: Int { get set }
   var stationaryRadius: Double { get set }
 struct LaserStream: Sendable
   init(points: [LaserPoint], canvas: Rectangle, pointsPerSecond: Int, pointBudget: Int, drawnLength: Double, travelLength: Double, pathCount: Int)

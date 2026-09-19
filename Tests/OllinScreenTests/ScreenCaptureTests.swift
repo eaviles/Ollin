@@ -120,14 +120,14 @@ import Ollin
 @Suite struct ScreenSourceTests {
 
     @Test func aTitleOnlyWindowNamesNoApp() {
-        #expect(ScreenSource.window(title: "Untitled") == .window(title: "Untitled", app: nil))
+        #expect(ScreenSource.window(matching: "Untitled") == .window(matching: "Untitled", app: nil))
     }
 
     /// The waiting notice says what is being waited for, so a sketch pointed at
     /// a window that is not open yet reads as waiting rather than broken.
     @Test func everySourceCanSayWhatItNames() {
         #expect(ScreenSource.app("Safari").label == "Safari")
-        #expect(ScreenSource.window(title: "Shopping list").label == "Shopping list")
+        #expect(ScreenSource.window(matching: "Shopping list").label == "Shopping list")
         #expect(ScreenSource.mainDisplay.label == "the main display")
         #expect(ScreenSource.display(7).label.contains("7"))
         #expect(ScreenSource.windowID(41).label.contains("41"))
@@ -136,7 +136,7 @@ import Ollin
     @Test func sourcesCompareByWhatTheyName() {
         #expect(ScreenSource.app("Safari") == .app("Safari"))
         #expect(ScreenSource.app("Safari") != .app("Notes"))
-        #expect(ScreenSource.window(title: "a", app: "X") != .window(title: "a", app: "Y"))
+        #expect(ScreenSource.window(matching: "a", app: "X") != .window(matching: "a", app: "Y"))
     }
 }
 
@@ -265,7 +265,7 @@ import Ollin
     /// later starts it.
     @Test(.enabled(if: ScreenCaptureTests.isPermitted))
     func anAbsentSourceIsWaitedForRatherThanFailed() async {
-        let capture = ScreenCapture(.window(title: "\(UUID())"))
+        let capture = ScreenCapture(.window(matching: "\(UUID())"))
         capture.start()
         defer { capture.stop() }
         try? await Task.sleep(for: .milliseconds(600))

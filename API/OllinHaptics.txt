@@ -22,7 +22,7 @@ struct HapticEvent: Equatable, Sendable
     case hum
     case tap
   func delayed(by: Double) -> HapticEvent
-  func strength(at: Double) -> Double
+  func intensity(at: Double) -> Double
   init(_: HapticEvent.Kind, at: Double = default, intensity: Double = default, sharpness: Double = default, duration: Double = default, fadeIn: Double = default, fadeOut: Double = default)
   let duration: Double
   let fadeIn: Double

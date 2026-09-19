@@ -39,6 +39,21 @@ import Ollin
         }
     }
 
+    /// A missing file reads the same whichever door it came through. The path
+    /// initializer checked for itself and the URL one handed the job to
+    /// Foundation, so one said `fileNotFound` and the other an unrelated
+    /// framework error for the identical mistake.
+    @Test func aMissingFileIsTheSameErrorByPathOrByURL() {
+        let missing = "/tmp/ollin-no-such-recording-\(UUID().uuidString).r3d"
+        func said(_ open: () throws -> Void) -> String {
+            do { try open(); return "it opened" } catch { return "\(error)" }
+        }
+        let byPath = said { _ = try Record3DRecording(path: missing) }
+        let byURL = said { _ = try Record3DRecording(url: URL(fileURLWithPath: missing)) }
+        #expect(byPath == byURL)
+        #expect(byPath.contains("not found"))
+    }
+
     @Test func frameOutOfRangeThrows() throws {
         let recording = try Record3DRecording(data: makeRecording())
         #expect(throws: (any Error).self) { _ = try recording.frame(at: 1) }

@@ -213,7 +213,7 @@ import Testing
 
     @Test func theCaptionKeepsOnlyItsTail() {
         let engine = SpeechEngine(locale: Locale(identifier: "en_US"))
-        engine.captionWords = 3
+        engine.maxCaptionWords = 3
         engine.receive("one two three four five", isFinal: true, start: 0, duration: 1)
         #expect(engine.caption == "three four five")
         #expect(engine.transcript == "one two three four five", "the whole of it is still kept")

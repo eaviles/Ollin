@@ -6,7 +6,7 @@ import Ollin
 /// Most of what a world is made of is small: a box is three numbers, a joint is
 /// a point and an axis. Two things are not. A `.mesh` or `.heightfield`
 /// collider carries every vertex of whatever it was cut from, and a soft body
-/// carries the mesh it was built out of. A world that colliders a loaded set
+/// carries the mesh it was built out of. A world that collides a loaded set
 /// piece writes that whole set piece into every snapshot of it.
 ///
 /// So give the geometry a name and hand the snapshot that instead:

@@ -667,7 +667,7 @@ struct SnapshotTierTests {
         let world = World3D()
         world.ground = 0
         let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
-        walker.move(Vector3(1.5, 0, 0))
+        walker.walk(at: Vector3(1.5, 0, 0))
         run(world, steps: 120)
         let mid = walker.position
 
@@ -678,8 +678,8 @@ struct SnapshotTierTests {
         #expect((back.position - mid).length == 0, "it comes back where it was")
         #expect((back.velocity - walker.velocity).length == 0, "at the same pace")
 
-        walker.move(Vector3(1.5, 0, 0))
-        back.move(Vector3(1.5, 0, 0))
+        walker.walk(at: Vector3(1.5, 0, 0))
+        back.walk(at: Vector3(1.5, 0, 0))
         run(world, steps: 60)
         run(fresh, steps: 60)
         #expect((back.position - walker.position).length == 0,
@@ -1066,7 +1066,7 @@ struct SnapshotTierTests {
         let car = try #require(machine(in: world))
         car.throttle = 1
         world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
-            .move(Vector3(0, 0, 1))
+            .walk(at: Vector3(0, 0, 1))
         run(world, steps: 120)
 
         let url = FileManager.default.temporaryDirectory

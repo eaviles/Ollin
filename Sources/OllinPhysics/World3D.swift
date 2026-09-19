@@ -60,7 +60,7 @@ public final class World3D {
     }
 
     /// Default restitution `0…1` for the ground and for bodies that don't pass
-    /// their own: how much speed survives a restitution. Kept low so stacks settle.
+    /// their own: how much speed survives a bounce. Kept low so stacks settle.
     public var restitution: Double = 0.2
 
     /// The largest timestep a single `advance(by:)` will integrate, in seconds.
@@ -146,7 +146,7 @@ public final class World3D {
     /// run).
     var touchingIDs: [CJoltBodyID: [CJoltBodyID]] = [:]
 
-    /// The timestep used on the previous `step`, so a grab drag knows how fast
+    /// The timestep used on the previous `advance(by:)`, so a grab drag knows how fast
     /// the hand is allowed to move its anchor.
     var lastTimestep: Double = 1.0 / 60
 
@@ -575,7 +575,7 @@ public final class World3D {
     ///     ball. Ignored on an open sheet.
     ///   - damping: how quickly particle motion bleeds away.
     ///   - friction: the surface's friction against what it lands on.
-    ///   - restitution: how much speed survives a restitution; `nil` takes the world's.
+    ///   - restitution: how much speed survives a bounce; `nil` takes the world's.
     ///   - iterations: solver passes per step; more is stiffer and steadier.
     ///   - vertexRadius: how far each particle's body reaches past its
     ///     position, which lifts a draped surface clear of what it lies on.
@@ -686,7 +686,7 @@ public final class World3D {
     ///
     /// ```swift
     /// let line = world.addRope(through: (0...30).map { Vector3(0, 4 - Double($0) * 0.1, 0) },
-    ///                          thickness: 0.03,
+    ///                          radius: 0.03,
     ///                          pinned: { $0.y > 3.9 })
     /// ```
     ///
@@ -700,7 +700,7 @@ public final class World3D {
     ///   - position: where the rest shape stands in the world.
     ///   - angle: how far the rest shape is turned, in radians, about `axis`.
     ///   - axis: the axis that turn is about.
-    ///   - thickness: the rope's radius, which is both what it draws as and how
+    ///   - radius: the rope's radius, which is both what it draws as and how
     ///     far it stands off whatever it lies on.
     ///   - sides: how many sides the drawn tube has.
     ///   - mass: the whole rope's mass, spread evenly over its particles.
@@ -722,7 +722,7 @@ public final class World3D {
     @discardableResult
     public func addRope(through points: [Vector3], at position: Vector3 = .zero,
                         rotated angle: Double = 0, axis: Vector3 = .unitY,
-                        thickness: Double = 0.05,
+                        radius: Double = 0.05,
                         sides: Int = 8,
                         mass: Double = 1,
                         stiffness: Double = 1,
@@ -738,7 +738,7 @@ public final class World3D {
         let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
         return makeRope(points: points, position: position, rotation: turn,
-                        thickness: thickness, sides: sides, mass: mass,
+                        radius: radius, sides: sides, mass: mass,
                         stiffness: stiffness, bend: bend, damping: damping,
                         friction: friction, restitution: restitution ?? self.restitution,
                         iterations: iterations, pinned: pinned,
@@ -749,14 +749,14 @@ public final class World3D {
     /// through too, so a rope that comes back is one the ordinary call could
     /// have made.
     func makeRope(points: [Vector3], position: Vector3, rotation: simd_quatd,
-                  thickness: Double, sides: Int, mass: Double,
+                  radius: Double, sides: Int, mass: Double,
                   stiffness: Double, bend: Double, damping: Double,
                   friction: Double, restitution: Double, iterations: Int,
                   pinned: ((Vector3) -> Bool)?, maxStretch: Double?,
                   group: CollisionGroup,
                   rodRotations: [simd_quatd] = []) -> Rope3D? {
         guard let rope = Rope3D(world: self, points: points, position: position,
-                                rotation: rotation, thickness: thickness,
+                                rotation: rotation, radius: radius,
                                 sides: sides, mass: mass, stiffness: stiffness,
                                 bend: bend, damping: damping, friction: friction,
                                 restitution: restitution, iterations: iterations,
@@ -797,7 +797,7 @@ public final class World3D {
     /// - Parameters:
     ///   - structure: the geometry to build, in its own coordinates.
     ///   - position: where its origin lands in the world.
-    ///   - strutRadius: the struts' thickness, capped so a strut is always
+    ///   - strutRadius: the struts' radius, capped so a strut is always
     ///     longer than it is wide.
     ///   - prestress: how much shorter than its drawn length each cable is
     ///     made, as a fraction. A real tensegrity is tensioned this way; with
@@ -1249,13 +1249,13 @@ public final class World3D {
 
         // A wide slab whose top face sits at the ground level.
         let extent = 500.0 / unitsPerMeter
-        let thickness = 1.0 / unitsPerMeter
+        let radius = 1.0 / unitsPerMeter
         var desc = CJoltBodyDesc()
         desc.shape.type = CJOLT_SHAPE_BOX
         desc.shape.a = Float(extent)
-        desc.shape.b = Float(thickness / 2)
+        desc.shape.b = Float(radius / 2)
         desc.shape.c = Float(extent)
-        desc.position = (0, Float((level / unitsPerMeter) - thickness / 2), 0)
+        desc.position = (0, Float((level / unitsPerMeter) - radius / 2), 0)
         desc.rotation = (0, 0, 0, 1)
         desc.motion = CJOLT_MOTION_STATIC
         desc.friction = 0.5
@@ -1268,7 +1268,7 @@ public final class World3D {
         // `bodies`: a sketch's drawing loop never asked for a 1000-unit slab.
         let slab = Body3D(world: self, id: groundID,
                           collider: .box(width: 2 * extent * unitsPerMeter,
-                                         height: thickness * unitsPerMeter,
+                                         height: radius * unitsPerMeter,
                                          depth: 2 * extent * unitsPerMeter),
                           kind: .static, density: 1)
         bodyByID[groundID] = slab

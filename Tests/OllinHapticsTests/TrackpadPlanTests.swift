@@ -111,15 +111,15 @@ struct TrackpadPlanTests {
 
     @Test func theStrengthInsideAHumFollowsItsFades() {
         let event = HapticEvent(.hum, intensity: 1, duration: 1, fadeIn: 0.25, fadeOut: 0.25)
-        #expect(event.strength(at: 0) == 0)
-        #expect(abs(event.strength(at: 0.125) - 0.5) < 1e-9)
-        #expect(event.strength(at: 0.5) == 1)
-        #expect(abs(event.strength(at: 0.875) - 0.5) < 1e-9)
-        #expect(event.strength(at: 1) == 0)
+        #expect(event.intensity(at: 0) == 0)
+        #expect(abs(event.intensity(at: 0.125) - 0.5) < 1e-9)
+        #expect(event.intensity(at: 0.5) == 1)
+        #expect(abs(event.intensity(at: 0.875) - 0.5) < 1e-9)
+        #expect(event.intensity(at: 1) == 0)
     }
 
     @Test func aTapIsAlwaysAtFullStrengthWhereItStands() {
         let event = HapticEvent(.tap, intensity: 0.7)
-        #expect(event.strength(at: 0) == 0.7)
+        #expect(event.intensity(at: 0) == 0.7)
     }
 }

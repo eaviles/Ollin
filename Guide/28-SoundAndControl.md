@@ -90,13 +90,13 @@ Loudness and beats are about *when*. Pitch is about *what*. A voice holding a no
 
 ```swift
 if let heard = mic.pitch {
-    drawText("\(heard.note)", width / 2, 80 * scale)             // "A4"
+    drawText("\(heard.nearestPitch)", width / 2, 80 * scale)             // "A4"
     let y = map(heard.midi, 48, 84, height, 0)                   // pitch as a height
     drawCircle(width / 2, y, (20 + Double(heard.confidence) * 40) * scale)
 }
 ```
 
-`pitch` is nil when nothing is being sung: silence, a room, a noise with no repeating shape in it. That is why it reads with `if let`. When there is a note, it carries four things. `frequency` is the rate in hertz. `note` is the nearest name on the piano. `cents` is how far above or below that name the voice sits, where a hundred cents is one semitone. `confidence` is how sure the detector is. A pure tone reads 1, a sung or bowed note above 0.9, and noise never passes 0.5, which is where reporting stops. `midi` puts the note and the cents back together as one number. Map that onto a position rather than `frequency`. The ear hears equal steps of it as equal steps, and an octave is always twelve of them. A doubling in hertz is not a fixed distance on any ruler. `note` alone is the short read: `mic.note` is a `Pitch`, and a `Pitch` prints as its name.
+`pitch` is nil when nothing is being sung: silence, a room, a noise with no repeating shape in it. That is why it reads with `if let`. When there is a note, it carries four things. `frequency` is the rate in hertz. `nearestPitch` is the nearest name on the piano. `cents` is how far above or below that name the voice sits, where a hundred cents is one semitone. `confidence` is how sure the detector is. A pure tone reads 1, a sung or bowed note above 0.9, and noise never passes 0.5, which is where reporting stops. `midi` puts the note and the cents back together as one number. Map that onto a position rather than `frequency`. The ear hears equal steps of it as equal steps, and an octave is always twelve of them. A doubling in hertz is not a fixed distance on any ruler. `nearestPitch` alone is the short read: `mic.nearestPitch` is a `Pitch`, and a `Pitch` prints as its name.
 
 The detector does not look for the loudest frequency. It looks for the shortest delay after which the waveform repeats, a method called YIN. A note with harmonics repeats at its fundamental's period even when the fundamental is the quiet part, or missing altogether. That is also how the ear decides. So a bowed string reads at the string's note rather than at its brightest overtone. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed, since a held note holds steady on its own. A sketch that wants a slow needle eases toward `midi` itself.
 
@@ -464,7 +464,7 @@ Two things the figure is really about. The sticks read in canvas terms, so pushi
 Motion is worth knowing about before you plan around it. PlayStation and Switch controllers have gyros; Xbox controllers have no motion sensors at all and never will. The sensors also cost battery, so they stay off until you ask:
 
 ```swift
-override func setup() { controllerMotion(true) }
+override func setup() { controllersReportMotion(true) }
 // in draw():
 if controller.hasMotion { rotate(controller.gravity.x * 0.5) }
 ```
@@ -528,7 +528,7 @@ override func draw() {
 
 Three things differ from the wire, and each is worth a sentence.
 
-**A device is found, not plugged in.** `BluetoothDevice(named: "strap")` takes part of the name a device advertises. `BluetoothDevice(service: .heartRate)` takes the first device offering a kind of value, whatever it calls itself. `BluetoothDevice(id:)` takes one exact device. Prefer the service form for standard gear. Prefer the identifier form once a person has picked a device, so your sketch does not connect to a neighbor's strap. To find out what is around you at all, `BluetoothScan` is the room, strongest signal first, and the `Integration/BluetoothRoom` example draws it. That one needs no gear of your own. A room is already full of phones and watches and earphones announcing themselves.
+**A device is found, not plugged in.** `BluetoothDevice(matching: "strap")` takes part of the name a device advertises. `BluetoothDevice(service: .heartRate)` takes the first device offering a kind of value, whatever it calls itself. `BluetoothDevice(id:)` takes one exact device. Prefer the service form for standard gear. Prefer the identifier form once a person has picked a device, so your sketch does not connect to a neighbor's strap. To find out what is around you at all, `BluetoothScan` is the room, strongest signal first, and the `Integration/BluetoothRoom` example draws it. That one needs no gear of your own. A room is already full of phones and watches and earphones announcing themselves.
 
 **The system asks first.** macOS asks the person once, per app, before a program may use Bluetooth. Until that question is answered the radio reports nothing at all: not off, not refused, simply silence. Under `swift run` the question is asked of the terminal, exactly as the microphone is. Two habits follow. Draw `device.unavailableReason` somewhere, because it is a finished sentence naming what is wrong. And remember that a locked screen cannot show the question. A sketch left running on a locked Mac waits there for as long as you leave it. That state is the one most often mistaken for a broken sketch.
 
@@ -669,7 +669,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 
 ## Go deeper
 
-- [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, the note heard as `pitch` and `note` and the twelve classes as `chroma`, and feeding the `AudioAnalyzer` yourself.
+- [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, the note heard as `pitch` and `nearestPitch` and the twelve classes as `chroma`, and feeding the `AudioAnalyzer` yourself.
 - [Listening](../Docs/Helpers/Listening.md): the caption and transcript reads, phrases as triggers, languages and their models, the sound vocabulary and its threshold, bringing your own classifier, and the deterministic one-shot forms.
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth` and its voices, which [Chapter 29](29-MakingSound.md) is about, since a sketch that listens usually ends up playing too.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.

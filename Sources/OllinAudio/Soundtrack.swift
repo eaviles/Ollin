@@ -94,6 +94,6 @@ final class SoundtrackAnalyzerStore: @unchecked Sendable {
 extension SoundtrackAnalyzerStore: AudioListening {
     func hear(_ samples: UnsafeBufferPointer<Float>, sampleRate: Double) {
         guard let base = samples.baseAddress, samples.count > 0 else { return }
-        analyzer(matching: sampleRate).process(samples: base, count: samples.count)
+        analyzer(matching: sampleRate).analyze(samples: base, count: samples.count)
     }
 }

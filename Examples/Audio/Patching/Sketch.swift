@@ -60,7 +60,7 @@ final class Patching: Sketch {
     /// The whole feature, in one expression: the routing is a value.
     private func rebuild() {
         let patch = Patch.tone(shape)
-            .modulated(by: .tone(.sine, ratio: ratio), index: index)
+            .modulated(by: .tone(.sine, ratio: ratio), amount: index)
             .fedBack(feedback)
         synth.voice = Voice(patch: patch, envelope: .percussive, gain: 0.7)
         synth.effects = chain

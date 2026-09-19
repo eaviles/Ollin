@@ -70,7 +70,7 @@ A `Voice` is a fixed chain. Something makes a wave, an envelope shapes it, and a
 
 ```swift
 let bell = Patch.tone(.sine)
-    .modulated(by: .tone(.sine, ratio: 3.5), index: 4)
+    .modulated(by: .tone(.sine, ratio: 3.5), amount: 4)
 
 synth.voice = Voice(patch: bell, envelope: .percussive)
 ```
@@ -191,7 +191,7 @@ None of them invents a sound. Each is the sound and a copy of itself, or the sou
 Those four move a sound. Three more watch how loud it is and act on that.
 
 ```swift
-synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeup: 6))]
+synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeupGain: 6))]
 synth.effects = [.gate(Gate(threshold: -40, hold: 0.08)), .limiter(Limiter())]
 ```
 
@@ -202,7 +202,7 @@ synth.effects = [.gate(Gate(threshold: -40, hold: 0.08)), .limiter(Limiter())]
 
 Every threshold here is in decibels below full scale, where 0 is as loud as a sample can be. It is a scale worth getting used to: a level you would mix at sits somewhere under -12, and a difference of 6 is a halving.
 
-A **compressor** works on what is over its `threshold`. A `ratio` of 4 means four decibels over the line arrive as one. The first panel is the whole of it: below the threshold nothing happens, above it the curve tilts. What that buys is not a quieter sound but a narrower one, which is why `makeup` matters, since it brings the whole thing back up with the loud parts still held. A `knee` bends the corner, so the holding starts before the threshold rather than at it, and that is most of what makes a compressor hard to hear working.
+A **compressor** works on what is over its `threshold`. A `ratio` of 4 means four decibels over the line arrive as one. The first panel is the whole of it: below the threshold nothing happens, above it the curve tilts. What that buys is not a quieter sound but a narrower one, which is why `makeupGain` matters, since it brings the whole thing back up with the loud parts still held. A `knee` bends the corner, so the holding starts before the threshold rather than at it, and that is most of what makes a compressor hard to hear working.
 
 `attack` and `release` are the other half, and the second panel is them: how long the holding takes to come on, and how long it takes to let go. A fast attack catches the very front of a note, which is where a plucked or struck sound has most of its level. A slow release keeps holding through the notes after the loud one, so the whole phrase breathes together. Neither is right; they are the difference between a phrase that keeps its shape and one that pumps.
 
@@ -895,7 +895,7 @@ final class MusicBox: Sketch {
         // The bell is patched rather than picked: one sine bent by another at a
         // ratio that is nowhere near a whole number, which is what makes metal.
         bell.voice = Voice(patch: Patch.tone(.sine)
-                                .modulated(by: .tone(.sine, ratio: 3.47), index: 4.2),
+                                .modulated(by: .tone(.sine, ratio: 3.47), amount: 4.2),
                            envelope: .percussive)
         string.gain = 0.5
         bell.gain = 0.3

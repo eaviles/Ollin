@@ -45,9 +45,9 @@ import Ollin
     @Test func scaleAndTrackedFlagsSurvive() {
         let body = turnedBody
         #expect(abs(body.scaleFactor - 0.9) < 1e-6)
-        #expect(body.isJointTracked(.head))
-        #expect(!body.isJointTracked(.hips))       // the rig filled it in
-        #expect(!body.isJointTracked(.leftFoot))   // not reported at all
+        #expect(body.isObserved(.head))
+        #expect(!body.isObserved(.hips))       // the rig filled it in
+        #expect(!body.isObserved(.leftFoot))   // not reported at all
     }
 
     @Test func jointTransformComposesOrientationAndPosition() throws {

@@ -8,7 +8,7 @@ import Testing
 /// laws here are the ones that make each what it says it is rather than a
 /// wobble in the loudness: a compressor lands a tone exactly where its ratio
 /// says it should, its attack and release take the times asked, its knee bends
-/// before the threshold, its makeup lifts by the decibels asked, and both sides
+/// before the threshold, its makeupGain lifts by the decibels asked, and both sides
 /// move together; a limiter's ceiling is a promise no sample breaks, and it
 /// lets go over its release; a gate opens above its threshold and closes below,
 /// and its hold keeps a decay from being chopped off. Plus the two the chain
@@ -145,9 +145,9 @@ import Testing
 
     @Test func makeupLiftsByTheDecibelsAsked() {
         let loud = sine(220, seconds: 0.6, level: -6)
-        func level(_ makeup: Double) -> Double {
+        func level(_ makeupGain: Double) -> Double {
             let effect = DynamicsEffect(.compressor(Compressor(threshold: -18, ratio: 4,
-                                                               knee: 0, makeup: makeup)),
+                                                               knee: 0, makeupGain: makeupGain)),
                                         sampleRate: rate)
             return decibels(run(effect, left: loud, right: loud).left[Int(rate * 0.4)...])
         }
@@ -279,7 +279,7 @@ import Testing
     @Test func theKindsAndTheirValuesRoundTrip() throws {
         let effects: [Effect] = [
             .compressor(Compressor(threshold: -22, ratio: 6, attack: 0.003, release: 0.4,
-                                   knee: 3, makeup: 4)),
+                                   knee: 3, makeupGain: 4)),
             .limiter(Limiter(ceiling: -1.5, release: 0.08)),
             .gate(Gate(threshold: -50, attack: 0.001, hold: 0.1, release: 0.3, depth: 0.7)),
         ]

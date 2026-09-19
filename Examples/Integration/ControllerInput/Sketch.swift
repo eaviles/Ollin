@@ -43,7 +43,7 @@ final class ControllerInputExample: Sketch {
         pen = center
         ink = palette[.a] ?? .black
         // The sensors cost battery, so they stay off until a sketch asks.
-        controllerMotion(true)
+        controllersReportMotion(true)
         // Ink piles up frame after frame instead of being wiped.
         noClear()
         background(Color(white: 0.97))

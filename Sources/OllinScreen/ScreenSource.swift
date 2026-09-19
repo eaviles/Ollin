@@ -9,12 +9,12 @@ import ScreenCaptureKit
 /// ```swift
 /// ScreenCapture(.mainDisplay)                 // the whole screen
 /// ScreenCapture(.app("Safari"))               // every window Safari has open
-/// ScreenCapture(.window(title: "Untitled"))   // one window, by its title
+/// ScreenCapture(.window(matching: "Untitled"))   // one window, by its title
 /// ```
 ///
 /// Names are matched leniently, because that is what makes them worth writing:
 /// ``app(_:)`` accepts an application's name *or* its bundle identifier, and
-/// ``window(title:app:)`` matches any window whose title contains the text, both
+/// ``window(matching:app:)`` matches any window whose title contains the text, both
 /// ignoring case. Where several windows match, the lowest window id wins, so a
 /// run is repeatable rather than depending on stacking order. The exact forms,
 /// ``display(_:)`` and ``windowID(_:)``, take the ids that
@@ -40,14 +40,14 @@ public enum ScreenSource: Sendable, Equatable {
     /// optionally narrowed to an application (again by name or bundle
     /// identifier). A window is captured on its own: it arrives at its own size
     /// with nothing in front of it, even when another window covers it on screen.
-    case window(title: String, app: String?)
+    case window(matching: String, app: String?)
 
     /// One window by its id, as reported by ``ScreenCapture/availableWindows()``.
     case windowID(CGWindowID)
 
     /// A window matched by title alone, in whichever application owns it.
-    public static func window(title: String) -> ScreenSource {
-        .window(title: title, app: nil)
+    public static func window(matching text: String) -> ScreenSource {
+        .window(matching: text, app: nil)
     }
 
     /// A short description of what this names, used in the on-canvas waiting

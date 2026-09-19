@@ -96,7 +96,7 @@ struct GrainVoice {
         self.alternate = false
         self.pans = cloud.panSpread > 0
         // The cloud's own seed rather than the voice's alone, so the same
-        // settings scatter the same way wherever they are played, and a
+        // settings timingJitter the same way wherever they are played, and a
         // different seed is a different cloud of the same shape.
         self.random = (seed &+ UInt64(bitPattern: Int64(cloud.seed)) &* 0x9E37_79B9_7F4A_7C15) | 1
         readHead = min(max(0, cloud.position), 1) * Double(source.frames.count)
@@ -172,16 +172,16 @@ struct GrainVoice {
     /// Cuts one grain and schedules the next.
     private mutating func startGrain(total: Double, scrub: Double) {
         let mean = sampleRate / max(0.1, cloud.density)
-        // At no scatter the grains are on a strict clock, which is heard as a
-        // pitch at the density. At full scatter the gap is exponential, which
+        // At no timingJitter the grains are on a strict clock, which is heard as a
+        // pitch at the density. At full timingJitter the gap is exponential, which
         // is what independent arrivals look like, and the average is the same
-        // either way, so scatter changes the texture and not the loudness.
+        // either way, so timingJitter changes the texture and not the loudness.
         let gap: Double
-        if cloud.scatter <= 0 {
+        if cloud.timingJitter <= 0 {
             gap = mean
         } else {
             let spread = -log(max(1e-9, uniform()))
-            gap = mean * (1 - cloud.scatter + cloud.scatter * spread)
+            gap = mean * (1 - cloud.timingJitter + cloud.timingJitter * spread)
         }
         untilNext += max(1, gap)
 

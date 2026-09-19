@@ -92,8 +92,8 @@ ScreenCapture(.mainDisplay)                          // the display the menu bar
 ScreenCapture(.display(id))                          // a display by its system id
 ScreenCapture(.app("Safari"))                        // every window one app has open
 ScreenCapture(.app("com.apple.Safari"))              // the same, by bundle identifier
-ScreenCapture(.window(title: "Shopping list"))       // one window, by its title
-ScreenCapture(.window(title: "Untitled", app: "Notes"))
+ScreenCapture(.window(matching: "Shopping list"))       // one window, by its title
+ScreenCapture(.window(matching: "Untitled", app: "Notes"))
 ScreenCapture(.windowID(id))                         // one window by its id
 ```
 
@@ -127,7 +127,7 @@ The calls are asynchronous, so a sketch reads them in a `Task` and keeps drawing
 override func setup() {
     Task { @MainActor in
         for window in await ScreenCapture.availableWindows() {
-            print(".window(title: \"\(window.title ?? "")\")   // \(window.label)")
+            print(".window(matching: \"\(window.title ?? "")\")   // \(window.label)")
         }
     }
 }

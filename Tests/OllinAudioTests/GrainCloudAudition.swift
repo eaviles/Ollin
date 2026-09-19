@@ -103,7 +103,7 @@ import Testing
              { along in along }),
             ("grains on a strict clock, which is a pitch of its own",
              Voice(granular: GrainCloud(size: 0.008, density: 220, position: 0.55,
-                                        positionJitter: 0, speed: 0, scatter: 0),
+                                        positionJitter: 0, speed: 0, timingJitter: 0),
                    envelope: .sustained, gain: 0.8),
              nil),
             ("a chord of itself: five semitones of spread",

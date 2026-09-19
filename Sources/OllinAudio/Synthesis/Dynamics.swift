@@ -7,14 +7,14 @@ import os
 ///
 /// Above `threshold` the sound is let through at a fraction of what it does:
 /// a `ratio` of 4 means four decibels over the threshold arrive as one. What
-/// that buys is not a quieter sound but a narrower one, so raising `makeup`
+/// that buys is not a quieter sound but a narrower one, so raising `makeupGain`
 /// afterwards brings the whole thing up with the loud parts still in place.
 /// `attack` is how long it takes to clamp down and `release` how long it takes
 /// to let go, and the two of them are what a compressor sounds like: a fast
 /// attack flattens every transient, and a slow release breathes.
 ///
 /// ```swift
-/// synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeup: 6))]
+/// synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeupGain: 6))]
 /// ```
 ///
 /// The level is read from both sides at once, so a loud note on one side pulls
@@ -34,16 +34,16 @@ public struct Compressor: Sendable, Hashable, Codable {
     /// is what makes a compressor hard to hear working.
     public var knee: Double
     /// Level put back afterwards, in decibels, `0...36`.
-    public var makeup: Double
+    public var makeupGain: Double
 
     public init(threshold: Double = -18, ratio: Double = 4, attack: Double = 0.01,
-                release: Double = 0.15, knee: Double = 6, makeup: Double = 0) {
+                release: Double = 0.15, knee: Double = 6, makeupGain: Double = 0) {
         self.threshold = min(max(-80, threshold), 0)
         self.ratio = min(max(1, ratio), 40)
         self.attack = min(max(0.0001, attack), 1)
         self.release = min(max(0.005, release), 5)
         self.knee = min(max(0, knee), 36)
-        self.makeup = min(max(0, makeup), 36)
+        self.makeupGain = min(max(0, makeupGain), 36)
     }
 }
 
@@ -208,7 +208,7 @@ final class DynamicsEffect: @unchecked Sendable {
             let threshold = compressor.threshold
             let slope = 1 / compressor.ratio - 1
             let knee = compressor.knee
-            let makeup = compressor.makeup
+            let makeupGain = compressor.makeupGain
             for index in 0..<count {
                 var peak = 0.0
                 for channel in 0..<channels { peak = max(peak, abs(Double(block[channel][index]))) }
@@ -228,7 +228,7 @@ final class DynamicsEffect: @unchecked Sendable {
                 // Attack while the reduction is growing, release while it eases.
                 let coefficient = wanted > reduction ? attack : release
                 reduction = coefficient * reduction + (1 - coefficient) * wanted
-                let applied = Float(pow(10, (makeup - reduction) / 20))
+                let applied = Float(pow(10, (makeupGain - reduction) / 20))
                 for channel in 0..<channels { block[channel][index] *= applied }
             }
 

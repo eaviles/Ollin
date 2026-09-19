@@ -213,7 +213,7 @@ extension AudioPlayer: @MainActor FrameAdvancing {
         guard let channels = buffer.floatChannelData, count > 0 else { return }
         let channelCount = Int(buffer.format.channelCount)
         if channelCount == 1 {
-            analyzer.process(samples: channels[0] + start, count: count)
+            analyzer.analyze(samples: channels[0] + start, count: count)
             return
         }
         var mono = [Float](repeating: 0, count: count)
@@ -222,7 +222,7 @@ extension AudioPlayer: @MainActor FrameAdvancing {
             let src = channels[c] + start
             for i in 0..<count { mono[i] += src[i] * inv }
         }
-        mono.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: count) }
+        mono.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: count) }
     }
 }
 

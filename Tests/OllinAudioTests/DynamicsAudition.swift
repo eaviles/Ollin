@@ -60,13 +60,13 @@ import Testing
 
         let takes: [(String, [Effect])] = [
             ("nothing at all, the accents towering over the rest", []),
-            ("a compressor, gently", [.compressor(Compressor(threshold: -18, ratio: 3, makeup: 5))]),
+            ("a compressor, gently", [.compressor(Compressor(threshold: -18, ratio: 3, makeupGain: 5))]),
             ("the same, squeezed hard and fast", [.compressor(Compressor(threshold: -28, ratio: 12,
                                                                         attack: 0.001, release: 0.08,
-                                                                        makeup: 12))]),
+                                                                        makeupGain: 12))]),
             ("a slow release, breathing", [.compressor(Compressor(threshold: -26, ratio: 8,
                                                                   attack: 0.02, release: 0.6,
-                                                                  makeup: 10))]),
+                                                                  makeupGain: 10))]),
             ("a limiter alone, ceiling low", [.limiter(Limiter(ceiling: -14, release: 0.06))]),
             ("hiss, and nothing done about it", [hiss]),
             ("the same hiss, gated", [hiss, .gate(Gate(threshold: -34, hold: 0.08, release: 0.1))]),

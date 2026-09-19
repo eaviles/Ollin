@@ -61,7 +61,7 @@ struct PitchTests {
     }
 
     static func feed(_ samples: [Float], to analyzer: AudioAnalyzer) {
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
     }
 
     static func cents(_ read: Double, from truth: Double) -> Double {
@@ -90,7 +90,7 @@ struct PitchTests {
         let heard = try #require(analyzer.pitch)
         #expect(abs(Self.cents(heard.frequency, from: 196)) < 3)
         #expect(heard.confidence > 0.9)
-        #expect(heard.note == Pitch(name: "G3"))
+        #expect(heard.nearestPitch == Pitch(name: "G3"))
     }
 
     /// The period of a note is there even when the fundamental is not: a sound
@@ -111,23 +111,23 @@ struct PitchTests {
         let sharp = Self.analyzer()
         Self.feed(Self.sine(445), to: sharp)
         let heardSharp = try #require(sharp.pitch)
-        #expect(heardSharp.note == Pitch(name: "A4"))
+        #expect(heardSharp.nearestPitch == Pitch(name: "A4"))
         #expect(abs(heardSharp.cents - 19.56) < 1)
         #expect(abs(heardSharp.midi - (69 + 0.1956)) < 0.01)
-        #expect(sharp.note == heardSharp.note)
+        #expect(sharp.nearestPitch == heardSharp.nearestPitch)
 
         let flat = Self.analyzer()
         Self.feed(Self.sine(430), to: flat)
         let heardFlat = try #require(flat.pitch)
-        #expect(heardFlat.note == Pitch(name: "A4"))
+        #expect(heardFlat.nearestPitch == Pitch(name: "A4"))
         #expect(abs(heardFlat.cents - -39.80) < 1)
 
         let middle = Self.analyzer()
         Self.feed(Self.sine(261.63), to: middle)
         let heardMiddle = try #require(middle.pitch)
-        #expect(heardMiddle.note == Pitch(name: "C4"))
+        #expect(heardMiddle.nearestPitch == Pitch(name: "C4"))
         #expect(abs(heardMiddle.cents) < 1)
-        #expect("\(heardMiddle.note)" == "C4")
+        #expect("\(heardMiddle.nearestPitch)" == "C4")
     }
 
     /// Across five octaves in quarter-tone steps, sines and sawtooths alike,
@@ -161,13 +161,13 @@ struct PitchTests {
         let quiet = Self.analyzer()
         Self.feed([Float](repeating: 0, count: Self.count), to: quiet)
         #expect(quiet.pitch == nil)
-        #expect(quiet.note == nil)
+        #expect(quiet.nearestPitch == nil)
         #expect(quiet.chroma == [Float](repeating: 0, count: 12))
 
         let hiss = Self.analyzer()
         Self.feed(Self.noise(), to: hiss)
         #expect(hiss.pitch == nil)
-        #expect(hiss.note == nil)
+        #expect(hiss.nearestPitch == nil)
 
         // Nothing has arrived at all: the same answer, from an empty window.
         let untouched = Self.analyzer()
@@ -181,7 +181,7 @@ struct PitchTests {
     @Test func theReadingFollowsTheWindow() throws {
         let analyzer = Self.analyzer()
         Self.feed(Self.sine(220), to: analyzer)
-        #expect(analyzer.note == Pitch(name: "A3"))
+        #expect(analyzer.nearestPitch == Pitch(name: "A3"))
         let held = analyzer.pitch
         #expect(analyzer.pitch == held)
 
@@ -191,7 +191,7 @@ struct PitchTests {
         for k in 0..<6 {
             let slice = Array(next[(k * chunk)..<((k + 1) * chunk)])
             Self.feed(slice, to: analyzer)
-            if heardE4At < 0, analyzer.note == Pitch(name: "E4") { heardE4At = k + 1 }
+            if heardE4At < 0, analyzer.nearestPitch == Pitch(name: "E4") { heardE4At = k + 1 }
         }
         // The window is 2,204 samples, three chunks; the fourth is fully E4.
         #expect(heardE4At > 0)

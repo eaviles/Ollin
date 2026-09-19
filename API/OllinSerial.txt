@@ -17,9 +17,9 @@ final class FirmataBoard: Sendable
   func digital(_: Int, pullUp: Bool = default, default: Bool) -> Bool
   func messages() -> [FirmataMessage]
   func open()
+  func sampleEvery(_: Double)
   func send(text: String)
   func setMode(_: Int, _: FirmataPinMode)
-  func setSamplingInterval(_: Int)
   func unbind(analog: Int)
   func write(_: Int, _: Bool)
   func write(_: Int, _: Double)

@@ -6,7 +6,7 @@ import Foundation
 ///
 /// ```swift
 /// if let heard = mic.pitch {
-///     drawText("\(heard.note)", width / 2, 80)          // "A4"
+///     drawText("\(heard.nearestPitch)", width / 2, 80)          // "A4"
 ///     let y = map(heard.midi, 48, 84, height, 0)        // pitch as a position
 /// }
 /// ```
@@ -25,14 +25,14 @@ public struct DetectedPitch: Sendable, Hashable {
     public var confidence: Float
 
     /// The nearest equal-tempered note, with A4 at 440 Hz.
-    public var note: Pitch
+    public var nearestPitch: Pitch
 
-    /// How far the pitch sits above (`+`) or below (`-`) `note`, in cents,
+    /// How far the pitch sits above (`+`) or below (`-`) `nearestPitch`, in cents,
     /// `-50...50`. A hundred cents is a semitone.
     public var cents: Double
 
-    /// The pitch as a fractional MIDI note number, `note.midi + cents / 100`.
-    public var midi: Double { note.midi + cents / 100 }
+    /// The pitch as a fractional MIDI note number, `nearestPitch.midi + cents / 100`.
+    public var midi: Double { nearestPitch.midi + cents / 100 }
 
     /// The pitch as a `Pitch`, sitting between the keys where the sound did.
     public var pitch: Pitch { Pitch(midi) }
@@ -42,7 +42,7 @@ public struct DetectedPitch: Sendable, Hashable {
         self.confidence = confidence
         let midi = Pitch(frequency: frequency).midi
         let nearest = midi.rounded()
-        self.note = Pitch(nearest)
+        self.nearestPitch = Pitch(nearest)
         self.cents = (midi - nearest) * 100
     }
 }

@@ -271,10 +271,10 @@ The `Forces` example shows all three calls in one windy yard. It also has a `.ki
 The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `restitution` to the walls and as the default contact restitution, and it damps bodies with `drag`. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
 
 ```swift
-var pixelsPerMeter: Double = 100
+var unitsPerMeter: Double = 100
 ```
 
-Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` converts between meters and sketch points. The default of 100 puts a 100-point shape at 1 m, which is well inside that range, so you can keep thinking in points. The Verlet particle side works in points directly and ignores this value.
+Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `unitsPerMeter` converts between meters and sketch points. The default of 100 puts a 100-point shape at 1 m, which is well inside that range, so you can keep thinking in points. The Verlet particle side works in points directly and ignores this value.
 
 <a name="joint"></a>
 

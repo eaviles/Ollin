@@ -268,7 +268,7 @@ final class Yard: Sketch {
         guard let pacer else { return }
         if pacer.position.x > -2 { pacing = -1 }
         if pacer.position.x < -7 { pacing = 1 }
-        pacer.move(Vector3(1.6 * pacing, 0, 0))
+        pacer.walk(at: Vector3(1.6 * pacing, 0, 0))
         pacer.facing = pacing > 0 ? .pi / 2 : -.pi / 2
     }
 

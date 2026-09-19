@@ -44,7 +44,7 @@ import Foundation
         let perFrame = try await TrajectoryTracker.detect(across: frames)
         #expect(perFrame.count == count)
 
-        // The arc takes `trajectoryLength` observations to appear, then should be
+        // The arc takes `minObservationCount` observations to appear, then should be
         // reported on most of the remaining frames.
         let hits = perFrame.filter { !$0.isEmpty }
         #expect(hits.count > 20)

@@ -245,7 +245,7 @@ for arc in tracker.trajectories {
 
 In the figure the detector was shown the first 24 frames of a made-up flight, all of them on the way up. The pale rings are where the ball actually went in the frames it never saw. The dashed curve runs through them. A parabola has only three numbers in it, so once the detector holds a handful of sightings, the rest of the flight follows.
 
-It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion. And be patient, because an arc is only reported once its object has been seen `trajectoryLength` times, ten by default. Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings, where `projectedPoints(in:)` puts them on the fitted curve. The projected ones are smoother, and usually the ones to draw.
+It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion. And be patient, because an arc is only reported once its object has been seen `minObservationCount` times, ten by default. Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings, where `projectedPoints(in:)` puts them on the fitted curve. The projected ones are smoother, and usually the ones to draw.
 
 ### What the picture is about
 
@@ -434,7 +434,7 @@ You say what to capture as a value you write down, which keeps the sketch the re
 
 ```swift
 ScreenCapture(.app("Safari"))                    // every window one app has open
-ScreenCapture(.window(title: "Shopping list"))   // one window, by its title
+ScreenCapture(.window(matching: "Shopping list"))   // one window, by its title
 ```
 
 An app matches on its name or its bundle identifier, and it has to match in full. A window matches any title *containing* the text. That is what keeps `"Shopping list"` working when the title bar reads `"Notes: Shopping list"`. Naming something that isn't open yet is not an error, it's a wait. The capture keeps looking and starts by itself when the window appears. And a window captured on its own arrives at its own size with nothing in front of it, even when something covers it on screen.

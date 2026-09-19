@@ -125,7 +125,7 @@ import Testing
         let source = Self.textured(count: Int(Self.rate))
         let size = 0.05
         let cloud = GrainCloud(size: size, density: 2, position: 0.25, positionJitter: 0,
-                               speed: 0, scatter: 0, shape: .plateau)
+                               speed: 0, timingJitter: 0, shape: .plateau)
         let sound = Self.render(Voice(granular: cloud, envelope: Self.flat, gain: 1),
                                 source: source, pitch: 60, seconds: 0.5)
 
@@ -325,13 +325,13 @@ import Testing
     }
 
     @Test func aStrictClockIsHeardAsAPitchOfItsOwn() {
-        // With no scatter the grains arrive on a clock, and a frozen cloud
+        // With no timingJitter the grains arrive on a clock, and a frozen cloud
         // repeats the same piece of sound at that rate, so the output is
         // periodic at the density whatever the source was.
         let source = Self.textured(count: Int(Self.rate))
-        func line(_ scatter: Double) -> Double {
+        func line(_ timingJitter: Double) -> Double {
             let cloud = GrainCloud(size: 0.004, density: 300, position: 0.5,
-                                   positionJitter: 0, speed: 0, scatter: scatter)
+                                   positionJitter: 0, speed: 0, timingJitter: timingJitter)
             let sound = Self.render(Voice(granular: cloud, envelope: Self.flat, gain: 1),
                                     source: source, pitch: 60, seconds: 1.2, gain: 0.5)
             let window = sound[Int(0.3 * Self.rate) ..< Int(1.1 * Self.rate)]
@@ -461,7 +461,7 @@ import Testing
 
     @Test func everySettingIsHeldToItsRange() {
         let wild = GrainCloud(size: 40, density: 1e6, position: 9, positionJitter: -2,
-                              speed: 99, pitchSpread: -1, panSpread: 4, scatter: 8)
+                              speed: 99, pitchSpread: -1, panSpread: 4, timingJitter: 8)
         #expect(wild.size == 1)
         #expect(wild.density == 1000)
         #expect(wild.position == 1)
@@ -469,7 +469,7 @@ import Testing
         #expect(wild.speed == 4)
         #expect(wild.pitchSpread == 0)
         #expect(wild.panSpread == 1)
-        #expect(wild.scatter == 1)
+        #expect(wild.timingJitter == 1)
         #expect(GrainCloud.frozen(at: 0.3).speed == 0)
     }
 

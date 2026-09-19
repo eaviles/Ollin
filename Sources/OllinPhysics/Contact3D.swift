@@ -66,7 +66,7 @@ public struct Contact3D {
 extension World3D {
 
     /// Drain the solver's per-step buffer into `contacts`, and keep the
-    /// per-body touch lists in step with it. Called at the end of `step`.
+    /// per-body touch lists in step with it. Called at the end of `advance(by:)`.
     func drainContacts() {
         let count = Int(cjolt_world_contact_count(handle))
         guard count > 0 else {

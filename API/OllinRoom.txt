@@ -98,10 +98,10 @@ final class Room: SketchExtension, Sendable
   var everyone: [String] { get }
   var isAlone: Bool { get }
   var isRunning: Bool { get }
-  var name: String { get }
+  var lastError: String? { get }
   var ownsClock: Bool { get }
+  var peerName: String { get }
   var peers: [String] { get }
-  var problem: String? { get }
   var seat: Int { get }
   var seatCount: Int { get }
   var time: Double { get }

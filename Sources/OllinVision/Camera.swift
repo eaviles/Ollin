@@ -94,21 +94,41 @@ public final class Camera: FrameSource, VideoFeed {
     /// Begin capturing. Gates on camera permission the same way the microphone
     /// does: if it's already granted, capture starts now; if it hasn't been asked,
     /// the system prompts and capture starts once the user allows it; if it's
-    /// denied, nothing starts (`frame` stays `nil`).
+    /// denied, nothing starts and `unavailableReason` says so (`frame` stays
+    /// `nil`). It throws for what it can see for itself, which is everything
+    /// the granted path reaches; anything that goes wrong after the prompt has
+    /// returned lands in `unavailableReason` instead, since by then there is no
+    /// caller left to throw to.
     public func start() throws {
         guard !isRunning else { return }
+        unavailableReason = nil
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             try configureAndRun()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { granted in
-                guard granted else { return }
-                Task { @MainActor in try? self.configureAndRun() }
+                Task { @MainActor in
+                    guard granted else {
+                        self.unavailableReason = "camera access was refused"
+                        return
+                    }
+                    // The prompt has already returned, so there is nobody left
+                    // to throw to. The same failure that reaches the caller on
+                    // the granted path is written down here instead of lost.
+                    do { try self.configureAndRun() }
+                    catch { self.unavailableReason = "\(error)" }
+                }
             }
         default:
-            break   // denied or restricted — no frames
+            unavailableReason = "camera access is denied or restricted for this app"
         }
     }
+
+    /// Why there are no frames, in a sentence worth drawing, or `nil` while
+    /// nothing has gone wrong. `start()` throws for what it can see itself;
+    /// this carries what went wrong afterwards, once the permission prompt has
+    /// returned and there is no caller left to throw to.
+    public private(set) var unavailableReason: String?
 
     /// Stop capturing. Safe to call when not running.
     public func stop() {

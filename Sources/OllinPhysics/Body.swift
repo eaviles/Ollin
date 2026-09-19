@@ -7,8 +7,8 @@ internal import CBox2D
 /// constraints that nudge positions), a `Body` is a proper rigid body — it has an
 /// `angle`, spins, rests in stable stacks, and bounces off other bodies with real
 /// contact response. It shares the world's `gravity`, `bounds` (as walls), and
-/// `bounce`, and is measured in sketch points (the world converts to the solver's
-/// meters through `World.pixelsPerMeter`).
+/// `restitution`, and is measured in sketch points (the world converts to the solver's
+/// meters through `World.unitsPerMeter`).
 ///
 /// Create one with `World.addBody(_:at:)`, hang drawing data off `userData`, and
 /// draw it from `position`/`angle` each frame:
@@ -82,7 +82,7 @@ public final class Body {
     }
 
     /// Push the body's center of mass with a steady force (points/s² · mass),
-    /// accumulated for the next `step`. Use for thrust, wind, attraction.
+    /// accumulated for the next `advance(by:)`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector2) {
         b2Body_ApplyForceToCenter(id, world.meters(from: force), true)
     }

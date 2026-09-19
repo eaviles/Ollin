@@ -69,7 +69,7 @@ final class PhoneBodyFigure: Sketch {
         let s = body.scaleFactor
         for (a, b) in PhoneBody.skeleton {
             guard let pa = body.worldPosition(a), let pb = body.worldPosition(b) else { continue }
-            let seen = body.isJointTracked(a) && body.isJointTracked(b)
+            let seen = body.isObserved(a) && body.isObserved(b)
             withState {
                 material(.clay)
                 fill(seen ? seenColor : filledColor)
@@ -99,7 +99,7 @@ final class PhoneBodyFigure: Sketch {
         guard let pose = body.worldTransform(ofJoint: joint) else { return }
         withState {
             material(.clay)
-            fill(body.isJointTracked(joint) ? seenColor : filledColor)
+            fill(body.isObserved(joint) ? seenColor : filledColor)
             transform(pose)
             piece()
         }

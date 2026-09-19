@@ -262,7 +262,7 @@ public final class Body3D {
     }
 
     /// How much speed survives a bounce off this body, `0` dead … `1` lively.
-    /// Defaults to the world's `bounce` unless `addBody` was given its own.
+    /// Defaults to the world's `restitution` unless `addBody` was given its own.
     public var restitution: Double {
         get { Double(cjolt_body_get_restitution(world.handle, id)) }
         set { cjolt_body_set_restitution(world.handle, id, Float(newValue)) }
@@ -322,12 +322,12 @@ public final class Body3D {
     }
 
     /// The touches involving this body that started or stopped during the last
-    /// `step`, out of the world's whole list.
+    /// `advance(by:)`, out of the world's whole list.
     public var contacts: [Contact3D] {
         world.contacts.filter { $0.involves(self) }
     }
 
-    /// What started touching this body during the last `step`: the arrivals.
+    /// What started touching this body during the last `advance(by:)`: the arrivals.
     /// For a sensor, what just came in.
     ///
     /// ```swift
@@ -337,14 +337,14 @@ public final class Body3D {
         world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
     }
 
-    /// What stopped touching this body during the last `step`: the departures.
+    /// What stopped touching this body during the last `advance(by:)`: the departures.
     /// For a sensor, what just left.
     public var departures: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
 
     /// Push the body's center of mass with a steady force (units/s² · mass),
-    /// accumulated for the next `step`. Use for thrust, wind, attraction.
+    /// accumulated for the next `advance(by:)`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector3) {
         withFloats3(world.meters(from: force)) {
             cjolt_body_add_force(world.handle, id, $0)

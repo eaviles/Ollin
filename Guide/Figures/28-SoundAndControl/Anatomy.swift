@@ -143,7 +143,7 @@ final class StageMic {
             tape[i] = Float(s)
         }
         sample += count
-        tape.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: count) }
+        tape.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: count) }
     }
 
     private func white(_ i: Int) -> Double {

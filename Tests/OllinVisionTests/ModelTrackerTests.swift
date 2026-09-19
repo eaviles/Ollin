@@ -68,7 +68,7 @@ import Ollin
     }
 
     @Test func emptyOutputReadsZero() {
-        let output = ModelOutput(labels: [], objects: [], map: nil, image: nil,
+        let output = ModelOutput(classifications: [], objects: [], map: nil, image: nil,
                                  classMask: nil, mapBytes: nil)
         let rect = Rectangle(x: 0, y: 0, width: 100, height: 100)
         #expect(output.value(at: Vector2(50, 50), in: rect) == 0)
@@ -210,7 +210,7 @@ import Ollin
         #expect(output.value(at: Vector2(-50, -50), in: rect) >= 0)
 
         // A depth model fills only the map surface.
-        #expect(output.labels.isEmpty)
+        #expect(output.classifications.isEmpty)
         #expect(output.objects.isEmpty)
 
         // The query surface and the published map are built from the same gray
@@ -266,7 +266,7 @@ import Ollin
         let bounds = person.bounds(in: rect)
         #expect(bounds.width > 0 && bounds.height > 0)
         // A detector fills only the objects surface.
-        #expect(output.labels.isEmpty)
+        #expect(output.classifications.isEmpty)
         #expect(output.map == nil)
     }
 
@@ -286,7 +286,7 @@ import Ollin
         }
         let tracker = ModelTracker(modelAt: Self.digitModelURL)
         let output = try await tracker.detect(in: pad)
-        let top = try #require(output.labels.first)
+        let top = try #require(output.classifications.first)
         #expect(top.label == "0")
         #expect(top.confidence > 0.9)
         #expect(output.objects.isEmpty)
@@ -371,7 +371,7 @@ import Ollin
         #expect(mismatched == 0)
 
         // A segmenter fills only the class-mask surface.
-        #expect(output.labels.isEmpty)
+        #expect(output.classifications.isEmpty)
         #expect(output.objects.isEmpty)
         #expect(output.map == nil)
     }

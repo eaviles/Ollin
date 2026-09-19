@@ -33,7 +33,7 @@ import Foundation
 public final class Wavetable: @unchecked Sendable {
 
     /// Samples in one cycle, at every frame and every level.
-    public static let length = 2048
+    public static let samplesPerCycle = 2048
 
     /// What the table is called, for a sketch that wants to say.
     public let name: String
@@ -47,7 +47,7 @@ public final class Wavetable: @unchecked Sendable {
 
     /// The highest harmonic a level keeps.
     static func harmonicLimit(atLevel level: Int) -> Int {
-        (length / 2) >> level
+        (samplesPerCycle / 2) >> level
     }
 
     /// Every level of every frame, flat: `[level][frame][sample]`. Kept as
@@ -70,7 +70,7 @@ public final class Wavetable: @unchecked Sendable {
     public init(name: String = "table", harmonics: [[Double]]) {
         let spectra = harmonics.map { frame -> Spectrum in
             var spectrum = Spectrum()
-            for (index, amplitude) in frame.prefix(Wavetable.length / 2 - 1).enumerated() {
+            for (index, amplitude) in frame.prefix(Wavetable.samplesPerCycle / 2 - 1).enumerated() {
                 // A sine partial: cosine part zero, sine part the amplitude.
                 spectrum.sine[index + 1] = amplitude
             }
@@ -110,7 +110,7 @@ public final class Wavetable: @unchecked Sendable {
         let count = max(1, frameCount)
         let cycles = (0..<count).map { frame -> [Double] in
             let along = count > 1 ? Double(frame) / Double(count - 1) : 0
-            return (0..<Wavetable.length).map { shape(Double($0) / Double(Wavetable.length), along) }
+            return (0..<Wavetable.samplesPerCycle).map { shape(Double($0) / Double(Wavetable.samplesPerCycle), along) }
         }
         self.init(name: name, frames: cycles)
     }
@@ -132,16 +132,16 @@ public final class Wavetable: @unchecked Sendable {
     /// The cycle a note at `position` reads: the blend of the two frames the
     /// position lands between, every harmonic in.
     public func cycle(at position: Double) -> [Double] {
-        (0..<Wavetable.length).map { index in
-            Double(sample(position: position, phase: Double(index) / Double(Wavetable.length), level: 0))
+        (0..<Wavetable.samplesPerCycle).map { index in
+            Double(sample(position: position, phase: Double(index) / Double(Wavetable.samplesPerCycle), level: 0))
         }
     }
 
     func frame(_ index: Int, level: Int) -> [Double] {
         let frame = min(max(0, index), frameCount - 1)
         let level = min(max(0, level), Wavetable.levelCount - 1)
-        let start = (level * frameCount + frame) * Wavetable.length
-        return samples[start ..< start + Wavetable.length].map(Double.init)
+        let start = (level * frameCount + frame) * Wavetable.samplesPerCycle
+        return samples[start ..< start + Wavetable.samplesPerCycle].map(Double.init)
     }
 
     /// The level a note should read when its harmonics may reach `limit`.
@@ -165,7 +165,7 @@ public final class Wavetable: @unchecked Sendable {
     /// (`0..<1` through the cycle) at `level`, blended both ways.
     @inline(__always)
     func sample(position: Double, phase: Double, level: Int) -> Float {
-        let count = Wavetable.length
+        let count = Wavetable.samplesPerCycle
         let span = Double(frameCount - 1)
         let along = min(max(0, position), 1) * span
         let lower = Int(along)
@@ -190,14 +190,14 @@ public final class Wavetable: @unchecked Sendable {
     /// One frame's harmonics: a cosine and a sine part per harmonic, the
     /// fundamental at index 1 and nothing at 0.
     struct Spectrum {
-        var cosine = [Double](repeating: 0, count: Wavetable.length / 2)
-        var sine = [Double](repeating: 0, count: Wavetable.length / 2)
+        var cosine = [Double](repeating: 0, count: Wavetable.samplesPerCycle / 2)
+        var sine = [Double](repeating: 0, count: Wavetable.samplesPerCycle / 2)
     }
 
     /// Every level of every frame from its spectrum, each frame scaled so the
     /// full level's loudest point is 1 and every level of it shares that scale.
     private static func build(_ spectra: [Spectrum]) -> [Float] {
-        let count = length
+        let count = samplesPerCycle
         let frames = spectra.count
         var out = [Float](repeating: 0, count: levelCount * frames * count)
         // One cycle of sine, read at (harmonic × sample) modulo the length,
@@ -245,9 +245,9 @@ public final class Wavetable: @unchecked Sendable {
     /// A drawn cycle brought to the table's length by reading between its
     /// samples.
     private static func resampled(_ cycle: [Double]) -> [Double] {
-        guard cycle.count >= 2 else { return [Double](repeating: cycle.first ?? 0, count: length) }
-        return (0..<length).map { index in
-            let along = Double(index) / Double(length) * Double(cycle.count)
+        guard cycle.count >= 2 else { return [Double](repeating: cycle.first ?? 0, count: samplesPerCycle) }
+        return (0..<samplesPerCycle).map { index in
+            let along = Double(index) / Double(samplesPerCycle) * Double(cycle.count)
             let lower = Int(along) % cycle.count
             let upper = (lower + 1) % cycle.count
             let fraction = along - Double(Int(along))
@@ -258,7 +258,7 @@ public final class Wavetable: @unchecked Sendable {
     /// The harmonics of a cycle: a plain discrete Fourier transform through
     /// the same sine table the build reads, so the two agree exactly.
     private static func analyze(_ cycle: [Double]) -> Spectrum {
-        let count = length
+        let count = samplesPerCycle
         let table = (0..<count).map { sin(2 * Double.pi * Double($0) / Double(count)) }
         let quarter = count / 4
         var spectrum = Spectrum()
@@ -281,7 +281,7 @@ public final class Wavetable: @unchecked Sendable {
     /// The four plain shapes in a row: sine, triangle, sawtooth, square. The
     /// position walks from the purest to the brightest.
     public static let basic: Wavetable = {
-        let top = length / 2 - 1
+        let top = samplesPerCycle / 2 - 1
         let sine = [1.0]
         // Spelled out step by step: one ternary of mixed literals is enough for a
         // type checker to give up on within the build's time limit.
@@ -305,7 +305,7 @@ public final class Wavetable: @unchecked Sendable {
     /// A pulse narrowing across the table, from a square at the start to a
     /// thin spike at the end: the classic width sweep, as frames.
     public static let pulse: Wavetable = {
-        let top = length / 2 - 1
+        let top = samplesPerCycle / 2 - 1
         let widths = [0.5, 0.35, 0.22, 0.12, 0.05]
         let frames = widths.map { width in
             (1...top).map { h in 2 / (Double.pi * Double(h)) * sin(Double.pi * Double(h) * width) }

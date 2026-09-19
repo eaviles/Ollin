@@ -77,7 +77,7 @@ import Ollin
         // The deterministic drive: the same analyze path, awaited inline. A
         // loaded machine makes this slower, never absent.
         await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
-        let labels = classifier.labels
+        let labels = classifier.classifications
         #expect(!labels.isEmpty)
 
         // The read surfaces agree with each other.

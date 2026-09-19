@@ -87,13 +87,13 @@ import Testing
         }
         let table = Wavetable(name: "drawn", frames: [drawn])
         let back = table.frame(0)
-        #expect(back.count == Wavetable.length)
+        #expect(back.count == Wavetable.samplesPerCycle)
         // The same shape at the table's own length, up to the peak scaling.
         let peak = drawn.map(abs).max()!
         var worst = 0.0
         for i in 0..<count {
             let expected = drawn[i] / peak
-            let got = back[i * Wavetable.length / count]
+            let got = back[i * Wavetable.samplesPerCycle / count]
             worst = max(worst, abs(expected - got))
         }
         #expect(worst < 1e-3, "the drawn cycle came back off by \(worst)")
@@ -120,8 +120,8 @@ import Testing
         #expect(abs(harmonic(square, 3) / harmonic(square, 1) - 1.0 / 3) < 1e-3)
         // The blend the sketch draws is the blend the note reads.
         let midway = Wavetable.basic.cycle(at: 1.0 / 6)
-        #expect(midway.count == Wavetable.length)
-        #expect(abs(midway[Wavetable.length / 4] - 0.5 * (sine[Wavetable.length / 4] + Wavetable.basic.frame(1)[Wavetable.length / 4])) < 1e-6)
+        #expect(midway.count == Wavetable.samplesPerCycle)
+        #expect(abs(midway[Wavetable.samplesPerCycle / 4] - 0.5 * (sine[Wavetable.samplesPerCycle / 4] + Wavetable.basic.frame(1)[Wavetable.samplesPerCycle / 4])) < 1e-6)
     }
 
     // MARK: Staying clean at the top
@@ -152,8 +152,8 @@ import Testing
         var phase = 0.0
         var naive = [Double]()
         for _ in 0 ..< Int(Self.rate) {
-            let at = phase * Double(Wavetable.length)
-            let i = Int(at) & (Wavetable.length - 1)
+            let at = phase * Double(Wavetable.samplesPerCycle)
+            let i = Int(at) & (Wavetable.samplesPerCycle - 1)
             naive.append(full[i])
             phase -= floor(phase)
             phase += increment
@@ -176,7 +176,7 @@ import Testing
         // 5 kHz fits four harmonics under 22.05 kHz.
         let level = Wavetable.level(forIncrement: 5000 / Self.rate)
         #expect(Wavetable.harmonicLimit(atLevel: level) == 4)
-        #expect(Wavetable.basic.frame(2, harmonicsUpTo: 4).count == Wavetable.length)
+        #expect(Wavetable.basic.frame(2, harmonicsUpTo: 4).count == Wavetable.samplesPerCycle)
     }
 
     // MARK: The scan moving

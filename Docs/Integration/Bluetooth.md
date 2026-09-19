@@ -84,7 +84,7 @@ A `BluetoothPeripheral` carries `id`, `name`, `signal` (in dBm, where closer to 
 You then name a device in one of three ways, or pass in one that a scan already found:
 
 ```swift
-BluetoothDevice(named: "strap")        // any device whose advertised name contains this
+BluetoothDevice(matching: "strap")        // any device whose advertised name contains this
 BluetoothDevice(service: .heartRate)   // the first device offering a service, whatever it is called
 BluetoothDevice(id: savedIdentifier)   // one exact device
 BluetoothDevice(peripheral)            // one a scan already found
@@ -121,7 +121,7 @@ device.number(.heartRateMeasurement)            // Double?
 device.number(.heartRateMeasurement, default: 60)
 device.int(.batteryLevel)                       // Int?
 device.text(.manufacturerName)                  // String?
-device.bool(myButton)                           // Bool?, the reading's own isOn
+device.bool(myButton)                           // Bool?, the reading's own bool
 device.bytes(myOwnValue)                        // [UInt8]?
 device.data(myOwnValue)                         // Data?
 device.latest(.temperature)                     // BluetoothReading?
@@ -176,7 +176,7 @@ The standard's own services and values already have names, and each value carrie
 
 `.uart` is the de facto serial line over Bluetooth, and the one most maker boards speak. Read `.uartIn` as text, and write to `.uartOut`. With it, a wireless board reads almost exactly like [a wired one](./Serial.md).
 
-Anything not in the catalog arrives as raw bytes under its own number, and `device.characteristics` lists what the connected device offers.
+Anything not in the catalog arrives as raw bytes under its own number, and `device.characteristics` lists what the connected device offers. `BluetoothCharacteristic.known(for:)` is the lookup behind that list. It answers with the catalog's entry when there is one, and with a plain, formatless characteristic under the same identifier when there is not.
 
 <a name="binding"></a>
 

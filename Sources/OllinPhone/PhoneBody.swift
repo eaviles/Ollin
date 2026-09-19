@@ -72,7 +72,7 @@ public struct PhoneBody: Sendable {
 
     /// Whether the camera actually observed a joint this frame. ARKit's rig fills
     /// unseen joints in from their neighbors; those report `false`.
-    public func isJointTracked(_ joint: PhoneJoint) -> Bool { joints[joint]?.isTracked ?? false }
+    public func isObserved(_ joint: PhoneJoint) -> Bool { joints[joint]?.isTracked ?? false }
 
     /// One joint's full model-space pose (orientation and position composed into a
     /// 4x4), or `nil` if it wasn't reported. Hand it to `transform(_:)` inside

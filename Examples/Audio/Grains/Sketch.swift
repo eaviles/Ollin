@@ -28,7 +28,7 @@ final class GrainsSketch: Sketch {
     @Param(0 ... 0.5, icon: "arrow.left.and.right", group: "Cloud") var jitter = 0.01
     @Param(0 ... 12, icon: "tuningfork", group: "Cloud") var pitchSpread = 0.0
     @Param(0 ... 1, icon: "speaker.wave.2", group: "Cloud") var panSpread = 0.7
-    @Param(0 ... 1, icon: "dice", group: "Cloud") var scatter = 1.0
+    @Param(0 ... 1, icon: "dice", group: "Cloud") var timingJitter = 1.0
 
     let synth = Synth(polyphony: 8)
     /// The sound itself, made here rather than loaded so the sketch stands
@@ -59,7 +59,7 @@ final class GrainsSketch: Sketch {
     }
 
     private var recipe: String {
-        "\(size)-\(density)-\(cut)-\(speed)-\(jitter)-\(pitchSpread)-\(panSpread)-\(scatter)"
+        "\(size)-\(density)-\(cut)-\(speed)-\(jitter)-\(pitchSpread)-\(panSpread)-\(timingJitter)"
     }
 
     /// The whole feature in two lines: which sound, and how it is cut up.
@@ -71,7 +71,7 @@ final class GrainsSketch: Sketch {
             granular: GrainCloud(size: size, density: density, position: readPosition,
                                  positionJitter: jitter, speed: speed,
                                  pitchSpread: pitchSpread, panSpread: panSpread,
-                                 scatter: scatter, shape: shape),
+                                 timingJitter: timingJitter, shape: shape),
             envelope: .sustained, gain: 0.8)
         built = recipe
     }

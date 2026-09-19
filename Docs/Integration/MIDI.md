@@ -337,7 +337,7 @@ override func draw() {
 
 ```swift
 let cueIn = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 0, frameRate: .fps25)
-let cueOut = cueIn.advanced(by: 50)                  // two seconds later at 25
+let cueOut = cueIn.advanced(byFrames: 50)                  // two seconds later at 25
 
 if let now = timecode.timecode, (cueIn..<cueOut).contains(now) { drawTitle() }
 cues.sorted()                                        // in the order they play

@@ -397,7 +397,7 @@ A [`Voice`](#voice) is a fixed chain. Something makes a wave, an envelope shapes
 
 ```swift
 let bell = Patch.tone(.sine)
-    .modulated(by: .tone(.sine, ratio: 3.5), index: 4)
+    .modulated(by: .tone(.sine, ratio: 3.5), amount: 4)
 
 synth.voice = Voice(patch: bell, envelope: .percussive)
 ```
@@ -413,7 +413,7 @@ An operator's `level` means one of two things, depending on where it sits. On an
 | Building | What it does |
 |---|---|
 | `.tone(_:ratio:level:)` | one oscillator, sounding on its own |
-| `.modulated(by:index:)` | the other patch is no longer heard on its own, and shapes this one instead |
+| `.modulated(by:amount:)` | the other patch is no longer heard on its own, and shapes this one instead |
 | `.mixed(with:)` | both sounding at once, added together |
 | `.fedBack(_:)` | its output operators pushing themselves |
 | `.level(_:)` / `.ratio(_:)` | balancing one against another |
@@ -565,6 +565,7 @@ Three tables are built in, and a table is easy to make:
 | `Wavetable(harmonics:)` | each frame as amplitudes per harmonic, the fundamental first |
 | `Wavetable(frames:)` | each frame as a cycle you drew, any length |
 | `Wavetable(frameCount:_:)` | each frame from a rule, `(phase, frame) -> value` |
+| `Wavetable.samplesPerCycle` | how many samples one cycle holds, the length a drawn frame is resampled to |
 
 ```swift
 let bend = Wavetable(name: "bend", frameCount: 8) { phase, frame in
@@ -611,7 +612,7 @@ You set the sound on the `Synth`, and the voice says how to cut it up. That is t
 | `speed` | how fast the position travels, as a multiple of the sound's own speed, `-4...4`. 0 holds it still; negative runs backward |
 | `pitchSpread` | how far each grain's pitch strays from the note, in semitones either way, `0...24` |
 | `panSpread` | how far each grain is thrown to one side, `0...1` |
-| `scatter` | how irregularly they start, `0...1`. At 0 they are on a strict clock, at 1 the gap is random with the same average |
+| `timingJitter` | how irregularly they start, `0...1`. At 0 they are on a strict clock, at 1 the gap is random with the same average |
 | `shape` | the envelope one grain wears, a `GrainShape` |
 | `seed` | which scatter this is. The same seed is the same cloud |
 | `.frozen(at:size:density:)` | a cloud held at one place, which is what this is here for |
@@ -650,7 +651,7 @@ At these lengths the envelope is most of the character. The same sound through a
 
 - **The sound loops.** A cloud travelling past the end comes round to the start, so position 1 is position 0 and a note does not go quiet part way through.
 - **Loudness rises with the square root of the density.** Grains land on each other at random, so what adds is power rather than amplitude: four times as many is twice as loud.
-- **A strict clock is a pitch.** With `scatter` at 0 the grains arrive on a clock, and a frozen cloud repeats the same piece of sound at that rate. The output is then periodic at `density` hertz, whatever the sound was. That is a real instrument rather than a fault, and turning `scatter` up is how you stop hearing it.
+- **A strict clock is a pitch.** With `timingJitter` at 0 the grains arrive on a clock, and a frozen cloud repeats the same piece of sound at that rate. The output is then periodic at `density` hertz, whatever the sound was. That is a real instrument rather than a fault, and turning `timingJitter` up is how you stop hearing it.
 - **A cloud drops grains rather than waiting for room.** A note may have 48 sounding at once. Past that a new one is dropped, the same bargain everything on the audio thread makes. A cloud dense enough to reach it is already a texture, and one missing grain in it cannot be heard.
 - **`detune` runs two streams rather than two copies.** Every other grain takes the offset, so two interleaved streams a fraction apart beat against each other the way two oscillators do.
 - **A cloud is read when the note starts.** Changing the settings takes the next note, the way every other voice works. What does move a sounding note is `grainScrub`, which is read every sample.
@@ -668,7 +669,7 @@ override func draw() {
     guard let eye = activeCamera else { return }
 
     synth.place(at: Vector3(2, 0, -3), heardFrom: eye)
-    synth.hearingRange = 1...20
+    synth.hearingDistance = 1...20
 }
 ```
 
@@ -682,7 +683,7 @@ Placing survives an [export](#sound-in-an-export). The moves are written down as
 |---|---|
 | `place(at:heardFrom:)` | where the sound is, and where it is heard from |
 | `position` | where it is, or nil if it has not been placed |
-| `hearingRange` | the distance over which it fades, in scene units |
+| `hearingDistance` | the distance over which it fades, in scene units |
 | `unplace()` | back to being heard from everywhere at once |
 
 **The first call rebuilds the instrument's audio chain**, so make it before the first note if you can. Placing a sound is a different shape of graph rather than a setting on one. One stream has to arrive at something that knows where the ears are, and leave it as two. Once placed, an instrument stays placed.
@@ -873,7 +874,7 @@ Equalizer(lowGain: -6, highGain: 3)         // thinner and brighter
 Equalizer.lowCut(below: 300)                // when a sound is muddy
 ```
 
-There are three controls. Two of them are the bottom and the top, `lowGain` below `lowEdge` and `highGain` above `highEdge`, both edges in Hz. The third goes wherever the problem is: `midGain` at `midFrequency`, with `midWidth` deciding how narrow that band is, around 1 for a broad tilt and past 5 for a notch aimed at one thing. Gains are in decibels, so zero leaves the sound untouched. A few decibels is a much bigger change than it looks on the page. The presets are `.warm`, `.bright`, and `.scooped`.
+There are three controls. Two of them are the bottom and the top, `lowGain` below `lowFrequency` and `highGain` above `highFrequency`, both edges in Hz. The third goes wherever the problem is: `midGain` at `midFrequency`, with `midWidth` deciding how narrow that band is, around 1 for a broad tilt and past 5 for a notch aimed at one thing. Gains are in decibels, so zero leaves the sound untouched. A few decibels is a much bigger change than it looks on the page. The presets are `.warm`, `.bright`, and `.scooped`.
 
 #### Distortion
 
@@ -906,7 +907,7 @@ Turn any setting while the sound plays and the motion carries on from where it w
 #### The three that hold a level
 
 ```swift
-synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeup: 6))]
+synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeupGain: 6))]
 synth.effects = [.gate(Gate(threshold: -40, hold: 0.08)), .limiter(Limiter())]
 ```
 
@@ -914,7 +915,7 @@ Where the four above move the sound, these three watch how loud it is and act on
 
 | Level | What it does | Settings |
 |---|---|---|
-| `Compressor` | above `threshold`, lets the sound through at a fraction of what it does: a `ratio` of 4 means four decibels over arrive as one. What that buys is a narrower sound rather than a quieter one, so `makeup` brings the whole thing back up with the loud parts still held. `knee` is how wide the bend at the threshold is, and a wide one starts working before the threshold, which is what makes a compressor hard to hear working | `threshold`, `ratio`, `attack`, `release`, `knee`, `makeup` |
+| `Compressor` | above `threshold`, lets the sound through at a fraction of what it does: a `ratio` of 4 means four decibels over arrive as one. What that buys is a narrower sound rather than a quieter one, so `makeupGain` brings the whole thing back up with the loud parts still held. `knee` is how wide the bend at the threshold is, and a wide one starts working before the threshold, which is what makes a compressor hard to hear working | `threshold`, `ratio`, `attack`, `release`, `knee`, `makeupGain` |
 | `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It turns the level down the instant a peak asks for it, so a single loud note ducks the sound around it for a `release` rather than tearing. The last thing in a chain | `ceiling`, `release` |
 | `Gate` | below `threshold`, turns the sound down by `depth`, which takes hiss, hum, and room out of the gaps. `hold` is how long it stays open after the level drops, which is what keeps a decaying note from being chopped off | `threshold`, `attack`, `hold`, `release`, `depth` |
 

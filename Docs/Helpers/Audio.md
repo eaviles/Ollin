@@ -6,7 +6,7 @@
 
 This library lets a sketch react to sound, and it can also produce a small sound of its own. Audio lives in a separate library so the drawing core stays free of `AVFoundation`. Add `import OllinAudio` beside `import Ollin` to use it.
 
-There are two sides, **analysis** and **generation**. Analysis turns a stream of audio into a few values you read in `draw()`. The stream can be the microphone, a file, or a generated tone. The values are an overall `amplitude`, a frequency `spectrum`, the band queries `bass`/`mid`/`treble`, beats, and the note being sung or played (`pitch`, `note`, `chroma`). Generation is a small oscillator, `Tone`, for audible feedback and self-contained demos. Both sides are a convenience layer over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
+There are two sides, **analysis** and **generation**. Analysis turns a stream of audio into a few values you read in `draw()`. The stream can be the microphone, a file, or a generated tone. The values are an overall `amplitude`, a frequency `spectrum`, the band queries `bass`/`mid`/`treble`, beats, and the note being sung or played (`pitch`, `nearestPitch`, `chroma`). Generation is a small oscillator, `Tone`, for audible feedback and self-contained demos. Both sides are a convenience layer over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
 
 The usual pattern is to create a source in `setup()`, keep it in a property, and read its values in `draw()`.
 
@@ -36,7 +36,7 @@ final class Pulse: Sketch {
 - [Soundtrack](#soundtrack) - analyze the sound of a tappable source (a playing video)
 - [Reading audio](#reading-audio) - `amplitude`, `spectrum`, `waveform`, and band queries
 - [bands & beats](#bands-and-beats) - the ready-to-draw spectrum, and onset detection
-- [Pitch and pitch classes](#pitch) - the note heard (`pitch`, `note`) and the twelve classes (`chroma`)
+- [Pitch and pitch classes](#pitch) - the note heard (`pitch`, `nearestPitch`) and the twelve classes (`chroma`)
 - [AudioAnalyzer](#audioanalyzer) - the typed DSP core every source feeds
 
 <a name="audioinput"></a>
@@ -220,15 +220,15 @@ The whole beat surface runs on the *sample clock*, so positions are counted in s
 
 ```swift
 var pitch: DetectedPitch?      // the note heard, or nil when there is none
-var note: Pitch?               // its nearest note, the short form of pitch?.note
+var nearestPitch: Pitch?      // its nearest note, the short form of pitch?.nearestPitch
 var chroma: [Float]            // twelve pitch classes, C first, each 0...1, octaves folded
 ```
 
-**`pitch`** follows the note being sung or played. It is nil when the window is silent or nothing in it repeats: noise, a room, a chord with no common period. That is why it reads with `if let`. When a note is heard, the `DetectedPitch` carries five values. `frequency` is the fundamental in Hz. `confidence` runs from 0 to 1: a pure tone reads 1, a sung or bowed note above 0.9, and noise never reaches 0.5, which is where reporting stops. `note` is the nearest equal-tempered note, with A4 at 440 Hz. `cents` is the offset from that note, `-50...50`. `midi` is `note.midi + cents / 100`. Map that onto a position, since equal steps of it are equal steps of pitch. The detector is YIN, the 2002 method of de Cheveigné and Kawahara. It finds the shortest delay after which the waveform repeats. A note with harmonics therefore reads at its fundamental even when the fundamental is the quiet part, or missing. It follows one note at a time, from about 40 Hz to 5 kHz. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed: a held note holds steady on its own, and a sketch that wants a slow needle eases toward `midi` itself.
+**`pitch`** follows the note being sung or played. It is nil when the window is silent or nothing in it repeats: noise, a room, a chord with no common period. That is why it reads with `if let`. When a note is heard, the `DetectedPitch` carries five values. `frequency` is the fundamental in Hz. `confidence` runs from 0 to 1: a pure tone reads 1, a sung or bowed note above 0.9, and noise never reaches 0.5, which is where reporting stops. `nearestPitch` is the nearest equal-tempered note, with A4 at 440 Hz. `cents` is the offset from that note, `-50...50`. `midi` is `nearestPitch.midi + cents / 100`. Map that onto a position, since equal steps of it are equal steps of pitch. The detector is YIN, the 2002 method of de Cheveigné and Kawahara. It finds the shortest delay after which the waveform repeats. A note with harmonics therefore reads at its fundamental even when the fundamental is the quiet part, or missing. It follows one note at a time, from about 40 Hz to 5 kHz. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed: a held note holds steady on its own, and a sketch that wants a slow needle eases toward `midi` itself.
 
 ```swift
 if let heard = mic.pitch {
-    drawText("\(heard.note)", width / 2, 80 * scale)         // "A4"
+    drawText("\(heard.nearestPitch)", width / 2, 80 * scale)         // "A4"
     let y = map(heard.midi, 48, 84, height, 0)               // pitch as a height
     drawCircle(width / 2, y, 30 * scale)
 }
@@ -258,7 +258,7 @@ The pitch side costs about a million multiplications a window. The analyzer ther
 
 ```swift
 let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: 48000)
-analyzer.process(samples: ptr, count: n)    // or process(_ buffer: AVAudioPCMBuffer)
+analyzer.analyze(samples: ptr, count: n)    // or analyze(_ buffer: AVAudioPCMBuffer)
 ```
 
 Samples arrive on the audio thread while a sketch reads on the main thread. The analyzer is internally locked, so the reads are safe from anywhere.

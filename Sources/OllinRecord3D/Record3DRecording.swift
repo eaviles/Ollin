@@ -110,6 +110,12 @@ public final class Record3DRecording {
 
     /// Open the recording at `url`.
     public convenience init(url: URL) throws {
+        // The same missing file reaches the caller as `fileNotFound` whichever
+        // initializer it came through, rather than as this one's framework
+        // error and the path one's own.
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw Record3DError.fileNotFound(url.path)
+        }
         try self.init(data: try Data(contentsOf: url))
     }
 

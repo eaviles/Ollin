@@ -4,9 +4,9 @@ enum ScreenSource: Equatable, Sendable
   case app(String)
   case display(CoreGraphics.CGDirectDisplayID)
   case mainDisplay
-  case window(title: String, app: String?)
+  case window(matching: String, app: String?)
   case windowID(CoreGraphics.CGWindowID)
-  static func window(title: String) -> ScreenSource
+  static func window(matching: String) -> ScreenSource
   var label: String { get }
 final class ScreenCapture: FrameSource, VideoFeed, Sendable
   @discardableResult nonisolated static func requestAccess() -> Bool

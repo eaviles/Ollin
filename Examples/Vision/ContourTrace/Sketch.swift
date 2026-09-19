@@ -60,7 +60,7 @@ final class ContourTrace: Sketch {
         player.isMuted = true
         player.play()
         feed = player
-        contours = ContourDetector(player, detectsDarkOnLight: false, contrastAdjustment: 3)
+        contours = ContourDetector(player, detectsDarkOnLight: false, contrastFactor: 3)
     }
 
     /// A readable file path passed on launch, if any; it swaps the camera for a

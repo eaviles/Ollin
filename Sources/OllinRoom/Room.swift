@@ -117,12 +117,12 @@ public final class Room: SketchExtension {
     /// The most likely one on a Mac is permission: the first time a sketch opens
     /// a room the system asks to use the local network, and a sketch run from a
     /// terminal inherits the terminal's answer.
-    public var problem: String? { session.problem }
+    public var lastError: String? { session.problem }
 
     // MARK: Who is here
 
     /// The name this machine goes by.
-    public var name: String { session.peerName }
+    public var peerName: String { session.peerName }
 
     /// The other machines in the room, by name, in the order every machine agrees
     /// on.
@@ -356,7 +356,7 @@ public final class Room: SketchExtension {
             guard lastShared[name] != stored else { continue }
             let turnedAt = session.time
             lastShared[name] = stored
-            lastTurn[name] = (turnedAt, self.name)
+            lastTurn[name] = (turnedAt, self.peerName)
             session.send(parameter: name, stored, turnedAt: turnedAt)
         }
     }

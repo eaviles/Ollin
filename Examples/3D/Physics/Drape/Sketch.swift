@@ -100,7 +100,7 @@ final class Drape: Sketch {
     }
 
     override func mouseReleased() {
-        if let grip { releaseSoftGrab(grip) }
+        if let grip { releaseSoftGrip(grip) }
         grip = nil
     }
 
@@ -125,7 +125,7 @@ final class Drape: Sketch {
         // them being live: the ball deflates under your hand.
         ball?.pressure = air
         blow()
-        if let grip { dragSoftGrab(grip, to: mouse) }
+        if let grip { dragSoftGrip(grip, to: mouse) }
         world.advance(by: deltaTime)
 
         drawStage()

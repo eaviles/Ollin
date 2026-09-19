@@ -17,7 +17,7 @@ import OllinPhysics
 /// compressed, coral where stretched, so the wind load is visible traveling
 /// through the weave.
 ///
-/// `World.pixelsPerMeter` rides a parameter. It maps sketch points onto the rigid
+/// `World.unitsPerMeter` rides a parameter. It maps sketch points onto the rigid
 /// solver's meters, so raising it makes every collider smaller in meters and
 /// therefore lighter, and the same wind and kick numbers toss the shapes much
 /// harder; the scene rebuilds when it changes, because the walls and masses
@@ -25,7 +25,7 @@ import OllinPhysics
 /// points, so the cloth ignores the parameter entirely.
 @main
 final class Forces: Sketch {
-    @Param(25 ... 400, icon: "ruler", group: "World") var pixelsPerMeter = 100.0
+    @Param(25 ... 400, icon: "ruler", group: "World") var unitsPerMeter = 100.0
     @Param(0 ... 2, icon: "wind", group: "Wind") var windStrength = 1.0
 
     let world = World()
@@ -72,7 +72,7 @@ final class Forces: Sketch {
     override func setup() {
         world.gravity = Vector2(0, 700)    // light enough for the wind to matter
         world.restitution = 0.25
-        world.pixelsPerMeter = pixelsPerMeter
+        world.unitsPerMeter = unitsPerMeter
         world.bounds = bounds
         build()
         noStroke()
@@ -214,10 +214,10 @@ final class Forces: Sketch {
     }
 
     /// Rebuild everything under the current parameter values. Reassigning `bounds`
-    /// rebuilds the walls, which are also sized through `pixelsPerMeter`.
+    /// rebuilds the walls, which are also sized through `unitsPerMeter`.
     func reset() {
         world.removeAll()
-        world.pixelsPerMeter = pixelsPerMeter
+        world.unitsPerMeter = unitsPerMeter
         world.bounds = bounds
         paddle = nil
         sweeper = nil
@@ -229,7 +229,7 @@ final class Forces: Sketch {
 
         // The parameter remaps points onto the solver's meters; every wall and mass
         // is sized through the mapping, so a change rebuilds the scene.
-        if world.pixelsPerMeter != pixelsPerMeter { reset() }
+        if world.unitsPerMeter != unitsPerMeter { reset() }
 
         // The wind: a steady per-frame force on every dynamic body, and on
         // every cloth particle (whose masses are 1, so the force is smaller).
@@ -321,10 +321,10 @@ final class Forces: Sketch {
             textAlign(.center)
             noStroke()
 
-            // The parameter caption: what pixelsPerMeter changes.
+            // The parameter caption: what unitsPerMeter changes.
             textSize(width * 0.0165)
             fill(Color(white: 0.7))
-            drawText("pixelsPerMeter \(Int(world.pixelsPerMeter.rounded())): raise it and the shapes read lighter, so the same wind carries them further",
+            drawText("unitsPerMeter \(Int(world.unitsPerMeter.rounded())): raise it and the shapes read lighter, so the same wind carries them further",
                      at: Vector2(width / 2, height * 0.045))
 
             // Station labels.

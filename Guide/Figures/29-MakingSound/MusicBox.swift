@@ -38,7 +38,7 @@ final class MusicBox: Sketch {
         // The bell is patched rather than picked: one sine bent by another at a
         // ratio that is nowhere near a whole number, which is what makes metal.
         bell.voice = Voice(patch: Patch.tone(.sine)
-                                .modulated(by: .tone(.sine, ratio: 3.47), index: 4.2),
+                                .modulated(by: .tone(.sine, ratio: 3.47), amount: 4.2),
                            envelope: .percussive)
         string.gain = 0.5
         bell.gain = 0.3

@@ -83,8 +83,8 @@ final class TugOfWords: Sketch {
 
         // Shares over the two phrases (they sum to 1 once both encodings have
         // landed); ease the knot toward the left phrase's share.
-        let leftShare = ideas.confidence(of: left)
-        let rightShare = ideas.confidence(of: right)
+        let leftShare = ideas.share(of: left)
+        let rightShare = ideas.share(of: right)
         let scored = leftShare + rightShare > 0
         if scored {
             let target = leftShare / (leftShare + rightShare)

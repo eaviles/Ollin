@@ -215,10 +215,10 @@ public enum Effect: Sendable, Hashable, Codable {
 /// Gains are in decibels, so zero is untouched, positive lifts and negative
 /// cuts. A few decibels is a great deal more than it sounds like written down.
 public struct Equalizer: Sendable, Hashable, Codable {
-    /// How much to lift or cut everything below `lowEdge`, in decibels.
+    /// How much to lift or cut everything below `lowFrequency`, in decibels.
     public var lowGain: Double
     /// Where the bottom shelf turns over, in Hz.
-    public var lowEdge: Double
+    public var lowFrequency: Double
     /// How much to lift or cut around `midFrequency`, in decibels.
     public var midGain: Double
     /// Where the middle band sits, in Hz.
@@ -226,36 +226,36 @@ public struct Equalizer: Sendable, Hashable, Codable {
     /// How narrow that middle band is. Higher is narrower: around 1 is a broad
     /// tilt and past 5 is a notch aimed at one thing.
     public var midWidth: Double
-    /// How much to lift or cut everything above `highEdge`, in decibels.
+    /// How much to lift or cut everything above `highFrequency`, in decibels.
     public var highGain: Double
     /// Where the top shelf turns over, in Hz.
-    public var highEdge: Double
+    public var highFrequency: Double
 
     public init(
-        lowGain: Double = 0, lowEdge: Double = 200,
+        lowGain: Double = 0, lowFrequency: Double = 200,
         midGain: Double = 0, midFrequency: Double = 1000, midWidth: Double = 1,
-        highGain: Double = 0, highEdge: Double = 4000
+        highGain: Double = 0, highFrequency: Double = 4000
     ) {
         self.lowGain = min(max(-24, lowGain), 24)
-        self.lowEdge = min(max(20, lowEdge), 20000)
+        self.lowFrequency = min(max(20, lowFrequency), 20000)
         self.midGain = min(max(-24, midGain), 24)
         self.midFrequency = min(max(20, midFrequency), 20000)
         self.midWidth = min(max(0.05, midWidth), 20)
         self.highGain = min(max(-24, highGain), 24)
-        self.highEdge = min(max(20, highEdge), 20000)
+        self.highFrequency = min(max(20, highFrequency), 20000)
     }
 
     /// Everything under the edge, and nothing else. The one to reach for when
     /// a sound is muddy rather than wrong.
     public static func lowCut(below edge: Double, by decibels: Double = -12) -> Equalizer {
-        Equalizer(lowGain: decibels, lowEdge: edge)
+        Equalizer(lowGain: decibels, lowFrequency: edge)
     }
 
     /// Warm: a lift at the bottom and a little off the top.
-    public static let warm = Equalizer(lowGain: 4, lowEdge: 250, highGain: -3, highEdge: 5000)
+    public static let warm = Equalizer(lowGain: 4, lowFrequency: 250, highGain: -3, highFrequency: 5000)
 
     /// The opposite: thinner and more present.
-    public static let bright = Equalizer(lowGain: -5, lowEdge: 300, highGain: 5, highEdge: 3500)
+    public static let bright = Equalizer(lowGain: -5, lowFrequency: 300, highGain: 5, highFrequency: 3500)
 
     /// A hole in the middle, which is how a sound makes room for another.
     public static let scooped = Equalizer(midGain: -9, midFrequency: 900, midWidth: 1.2)
@@ -263,7 +263,7 @@ public struct Equalizer: Sendable, Hashable, Codable {
     func apply(to unit: AVAudioUnitEQ) {
         guard unit.bands.count >= 3 else { return }
         unit.bands[0].filterType = .lowShelf
-        unit.bands[0].frequency = Float(lowEdge)
+        unit.bands[0].frequency = Float(lowFrequency)
         unit.bands[0].gain = Float(lowGain)
         unit.bands[0].bypass = lowGain == 0
 
@@ -274,7 +274,7 @@ public struct Equalizer: Sendable, Hashable, Codable {
         unit.bands[1].bypass = midGain == 0
 
         unit.bands[2].filterType = .highShelf
-        unit.bands[2].frequency = Float(highEdge)
+        unit.bands[2].frequency = Float(highFrequency)
         unit.bands[2].gain = Float(highGain)
         unit.bands[2].bypass = highGain == 0
 

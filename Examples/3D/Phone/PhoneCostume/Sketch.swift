@@ -125,7 +125,7 @@ final class PhoneCostume: Sketch {
             material(.plastic)
             for (i, joint) in trailJoints.enumerated() {
                 guard let trail = trails[joint], trail.count > 2 else { continue }
-                let dim = body.isJointTracked(joint) ? 1.0 : 0.35
+                let dim = body.isObserved(joint) ? 1.0 : 0.35
                 fill(palette[i % palette.count].withAlpha(dim))
                 drawTube(trail, radius: 0.013 * s, sides: 6)
             }
@@ -155,7 +155,7 @@ final class PhoneCostume: Sketch {
                 reference = reference.normalized
                 let side = axis.cross(reference)
 
-                let dim = body.isJointTracked(bone.0) ? 1.0 : 0.35
+                let dim = body.isObserved(bone.0) ? 1.0 : 0.35
                 let feathers = 8
                 for k in 0..<feathers {
                     let t = (Double(k) + 0.5) / Double(feathers)

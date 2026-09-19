@@ -51,9 +51,9 @@ import Testing
         let takes: [(String, Patch, Envelope)] = [
             ("one sine, nothing pushing it", .tone(.sine), .organ),
             ("pushed at the same frequency, gently", Patch.tone(.sine)
-                .modulated(by: .tone(.sine, ratio: 1), index: 1), .organ),
+                .modulated(by: .tone(.sine, ratio: 1), amount: 1), .organ),
             ("pushed harder, same patch", Patch.tone(.sine)
-                .modulated(by: .tone(.sine, ratio: 1), index: 5), .organ),
+                .modulated(by: .tone(.sine, ratio: 1), amount: 5), .organ),
             ("pushed an octave up: brass", .brass, .standard),
             ("pushed at three and a half: a bell", .bell, .percussive),
             ("pushed at five and a bit, so it drifts", .glass, .swell),
@@ -61,7 +61,7 @@ import Testing
             ("a body and a strike, heard together", .struck, .percussive),
             ("three deep: pushed by something itself pushed", Patch.tone(.sine)
                 .modulated(by: Patch.tone(.sine, ratio: 2)
-                    .modulated(by: .tone(.sine, ratio: 7), index: 2), index: 3), .percussive),
+                    .modulated(by: .tone(.sine, ratio: 7), amount: 2), amount: 3), .percussive),
         ]
 
         for (name, patch, envelope) in takes {

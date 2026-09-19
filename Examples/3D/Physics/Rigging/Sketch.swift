@@ -45,13 +45,13 @@ final class Rigging: Sketch {
         // reads as rope rather than as a dowel.
         rope = world.addRope(through: hangingLine(56, spacing: 0.09),
                              at: Vector3(-1.25, Rigging.beamHeight, 0),
-                             thickness: 0.035, mass: 1.6,
+                             radius: 0.035, mass: 1.6,
                              bend: 0.02, damping: 0.25, friction: 0.7,
                              pinned: { $0.y > -0.001 })
 
         chain = world.addRope(through: hangingLine(20, spacing: 0.15),
                               at: Vector3(0, Rigging.beamHeight, 0),
-                              thickness: 0.05, mass: 4,
+                              radius: 0.05, mass: 4,
                               bend: 0.06, damping: 0.2, friction: 0.6,
                               pinned: { $0.y > -0.001 },
                               // A chain does not stretch, whatever hangs on it.
@@ -64,7 +64,7 @@ final class Rigging: Sketch {
         }
         vine = world.addRope(through: stem,
                              at: Vector3(1.3, Rigging.beamHeight, 0),
-                             thickness: 0.022, mass: 0.5,
+                             radius: 0.022, mass: 0.5,
                              bend: 0.62, damping: 0.35,
                              iterations: 10,
                              pinned: { $0.y > -0.001 })
@@ -87,7 +87,7 @@ final class Rigging: Sketch {
                 line?.applyForce(Vector3(gust, 0, gust * 0.3))
             }
         }
-        if let grip { dragSoftGrab(grip, to: mouse) }
+        if let grip { dragSoftGrip(grip, to: mouse) }
         world.advance(by: deltaTime)
 
         drawSetting()
@@ -148,7 +148,7 @@ final class Rigging: Sketch {
     func drawSetting() {
         material(.dielectric(roughness: 0.9))
         fill(Color(hex: 0x2A3341))
-        drawGround(size: 16, thickness: 0.2)
+        drawGround(size: 16, radius: 0.2)
         fill(Color(hex: 0x4A4137))
         withState {
             translate(0, Rigging.beamHeight + 0.1, 0)
@@ -167,7 +167,7 @@ final class Rigging: Sketch {
     }
 
     override func mouseReleased() {
-        if let grip { releaseSoftGrab(grip) }
+        if let grip { releaseSoftGrip(grip) }
         grip = nil
     }
 

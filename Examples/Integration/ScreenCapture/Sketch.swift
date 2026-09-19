@@ -95,7 +95,7 @@ final class ScreenCaptureExample: Sketch {
             lines.append("Windows")
             for window in await ScreenCapture.availableWindows().prefix(12) {
                 guard let title = window.title, !title.isEmpty else { continue }
-                lines.append("  .window(title: \"\(title)\")")
+                lines.append("  .window(matching: \"\(title)\")")
             }
             listing = lines
         }

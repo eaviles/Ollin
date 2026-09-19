@@ -35,7 +35,7 @@ import Testing
     /// Loudness is spread in decibels for the same reason, so the quietest
     /// note is a real fraction of full rather than silence.
     @Test func loudnessIsSpreadInDecibels() {
-        let reading = Sonification([0, 1]).amplified(by: [0, 1], levels: -18...0)
+        let reading = Sonification([0, 1]).amplified(by: [0, 1], levelRange: -18...0)
         // 0 dB is full level; 18 dB down is a tenth of the power, which is
         // this fraction of the amplitude.
         #expect(abs(reading.velocity(at: 1) - 1) < 1e-9)

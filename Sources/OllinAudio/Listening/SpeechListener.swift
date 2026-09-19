@@ -74,7 +74,7 @@ public final class SpeechListener {
     }
 
     /// The running best guess: everything heard so far, trimmed to its last
-    /// `captionWords` words, with the tail still liable to change. What to draw.
+    /// `maxCaptionWords` words, with the tail still liable to change. What to draw.
     public var caption: String { engine.caption }
 
     /// Only what the recognizer has committed to, from the beginning. What to
@@ -92,9 +92,9 @@ public final class SpeechListener {
     public var latest: SpokenPhrase? { engine.latest }
 
     /// How many words `caption` keeps. Default 14, about a line.
-    public var captionWords: Int {
-        get { engine.captionWords }
-        set { engine.captionWords = max(1, newValue) }
+    public var maxCaptionWords: Int {
+        get { engine.maxCaptionWords }
+        set { engine.maxCaptionWords = max(1, newValue) }
     }
 
     /// The language being recognized, resolved to one the recognizer knows.
@@ -303,7 +303,7 @@ final class SpeechEngine: AudioListening, @unchecked Sendable {
         var volatileTail = ""
         var pending: [SpokenPhrase] = []
         var latest: SpokenPhrase?
-        var captionWords = 14
+        var maxCaptionWords = 14
         var elapsed = 0.0
         var running = false
     }
@@ -331,7 +331,7 @@ final class SpeechEngine: AudioListening, @unchecked Sendable {
     }
 
     var caption: String {
-        let (all, words) = lock.withLock { ($0.committed.joined() + $0.volatileTail, $0.captionWords) }
+        let (all, words) = lock.withLock { ($0.committed.joined() + $0.volatileTail, $0.maxCaptionWords) }
         return SpeechEngine.tail(of: all, words: words)
     }
 
@@ -339,9 +339,9 @@ final class SpeechEngine: AudioListening, @unchecked Sendable {
 
     var isListening: Bool { lock.withLock { $0.running } }
 
-    var captionWords: Int {
-        get { lock.withLock { $0.captionWords } }
-        set { lock.withLock { $0.captionWords = newValue } }
+    var maxCaptionWords: Int {
+        get { lock.withLock { $0.maxCaptionWords } }
+        set { lock.withLock { $0.maxCaptionWords = newValue } }
     }
 
     func drainPhrases() -> [SpokenPhrase] {

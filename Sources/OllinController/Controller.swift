@@ -74,7 +74,7 @@ public struct Controller: Sendable, Equatable {
     ///
     /// Two things have to be true: the hardware has the sensors (PlayStation
     /// and Switch controllers do, Xbox controllers do not), and the sketch
-    /// called `controllerMotion(true)`, since the sensors cost battery and
+    /// called `controllersReportMotion(true)`, since the sensors cost battery and
     /// stay off until asked.
     public let hasMotion: Bool
 

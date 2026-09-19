@@ -106,7 +106,7 @@ public class SoftBody3D {
     /// own local space, and how thick it draws.
     struct RopeShape {
         var points: [Vector3]
-        var thickness: Double
+        var radius: Double
         var sides: Int
         /// Which way each rod is already turned, for a rope being put back
         /// where it was rather than built for the first time. Empty otherwise.
@@ -231,7 +231,7 @@ public class SoftBody3D {
             for i in 1 ..< rope.points.count {
                 ropeLength += ((rope.points[i] - rope.points[i - 1]) / scale).length
             }
-            area = 2 * .pi * (rope.thickness / scale) * ropeLength
+            area = 2 * .pi * (rope.radius / scale) * ropeLength
         }
         // A closed surface is one where every edge belongs to exactly two
         // faces; anything else has a boundary and no inside to pressurise.
@@ -642,17 +642,17 @@ public class SoftBody3D {
     }
 
     /// The touches involving this surface that started or stopped during the
-    /// last `step`, out of the world's whole list.
+    /// last `advance(by:)`, out of the world's whole list.
     public var contacts: [Contact3D] {
         world.contacts.filter { $0.involves(self) }
     }
 
-    /// What the surface landed on during the last `step`.
+    /// What the surface landed on during the last `advance(by:)`.
     public var arrivals: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
     }
 
-    /// What the surface came off during the last `step`.
+    /// What the surface came off during the last `advance(by:)`.
     public var departures: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
@@ -772,7 +772,7 @@ public class SoftBody3D {
 
     // MARK: Carried by a figure
 
-    /// Pose the skin from a scene's skeleton, ready for the next `step`.
+    /// Pose the skin from a scene's skeleton, ready for the next `advance(by:)`.
     ///
     /// Call it once a frame, after the scene has been posed (by an animation,
     /// or by `scene.apply(ragdoll)`) and before `world.advance(by:)`:

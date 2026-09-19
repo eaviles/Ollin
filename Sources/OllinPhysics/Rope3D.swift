@@ -53,7 +53,7 @@ public struct RopeSegment3D: Sendable {
 ///
 /// ```swift
 /// let rope = world.addRope(through: (0...24).map { Vector3(0, 3 - Double($0) * 0.1, 0) },
-///                          thickness: 0.04,
+///                          radius: 0.04,
 ///                          pinned: { $0.y > 2.9 })       // hung from the top
 /// // each frame:
 /// world.advance(by: deltaTime)
@@ -77,10 +77,10 @@ public final class Rope3D: SoftBody3D {
     /// `positions` all speak in indices into this.
     public let points: [Vector3]
 
-    /// How thick the rope draws and collides, as a radius in world units.
-    public var thickness: Double {
+    /// The rope's radius in world units: how thick it draws and collides.
+    public var radius: Double {
         didSet {
-            vertexRadius = thickness
+            vertexRadius = radius
             cachedTube = nil
         }
     }
@@ -96,7 +96,7 @@ public final class Rope3D: SoftBody3D {
     private var cachedTubeGeneration = -1
 
     init?(world: World3D, points: [Vector3], position: Vector3,
-          rotation: simd_quatd, thickness: Double, sides: Int, mass: Double,
+          rotation: simd_quatd, radius: Double, sides: Int, mass: Double,
           stiffness: Double, bend: Double, damping: Double, friction: Double,
           restitution: Double, iterations: Int,
           pinned: ((Vector3) -> Bool)?, maxStretch: Double?,
@@ -109,16 +109,16 @@ public final class Rope3D: SoftBody3D {
             spine.append(point)
         }
         self.points = spine
-        self.thickness = max(0, thickness)
+        self.radius = max(0, radius)
         self.sides = max(3, sides)
         super.init(world: world, mesh: Mesh(positions: [], indices: []),
                    position: position, rotation: rotation, mass: mass,
                    stiffness: stiffness, bend: bend, pressure: 0,
                    damping: damping, friction: friction,
                    restitution: restitution, iterations: iterations,
-                   vertexRadius: max(0, thickness), isTwoSided: true,
+                   vertexRadius: max(0, radius), isTwoSided: true,
                    pinned: pinned, group: group, maxStretch: maxStretch,
-                   rope: RopeShape(points: spine, thickness: max(0, thickness),
+                   rope: RopeShape(points: spine, radius: max(0, radius),
                                    sides: max(3, sides),
                                    rodRotations: rodRotations))
     }
@@ -156,7 +156,7 @@ public final class Rope3D: SoftBody3D {
         return total
     }
 
-    /// The rope as a drawn surface: a tube of `thickness` swept along the
+    /// The rope as a drawn surface: a tube of `radius` swept along the
     /// particles, so `drawSoftBody(_:)` works on a rope the way it does on a
     /// sheet. The tube's own cross-section is carried by a twist-free frame
     /// rather than by the rods, so a rope that has been wound up looks the same
@@ -166,7 +166,7 @@ public final class Rope3D: SoftBody3D {
         if let cachedTube, cachedTubeGeneration == world.stepGeneration {
             return cachedTube
         }
-        let tube = Mesh.tube(along: particlePositions, radius: thickness, sides: sides)
+        let tube = Mesh.tube(along: particlePositions, radius: radius, sides: sides)
         cachedTube = tube
         cachedTubeGeneration = world.stepGeneration
         return tube

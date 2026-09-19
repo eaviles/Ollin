@@ -98,7 +98,7 @@ public enum TrackpadPlan {
         var offset = 0.0
 
         while offset <= event.duration, knocks.count < maximumKnocks {
-            let level = event.strength(at: offset) * scale
+            let level = event.intensity(at: offset) * scale
             if level >= silenceFloor {
                 knocks.append(TrackpadKnock(time: event.time + offset, feel: feeling))
                 offset += 1 / rate(forStrength: level)

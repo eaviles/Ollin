@@ -118,7 +118,7 @@ final class Raft: Sketch {
     override func mouseReleased() {
         crateGrip?.remove()
         crateGrip = nil
-        if let grip { releaseSoftGrab(grip) }
+        if let grip { releaseSoftGrip(grip) }
         grip = nil
     }
 
@@ -139,7 +139,7 @@ final class Raft: Sketch {
         world.water?.waves?.amplitude = swell
         raft?.density = deckDensity
 
-        if let grip { dragSoftGrab(grip, to: mouse) }
+        if let grip { dragSoftGrip(grip, to: mouse) }
         if let crateGrip { dragGrab(crateGrip, to: mouse) }
         world.advance(by: deltaTime)
         markLandings()

@@ -31,7 +31,7 @@ struct LaserSafetyTests {
 
     @Test func aBeamThatStopsMovingIsBlanked() {
         var safety = LaserSafety()
-        safety.stationaryLimit = 10
+        safety.maxStationaryPoints = 10
         // The worst frame there is: one lit point, played over and over.
         let held = Array(repeating: LaserPoint(Vector2(0.2, 0.2), color: .white), count: 50)
         let guarded = safety.guarded(held)
@@ -41,7 +41,7 @@ struct LaserSafetyTests {
 
     @Test func aTinyShapeCountsAsStoppedToo() {
         var safety = LaserSafety()
-        safety.stationaryLimit = 8
+        safety.maxStationaryPoints = 8
         safety.stationaryRadius = 0.01
         // A circle far smaller than the guard's radius is a spot, whatever the
         // sketch calls it.
@@ -54,7 +54,7 @@ struct LaserSafetyTests {
 
     @Test func movingOnStartsTheCountAgain() {
         var safety = LaserSafety()
-        safety.stationaryLimit = 4
+        safety.maxStationaryPoints = 4
         safety.stationaryRadius = 0.01
         // A line drawn in steps well past the radius never trips the guard,
         // however long it is.
@@ -78,7 +78,7 @@ struct LaserSafetyTests {
         var optimizer = LaserOptimizer()
         optimizer.cornerDwell = 6
         var safety = LaserSafety()
-        safety.stationaryLimit = 2
+        safety.maxStationaryPoints = 2
         let stream = LaserOptimizer.guardedSquare(optimizer, safety)
         let corner = Vector2(0.5, 0.5)
         let atCorner = stream.points.filter { close($0.position, corner, tolerance: 1e-9) }
@@ -97,7 +97,7 @@ struct LaserSafetyTests {
 
     @Test func aDarkStretchDoesNotCountTowardsTheLimit() {
         var safety = LaserSafety()
-        safety.stationaryLimit = 6
+        safety.maxStationaryPoints = 6
         // Lit, dark, lit at the same spot: the dark run resets the count, so
         // neither lit run reaches the limit.
         var points = Array(repeating: LaserPoint(Vector2(0.1, 0.1), color: .white), count: 5)

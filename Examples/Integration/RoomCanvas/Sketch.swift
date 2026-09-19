@@ -119,7 +119,7 @@ final class RoomCanvas: Sketch {
             agreement = "asking for the time"
         }
         drawText(agreement, margin, margin + 84 * scale)
-        if let problem = room.problem {
+        if let problem = room.lastError {
             fill(Color(red: 1, green: 0.5, blue: 0.4))
             drawText(problem, margin, margin + 112 * scale)
         }

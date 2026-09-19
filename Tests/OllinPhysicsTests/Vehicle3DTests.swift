@@ -413,7 +413,7 @@ struct Vehicle3DTests {
                 if step % 60 == 0 {
                     trace.append(car.body.position.x)
                     trace.append(car.body.position.z)
-                    trace.append(car.wheels[2].spin)
+                    trace.append(car.wheels[2].rollAngle)
                 }
             }
             return trace

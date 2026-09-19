@@ -24,7 +24,7 @@ Steering it is a `draw()` poll, like the mouse. `moveAxis` reads WASD and the ar
 
 ```swift
 let heading = Vector3(moveAxis.x, 0, moveAxis.y)
-walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
+walker.walk(at: heading.length > 0 ? heading.normalized * 3 : .zero)
 if isKeyDown(" ") { walker.jump() }
 
 world.advance(by: deltaTime)
@@ -529,7 +529,7 @@ final class Yard: Sketch {
         if let pacer {
             let home = Vector3(-4.4, pacer.position.y, 0.4)
             let back = home - pacer.position
-            pacer.move(Vector3(back.x * 0.9, 0, back.z * 0.9 + sin(time * 0.8) * 0.9))
+            pacer.walk(at: Vector3(back.x * 0.9, 0, back.z * 0.9 + sin(time * 0.8) * 0.9))
         }
         banner?.applyForce(Vector3(sin(time * 1.3) * wind, 0, wind * 0.4))
         world.advance(by: deltaTime)

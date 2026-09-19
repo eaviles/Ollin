@@ -27,7 +27,7 @@ internal import CJolt
 /// world.advance(by: deltaTime)
 /// withBody(car.body) { drawBox(width: 1.8, height: 0.6, depth: 4) }
 /// for wheel in car.wheels {
-///     withWheel(wheel) { drawCylinder(height: wheel.width, radius: wheel.radius) }
+///     withWheel(wheel) { drawCylinder(radius: wheel.radius, height: wheel.width) }
 /// }
 /// ```
 ///
@@ -717,7 +717,7 @@ public final class Wheel3D {
 
     /// How far the wheel has rolled, in radians `0…2π`: the angle to spin a
     /// drawn tire by if you are posing it yourself.
-    public var spin: Double { Double(readState().rotationAngle) }
+    public var rollAngle: Double { Double(readState().rotationAngle) }
 
     /// How fast the wheel is turning, in radians per second. Positive rolls
     /// the vehicle forward; zero under power means it is locked or in the air.

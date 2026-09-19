@@ -11,7 +11,7 @@ import os
 ///
 /// Samples arrive on the audio render thread (the tap callback), while a sketch
 /// reads the published values on the main thread. The split is the whole reason
-/// for the locking here: `process(...)` runs serially on the audio thread and
+/// for the locking here: `analyze(...)` runs serially on the audio thread and
 /// owns the FFT scratch buffers exclusively; the results it publishes cross to
 /// the reader through `stateLock`. That serial-producer / locked-handoff
 /// invariant is what makes the `@unchecked Sendable` sound. The pitch side is
@@ -41,7 +41,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private let fftSetup: FFTSetup
     private let binWidth: Double
 
-    // Scratch, owned exclusively by `process(...)` (audio thread, serial).
+    // Scratch, owned exclusively by `analyze(...)` (audio thread, serial).
     private var hann: [Float]
     private var windowed: [Float]
     private var realp: [Float]
@@ -325,8 +325,8 @@ public final class AudioAnalyzer: @unchecked Sendable {
     public var pitch: DetectedPitch? { pitchSide().pitch }
 
     /// The nearest note to what is being sung or played, or nil when no note
-    /// is heard. The short form of `pitch?.note`.
-    public var note: Pitch? { pitch?.note }
+    /// is heard. The short form of `pitch?.nearestPitch`.
+    public var nearestPitch: Pitch? { pitch?.nearestPitch }
 
     /// The twelve pitch classes of the window, C first (`C, C#, D, … B`), each
     /// `0...1` with the strongest at 1, every octave folded onto the same
@@ -359,7 +359,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// (the audio render thread, via the source's tap): it owns the FFT and onset
     /// scratch lock-free, so a second concurrent caller would race it. See the type
     /// note on why that single writer is the safe contract.
-    public func process(samples: UnsafePointer<Float>, count: Int) {
+    public func analyze(samples: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
         // A chunk longer than the ring contributes its most recent ringful;
         // the sample clock still advances by everything that arrived.
@@ -482,15 +482,15 @@ public final class AudioAnalyzer: @unchecked Sendable {
     }
 
     /// Convenience over an `AVAudioPCMBuffer`: averages channels to mono and
-    /// forwards to `process(samples:count:)`.
-    public func process(_ buffer: AVAudioPCMBuffer) {
+    /// forwards to `analyze(samples:count:)`.
+    public func analyze(_ buffer: AVAudioPCMBuffer) {
         guard let channels = buffer.floatChannelData else { return }
         let frames = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
         guard frames > 0 else { return }
 
         if channelCount == 1 {
-            process(samples: channels[0], count: frames)
+            analyze(samples: channels[0], count: frames)
             return
         }
         // Down-mix the most recent ringful to mono; the sample clock still

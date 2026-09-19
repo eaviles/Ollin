@@ -54,12 +54,12 @@ let room = Room(named: "gallery", passcode: "cempoalli")
 Who is here:
 
 ```swift
-room.name              // what this machine goes by
+room.peerName          // what this machine goes by
 room.peers             // the others, by name
 room.everyone          // all of them, this machine included
 room.isAlone           // nobody else yet
 room.sketchName(of: peer)  // what that machine is running
-room.problem           // what went wrong, when something did
+room.lastError           // what went wrong, when something did
 ```
 
 Arrivals and departures drain as events, so a piece can respond to them:

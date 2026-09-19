@@ -254,7 +254,7 @@ struct CollisionFilter3DTests {
             let walker = world.addCharacter(radius: 0.3, height: 1.8,
                                             at: Vector3(0, 0, 0), group: "phantoms")
             if filtered { world.ignoreCollisions(between: "phantoms", and: "walls") }
-            walker.move(Vector3(0, 0, 3))
+            walker.walk(at: Vector3(0, 0, 3))
             run(world, steps: 120)
             return walker.position.z
         }
@@ -278,8 +278,8 @@ struct CollisionFilter3DTests {
             let right = world.addCharacter(radius: 0.4, height: 1.8,
                                            at: Vector3(2, 0, 0), group: "phantoms")
             if filtered { world.ignoreCollisions(between: "phantoms", and: "phantoms") }
-            left.move(Vector3(2, 0, 0))
-            right.move(Vector3(-2, 0, 0))
+            left.walk(at: Vector3(2, 0, 0))
+            right.walk(at: Vector3(-2, 0, 0))
             var closest = Double.infinity
             for _ in 0 ..< 120 {
                 world.advance(by: 1.0 / 60)

@@ -282,7 +282,7 @@ public final class MQTTClient: @unchecked Sendable {
     /// `home/#` takes the lot. The subscription is remembered, so a reconnection
     /// puts it back without the sketch doing anything.
     public func subscribe(to filter: String, qos: MQTTQoS = .atMostOnce) {
-        guard MQTTTopic.isValid(filter) else { return }
+        guard MQTTTopic.isValidFilter(filter) else { return }
         let bytes: Data? = state.withLock { state in
             state.subscriptions[filter] = qos
             guard state.isConnected else { return nil }
@@ -568,6 +568,9 @@ public final class MQTTClient: @unchecked Sendable {
             state.attempt = 0
             state.connections += 1
             state.lastHeardAt = Date()
+            // The line is up, so whatever went wrong last time is over. Left
+            // standing, it would say a live client was broken forever.
+            state.failure = nil
             var out: [Data] = []
             if !state.subscriptions.isEmpty {
                 let id = MQTTClient.take(&state.nextID)

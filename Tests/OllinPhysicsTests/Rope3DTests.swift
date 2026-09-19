@@ -69,7 +69,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             guard let rope = world.addRope(through: Rope3DTests.hanging(20),
-                                           at: Vector3(0, 3, 0), thickness: 0.02,
+                                           at: Vector3(0, 3, 0), radius: 0.02,
                                            pinned: pinned ? { $0.y > -0.001 } : nil)
             else { return .nan }
             run(world, steps: 300)
@@ -102,7 +102,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             guard let rope = world.addRope(through: Rope3DTests.hanging(20),
-                                           at: Vector3(0, 3, 0), thickness: 0.02,
+                                           at: Vector3(0, 3, 0), radius: 0.02,
                                            mass: 1, stiffness: stiffness,
                                            pinned: { $0.y > -0.001 })
             else { return .nan }
@@ -121,7 +121,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             guard let rope = world.addRope(through: Rope3DTests.sideways(20),
-                                           at: Vector3(0, 50, 0), thickness: 0.01,
+                                           at: Vector3(0, 50, 0), radius: 0.01,
                                            mass: 1, bend: bend, damping: 0.6,
                                            pinned: { $0.x < 0.05 })
             else { return .nan }
@@ -141,7 +141,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             guard let rope = world.addRope(through: Rope3DTests.sideways(20),
-                                           at: Vector3(0, 50, 0), thickness: 0.01,
+                                           at: Vector3(0, 50, 0), radius: 0.01,
                                            mass: mass, bend: 0.5, damping: 0.6,
                                            pinned: { $0.x < 0.05 })
             else { return .nan }
@@ -163,7 +163,7 @@ struct Rope3DTests {
             world.ground = nil
             let spacing = span / 19
             guard let rope = world.addRope(through: Rope3DTests.sideways(20, spacing: spacing),
-                                           at: Vector3(0, 50, 0), thickness: 0.01,
+                                           at: Vector3(0, 50, 0), radius: 0.01,
                                            mass: 1, bend: 0.5, damping: 0.6,
                                            pinned: { $0.x < spacing * 0.5 })
             else { return .nan }
@@ -182,7 +182,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             guard let rope = world.addRope(through: Rope3DTests.hanging(20),
-                                           at: Vector3(0, 3, 0), thickness: 0.02,
+                                           at: Vector3(0, 3, 0), radius: 0.02,
                                            mass: 8, stiffness: 0.3,
                                            pinned: { $0.y > -0.001 },
                                            maxStretch: cap)
@@ -202,7 +202,7 @@ struct Rope3DTests {
             world.ground = nil
             let spacing = 6.0 / 39
             guard let rope = world.addRope(through: Rope3DTests.sideways(40, spacing: spacing),
-                                           at: Vector3(0, 50, 0), thickness: 0.01,
+                                           at: Vector3(0, 50, 0), radius: 0.01,
                                            mass: 1, bend: 1, damping: 0.6,
                                            iterations: iterations,
                                            pinned: { $0.x < spacing * 0.5 })
@@ -222,7 +222,7 @@ struct Rope3DTests {
         let world = World3D()
         world.ground = nil
         guard let rope = world.addRope(through: Rope3DTests.sideways(12),
-                                       at: Vector3(0, 3, 0), thickness: 0.02,
+                                       at: Vector3(0, 3, 0), radius: 0.02,
                                        bend: 0.2, damping: 0.4,
                                        pinned: { $0.x < 0.05 })
         else { return }
@@ -246,10 +246,10 @@ struct Rope3DTests {
         let world = World3D()
         world.ground = nil
         guard let flat = world.addRope(through: Rope3DTests.sideways(8), at: Vector3(0, 3, 0),
-                                       thickness: 0.02, pinned: { _ in true }),
+                                       radius: 0.02, pinned: { _ in true }),
               let turned = world.addRope(through: Rope3DTests.sideways(8),
                                          at: Vector3(0, 3, 0), rotated: .pi / 2,
-                                         axis: Vector3(0, 1, 0), thickness: 0.02,
+                                         axis: Vector3(0, 1, 0), radius: 0.02,
                                          pinned: { _ in true })
         else { return }
         run(world, steps: 5)
@@ -270,10 +270,10 @@ struct Rope3DTests {
                       kind: .static)
         guard let rope = world.addRope(through: Rope3DTests.sideways(24),
                                        at: Vector3(-1.2, 2, 0),
-                                       thickness: 0.05, mass: 1)
+                                       radius: 0.05, mass: 1)
         else { return }
         run(world, steps: 300)
-        // The middle of the rope lies on the crate's lid, one thickness above
+        // The middle of the rope lies on the crate's lid, one radius above
         // it, while its ends have fallen past the sides.
         let overCrate = rope.particlePositions.filter { abs($0.x) < 0.4 }
         #expect(overCrate.allSatisfy { abs($0.y - 1.05) < 0.02 })
@@ -289,7 +289,7 @@ struct Rope3DTests {
                                        density: 0.1)
             if withRope {
                 world.addRope(through: Rope3DTests.sideways(20), at: Vector3(-1, 1.5, 0),
-                              thickness: 0.05, mass: 2)
+                              radius: 0.05, mass: 2)
             }
             run(world, steps: 240)
             return (pebble.position - Vector3(0, 0.1, 0)).length
@@ -304,7 +304,7 @@ struct Rope3DTests {
             world.ground = -6
             if !dry { world.water = Water(level: 0) }
             guard let rope = world.addRope(through: Rope3DTests.sideways(20),
-                                           at: Vector3(0, 2, 0), thickness: 0.05,
+                                           at: Vector3(0, 2, 0), radius: 0.05,
                                            mass: 0.4)
             else { return .nan }
             rope.density = density
@@ -326,7 +326,7 @@ struct Rope3DTests {
         let world = World3D()
         world.ground = -5
         guard let rope = world.addRope(through: Rope3DTests.sideways(20),
-                                       at: Vector3(0, 1, 0), thickness: 0.1,
+                                       at: Vector3(0, 1, 0), radius: 0.1,
                                        pinned: { _ in true })
         else { return }
         run(world, steps: 10)
@@ -345,7 +345,7 @@ struct Rope3DTests {
         let world = World3D()
         world.ground = nil
         guard let rope = world.addRope(through: Rope3DTests.sideways(12),
-                                       at: Vector3(0, 2, 0), thickness: 0.03,
+                                       at: Vector3(0, 2, 0), radius: 0.03,
                                        bend: 0.3, damping: 0.6,
                                        pinned: { $0.x < 0.05 })
         else { return }
@@ -381,7 +381,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = nil
             let rope = world.addRope(through: Rope3DTests.sideways(12),
-                                     at: Vector3(0, 2, 0), thickness: 0.03,
+                                     at: Vector3(0, 2, 0), radius: 0.03,
                                      bend: 0.3, damping: 0.6,
                                      pinned: { $0.x < 0.05 })!
             run(world, steps: 900)
@@ -399,7 +399,7 @@ struct Rope3DTests {
                                            position: Vector3(0, 2, 0),
                                            rotation: simd_quatd(angle: 0,
                                                                 axis: simd_double3(0, 1, 0)),
-                                           thickness: 0.03, sides: 8, mass: 1,
+                                           radius: 0.03, sides: 8, mass: 1,
                                            stiffness: 1, bend: 0.3, damping: 0.6,
                                            friction: 0.5, restitution: 0,
                                            iterations: 5,
@@ -428,7 +428,7 @@ struct Rope3DTests {
             let world = World3D()
             world.ground = 0
             guard let rope = world.addRope(through: Rope3DTests.sideways(16),
-                                           at: Vector3(0, 2, 0), thickness: 0.03,
+                                           at: Vector3(0, 2, 0), radius: 0.03,
                                            bend: 0.4, pinned: { $0.x < 0.05 })
             else { return [] }
             run(world, steps: 400)

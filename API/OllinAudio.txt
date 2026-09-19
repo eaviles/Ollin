@@ -64,10 +64,10 @@ enum Waveform: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodab
   case square
   case triangle
 final class AudioAnalyzer: Sendable
+  func analyze(_: AVFAudio.AVAudioPCMBuffer)
+  func analyze(samples: UnsafePointer<Float>, count: Int)
   func bands(_: Int) -> [Float]
   func magnitude(in: ClosedRange<Double>) -> Float
-  func process(_: AVFAudio.AVAudioPCMBuffer)
-  func process(samples: UnsafePointer<Float>, count: Int)
   init(fftSize: Int = default, sampleRate: Double = default, smoothing: Float = default)
   let binCount: Int
   let sampleRate: Double
@@ -78,7 +78,7 @@ final class AudioAnalyzer: Sendable
   var beatSensitivity: Float { get set }
   var chroma: [Float] { get }
   var mid: Float { get }
-  var note: Pitch? { get }
+  var nearestPitch: Pitch? { get }
   var pitch: DetectedPitch? { get }
   var smoothing: Float { get set }
   var spectrum: [Float] { get }
@@ -175,11 +175,11 @@ final class SpeechListener: Sendable
   nonisolated static func transcribe(resource: String, withExtension: String, in: Foundation.Bundle, locale: Foundation.Locale = default) throws -> String
   nonisolated static var supportedLocales: [Foundation.Locale] { get }
   var caption: String { get }
-  var captionWords: Int { get set }
   var isAvailable: Bool { get }
   var isListening: Bool { get }
   var latest: SpokenPhrase? { get }
   var locale: Foundation.Locale { get }
+  var maxCaptionWords: Int { get set }
   var transcript: String { get }
   var unavailableReason: String? { get }
 final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, TransportMutable, AudioSource, Sendable
@@ -213,7 +213,7 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   var grainCount: Int { get }
   var grainScrub: Double { get set }
   var grainSource: GrainSource? { get set }
-  var hearingRange: ClosedRange<Double> { get set }
+  var hearingDistance: ClosedRange<Double> { get set }
   var instrument: SampledInstrument? { get set }
   var isRecording: Bool { get }
   var isRunning: Bool { get }
@@ -244,8 +244,8 @@ final class Wavetable: Sendable
   let frameCount: Int
   let name: String
   static let basic: Wavetable
-  static let length: Int
   static let pulse: Wavetable
+  static let samplesPerCycle: Int
   static let vowels: Wavetable
 func waitFor(_: () async throws -> T) throws -> T
 protocol AudioSource where Self : AnyObject
@@ -259,7 +259,7 @@ protocol AudioSource where Self : AnyObject
   var beatSensitivity: Float { get set }
   var chroma: [Float] { get }
   var mid: Float { get }
-  var note: Pitch? { get }
+  var nearestPitch: Pitch? { get }
   var pitch: DetectedPitch? { get }
   var smoothing: Float { get set }
   var spectrum: [Float] { get }
@@ -389,10 +389,10 @@ struct Chorus: Decodable, Encodable, Equatable, Hashable, Sendable
   var mix: Double { get set }
   var rate: Double { get set }
 struct Compressor: Decodable, Encodable, Equatable, Hashable, Sendable
-  init(threshold: Double = default, ratio: Double = default, attack: Double = default, release: Double = default, knee: Double = default, makeup: Double = default)
+  init(threshold: Double = default, ratio: Double = default, attack: Double = default, release: Double = default, knee: Double = default, makeupGain: Double = default)
   var attack: Double { get set }
   var knee: Double { get set }
-  var makeup: Double { get set }
+  var makeupGain: Double { get set }
   var ratio: Double { get set }
   var release: Double { get set }
   var threshold: Double { get set }
@@ -416,7 +416,7 @@ struct DetectedPitch: Equatable, Hashable, Sendable
   var confidence: Float { get set }
   var frequency: Double { get set }
   var midi: Double { get }
-  var note: Pitch { get set }
+  var nearestPitch: Pitch { get set }
   var pitch: Pitch { get }
 struct Distortion: Decodable, Encodable, Equatable, Hashable, Sendable
   enum Character: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
@@ -443,14 +443,14 @@ struct Envelope: Decodable, Encodable, Equatable, Hashable, Sendable
   var release: Double { get set }
   var sustain: Double { get set }
 struct Equalizer: Decodable, Encodable, Equatable, Hashable, Sendable
-  init(lowGain: Double = default, lowEdge: Double = default, midGain: Double = default, midFrequency: Double = default, midWidth: Double = default, highGain: Double = default, highEdge: Double = default)
+  init(lowGain: Double = default, lowFrequency: Double = default, midGain: Double = default, midFrequency: Double = default, midWidth: Double = default, highGain: Double = default, highFrequency: Double = default)
   static func lowCut(below: Double, by: Double = default) -> Equalizer
   static let bright: Equalizer
   static let scooped: Equalizer
   static let warm: Equalizer
-  var highEdge: Double { get set }
+  var highFrequency: Double { get set }
   var highGain: Double { get set }
-  var lowEdge: Double { get set }
+  var lowFrequency: Double { get set }
   var lowGain: Double { get set }
   var midFrequency: Double { get set }
   var midGain: Double { get set }
@@ -472,18 +472,18 @@ struct Gate: Decodable, Encodable, Equatable, Hashable, Sendable
   var release: Double { get set }
   var threshold: Double { get set }
 struct GrainCloud: Decodable, Encodable, Equatable, Hashable, Sendable
-  init(size: Double = default, density: Double = default, position: Double = default, positionJitter: Double = default, speed: Double = default, pitchSpread: Double = default, panSpread: Double = default, scatter: Double = default, shape: GrainShape = default, seed: Int = default)
+  init(size: Double = default, density: Double = default, position: Double = default, positionJitter: Double = default, speed: Double = default, pitchSpread: Double = default, panSpread: Double = default, timingJitter: Double = default, shape: GrainShape = default, seed: Int = default)
   static func frozen(at: Double, size: Double = default, density: Double = default) -> GrainCloud
   var density: Double { get set }
   var panSpread: Double { get set }
   var pitchSpread: Double { get set }
   var position: Double { get set }
   var positionJitter: Double { get set }
-  var scatter: Double { get set }
   var seed: Int { get set }
   var shape: GrainShape { get set }
   var size: Double { get set }
   var speed: Double { get set }
+  var timingJitter: Double { get set }
 struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
   func stretched(by: Double) -> ImpulseResponse
@@ -621,7 +621,7 @@ struct Patch: Decodable, Encodable, Equatable, Hashable, Sendable
   func fedBack(_: Double) -> Patch
   func level(_: Double) -> Patch
   func mixed(with: Patch) -> Patch
-  func modulated(by: Patch, index: Double) -> Patch
+  func modulated(by: Patch, amount: Double) -> Patch
   func ratio(_: Double) -> Patch
   static func tone(_: Waveform = default, ratio: Double = default, level: Double = default) -> Patch
   static let bell: Patch
@@ -794,7 +794,7 @@ struct Sonification: Equatable, Sendable
   enum Polarity: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
     case negative
     case positive
-  func amplified(by: [Double], bounds: Sonification.Bounds = default, levels: ClosedRange<Double> = default) -> Sonification
+  func amplified(by: [Double], bounds: Sonification.Bounds = default, levelRange: ClosedRange<Double> = default) -> Sonification
   func inverted() -> Sonification
   func note(at: Int) -> Note?
   func notes() -> [Note]
@@ -811,7 +811,7 @@ struct Sonification: Equatable, Sendable
   subscript(_: Int) -> Note? { get }
   var count: Int { get }
   var isEmpty: Bool { get }
-  var levels: ClosedRange<Double> { get set }
+  var levelRange: ClosedRange<Double> { get set }
   var loudness: [Double]? { get set }
   var loudnessDomain: ClosedRange<Double> { get set }
   var noteLength: NoteLength { get set }

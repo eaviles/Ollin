@@ -31,7 +31,7 @@ public struct BluetoothReading: Sendable {
     public var text: String? { characteristic.format.text(from: bytes) }
     /// The value as on or off: any number above zero, or a first byte above
     /// zero when the value is raw bytes.
-    public var isOn: Bool? {
+    public var bool: Bool? {
         if let number { return number != 0 }
         return bytes.first.map { $0 != 0 }
     }
@@ -44,7 +44,7 @@ public struct BluetoothReading: Sendable {
 /// already read:
 ///
 /// ```swift
-/// let strap = BluetoothDevice(named: "Strap")
+/// let strap = BluetoothDevice(matching: "Strap")
 ///
 /// override func setup() { strap.connect() }
 ///
@@ -149,10 +149,10 @@ public final class BluetoothDevice: @unchecked Sendable {
 
     // MARK: - Lifecycle
 
-    /// Looks for a device whose advertised name contains `named`, ignoring
-    /// case, e.g. `BluetoothDevice(named: "Strap")`.
-    public convenience init(named: String) {
-        self.init(target: .name(named))
+    /// Looks for a device whose advertised name contains `matching`, ignoring
+    /// case, e.g. `BluetoothDevice(matching: "Strap")`.
+    public convenience init(matching: String) {
+        self.init(target: .name(matching))
     }
 
     /// Looks for one exact device, by the identifier this Mac gave it (see
@@ -257,7 +257,7 @@ public final class BluetoothDevice: @unchecked Sendable {
     /// Values the catalog names come back named and ready to read; anything
     /// else comes back raw, under its own number.
     public var characteristics: [BluetoothCharacteristic] {
-        state.withLock { $0.offered }.map { BluetoothCharacteristic.standard(for: $0.id) }
+        state.withLock { $0.offered }.map { BluetoothCharacteristic.known(for: $0.id) }
     }
 
     // MARK: - Reading, the latest value
@@ -301,7 +301,7 @@ public final class BluetoothDevice: @unchecked Sendable {
 
     /// The most recent value as on or off.
     public func bool(_ characteristic: BluetoothCharacteristic) -> Bool? {
-        latest(characteristic)?.isOn
+        latest(characteristic)?.bool
     }
 
     /// The most recent number, or `fallback` when nothing has arrived yet.
@@ -528,7 +528,7 @@ public final class BluetoothDevice: @unchecked Sendable {
 
     private func store(_ bytes: [UInt8], of id: BluetoothUUID, from device: UUID) {
         let reading = BluetoothReading(
-            characteristic: BluetoothCharacteristic.standard(for: id), bytes: bytes)
+            characteristic: BluetoothCharacteristic.known(for: id), bytes: bytes)
 
         // Stash under the lock, then adjust any bound parameter outside it, so the
         // parameter's own lock never nests under this one.

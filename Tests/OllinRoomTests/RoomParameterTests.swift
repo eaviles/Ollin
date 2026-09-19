@@ -213,7 +213,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(a.seat == 0 && b.seat == 1)
         #expect(a.seatCount == 2)
         #expect(a.ownsClock && !b.ownsClock)
-        #expect(a.problem == nil)
+        #expect(a.lastError == nil)
     }
 
     @Test func valuesOfEveryKindReadBackOnTheOtherMachine() {

@@ -37,7 +37,7 @@ final class SceneLabels: Sketch {
 
         // Ease every displayed value toward its live confidence (labels that
         // dropped out ease toward zero, then leave).
-        let live = Dictionary(uniqueKeysWithValues: classifier.labels.map { ($0.label, $0.confidence) })
+        let live = Dictionary(uniqueKeysWithValues: classifier.classifications.map { ($0.label, $0.confidence) })
         let blend = min(1, deltaTime * 6)
         for label in Set(shown.keys).union(live.keys) {
             let target = live[label] ?? 0

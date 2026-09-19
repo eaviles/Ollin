@@ -235,7 +235,7 @@ struct EtherDreamLoopbackTests {
             return points.count > 30 ? points : nil
         }
         #expect(after.allSatisfy { $0.isBlanked })
-        #expect(laser.isConnected)
+        #expect(laser.isPlaying)
     }
 }
 

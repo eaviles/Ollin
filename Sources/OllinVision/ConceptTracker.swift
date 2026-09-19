@@ -73,7 +73,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
         /// The latest frame's normalized image embedding.
         var imageEmbedding: [Float]?
         /// The concept scores over the latest analyzed frame, strongest first.
-        var labels: [Classification] = []
+        var classifications: [Classification] = []
     }
     private let lock = OSAllocatedUnfairLock(uncheckedState: State())
     private let status = VisionStatus("concept scoring")
@@ -102,18 +102,18 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     /// Every concept scored over the most recent analyzed frame, strongest
     /// first. Scores are the concepts' shares and sum to 1; a phrase whose
     /// text encoding hasn't landed yet isn't listed.
-    public var labels: [Classification] { lock.withLockUnchecked { $0.labels } }
+    public var classifications: [Classification] { lock.withLockUnchecked { $0.classifications } }
 
     /// The single strongest concept, or `nil` while there is none.
-    public var topClassification: Classification? { labels.first }
+    public var topClassification: Classification? { classifications.first }
 
     /// One concept's share of the most recent analyzed frame, `0…1`, matched
     /// case-insensitively. A phrase not in `concepts` joins the set (so the
     /// first query registers it); it reads 0 until its encoding lands.
-    public func confidence(of phrase: String) -> Double {
+    public func share(of phrase: String) -> Double {
         let wanted = phrase.lowercased()
         let (score, known) = lock.withLockUnchecked { state in
-            (state.labels.first { $0.label.lowercased() == wanted }?.confidence,
+            (state.classifications.first { $0.label.lowercased() == wanted }?.confidence,
              state.concepts.contains { $0.lowercased() == wanted })
         }
         if !known {
@@ -133,7 +133,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             (state.imageEmbedding, state.textEmbeddings[wanted])
         }
         guard let image, let text else {
-            _ = confidence(of: phrase)   // registers the phrase if new
+            _ = share(of: phrase)   // registers the phrase if new
             return 0
         }
         return Double(Self.dot(image, text))
@@ -233,7 +233,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             guard let embedding = Self.embedding(in: observations) else { return }
             lock.withLockUnchecked { state in
                 state.imageEmbedding = embedding
-                state.labels = Self.scores(
+                state.classifications = Self.scores(
                     image: embedding,
                     texts: state.concepts.compactMap { phrase in
                         state.textEmbeddings[phrase.lowercased()].map { (phrase, $0) }
@@ -326,7 +326,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     private func rescoreFromCache() {
         lock.withLockUnchecked { state in
             guard let image = state.imageEmbedding else { return }
-            state.labels = Self.scores(
+            state.classifications = Self.scores(
                 image: image,
                 texts: state.concepts.compactMap { phrase in
                     state.textEmbeddings[phrase.lowercased()].map { (phrase, $0) }

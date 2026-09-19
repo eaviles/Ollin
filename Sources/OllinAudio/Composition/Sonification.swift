@@ -41,7 +41,7 @@ import Ollin
 /// the weaker of the two, though, and deliberately does nothing unless asked:
 /// how loud something sounds depends on how high it is as well as how strong
 /// it is, so a series read out on loudness alone is read out through a
-/// distortion. Reach for pitch first and use ``amplified(by:bounds:levels:)`` for a second
+/// distortion. Reach for pitch first and use ``amplified(by:bounds:levelRange:)`` for a second
 /// series, not to say the same thing twice.
 public struct Sonification: Sendable, Equatable {
 
@@ -82,13 +82,13 @@ public struct Sonification: Sendable, Equatable {
     public var noteLength: NoteLength
 
     /// A second series read out as loudness, or nil to play everything at full
-    /// level. See ``amplified(by:bounds:levels:)``.
+    /// level. See ``amplified(by:bounds:levelRange:)``.
     public var loudness: [Double]?
-    /// Which values of that second series land at the ends of ``levels``.
+    /// Which values of that second series land at the ends of ``levelRange``.
     public var loudnessDomain: ClosedRange<Double>
     /// The quietest and loudest a note may be, in decibels relative to full
     /// level. Spread in decibels because that is the unit loudness is heard in.
-    public var levels: ClosedRange<Double>
+    public var levelRange: ClosedRange<Double>
 
     // MARK: Making one
 
@@ -120,7 +120,7 @@ public struct Sonification: Sendable, Equatable {
         self.valueDomain = Sonification.domain(of: values, by: bounds)
         self.loudness = nil
         self.loudnessDomain = 0...1
-        self.levels = -18...0
+        self.levelRange = -18...0
     }
 
     /// Reads a column of a table.
@@ -280,7 +280,7 @@ public struct Sonification: Sendable, Equatable {
         var t = span > 1e-12 ? (loudness[step] - loudnessDomain.lowerBound) / span : 1
         t = min(max(t, 0), 1)
         // Spread in decibels, then turned into the 0...1 a note is struck at.
-        let decibels = levels.lowerBound + (levels.upperBound - levels.lowerBound) * t
+        let decibels = levelRange.lowerBound + (levelRange.upperBound - levelRange.lowerBound) * t
         return min(max(pow(10, decibels / 20), 0), 1)
     }
 
@@ -303,12 +303,12 @@ public struct Sonification: Sendable, Equatable {
     /// heard at the same moment as entry 3 of the other.
     public func amplified(
         by series: [Double], bounds: Bounds = .extremes,
-        levels: ClosedRange<Double> = -18...0
+        levelRange: ClosedRange<Double> = -18...0
     ) -> Sonification {
         var copy = self
         copy.loudness = series
         copy.loudnessDomain = Sonification.domain(of: series, by: bounds)
-        copy.levels = levels
+        copy.levelRange = levelRange
         return copy
     }
 

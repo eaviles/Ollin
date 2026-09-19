@@ -2,6 +2,15 @@ import Foundation
 import Ollin
 internal import CBox2D
 
+/// Guards the one piece of state a rigid world does not own: the process-global
+/// table its worlds live in. Claiming a free slot and giving one back both read
+/// and write that table, and neither is safe to do from two threads at once.
+/// They can walk away holding the same slot, and the first teardown then
+/// invalidates a handle the other is still using, which ends the process rather
+/// than the frame. A sketch builds its world on the main thread and never meets
+/// this; several sketches (or several test suites) running side by side do.
+private let worldSlots = NSLock()
+
 /// The simulation: a bag of `Particle`s and the `Spring`s between them, plus the
 /// global rules they live under — gravity, drag, an optional container, and
 /// whether particles collide as disks. A sketch builds a world once, then calls
@@ -46,7 +55,7 @@ public final class World {
     public var drag: Double = 0.01
 
     /// How many relaxation passes run per step. Higher holds springs and
-    /// particlesCollide together under stress (a tall stack, a stiff cloth); lower is
+    /// contacts together under stress (a tall stack, a stiff cloth); lower is
     /// cheaper and looser. Costs scale linearly.
     public var iterations: Int = 8
 
@@ -80,7 +89,7 @@ public final class World {
     /// `Body` sub-system. Box2D is tuned for objects roughly 0.1–10 m, so the
     /// default of 100 puts a 100-point shape at 1 m — its sweet spot. The Verlet
     /// particle/spring side works directly in points and ignores this.
-    public var pixelsPerMeter: Double = 100
+    public var unitsPerMeter: Double = 100
 
     /// Every rigid `Body` in the simulation, in the order added.
     public private(set) var bodies: [Body] = []
@@ -88,7 +97,7 @@ public final class World {
     /// Every `Joint` between rigid bodies, in the order added.
     public private(set) var joints: [Joint] = []
 
-    /// The timestep used on the previous `step`, for time-corrected Verlet (so a
+    /// The timestep used on the previous `advance(by:)`, for time-corrected Verlet (so a
     /// variable frame rate doesn't change how fast things move).
     private var lastTimestep: Double = 0
 
@@ -109,7 +118,11 @@ public final class World {
     public init() {}
 
     deinit {
-        if let id = rigidWorldId { b2DestroyWorld(id) }
+        if let id = rigidWorldId {
+            worldSlots.lock()
+            b2DestroyWorld(id)
+            worldSlots.unlock()
+        }
     }
 
     // MARK: Building the world
@@ -162,7 +175,7 @@ public final class World {
     // MARK: Stepping
 
     /// Advance the simulation by `dt` seconds (pass `deltaTime`). Integrates every
-    /// particle, then relaxes springs, particlesCollide, and bounds. A `dt` of `0` (a
+    /// particle, then relaxes springs, contacts, and bounds. A `dt` of `0` (a
     /// paused or first frame) is a no-op; a large `dt` is clamped to `maxTimestep`.
     public func advance(by dt: Double) {
         guard dt > 0 else { return }
@@ -471,7 +484,9 @@ public final class World {
         if let id = rigidWorldId { return id }
         var def = b2DefaultWorldDef()
         def.gravity = meters(from: gravity)
+        worldSlots.lock()
         let id = b2CreateWorld(&def)
+        worldSlots.unlock()
         rigidWorldId = id
         rebuildWalls(in: id)
         return id
@@ -504,13 +519,13 @@ public final class World {
 
     // Point ↔ meter conversion for the rigid sub-system (points = meters · ppm).
     func meters(from p: Vector2) -> b2Vec2 {
-        b2Vec2(x: Float(p.x / pixelsPerMeter), y: Float(p.y / pixelsPerMeter))
+        b2Vec2(x: Float(p.x / unitsPerMeter), y: Float(p.y / unitsPerMeter))
     }
     func meters(from s: Double) -> Float {
-        Float(s / pixelsPerMeter)
+        Float(s / unitsPerMeter)
     }
     func points(from v: b2Vec2) -> Vector2 {
-        Vector2(Double(v.x) * pixelsPerMeter, Double(v.y) * pixelsPerMeter)
+        Vector2(Double(v.x) * unitsPerMeter, Double(v.y) * unitsPerMeter)
     }
 }
 

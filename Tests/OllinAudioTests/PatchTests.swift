@@ -88,7 +88,7 @@ import Testing
     /// Modulating puts the modulator in an earlier lane than what it pushes,
     /// which is what lets one forward pass evaluate the whole patch.
     @Test func amodulatorSitsInAnEarlierLaneThanWhatItPushes() {
-        let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 3), index: 2)
+        let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 3), amount: 2)
         #expect(patch.count == 2)
 
         let operators = patch.operators
@@ -103,7 +103,7 @@ import Testing
         // Every modulator reference points backwards, whatever is built.
         let deep = Patch.tone(.sine)
             .modulated(by: Patch.tone(.sine, ratio: 2)
-                .modulated(by: .tone(.sine, ratio: 5), index: 1), index: 3)
+                .modulated(by: .tone(.sine, ratio: 5), amount: 1), amount: 3)
         for (lane, op) in deep.operators.enumerated() {
             if let source = op.modulatedBy { #expect(source < lane) }
         }
@@ -157,7 +157,7 @@ import Testing
                         pitch: Self.midi(of: f0), seconds: 0.9), of: f0)
         let pushed = Self.harmonics(
             Self.render(Voice(patch: Patch.tone(.sine)
-                .modulated(by: .tone(.sine, ratio: 1), index: 3), envelope: .organ),
+                .modulated(by: .tone(.sine, ratio: 1), amount: 3), envelope: .organ),
                 pitch: Self.midi(of: f0), seconds: 0.9), of: f0)
 
         // A sine is its fundamental and nothing else.
@@ -173,7 +173,7 @@ import Testing
     @Test func aHarderPushIsABrighterTone() {
         let f0 = 220.0
         func brightness(_ index: Double) -> Double {
-            let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 1), index: index)
+            let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 1), amount: index)
             let h = Self.harmonics(
                 Self.render(Voice(patch: patch, envelope: .organ),
                             pitch: Self.midi(of: f0), seconds: 0.9), of: f0)
@@ -190,7 +190,7 @@ import Testing
     @Test func anInharmonicRatioRingsLikeMetalRatherThanLikeANote() {
         let f0 = 220.0
         func harmonicShare(ratio: Double) -> Double {
-            let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: ratio), index: 4)
+            let patch = Patch.tone(.sine).modulated(by: .tone(.sine, ratio: ratio), amount: 4)
             let sound = Self.render(Voice(patch: patch, envelope: .organ),
                                     pitch: Self.midi(of: f0), seconds: 0.9)
             let window = sound[Int(0.3 * Self.rate)..<Int(0.7 * Self.rate)]

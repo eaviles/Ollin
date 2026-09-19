@@ -44,11 +44,11 @@ import Ollin
 
     @Test func queryingANewPhraseRegistersIt() {
         let tracker = Self.tracker(concepts: ["one thing"])
-        #expect(tracker.confidence(of: "another thing") == 0)
+        #expect(tracker.share(of: "another thing") == 0)
         #expect(tracker.concepts == ["one thing", "another thing"])
         // Registration is case-insensitive: a re-query in different case
         // doesn't add a duplicate.
-        #expect(tracker.confidence(of: "Another Thing") == 0)
+        #expect(tracker.share(of: "Another Thing") == 0)
         #expect(tracker.concepts.count == 2)
     }
 
@@ -182,9 +182,9 @@ import Ollin
         // machine makes both slower, never absent.
         _ = try await tracker.detect(in: red)
         await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
-        #expect(tracker.labels.count == 2)
+        #expect(tracker.classifications.count == 2)
         #expect(tracker.topClassification?.label == "a plain red picture")
-        #expect(tracker.confidence(of: "a plain red picture") > 0.5)
+        #expect(tracker.share(of: "a plain red picture") > 0.5)
         #expect(tracker.similarity(of: "a plain red picture")
                 > tracker.similarity(of: "a plain blue picture"))
         #expect(tracker.imageEmbedding?.count == 512)
@@ -193,11 +193,11 @@ import Ollin
         // The read queues it for the background text-encoder drain; awaiting
         // its embedding encodes it here instead, into the same cache, so the
         // frame below scores three phrases with no clock involved.
-        _ = tracker.confidence(of: "a solid green picture")
+        _ = tracker.share(of: "a solid green picture")
         _ = try await tracker.embedding(of: "a solid green picture")
         await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
-        #expect(tracker.labels.count == 3)
-        let total = tracker.labels.reduce(0) { $0 + $1.confidence }
+        #expect(tracker.classifications.count == 3)
+        let total = tracker.classifications.reduce(0) { $0 + $1.confidence }
         #expect(abs(total - 1) < 1e-6)
     }
 }

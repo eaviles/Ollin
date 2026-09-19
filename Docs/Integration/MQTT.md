@@ -80,7 +80,7 @@ A topic is levels separated by `/`, such as `home/kitchen/temperature`. A publis
 
 Two rules are easy to miss, and both are worth knowing before you write a filter. `#` covers the parent level, so `sport/#` matches `sport` as well as everything under it. And a filter beginning with a wildcard never reaches a topic beginning with `$`, which is where a broker keeps its own statistics: to read those you ask for `$SYS/#` by name.
 
-`MQTTTopic.matches(_:filter:)` is the same rule as a public function, for a sketch that wants to sort what it has already drained, and `MQTTTopic.isValid(_:)` says whether a filter is well formed before it is sent. `subscriptions` is what the client is subscribed to now.
+`MQTTTopic.matches(_:filter:)` is the same rule as a public function, for a sketch that wants to sort what it has already drained, and `MQTTTopic.isValidFilter(_:)` says whether a filter is well formed before it is sent. `subscriptions` is what the client is subscribed to now.
 
 <a name="reading"></a>
 

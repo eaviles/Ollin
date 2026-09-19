@@ -130,6 +130,7 @@ final class Camera: FrameSource, VideoFeed, Sendable
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
   var isRunning: Bool { get }
+  var unavailableReason: String? { get }
   var waitingMessage: String { get }
 final class ClassMask: Sendable
   func classIndex(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Int
@@ -148,26 +149,26 @@ final class ConceptTracker: VisionAvailability, Sendable
   enum Error: CustomStringConvertible, Error, Sendable
     case unavailable(String)
     var description: String { get }
-  func confidence(of: String) -> Double
   func detect(in: Image) throws -> [Classification]
   func embedding(of: String) throws -> [Double]
+  func share(of: String) -> Double
   func similarity(of: String) -> Double
   init(_: any FrameSource, imageModelAt: Foundation.URL, textModelAt: Foundation.URL, vocabularyAt: Foundation.URL, concepts: [String] = default)
   init(imageModelAt: Foundation.URL, textModelAt: Foundation.URL, vocabularyAt: Foundation.URL, concepts: [String] = default)
+  var classifications: [Classification] { get }
   var concepts: [String] { get set }
   var imageEmbedding: [Double]? { get }
   var isAvailable: Bool { get }
   var isLoaded: Bool { get }
-  var labels: [Classification] { get }
   var topClassification: Classification? { get }
   var unavailableReason: String? { get }
 final class ContourDetector: VisionAvailability, Sendable
   func contours(in: Rectangle, mirrored: Bool = default) -> [Contour]
   func shapes(in: Rectangle, mirrored: Bool = default) -> [Shape]
-  init(_: any FrameSource, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default)
-  let contrastAdjustment: Float
+  init(_: any FrameSource, detectsDarkOnLight: Bool = default, contrastFactor: Float = default)
+  let contrastFactor: Float
   let detectsDarkOnLight: Bool
-  static func detect(in: Image, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default, maxDimension: Int = default) throws -> DetectedContours
+  static func detect(in: Image, detectsDarkOnLight: Bool = default, contrastFactor: Float = default, maxDimension: Int = default) throws -> DetectedContours
   var contourTree: DetectedContours { get }
   var count: Int { get }
   var isAvailable: Bool { get }
@@ -238,8 +239,8 @@ final class ImageClassifier: VisionAvailability, Sendable
   let minConfidence: Double
   static func detect(in: Image, minConfidence: Double = default) throws -> [Classification]
   static func supportedLabels() -> [String]
+  var classifications: [Classification] { get }
   var isAvailable: Bool { get }
-  var labels: [Classification] { get }
   var topClassification: Classification? { get }
   var unavailableReason: String? { get }
 final class ModelTracker: VisionAvailability, Sendable
@@ -254,10 +255,10 @@ final class ModelTracker: VisionAvailability, Sendable
   init(_: any FrameSource, modelAt: Foundation.URL)
   init(modelAt: Foundation.URL)
   var classMask: ClassMask? { get }
+  var classifications: [Classification] { get }
   var image: Image? { get }
   var isAvailable: Bool { get }
   var isLoaded: Bool { get }
-  var labels: [Classification] { get }
   var map: Image? { get }
   var objects: [Detection] { get }
   var sourceFrame: Image? { get }
@@ -298,11 +299,11 @@ final class PointSegmenter: VisionAvailability, Sendable
   init(imageEncoderAt: Foundation.URL, promptEncoderAt: Foundation.URL, maskDecoderAt: Foundation.URL)
   struct Pick: Sendable
     func bounds(in: Rectangle) -> Rectangle
+    let confidence: Double
     let cutout: Image
     let matte: Image
-    let score: Double
   var isAvailable: Bool { get }
-  var isWorking: Bool { get }
+  var isPicking: Bool { get }
   var pick: PointSegmenter.Pick? { get }
   var unavailableReason: String? { get }
 final class RectangleDetector: VisionAvailability, Sendable
@@ -352,8 +353,8 @@ final class TextRecognizer: VisionAvailability, Sendable
   var unavailableReason: String? { get }
 final class TrajectoryTracker: VisionAvailability, Sendable
   func reset()
-  init(_: any FrameSource, trajectoryLength: Int = default, minObjectRadius: Double? = default, maxObjectRadius: Double? = default)
-  static func detect(across: [Image], frameRate: Double = default, trajectoryLength: Int = default) throws -> [[DetectedTrajectory]]
+  init(_: any FrameSource, minObservationCount: Int = default, minObjectRadius: Double? = default, maxObjectRadius: Double? = default)
+  static func detect(across: [Image], frameRate: Double = default, minObservationCount: Int = default) throws -> [[DetectedTrajectory]]
   var isAvailable: Bool { get }
   var trajectories: [DetectedTrajectory] { get }
   var unavailableReason: String? { get }
@@ -488,8 +489,8 @@ struct ModelOutput: Sendable
   func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
   func valueNormalized(at: Vector2) -> Double
   let classMask: ClassMask?
+  let classifications: [Classification]
   let image: Image?
-  let labels: [Classification]
   let map: Image?
   let objects: [Detection]
 struct Saliency: Sendable

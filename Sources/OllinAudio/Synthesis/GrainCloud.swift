@@ -246,19 +246,19 @@ public struct GrainCloud: Sendable, Hashable, Codable {
     /// At 0 they start on a strict clock, and a fast one is heard as a pitch
     /// of its own at ``density`` hertz. At 1 the gap between them is random
     /// with the same average, which is what makes a cloud a cloud.
-    public var scatter: Double
+    public var timingJitter: Double
 
     /// The shape each grain fades in and out with.
     public var shape: GrainShape
 
-    /// Which scatter this is. The same seed gives the same cloud, so a cloud
+    /// Which timingJitter this is. The same seed gives the same cloud, so a cloud
     /// can be tuned and kept.
     public var seed: Int
 
     public init(size: Double = 0.06, density: Double = 30, position: Double = 0,
                 positionJitter: Double = 0.02, speed: Double = 1,
                 pitchSpread: Double = 0, panSpread: Double = 0,
-                scatter: Double = 1, shape: GrainShape = .bell,
+                timingJitter: Double = 1, shape: GrainShape = .bell,
                 seed: Int = 0x5EED) {
         self.size = min(max(0.001, size), 1)
         self.density = min(max(0.1, density), 1000)
@@ -267,7 +267,7 @@ public struct GrainCloud: Sendable, Hashable, Codable {
         self.speed = min(max(-4, speed), 4)
         self.pitchSpread = min(max(0, pitchSpread), 24)
         self.panSpread = min(max(0, panSpread), 1)
-        self.scatter = min(max(0, scatter), 1)
+        self.timingJitter = min(max(0, timingJitter), 1)
         self.shape = shape
         self.seed = seed
     }

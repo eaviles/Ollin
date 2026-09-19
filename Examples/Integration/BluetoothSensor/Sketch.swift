@@ -51,7 +51,7 @@ final class BluetoothSensor: Sketch {
             device = nil
             return
         }
-        let found = BluetoothDevice(named: name)
+        let found = BluetoothDevice(matching: name)
         found.connect()
         // Battery is a value most devices hold and never announce, so it is
         // asked for again every ten seconds rather than once.

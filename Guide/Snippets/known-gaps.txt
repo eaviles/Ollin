@@ -179,7 +179,7 @@ aa17eb972ebd  Guide/25-CharactersAndCloth.md:214  cannot find 'world' in scope
 e99e6b150018  Guide/25-CharactersAndCloth.md:224  consecutive statements on a line must be separated by ';'
 7b23b6918cf2  Guide/25-CharactersAndCloth.md:233  labeled block needs 'do'
 5b54aa9e8493  Guide/25-CharactersAndCloth.md:241  cannot find 'ball' in scope
-53fd73cffbb5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
+8fe6c50adef5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
 dee0a1efaea9  Guide/25-CharactersAndCloth.md:252  cannot find 'banner' in scope
 4e6a38ca9ad1  Guide/25-CharactersAndCloth.md:262  cannot find 'cape' in scope
 e63def96d4af  Guide/25-CharactersAndCloth.md:272  cannot find 'figure' in scope
@@ -250,19 +250,19 @@ ec50d5906661  Guide/28-SoundAndControl.md:184  cannot find 'caption' in scope
 65ccb9206470  Guide/28-SoundAndControl.md:392  cannot find 'TUIOReceiver' in scope
 33ba2742b7e1  Guide/28-SoundAndControl.md:418  cannot find 'surface' in scope
 c6da73302d67  Guide/28-SoundAndControl.md:438  cannot find 'ship' in scope
-909819c4a9dc  Guide/28-SoundAndControl.md:466  cannot find 'controllerMotion' in scope
+05a701a71817  Guide/28-SoundAndControl.md:466  cannot find 'controllersReportMotion' in scope
 11884358e073  Guide/28-SoundAndControl.md:484  cannot find 'flash' in scope
 11984c91aed8  Guide/28-SoundAndControl.md:517  cannot find 'mark' in scope
 86d0417a42dc  Guide/28-SoundAndControl.md:550  cannot find 'StageMic' in scope
 8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
 6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
-5ab02072b47e  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
+3a65eb414a42  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
 09d5961233f3  Guide/29-MakingSound.md:117  cannot find 'synth' in scope
 cccb28333938  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scope
 d66ebfc13577  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
 139bec613386  Guide/29-MakingSound.md:167  cannot find 'synth' in scope
 a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
-c69d07e83385  Guide/29-MakingSound.md:193  cannot find 'synth' in scope
+509cf90aa01b  Guide/29-MakingSound.md:193  cannot find 'synth' in scope
 1331fb3327dd  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
 a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
 5f7fa83f1394  Guide/29-MakingSound.md:257  cannot find 'synth' in scope
@@ -299,7 +299,7 @@ daee9e15952e  Guide/29-MakingSound.md:631  cannot find 'drums' in scope
 4c4f3af85a7b  Guide/29-MakingSound.md:683  cannot find 'Progression' in scope
 6e023d5c7adb  Guide/29-MakingSound.md:691  cannot find 'Progression' in scope
 42e6f390edd0  Guide/29-MakingSound.md:702  cannot find 'Tuning' in scope
-05dd2989e104  Guide/29-MakingSound.md:71  cannot find 'Patch' in scope
+ca2ad8978f67  Guide/29-MakingSound.md:71  cannot find 'Patch' in scope
 0d8e7894998c  Guide/29-MakingSound.md:717  cannot find 'StepCounter' in scope
 47f783a8ac03  Guide/29-MakingSound.md:739  cannot find 'Sonification' in scope
 bcb4c0a45a0c  Guide/29-MakingSound.md:763  cannot find 'marker' in scope
@@ -307,7 +307,7 @@ bcb4c0a45a0c  Guide/29-MakingSound.md:763  cannot find 'marker' in scope
 244efe4a3c2a  Guide/29-MakingSound.md:807  cannot find type 'ScheduledNote' in scope
 dcc76ca1f705  Guide/29-MakingSound.md:821  cannot find 'MIDIFile' in scope
 3781d3ae3cfc  Guide/29-MakingSound.md:846  cannot find 'synth' in scope
-2e02aee3d33f  Guide/29-MakingSound.md:865  expected '}' in class
+fffa768e85fe  Guide/29-MakingSound.md:865  expected '}' in class
 60aef06efea1  Guide/29-MakingSound.md:954  extraneous '}' at top level
 e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
 096f6e921b2a  Guide/30-Seeing.md:108  cannot find 'BodyTracker3D' in scope
@@ -325,7 +325,7 @@ cdc2a7f6ed3c  Guide/30-Seeing.md:37  cannot find 'Camera' in scope
 b207bebe3f14  Guide/30-Seeing.md:375  cannot find 'ConceptTracker' in scope
 17aefa356dd1  Guide/30-Seeing.md:398  call can throw, but errors cannot be thrown out of a property initializer
 c517bfa97332  Guide/30-Seeing.md:425  cannot find 'ScreenCapture' in scope
-5ed6e5e89ad1  Guide/30-Seeing.md:435  cannot find 'ScreenCapture' in scope
+8d4b5b4c3a05  Guide/30-Seeing.md:435  cannot find 'ScreenCapture' in scope
 ad5358257b7a  Guide/30-Seeing.md:444  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:465  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
 9f0265c15491  Guide/30-Seeing.md:61  cannot find 'FaceTracker' in scope

@@ -34,7 +34,7 @@ internal import CJolt
 /// What it holds is the rigid tier: `Body3D`s (with their colliders, poses,
 /// motion, and every parameter `addBody` takes), the `Joint3D`s between them,
 /// gears and racks, the collision-group table, and the world's `gravity`,
-/// `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`. Characters,
+/// `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`. Characters,
 /// vehicles, ragdolls, and soft bodies are each built from something a
 /// snapshot has no way to carry (a rig, a wheel layout, a skinned scene, a
 /// mesh), so they are left out, with a note naming what was skipped. Contacts
@@ -572,7 +572,7 @@ extension World3D {
         // turned the way it was, and then stood in the shape it had reached.
         if let rope = saved.rope {
             guard let body = makeRope(points: rope.points, position: saved.position,
-                                      rotation: turn, thickness: rope.thickness,
+                                      rotation: turn, radius: rope.radius,
                                       sides: rope.sides, mass: saved.mass,
                                       stiffness: saved.stiffness, bend: saved.bend,
                                       damping: saved.damping,
@@ -939,7 +939,7 @@ private struct SavedSoftBody {
 /// A rope's own build data, small enough to carry rather than name.
 private struct SavedRope {
     var points: [Vector3]
-    var thickness: Double
+    var radius: Double
     var sides: Int
     var rodRotations: [simd_quatd]
 }
@@ -1344,7 +1344,7 @@ private struct SnapshotWriter {
 
     mutating func wheel(_ wheel: Wheel3D) {
         f64(wheel.spinRate)
-        f64(wheel.spin)
+        f64(wheel.rollAngle)
         vector(wheel.position)
         f64(wheel.radius)
         f64(wheel.width)
@@ -1458,7 +1458,7 @@ private struct SnapshotWriter {
         u32(UInt32(rope?.points.count ?? 0))
         if let rope {
             for point in rope.points { vector(point) }
-            f64(rope.thickness)
+            f64(rope.radius)
             u32(UInt32(max(3, rope.sides)))
             let frames = rope.rodOrientations()
             u32(UInt32(frames.count))
@@ -1955,14 +1955,14 @@ private struct SnapshotReader {
             var points: [Vector3] = []
             points.reserveCapacity(ropePoints)
             for _ in 0 ..< ropePoints { points.append(try vector()) }
-            let thickness = try f64()
+            let radius = try f64()
             let sides = Int(try u32())
             var frames: [simd_quatd] = []
             for _ in 0 ..< (try count()) {
                 frames.append(simd_quatd(ix: Double(try f32()), iy: Double(try f32()),
                                          iz: Double(try f32()), r: Double(try f32())))
             }
-            rope = SavedRope(points: points, thickness: thickness, sides: sides,
+            rope = SavedRope(points: points, radius: radius, sides: sides,
                              rodRotations: frames)
         }
 

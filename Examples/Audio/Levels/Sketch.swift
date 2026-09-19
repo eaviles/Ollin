@@ -26,7 +26,7 @@ final class Levels: Sketch {
     @Param("Ratio", 1 ... 20, icon: "divide", group: "Level") var ratio = 4.0
     @Param("Attack", 0.001 ... 0.2, icon: "hare", group: "Level") var attack = 0.01
     @Param("Release", 0.01 ... 1, icon: "tortoise", group: "Level") var release = 0.2
-    @Param("Makeup", 0 ... 24, icon: "arrow.up.to.line", group: "Level") var makeup = 6.0
+    @Param("Makeup", 0 ... 24, icon: "arrow.up.to.line", group: "Level") var makeupGain = 6.0
     @Param("Ceiling", -24 ... 0, icon: "square.topthird.inset.filled", group: "Limiter") var ceiling = -12.0
     @Param("Hold", 0 ... 0.5, icon: "clock", group: "Gate") var hold = 0.06
 
@@ -64,7 +64,7 @@ final class Levels: Sketch {
         case .compressor:
             return [hiss, .compressor(Compressor(threshold: threshold, ratio: ratio,
                                                  attack: attack, release: release,
-                                                 knee: 6, makeup: makeup))]
+                                                 knee: 6, makeupGain: makeupGain))]
         case .limiter:
             return [hiss, .limiter(Limiter(ceiling: ceiling, release: release))]
         case .gate:

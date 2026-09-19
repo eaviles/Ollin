@@ -9,7 +9,7 @@ import Foundation
 ///
 /// ```swift
 /// let bell = Patch.tone(.sine)
-///     .modulated(by: .tone(.sine, ratio: 3.5), index: 4)
+///     .modulated(by: .tone(.sine, ratio: 3.5), amount: 4)
 ///
 /// synth.voice = Voice(patch: bell, envelope: .percussive)
 /// ```
@@ -92,14 +92,14 @@ public struct Patch: Sendable, Hashable, Codable {
     /// of filtering can do.
     ///
     /// ```swift
-    /// Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 2), index: 3)
+    /// Patch.tone(.sine).modulated(by: .tone(.sine, ratio: 2), amount: 3)
     /// ```
     ///
     /// - Parameters:
     ///   - other: what does the pushing.
-    ///   - index: how hard. Small numbers waver; past about 2 it is a new
+    ///   - amount: how hard. Small numbers waver; past about 2 it is a new
     ///     instrument rather than the old one wobbling.
-    public func modulated(by other: Patch, index: Double) -> Patch {
+    public func modulated(by other: Patch, amount: Double) -> Patch {
         // The modulator's operators go in first, so every modulator sits in an
         // earlier lane than what it modulates and one pass evaluates the lot.
         guard var joined = Patch.joining(other, then: self) else { return self }
@@ -110,7 +110,7 @@ public struct Patch: Sendable, Hashable, Codable {
         // something rather than being heard.
         var source: Int?
         for lane in 0..<Int(other.operatorCount) where other.reachesOutput(lane) {
-            joined.levels[lane] = max(0, index)
+            joined.levels[lane] = max(0, amount)
             joined.outputs &= ~(1 << UInt8(lane))
             source = lane
         }
@@ -239,17 +239,17 @@ public struct Patch: Sendable, Hashable, Codable {
     /// is not a harmonic, so what comes out has no pitch class of its own and
     /// rings like struck metal.
     public static let bell = Patch.tone(.sine)
-        .modulated(by: .tone(.sine, ratio: 3.5), index: 4)
+        .modulated(by: .tone(.sine, ratio: 3.5), amount: 4)
 
     /// A sine pushed hard by one an octave up, which fills in the harmonics
     /// a filter would have had to take away from something brighter.
     public static let brass = Patch.tone(.sine)
-        .modulated(by: .tone(.sine, ratio: 2), index: 2.4)
+        .modulated(by: .tone(.sine, ratio: 2), amount: 2.4)
 
     /// Pushed at a ratio just off a whole number, so the two drift against each
     /// other and the tone moves without anything moving it.
     public static let glass = Patch.tone(.sine)
-        .modulated(by: .tone(.sine, ratio: 5.01), index: 1.6)
+        .modulated(by: .tone(.sine, ratio: 5.01), amount: 1.6)
 
     /// One operator pushing itself, which is the cheap way to a buzzing tone.
     public static let buzz = Patch.tone(.sine).fedBack(0.62)
@@ -257,7 +257,7 @@ public struct Patch: Sendable, Hashable, Codable {
     /// A body and a strike heard together rather than one pushing the other.
     public static let struck = Patch.tone(.sine, level: 0.7)
         .mixed(with: Patch.tone(.sine, ratio: 7.1, level: 0.25)
-            .modulated(by: .tone(.sine, ratio: 3.1), index: 3))
+            .modulated(by: .tone(.sine, ratio: 3.1), amount: 3))
 }
 
 extension Waveform {

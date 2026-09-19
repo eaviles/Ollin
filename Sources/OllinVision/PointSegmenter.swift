@@ -34,9 +34,9 @@ import os
 /// frame's cached encoding. `pick(at:in:)` starts fresh on the current frame.
 ///
 /// The model proposes three readings of every prompt (the part, the whole,
-/// the group) and the one it scores highest wins; `Pick.score` is that
+/// the group) and the one it scores highest wins; `Pick.confidence` is that
 /// confidence. Results publish asynchronously: `pick` stays `nil` (or keeps
-/// the previous pick) until the new answer lands, `isWorking` says one is on
+/// the previous pick) until the new answer lands, `isPicking` says one is on
 /// the way.
 public final class PointSegmenter: VisionTracking, @unchecked Sendable {
 
@@ -64,7 +64,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
         /// elsewhere, frame-aligned like `matte`.
         public let cutout: Image
         /// The model's own confidence in this mask, `0…1`.
-        public let score: Double
+        public let confidence: Double
         /// The mask's bounding box in frame fractions (`0…1` on both axes).
         let region: Rectangle
 
@@ -140,7 +140,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
 
     /// Whether an answer is on the way; the encode after a fresh pick takes
     /// a beat, refines land in milliseconds.
-    public var isWorking: Bool { lock.withLockUnchecked { $0.working } }
+    public var isPicking: Bool { lock.withLockUnchecked { $0.working } }
 
     /// Whether the models can run here: the files exist, loaded, and the
     /// compute device can execute them. When `false`, `unavailableReason`
@@ -480,7 +480,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
         let region = Rectangle(x: Double(minX) * scale, y: Double(minY) * scale,
                                width: Double(maxX - minX + 1) * scale,
                                height: Double(maxY - minY + 1) * scale)
-        return Pick(matte: matte, cutout: cutout, score: score, region: region)
+        return Pick(matte: matte, cutout: cutout, confidence: score, region: region)
     }
 
     // MARK: Loading

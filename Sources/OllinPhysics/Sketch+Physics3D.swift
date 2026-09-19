@@ -31,7 +31,7 @@ extension Sketch {
     /// ```swift
     /// withCharacter(walker) {
     ///     translate(0, 0.9, 0)                 // the capsule's middle
-    ///     drawCapsule(height: 1.2, radius: 0.3)
+    ///     drawCapsule(radius: 0.3, height: 1.2)
     /// }
     /// ```
     public func withCharacter(_ character: Character3D, _ draw: () -> Void) {
@@ -48,7 +48,7 @@ extension Sketch {
     ///
     /// ```swift
     /// for wheel in car.wheels {
-    ///     withWheel(wheel) { drawCylinder(height: wheel.width, radius: wheel.radius) }
+    ///     withWheel(wheel) { drawCylinder(radius: wheel.radius, height: wheel.width) }
     /// }
     /// ```
     public func withWheel(_ wheel: Wheel3D, _ draw: () -> Void) {
@@ -70,7 +70,7 @@ extension Sketch {
     /// for limb in ragdoll.limbs {
     ///     withLimb(limb) {
     ///         if case .capsule(let height, let radius) = limb.collider {
-    ///             drawCapsule(height: height, radius: radius)
+    ///             drawCapsule(radius: radius, height: height)
     ///         }
     ///     }
     /// }
@@ -150,7 +150,7 @@ extension Sketch {
     ///
     /// A soft body has no single pose to hang a joint from, so a grip is a
     /// *pinned particle* the sketch drives instead. Drag it with
-    /// `dragSoftGrab(_:to:)` each frame and `releaseSoftGrab(_:)` to let go:
+    /// `dragSoftGrip(_:to:)` each frame and `releaseSoftGrip(_:)` to let go:
     ///
     /// ```swift
     /// var grip: SoftGrip?
@@ -158,11 +158,11 @@ extension Sketch {
     ///     grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
     /// }
     /// override func mouseReleased() {
-    ///     if let grip { releaseSoftGrab(grip) }
+    ///     if let grip { releaseSoftGrip(grip) }
     ///     grip = nil
     /// }
     /// // in draw():
-    /// if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+    /// if let grip { dragSoftGrip(grip, to: Vector2(mouseX, mouseY)) }
     /// ```
     public func grabSoftBody(at canvasPoint: Vector2, in world: World3D) -> SoftGrip? {
         guard let camera = activeCamera,
@@ -180,14 +180,14 @@ extension Sketch {
         // A rope has no surface for a ray to strike, so nothing above can find
         // one. What the cursor means on a rope is still perfectly clear, so the
         // fallback is to take the nearest particle to the line of sight, within
-        // the rope's own thickness of it.
+        // the rope's own radius of it.
         var best: (rope: Rope3D, vertex: Int, point: Vector3, distance: Double)?
         for rope in world.softBodies.compactMap({ $0 as? Rope3D }) {
             for (index, point) in rope.particlePositions.enumerated() {
                 let along = (point - ray.origin).dot(ray.direction)
                 guard along > 0 else { continue }
                 let distance = (point - (ray.origin + ray.direction * along)).length
-                guard distance <= max(rope.thickness, 1e-6) * 3 else { continue }
+                guard distance <= max(rope.radius, 1e-6) * 3 else { continue }
                 if best == nil || along < (best!.point - ray.origin).dot(ray.direction) {
                     best = (rope, index, point, distance)
                 }
@@ -201,7 +201,7 @@ extension Sketch {
 
     /// Drag a soft-body grip toward a canvas point, keeping the particle at the
     /// view depth where it was picked up.
-    public func dragSoftGrab(_ grip: SoftGrip, to canvasPoint: Vector2) {
+    public func dragSoftGrip(_ grip: SoftGrip, to canvasPoint: Vector2) {
         guard let camera = activeCamera,
               let ray = cameraRay(through: canvasPoint) else {
             return
@@ -215,7 +215,7 @@ extension Sketch {
     /// Let go of a soft-body grip. A particle that was free before it was picked
     /// up is handed back to the simulation; one that was already pinned stays
     /// pinned where the drag left it.
-    public func releaseSoftGrab(_ grip: SoftGrip) {
+    public func releaseSoftGrip(_ grip: SoftGrip) {
         if !grip.wasPinned { grip.body.unpin(grip.vertex) }
     }
 
@@ -388,7 +388,7 @@ extension Sketch {
     /// ```swift
     /// override func draw() {
     ///     …
-    ///     world.step(deltaTime)
+    ///     world.advance(by: deltaTime)
     ///     dragBodies(in: world)
     /// }
     /// ```

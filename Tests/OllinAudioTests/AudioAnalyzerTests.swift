@@ -24,7 +24,7 @@ struct AudioAnalyzerTests {
         let targetBin = 40
         let freq = Double(targetBin) * Self.sampleRate / Double(Self.fftSize)
         let samples = Self.sine(frequency: freq, amplitude: 0.8, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         let spectrum = analyzer.spectrum
         #expect(spectrum.count == Self.fftSize / 2)
@@ -38,7 +38,7 @@ struct AudioAnalyzerTests {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let amp = 0.5
         let samples = Self.sine(frequency: 1000, amplitude: amp, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         let expected = Float(amp / 2.0.squareRoot())
         #expect(abs(analyzer.amplitude - expected) < 0.01)
@@ -48,7 +48,7 @@ struct AudioAnalyzerTests {
     @Test func silenceIsQuiet() {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let samples = [Float](repeating: 0, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         #expect(analyzer.amplitude == 0)
         #expect((analyzer.spectrum.max() ?? 0) < 1e-6)
@@ -58,7 +58,7 @@ struct AudioAnalyzerTests {
     @Test func bandQueryIsolatesEnergy() {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let samples = Self.sine(frequency: 5000, amplitude: 0.8, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         let onTone = analyzer.magnitude(in: 4500...5500)
         let offTone = analyzer.magnitude(in: 200...400)
@@ -71,7 +71,7 @@ struct AudioAnalyzerTests {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let freq = 2000.0
         let samples = Self.sine(frequency: freq, amplitude: 0.8, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         // Let the attack/release envelope settle on the steady spectrum.
         let count = 32
@@ -94,7 +94,7 @@ struct AudioAnalyzerTests {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let silence = [Float](repeating: 0, count: Self.fftSize)
         for _ in 0..<10 {
-            silence.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+            silence.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         }
         var bands = analyzer.bands(24)
         for _ in 0..<20 { bands = analyzer.bands(24) }
@@ -110,9 +110,9 @@ struct AudioAnalyzerTests {
 
         // Five loud buffers, each followed by silence well past the refractory.
         for _ in 0..<5 {
-            loud.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+            loud.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
             for _ in 0..<7 {
-                quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+                quiet.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
             }
         }
         #expect(analyzer.beatCount >= 3)
@@ -122,7 +122,7 @@ struct AudioAnalyzerTests {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
         let quiet = [Float](repeating: 0, count: Self.fftSize)
         for _ in 0..<40 {
-            quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+            quiet.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         }
         #expect(analyzer.beatCount == 0)
     }
@@ -171,7 +171,7 @@ struct AudioAnalyzerTests {
         while offset < signal.count {
             let take = min(chunk, signal.count - offset)
             signal.withUnsafeBufferPointer {
-                analyzer.process(samples: $0.baseAddress! + offset, count: take)
+                analyzer.analyze(samples: $0.baseAddress! + offset, count: take)
             }
             offset += take
             if analyzer.beatCount > last {
@@ -234,16 +234,16 @@ struct AudioAnalyzerTests {
         #expect(analyzer.beat == 0)
 
         for _ in 0..<5 {
-            quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+            quiet.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         }
-        loud.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        loud.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         #expect(analyzer.beatCount == 1)
         #expect(analyzer.timeSinceBeat == 0)
         #expect(analyzer.beat == 1)
 
         let k = 8
         for _ in 0..<k {
-            quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+            quiet.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         }
         #expect(analyzer.timeSinceBeat == Double(k * Self.fftSize) / Self.sampleRate)
     }
@@ -257,14 +257,14 @@ struct AudioAnalyzerTests {
         let b = [Float](repeating: 0.5, count: half)
         let c = [Float](repeating: 0.75, count: half)
 
-        a.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
-        b.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        a.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
+        b.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         var wave = analyzer.waveform
         #expect(wave.count == Self.fftSize)
         #expect(wave[0..<half].allSatisfy { $0 == 0.25 })
         #expect(wave[half...].allSatisfy { $0 == 0.5 })
 
-        c.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        c.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
         wave = analyzer.waveform
         #expect(wave[0..<half].allSatisfy { $0 == 0.5 })
         #expect(wave[half...].allSatisfy { $0 == 0.75 })
@@ -275,7 +275,7 @@ struct AudioAnalyzerTests {
     @Test func smoothingDampsResponse() {
         let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0.8)
         let samples = Self.sine(frequency: 1000, amplitude: 0.9, count: Self.fftSize)
-        samples.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        samples.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: $0.count) }
 
         let rms = Float(0.9 / 2.0.squareRoot())
         // After one frame from zero with a=0.8, amplitude ≈ 0.2 * rms.

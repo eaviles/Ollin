@@ -257,7 +257,7 @@ struct FirmataTests {
         _ = board.analog(1)
         _ = board.digital(4)
         board.write(13, true)
-        board.setSamplingInterval(50)
+        board.sampleEvery(0.05)
         _ = try await waitFor { fake.heard([0xF0, 0x7A, 50, 0, 0xF7]) ? true : nil }
         fake.forget()
 

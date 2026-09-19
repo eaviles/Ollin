@@ -100,7 +100,7 @@ public final class LaserProjector: @unchecked Sendable {
     }
 
     /// Whether the DAC is connected and taking points.
-    public var isConnected: Bool { dac?.isPlaying ?? false }
+    public var isPlaying: Bool { dac?.isPlaying ?? false }
 
     /// What the DAC last said about itself.
     public var status: EtherDreamStatus? { dac?.status }

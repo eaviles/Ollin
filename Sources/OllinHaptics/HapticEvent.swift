@@ -79,7 +79,7 @@ public struct HapticEvent: Equatable, Sendable {
     /// its fades: it climbs over `fadeIn`, holds, and falls over `fadeOut`.
     /// Reach for it to draw a pattern, or to drive something else from the
     /// same shape the hand is being given.
-    public func strength(at offset: Double) -> Double {
+    public func intensity(at offset: Double) -> Double {
         guard kind == .hum, duration > 0 else { return intensity }
         var shape = 1.0
         if fadeIn > 0 { shape = min(shape, offset / fadeIn) }

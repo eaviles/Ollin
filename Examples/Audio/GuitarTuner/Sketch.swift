@@ -186,7 +186,7 @@ final class PretendGuitar {
                 }
                 tape[i] = Float(s * 0.35 * min(1, since * 300))
             }
-            tape.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: count) }
+            tape.withUnsafeBufferPointer { analyzer.analyze(samples: $0.baseAddress!, count: count) }
             fed += Double(count) / rate
         }
     }

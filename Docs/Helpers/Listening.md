@@ -53,7 +53,7 @@ So there are three reads:
 | `transcript` | only what the recognizer committed to | keeping, and acting on |
 | `phrases()` | committed phrases, drained | triggering |
 
-`caption` keeps only its last `captionWords` words (14 by default, about one line), so it does not run off the side of the canvas. `reset()` forgets everything heard so far.
+`caption` keeps only its last `maxCaptionWords` words (14 by default, about one line), so it does not run off the side of the canvas. `reset()` forgets everything heard so far.
 
 ### Acting on what was said
 

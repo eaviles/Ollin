@@ -6,7 +6,7 @@ import CBox2D
 
 /// Correctness for the rigid `Body` sub-system (Box2D-backed): a dynamic body
 /// falls under gravity, a static floor stops it, contacts resolve, and joints
-/// hold. These run in points and convert through `pixelsPerMeter`, so the asserts
+/// hold. These run in points and convert through `unitsPerMeter`, so the asserts
 /// are in sketch units. GPU-free, like the Verlet tests beside them. (Box2D's
 /// solver isn't the Verlet solver, so these check behavior qualitatively, not to
 /// the last point.)

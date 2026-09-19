@@ -138,7 +138,7 @@ All of it is one API with the same conventions throughout.
 
 - **Made to be left running.** [Installation mode](Docs/Output/Installation.md) fills the screen, hides the pointer, and keeps the display awake. The clock survives display sleep and long runs; `@Saved` state survives a relaunch. A watch restarts a crashed piece, a schedule gives it the building's hours, and projection calibration and edge blending fit one canvas across displays or projectors.
 
-Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) is the full capability map, with a reference page for each area. Beyond drawing and shaders, browse [sixty-six generative techniques](Docs/Generators/README.md), [simulation and physics](Docs/Simulation/README.md), the [opt-in 3D layer](Docs/3D/README.md), [on-device perception](Docs/Vision/Vision.md), [data](Docs/Helpers/Data.md), [sound](Docs/Helpers/Audio.md), and [control surfaces and rig integration](Docs/Integration/README.md).
+Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) is the full capability map, with a reference page for each area. Beyond drawing and shaders, browse [sixty-nine generative techniques](Docs/Generators/README.md), [simulation and physics](Docs/Simulation/README.md), the [opt-in 3D layer](Docs/3D/README.md), [on-device perception](Docs/Vision/Vision.md), [data](Docs/Helpers/Data.md), [sound](Docs/Helpers/Audio.md), and [control surfaces and rig integration](Docs/Integration/README.md).
 
 ## Live reload
 
@@ -148,11 +148,9 @@ To keep a window open while you edit, run a sketch through OllinLive from the re
 swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
 ```
 
-Save an edit in your editor and Ollin recompiles just that file, then swaps it into the running window. If it doesn't compile, the error shows and the old sketch keeps running. A standalone file started with `ollin dots.swift` uses this same host.
+Save an edit in your editor and Ollin recompiles just that file, then swaps it into the running window. If it doesn't compile, the error shows and the old sketch keeps running. A standalone file started with `ollin dots.swift` uses this same host. A reload starts the sketch fresh by default, or carries `time` and `frameCount` across it so an animation doesn't jump back to the start.
 
 [`@Param` properties](Docs/Helpers/Parameters.md) become typed inspector controls: sliders, steppers, toggles, menus, color wells, palette and gradient strips. They keep their tuned values across reloads. Hold Command over a shape drawn with plain numbers to [move, resize, or rotate it](Docs/Tools/DragToEdit.md); the handles write the new numbers into your source.
-
-Each reload starts the sketch fresh by default. `--keep-clock` carries `time` and `frameCount` across the reload, so an animation doesn't jump back to the start. There is also a `reloaded()` hook. The sketch compiles optimized; `--no-optimize` enables assertions and clearer backtraces for debugging. For a heavy sketch, `Scripts/OllinLive` runs the host in release too.
 
 For a live performance, `swift run OllinLiveCoding` opens the editor over the visuals in one fullscreen-capable window. Press ⌘↩ (Command-Return) to evaluate the buffer, carrying the clock and parameters across the swap. [Live coding](Docs/Tools/LiveCoding.md) covers the stage controls, recovery, and how evaluation differs from saving a file.
 
@@ -180,7 +178,7 @@ The same flags work on a standalone sketch created with `ollin new dots.swift`:
 ollin dots.swift --export-gif dots.gif --seconds 4
 ```
 
-[Export](Docs/Output/Export.md) covers PNG sequences (`--export-sequence`), vector SVG and PDF (`--export-svg`, `--export-pdf`), codecs, quality, warmup, slow motion, and hatched fills for pen plotters. Sequence, video, and GIF exports advance the clock at a fixed timestep, so a slow render still plays back smoothly. In code these are `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`.
+PNG sequences, vector SVG and PDF, and hatched fills for pen plotters are flags of the same shape. A sequence, video, or GIF advances the clock at a fixed timestep, so a slow render still plays back smoothly. [Export](Docs/Output/Export.md) covers all of them, and the calls behind them.
 
 For a [web page](Docs/Output/Web.md), `--export-web` records what the sketch draws and writes a self-contained page or an inline fragment. Shapes and supported shaders play back in WebGL2, with Metal translated to GLSL. This is a recorded export, so a drawing call it cannot carry stops it, and the exporter names that call. A ready-made example:
 
@@ -188,22 +186,17 @@ For a [web page](Docs/Output/Web.md), `--export-web` records what the sketch dra
 swift run --package-path Examples Example-Web-BreathingRing --export-web ring.html
 ```
 
-A 3D scene can also [trace light paths](Docs/Output/PathTraced.md) for its export. `--path-traced` spends seconds per frame on soft shadows, color bleed, mirror-in-mirror reflections, and a lens model, from the same sketch you tune live.
+A 3D scene can also [trace light paths](Docs/Output/PathTraced.md) for its export. That spends seconds per frame on soft shadows, color bleed, mirror-in-mirror reflections, and a lens model, from the same sketch you tune live.
 
 To keep or direct a performance:
 
-- **Record a movie.** ⌘⇧R (Command-Shift-R) in the live hosts, `--record` on OllinLive, or `startRecording()` in a sketch captures the picture and the sketch's or room's sound in real time. Evaluating in the live-coding host does not interrupt it. See [Recording](Docs/Output/Recording.md).
-- **Keep a take.** `--record-take take.json` saves the seed, clock, inputs, and parameter moves. `--replay take.json` plays them back with pause, step, and scrub controls, or re-renders them offline through an export flag, even path-traced. Add `--seed` to try the same gestures on another variation. See [Record & replay](Docs/Core/Replay.md).
-- **Compose the parameter moves.** [Automation](Docs/Core/Automation.md) puts parameters on keyframed curves, authored in code, in JSON, or in the [timeline panel](Docs/Tools/Timeline.md). A [formula](Docs/Helpers/Formula.md) sets a parameter from a rule such as `190 + sin(time * tau / 6) * 80`. Both read the sketch clock and render frame for frame.
+- **Record a movie.** [Recording](Docs/Output/Recording.md) captures the picture and the sketch's or room's sound in real time, from a key in the live hosts or a call in a sketch. Evaluating in the live-coding host does not interrupt it.
+- **Keep a take.** A [take](Docs/Core/Replay.md) saves the seed, clock, inputs, and parameter moves instead of pixels. Replay it under transport controls, re-render it offline at any quality, or try the same gestures on another seed.
+- **Compose the parameter moves.** [Automation](Docs/Core/Automation.md) puts parameters on keyframed curves, authored in code, in JSON, or in the [timeline panel](Docs/Tools/Timeline.md). A [formula](Docs/Helpers/Formula.md) sets one from a rule such as `190 + sin(time * tau / 6) * 80`.
 
-To explore a seeded sketch, the inspector's [Variation card](Docs/Core/Variations.md) steps, rolls, or jumps through seeds. Or proof a range as a contact sheet, then render the one you keep at full size:
+To explore a seeded sketch, the inspector's [Variation card](Docs/Core/Variations.md) steps, rolls, or jumps through seeds. Or proof a range as a contact sheet with `--export-grid`, then render the one you keep at full size.
 
-```sh
-swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
-swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10
-```
-
-To hand over a piece that keeps running, follow [Sharing and performing](Guide/31-SharingAndPerforming.md) for app bundles and other output surfaces, or [Installations](Guide/32-Installations.md) for work left on a wall. A loose file runs in installation mode with `ollin dots.swift --installation`; that gives it its own window and runs the code it started with, without reloading on save.
+To hand over a piece that keeps running, follow [Sharing and performing](Guide/31-SharingAndPerforming.md) for app bundles and other output surfaces, or [Installations](Guide/32-Installations.md) for work left on a wall. A loose file runs in installation mode with `ollin dots.swift --installation`, which gives it its own window and runs the code it started with.
 
 ## Documentation
 

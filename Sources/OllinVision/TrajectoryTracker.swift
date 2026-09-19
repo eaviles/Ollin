@@ -105,7 +105,7 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
 
     private struct State {
         /// The live request — built and owned on the analysis task, kept between
-        /// frames so its internal state accumulates (it needs `trajectoryLength`
+        /// frames so its internal state accumulates (it needs `minObservationCount`
         /// observations of an object before it reports an arc).
         var request: DetectTrajectoriesRequest?
         /// The uptime of the first analyzed frame; later frames are timestamped
@@ -118,7 +118,7 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
     }
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private let status = VisionStatus("trajectory detection")
-    private let trajectoryLength: Int
+    private let minObservationCount: Int
     private let minObjectRadius: Double?
     private let maxObjectRadius: Double?
 
@@ -136,14 +136,14 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
     /// Detect trajectories in `source`'s frames — the live camera, a playing
     /// video, or any frame source.
     ///
-    /// `trajectoryLength` is how many observations of an object it takes before
+    /// `minObservationCount` is how many observations of an object it takes before
     /// an arc is reported (more = steadier, later). The optional radius bounds
     /// (fractions of the frame, `0…1`) filter what counts as a moving object —
     /// set a maximum to ignore large movers like a person crossing the scene.
     @MainActor
-    public init(_ source: any FrameSource, trajectoryLength: Int = 10,
+    public init(_ source: any FrameSource, minObservationCount: Int = 10,
                 minObjectRadius: Double? = nil, maxObjectRadius: Double? = nil) {
-        self.trajectoryLength = trajectoryLength
+        self.minObservationCount = minObservationCount
         self.minObjectRadius = minObjectRadius
         self.maxObjectRadius = maxObjectRadius
         SourceAnalyzers.analyzer(for: source).register(self)
@@ -167,8 +167,8 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
     /// camera-free path — find the arcs in a recorded clip's frames, and how
     /// the behavior is tested.
     public static func detect(across images: [Image], frameRate: Double = 30,
-                              trajectoryLength: Int = 10) async throws -> [[DetectedTrajectory]] {
-        let request = DetectTrajectoriesRequest(trajectoryLength: trajectoryLength)
+                              minObservationCount: Int = 10) async throws -> [[DetectedTrajectory]] {
+        let request = DetectTrajectoriesRequest(trajectoryLength: minObservationCount)
         var results: [[DetectedTrajectory]] = []
         for (index, image) in images.enumerated() {
             let seconds = Double(index) / frameRate
@@ -190,7 +190,7 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
 
         let (request, seconds): (DetectTrajectoriesRequest, Double) = lock.withLock { state in
             if state.request == nil {
-                let request = DetectTrajectoriesRequest(trajectoryLength: trajectoryLength)
+                let request = DetectTrajectoriesRequest(trajectoryLength: minObservationCount)
                 if let minObjectRadius {
                     request.objectMinimumNormalizedRadius = Float(minObjectRadius)
                 }

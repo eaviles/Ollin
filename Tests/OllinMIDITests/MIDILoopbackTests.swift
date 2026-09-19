@@ -147,7 +147,7 @@ extension CoreMIDILoopback {
             // seconds after the wait returned, with the window already closed.
             let landed = await waitFor { clock.timecode.map { ($0, clock.isReceiving) } }
             #expect(landed?.0.frameRate == .fps25)
-            #expect(landed?.0 == code.advanced(by: 1))
+            #expect(landed?.0 == code.advanced(byFrames: 1))
             #expect(landed?.1 == true)
 
             let parked = Timecode(hours: 9, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)

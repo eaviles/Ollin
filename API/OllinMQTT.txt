@@ -6,7 +6,7 @@ enum MQTTQoS: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case atLeastOnce
   case atMostOnce
 enum MQTTTopic
-  static func isValid(_: String) -> Bool
+  static func isValidFilter(_: String) -> Bool
   static func matches(_: String, filter: String) -> Bool
 final class MQTTClient: Sendable
   func bind(_: String, to: Param<Double>, from: ClosedRange<Double> = default)

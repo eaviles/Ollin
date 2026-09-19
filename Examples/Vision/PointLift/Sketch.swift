@@ -102,13 +102,13 @@ final class PointLift: Sketch {
             }
             drawCaption(String(format: "PointLift: confidence %.0f%%. " +
                                "Click picks, shift-click trims, C clears.",
-                               pick.score * 100))
+                               pick.confidence * 100))
         } else {
             drawCaption("PointLift: click a thing to lift it out")
         }
 
         // A pulse where the click landed, while the model is thinking.
-        if picker.isWorking, let click = lastClick {
+        if picker.isPicking, let click = lastClick {
             withState {
                 noFill()
                 stroke(Color(white: 1, alpha: 0.8))

@@ -54,7 +54,7 @@ final class Walker: Sketch {
                     fieldOfView: .pi / 4)
 
         // The scripted walk: east, at a steady pace, the whole time.
-        walker.move(x: 2.2, z: 0)
+        walker.walk(x: 2.2, z: 0)
         world.advance(by: 1.0 / 60)
 
         let travel = Vector3(walker.actualVelocity.x, 0, walker.actualVelocity.z)

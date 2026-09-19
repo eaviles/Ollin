@@ -71,16 +71,16 @@ import Ollin
         let segmenter = Self.segmenter()
         let rect = Rectangle(x: 100, y: 100, width: 200, height: 200)
         segmenter.pick(at: Vector2(50, 50), in: rect)
-        #expect(!segmenter.isWorking)
+        #expect(!segmenter.isPicking)
         #expect(segmenter.pick == nil)
         // An exclude with no pick active does nothing either.
         segmenter.exclude(Vector2(150, 150), in: rect)
-        #expect(!segmenter.isWorking)
+        #expect(!segmenter.isPicking)
     }
 
     @Test func boundsMapFrameFractionsIntoTheDrawnRectangle() {
         let dummy = Image(width: 1, height: 1, color: .white)
-        let pick = PointSegmenter.Pick(matte: dummy, cutout: dummy, score: 1,
+        let pick = PointSegmenter.Pick(matte: dummy, cutout: dummy, confidence: 1,
                                        region: Rectangle(x: 0.25, y: 0.25,
                                                          width: 0.5, height: 0.5))
         let mapped = pick.bounds(in: Rectangle(x: 100, y: 200, width: 400, height: 300))
@@ -103,7 +103,7 @@ import Ollin
         let pixels = Rectangle(x: 0, y: 0, width: 512, height: 512)
 
         let disc = try #require(try await segmenter.detect(in: scene, at: [Self.discCenter]))
-        #expect(disc.score > 0.5)
+        #expect(disc.confidence > 0.5)
         let discBounds = disc.bounds(in: pixels)
         #expect(abs(discBounds.x - (Self.discCenter.x - Self.discRadius)) < 20)
         #expect(abs(discBounds.y - (Self.discCenter.y - Self.discRadius)) < 20)

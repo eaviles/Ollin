@@ -150,9 +150,9 @@ final class Character3D
     case onSteepSlope
   func isSlopeTooSteep(_: Vector3) -> Bool
   func jump(_: Double = default)
-  func move(_: Vector3)
-  func move(x: Double, z: Double)
   func stop()
+  func walk(at: Vector3)
+  func walk(x: Double, z: Double)
   let height: Double
   let radius: Double
   var actualVelocity: Vector3 { get }
@@ -233,11 +233,11 @@ final class Rope3D: SoftBody3D, Colliding3D
   let points: [Vector3]
   override var mesh: Mesh { get }
   var length: Double { get }
+  var radius: Double { get set }
   var restLength: Double { get }
   var segmentCount: Int { get }
   var segments: [RopeSegment3D] { get }
   var sides: Int { get set }
-  var thickness: Double { get set }
 final class Spring
   init(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default)
   let a: Particle
@@ -310,12 +310,12 @@ final class Wheel3D
   var maxSteerAngle: Double { get set }
   var position: Vector3 { get set }
   var radius: Double { get set }
+  var rollAngle: Double { get }
   var rotation: Rotation3D { get }
   var rotationAngle: Double { get }
   var rotationAxis: Vector3 { get }
   var slip: Double { get }
   var slipAngle: Double { get }
-  var spin: Double { get }
   var spinRate: Double { get }
   var steerAngle: Double { get }
   var steers: Bool { get set }
@@ -347,15 +347,15 @@ final class World
   var maxTimestep: Double { get set }
   var particles: [Particle] { get }
   var particlesCollide: Bool { get set }
-  var pixelsPerMeter: Double { get set }
   var restitution: Double { get set }
   var springs: [Spring] { get }
+  var unitsPerMeter: Double { get set }
 final class World3D
   @discardableResult func addBodies(from: Scene, usesSceneGravity: Bool = default, group: CollisionGroup = default) -> [Body3D]
   @discardableResult func addBody(_: Collider3D, at: Vector3, kind: Body3D.Kind = default, isSensor: Bool = default, rotated: Double = default, axis: Vector3 = default, density: Double = default, friction: Double = default, restitution: Double? = default, freedom: Freedom3D = default, gravityScale: Double = default, checksPath: Bool = default, group: CollisionGroup = default) -> Body3D
   @discardableResult func addCharacter(radius: Double = default, height: Double = default, at: Vector3, stepHeight: Double = default, stickToFloorDistance: Double = default, maxSlope: Double = default, mass: Double = default, pushStrength: Double = default, group: CollisionGroup = default) -> Character3D
   @discardableResult func addRagdoll(from: Scene, at: Vector3? = default, joints: [String]? = default, swing: Double = default, twist: ClosedRange<Double> = default, mass: Double = default, friction: Double = default, group: CollisionGroup = default) -> Ragdoll3D?
-  @discardableResult func addRope(through: [Vector3], at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, thickness: Double = default, sides: Int = default, mass: Double = default, stiffness: Double = default, bend: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, pinned: ((Vector3) -> Bool)? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> Rope3D?
+  @discardableResult func addRope(through: [Vector3], at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, radius: Double = default, sides: Int = default, mass: Double = default, stiffness: Double = default, bend: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, pinned: ((Vector3) -> Bool)? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> Rope3D?
   @discardableResult func addSoftBody(from: Mesh, at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, mass: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, vertexRadius: Double = default, isTwoSided: Bool = default, pinned: ((Vector3) -> Bool)? = default, skinnedTo: Scene? = default, carriedBy: ((Vector3) -> String?)? = default, sway: ((Vector3) -> Double)? = default, backStop: Double? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> SoftBody3D?
   @discardableResult func addStaticBodies(from: Scene, friction: Double = default, restitution: Double? = default, group: CollisionGroup = default) -> [Body3D]
   @discardableResult func addTensegrity(_: Tensegrity, at: Vector3 = default, strutRadius: Double = default, prestress: Double = default, stiffness: Double = default, density: Double = default, friction: Double = default, group: CollisionGroup = default) -> Tensegrity3D?
@@ -411,14 +411,14 @@ open extension Ollin.Sketch
   func body(under: Vector2, in: World3D) -> (body: Body3D, point: Vector3)?
   func dragBodies(in: World3D)
   func dragGrab(_: Joint3D, to: Vector2)
-  func dragSoftGrab(_: Sketch.SoftGrip, to: Vector2)
+  func dragSoftGrip(_: Sketch.SoftGrip, to: Vector2)
   func drawBody(_: Body3D)
   func drawCollider(_: Collider3D)
   func drawSoftBody(_: SoftBody3D)
   func drawTensegrity(_: Tensegrity3D, cableRadius: Double = default)
   func grabBody(at: Vector2, in: World3D) -> Joint3D?
   func grabSoftBody(at: Vector2, in: World3D) -> Sketch.SoftGrip?
-  func releaseSoftGrab(_: Sketch.SoftGrip)
+  func releaseSoftGrip(_: Sketch.SoftGrip)
   func withBody(_: Body3D, _: () -> Void)
   func withCharacter(_: Character3D, _: () -> Void)
   func withLimb(_: Ragdoll3D.Limb, _: () -> Void)

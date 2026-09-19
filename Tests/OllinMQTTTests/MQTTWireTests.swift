@@ -177,14 +177,14 @@ struct MQTTWireTests {
     /// A filter a broker would refuse never leaves the client: `#` only as a
     /// whole final level, `+` only as a whole level.
     @Test func illegalFiltersAreRefused() {
-        #expect(MQTTTopic.isValid("home/+/temperature"))
-        #expect(MQTTTopic.isValid("#"))
-        #expect(MQTTTopic.isValid("home/#"))
-        #expect(!MQTTTopic.isValid(""))
-        #expect(!MQTTTopic.isValid("home/#/temperature"))
-        #expect(!MQTTTopic.isValid("home/sport#"))
-        #expect(!MQTTTopic.isValid("home/+temperature"))
-        #expect(!MQTTTopic.isValid("home/te+mp"))
+        #expect(MQTTTopic.isValidFilter("home/+/temperature"))
+        #expect(MQTTTopic.isValidFilter("#"))
+        #expect(MQTTTopic.isValidFilter("home/#"))
+        #expect(!MQTTTopic.isValidFilter(""))
+        #expect(!MQTTTopic.isValidFilter("home/#/temperature"))
+        #expect(!MQTTTopic.isValidFilter("home/sport#"))
+        #expect(!MQTTTopic.isValidFilter("home/+temperature"))
+        #expect(!MQTTTopic.isValidFilter("home/te+mp"))
     }
 
     /// What the devices actually publish: a decimal reading, the words a switch

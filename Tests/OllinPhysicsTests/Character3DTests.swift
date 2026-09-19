@@ -42,7 +42,7 @@ struct Character3DTests {
         run(world, steps: 40)
         #expect(walker.isOnGround)
 
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         run(world, steps: 120)
         #expect(!walker.isOnGround)
         #expect(walker.groundState == .inAir)
@@ -68,7 +68,7 @@ struct Character3DTests {
         if let maxSlope { walker.maxSlope = maxSlope }
         run(world, steps: 40)
         let settled = walker.position.y
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         run(world, steps: 180)
         return walker.position.y - settled
     }
@@ -130,7 +130,7 @@ struct Character3DTests {
                                         at: Vector3(0, 0.2, 0), stepHeight: stepHeight)
         run(world, steps: 40)
         let settled = walker.position.y
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         var peak = settled
         for _ in 0 ..< 240 {
             world.advance(by: 1.0 / 60)
@@ -207,7 +207,7 @@ struct Character3DTests {
                                         pushStrength: pushStrength)
         run(world, steps: 40)
         let start = crate.position.x
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         run(world, steps: 240)
         return crate.position.x - start
     }
@@ -232,7 +232,7 @@ struct Character3DTests {
                       density: 0.02)
         let walker = world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 0.2, 0), pushStrength: 0)
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         run(world, steps: 120)
         // Stopped against the crate's near face rather than walking through it.
         #expect(walker.position.x < 1)
@@ -247,7 +247,7 @@ struct Character3DTests {
         world.ground = 0
         let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         run(world, steps: 40)
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         run(world, steps: 60)
         // Nothing in the way, so intent and outcome agree.
         #expect(abs(walker.actualVelocity.x - 2) < 0.05)
@@ -298,7 +298,7 @@ struct Character3DTests {
         run(world, steps: 40)
         #expect(!gate.isTouching(walker.body))
 
-        walker.move(x: 2, z: 0)
+        walker.walk(x: 2, z: 0)
         var entered = false
         var reported = false
         for _ in 0 ..< 120 {
@@ -364,7 +364,7 @@ struct Character3DTests {
                                             at: Vector3(0, 1.2, 0))
             var poses: [Vector3] = []
             for i in 0 ..< 200 {
-                walker.move(x: 2, z: 0)
+                walker.walk(x: 2, z: 0)
                 if i == 60 { walker.jump() }
                 world.advance(by: 1.0 / 60)
                 poses.append(walker.position)

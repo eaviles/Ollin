@@ -33,7 +33,7 @@ public struct LaserSafety: Sendable {
     /// the beam is blanked. This has to sit above `LaserOptimizer.cornerDwell`,
     /// which holds a few points at a corner on purpose; the default leaves
     /// plenty of room over it.
-    public var stationaryLimit: Int = 24
+    public var maxStationaryPoints: Int = 24
 
     /// How long the projector will play the last frame it was given, in
     /// seconds, before it blanks. A sketch that stops calling `send` (it
@@ -49,7 +49,7 @@ public struct LaserSafety: Sendable {
     public static var unguarded: LaserSafety {
         var safety = LaserSafety()
         safety.maxBrightness = 1
-        safety.stationaryLimit = .max
+        safety.maxStationaryPoints = .max
         safety.stallTimeout = .infinity
         return safety
     }
@@ -86,7 +86,7 @@ public struct LaserSafety: Sendable {
                 anchor = point.position
                 held = 1
             }
-            if held > stationaryLimit {
+            if held > maxStationaryPoints {
                 out.append(LaserPoint(blankedAt: point.position))
             } else {
                 out.append(LaserPoint(point.position, color: dimmed(point.color, ceiling)))

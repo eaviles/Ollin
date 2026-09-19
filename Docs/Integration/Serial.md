@@ -182,7 +182,7 @@ func write(_ pin: Int, _ value: Bool)              // digital out
 func write(_ pin: Int, _ level: Double)            // PWM, 0...1
 func write(_ pin: Int, angle: Double)              // servo, 0...180 degrees
 func setMode(_ pin: Int, _ mode: FirmataPinMode)   // .input, .inputPullUp, .output, .pwm, .servo, .analog
-func setSamplingInterval(_ milliseconds: Int)      // how often the board reports analog pins
+func sampleEvery(_ seconds: Double)               // how often the board reports analog pins
 func send(text: String)
 
 func bind(analog pin: Int, to param: Param<Double>)

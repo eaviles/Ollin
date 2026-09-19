@@ -202,7 +202,7 @@ public enum MQTTTopic {
 
     /// Whether a filter is one a broker will accept: no empty filter, `#` only as
     /// a whole last level, `+` only as a whole level.
-    public static func isValid(_ filter: String) -> Bool {
+    public static func isValidFilter(_ filter: String) -> Bool {
         guard !filter.isEmpty, filter.utf8.count <= 65535 else { return false }
         let levels = filter.split(separator: "/", omittingEmptySubsequences: false)
         for (index, level) in levels.enumerated() {

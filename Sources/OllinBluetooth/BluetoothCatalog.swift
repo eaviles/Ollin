@@ -224,7 +224,7 @@ public struct BluetoothCharacteristic: Hashable, Sendable, CustomStringConvertib
     /// The catalog entry for an identifier a device reported, so a value
     /// found by discovery still knows its name and its format. Anything not
     /// in the catalog comes back as raw bytes under its own number.
-    public static func standard(for id: BluetoothUUID) -> BluetoothCharacteristic {
+    public static func known(for id: BluetoothUUID) -> BluetoothCharacteristic {
         standard.first { $0.id == id } ?? BluetoothCharacteristic(id)
     }
 }

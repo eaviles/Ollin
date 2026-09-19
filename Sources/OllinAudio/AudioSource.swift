@@ -16,7 +16,7 @@ func installAnalyzerTap(
     relay: AudioTapRelay? = nil, capture: CaptureTapRelay? = nil
 ) {
     node.installTap(onBus: 0, bufferSize: bufferSize, format: nil) { buffer, time in
-        analyzer.process(buffer)
+        analyzer.analyze(buffer)
         relay?.deliver(buffer)
         capture?.deliver(buffer, at: time)
     }
@@ -95,8 +95,8 @@ extension AudioSource {
     /// The note being sung or played (its Hz, confidence, nearest note, and
     /// cents), or nil when nothing periodic is heard. See `AudioAnalyzer.pitch`.
     public var pitch: DetectedPitch? { analyzer.pitch }
-    /// The nearest note to what is heard, or nil: the short form of `pitch?.note`.
-    public var note: Pitch? { analyzer.note }
+    /// The nearest note to what is heard, or nil: the short form of `pitch?.nearestPitch`.
+    public var nearestPitch: Pitch? { analyzer.nearestPitch }
     /// The twelve pitch classes, C first, each `0...1`, octaves folded together.
     public var chroma: [Float] { analyzer.chroma }
 }

@@ -507,6 +507,84 @@ for readme in sorted(examples.rglob("README.md")):
         if not (home / link).exists():
             fail(str(readme), f"links {link}, which is not there")
 
+# --------------------- 12: a counted claim matches what it counts
+#
+# A catalog row may say how many of a thing there are ("Sixty-nine techniques,
+# listed in full below"), and the root README repeats that number in its pitch.
+# Nothing read either against the thing it counts, so the technique count sat
+# at sixty-six while the catalog had grown past it, on the two pages a stranger
+# reads first. A number on the front door drifts in silence, because every
+# other gate here reads names and links rather than arithmetic.
+UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+         "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+         "sixteen", "seventeen", "eighteen", "nineteen"]
+TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy",
+        "eighty", "ninety"]
+
+
+def spelled(n):
+    """`69` as `sixty-nine`, up to 99."""
+    if n < 20:
+        return UNITS[n]
+    return TENS[n // 10] + ("-" + UNITS[n % 10] if n % 10 else "")
+
+
+COUNT_WORD = re.compile(r"\b(" + "|".join(
+    sorted({w for w in UNITS[1:] + TENS[2:] if w} |
+           {spelled(n) for n in range(20, 100)}, key=len, reverse=True)) + r")\b",
+    re.IGNORECASE)
+SPOKEN = {spelled(n): n for n in range(1, 100)}
+
+
+def block_under(path, heading):
+    """The lines under `#### heading`, up to the next heading of any depth."""
+    out, inside = [], False
+    for line in lines[path]:
+        if line.startswith("#"):
+            if inside:
+                break
+            inside = line.strip().lower() == heading.lower()
+            continue
+        if inside:
+            out.append(line)
+    return out
+
+
+# Each catalog row is `| [**Name**](target) | description |`. A row whose
+# description opens on a number is counted against the block it points the
+# reader at, and the pages in that block are counted by path, so a second link
+# at one page's own heading is still one technique.
+for row in catalog_block:
+    cells = [c.strip() for c in row.strip().strip("|").split("|")]
+    if len(cells) < 2:
+        continue
+    name = re.search(r"\[\*\*(.+?)\*\*\]\(([^)]+)\)", cells[0])
+    said = COUNT_WORD.match(cells[1])
+    if not (name and said and "listed in full below" in cells[1]):
+        continue
+    label, target = name.group(1), re.sub(r"^\./", "", name.group(2))
+    listed = block_under(index_path, "#### " + label)
+    if not listed:
+        fail("Docs/README.md", f"the {label} row says `listed in full below`, "
+                               f"and there is no `#### {label}` block")
+        continue
+    counted = len({re.sub(r"#.*", "", t) for t in
+                   re.findall(r"\]\(([^)\s]+\.md[^)\s]*)\)", "\n".join(listed))})
+    claimed = SPOKEN.get(said.group(1).lower())
+    if claimed != counted:
+        fail("Docs/README.md", f"the {label} row says {said.group(1)}, "
+                               f"and the block under it lists {counted} "
+                               f"({spelled(counted)})")
+    # The root README pitches the same catalog by linking the same page. If it
+    # spells a number while doing so, it is the same number.
+    for pitch in re.findall(r"\[([^\]]*)\]\(Docs/" + re.escape(target) + r"\)",
+                            text[root_readme]):
+        echoed = COUNT_WORD.search(pitch)
+        if echoed and SPOKEN.get(echoed.group(1).lower()) != counted:
+            fail("README.md", f"says `{pitch}`, and the catalog lists "
+                              f"{counted} ({spelled(counted)})")
+
+
 # ------------------------------------------------------------------- report
 for message in notes if list_notes else notes[:12]:
     print(f"check-links: note: {message}")

@@ -115,7 +115,7 @@ A second series can be read out as loudness alongside the first.
 let reading = Sonification(depth, in: scale).amplified(by: confidence)
 ```
 
-The two series are lined up by position, so entry 3 of one is heard at the same moment as entry 3 of the other. The reading holds it as `loudness`, with `loudnessDomain` saying which values of it land at the ends of `levels`. If you give no second series (`loudness` is nil), every note plays at full level.
+The two series are lined up by position, so entry 3 of one is heard at the same moment as entry 3 of the other. The reading holds it as `loudness`, with `loudnessDomain` saying which values of it land at the ends of `levelRange`. That range is the quietest and loudest a note may be, in decibels. If you give no second series (`loudness` is nil), every note plays at full level.
 
 Loudness is the weaker of the two dimensions, and it deliberately does nothing unless you ask for it. How loud a note sounds depends on its pitch as well as its strength. That means a series read out on loudness alone is heard through a distortion. Use pitch first, and use `amplified(by:)` for a *second* series rather than to say the same thing twice.
 

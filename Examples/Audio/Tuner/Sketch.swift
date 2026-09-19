@@ -67,7 +67,7 @@ final class Tuner: Sketch {
         let heard = source?.pitch
         if let heard {
             trace.append((time, heard.midi, Double(heard.confidence)))
-            let name = "\(heard.note)"
+            let name = "\(heard.nearestPitch)"
             // The needle eases within a note and snaps on a new one, since a
             // different note is a fresh measurement, not a drift.
             needle = name == lastNote ? needle + (heard.cents - needle) * 0.3 : heard.cents

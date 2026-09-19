@@ -189,7 +189,7 @@ final class Reticularea: Sketch {
     }
 
     override func mouseReleased() {
-        if let grip { releaseSoftGrab(grip) }
+        if let grip { releaseSoftGrip(grip) }
         grip = nil
     }
 
@@ -202,7 +202,7 @@ final class Reticularea: Sketch {
                             target: Vector3(0, 2.3, 0), fieldOfView: .degrees(44)))
 
         moveTheAir()
-        if let grip { dragSoftGrab(grip, to: mouse) }
+        if let grip { dragSoftGrip(grip, to: mouse) }
         world.advance(by: deltaTime)
 
         drawNet()

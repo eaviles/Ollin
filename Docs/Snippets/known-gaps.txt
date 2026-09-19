@@ -69,7 +69,7 @@ d7ae0890d8bb  Docs/3D/Phone.md:262  cannot find 'device' in scope
 d7d5e4c7a266  Docs/3D/Phone.md:289  cannot find 'device' in scope
 b51dd8b5ef5d  Docs/3D/Phone.md:317  cannot find 'device' in scope
 3e9f3ef5d27e  Docs/3D/Phone.md:331  cannot find 'PhoneReference' in scope
-c704300d6fd5  Docs/3D/Phone.md:344  cannot find 'device' in scope
+28b77be058c9  Docs/3D/Phone.md:344  cannot find 'device' in scope
 cd52aa432ca6  Docs/3D/Phone.md:373  cannot find 'device' in scope
 99be21e026a2  Docs/3D/Phone.md:391  cannot find 'balls' in scope
 e5dc2ea249e1  Docs/3D/Phone.md:412  cannot find 'device' in scope
@@ -748,9 +748,9 @@ a64ccfb3bf3e  Docs/Helpers/Audio.md:148  expected '{' in body of function declar
 0793adb933ae  Docs/Helpers/Audio.md:189  cannot find 'source' in scope
 8baa306b8120  Docs/Helpers/Audio.md:198  cannot find 'source' in scope
 07dc4d1d581d  Docs/Helpers/Audio.md:204  cannot find 'source' in scope
-f44a930653f7  Docs/Helpers/Audio.md:229  cannot find 'mic' in scope
+cb85bedb873a  Docs/Helpers/Audio.md:229  cannot find 'mic' in scope
 d038472b7a0a  Docs/Helpers/Audio.md:239  cannot find 'source' in scope
-7d35425da57f  Docs/Helpers/Audio.md:259  cannot find 'ptr' in scope
+76a6d2e6b814  Docs/Helpers/Audio.md:259  cannot find 'ptr' in scope
 d84e8726dda1  Docs/Helpers/Audio.md:46  expected '{' in body of function declaration
 50a5507e3270  Docs/Helpers/Audio.md:66  'throws' may only occur before '->'
 f3861249dc5b  Docs/Helpers/Audio.md:79  call can throw, but errors cannot be thrown out of a property initializer
@@ -861,40 +861,40 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  expected '{' in body of function de
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'synth' in scope
 18a9f63e8409  Docs/Helpers/Synthesis.md:286  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
-16966f9a8316  Docs/Helpers/Synthesis.md:398  cannot find 'synth' in scope
+83821c3e07c3  Docs/Helpers/Synthesis.md:398  cannot find 'synth' in scope
 c1f052f4e696  Docs/Helpers/Synthesis.md:458  cannot find 'synth' in scope
 31b379e5f09d  Docs/Helpers/Synthesis.md:482  'module' is inaccessible due to 'internal' protection level
 4922ed6c5c66  Docs/Helpers/Synthesis.md:497  cannot find 'synth' in scope
 24dde6741b45  Docs/Helpers/Synthesis.md:537  cannot find 'synth' in scope
 62e4396a9788  Docs/Helpers/Synthesis.md:54  expected ',' separator
-1f7e4eaa6eb9  Docs/Helpers/Synthesis.md:588  cannot find 'synth' in scope
+1f7e4eaa6eb9  Docs/Helpers/Synthesis.md:589  cannot find 'synth' in scope
 71128f7d3f0d  Docs/Helpers/Synthesis.md:62  cannot find 'synth' in scope
-17733d0868da  Docs/Helpers/Synthesis.md:665  cannot find 'synth' in scope
+4667fec266a8  Docs/Helpers/Synthesis.md:666  cannot find 'synth' in scope
 704965646449  Docs/Helpers/Synthesis.md:70  cannot find 'synth' in scope
-c23316c59aa8  Docs/Helpers/Synthesis.md:776  cannot find 'synth' in scope
+c23316c59aa8  Docs/Helpers/Synthesis.md:777  cannot find 'synth' in scope
 a0885de8f8fa  Docs/Helpers/Synthesis.md:78  cannot find 'wasDown' in scope
-6ec305c76a35  Docs/Helpers/Synthesis.md:807  cannot find 'synth' in scope
-03eb878f64f8  Docs/Helpers/Synthesis.md:837  'module' is inaccessible due to 'internal' protection level
-2f022144c85f  Docs/Helpers/Synthesis.md:888  cannot find 'synth' in scope
-4673980e7486  Docs/Helpers/Synthesis.md:908  cannot find 'synth' in scope
-b011e4ff81ce  Docs/Helpers/Synthesis.md:927  cannot find 'synth' in scope
-f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:947  cannot find 'synth' in scope
-5ecdb5057d19  Docs/Helpers/Synthesis.md:965  reference to member 'custom' cannot be resolved without a contextual type
+6ec305c76a35  Docs/Helpers/Synthesis.md:808  cannot find 'synth' in scope
+03eb878f64f8  Docs/Helpers/Synthesis.md:838  'module' is inaccessible due to 'internal' protection level
+2f022144c85f  Docs/Helpers/Synthesis.md:889  cannot find 'synth' in scope
+68ea1f03622c  Docs/Helpers/Synthesis.md:909  cannot find 'synth' in scope
+b011e4ff81ce  Docs/Helpers/Synthesis.md:928  cannot find 'synth' in scope
+f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:948  cannot find 'synth' in scope
+5ecdb5057d19  Docs/Helpers/Synthesis.md:966  reference to member 'custom' cannot be resolved without a contextual type
 c190ec5bfb0a  Docs/Helpers/Weather.md:123  expected ',' separator
 9b223ddfebe9  Docs/Helpers/Weather.md:129  cannot find 'place' in scope
 6a7b53bf1b5a  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope
 da35c6b24532  Docs/Helpers/Weather.md:29  expected ',' separator
-ad064ee3d2c5  Docs/Integration/Bluetooth.md:118  cannot find 'device' in scope
+04a79c82aa49  Docs/Integration/Bluetooth.md:118  cannot find 'device' in scope
 85b846be3156  Docs/Integration/Bluetooth.md:145  cannot find 'BluetoothCharacteristic' in scope
 30cde480d6cf  Docs/Integration/Bluetooth.md:157  cannot find 'device' in scope
 43bd50b1d16e  Docs/Integration/Bluetooth.md:185  cannot find 'strap' in scope
 d5f255961456  Docs/Integration/Bluetooth.md:200  cannot find 'device' in scope
 d7d8fd9b9b0d  Docs/Integration/Bluetooth.md:49  cannot find 'device' in scope
 36ff72bbfc51  Docs/Integration/Bluetooth.md:73  cannot find 'BluetoothScan' in scope
-b9877994ad57  Docs/Integration/Bluetooth.md:86  cannot find 'BluetoothDevice' in scope
+6d023e330457  Docs/Integration/Bluetooth.md:86  cannot find 'BluetoothDevice' in scope
 75882433fd95  Docs/Integration/Bluetooth.md:99  cannot find 'device' in scope
 029e1c250e1f  Docs/Integration/Controller.md:111  cannot find 'controllerDeadzone' in scope
-460674003c00  Docs/Integration/Controller.md:129  cannot find 'controllerMotion' in scope
+450b891f2a54  Docs/Integration/Controller.md:129  cannot find 'controllersReportMotion' in scope
 92082a1c649a  Docs/Integration/Controller.md:161  cannot find 'controller' in scope
 d850fab201e9  Docs/Integration/Controller.md:171  cannot find 'controller' in scope
 540e25811177  Docs/Integration/Controller.md:194  cannot find 'controllersRunInBackground' in scope
@@ -924,7 +924,7 @@ a31b28dd34cf  Docs/Integration/Haptics.md:78  cannot find 'a' in scope
 f43e581d0696  Docs/Integration/Laser.md:11  cannot find 'ring' in scope
 535107697505  Docs/Integration/Laser.md:128  cannot find 'drawLaserPreview' in scope
 4071df928a8b  Docs/Integration/Laser.md:144  cannot find 'laser' in scope
-0d50fdf5e417  Docs/Integration/Laser.md:151  cannot find 'laser' in scope
+cd019f9edb35  Docs/Integration/Laser.md:151  cannot find 'laser' in scope
 2b683bb8d76e  Docs/Integration/Laser.md:168  cannot find 'LaserProjector' in scope
 d10fd61b09cd  Docs/Integration/Laser.md:175  cannot find 'EtherDreamFinder' in scope
 b9144d4b0c9d  Docs/Integration/Laser.md:186  cannot find 'laser' in scope
@@ -951,7 +951,7 @@ d6a82f4e607c  Docs/Integration/MIDI.md:193  cannot find 'midi' in scope
 31b20ced319c  Docs/Integration/MIDI.md:278  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
 3164313c9f84  Docs/Integration/MIDI.md:293  cannot find type 'Timecode' in scope
 c169feebbbd5  Docs/Integration/MIDI.md:319  cannot find 'MIDIInput' in scope
-83d72bfa5e0c  Docs/Integration/MIDI.md:338  cannot find 'Timecode' in scope
+cd506c6783d2  Docs/Integration/MIDI.md:338  cannot find 'Timecode' in scope
 987e475e3f82  Docs/Integration/MIDI.md:356  cannot find type 'MIDIEndpoint' in scope
 29df67a1ddf0  Docs/Integration/MIDI.md:377  cannot find 'MIDIOutput' in scope
 d239cd3c7705  Docs/Integration/MIDI.md:53  cannot find 'message' in scope
@@ -977,27 +977,27 @@ e030253dd69a  Docs/Integration/Room.md:114  cannot find 'room' in scope
 e15ad158f539  Docs/Integration/Room.md:153  cannot find 'room' in scope
 98607231c614  Docs/Integration/Room.md:168  cannot find 'room' in scope
 14e754f13c64  Docs/Integration/Room.md:45  cannot find 'Room' in scope
-7ba86f72fb10  Docs/Integration/Room.md:56  cannot find 'room' in scope
+44944c5ffe50  Docs/Integration/Room.md:56  cannot find 'room' in scope
 0af7670058d6  Docs/Integration/Room.md:67  cannot find 'room' in scope
 8cb6b6e3d539  Docs/Integration/Room.md:78  cannot find 'room' in scope
 c22b87bc3cc9  Docs/Integration/Room.md:92  cannot find 'room' in scope
 635f5b6b7525  Docs/Integration/Room.md:99  cannot find 'room' in scope
 afc0d297ce45  Docs/Integration/ScreenCapture.md:106  cannot find 'screen' in scope
 df1ca7fe7d89  Docs/Integration/ScreenCapture.md:118  cannot find 'ScreenCapture' in scope
-c627d1a7bbad  Docs/Integration/ScreenCapture.md:126  cannot find 'ScreenCapture' in scope
+99e0d0aaebcf  Docs/Integration/ScreenCapture.md:126  cannot find 'ScreenCapture' in scope
 c67e0244b3e3  Docs/Integration/ScreenCapture.md:144  cannot find 'screen' in scope
 92f32c6a0d4c  Docs/Integration/ScreenCapture.md:150  cannot find 'screen' in scope
 06a8d90c3f1e  Docs/Integration/ScreenCapture.md:162  cannot find 'screen' in scope
 0d82c8837fae  Docs/Integration/ScreenCapture.md:58  cannot find 'ScreenCapture' in scope
 3c8c146ea4e2  Docs/Integration/ScreenCapture.md:66  cannot find 'screen' in scope
 bd9cd65db47c  Docs/Integration/ScreenCapture.md:76  cannot find 'ScreenCapture' in scope
-1ed5688d4e40  Docs/Integration/ScreenCapture.md:90  cannot find 'ScreenCapture' in scope
+54ee5d0c5d67  Docs/Integration/ScreenCapture.md:90  cannot find 'ScreenCapture' in scope
 441c9d7cac54  Docs/Integration/Serial.md:101  cannot find 'serial' in scope
 df55c6d74f7e  Docs/Integration/Serial.md:111  expected '{' in body of function declaration
 74ae6220bd4e  Docs/Integration/Serial.md:118  cannot find 'serial' in scope
 cd673f46cc5f  Docs/Integration/Serial.md:134  expected '{' in body of function declaration
 c4c3d4406b6f  Docs/Integration/Serial.md:142  cannot find 'serial' in scope
-66eac7065e78  Docs/Integration/Serial.md:174  cannot find type 'FirmataMessage' in scope
+37021f83b064  Docs/Integration/Serial.md:174  cannot find type 'FirmataMessage' in scope
 a721bdf41f62  Docs/Integration/Serial.md:44  cannot find 'SerialPort' in scope
 20573139dc36  Docs/Integration/Serial.md:52  cannot find 'SerialPort' in scope
 9b981d89c676  Docs/Integration/Serial.md:64  expected '{' in body of function declaration
@@ -1101,9 +1101,9 @@ a68dec35c447  Docs/Simulation/Physics.md:347  cannot find 'rim' in scope
 0ea095b5148c  Docs/Simulation/Physics.md:62  cannot find 'World' in scope
 49989805e9fd  Docs/Simulation/Physics.md:70  expected '{' to start getter definition
 756218a29c46  Docs/Simulation/Physics3D.md:1011  cannot find 'banner' in scope
-b561a21feefa  Docs/Simulation/Physics3D.md:1017  cannot find type 'SoftGrip' in scope
+5198199a8d50  Docs/Simulation/Physics3D.md:1017  cannot find type 'SoftGrip' in scope
 14be8b5aff2f  Docs/Simulation/Physics3D.md:1036  cannot find 'raft' in scope
-9ce40bcba41a  Docs/Simulation/Physics3D.md:1057  cannot find 'world' in scope
+3e3a93583825  Docs/Simulation/Physics3D.md:1057  cannot find 'world' in scope
 fd887a5ef572  Docs/Simulation/Physics3D.md:1081  cannot find 'world' in scope
 a49b57cb0897  Docs/Simulation/Physics3D.md:1096  cannot find 'vine' in scope
 e477e4a22c18  Docs/Simulation/Physics3D.md:1107  cannot find 'chain' in scope
@@ -1162,7 +1162,7 @@ ab51f10b9fe9  Docs/Simulation/Physics3D.md:529  cannot find 'world' in scope
 546e3f5a4dc2  Docs/Simulation/Physics3D.md:586  cannot find 'world' in scope
 a84bb796be37  Docs/Simulation/Physics3D.md:597  cannot find 'world' in scope
 3579917d6daa  Docs/Simulation/Physics3D.md:608  cannot find 'world' in scope
-9f483eaf8987  Docs/Simulation/Physics3D.md:625  cannot find 'World3D' in scope
+2dc067a11f8c  Docs/Simulation/Physics3D.md:625  cannot find 'World3D' in scope
 975d40f3d6fc  Docs/Simulation/Physics3D.md:683  cannot find 'walker' in scope
 ac5e7a80f3a3  Docs/Simulation/Physics3D.md:692  cannot find 'lookout' in scope
 0b324884d352  Docs/Simulation/Physics3D.md:710  cannot find 'World3D' in scope
@@ -1205,7 +1205,7 @@ e23f95428317  Docs/Tools/SingleFile.md:112  'module' is inaccessible due to 'int
 fa89f3b09d8e  Docs/Video/Video.md:41  'throws' may only occur before '->'
 18628713c27a  Docs/Video/Video.md:55  expected '{' in body of function declaration
 9275119a4b5c  Docs/Video/Video.md:76  overriding non-open instance method outside of its defining module
-5228acd6f719  Docs/Vision/Vision.md:1003  cannot find type 'Classification' in scope
+006426c05db9  Docs/Vision/Vision.md:1003  cannot find type 'Classification' in scope
 5c5a08dabc9f  Docs/Vision/Vision.md:1028  expected '{' to start getter definition
 be62f39682e0  Docs/Vision/Vision.md:104  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 26580fe6f2aa  Docs/Vision/Vision.md:1051  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
@@ -1227,7 +1227,7 @@ a6be6ecbcd02  Docs/Vision/Vision.md:197  expected ',' separator
 055a753e0eb2  Docs/Vision/Vision.md:225  cannot find 'Camera' in scope
 dea9b68f19a8  Docs/Vision/Vision.md:236  cannot find type 'FaceLandmark' in scope
 5d5c16f5ccac  Docs/Vision/Vision.md:251  cannot find 'faces' in scope
-f956f2f7a76f  Docs/Vision/Vision.md:268  expected parameter name followed by ':'
+1da1647e8644  Docs/Vision/Vision.md:268  expected parameter name followed by ':'
 61f3eeac6384  Docs/Vision/Vision.md:279  cannot find 'Camera' in scope
 a9413a0ef7ac  Docs/Vision/Vision.md:295  cannot find type 'Node' in scope
 2cf42ccf6dda  Docs/Vision/Vision.md:310  expected ',' separator
@@ -1242,7 +1242,7 @@ b7b045af9d05  Docs/Vision/Vision.md:432  cannot find 'tracker' in scope
 f3c88e3b9780  Docs/Vision/Vision.md:454  cannot find 'Camera' in scope
 6bca905e0b7b  Docs/Vision/Vision.md:472  expected ',' separator
 67b991f25891  Docs/Vision/Vision.md:482  cannot find 'Camera' in scope
-ed54e68e3750  Docs/Vision/Vision.md:497  expected ',' separator
+7436de712186  Docs/Vision/Vision.md:497  expected ',' separator
 227417b04092  Docs/Vision/Vision.md:517  cannot find 'Camera' in scope
 d9332481baa6  Docs/Vision/Vision.md:559  expected parameter name followed by ':'
 abd82ee8964d  Docs/Vision/Vision.md:569  cannot find 'Camera' in scope
@@ -1253,20 +1253,20 @@ abd82ee8964d  Docs/Vision/Vision.md:569  cannot find 'Camera' in scope
 25cd10166c62  Docs/Vision/Vision.md:638  expected ',' separator
 e6d547f64144  Docs/Vision/Vision.md:653  cannot find 'Camera' in scope
 6f077e6e8bb9  Docs/Vision/Vision.md:678  expected '{' to start getter definition
-2015d5666ae9  Docs/Vision/Vision.md:692  expected ',' separator
+d1425fc54681  Docs/Vision/Vision.md:692  expected ',' separator
 73f5a04fbfed  Docs/Vision/Vision.md:703  cannot find 'Camera' in scope
 9b7a1d5882a9  Docs/Vision/Vision.md:722  expected '{' to start getter definition
 dee10b654a59  Docs/Vision/Vision.md:745  expected ',' separator
 74524523d73d  Docs/Vision/Vision.md:764  expected '{' to start getter definition
 b47c3c5386cf  Docs/Vision/Vision.md:776  cannot find 'Camera' in scope
-25197106c5d6  Docs/Vision/Vision.md:804  expected ',' separator
+ddfc90dfdf31  Docs/Vision/Vision.md:804  expected ',' separator
 8d1cbc42f170  Docs/Vision/Vision.md:815  cannot find 'Camera' in scope
 3c4a18f23a50  Docs/Vision/Vision.md:838  expected '{' to start getter definition
 bc92ab8b42ae  Docs/Vision/Vision.md:855  expected ',' separator
 2d6e9d2ffb0e  Docs/Vision/Vision.md:865  cannot find 'Camera' in scope
 1f6728d0dc5c  Docs/Vision/Vision.md:88  expected ',' separator
 f178c1b8e0e9  Docs/Vision/Vision.md:893  cannot find type 'DetectedRectangle' in scope
-54bd491c370f  Docs/Vision/Vision.md:908  expected ',' separator
-299489c655c2  Docs/Vision/Vision.md:927  cannot find 'Camera' in scope
-629b062a2613  Docs/Vision/Vision.md:950  expected ',' separator
+aa1d08606449  Docs/Vision/Vision.md:908  expected ',' separator
+a1d988da022d  Docs/Vision/Vision.md:927  cannot find 'Camera' in scope
+cfa1e0f3ccb4  Docs/Vision/Vision.md:950  expected ',' separator
 35a19d997464  Docs/Vision/Vision.md:975  cannot find 'Camera' in scope

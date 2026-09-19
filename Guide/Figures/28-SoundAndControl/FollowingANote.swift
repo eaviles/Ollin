@@ -87,7 +87,7 @@ final class FollowingANote: Sketch {
         var offset = 0
         while offset + chunk <= count {
             mono.withUnsafeBufferPointer {
-                analyzer.process(samples: $0.baseAddress! + offset, count: chunk)
+                analyzer.analyze(samples: $0.baseAddress! + offset, count: chunk)
             }
             offset += chunk
             out.append(Reading(time: Double(offset) / rate, pitch: analyzer.pitch, chroma: analyzer.chroma))
@@ -190,7 +190,7 @@ final class FollowingANote: Sketch {
             drawText("no note heard", rect.center.x, rect.center.y, size: 17, color: soft, align: .center, .middle)
             return
         }
-        drawText("\(heard.note)", rect.x + 60, rect.center.y, size: 30, color: ink, align: .center, .middle)
+        drawText("\(heard.nearestPitch)", rect.x + 60, rect.center.y, size: 30, color: ink, align: .center, .middle)
         let sign = heard.cents >= 0 ? "+" : ""
         drawText("\(sign)\(Int(heard.cents.rounded())) cents", rect.x + 170, rect.center.y,
                  size: 17, color: ink, align: .center, .middle)

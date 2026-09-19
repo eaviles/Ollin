@@ -151,7 +151,7 @@ Below that gate, `LaserSafety` guards every stream on its way out:
 ```swift
 laser.safety.maxBrightness = 0.5   // a ceiling on every channel
 laser.safety.stationaryRadius = 0.004  // how far counts as moving
-laser.safety.stationaryLimit = 24      // lit points allowed to stand still
+laser.safety.maxStationaryPoints = 24  // lit points allowed to stand still
 laser.safety.stallTimeout = 0.5        // seconds before a stale frame is blanked
 ```
 
@@ -179,7 +179,7 @@ try finder.start()
 if let dac = finder.devices.first { laser.connect(to: dac) }
 ```
 
-A DAC that announced itself also says how big its buffer is and how fast it will scan. Those numbers are taken from it rather than assumed. Under the projector, `EtherDreamDAC(host:port:)` is the connection itself, and it reads back its `host` and `port`, the `bufferCapacity` it holds, the `headroom` it keeps empty so a late reply never runs it dry, the `maxBatch` it puts in one command, the `pointsPerSecond` it is scanning at, the `pointsSent` since the connection opened, and `lastError` if anything has gone wrong. Listening on the local network makes macOS ask for its Local Network permission once. The request is attributed to whatever launched the sketch.
+`start()` throws `EtherDreamFinder.StartError` (`.badPort`, when the protocol's own broadcast port is not a port number) rather than coming up half-open, so a finder that is listening and a network with no projector on it are never the same silence. A DAC that announced itself also says how big its buffer is and how fast it will scan. Those numbers are taken from it rather than assumed. Under the projector, `EtherDreamDAC(host:port:)` is the connection itself, and it reads back its `host` and `port`, the `bufferCapacity` it holds, the `headroom` it keeps empty so a late reply never runs it dry, the `maxBatch` it puts in one command, the `pointsPerSecond` it is scanning at, the `pointsSent` since the connection opened, and `lastError` if anything has gone wrong. Listening on the local network makes macOS ask for its Local Network permission once. The request is attributed to whatever launched the sketch.
 
 Then `send` a frame each `draw()`:
 

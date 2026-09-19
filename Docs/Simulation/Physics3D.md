@@ -639,7 +639,7 @@ override func draw() {
     if isKeyDown(.downArrow)  { south += 1 }
 
     let heading = Vector3(east, 0, south)
-    walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
+    walker.walk(at: heading.length > 0 ? heading.normalized * 3 : .zero)
     if isKeyDown(" ") { walker.jump() }
 
     world.advance(by: deltaTime)
@@ -647,7 +647,7 @@ override func draw() {
 }
 ```
 
-`advance(by:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets `desiredVelocity`, the horizontal velocity the character is *trying* to walk at, and it holds that until you change it. Falling and jumping are the world's business, so the vertical part of what you pass is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. So calling it every frame while a key is held gives you a hop each time it lands, rather than flight.
+`advance(by:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `walk(at:)` sets `desiredVelocity`, the horizontal velocity the character is *trying* to walk at, and it holds that until you change it. Falling and jumping are the world's business, so the vertical part of what you pass is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. So calling it every frame while a key is held gives you a hop each time it lands, rather than flight.
 
 **Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modeled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the way `withBody(_:)` does for a body.
 
@@ -802,7 +802,7 @@ Both can be changed while driving. The gearbox shifts itself, and `gear` reads w
 | `forward` / `up` | The chassis's axes in world space. A chase camera wants `forward`, and `up` tips as the vehicle leans. |
 | `isOnGround` | Whether any wheel is touching. `false` means nothing the driver does will change anything. |
 | `wheel.center` | Where the wheel is now, suspension travel included. |
-| `wheel.spin` / `wheel.steerAngle` | How far it has rolled and how far it is turned. |
+| `wheel.rollAngle` / `wheel.steerAngle` | How far it has rolled and how far it is turned. |
 | `wheel.isOnGround` / `wheel.groundBody` / `wheel.groundNormal` | What that tire is on. |
 | `wheel.suspensionCompression` | `0` fully extended … `1` bottomed out. Watch a car squat under power and dive under braking. |
 | `wheel.slip` / `wheel.slipAngle` | How much the tire is sliding along itself and across itself. Color a wheel by `slip` and a spinning one lights up. |
@@ -1021,11 +1021,11 @@ override func mousePressed() {
     grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
 }
 override func mouseReleased() {
-    if let grip { releaseSoftGrab(grip) }
+    if let grip { releaseSoftGrip(grip) }
     grip = nil
 }
 // in draw(), before world.step:
-if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+if let grip { dragSoftGrip(grip, to: Vector2(mouseX, mouseY)) }
 ```
 
 **A soft body is part of the world**, not a thing draped over it, so the rest of this page applies to one:
@@ -1057,7 +1057,7 @@ Build one from a polyline. Anything that makes points makes a rope. You can hand
 ```swift
 let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
                          at: Vector3(0, 3, 0),
-                         thickness: 0.04,
+                         radius: 0.04,
                          pinned: { $0.y > -0.001 })       // hung from the top
 
 // each frame:
@@ -1065,7 +1065,7 @@ world.advance(by: deltaTime)
 drawSoftBody(rope)                                        // a tube along the rope
 ```
 
-The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `positions`, and `nearestVertex(to:)` all speak in indices into the polyline you handed over. The rope reports itself as a `Rope3D`: `segmentCount` rods, one fewer than its points, its `thickness`, how many `sides` the drawn tube carries, and the `restLength` it was built to be, which is what a stretched rope is measured against. `drawSoftBody(_:)` sweeps a tube of `thickness` along it, which is also how far the rope stands off whatever it lies on.
+The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `positions`, and `nearestVertex(to:)` all speak in indices into the polyline you handed over. The rope reports itself as a `Rope3D`: `segmentCount` rods, one fewer than its points, its `radius`, how many `sides` the drawn tube carries, and the `restLength` it was built to be, which is what a stretched rope is measured against. `drawSoftBody(_:)` sweeps a tube of `radius` along it, which is also how far the rope stands off whatever it lies on.
 
 **Two parameters shape it**, both scale-free. One setting means the same thing on a twig and on a mooring line.
 

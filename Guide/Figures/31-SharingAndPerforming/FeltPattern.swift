@@ -47,7 +47,7 @@ final class FeltPattern: Sketch {
             var steps: [Vector2] = []
             var offset = 0.0
             while offset <= event.duration {
-                let level = event.strength(at: offset)
+                let level = event.intensity(at: offset)
                 steps.append(Vector2(x(event.time + offset, panel, span), base - tall * level))
                 offset += 0.01
             }

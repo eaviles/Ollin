@@ -63,7 +63,7 @@ struct MapBytes: Sendable {
 
 /// Everything one model run produced, decoded by output kind — the still-image
 /// counterpart of `ModelTracker`'s live surfaces. A model fills only the
-/// surfaces its outputs match: a classifier fills `labels`, an image-to-image
+/// surfaces its outputs match: a classifier fills `classifications`, an image-to-image
 /// model fills `map` (and answers `value(at:in:)`), an object detector fills
 /// `objects`, a semantic segmenter fills `classMask`.
 ///
@@ -73,7 +73,7 @@ public struct ModelOutput: @unchecked Sendable {
 
     /// What the model classified, strongest first — empty unless the model is a
     /// classifier.
-    public let labels: [Classification]
+    public let classifications: [Classification]
 
     /// What an object-detection model found — empty unless the model reports
     /// labeled boxes.
@@ -132,7 +132,7 @@ public struct ModelOutput: @unchecked Sendable {
 /// ```
 ///
 /// Four result surfaces, by output kind — a model fills the ones it matches:
-/// - **Classifier** (label + confidence outputs): `labels` / `top` /
+/// - **Classifier** (label + confidence outputs): `classifications` / `topClassification` /
 ///   `confidence(of:)`, like `ImageClassifier` but over your model's own
 ///   vocabulary.
 /// - **Image-to-image** (a depth estimator, a custom matte, a style-transfer
@@ -177,7 +177,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var loadTask: Task<Void, Never>?
         /// A pre-loaded model handed to `init(_:model:)`, consumed by the load.
         var pendingModel: MLModel?
-        var labels: [Classification] = []
+        var classifications: [Classification] = []
         var objects: [Detection] = []
         var map: Image?
         var image: Image?
@@ -200,17 +200,17 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
 
     /// What the most recent analyzed frame classified, strongest first — empty
     /// unless the model is a classifier.
-    public var labels: [Classification] { lock.withLockUnchecked { $0.labels } }
+    public var classifications: [Classification] { lock.withLockUnchecked { $0.classifications } }
 
     /// The single strongest label, or `nil` while there is none.
-    public var topClassification: Classification? { labels.first }
+    public var topClassification: Classification? { classifications.first }
 
     /// The confidence for one label by name, `0…1` — `0` when the model didn't
     /// score it. Spaces work in place of underscores.
     public func confidence(of label: String) -> Double {
         let wanted = label.lowercased().replacingOccurrences(of: " ", with: "_")
         return lock.withLockUnchecked {
-            $0.labels.first { $0.label.lowercased() == wanted }?.confidence ?? 0
+            $0.classifications.first { $0.label.lowercased() == wanted }?.confidence ?? 0
         }
     }
 
@@ -230,7 +230,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     }
 
     /// The camera frame the most recent result was computed *from* — the source
-    /// image that produced this frame's `map`/`labels`/etc., or `nil` before the
+    /// image that produced this frame's `map`/`classifications`/etc., or `nil` before the
     /// first result. Because analysis runs behind the live feed, this frame lags
     /// the camera by the inference latency, but it's perfectly in step with the
     /// result: draw it (instead of the live frame) under an overlay or a depth
@@ -357,7 +357,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         let classMask = decoded.featureValue.flatMap {
             ClassMask(featureValue: $0, labels: modelLabels)
         }
-        return ModelOutput(labels: decoded.labels, objects: decoded.objects,
+        return ModelOutput(classifications: decoded.classifications, objects: decoded.objects,
                            map: map, image: image, classMask: classMask,
                            mapBytes: mapBytes)
     }
@@ -414,7 +414,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             }
             let sourceFrame = wantsSourceFrame ? Image(cgImage: cgImage) : nil
             lock.withLockUnchecked { state in
-                state.labels = decoded.labels
+                state.classifications = decoded.classifications
                 state.objects = decoded.objects
                 if wantsMap || wantsValues { state.mapBytes = mapBytes }
                 if wantsMap { state.map = map }
@@ -527,7 +527,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     // MARK: Decoding
 
     private struct Decoded {
-        var labels: [Classification] = []
+        var classifications: [Classification] = []
         var objects: [Detection] = []
         var observation: PixelBufferObservation?
         var featureValue: MLSendableFeatureValue?
@@ -545,7 +545,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         for observation in observations {
             switch observation {
             case let classification as ClassificationObservation:
-                decoded.labels.append(Classification(
+                decoded.classifications.append(Classification(
                     label: classification.identifier,
                     confidence: Double(classification.confidence)))
             case let object as RecognizedObjectObservation:
@@ -566,7 +566,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                 continue
             }
         }
-        decoded.labels.sort { $0.confidence > $1.confidence }
+        decoded.classifications.sort { $0.confidence > $1.confidence }
         decoded.objects.sort { $0.confidence > $1.confidence }
         return decoded
     }

@@ -114,7 +114,7 @@ public struct Timecode: Sendable, Equatable, Hashable {
     public var totalSeconds: Double { Double(frameNumber) * frameRate.secondsPerFrame }
 
     /// The same moment `frames` later (or earlier, negative).
-    public func advanced(by frames: Int) -> Timecode {
+    public func advanced(byFrames frames: Int) -> Timecode {
         Timecode(frameNumber: frameNumber + frames, frameRate: frameRate)
     }
 }

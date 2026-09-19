@@ -151,7 +151,7 @@ final class Stroll: Sketch {
         if isKeyDown(.rightArrow) || isKeyDown("d") { east += 1 }
 
         let heading = Vector3(east, 0, south)
-        walker.move(heading.length > 0 ? heading.normalized * walkSpeed : .zero)
+        walker.walk(at: heading.length > 0 ? heading.normalized * walkSpeed : .zero)
         if isKeyDown(" ") { walker.jump(4.6) }
 
         // Face the way it is actually traveling, and swing the legs by the

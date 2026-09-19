@@ -127,7 +127,7 @@ will, whatever this is set to.
 The sensors cost battery, so they stay off until a sketch asks:
 
 ```swift
-override func setup() { controllerMotion(true) }
+override func setup() { controllersReportMotion(true) }
 
 override func draw() {
     guard controller.hasMotion else { return drawStatus("this controller has no motion sensors") }

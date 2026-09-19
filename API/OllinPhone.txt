@@ -306,7 +306,7 @@ struct PhoneBody: Sendable
   func bones() -> [(Vector3, Vector3)]
   func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
   func has(_: PhoneJoint) -> Bool
-  func isJointTracked(_: PhoneJoint) -> Bool
+  func isObserved(_: PhoneJoint) -> Bool
   func modelTransform(_: PhoneJoint) -> simd.simd_float4x4?
   func orientation(_: PhoneJoint) -> SIMD4<Float>?
   func position(_: PhoneJoint) -> Vector3?
@@ -691,13 +691,13 @@ struct PhoneSoundSample: Equatable, Sendable
   var timestamp: Double { get set }
 struct PhoneState: Equatable, Sendable
   init(_: PhoneStateSample)
-  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, status: String = default, notes: [String] = default)
+  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, statusMessage: String = default, notes: [String] = default)
   let isSupported: Bool
   let mode: PhoneCaptureMode
   let notes: [String]
   let referenceCount: Int
   let referencesAreDeclared: Bool
-  let status: String
+  let statusMessage: String
   let timestamp: Double
   var isLookingForAnything: Bool { get }
 struct PhoneStateSample: Equatable, Sendable

@@ -27,7 +27,7 @@ public struct Classification: Sendable {
 /// let classifier = ImageClassifier(camera)
 /// override func draw() {
 ///     if let frame = camera.frame { drawImage(frame, in: bounds) }
-///     for (i, found) in classifier.labels.prefix(5).enumerated() {
+///     for (i, found) in classifier.classifications.prefix(5).enumerated() {
 ///         drawText("\(found.name) \(Int(found.confidence * 100))%", 40, 60 + Double(i) * 30)
 ///     }
 ///     let dogness = classifier.confidence(of: "dog")   // 0…1, any label by name
@@ -35,7 +35,7 @@ public struct Classification: Sendable {
 /// ```
 public final class ImageClassifier: VisionTracking, @unchecked Sendable {
 
-    /// Labels below this confidence stay out of `labels` (the full scored
+    /// Labels below this confidence stay out of `classifications` (the full scored
     /// vocabulary is still readable through `confidence(of:)`).
     public let minConfidence: Double
 
@@ -44,13 +44,13 @@ public final class ImageClassifier: VisionTracking, @unchecked Sendable {
 
     /// What the most recent analyzed frame shows: every label at or above
     /// `minConfidence`, strongest first.
-    public var labels: [Classification] {
+    public var classifications: [Classification] {
         let floor = minConfidence
         return lock.withLock { Array($0.prefix { $0.confidence >= floor }) }
     }
 
     /// The single strongest label, or `nil` while nothing clears the floor.
-    public var topClassification: Classification? { labels.first }
+    public var topClassification: Classification? { classifications.first }
 
     /// The confidence for one label by name, `0…1` — `0` when it wasn't scored.
     /// Unfiltered, so a concept below `minConfidence` still reads its true
@@ -80,7 +80,7 @@ public final class ImageClassifier: VisionTracking, @unchecked Sendable {
         return Array(decode(observations).prefix { $0.confidence >= minConfidence })
     }
 
-    /// Every label the classifier knows — the full vocabulary `labels` and
+    /// Every label the classifier knows: the full vocabulary `classifications` and
     /// `confidence(of:)` draw from, alphabetical.
     public static func supportedLabels() -> [String] {
         ClassifyImageRequest().supportedIdentifiers
@@ -104,7 +104,7 @@ public final class ImageClassifier: VisionTracking, @unchecked Sendable {
 
     /// The request scores the *entire* vocabulary every time (~1,300 labels,
     /// most near zero); keep them all, strongest first, so `confidence(of:)`
-    /// can answer for any label while `labels` prefixes the meaningful ones.
+    /// can answer for any label while `classifications` prefixes the meaningful ones.
     private static func decode(_ observations: [ClassificationObservation]) -> [Classification] {
         observations
             .map { Classification(label: $0.identifier, confidence: Double($0.confidence)) }

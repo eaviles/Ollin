@@ -65,13 +65,13 @@ extension Sketch {
     /// however this is set. Check `controller.hasMotion` rather than assuming.
     ///
     /// ```swift
-    /// override func setup() { controllerMotion(true) }
+    /// override func setup() { controllersReportMotion(true) }
     /// override func draw() {
     ///     rotate(controller.gravity.x * 0.5)
     ///     drawRect(center: center, width: 400, height: 40)
     /// }
     /// ```
-    public func controllerMotion(_ enabled: Bool) {
+    public func controllersReportMotion(_ enabled: Bool) {
         ControllerHub.shared.motionEnabled = enabled
     }
 

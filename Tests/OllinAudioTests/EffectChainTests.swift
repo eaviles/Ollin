@@ -125,7 +125,7 @@ import Testing
         #expect(Equalizer.warm.lowGain > 0 && Equalizer.warm.highGain < 0)
         #expect(Equalizer.bright.lowGain < 0 && Equalizer.bright.highGain > 0)
         #expect(Equalizer.scooped.midGain < 0)
-        #expect(Equalizer.lowCut(below: 300).lowEdge == 300)
+        #expect(Equalizer.lowCut(below: 300).lowFrequency == 300)
     }
 
     @Test func distortionIsBounded() {
