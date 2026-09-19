@@ -489,6 +489,7 @@ let package = Package(
         example("Shapes/Scattered"),
         example("Shapes/StraightSkeleton"),
         example("Shapes/CornerCutting"),
+        example("Shapes/OverUnder"),
         example("Shapes/Watercolor"),
         example("Shapes/SVGImport", resources: [.copy("rocket.svg")]),
         example("Patterns/Topography"),

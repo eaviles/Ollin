@@ -3314,15 +3314,31 @@ struct ComputeParams: Sendable
   var bytes: [UInt8] { get }
   var isEmpty: Bool { get }
 struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+  func chamfered(_: Double) -> Contour
   func contains(_: Vector2) -> Bool
+  func crossings() -> [Contour.Crossing]
+  func crossings(with: Contour) -> [Contour.Crossing]
   func dashed(_: StrokeDash) -> [Contour]
+  func distance(to: Vector2) -> Double
+  func fraction(of: Vector2) -> Double
+  func nearestPoint(to: Vector2) -> Vector2
+  func normal(at: Double) -> Vector2
+  func piece(from: Double, to: Double) -> Contour
   func point(at: Double) -> Vector2
   func resampled(spacing: Double) -> Contour
+  func reversed() -> Contour
+  func rounded(_: Double) -> Contour
+  func simplified(tolerance: Double) -> Contour
   func smoothed(iterations: Int = default) -> Contour
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
+  func tangent(at: Double) -> Vector2
   init(_: [Vector2], closed: Bool = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   static func lerp(_: Contour, _: Contour, _: Double) -> Contour
+  struct Crossing: Equatable, Sendable
+    let fraction: Double
+    let otherFraction: Double
+    let point: Vector2
   subscript(_: Int) -> Vector2 { get }
   var endIndex: Int { get }
   var isClosed: Bool { get set }
@@ -5749,6 +5765,7 @@ struct ShadowArt: Sendable
   var mesh: Mesh { get }
   var voxelSize: Double { get }
 struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+  func chamfered(_: Double) -> Shape
   func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> Shape
   func fractured(into: Int, around: Vector2, seed: Int = default) -> [Shape]
@@ -5758,7 +5775,9 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func morphed(toward: Shape, _: Double, spacing: Double? = default) -> Shape
   func offset(by: Double, join: StrokeJoin = default) -> Shape
   func resampled(spacing: Double) -> Shape
+  func rounded(_: Double) -> Shape
   func separated() -> [Shape]
+  func simplified(tolerance: Double) -> Shape
   func smoothed(iterations: Int = default) -> Shape
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func subtracting(_: Shape) -> Shape

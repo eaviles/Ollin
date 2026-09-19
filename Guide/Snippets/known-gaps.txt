@@ -65,18 +65,20 @@ b4305a9b13a0  Guide/15-ShapesAsMaterial.md:218  cannot convert value of type 'Sh
 921b58e58630  Guide/15-ShapesAsMaterial.md:237  cannot find 'ring' in scope
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:295  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:308  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
-929df96c8f94  Guide/15-ShapesAsMaterial.md:379  cannot assign to value: 'mark' is a 'let' constant
-d12699261cc4  Guide/15-ShapesAsMaterial.md:474  cannot convert value of type 'Shape' to expected argument type 'Rectangle'
-5bdd80a90abf  Guide/15-ShapesAsMaterial.md:483  cannot find 'frame' in scope
-bac6f70b2c26  Guide/15-ShapesAsMaterial.md:524  cannot find 'circles' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:551  cannot find 'square' in scope
-6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:609  cannot find 'blob' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:632  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:643  value of type '[Contour]' has no member 'maxInset'
-7826fd9661d3  Guide/15-ShapesAsMaterial.md:671  cannot find 'navy' in scope
-047e517a0320  Guide/15-ShapesAsMaterial.md:683  cannot find 'bath' in scope
-9e5a2696fc73  Guide/15-ShapesAsMaterial.md:696  cannot find 'bath' in scope
-ff3aae35a44a  Guide/15-ShapesAsMaterial.md:767  cannot find 'art' in scope
+45fd2bf76c06  Guide/15-ShapesAsMaterial.md:325  cannot find 'path' in scope
+124acc641125  Guide/15-ShapesAsMaterial.md:337  cannot find 'road' in scope
+929df96c8f94  Guide/15-ShapesAsMaterial.md:414  cannot assign to value: 'mark' is a 'let' constant
+d12699261cc4  Guide/15-ShapesAsMaterial.md:509  cannot convert value of type 'Shape' to expected argument type 'Rectangle'
+5bdd80a90abf  Guide/15-ShapesAsMaterial.md:518  cannot find 'frame' in scope
+bac6f70b2c26  Guide/15-ShapesAsMaterial.md:559  cannot find 'circles' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:586  cannot find 'square' in scope
+6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:644  cannot find 'blob' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:667  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:678  value of type '[Contour]' has no member 'maxInset'
+7826fd9661d3  Guide/15-ShapesAsMaterial.md:706  cannot find 'navy' in scope
+047e517a0320  Guide/15-ShapesAsMaterial.md:718  cannot find 'bath' in scope
+9e5a2696fc73  Guide/15-ShapesAsMaterial.md:731  cannot find 'bath' in scope
+ff3aae35a44a  Guide/15-ShapesAsMaterial.md:802  cannot find 'art' in scope
 d06f4b81930b  Guide/16-LayersAndEffects.md:153  'module' is inaccessible due to 'internal' protection level
 54b8d0e8bcde  Guide/16-LayersAndEffects.md:203  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'

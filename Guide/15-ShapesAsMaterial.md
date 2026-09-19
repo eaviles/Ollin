@@ -311,6 +311,41 @@ let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap:
 
 That one call is the hinge of this chapter's finished sketch. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
 
+### Asking an outline where it goes
+
+A contour is a list of points, but it can answer questions about the line those points make. Ask it where it runs closest to the mouse, or which way it heads at some fraction along. Ask where it crosses another line, or itself.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/OutlineQuestions-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/OutlineQuestions.jpg" alt="Three panels. On the left a curve with a probe point beside it, a line dropped to the nearest place on the curve, arrows there for the direction of travel and the side it faces, and the stretch before that place drawn darker. In the middle a loop tangled into a seven-pointed star that crosses itself fourteen times, drawn as a band that passes over and under itself in turn, with a dot on each crossing. On the right a wavy line drawn thick and pale with a thin line of a few dots over it, and below it a star twice, once with its corners rounded and once with them cut flat" width="680">
+</picture>
+
+Every answer is measured along the walk, in the same fraction from 0 to 1 that `point(at:)` takes. So the answers fit into each other:
+
+```swift
+let t = path.fraction(of: mouse)                 // how far along the nearest place is
+let foot = path.point(at: t)                     // that place
+let heading = path.tangent(at: t)                // which way the line runs there
+let side = path.normal(at: t)                    // a quarter turn to its right
+let walked = path.piece(from: 0, to: t)          // the stretch up to it
+```
+
+The left panel is those five lines. `fraction(of:)` undoes `point(at:)`: one turns a fraction into a place, the other a place into a fraction. `piece(from:to:)` cuts out a stretch as its own open contour. On a closed outline it may run through the start, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam.
+
+Crossings come back as a list, sorted along the outline you asked:
+
+```swift
+for crossing in road.crossings(with: river) {
+    drawCircle(center: crossing.point, radius: 10)
+}
+```
+
+Each one carries its `point`, and how far along each line it sits (`fraction` on this one, `otherFraction` on the other). That is enough to cut either line there.
+
+The middle panel asks a loop about itself with `crossings()`. Walk once round and you pass through every crossing twice. Call every second pass "under" and cut a short gap out of the line there, and the loop weaves like a knot. The alternation always works out, because a closed curve passes an even number of crossings between its two visits to one. So every crossing gets one over and one under. The `Shapes/OverUnder` example tangles its loop a little differently every frame and weaves it again.
+
+The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
+
 ## Marks and brushes
 
 The next three tools shape the stroke itself, and each answers a different question. A profile shapes a finished path's width, dynamics respond to the hand mid-gesture, and a brush decides what tip lays the ink down.

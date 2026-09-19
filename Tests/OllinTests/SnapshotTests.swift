@@ -720,6 +720,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-morph",
                  note: "Shape morphing mid-blend: a star-to-donut ShapeMorph at a fixed t (pins contour pairing, the rotation correspondence, and the hole growing out of the center), a strip of triangle-to-circle one-offs at five fractions (pins exact endpoints and the blend between), and an open zigzag-to-arc lerp (pins direction alignment for open runs). Pure CPU build, no time, deterministic.",
                  make: { ShapeMorphScene() }),
+    SnapshotCase("outline-questions",
+                 note: "The outline questions on one sheet: a seven-point tangled loop woven over and under by its own crossings (crossings() with every second pass cut out through piece(from:to:), wrapping through the seam), a probe dropped to the nearest place on an open curve with the tangent and normal drawn there and the walked stretch inked, a star rounded and a star chamfered (each corner limited by its edges), and a dense wave simplified to the points it needs. Pure CPU geometry, no time, no random.",
+                 make: { OutlineQuestionsScene() }),
     SnapshotCase("cellular-automata",
                  note: "Two 1D cellular automata as stacked-row triangles: elementary rule 30 (left) and 3-color totalistic code 777 (right), each from a single center seed. Pins the rule-byte lookup, the totalistic base-k digit table, and row stacking. Pure CPU, no time, no random.",
                  make: { CellularAutomataScene() }),
@@ -5314,6 +5317,79 @@ private final class EpicyclesScene: Sketch {
         strokeWeight(0.8)
         stroke(Color(hex: 0x6B7DA6))
         drawEpicycles(epicycles, at: 0.3, terms: 12)
+    }
+}
+
+private final class OutlineQuestionsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+
+        // A tangled loop woven through its own crossings.
+        let ring = (0 ..< 7).map { k -> Vector2 in
+            let i = (k * 3) % 7
+            return Vector2(76, 76) + Vector2(angle: Double(i) / 7 * .tau - .tau / 4, length: 62)
+        }
+        let knot = Contour(curveThrough: ring, closed: true)
+        let passes = knot.crossings().flatMap { [$0.fraction, $0.otherFraction] }.sorted()
+        let unders = passes.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element)
+        let half = 9 / knot.length
+        func wrapped(_ f: Double) -> Double { let r = f.truncatingRemainder(dividingBy: 1); return r < 0 ? r + 1 : r }
+        strokeCap(.butt)
+        noFill()
+        for (i, under) in unders.enumerated() {
+            let strand = knot.piece(from: wrapped(under + half), to: wrapped(unders[(i + 1) % unders.count] - half))
+            stroke(Color(hex: 0x10131A))
+            strokeWeight(7)
+            drawPolyline(strand.points)
+            stroke(Color(hex: 0xE5B15C))
+            strokeWeight(3.5)
+            drawPolyline(strand.points)
+        }
+
+        // The nearest place on a curve, the way it runs there, and the walk so far.
+        let path = Contour(curveThrough: [Vector2(150, 110), Vector2(180, 30), Vector2(215, 90),
+                                          Vector2(246, 20)], closed: false)
+        let probe = Vector2(222, 118)
+        let t = path.fraction(of: probe)
+        let foot = path.point(at: t)
+        strokeCap(.round)
+        stroke(Color(hex: 0x3A4458))
+        strokeWeight(2)
+        drawPolyline(path.points)
+        stroke(Color(hex: 0xF4EAD6))
+        drawPolyline(path.piece(from: 0, to: t).points)
+        strokeWeight(1)
+        drawLine(probe, foot)
+        stroke(Color(hex: 0x9FD6E8))
+        strokeWeight(1.6)
+        drawLine(foot, foot + path.tangent(at: t) * 22)
+        stroke(Color(hex: 0x6BD69B))
+        drawLine(foot, foot + path.normal(at: t) * 16)
+
+        // A star rounded and a star cut.
+        let star = Contour((0 ..< 10).map { i in
+            Vector2(angle: Double(i) / 10 * .tau - .tau / 4, length: i.isMultiple(of: 2) ? 36 : 15)
+        })
+        noStroke()
+        fill(Color(hex: 0x9FD6E8))
+        drawShape(Shape(contours: [star.rounded(5)]).mapPoints { $0 + Vector2(52, 200) })
+        fill(Color(hex: 0x6BD69B))
+        drawShape(Shape(contours: [star.chamfered(5)]).mapPoints { $0 + Vector2(132, 200) })
+
+        // A dense wave and the few points that stay within a unit of it.
+        let dense = Contour((0 ... 200).map { i -> Vector2 in
+            let x = Double(i) * 0.35
+            return Vector2(182 + x, 200 + 18 * sin(x / 7) + 5 * sin(x / 2))
+        }, closed: false)
+        noFill()
+        stroke(Color(hex: 0x3A4458))
+        strokeWeight(4)
+        drawPolyline(dense.points)
+        stroke(Color(hex: 0xF4EAD6))
+        strokeWeight(1)
+        drawPolyline(dense.simplified(tolerance: 1).points)
     }
 }
 

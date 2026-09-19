@@ -25,6 +25,8 @@
 - [Insets](#insets)
 - [Circle](#circle)
 - [Contour](#contour)
+  - [Asking an outline questions](#contour-questions)
+  - [Lighter, reversed, rounded, and cut](#contour-edits)
 - [Shape](#shape)
   - [Set operations](#shape-booleans)
   - [Offsetting](#shape-offset)
@@ -473,7 +475,7 @@ for point in contour { drawCircle(center: point, radius: 3) }
 let howMany = contour.count            // how many points
 let rightmost = contour.map(\.x).max()  // the rightmost x
 let middle = contour.centroid          // where the points average out, nil when empty
-let backwards = Array(contour.reversed())
+let backwards = contour.reversed()     // still a Contour, walked the other way
 ```
 
 `points` is still the settable side: read through the collection, write through `points`.
@@ -491,6 +493,90 @@ let isAVertex = outline.points.contains(Vector2(60, 60))  // one of my own point
 The walk helpers measure *along* the contour. That is why they land mid-stroke even when the points are spaced unevenly, as in a `textToShapes` glyph or a two-point diagonal. `midpoint` is the anchor to style each contour by. Color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
 
 `resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, and keeps `isClosed`. Run it before dot, dash, and jitter effects. A contour can arrive with uneven vertices, since a glyph outline is dense on curves and sparse on straights. Resampling gives it back at a steady interval, so marks placed one per point spread evenly. `Shape.resampled(spacing:)` applies it to every contour and keeps the shape's `winding`. See the `TypeAsGeometry` and `GlyphContours` examples.
+
+<a name="contour-questions"></a>
+
+#### Asking an outline questions
+
+An outline can tell you where it goes, not only what it holds. Every answer is measured along the walk, in the same fraction `point(at:)` takes, so the answers fit together.
+
+```swift
+func tangent(at t: Double) -> Vector2              // the direction of travel there, a unit vector
+func normal(at t: Double) -> Vector2               // the tangent turned to the right of travel
+func nearestPoint(to point: Vector2) -> Vector2    // the closest place on the outline
+func fraction(of point: Vector2) -> Double         // how far along that closest place sits
+func distance(to point: Vector2) -> Double         // how far away the outline is
+func piece(from start: Double, to end: Double) -> Contour   // the stretch between two fractions
+func crossings(with other: Contour) -> [Contour.Crossing]   // where it meets another outline
+func crossings() -> [Contour.Crossing]                      // where it crosses itself
+```
+
+The first five read the outline under a point. `fraction(of:)` is the inverse of `point(at:)`, so `point(at: fraction(of: p))` is `nearestPoint(to: p)`. The nearest place can fall anywhere along a segment, not only on a vertex.
+
+```swift
+let path = Contour(curveThrough: [Vector2(120, 700), Vector2(400, 300),
+                                  Vector2(700, 650), Vector2(950, 250)], closed: false)
+let t = path.fraction(of: mouse)
+let foot = path.point(at: t)
+drawPolyline(path.piece(from: 0, to: t).points)      // the part already walked
+drawArrow(from: foot, to: foot + path.tangent(at: t) * 80)
+drawArrow(from: foot, to: foot + path.normal(at: t) * 50)
+```
+
+A contour is straight between its points, so the tangent is the direction of the segment `point(at: t)` lands on. At a vertex it is the segment arriving there. The normal is `tangent(at: t).perpendicular`, a quarter turn clockwise as the canvas shows it, so it points to the right of the direction of travel. On an outline wound clockwise on the canvas, that is inward, and `reversed()` flips it.
+
+`piece(from:to:)` cuts out the stretch between two fractions as an open contour. It starts at `point(at: start)`, ends at `point(at: end)`, and keeps every vertex in between, so its length is the difference of the fractions times the whole length. On a closed outline the piece always runs forward. It wraps through the start when `end` is smaller, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam. On an open one, an `end` before `start` walks backward.
+
+`crossings(with:)` finds every place two outlines meet, sorted along the one you asked. Each `Contour.Crossing` carries its `point` and a fraction along both walks: `fraction` on this outline and `otherFraction` on the other. Either outline can then be cut at the crossing with `piece(from:to:)`.
+
+```swift
+let road = Contour([Vector2(80, 540), Vector2(1000, 520)], closed: false)
+let river = Contour(curveThrough: [Vector2(300, 100), Vector2(600, 500), Vector2(400, 980)],
+                    closed: false)
+for crossing in road.crossings(with: river) {
+    drawCircle(center: crossing.point, radius: 10)          // a bridge goes here
+}
+```
+
+`crossings()` asks the same question of one outline against itself. Each crossing is reported once, and `fraction` is the first pass through it, `otherFraction` the second. Two neighboring segments meeting at their shared vertex do not count, and neither does a closed outline's return leg meeting its first segment. Outlines that run along each other in parallel share no single point, so that stretch reports nothing. A touch counts the same as a crossing.
+
+The search sweeps the segments from left to right and tests only the pairs that overlap. A dense trace of thousands of points stays cheap. The `Examples/Shapes/OverUnder` sketch finds a tangled loop's crossings every frame. Walking once round, it sends every second pass under by cutting a gap out of the strand there. The loop then reads as a knot that weaves.
+
+<a name="contour-edits"></a>
+
+#### Lighter, reversed, rounded, and cut
+
+Four edits return a new contour and keep `isClosed`:
+
+```swift
+func simplified(tolerance: Double) -> Contour   // only the points needed to stay within tolerance
+func reversed() -> Contour                      // the same outline walked the other way
+func rounded(_ radius: Double) -> Contour       // every corner turned into an arc
+func chamfered(_ size: Double) -> Contour       // every corner cut straight across
+```
+
+`simplified(tolerance:)` thins a dense trace, like a mouse stroke, a traced edge, or an isoline, down to the points it needs. Every point of the original stays within `tolerance` of the result. Straights keep only their ends, and bends keep more. It is the Ramer-Douglas-Peucker method, measured against each kept segment rather than the whole line through it. That way a run that doubles back past its own end still keeps the point where it turned. An open contour keeps both ends, and a closed one keeps its first point.
+
+```swift
+let dense = Contour((0 ... 400).map { i in
+    Vector2(Double(i) * 2.5, 540 + 160 * sin(Double(i) / 40))
+}, closed: false)
+let lighter = dense.simplified(tolerance: 0.5)    // 401 points in, 60 out
+```
+
+`reversed()` walks the same outline backward, so on an open contour `reversed().point(at: t)` is `point(at: 1 - t)`. It is a `Contour`, not the collection's reversed view, and iterating it reads the points in reverse all the same. On a closed outline it flips the winding, which is what makes an outline a hole under the non-zero rule.
+
+`rounded(_:)` replaces each corner with an arc of that radius, tangent to both edges. `chamfered(_:)` cuts each corner straight across, `size` back along each edge, so a square becomes an octagon. A corner is limited by its shorter neighboring edge. Each edge lends at most half its length to a corner at either end, so neighboring arcs meet and never overlap. A radius too large for a corner rounds it as far as its edges allow. An equilateral triangle rounded past its limit becomes its own incircle. An open contour keeps its two ends sharp, and a straight run through a vertex is left alone.
+
+```swift
+let star = Contour((0 ..< 10).map { i in
+    Vector2(540, 540) + Vector2(angle: Double(i) / 10 * .tau,
+                                length: i.isMultiple(of: 2) ? 420 : 170)
+})
+drawShape(Shape(contours: [star.rounded(24)]))
+```
+
+`Shape` has `simplified(tolerance:)`, `rounded(_:)`, and `chamfered(_:)` too. Each edits every contour and keeps the shape's `winding`, so holes round the same way their outline does.
 
 <a name="shape"></a>
 

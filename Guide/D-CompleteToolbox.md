@@ -112,6 +112,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | `Grid` | Rows, columns, padding, and gutters without nested-loop boilerplate | [Ch 6](06-GridsAndRepetition.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Paths, shapes, and contours | Curved outlines you build, hold, edit, and respace with `resampled` | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Shape booleans and offsets | Union, intersect, subtract, xor; grow and shrink regions | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
+| Outline questions | Tangent, normal, nearest point, the piece between two fractions, crossings, simplify, and rounded or cut corners | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md#contour-questions) |
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 15](15-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 15](15-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |

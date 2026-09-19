@@ -319,35 +319,37 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:122  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:91  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-4089dff1acc6  Docs/Drawing/Geometry.md:173  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-0bdba7d24932  Docs/Drawing/Geometry.md:225  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:238  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:251  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:262  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:278  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:288  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:303  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:331  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:340  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:366  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:394  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:417  cannot infer contextual base in reference to member 'all'
-754645c0ed85  Docs/Drawing/Geometry.md:42  expected ',' separator
-23b6891ea8c2  Docs/Drawing/Geometry.md:437  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-e472a0d6d590  Docs/Drawing/Geometry.md:457  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:501  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:531  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:538  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:544  cannot find 'shape' in scope
-1eb6f12247fb  Docs/Drawing/Geometry.md:557  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:571  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:583  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:589  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:607  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:614  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-eb39bc6e25d9  Docs/Drawing/Geometry.md:627  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:641  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:683  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+4089dff1acc6  Docs/Drawing/Geometry.md:175  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+0bdba7d24932  Docs/Drawing/Geometry.md:227  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:240  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:253  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:264  cannot find 'eye' in scope
+7e1e37f3022c  Docs/Drawing/Geometry.md:280  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:290  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:305  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:333  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:342  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:368  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:396  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:419  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:439  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+754645c0ed85  Docs/Drawing/Geometry.md:44  expected ',' separator
+e472a0d6d590  Docs/Drawing/Geometry.md:459  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:503  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:551  expected '{' in body of function declaration
+4fdce137d56e  Docs/Drawing/Geometry.md:587  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:617  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:624  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:630  cannot find 'shape' in scope
+1eb6f12247fb  Docs/Drawing/Geometry.md:643  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:657  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:669  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:675  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:693  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:700  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+eb39bc6e25d9  Docs/Drawing/Geometry.md:713  expected '{' in body of function declaration
+ef0ca3825a40  Docs/Drawing/Geometry.md:727  expected ',' separator
+0551b7294c44  Docs/Drawing/Geometry.md:769  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 336a733604c7  Docs/Drawing/GlyphMosaic.md:29  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:41  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:53  expected ',' separator
