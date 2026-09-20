@@ -68,7 +68,7 @@
 #          one gate here that takes half an hour, so everything else has
 #          reported by then
 #   --milestone adds
-#       -> Scripts/test.sh milestone (both phases plus the four nested
+#       -> Scripts/test.sh milestone (both phases plus the five nested
 #          signed-bundle builds the everyday run leaves out), guide-figures
 #          --no-probe, site-hero, and swift build --package-path Examples (the
 #          examples anti-rot guard; CI runs on pull requests only, so nothing

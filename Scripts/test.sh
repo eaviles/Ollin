@@ -5,8 +5,8 @@
 #   Scripts/test.sh              # the whole suite, in phases (see below)
 #   Scripts/test.sh quick        # the sub-minute pass: skips the GPU snapshot
 #                                # table and the nested-build suite
-#   Scripts/test.sh milestone    # the whole suite plus the four nested
-#                                # signed-bundle builds (+570 s), which the
+#   Scripts/test.sh milestone    # the whole suite plus the five nested
+#                                # signed-bundle builds (+940 s), which the
 #                                # everyday run leaves out
 #   Scripts/test.sh shard        # the same suite with OllinTests split
 #                                # across processes: fewer minutes, more fans
@@ -27,10 +27,10 @@
 # main-actor isolated, so one process can only ever use one thread for it. See
 # Scripts/shard-tests.sh for what that costs and what it buys.
 #
-# What the everyday run leaves out: the four cases in `Generated projects
+# What the everyday run leaves out: the five cases in `Generated projects
 # build` that build a whole signed bundle. They repeat, per bundle shape, the
 # check the plain generated-package build already makes, and they take the
-# suite from 155 s to 725 s. `Scripts/preflight.sh --milestone` runs them; so
+# suite from 228 s to 1,174 s. `Scripts/preflight.sh --milestone` runs them; so
 # does `Scripts/test.sh milestone`. They report as skipped otherwise, so a run
 # that did not make that check cannot be mistaken for one that did.
 #
@@ -103,7 +103,7 @@ shard | --shard)
     exit $failed
     ;;
 milestone | --milestone)
-    echo "test.sh: milestone run; the four signed-bundle builds are included"
+    echo "test.sh: milestone run; the five signed-bundle builds are included"
     export OLLIN_BUNDLE_BUILDS=1
     phases
     ;;

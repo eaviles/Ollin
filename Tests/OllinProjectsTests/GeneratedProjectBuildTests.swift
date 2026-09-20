@@ -2,9 +2,9 @@ import Foundation
 import Testing
 @testable import OllinProjects
 
-/// Whether this run builds the four signed bundles. `Scripts/test.sh milestone`
+/// Whether this run builds the five signed bundles. `Scripts/test.sh milestone`
 /// sets it, and so does `Scripts/preflight.sh --milestone` through it. Left
-/// unset the four report as skipped rather than passing quietly, so a run that
+/// unset the five report as skipped rather than passing quietly, so a run that
 /// did not make the check cannot be read as one that did.
 private let buildsBundles = ProcessInfo.processInfo.environment["OLLIN_BUNDLE_BUILDS"] == "1"
 
@@ -31,12 +31,12 @@ private let xcodegenInstalled: Bool = {
 /// time limit is the hang backstop: a nested build is a subprocess with no
 /// timeout of its own, so a wedged one would otherwise wait forever.
 ///
-/// The four that build a whole signed bundle are gated on `buildsBundles`
+/// The five that build a whole signed bundle are gated on `buildsBundles`
 /// below: each makes, for its own bundle shape, the check the plain generated
-/// package build already makes, and together they cost 569 s of this suite's
-/// 725 s (screen saver 142.4, app 143.1, wallpaper 145.0, menu-bar piece
-/// 140.9). They run on the milestone pass instead, where the examples build
-/// already lives, which leaves the everyday suite at 155 s.
+/// package build already makes, and together they cost 937 s of this suite's
+/// 1,174 s (screen saver 181.7, app 186.2, wallpaper 196.2, menu-bar piece
+/// 187.3, widget 186.0). They run on the milestone pass instead, where the
+/// examples build already lives, which leaves the everyday suite at 228 s.
 @Suite("Generated projects build", .serialized, .timeLimit(.minutes(15)))
 struct GeneratedProjectBuildTests {
 

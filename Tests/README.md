@@ -11,7 +11,7 @@ Scripts/test.sh <Suite>     # one suite, seconds; also the isolation rerun
 Scripts/test.sh quick       # the sub-minute pass (no GPU snapshots, no nested builds)
 Scripts/test.sh shard       # the whole suite, OllinTests split across processes
 Scripts/test.sh             # the whole suite, one process per phase
-Scripts/test.sh milestone   # the whole suite plus the four signed-bundle builds
+Scripts/test.sh milestone   # the whole suite plus the five signed-bundle builds
 Scripts/test.sh ci          # the runner's own recipe, as build.yml runs it
 ```
 

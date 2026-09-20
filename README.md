@@ -94,7 +94,7 @@ platforms: [
 ],
 dependencies: [
     // Pre-1.0: a breaking change bumps the minor, so stay on one minor.
-    .package(url: "https://github.com/eaviles/Ollin.git", .upToNextMinor(from: "0.9.0"))
+    .package(url: "https://github.com/eaviles/Ollin.git", .upToNextMinor(from: "0.10.0"))
 ],
 targets: [
     .executableTarget(
@@ -104,7 +104,7 @@ targets: [
 ]
 ```
 
-The `platforms` entry matters: without it SwiftPM targets its oldest macOS default, and the build fails against Ollin's macOS 26 floor. `.upToNextMinor(from: "0.9.0")` accepts 0.9.x fixes and keeps out 0.10.0, where APIs may change. Read the [changelog](CHANGELOG.md) before raising that bound.
+The `platforms` entry matters: without it SwiftPM targets its oldest macOS default, and the build fails against Ollin's macOS 26 floor. `.upToNextMinor(from: "0.10.0")` accepts 0.10.x fixes and keeps out 0.11.0, where APIs may change. Read the [changelog](CHANGELOG.md) before raising that bound.
 
 ## Why Ollin exists
 
