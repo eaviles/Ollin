@@ -167,7 +167,7 @@ final class DigitReader: Sketch {
         Task { [weak self] in
             guard let self else { return }
             let output = try? await self.reader.detect(in: Image(cgImage: snapshot))
-            self.guesses = output?.labels ?? []
+            self.guesses = output?.classifications ?? []
             self.isReading = false
         }
     }

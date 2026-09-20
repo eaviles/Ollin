@@ -148,7 +148,7 @@ final class Rigging: Sketch {
     func drawSetting() {
         material(.dielectric(roughness: 0.9))
         fill(Color(hex: 0x2A3341))
-        drawGround(size: 16, radius: 0.2)
+        drawGround(size: 16, thickness: 0.2)
         fill(Color(hex: 0x4A4137))
         withState {
             translate(0, Rigging.beamHeight + 0.1, 0)

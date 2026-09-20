@@ -110,7 +110,7 @@ final class RoomCanvas: Sketch {
         textSize(19 * scale)
         fill(Color.white.withAlpha(0.5))
         let company = room.isAlone ? "alone: open this sketch on another Mac" : room.peers.joined(separator: ", ")
-        drawText("\(room.name)   |   \(company)", margin, margin + 56 * scale)
+        drawText("\(room.peerName)   |   \(company)", margin, margin + 56 * scale)
 
         let agreement: String
         if let error = room.clockError {
