@@ -1674,6 +1674,22 @@ typedef struct {
     // itself (the opening's own power spectrum, one texture for the whole frame)
     // is bound by the composite pass. w unused.
     simd_float4 starTints[OLLIN_MAX_FLARE_LIGHTS];
+    // Per light: the light's own linear color against the frame's brightest, times
+    // the strength dial and nothing else. What the streak, the halo and the dirt
+    // are lit by, since none of them passes through the lens's ghost paths. w unused.
+    simd_float4 sourceTints[OLLIN_MAX_FLARE_LIGHTS];
+    simd_float4 streak;      // x = the streak's level where it crosses its source
+                             // (0 = none), y = how far it reaches each way, in
+                             // y-normalized frame units, zw = the unit vector it
+                             // runs along
+    simd_float4 streakTint;  // rgb = the filter glass's color, linear, w = the
+                             // streak's half thickness, in y-normalized units
+    simd_float4 halo;        // x = the ring's level (0 = none), y = its radius, in
+                             // y-normalized units, z = its width, w unused
+    simd_float4 dirt;        // x = how many specks there are (0 = a clean lens),
+                             // y = what a speck is worth beside its light, z = how
+                             // far from the light a speck's glow has halved, in
+                             // y-normalized units, w unused
     int lightCount;
     int ghostCount;
 } OllinLensFlareUniforms;

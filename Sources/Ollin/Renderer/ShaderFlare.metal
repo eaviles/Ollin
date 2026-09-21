@@ -606,6 +606,73 @@ fragment float4 ollin_flare_trace_fragment(OllinFlareTraceOut in [[stage_in]],
     return float4(in.light * shaped * (barrel * in.valid * in.valid), 1.0);
 }
 
+// MARK: Dirt on the front of the lens
+//
+// Grime on the front element is far too close to the lens to be in focus. Each
+// speck is blurred into the shape and size of the iris, which is why a dirty
+// lens takes a clean picture until it is turned toward a light. Then each speck
+// scatters a little of that light into the camera, mostly onward the way it was
+// already going, so the specks nearest the light glow brightest. This is the
+// published image formation model for a dirty lens (credited in
+// `ATTRIBUTION.md`), its scattering term, lit by the flare's own sources.
+//
+// Each speck is one small quad: xy = where it sits on the frame (y-normalized),
+// z = its radius there, w = how much it scatters. There is one copy per light,
+// light by light.
+
+struct OllinFlareDirtOut {
+    float4 position [[position]];
+    float2 local;        // across the speck, the iris's outer radius at 1
+    float3 light;
+};
+
+vertex OllinFlareDirtOut ollin_flare_dirt_vertex(uint vertexID [[vertex_id]],
+                                                 uint instanceID [[instance_id]],
+                                                 constant OllinLensFlareUniforms &flare [[buffer(0)]],
+                                                 constant float4 *specks [[buffer(1)]],
+                                                 texture2d<float> visibility [[texture(0)]]) {
+    uint count = max(uint(flare.dirt.x), 1u);
+    uint lightIndex = instanceID / count;
+    float4 speck = specks[instanceID % count];
+    const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(-1, 1),
+                                float2(1, -1), float2(1, 1), float2(-1, 1) };
+    float2 corner = corners[vertexID % 6u] * 1.12;
+    float2 at = speck.xy + corner * speck.z;
+
+    OllinFlareDirtOut out;
+    out.position = float4(at.x / flare.optics.w, at.y, 0.0, 1.0);
+    out.local = corner;
+    // Scattered mostly onward: brightest looking straight past the speck at the
+    // light, and falling off as the two directions part.
+    float apart = length(speck.xy - flare.lights[lightIndex].zw) / max(flare.dirt.z, 1e-4);
+    float onward = 1.0 / pow(1.0 + apart * apart, 1.5);
+    float seen = visibility.read(uint2(lightIndex, 0)).x;
+    out.light = flare.sourceTints[lightIndex].rgb * (flare.dirt.y * speck.w * onward * seen);
+    return out;
+}
+
+fragment float4 ollin_flare_dirt_fragment(OllinFlareDirtOut in [[stage_in]],
+                                          constant OllinLensFlareUniforms &flare [[buffer(0)]]) {
+    // The iris's own shape at unit size: round, or the blades' polygon.
+    int blades = int(flare.iris.x);
+    float edge;
+    if (blades < 3) {
+        edge = length(in.local) - 1.0;
+    } else {
+        float reach = -1e9;
+        for (int k = 0; k < blades; k++) {
+            float4 pair = flare.blades[k / 2];
+            reach = max(reach, dot(in.local, (k & 1) == 0 ? pair.xy : pair.zw));
+        }
+        edge = reach - cos(M_PI_F / float(blades));
+    }
+    // A blur this far out of focus is a touch brighter toward its rim than in
+    // its middle, and soft at the edge.
+    float inside = 1.0 - smoothstep(-0.14, 0.05, edge);
+    float rim = 0.75 + 0.25 * smoothstep(-0.6, -0.05, edge);
+    return float4(in.light * (inside * rim), 1.0);
+}
+
 // Add the flare to the resolved frame, in linear light and before the tone map,
 // because a flare is light arriving at the sensor rather than paint on the
 // finished picture: the ghosts, read from the half-size canvas they were worked
@@ -641,6 +708,55 @@ fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
                 float2 uv = float2(offset.x * 0.5 + 0.5, 0.5 - offset.y * 0.5);
                 float3 pattern = starPattern.sample(samp, uv, level(0)).rgb;
                 sum += pattern * flare.starTints[i].rgb * seen;
+            }
+        }
+
+        float2 from = screen - flare.lights[i].zw;
+        float3 lit = flare.sourceTints[i].rgb * seen;
+
+        // The streak: what cylindrical glass does to a light, whether it is the
+        // front group of an anamorphic lens or the fine grooves of a streak
+        // filter. A cylinder bends light one way only, so it fans a light out
+        // across itself, and every fan lands on one line through the source. The
+        // line is as thin as the source is wide, with a faint skirt where the
+        // grooves are not quite true, and it tapers to its ends as a fan does.
+        if (flare.streak.x > 0.0) {
+            float along = dot(from, flare.streak.zw);
+            float across = dot(from, float2(-flare.streak.w, flare.streak.z));
+            float t = abs(along) / flare.streak.y;
+            float thick = flare.streakTint.w;
+            if (t < 1.0 && abs(across) < 14.0 * thick) {
+                float q = across / thick;
+                float line = exp(-0.5 * q * q) + 0.16 * exp(-0.5 * q * q / 16.0);
+                float taper = 1.0 - t * t;
+                sum += lit * flare.streakTint.rgb * (flare.streak.x * taper * sqrt(taper) * line);
+            }
+        }
+
+        // The halo: a thin ring around the light, red outermost. This one is a
+        // look, not optics (nothing in a lens of plain spheres draws it), and it
+        // is spread by color the way a diffraction ring would be.
+        if (flare.halo.x > 0.0) {
+            float out = length(from);
+            float radius = flare.halo.y, width = flare.halo.z;
+            if (abs(out - radius) < 0.12 * radius + 4.0 * width) {
+                // Nine colors across the spectrum, each with its own radius, so the
+                // ring is a run of color and not three bands. xyz is what that
+                // wavelength adds to the picture (the nine add up to white), w how
+                // far it sits from the middle of the spectrum. The spread is a
+                // third of what diffraction would give, which keeps it a ring.
+                const float4 colors[9] = {
+                    float4(0.0401, 0.0000, 0.4719, -0.2000), float4(0.0000, 0.0000, 0.4152, -0.1545),
+                    float4(0.0000, 0.0953, 0.1129, -0.1091), float4(0.0000, 0.2331, 0.0000, -0.0636),
+                    float4(0.0000, 0.3285, 0.0000, -0.0182), float4(0.1085, 0.2596, 0.0000, 0.0273),
+                    float4(0.3366, 0.0835, 0.0000, 0.0727), float4(0.3415, 0.0000, 0.0000, 0.1182),
+                    float4(0.1734, 0.0000, 0.0000, 0.1636) };
+                float3 ring = float3(0.0);
+                for (int k = 0; k < 9; k++) {
+                    float q = (out - radius * (1.0 + 0.33 * colors[k].w)) / width;
+                    ring += colors[k].xyz * exp(-0.5 * q * q);
+                }
+                sum += lit * (flare.halo.x * ring);
             }
         }
     }

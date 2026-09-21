@@ -398,6 +398,17 @@ struct LensFlareTests {
         }
     }
 
+    /// The extras stay out of a flare that does not ask for them, which is what
+    /// keeps every flare drawn before they existed the same picture, and a value
+    /// out of range is brought back into it rather than drawn.
+    @Test func theExtrasAreOffUntilAskedFor() {
+        let plain = LensFlare()
+        #expect(plain.streak == 0 && plain.halo == 0 && plain.dirt == 0)
+        #expect(plain.lens == .standard)
+        let pushed = LensFlare(wear: 3, streak: -1, halo: -2, dirt: 7)
+        #expect(pushed.wear == 1 && pushed.streak == 0 && pushed.halo == 0 && pushed.dirt == 1)
+    }
+
     /// The number the level is set against belongs to the lens: it does not move
     /// with the f-number, and a lens with better coatings carries less.
     @Test func whatTheGhostsCarryBelongsToTheLens() {

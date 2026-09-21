@@ -4478,14 +4478,21 @@ struct Lens: Equatable, Sendable
   var fStop: Double? { get set }
   var interfaces: [LensInterface] { get set }
 struct LensFlare: Equatable, Sendable
-  init(lens: Lens = default, amount: Double = default, star: Double = default, starSize: Double = default, dust: Double = default, reach: Double = default, sourceSize: Double = default)
+  init(lens: Lens = default, amount: Double = default, star: Double = default, starSize: Double = default, wear: Double = default, streak: Double = default, streakLength: Double = default, streakAngle: Double = default, streakTint: Color = default, halo: Double = default, haloSize: Double = default, dirt: Double = default, reach: Double = default, sourceSize: Double = default)
   var amount: Double { get set }
-  var dust: Double { get set }
+  var dirt: Double { get set }
+  var halo: Double { get set }
+  var haloSize: Double { get set }
   var lens: Lens { get set }
   var reach: Double { get set }
   var sourceSize: Double { get set }
   var star: Double { get set }
   var starSize: Double { get set }
+  var streak: Double { get set }
+  var streakAngle: Double { get set }
+  var streakLength: Double { get set }
+  var streakTint: Color { get set }
+  var wear: Double { get set }
 struct LensInterface: Equatable, Sendable
   init(radius: Double, thickness: Double, ior: Double = default, height: Double, isIris: Bool = default, coating: Double? = default, abbeNumber: Double? = default)
   static func iris(thickness: Double, height: Double) -> LensInterface

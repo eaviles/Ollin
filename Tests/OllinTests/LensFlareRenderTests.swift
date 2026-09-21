@@ -153,6 +153,74 @@ struct LensFlareRenderProbes {
                 "followed, the ghosts cover \(followed.covered) pixels against first order's \(firstOrder.covered)")
     }
 
+    /// What one of the extras adds, in linear light, as a picture: the frame with
+    /// it over the same frame with a flare that leaves it out, so the ghosts
+    /// cancel and only the extra is left.
+    private func extraLight(streak: Double = 0, halo: Double = 0, dirt: Double = 0,
+                            occluder: FlareProbe.Occluder = .none)
+        throws -> (rise: [Double], width: Int, height: Int) {
+        let with = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: occluder, flare: true, streak: streak, halo: halo, dirt: dirt), frame: 1))
+        let without = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: occluder, flare: true), frame: 1))
+        let a = pixels(of: with), b = pixels(of: without)
+        func linear(_ byte: UInt8) -> Double {
+            let v = Double(byte) / 255
+            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        var rise = [Double](repeating: 0, count: a.count / 4)
+        for i in stride(from: 0, to: a.count, by: 4) {
+            rise[i / 4] = (0..<3).map { max(0, linear(a[i + $0]) - linear(b[i + $0])) }.max() ?? 0
+        }
+        return (rise, with.width, with.height)
+    }
+
+    /// Where the probe's lamp sits on the frame, as fractions of it.
+    private let lampAt = (x: 0.61, y: 0.44)
+
+    /// A streak filter throws one line through the light and nothing anywhere
+    /// else: light far along the line, on the lamp's own row, and none a little
+    /// way above or below it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theStreakIsOneLineThroughTheLight() throws {
+        let (rise, width, height) = try extraLight(streak: 1)
+        let row = Int(lampAt.y * Double(height))
+        let farLeft = Int(0.08 * Double(width))
+        func at(_ x: Int, _ y: Int) -> Double { rise[y * width + x] }
+        let onLine = (row - 1...row + 1).map { at(farLeft, $0) }.max() ?? 0
+        let offLine = max(at(farLeft, row - height / 8), at(farLeft, row + height / 8))
+        #expect(onLine > 0.004, "the streak reaches far along its line: \(onLine)")
+        #expect(offLine < onLine / 8, "and stays on it: \(offLine) off the line against \(onLine) on it")
+    }
+
+    /// The halo is a ring: brightest at its own radius from the light, with
+    /// little inside it and little beyond.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theHaloIsARingAtItsRadius() throws {
+        let (rise, width, height) = try extraLight(halo: 1)
+        // Straight up from the lamp, over the dark wall. The default radius is
+        // 0.38 frame heights.
+        let x = Int(lampAt.x * Double(width))
+        func above(_ fraction: Double) -> Double {
+            let y = Int((lampAt.y - fraction) * Double(height))
+            return y >= 0 ? rise[y * width + x] : 0
+        }
+        let onRing = [0.37, 0.38, 0.39].map(above).max() ?? 0
+        #expect(onRing > 0.004, "there is a ring: \(onRing)")
+        #expect(above(0.2) < onRing / 6, "and the inside of it is dark: \(above(0.2))")
+    }
+
+    /// Dirt is lit by the light it sits in front of, so it follows how much of
+    /// that light the camera can see, like the rest of the flare: there with the
+    /// lamp clear, gone with the lamp hidden.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theDirtIsLitByTheLightItSitsBefore() throws {
+        let clear = try extraLight(dirt: 1).rise.reduce(0, +)
+        let hidden = try extraLight(dirt: 1, occluder: .full).rise.reduce(0, +)
+        #expect(clear > 1, "a dirty lens shows its dirt toward a light: \(clear)")
+        #expect(hidden < clear * 0.1, "and not once the light is hidden: \(hidden) against \(clear)")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFlareAddsLightToTheFrame() throws {
         let added = try flareAdded(.none)
@@ -244,13 +312,18 @@ private final class FlareProbe: Sketch {
     var sourceSize = 0.015
     var amount = 1.0
     var lens: Lens?
+    var streak = 0.0, halo = 0.0, dirt = 0.0
 
     static func make(occluder: Occluder, flare: Bool, cancel: Bool = false,
                      fStop: Double = 4.5, star: Double = 0, blades: Int = 6,
                      sourceSize: Double = 0.015, amount: Double = 1,
-                     lens: Lens? = nil) -> FlareProbe {
+                     lens: Lens? = nil, streak: Double = 0, halo: Double = 0,
+                     dirt: Double = 0) -> FlareProbe {
         let probe = FlareProbe()
         probe.lens = lens
+        probe.streak = streak
+        probe.halo = halo
+        probe.dirt = dirt
         probe.sourceSize = sourceSize
         probe.amount = amount
         probe.occluder = occluder
@@ -279,7 +352,8 @@ private final class FlareProbe: Sketch {
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 14)
         if wantsFlare {
             lensFlare(LensFlare(lens: lens ?? Lens.heliar.multicoated().stopped(to: fStop),
-                                amount: amount, star: star, sourceSize: sourceSize))
+                                amount: amount, star: star, streak: streak, halo: halo,
+                                dirt: dirt, sourceSize: sourceSize))
         }
         if cancels { noLensFlare() }
 

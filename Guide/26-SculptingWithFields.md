@@ -450,7 +450,7 @@ Three things follow from that, and all three are worth knowing:
 
 The arms fan into color at their tips because a longer wavelength bends further, so red reaches past blue. `star:` scales it, and `star: 0` leaves the ghosts alone without it, which is a real choice: they are two different effects and a piece may want one and not the other.
 
-Look at the arms again, because they are not six ruled lines. Each one is a close pair, a little frayed, with fine needles between them. That is `dust:`, the wear on the opening. The blades of a used lens do not sit quite evenly, and specks and hairline scratches lie across it, and every one of those bends a little light of its own. `dust: 0` gives the perfect star of a perfect iris, which no photograph has ever shown.
+Look at the arms again, because they are not six ruled lines. Each one is a close pair, a little frayed, with fine needles between them. That is `wear:`, the wear on the opening. The blades of a used lens do not sit quite evenly, and specks and hairline scratches lie across it, and every one of those bends a little light of its own. `wear: 0` gives the perfect star of a perfect iris, which no photograph has ever shown.
 
 So the call asks for a lens, not for a look:
 
@@ -462,11 +462,13 @@ lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
 
 One more number belongs to the scene rather than the lens, and that is how big the source is. A ghost is a picture taken *with* the source. Every point of the lamp throws its own copy of each ghost, shifted a little, so a wide lamp gives soft ghosts and a distant street light gives hard ones. `sourceSize:` says which. The ghost that lands almost in focus shows it best. From a point it is a hot dot, and from a lamp it is a small soft picture of the lamp.
 
+Three more parts of a flare come from outside the lens's own glass, and all three are off until you ask. `streak:` is what cylindrical glass does to a light, whether it is the front of an anamorphic lens or the fine grooves of a streak filter: it fans each light out into one long thin line. `dirt:` is grime on the front element, so far out of focus that every speck is a soft picture of the iris, glowing where it sits near the light. `halo:` is the rainbow ring that flare artwork draws around a light. That last one is a look and not optics, and the [reference](../Docs/3D/LensFlare.md#extras) says why.
+
 `amount` is the honesty dial, and it is worth being honest about. A flare is a defect. Sometimes you want it, often you want a trace of it, and plenty of pieces want none. `0` removes it.
 
 The last part is what keeps a flare from reading as a sticker stuck to the lens. Its strength follows how much of the source the camera can actually **see**. Walk something in front of the lamp and the flare fades as the lamp is covered. It does not switch off the moment the lamp's center goes behind. That is one of those details you never notice when it is right and cannot stop noticing when it is wrong.
 
-The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the lens, the amount, the f-number, the blade count, the source's size, and the dust on parameters. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
+The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the lens, the amount, the f-number, the blade count, the source's size, and the wear on parameters, with a streak, dirt, and a halo to turn on besides. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
 
 ## Rendering fewer pixels: temporal upscaling
 

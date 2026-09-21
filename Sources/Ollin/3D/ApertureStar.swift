@@ -32,7 +32,7 @@ enum ApertureStar {
     /// Bake the star an opening of `blades` sides makes. `blades` under 3 is a
     /// round iris, which has no arms at all, only rings.
     ///
-    /// `dust` is how worn the opening is, `0` to `1`. A clean one is a perfect
+    /// `wear` is how worn the opening is, `0` to `1`. A clean one is a perfect
     /// polygon and throws perfect arms. A real one has blades that do not sit
     /// quite evenly, edges that are not quite straight, and specks and hairline
     /// scratches across it, and each of those bends a little light of its own:
@@ -43,8 +43,8 @@ enum ApertureStar {
     /// The result is square, `size` by `size`, with the source at the middle, in
     /// linear light. Its mean is 1, so the arms sit in a workable range and the
     /// middle runs far above it, which is what a source looks like.
-    static func bake(blades: Int, dust: Double = 0, size: Int = 512) -> StarPattern {
-        let spectrum = powerSpectrum(blades: blades, dust: dust, size: size)
+    static func bake(blades: Int, wear: Double = 0, size: Int = 512) -> StarPattern {
+        let spectrum = powerSpectrum(blades: blades, wear: wear, size: size)
         var pixels = [Float](repeating: 0, count: size * size * 4)
         let center = Double(size) / 2
 
@@ -135,17 +135,17 @@ enum ApertureStar {
     /// The softness matters. A hard-stepped edge rings against the sampling grid
     /// and lays false arms across the diagonals.
     ///
-    /// With `dust` above zero the opening is a worn one. Each blade sits a little
+    /// With `wear` above zero the opening is a worn one. Each blade sits a little
     /// in or out of true and a little off its angle, so opposite edges stop being
     /// exactly parallel and each arm splits into a close pair. Each edge bows by
     /// a hair, which frays an arm into a narrow fan. And specks and scratches
     /// lie across the opening, each throwing a faint wide pattern of its own that
     /// the spread of colors then draws out into needles.
-    private static func apertureImage(blades: Int, dust: Double, size: Int) -> [Double] {
+    private static func apertureImage(blades: Int, wear: Double, size: Int) -> [Double] {
         var image = [Double](repeating: 0, count: size * size)
         let center = Double(size) / 2
         let radius = Double(size) * apertureFraction
-        let wear = min(1, max(0, dust))
+        let worn = min(1, max(0, wear))
         var random = Wear(state: 0x0111_0A57 &+ UInt64(max(0, blades)) &* 7919)
 
         // One entry per blade: the angle its edge faces, how far from the middle
@@ -155,10 +155,10 @@ enum ApertureStar {
         if blades >= 3 {
             let wedge = Double.pi / Double(blades)
             for k in 0..<blades {
-                let facing = 2 * wedge * Double(k) + wear * random.next(-0.035, 0.035)
-                let reach = radius * cos(wedge) * (1 + wear * random.next(-0.03, 0.03))
+                let facing = 2 * wedge * Double(k) + worn * random.next(-0.035, 0.035)
+                let reach = radius * cos(wedge) * (1 + worn * random.next(-0.03, 0.03))
                 edges.append(Blade(facing: facing, reach: reach,
-                                   bow: wear * random.next(-0.02, 0.05)))
+                                   bow: worn * random.next(-0.02, 0.05)))
             }
         }
         for y in 0..<size {
@@ -181,14 +181,14 @@ enum ApertureStar {
                 image[y * size + x] = min(1, max(0, 0.5 - distance))
             }
         }
-        guard wear > 0 else { return image }
+        guard worn > 0 else { return image }
 
         // Specks: small dark discs anywhere across the opening.
-        let specks = Int((wear * 90).rounded())
+        let specks = Int((worn * 90).rounded())
         for _ in 0..<specks {
             let turn = random.next(0, 2 * Double.pi), out = radius * random.next().squareRoot()
             let middle = SIMD2(center + out * cos(turn), center + out * sin(turn))
-            let size_ = random.next(0.7, 1.0 + 3.2 * wear)
+            let size_ = random.next(0.7, 1.0 + 3.2 * worn)
             let depth = random.next(0.5, 1)
             stamp(&image, size: size, around: middle, reach: size_ + 1) { offset in
                 let d = (offset.x * offset.x + offset.y * offset.y).squareRoot() - size_
@@ -196,7 +196,7 @@ enum ApertureStar {
             }
         }
         // Scratches: hairlines, a fraction of a pixel to a pixel wide.
-        let scratches = Int((wear * 26).rounded())
+        let scratches = Int((worn * 26).rounded())
         for _ in 0..<scratches {
             let turn = random.next(0, 2 * Double.pi), out = radius * random.next().squareRoot() * 0.8
             let middle = SIMD2(center + out * cos(turn), center + out * sin(turn))
@@ -231,8 +231,8 @@ enum ApertureStar {
 
     /// The power spectrum of the opening, with the middle of the pattern at the
     /// middle of the array.
-    private static func powerSpectrum(blades: Int, dust: Double, size: Int) -> PowerSpectrum {
-        let image = apertureImage(blades: blades, dust: dust, size: size)
+    private static func powerSpectrum(blades: Int, wear: Double, size: Int) -> PowerSpectrum {
+        let image = apertureImage(blades: blades, wear: wear, size: size)
         let count = size * size
         var real = [Float](repeating: 0, count: count)
         var imaginary = [Float](repeating: 0, count: count)

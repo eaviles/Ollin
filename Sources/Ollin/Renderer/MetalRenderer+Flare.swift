@@ -31,6 +31,48 @@ extension MetalRenderer {
         let trace: OllinLensTraceUniforms?
     }
 
+    /// What the streak is worth where it crosses its source, at `amount` and
+    /// `streak` both 1, in linear light.
+    static let flareStreakGain = 0.55
+    /// What the halo's ring is worth at its brightest, the same way.
+    static let flareHaloGain = 0.1
+    /// The halo's width, as a share of its radius.
+    static let flareHaloWidth = 0.035
+    /// How many specks a thoroughly dirty lens carries.
+    static let flareDirtSpecks = 160
+    /// What a speck beside its light is worth, the same way.
+    static let flareDirtGain = 0.05
+    /// A speck's radius on the frame with the iris wide open, in y-normalized
+    /// units, before its own size is counted. A speck is a picture of the iris,
+    /// so it shrinks as the iris closes.
+    static let flareDirtRadius = 0.05
+    /// How far from its light a speck's glow has fallen to about a third, in
+    /// y-normalized units.
+    static let flareDirtReach = 0.55
+
+    /// The grime on the front of the lens: where each speck sits on the frame
+    /// (y-normalized, x still to be scaled by the aspect), how large it is
+    /// beside the others, and how much it scatters. Drawn from one fixed seed,
+    /// so a lens's dirt stays where it is from frame to frame and from run to
+    /// run. Mostly small specks, with a few broad faint smears among them.
+    static let flareDirt: [SIMD4<Float>] = {
+        var state: UInt64 = 0x0D1_27ED_1E25
+        func next() -> Double {
+            state &+= 0x9E37_79B9_7F4A_7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+            z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+            z ^= z >> 31
+            return Double(z >> 11) / Double(1 << 53)
+        }
+        return (0..<flareDirtSpecks).map { index in
+            let smear = index % 11 == 10
+            let size = smear ? 2.6 + 2.4 * next() : 0.35 * pow(4.5, next())
+            let weight = smear ? 0.10 + 0.10 * next() : 0.35 + 0.65 * next()
+            return SIMD4(Float(next() * 2.2 - 1.1), Float(next() * 2.2 - 1.1), Float(size), Float(weight))
+        }
+    }()
+
     /// Whether ghosts are followed ray by ray at all. It is on, always, outside a
     /// test: turning it off leaves every ghost to first order, which is what a
     /// probe compares against to show what following the rays changed.
@@ -265,15 +307,15 @@ extension MetalRenderer {
     /// the arms in a range the picture can hold.
     static let lensFlareStarGain = 0.4
 
-    /// The star pattern for a blade count and an amount of dust, baked once and
-    /// kept. Dust is held to twentieths, so a dial dragged across its range bakes
+    /// The star pattern for a blade count and an amount of wear, baked once and
+    /// kept. Wear is held to twentieths, so a dial dragged across its range bakes
     /// twenty patterns rather than one per frame.
-    func flareStar(blades: Int, dust: Double) -> MTLTexture? {
-        let step = Int((min(1, max(0, dust)) * 20).rounded())
-        if let cached = flareStarCache, cached.blades == blades, cached.dust == step {
+    func flareStar(blades: Int, wear: Double) -> MTLTexture? {
+        let step = Int((min(1, max(0, wear)) * 20).rounded())
+        if let cached = flareStarCache, cached.blades == blades, cached.wear == step {
             return cached.texture
         }
-        let pattern = ApertureStar.bake(blades: blades, dust: Double(step) / 20)
+        let pattern = ApertureStar.bake(blades: blades, wear: Double(step) / 20)
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba16Float, width: pattern.size, height: pattern.size,
             mipmapped: false)
@@ -474,6 +516,32 @@ extension MetalRenderer {
                 }
             }
         }
+        withUnsafeMutablePointer(to: &uniforms.sourceTints) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self,
+                                   capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
+                for (index, source) in sources.enumerated() {
+                    let color = (source.color / brightest) * flare.amount
+                    buffer[index] = SIMD4(Float(color.x), Float(color.y), Float(color.z), 0)
+                }
+            }
+        }
+        // The streak, the halo and the dirt. A length given in frame heights is
+        // twice as many y-normalized units, the frame being two of those tall.
+        let thinnest = 1.3 * 2 / Double(height)
+        let tint = flare.streakTint
+        uniforms.streak = SIMD4(Float(flare.streak * MetalRenderer.flareStreakGain),
+                                Float(flare.streakLength * 2),
+                                Float(cos(flare.streakAngle)), Float(sin(flare.streakAngle)))
+        uniforms.streakTint = SIMD4(Float(Color.srgbToLinear(tint.red)),
+                                    Float(Color.srgbToLinear(tint.green)),
+                                    Float(Color.srgbToLinear(tint.blue)),
+                                    Float(max(flare.sourceSize * 2 * 0.6, thinnest)))
+        uniforms.halo = SIMD4(Float(flare.halo * MetalRenderer.flareHaloGain),
+                              Float(flare.haloSize * 2),
+                              Float(flare.haloSize * 2 * MetalRenderer.flareHaloWidth), 0)
+        let speckCount = Int((flare.dirt * Double(MetalRenderer.flareDirtSpecks)).rounded())
+        uniforms.dirt = SIMD4(Float(speckCount), Float(MetalRenderer.flareDirtGain),
+                              Float(MetalRenderer.flareDirtReach), 0)
         withUnsafeMutablePointer(to: &uniforms.lights) { tuple in
             tuple.withMemoryRebound(to: simd_float4.self,
                                    capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
@@ -687,6 +755,36 @@ extension MetalRenderer {
         ghostEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         ghostEncoder.endEncoding()
 
+        // The dirt on the front of the lens, added onto the same canvas: a small
+        // quad per speck per light, each a soft picture of the iris.
+        if speckCount > 0, let dirtState = try? pipeline(.flareDirt) {
+            let shrink = optics.openIrisRadius > 0 ? optics.irisRadius / optics.openIrisRadius : 1
+            let specks = MetalRenderer.flareDirt.prefix(speckCount).map { speck -> SIMD4<Float> in
+                SIMD4(speck.x * Float(lensAspect), speck.y,
+                      Float(max(0.004, MetalRenderer.flareDirtRadius * shrink)) * speck.z, speck.w)
+            }
+            if let speckBuffer = device.makeBuffer(bytes: specks,
+                                                   length: specks.count * MemoryLayout<SIMD4<Float>>.stride,
+                                                   options: .storageModeShared) {
+                let dirtPass = MTLRenderPassDescriptor()
+                dirtPass.colorAttachments[0].texture = ghostLight
+                dirtPass.colorAttachments[0].loadAction = .load
+                dirtPass.colorAttachments[0].storeAction = .store
+                if let dirtEncoder = countedEncoder(cb, dirtPass, caller: "lens flare dirt") {
+                    dirtEncoder.setRenderPipelineState(dirtState)
+                    dirtEncoder.setVertexBytes(&uniforms, length: MemoryLayout<OllinLensFlareUniforms>.stride,
+                                               index: 0)
+                    dirtEncoder.setVertexBuffer(speckBuffer, offset: 0, index: 1)
+                    dirtEncoder.setVertexTexture(visibility, index: 0)
+                    dirtEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<OllinLensFlareUniforms>.stride,
+                                                 index: 0)
+                    dirtEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
+                                               instanceCount: speckCount * sources.count)
+                    dirtEncoder.endEncoding()
+                }
+            }
+        }
+
         // The ghosts that are followed ray by ray, added over the ones above.
         var hasTraced = false
         if var lens = flareLens.trace, let traceState = try? pipeline(.flareGhostTrace),
@@ -810,7 +908,7 @@ extension MetalRenderer {
         encoder.setFragmentTexture(resolved, index: 0)
         encoder.setFragmentTexture(visibility, index: 1)
         encoder.setFragmentTexture(starExtent > 0
-                                   ? flareStar(blades: blades, dust: flare.dust) : visibility,
+                                   ? flareStar(blades: blades, wear: flare.wear) : visibility,
                                    index: 2)
         encoder.setFragmentTexture(ghostLight, index: 3)
         encoder.setFragmentTexture(hasTraced ? tracedLight : ghostLight, index: 4)

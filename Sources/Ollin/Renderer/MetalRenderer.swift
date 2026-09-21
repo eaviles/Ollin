@@ -376,6 +376,11 @@ final class MetalRenderer {
         // lens flare ghosts followed ray by ray: a bent grid per ghost, added into the
         // single-sample float layer the ghosts are gathered on. The same additive,
         // depthless target the caustics splat draws into, so the same pipeline shape.
+        // the dirt on the front of the lens: a small quad per speck, added onto the
+        // single-sample canvas the first-order ghosts are gathered on.
+        static let flareDirt = PipelineKey(vertex: "ollin_flare_dirt_vertex",
+                                           fragment: "ollin_flare_dirt_fragment",
+                                           isCausticSplat: true)
         static let flareGhostTrace = PipelineKey(vertex: "ollin_flare_trace_vertex",
                                                  fragment: "ollin_flare_trace_fragment",
                                                  isCausticSplat: true, isFlareTrace: true)
@@ -1378,11 +1383,11 @@ final class MetalRenderer {
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
     /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
     var mainDepthResolve: MTLTexture?
-    /// The baked star pattern, the blade count, and the amount of dust (in
+    /// The baked star pattern, the blade count, and the amount of wear (in
     /// twentieths) it was baked for. The opening only changes when those do, and the
     /// f-number scales the drawn size rather than the pattern, so one bake serves
     /// every frame.
-    var flareStarCache: (blades: Int, dust: Int, texture: MTLTexture)?
+    var flareStarCache: (blades: Int, wear: Int, texture: MTLTexture)?
 
     /// The lens the flare is drawn through, worked out: its ghosts, its level, and
     /// its coating table. None of it moves when the light does, so a sketch that

@@ -25,7 +25,8 @@ The flare is per-frame state, like the lights and the camera, so call it in `dra
 ### Contents
 
 - [Turning it on](#on) - `lensFlare(...)` / `noLensFlare()`
-- [The star on the source](#star) - `star`, `starSize`, `dust`
+- [The star on the source](#star) - `star`, `starSize`, `wear`
+- [Streak, dirt, and halo](#extras) - `streak`, `dirt`, `halo`, off until asked for
 - [The lens](#lens) - `Lens.standard`, `Lens.doubleGauss`, `Lens.heliar`, `stopped(to:)`, `multicoated()`
 - [Inside a ghost](#inside) - its bent shape, the barrel's cut, caustics, the colored rim, the soft edge
 - [Writing your own prescription](#prescription) - `LensInterface`, `abbeNumber`
@@ -46,13 +47,13 @@ lensFlare(LensFlare(lens: .doubleGauss.stopped(to: 5.6), amount: 1.2, reach: 0.8
 noLensFlare()                                     // back off (the default)
 ```
 
-`LensFlare` carries seven things:
+`LensFlare` carries seven things, and [three extras](#extras) that are off until you ask for them:
 
 - `lens` - the glass the ghosts come from. [`Lens.standard`](#lens) by default.
 - `amount` - how strong the flare is. `1` is the default reading and `0` removes it. A higher value pushes the flare past what a lens would really do. **Use this to keep the flare honest**. A flare is a lens defect, and a piece may want it in small measure or not at all. So turn `amount` down until the flare reads as light in the camera rather than as paint on the picture.
 - `star` - how strong the [star on the source](#star) is, on top of `amount`. `0` gives you the ghosts with no star.
 - `starSize` - how far the star reaches from its source, as a fraction of the frame height, measured with the iris wide open. Stopping down grows it from there.
-- `dust` - how worn the iris is, from `0` to `1`. It is what turns the star's ruled arms into [a real one](#star).
+- `wear` - how worn the iris is, from `0` to `1`. It is what turns the star's ruled arms into [a real one](#star).
 - `reach` - how far outside the frame a source still flares, as a fraction of the frame height. A source just off the edge is the classic flare, so the default value reaches past the frame.
 - `sourceSize` - how large the source is, as the radius of the disc it fills, in fractions of the frame height. The [visibility test](#seeing) reads that disc, so a bigger source fades more gradually as something crosses it. It also sets [how soft every ghost's edge is](#inside).
 
@@ -82,18 +83,36 @@ Three things follow from how the arms are made:
 
 The tips of the arms fan into color because a longer wavelength bends further, so red reaches past blue.
 
-A perfect opening throws perfect arms, and no real star looks like that. `dust` is the wear on the opening. The blades of a worn iris do not sit quite evenly, so opposite edges stop being parallel and each arm splits into a close pair. The edges bow by a hair, which frays an arm into a narrow fan. Specks and hairline scratches lie across the opening, and each one bends a little light of its own. Spread across the colors, that light becomes the fine needles between the arms and the faint grain around the source.
+A perfect opening throws perfect arms, and no real star looks like that. `wear` is the wear on the opening. The blades of a worn iris do not sit quite evenly, so opposite edges stop being parallel and each arm splits into a close pair. The edges bow by a hair, which frays an arm into a narrow fan. Specks and hairline scratches lie across the opening, and each one bends a little light of its own. Spread across the colors, that light becomes the fine needles between the arms and the faint grain around the source.
 
 ```swift
-lensFlare(LensFlare(dust: 0))      // a clean opening: ruled arms and nothing else
-lensFlare(LensFlare(dust: 1))      // a well-used lens
+lensFlare(LensFlare(wear: 0))      // a clean opening: ruled arms and nothing else
+lensFlare(LensFlare(wear: 1))      // a well-used lens
 ```
 
 The wear is drawn from the blade count, so one opening always makes the same star. The default is `0.5`.
 
-The renderer works the pattern out once rather than every frame. The opening only changes when the blade count or the dust does, and the f-number scales the drawn size rather than the shape. The first frame that flares pays for the transform, around a tenth of a second, and every frame after it samples the result.
+The renderer works the pattern out once rather than every frame. The opening only changes when the blade count or the wear does, and the f-number scales the drawn size rather than the shape. The first frame that flares pays for the transform, around a tenth of a second, and every frame after it samples the result.
 
 The size of the star is chosen rather than measured, and it is worth saying why. A real star's arms are visible only because the source is thousands of times brighter than the scene. That is why even the faint tail of an arm still clears the black point. That reach is far outside what a bake of this size can hold. What stays physical is the shape of the star and how it answers the iris. `starSize` is the control for the size.
+
+<a id="extras"></a>
+### Streak, dirt, and halo
+
+Three more parts of a flare do not come from the lens's own glass. All three are `0` by default, so a flare that does not ask for them is unchanged.
+
+```swift
+lensFlare(LensFlare(streak: 1))                          // a line through every light
+lensFlare(LensFlare(streak: 0.8, streakAngle: .pi / 2))   // the filter turned upright
+lensFlare(LensFlare(dirt: 0.7))                          // a lens that wants cleaning
+lensFlare(LensFlare(halo: 0.6, haloSize: 0.3))           // a ring round the light
+```
+
+**`streak`** is what cylindrical glass does to a light. A cylinder bends light one way and not the other, so it fans a light out to either side, across itself and no other way, into one line. That line passes through the source, runs as thin as the source is wide, and tapers toward its ends. The front group of an anamorphic lens is cylindrical and throws it. A streak filter is a glass ruled with fine cylindrical grooves, made to throw the same line on any lens. `streakLength` is how far it reaches each way, in frame heights. `streakAngle` turns it, in radians, with `0` level. `streakTint` is its color. On an anamorphic lens that is whatever the coatings on the cylindrical glass send back, and a streak filter is sold tinted to match. Blue is the one the look is known by. This is the long line through the lights of a night street.
+
+**`dirt`** is grime on the front element, from `0` to `1`. Dirt that close to the lens is far too near to be in focus, so each speck becomes a soft blur **the shape and size of the iris**. That is why a dirty lens takes a clean picture until it is turned toward a light. Then each speck scatters a little of that light into the camera, mostly onward the way it was already going, so the specks nearest the light glow brightest. They take the blades' shape from `apertureBlades`, they grow as the iris opens, and they fade with the rest of the flare as something covers the source. The specks stay where they are from frame to frame, the way dirt does.
+
+**`halo`** is the thin rainbow ring around a light, red outermost, and `haloSize` is its radius in frame heights. Unlike everything else on this page it is **a look and not optics**. Nothing in a lens of plain spheres draws that ring. The nearest real thing is the corona that fine mist makes around the moon, and that comes with a central glow some fifty times brighter than its ring, which would drown the frame. So this is the ring that flare artwork draws, offered as that.
 
 <a id="lens"></a>
 ### The lens
@@ -241,6 +260,6 @@ The whole flare composites into the linear frame after the temporal resolve and 
 - **The level belongs to the lens.** It is set once, with the iris wide open and a source of a standard size, under two ceilings. No single ghost comes out brighter than a fixed level, which is what holds a lens of few compact ghosts. All of them together add no more than a fixed average to the frame, which is what holds a lens whose ghosts are all wide. Nothing about the frame moves it, so no ghost changes brightness because another one did.
 - **A small source sharpens everything.** Crisp polygons, bright caustic rims, and rings inside the edges all belong to a small source. Give the source a size and they soften together, and a ghost near focus becomes [a soft picture of it](#inside).
 - **The scene's motion never streaks it.** The flare is added after the motion blur, because it belongs to the camera. It does not belong to anything moving in front of the camera.
-- **Cost** runs from about one millisecond a frame to about five, at 1080 square on an M2 for one source. A stopped-down lens with compact ghosts is at the low end. A lens whose ghosts each fill the frame, wide open, is at the high end, since every one of them has to be filled in. It was measured with the GPU kept busy, frames back to back, against the same scene with no flare. A ghost too faint to show is not drawn at all. Only ghosts bright enough for a fringe to show are followed once per wavelength.
+- **Cost** runs from about one millisecond a frame to about five, at 1080 square on an M2 for one source. A stopped-down lens with compact ghosts is at the low end. A lens whose ghosts each fill the frame, wide open, is at the high end, since every one of them has to be filled in. It was measured with the GPU kept busy, frames back to back, against the same scene with no flare. A ghost too faint to show is not drawn at all. Only ghosts bright enough for a fringe to show are followed once per wavelength. The streak, the dirt, and the halo cost nothing that can be measured.
 - **2D costs nothing.** No camera means no flare, so the pass is never encoded.
 - The example is [`Examples/3D/Effects/LensFlare`](../../Examples/3D/Effects/LensFlare/Sketch.swift). Run it with `swift run --package-path Examples Example-3D-Effects-LensFlare`.

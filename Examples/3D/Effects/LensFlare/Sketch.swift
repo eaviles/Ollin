@@ -33,9 +33,17 @@ import Ollin
 /// The star on the lamp itself is the other half of a flare, and it comes from
 /// the same opening: it is the far-field diffraction of the iris, so six blades
 /// put six arms on it and a round iris puts none. Turn the blades to 0 and watch
-/// both the ghosts and the star lose their corners together. `dust` is the wear
+/// both the ghosts and the star lose their corners together. `wear` is the wear
 /// on that opening: at 0 the arms are ruled lines, and as it rises they split
 /// and fray and fine needles fill in between them.
+///
+/// Three more things are off until you ask for them, under *Extras*. `streak`
+/// is what cylindrical glass does to a light, the front of an anamorphic lens or
+/// the fine grooves of a streak filter: it fans the light out to either side, so
+/// the fans add up to one long thin line through the lamp. `dirt` is grime on the front element, so far
+/// out of focus that every speck is a soft picture of the iris, glowing where it
+/// sits near the lamp. `halo` is the thin rainbow ring around a light, which is a
+/// look and not optics, and the reference says so.
 ///
 /// Watch the lamp go behind the slab. The flare does not switch off: it fades
 /// as the slab covers the source, because the strength follows how much of the
@@ -81,7 +89,16 @@ final class LensFlare: Sketch {
     var starSize = 0.35
 
     @Param(0...1, icon: "aqi.medium", group: "Star")
-    var dust = 0.5
+    var wear = 0.5
+
+    @Param(0...1.5, icon: "minus", group: "Extras")
+    var streak = 0.0
+
+    @Param(0...1.5, icon: "circle", group: "Extras")
+    var halo = 0.0
+
+    @Param(0...1, icon: "aqi.low", group: "Extras")
+    var dirt = 0.0
 
     @Param(0.002...0.06, icon: "circle.dashed", group: "Flare")
     var sourceSize = 0.006
@@ -114,7 +131,8 @@ final class LensFlare: Sketch {
             // the ghosts melt; drag it down and they sharpen into the iris's own
             // shape.
             lensFlare(Ollin.LensFlare(lens: lens.stopped(to: fStop), amount: strength,
-                                      star: star, starSize: starSize, dust: dust,
+                                      star: star, starSize: starSize, wear: wear,
+                                      streak: streak, halo: halo, dirt: dirt,
                                       sourceSize: sourceSize))
         }
 

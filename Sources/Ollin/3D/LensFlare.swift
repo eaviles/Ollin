@@ -241,12 +241,62 @@ public struct LensFlare: Equatable, Sendable {
     /// light bending around a smaller opening spreads further.
     public var starSize: Double
 
-    /// How much dust and wear the iris carries, `0` to `1`. A clean opening
-    /// throws only the arms its blades make. Specks and hairline scratches each
-    /// bend a little light of their own, and spread across the colors that is
-    /// what fills a real star in with fine needles between the arms and a faint
-    /// grain around the source. `0` is the clean star.
-    public var dust: Double
+    /// How worn the iris is, `0` to `1`. A clean opening throws only the arms
+    /// its blades make. Blades a little off true, specks, and hairline scratches
+    /// each bend a little light of their own, and spread across the colors that
+    /// is what splits and frays a real star's arms and fills between them with
+    /// fine needles. `0` is the clean star.
+    public var wear: Double
+
+    /// How strong the streak through each source is. `0`, the default, leaves it
+    /// out.
+    ///
+    /// This is what cylindrical glass does to a light. A cylinder bends light one
+    /// way and not the other, so it fans a light out to either side, across
+    /// itself and no other way, into one line. That line passes through the
+    /// source, runs as thin as the source is wide, and tapers toward its ends.
+    /// The front group of an anamorphic lens is cylindrical and throws it, and a
+    /// streak filter is a glass ruled with fine cylindrical grooves, made to
+    /// throw the same line on any lens. It is the long line through the lights
+    /// of a night street.
+    public var streak: Double
+
+    /// How far the streak reaches each way from its source, in frame heights.
+    public var streakLength: Double
+
+    /// Which way the streak runs, in radians. `0` is level, which is how the
+    /// filter is usually turned.
+    public var streakAngle: Double
+
+    /// The streak's color. On an anamorphic lens it is whatever the coatings on
+    /// the cylindrical glass send back, and a streak filter is sold tinted to
+    /// match. Blue is the one the look is known by.
+    public var streakTint: Color
+
+    /// How strong the ring around each source is. `0`, the default, leaves it
+    /// out.
+    ///
+    /// Unlike the rest of a flare this is a look and not optics: the thin
+    /// rainbow ring drawn around a light, red outermost. Nothing in a lens of
+    /// plain spheres makes it. It is here because a flare is often wanted with
+    /// one, and it says so rather than pretending.
+    public var halo: Double
+
+    /// The halo's radius, in frame heights.
+    public var haloSize: Double
+
+    /// How dirty the front of the lens is, `0` to `1`. `0`, the default, is a
+    /// clean lens.
+    ///
+    /// Grime on the front element is far too close to be in focus, so each speck
+    /// becomes a soft blur the shape and size of the iris, which is why they are
+    /// never seen in an ordinary picture. Turn toward a bright light and they
+    /// show, because each one scatters a little of that light into the camera,
+    /// mostly onward the way it was already going. So the specks nearest the
+    /// light glow brightest, they take the blades' shape, and they grow as the
+    /// iris opens. Like the rest of the flare they follow how much of the
+    /// source the camera can see.
+    public var dirt: Double
 
     /// How large the source is, as the radius of the disc it fills, in
     /// fractions of the frame height.
@@ -262,13 +312,23 @@ public struct LensFlare: Equatable, Sendable {
     public var sourceSize: Double
 
     public init(lens: Lens = .standard, amount: Double = 1, star: Double = 1,
-                starSize: Double = 0.35, dust: Double = 0.5, reach: Double = 0.55,
-                sourceSize: Double = 0.015) {
+                starSize: Double = 0.35, wear: Double = 0.5,
+                streak: Double = 0, streakLength: Double = 1.1, streakAngle: Double = 0,
+                streakTint: Color = Color(red: 0.35, green: 0.56, blue: 1.0),
+                halo: Double = 0, haloSize: Double = 0.38, dirt: Double = 0,
+                reach: Double = 0.55, sourceSize: Double = 0.015) {
         self.lens = lens
         self.amount = max(0, amount)
         self.star = max(0, star)
         self.starSize = max(0, starSize)
-        self.dust = min(1, max(0, dust))
+        self.wear = min(1, max(0, wear))
+        self.streak = max(0, streak)
+        self.streakLength = max(0.01, streakLength)
+        self.streakAngle = streakAngle
+        self.streakTint = streakTint
+        self.halo = max(0, halo)
+        self.haloSize = max(0.01, haloSize)
+        self.dirt = min(1, max(0, dirt))
         self.reach = max(0, reach)
         self.sourceSize = max(0.001, sourceSize)
     }
