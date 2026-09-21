@@ -30,7 +30,7 @@ final class Rope: Sketch {
                                      // A little in front of the posts, so a
                                      // line that folds down hangs clear of one.
                                      at: Vector3(-2.45 + Double(index) * 1.5, 2.52, 0.14),
-                                     thickness: 0.03, mass: 0.5,
+                                     radius: 0.03, mass: 0.5,
                                      bend: bend, damping: 0.55, iterations: 12,
                                      pinned: { $0.x < 0.04 })
             if let line { arms.append(line) }
@@ -38,7 +38,7 @@ final class Rope: Sketch {
         // The same limp rope again, with something to carry.
         chain = world.addRope(through: (0 ..< 13).map { Vector3(0, -Double($0) * 0.155, 0) },
                               at: Vector3(2.22, 2.52, 0.5),
-                              thickness: 0.055, mass: 2.5,
+                              radius: 0.055, mass: 2.5,
                               bend: 0.06, damping: 0.4, iterations: 10,
                               pinned: { $0.y > -0.001 },
                               maxStretch: 1)
