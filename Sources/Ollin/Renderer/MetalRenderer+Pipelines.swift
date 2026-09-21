@@ -207,7 +207,7 @@ extension MetalRenderer {
             let d = MTLRenderPipelineDescriptor()
             d.vertexFunction = v
             d.fragmentFunction = f
-            d.rasterSampleCount = 1
+            d.rasterSampleCount = key.isFlareTrace ? MetalRenderer.flareTraceSamples : 1
             let color = d.colorAttachments[0]!
             color.pixelFormat = linearFormat
             color.isBlendingEnabled = true

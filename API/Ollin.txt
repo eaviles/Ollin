@@ -4471,21 +4471,25 @@ struct Lens: Equatable, Sendable
   func multicoated(from: Double = default, to: Double = default) -> Lens
   func stopped(to: Double) -> Lens
   init(interfaces: [LensInterface], coatingWavelength: Double = default, fStop: Double? = default)
+  static let doubleGauss: Lens
   static let heliar: Lens
+  static let standard: Lens
   var coatingWavelength: Double { get set }
   var fStop: Double? { get set }
   var interfaces: [LensInterface] { get set }
 struct LensFlare: Equatable, Sendable
-  init(lens: Lens = default, amount: Double = default, star: Double = default, starSize: Double = default, reach: Double = default, sourceSize: Double = default)
+  init(lens: Lens = default, amount: Double = default, star: Double = default, starSize: Double = default, dust: Double = default, reach: Double = default, sourceSize: Double = default)
   var amount: Double { get set }
+  var dust: Double { get set }
   var lens: Lens { get set }
   var reach: Double { get set }
   var sourceSize: Double { get set }
   var star: Double { get set }
   var starSize: Double { get set }
 struct LensInterface: Equatable, Sendable
-  init(radius: Double, thickness: Double, ior: Double = default, height: Double, isIris: Bool = default, coating: Double? = default)
+  init(radius: Double, thickness: Double, ior: Double = default, height: Double, isIris: Bool = default, coating: Double? = default, abbeNumber: Double? = default)
   static func iris(thickness: Double, height: Double) -> LensInterface
+  var abbeNumber: Double? { get set }
   var coating: Double? { get set }
   var height: Double { get set }
   var ior: Double { get set }

@@ -430,13 +430,15 @@ pointLight(.white, at: lamp, intensity: 20)
 lensFlare()                          // the ghosts that lamp leaves in the lens
 ```
 
-<img src="Images/26-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp. A dark red hexagon sits on the lamp and a teal hexagon sits up and to the left of it, lying on top of a near black slab" width="640">
+<img src="Images/26-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp up and to the left. Coral and lavender hexagons nest on the lamp. A blue-gray hexagon sits down and to the right of it, toward the middle of the frame, lying across a near black slab. Larger, fainter hexagons trail off both ways along the same line" width="640">
 
-Both ghosts in the figure are hexagons, because the iris has six blades and a ghost is a picture of the opening its light came through. Their colors differ because each surface of the lens is coated for a different wavelength. A coating passes on whatever it fails to cancel. And look where the teal one is. It lies *over* the near black slab, not behind it. Nothing in the room is glowing. The light never reached that slab. It only reached the glass in front of the sensor.
+Every ghost in the figure is a hexagon, because the iris has six blades and a ghost is a picture of the opening its light came through. They sit on one line, the line from the lamp through the middle of the frame, some on the lamp's side of the middle and some across it. Their colors differ because each surface of the lens is coated for a different wavelength. A coating passes on whatever it fails to cancel. And look where the blue-gray one is. It lies *over* the near black slab, not behind it. Nothing in the room is glowing. The light never reached that slab. It only reached the glass in front of the sensor.
+
+None of them is quite a regular hexagon, either. Each ghost is worked out by following real rays through the lens's real glass, and spheres bend a ray near their rim by more than proportion says. So a ghost's sides stretch a little, more the further the lamp sits from the middle. Where one ends in a curve, that is the round barrel stopping rays the iris let past, and a bright rim along one side is a caustic, where neighboring rays landed on top of one another.
 
 That is one half of a flare. The other sits on the source itself.
 
-<img src="Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, fanning into color at their tips, around a blown-out core" width="640">
+<img src="Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, each a close frayed pair with fine needles between them, around a blown-out core. A pale hexagon sits on the lamp, and up and to the left a small soft disc with a red rim" width="640">
 
 Those arms are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is exactly the opening's own Fourier transform, so what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star for the same reason they put six sides on a ghost.
 
@@ -448,19 +450,23 @@ Three things follow from that, and all three are worth knowing:
 
 The arms fan into color at their tips because a longer wavelength bends further, so red reaches past blue. `star:` scales it, and `star: 0` leaves the ghosts alone without it, which is a real choice: they are two different effects and a piece may want one and not the other.
 
+Look at the arms again, because they are not six ruled lines. Each one is a close pair, a little frayed, with fine needles between them. That is `dust:`, the wear on the opening. The blades of a used lens do not sit quite evenly, and specks and hairline scratches lie across it, and every one of those bends a little light of its own. `dust: 0` gives the perfect star of a perfect iris, which no photograph has ever shown.
+
 So the call asks for a lens, not for a look:
 
 ```swift
 lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
 ```
 
-`Lens.heliar` is a real prescription, a 1950s portrait lens. Its nine surfaces decide how many ghosts there are, where each sits, how big it is, and what color it comes out. `stopped(to:)` closes the iris, and every ghost shrinks together. `multicoated()` coats each surface for a different wavelength, the way a modern lens is made. That is what puts the ghosts in different colors instead of all in one. Type in a different prescription and you get a different camera's flare.
+`Lens.heliar` is a real prescription, a 1950s portrait lens. Its nine surfaces decide how many ghosts there are, where each sits, how big it is, and what color it comes out. Most of its ghosts are wide and faint, so it veils the frame more than it chains across it. `Lens.doubleGauss` is the other one bundled, with more surfaces and so more ghosts in more sizes, and it is the one the figure above was made with. `stopped(to:)` closes the iris, and the ghosts it shapes shrink and brighten, the same light in a smaller shape. `multicoated()` coats each surface for a different wavelength, the way a modern lens is made. That is what puts the ghosts in different colors instead of all in one. Name no lens and you get `Lens.standard`, the double Gauss multicoated at f/8. Type in a different prescription and you get a different camera's flare.
 
-`strength` is the honesty dial, and it is worth being honest about. A flare is a defect. Sometimes you want it, often you want a trace of it, and plenty of pieces want none. `0` removes it.
+One more number belongs to the scene rather than the lens, and that is how big the source is. A ghost is a picture taken *with* the source. Every point of the lamp throws its own copy of each ghost, shifted a little, so a wide lamp gives soft ghosts and a distant street light gives hard ones. `sourceSize:` says which. The ghost that lands almost in focus shows it best. From a point it is a hot dot, and from a lamp it is a small soft picture of the lamp.
+
+`amount` is the honesty dial, and it is worth being honest about. A flare is a defect. Sometimes you want it, often you want a trace of it, and plenty of pieces want none. `0` removes it.
 
 The last part is what keeps a flare from reading as a sticker stuck to the lens. Its strength follows how much of the source the camera can actually **see**. Walk something in front of the lamp and the flare fades as the lamp is covered. It does not switch off the moment the lamp's center goes behind. That is one of those details you never notice when it is right and cannot stop noticing when it is wrong.
 
-The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the strength, the f-number, and the blade count on parameters. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
+The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the lens, the amount, the f-number, the blade count, the source's size, and the dust on parameters. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
 
 ## Rendering fewer pixels: temporal upscaling
 

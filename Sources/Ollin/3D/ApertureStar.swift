@@ -32,18 +32,29 @@ enum ApertureStar {
     /// Bake the star an opening of `blades` sides makes. `blades` under 3 is a
     /// round iris, which has no arms at all, only rings.
     ///
+    /// `dust` is how worn the opening is, `0` to `1`. A clean one is a perfect
+    /// polygon and throws perfect arms. A real one has blades that do not sit
+    /// quite evenly, edges that are not quite straight, and specks and hairline
+    /// scratches across it, and each of those bends a little light of its own:
+    /// the arms split and fray, and fine needles fill the space between them.
+    /// The wear is drawn from the blade count, so one opening always bakes the
+    /// same star.
+    ///
     /// The result is square, `size` by `size`, with the source at the middle, in
     /// linear light. Its mean is 1, so the arms sit in a workable range and the
     /// middle runs far above it, which is what a source looks like.
-    static func bake(blades: Int, size: Int = 256) -> StarPattern {
-        let spectrum = powerSpectrum(blades: blades, size: size)
+    static func bake(blades: Int, dust: Double = 0, size: Int = 512) -> StarPattern {
+        let spectrum = powerSpectrum(blades: blades, dust: dust, size: size)
         var pixels = [Float](repeating: 0, count: size * size * 4)
         let center = Double(size) / 2
 
         // Sample the spectrum once per wavelength, each at its own scale, and add
         // the color that wavelength shows as. A longer wave diffracts further, so
         // it reads the spectrum nearer the middle and lands further out.
-        let steps = 24
+        // Steps fine enough that the rings each single wavelength makes blur
+        // into one another along the arm, which is what leaves smooth needles
+        // rather than beads.
+        let steps = 48
         var weights: [(scale: Double, color: SIMD3<Double>)] = []
         weights.reserveCapacity(steps)
         var weightSum = SIMD3<Double>.zero
@@ -103,37 +114,125 @@ enum ApertureStar {
         return StarPattern(size: size, pixels: pixels, blades: max(0, blades))
     }
 
+    /// A small deterministic generator, so the wear on an opening is the same
+    /// every time it is baked.
+    private struct Wear {
+        var state: UInt64
+        mutating func next() -> Double {
+            state &+= 0x9E37_79B9_7F4A_7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+            z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+            z ^= z >> 31
+            return Double(z >> 11) / Double(1 << 53)
+        }
+        mutating func next(_ low: Double, _ high: Double) -> Double {
+            low + (high - low) * next()
+        }
+    }
+
     /// The opening's own image: 1 inside, 0 outside, with a one-pixel soft edge.
     /// The softness matters. A hard-stepped edge rings against the sampling grid
     /// and lays false arms across the diagonals.
-    private static func apertureImage(blades: Int, size: Int) -> [Double] {
+    ///
+    /// With `dust` above zero the opening is a worn one. Each blade sits a little
+    /// in or out of true and a little off its angle, so opposite edges stop being
+    /// exactly parallel and each arm splits into a close pair. Each edge bows by
+    /// a hair, which frays an arm into a narrow fan. And specks and scratches
+    /// lie across the opening, each throwing a faint wide pattern of its own that
+    /// the spread of colors then draws out into needles.
+    private static func apertureImage(blades: Int, dust: Double, size: Int) -> [Double] {
         var image = [Double](repeating: 0, count: size * size)
         let center = Double(size) / 2
         let radius = Double(size) * apertureFraction
-        let wedge = blades >= 3 ? Double.pi / Double(blades) : 0
-        let apothem = blades >= 3 ? radius * cos(wedge) : radius
+        let wear = min(1, max(0, dust))
+        var random = Wear(state: 0x0111_0A57 &+ UInt64(max(0, blades)) &* 7919)
+
+        // One entry per blade: the angle its edge faces, how far from the middle
+        // it sits, and how much it bows.
+        struct Blade { var facing: Double; var reach: Double; var bow: Double }
+        var edges: [Blade] = []
+        if blades >= 3 {
+            let wedge = Double.pi / Double(blades)
+            for k in 0..<blades {
+                let facing = 2 * wedge * Double(k) + wear * random.next(-0.035, 0.035)
+                let reach = radius * cos(wedge) * (1 + wear * random.next(-0.03, 0.03))
+                edges.append(Blade(facing: facing, reach: reach,
+                                   bow: wear * random.next(-0.02, 0.05)))
+            }
+        }
         for y in 0..<size {
             for x in 0..<size {
                 let point = SIMD2<Double>(Double(x) + 0.5 - center, Double(y) + 0.5 - center)
-                let length = (point.x * point.x + point.y * point.y).squareRoot()
-                let distance: Double
-                if blades >= 3 {
-                    let angle = atan2(point.y, point.x)
-                    let folded = angle - 2 * wedge * ((angle + wedge) / (2 * wedge)).rounded(.down)
-                    distance = length * cos(folded) - apothem
+                var distance: Double
+                if edges.isEmpty {
+                    distance = (point.x * point.x + point.y * point.y).squareRoot() - radius
                 } else {
-                    distance = length - radius
+                    distance = -Double.infinity
+                    for edge in edges {
+                        let along = point.x * cos(edge.facing) + point.y * sin(edge.facing)
+                        let across = -point.x * sin(edge.facing) + point.y * cos(edge.facing)
+                        // A bowed edge is a shallow arc: it sits back from the
+                        // straight line by more the further along it runs.
+                        let sag = edge.bow * across * across / radius
+                        distance = max(distance, along + sag - edge.reach)
+                    }
                 }
                 image[y * size + x] = min(1, max(0, 0.5 - distance))
+            }
+        }
+        guard wear > 0 else { return image }
+
+        // Specks: small dark discs anywhere across the opening.
+        let specks = Int((wear * 90).rounded())
+        for _ in 0..<specks {
+            let turn = random.next(0, 2 * Double.pi), out = radius * random.next().squareRoot()
+            let middle = SIMD2(center + out * cos(turn), center + out * sin(turn))
+            let size_ = random.next(0.7, 1.0 + 3.2 * wear)
+            let depth = random.next(0.5, 1)
+            stamp(&image, size: size, around: middle, reach: size_ + 1) { offset in
+                let d = (offset.x * offset.x + offset.y * offset.y).squareRoot() - size_
+                return depth * min(1, max(0, 0.5 - d))
+            }
+        }
+        // Scratches: hairlines, a fraction of a pixel to a pixel wide.
+        let scratches = Int((wear * 26).rounded())
+        for _ in 0..<scratches {
+            let turn = random.next(0, 2 * Double.pi), out = radius * random.next().squareRoot() * 0.8
+            let middle = SIMD2(center + out * cos(turn), center + out * sin(turn))
+            let heading = random.next(0, Double.pi)
+            let half = radius * random.next(0.08, 0.45)
+            let width = random.next(0.35, 0.9)
+            let depth = random.next(0.4, 1)
+            let dir = SIMD2(cos(heading), sin(heading))
+            stamp(&image, size: size, around: middle, reach: half + 2) { offset in
+                let along = offset.x * dir.x + offset.y * dir.y
+                let across = abs(-offset.x * dir.y + offset.y * dir.x)
+                let ends = min(1, max(0, 0.5 - (abs(along) - half)))
+                return depth * ends * min(1, max(0, 0.5 - (across - width)))
             }
         }
         return image
     }
 
+    /// Darken the image around a point by whatever `cover` says each texel loses.
+    private static func stamp(_ image: inout [Double], size: Int, around middle: SIMD2<Double>,
+                              reach: Double, cover: (SIMD2<Double>) -> Double) {
+        let x0 = max(0, Int(middle.x - reach)), x1 = min(size - 1, Int(middle.x + reach) + 1)
+        let y0 = max(0, Int(middle.y - reach)), y1 = min(size - 1, Int(middle.y + reach) + 1)
+        guard x0 <= x1, y0 <= y1 else { return }
+        for y in y0...y1 {
+            for x in x0...x1 {
+                let offset = SIMD2(Double(x) + 0.5 - middle.x, Double(y) + 0.5 - middle.y)
+                image[y * size + x] *= 1 - min(1, max(0, cover(offset)))
+            }
+        }
+    }
+
     /// The power spectrum of the opening, with the middle of the pattern at the
     /// middle of the array.
-    private static func powerSpectrum(blades: Int, size: Int) -> PowerSpectrum {
-        let image = apertureImage(blades: blades, size: size)
+    private static func powerSpectrum(blades: Int, dust: Double, size: Int) -> PowerSpectrum {
+        let image = apertureImage(blades: blades, dust: dust, size: size)
         let count = size * size
         var real = [Float](repeating: 0, count: count)
         var imaginary = [Float](repeating: 0, count: count)

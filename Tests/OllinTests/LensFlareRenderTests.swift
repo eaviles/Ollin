@@ -57,21 +57,100 @@ struct LensFlareRenderProbes {
         return sum / Double(max(count, 1))
     }
 
-    /// How much of the frame the flare covers brightly, which is what the iris
-    /// changes: stopping down shrinks every ghost together.
-    private func flareArea(fStop: Double) throws -> Int {
-        let on = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none,
-                                                                flare: true, fStop: fStop),
-                                             frame: 1))
-        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none,
-                                                                 flare: false, fStop: fStop),
-                                              frame: 1))
+    /// What the ghosts alone add, measured in linear light: all of it, the
+    /// brightest pixel of it, and how many pixels are clearly lit.
+    ///
+    /// The flare is drawn at a fraction of its usual level. At the usual one the
+    /// brightest ghost sits at the top of what eight bits hold, and a peak that
+    /// cannot rise says nothing about light that was gathered. The rise is taken
+    /// in linear light because that is where light adds: the same ghost over a
+    /// lit floor and over a black wall rises by different amounts once encoded.
+    private func ghostLight(_ lens: Lens, fStop: Double? = nil, sourceSize: Double = 0.015)
+        throws -> (total: Double, peak: Double, covered: Int, steepest: Double) {
+        let stopped = fStop.map { lens.stopped(to: $0) } ?? lens
+        let on = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: true, sourceSize: sourceSize, amount: 0.12,
+            lens: stopped), frame: 1))
+        let off = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: false, sourceSize: sourceSize, lens: stopped), frame: 1))
         let a = pixels(of: on), b = pixels(of: off)
-        var covered = 0
-        for i in stride(from: 0, to: a.count, by: 4) where Double(a[i + 1]) - Double(b[i + 1]) > 6 {
-            covered += 1
+        func linear(_ byte: UInt8) -> Double {
+            let v = Double(byte) / 255
+            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
         }
-        return covered
+        var total = 0.0, peak = 0.0, covered = 0, steepest = 0.0
+        let width = on.width
+        var rises = [Double](repeating: 0, count: a.count / 4)
+        for i in stride(from: 0, to: a.count, by: 4) {
+            let rise = (0..<3).map { max(0, linear(a[i + $0]) - linear(b[i + $0])) }.max() ?? 0
+            rises[i / 4] = rise
+            total += rise
+            peak = max(peak, rise)
+            if rise > 0.003 { covered += 1 }
+        }
+        // The sharpest step between two neighboring pixels, which is an edge. Only
+        // where the scene itself is flat and dark underneath: a ghost crossing the
+        // lit bulb rises by nothing on it and by its whole level beside it, and
+        // that step is the bulb's edge, which no source size softens.
+        func plain(_ i: Int, _ j: Int) -> Bool {
+            (0..<3).allSatisfy { b[i * 4 + $0] < 48 && abs(Int(b[i * 4 + $0]) - Int(b[j * 4 + $0])) <= 1 }
+        }
+        for index in rises.indices where index % width != width - 1 && index + width < rises.count {
+            if plain(index, index + 1) { steepest = max(steepest, abs(rises[index + 1] - rises[index])) }
+            if plain(index, index + width) { steepest = max(steepest, abs(rises[index + width] - rises[index])) }
+        }
+        return (total, peak, covered, steepest)
+    }
+
+    /// A ghost is a picture taken with the source, so its edge is as soft as the
+    /// source is wide: a wider source spreads each ghost over more of the frame
+    /// and takes the step at its edge down. The middle of a wide flat ghost does
+    /// not dim, which is why the edge is what is measured and not the peak.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aWiderSourceSoftensTheGhosts() throws {
+        let lens = Lens.doubleGauss.multicoated()
+        let point = try ghostLight(lens, fStop: 8, sourceSize: 0.003)
+        let lamp = try ghostLight(lens, fStop: 8, sourceSize: 0.04)
+        #expect(lamp.covered > point.covered,
+                "a wide source covers \(lamp.covered) pixels against \(point.covered)")
+        #expect(point.steepest > lamp.steepest * 1.5,
+                "a point source's sharpest edge steps by \(point.steepest) against \(lamp.steepest)")
+    }
+
+    /// The iris moves the flare's light and adds none. Closing it shrinks the
+    /// ghosts it shapes, and the same light in a smaller shape is a brighter one.
+    /// The double Gauss is the lens to ask, since its ghosts are the iris's to
+    /// shape; most of the Heliar's are bounded by the barrel, which does not move.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func stoppingDownGathersTheLightAndAddsNone() throws {
+        let lens = Lens.doubleGauss.multicoated()
+        let open = try ghostLight(lens, fStop: 4, sourceSize: 0.004)
+        let closed = try ghostLight(lens, fStop: 11, sourceSize: 0.004)
+        #expect(closed.covered < open.covered * 3 / 4,
+                "stopped down the ghosts cover \(closed.covered) pixels against \(open.covered)")
+        #expect(closed.peak > open.peak * 1.3,
+                "stopped down they peak at \(closed.peak) against \(open.peak)")
+        #expect(closed.total < open.total * 2 && closed.total > open.total / 4,
+                "and carry \(closed.total) against \(open.total): gathered, not multiplied")
+    }
+
+    /// Following the rays is what stops a ghost at the barrel. First order has no
+    /// barrel in it: a ghost is the whole front opening's worth of light, scaled.
+    /// A real ray that strays past the rim of any element on the way is lost, and
+    /// on a lens of wide ghosts that is most of what first order draws.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func followingTheRaysStopsAGhostAtTheBarrel() throws {
+        let lens = Lens.heliar.multicoated()
+        let followed = try ghostLight(lens, sourceSize: 0.004)
+        MetalRenderer.flareFollowsRays = false
+        defer { MetalRenderer.flareFollowsRays = true }
+        let firstOrder = try ghostLight(lens, sourceSize: 0.004)
+        #expect(followed.covered > 0 && firstOrder.covered > 0)
+        // Measured: 48% of first order's pixels, and 73% with the barrel's clip
+        // taken out of the shader (lost rays and the losses at each refraction
+        // account for the rest), so 60% is the line only the barrel puts it under.
+        #expect(Double(followed.covered) < Double(firstOrder.covered) * 0.6,
+                "followed, the ghosts cover \(followed.covered) pixels against first order's \(firstOrder.covered)")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -92,16 +171,6 @@ struct LensFlareRenderProbes {
         #expect(half < clear * 0.85, "a covered source should dim the flare: \(half) of \(clear)")
         #expect(half > clear * 0.15, "it should fade, not switch off: \(half) of \(clear)")
         #expect(hidden < clear * 0.1, "a hidden source should leave almost none: \(hidden)")
-    }
-
-    /// A ghost is a picture of the opening the light came through, so closing
-    /// the iris makes every one of them smaller.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func stoppingDownShrinksTheGhosts() throws {
-        let wide = try flareArea(fStop: 2.2)
-        let tight = try flareArea(fStop: 16)
-        #expect(wide > 0, "no ghosts to shrink")
-        #expect(tight < wide * 3 / 4, "stopping down should shrink them: \(tight) of \(wide)")
     }
 
     /// A sketch that does not ask for a flare pays nothing and renders exactly
@@ -172,10 +241,18 @@ private final class FlareProbe: Sketch {
     var fStop = 4.5
     var star = 0.0
     var blades = 6
+    var sourceSize = 0.015
+    var amount = 1.0
+    var lens: Lens?
 
     static func make(occluder: Occluder, flare: Bool, cancel: Bool = false,
-                     fStop: Double = 4.5, star: Double = 0, blades: Int = 6) -> FlareProbe {
+                     fStop: Double = 4.5, star: Double = 0, blades: Int = 6,
+                     sourceSize: Double = 0.015, amount: Double = 1,
+                     lens: Lens? = nil) -> FlareProbe {
         let probe = FlareProbe()
+        probe.lens = lens
+        probe.sourceSize = sourceSize
+        probe.amount = amount
         probe.occluder = occluder
         probe.wantsFlare = flare
         probe.cancels = cancel
@@ -201,8 +278,8 @@ private final class FlareProbe: Sketch {
         ambientLight(Color(white: 0.05))
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 14)
         if wantsFlare {
-            lensFlare(LensFlare(lens: Lens.heliar.multicoated().stopped(to: fStop),
-                                amount: 1, star: star))
+            lensFlare(LensFlare(lens: lens ?? Lens.heliar.multicoated().stopped(to: fStop),
+                                amount: amount, star: star, sourceSize: sourceSize))
         }
         if cancels { noLensFlare() }
 

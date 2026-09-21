@@ -1606,43 +1606,127 @@ typedef struct {
 // camera misbehaving, so it composites in linear light with the rest of the frame,
 // before the tone map.
 //
-// The optics are worked out on the CPU once per frame (`LensFlare.swift`), because
+// The optics are worked out on the CPU once per lens (`LensFlare.swift`), because
 // first-order optics makes every ghost a *linear* map: a point on the entrance pupil
 // reaches the sensor at `a·pupil + b·angle`, one scale and one shift. So the fragment
 // never traces anything. It runs each ghost's map backwards from the pixel it is
-// shading to the pupil point that would have landed there, and asks two questions:
-// did that point start inside the front opening, and did it clear the iris.
+// shading to the pupil point that would have landed there, and asks how much of the
+// source's light arriving that way cleared the front opening and the iris.
+//
+// Three things give a ghost its look, and all three ride this struct. Each color
+// channel has its own map, since glass bends each color differently, which puts a
+// colored rim on a ghost. The coating is read per pixel at the angle *that* ray met
+// each reflecting surface at (a table the ghost pass binds), so the color runs
+// across a ghost rather than filling it flat. And the source has a size, so each
+// ghost's edge is as soft as that ghost moves when the source does.
 //
 // The flare works in *y-normalized* frame coordinates: y runs -1…1 over the frame's
 // height and x is scaled by the aspect, so a round lens stays round on a wide canvas.
 #define OLLIN_MAX_FLARE_LIGHTS 4
 #define OLLIN_MAX_FLARE_GHOSTS 24
+#define OLLIN_MAX_FLARE_BLADES 16
 
 typedef struct {
-    // Per ghost: xy map the pupil point to the sensor, zw to the iris plane.
+    // Per ghost and color channel (indexed ghost * 3 + channel, red first): xy map
+    // the pupil point to the sensor, zw to the iris plane.
     //   sensor = x·pupil + y·angle      iris = z·pupil + w·angle
-    simd_float4 ghosts[OLLIN_MAX_FLARE_GHOSTS];
-    // Per light and ghost (indexed light * OLLIN_MAX_FLARE_GHOSTS + ghost): the
-    // color this ghost adds where it covers a pixel, already multiplied out from
-    // the two coating reflectances, the light's own linear color, the strength
-    // dial, and how far the ghost spreads its light over the sensor. w unused.
-    simd_float4 tints[OLLIN_MAX_FLARE_LIGHTS * OLLIN_MAX_FLARE_GHOSTS];
+    simd_float4 ghosts[OLLIN_MAX_FLARE_GHOSTS * 3];
+    // Per ghost: how steeply a ray meets the two reflecting surfaces. The incidence
+    // angle at the outer one is the length of `x·pupil + y·angle`, and at the inner
+    // one of `z·pupil + w·angle`.
+    simd_float4 incidence[OLLIN_MAX_FLARE_GHOSTS];
+    // Per ghost and color channel, indexed like `ghosts`: x = the radius of the
+    // source's disc as this ghost spreads it over the front opening (mm), y = the
+    // same over the iris plane (mm), z = what keeps the two spreads from both
+    // dimming a ghost smaller than the source. w is per ghost and differs by
+    // channel slot: red's holds the coating table rows (outer + 256 · inner),
+    // green's how far from the axis, on the front opening by the green map, a
+    // pixel can sit and still be reached by any channel, and blue's how much
+    // room (as a fraction of each opening) separates the rim, where the channels
+    // are worked out one by one, from the inside, where they all agree (0 = the
+    // channels part too widely for that, so work them all out everywhere).
+    simd_float4 spreads[OLLIN_MAX_FLARE_GHOSTS * 3];
+    // Per ghost, for one that lands near enough to focus that the source is wider
+    // than both openings as the ghost sees them: x = how much the check counts
+    // (0 = skip it), y = which opening is the smaller (1 = the front one, 2 = the
+    // iris), z = the map that carries the smaller one's middle into the other's
+    // plane, w = the smaller one's radius measured there.
+    simd_float4 meeting[OLLIN_MAX_FLARE_GHOSTS];
+    // The outward normals of the iris's edges, two to a vector, `iris.x` of them.
+    simd_float4 blades[OLLIN_MAX_FLARE_BLADES / 2];
     // Per light: xy = the angle the light arrives at the front of the lens, in
     // radians; zw = where it sits on the frame, in y-normalized coordinates.
     simd_float4 lights[OLLIN_MAX_FLARE_LIGHTS];
+    // Per light: the light's own linear color times the lens's level and the
+    // strength dial. A ghost's two reflectances and its spread multiply this.
+    // w = which ghosts this light makes that are bright enough to show, a bit
+    // per ghost (24 fit a float exactly).
+    simd_float4 levels[OLLIN_MAX_FLARE_LIGHTS];
     simd_float4 optics;   // x = entrance pupil radius (mm), y = iris radius (mm),
                           // z = sensor millimeters per y-normalized frame unit,
                           // w = the canvas aspect (width / height)
     simd_float4 iris;     // x = blade count (0 = a round iris), y = how far the star
                           // reaches from its source, in y-normalized frame units
-                          // (0 = no star), z = how soft the iris edge is, as a
-                          // fraction of its radius, w = the same on the front opening
+                          // (0 = no star), z = the iris's inner radius (mm): the
+                          // distance to a blade's edge, or the radius when round,
+                          // w = how many rows the coating table has
     // Per light: the color the star adds where the baked pattern is 1. The pattern
     // itself (the opening's own power spectrum, one texture for the whole frame)
-    // is bound at fragment texture 2. w unused.
+    // is bound by the composite pass. w unused.
     simd_float4 starTints[OLLIN_MAX_FLARE_LIGHTS];
     int lightCount;
     int ghostCount;
 } OllinLensFlareUniforms;
+
+// The lens as real rays meet it, for the ghosts that are followed rather than
+// worked out to first order (`ollin_flare_trace_vertex`). A grid of rays is laid
+// across the front opening and each is carried through the actual spheres along
+// one ghost's path, so a ghost comes out bent, stopped by the barrel, and folded
+// into caustics the way the glass really does it.
+#define OLLIN_MAX_LENS_INTERFACES 32
+// The colors a ray can be followed in: seven across the spectrum, and an eighth
+// slot for the index the prescription prints.
+#define OLLIN_LENS_WAVELENGTH_SLOTS 8
+
+typedef struct {
+    // Per interface: x = where its vertex sits along the axis (mm from the front
+    // vertex), y = radius (0 = flat), z = the clear opening's radius, w = 1 for
+    // the iris.
+    simd_float4 surfaces[OLLIN_MAX_LENS_INTERFACES];
+    // Per interface: x = the wavelength its coating is cut for (nm), or 0 for a
+    // surface that carries none (a cemented junction, the iris). yzw unused.
+    simd_float4 coatings[OLLIN_MAX_LENS_INTERFACES];
+    // The index after each interface, a row per wavelength slot.
+    float index[OLLIN_LENS_WAVELENGTH_SLOTS * OLLIN_MAX_LENS_INTERFACES];
+    simd_float4 frame;    // x = sensor millimeters per y-normalized frame unit,
+                          // y = the canvas aspect, z = where the sensor sits along
+                          // the axis (mm), w = the interface count
+} OllinLensTraceUniforms;
+
+// One ghost, in one color, from one light: a grid of rays to follow and draw.
+typedef struct {
+    simd_float4 grid;     // xy = the middle of the grid on the front vertex plane
+                          // (mm), z = its half width, w = rays along a side
+    simd_float4 path;     // xy = the light's slope, as the tangent of its angle
+                          // each way, z = the inner reflecting interface, w = the
+                          // outer one
+    // Up to three colors the rays' light is summed over: rgb = what that color
+    // adds to the picture (already carrying the light's level), w = its
+    // wavelength in nanometers, or 0 for a slot not in use.
+    simd_float4 colors[3];
+    simd_float4 soft;     // x = how soft the barrel's edge is, as a fraction of a
+                          // clear opening, y = how soft the iris's is (mm), z = the
+                          // least a bundle of rays can be squeezed to on the
+                          // sensor, as an area ratio, w = the wavelength slot the
+                          // rays are bent by
+    simd_float4 ring;     // x = the edge-ringing scale per millimeter at the iris
+                          // and 550 nm (0 = none), y = the area ratio first order
+                          // gives, for a ray whose neighbors were lost, zw = the
+                          // first-order map to the sensor, for where a lost ray
+                          // would have landed
+    simd_float4 source;   // x = which light this ghost belongs to, which is the
+                          // pixel of the visibility strip that says how much of
+                          // that light the camera can see. yzw unused.
+} OllinFlareGhostDraw;
 
 #endif /* OLLIN_SHADER_TYPES_H */

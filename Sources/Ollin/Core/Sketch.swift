@@ -1671,7 +1671,7 @@ open class Sketch {
 
     /// Flare on the frame's bright lights, naming just the two things most worth
     /// changing: how strong it is, and which lens makes it.
-    public func lensFlare(amount: Double, lens: Lens = .heliar) {
+    public func lensFlare(amount: Double, lens: Lens = .standard) {
         drawer.lensFlare(LensFlare(lens: lens, amount: amount))
     }
 

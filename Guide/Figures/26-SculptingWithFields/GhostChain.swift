@@ -1,11 +1,12 @@
 // figure: frame=0 probe
 //
-// Guide figure (Chapter 26): lens flare. One lamp throws two ghosts along the
-// line through the middle of the frame, each a hexagon because the iris has six
-// blades, and each a different color because each surface of the lens is coated
-// for a different wavelength. The second one lies over the near black slab
-// rather than behind it, which is the point: a ghost is in the camera, not in
-// the room. The star is turned off here, so the ghosts are what the eye lands
+// Guide figure (Chapter 26): lens flare. One lamp throws a row of ghosts along
+// the line through the middle of the frame, each a hexagon because the iris has
+// six blades, and each a different color because each surface of the lens is
+// coated for a different wavelength. One of them lies across the near black
+// slab rather than behind it, which is the point: a ghost is in the camera, not
+// in the room. The double Gauss is the lens, since its ghosts come in a run of
+// sizes; the Heliar's are mostly one wide veil. The star is turned off here, so the ghosts are what the eye lands
 // on; StarPoints is the figure for the star.
 import Ollin
 
@@ -26,7 +27,10 @@ final class GhostChain: Sketch {
         ambientLight(Color(white: 0.05))
         directionalLight(Color(white: 0.8), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.30)
         pointLight(Color(hex: 0xFFF0D0), at: lamp, intensity: 20)
-        lensFlare(LensFlare(lens: Lens.heliar.multicoated().stopped(to: 5.6), star: 0))
+        // A small lamp, and the flare told so: a ghost's edge is as soft as its
+        // source is wide, so a small source is what gives hexagons their corners.
+        lensFlare(LensFlare(lens: Lens.doubleGauss.multicoated().stopped(to: 11), star: 0,
+                            sourceSize: 0.004))
 
         // The lamp itself. A flat single-color matcap ignores the scene
         // lighting, which is what a glowing thing looks like.
@@ -34,7 +38,7 @@ final class GhostChain: Sketch {
             translate(lamp)
             fill(.white)
             matcap(bulb)
-            drawSphere(radius: 0.15)
+            drawSphere(radius: 0.05)
         }
         matcap(nil)
 
@@ -42,7 +46,7 @@ final class GhostChain: Sketch {
         // ghosts cross it, because they are not in the room.
         fill(Color(white: 0.17))
         withState {
-            translate(-1.36, 2.0, 2.6)
+            translate(0.05, 2.0, 2.6)
             drawBox(width: 0.9, height: 6.0, depth: 0.4)
         }
         // The floor and a row of blocks, to give the light something to land on.

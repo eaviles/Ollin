@@ -8,18 +8,34 @@ import Ollin
 /// lands on the sensor somewhere it does not belong, which is what strings
 /// ghosts along the line from the source through the middle of the frame.
 ///
-/// So the call asks for a lens rather than for a look. `Lens.heliar` is a real
-/// prescription, and its nine interfaces are what decide how many ghosts there
-/// are, where each one sits, how large it is and what color it comes out. Stop
-/// the iris down with `fStop` and every ghost shrinks together. Give the camera
-/// blades and every ghost takes their shape, because a ghost is a picture of
-/// the opening the light came through. That is also the opening the path-traced
-/// export makes its out-of-focus highlights from, so the two cannot disagree.
+/// So the call asks for a lens rather than for a look. Both bundled lenses are
+/// real prescriptions, and their surfaces decide how many ghosts there are, where
+/// each one sits, how large it is and what color it comes out. The double Gauss
+/// has more surfaces, so it strings the busier chain, with ghosts on both sides
+/// of the middle of the frame: some land beyond the lamp and some across the
+/// center from it. The Heliar throws fewer and wider ones, more of a veil. Stop
+/// the iris down with `fStop` and the ghosts it shapes shrink and brighten, the
+/// same light in a smaller shape. Give the camera blades and they take the
+/// blades' shape, because a ghost is a picture of the opening the light came
+/// through. That is also the opening the path-traced export makes its
+/// out-of-focus highlights from, so the two cannot disagree.
+///
+/// Look closely at a ghost, because it is not a flat copy of the iris. Every
+/// ghost is followed ray by ray through the real glass, so its sides are a
+/// little stretched, more the further the lamp sits from the middle. Where a
+/// ghost ends in a curve instead of a straight side, that is the round barrel of
+/// the lens stopping rays the iris let past. A bright rim along one edge is a
+/// caustic, where neighboring rays landed on top of one another. And the rim
+/// carries a thin fringe of color, since glass bends red and blue by different
+/// amounts. Drag `sourceSize` up and all of that melts, the way it does from a
+/// big soft lamp.
 ///
 /// The star on the lamp itself is the other half of a flare, and it comes from
 /// the same opening: it is the far-field diffraction of the iris, so six blades
 /// put six arms on it and a round iris puts none. Turn the blades to 0 and watch
-/// both the ghosts and the star lose their corners together.
+/// both the ghosts and the star lose their corners together. `dust` is the wear
+/// on that opening: at 0 the arms are ruled lines, and as it rises they split
+/// and fray and fine needles fill in between them.
 ///
 /// Watch the lamp go behind the slab. The flare does not switch off: it fades
 /// as the slab covers the source, because the strength follows how much of the
@@ -27,14 +43,30 @@ import Ollin
 @main
 final class LensFlare: Sketch {
 
+    /// The two bundled prescriptions. Few surfaces make few, large, clean
+    /// ghosts; more surfaces string a busier chain across the frame.
+    enum Glass: CaseIterable, ParamOption {
+        case heliar, doubleGauss
+
+        var lens: Lens {
+            switch self {
+            case .heliar: .heliar
+            case .doubleGauss: .doubleGauss
+            }
+        }
+    }
+
     @Param(icon: "sun.max", group: "Flare")
     var flare = true
+
+    @Param(icon: "camera", group: "Flare")
+    var glass: Glass = .doubleGauss
 
     @Param(0...2.5, icon: "dial.medium", group: "Flare")
     var strength = 1.0
 
     @Param(1.4...22, icon: "camera.aperture", group: "Iris")
-    var fStop = 4.5
+    var fStop = 8.0
 
     @Param(0...11, icon: "hexagon", group: "Iris")
     var blades = 6
@@ -47,6 +79,12 @@ final class LensFlare: Sketch {
 
     @Param(0.1...0.8, icon: "arrow.up.left.and.arrow.down.right", group: "Star")
     var starSize = 0.35
+
+    @Param(0...1, icon: "aqi.medium", group: "Star")
+    var dust = 0.5
+
+    @Param(0.002...0.06, icon: "circle.dashed", group: "Flare")
+    var sourceSize = 0.006
 
     // A flat white matcap for the bulb prop (cached; an `Image` keeps its texture).
     private let bulbGlow = Image(width: 1, height: 1, color: Color(hex: 0xFFF6E2))
@@ -65,12 +103,19 @@ final class LensFlare: Sketch {
 
         // The lamp drifts across the frame and passes behind the slab. It is a
         // real point light, so it lights the room as well as flaring.
-        let lamp = Vector3(1.05 * cos(time * 0.35), 2.1 + 0.3 * sin(time * 0.27), -2.0)
+        let lamp = Vector3(-2.9 * cos(time * 0.35), 3.35 + 0.45 * sin(time * 0.27), -2.0)
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
-        let lens = multicoated ? Lens.heliar.multicoated() : .heliar
+        let lens = multicoated ? glass.lens.multicoated() : glass.lens
         if flare {
+            // The bulb is a small one, a few thousandths of the frame's height
+            // across as the camera sees it. A ghost is a picture
+            // taken with the source, so telling the flare how large the source is
+            // sets how soft every ghost's edge comes out. Drag `sourceSize` up and
+            // the ghosts melt; drag it down and they sharpen into the iris's own
+            // shape.
             lensFlare(Ollin.LensFlare(lens: lens.stopped(to: fStop), amount: strength,
-                                      star: star, starSize: starSize))
+                                      star: star, starSize: starSize, dust: dust,
+                                      sourceSize: sourceSize))
         }
 
         // The bulb itself, so there is something on screen for the flare to come
@@ -80,7 +125,7 @@ final class LensFlare: Sketch {
             translate(lamp)
             fill(.white)
             matcap(bulbGlow)
-            drawSphere(radius: 0.17)
+            drawSphere(radius: 0.06)
         }
         matcap(nil)
 

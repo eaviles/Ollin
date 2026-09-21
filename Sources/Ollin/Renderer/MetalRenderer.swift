@@ -114,6 +114,10 @@ final class MetalRenderer {
         /// blended (one + one) into a single-sample float layer, no depth attachment
         /// (the fragment depth-tests manually against the caustics G-buffer).
         var isCausticSplat = false
+        /// The lens flare's followed ghosts: the additive, depthless shape of the
+        /// caustics splat, but multisampled. A ghost's mesh folds over itself where
+        /// a caustic is, and the fold is a silhouette no soft-edge test reaches.
+        var isFlareTrace = false
         /// The subsurface-scatter mask pass: one float attachment written with blending
         /// off (the mask's alpha channel carries a profile index, which alpha blending
         /// would corrupt), single-sample, depth-tested into its own depth.
@@ -369,6 +373,12 @@ final class MetalRenderer {
         static let causticsSplat = PipelineKey(vertex: "ollin_caustics_splat_vertex",
                                                fragment: "ollin_caustics_splat_fragment",
                                                isCausticSplat: true)
+        // lens flare ghosts followed ray by ray: a bent grid per ghost, added into the
+        // single-sample float layer the ghosts are gathered on. The same additive,
+        // depthless target the caustics splat draws into, so the same pipeline shape.
+        static let flareGhostTrace = PipelineKey(vertex: "ollin_flare_trace_vertex",
+                                                 fragment: "ollin_flare_trace_fragment",
+                                                 isCausticSplat: true, isFlareTrace: true)
         // subsurface-scatter mask: re-render the meshes single-sample into one float
         // attachment (uv-space blur step, mark, view depth, profile index) with its own
         // depth, so occluders suppress hidden scattering surfaces. Feeds the separable
@@ -1368,15 +1378,24 @@ final class MetalRenderer {
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
     /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
     var mainDepthResolve: MTLTexture?
-    /// The baked star pattern and the blade count it was baked for. The opening
-    /// only changes when the blades or the f-number do, and the f-number scales the
-    /// drawn size rather than the pattern, so one bake serves every frame.
-    var flareStarCache: (blades: Int, texture: MTLTexture)?
+    /// The baked star pattern, the blade count, and the amount of dust (in
+    /// twentieths) it was baked for. The opening only changes when those do, and the
+    /// f-number scales the drawn size rather than the pattern, so one bake serves
+    /// every frame.
+    var flareStarCache: (blades: Int, dust: Int, texture: MTLTexture)?
 
-    /// The paraxial description of the lens the flare is drawn through, kept for the
-    /// lens it was worked out from. None of it moves when the light does, so a sketch
-    /// that holds one lens pays for the ghost enumeration once rather than per frame.
-    var flareOpticsCache: (lens: Lens, optics: LensOptics)?
+    /// The lens the flare is drawn through, worked out: its ghosts, its level, and
+    /// its coating table. None of it moves when the light does, so a sketch that
+    /// holds one lens pays for all three once rather than per frame.
+    var flareLensCache: FlareLens?
+
+    /// The triangles of the ray grid a followed ghost is drawn as, and the number of
+    /// rays along a side they were built for. Every ghost shares them.
+    var flareGridCache: [Int: (indices: MTLBuffer, count: Int)] = [:]
+
+    /// The multisampled canvas the followed ghosts are drawn on before they are
+    /// resolved, kept for the size it was made at. It holds nothing between passes.
+    var flareSampleCache: MTLTexture?
 
     /// The mover-velocity pass's texture pair (rg16Float screen motion + its own
     /// depth), cached by size like `scatterMaskCache`. Only allocated the first

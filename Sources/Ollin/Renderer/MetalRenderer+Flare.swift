@@ -13,31 +13,209 @@ extension MetalRenderer {
         drawer.lensFlareSetting != nil && drawer.camera3D != nil && !drawer.lights.isEmpty
     }
 
+    /// Everything about a lens that does not move when the light does: the ghost
+    /// list, the level the whole flare is set against, and the coating table.
+    struct FlareLens {
+        let lens: Lens
+        let optics: LensOptics
+        /// What multiplies a ghost's two reflectances over its spread to give
+        /// linear light, at `amount` 1. See `lensFlareGain`.
+        let level: Double
+        /// What every reflecting surface sends back at every angle, a row per
+        /// surface and direction. See `Lens.coatingTable`.
+        let coating: MTLTexture
+        let coatingRows: Int
+        /// The lens as real rays meet it: every surface, its coating, and the
+        /// index of every glass in each color a ray can be followed in. The
+        /// frame's own terms are filled in per frame.
+        let trace: OllinLensTraceUniforms?
+    }
+
+    /// Whether ghosts are followed ray by ray at all. It is on, always, outside a
+    /// test: turning it off leaves every ghost to first order, which is what a
+    /// probe compares against to show what following the rays changed.
+    nonisolated(unsafe) static var flareFollowsRays = true
+
+    /// Rays along a side of the grid a followed ghost is drawn as, by how much of
+    /// the frame the ghost covers. A wide ghost magnifies the front opening many
+    /// times over, so a coarse grid's cells are a hundred pixels across on it and
+    /// the barrel's round edge, read between rays that far apart, comes out as a
+    /// polygon.
+    static let flareGridSides = [16, 32, 64]
+    /// How many canvas pixels one cell of a ghost's grid may span. At sixteen a
+    /// barrel's arc three hundred pixels in radius strays from its chord by a
+    /// tenth of a pixel, and every ray not followed is a ray not paid for.
+    static let flareCellPixels = 16.0
+    /// The linear light a ghost has to reach before its colors are followed one
+    /// wavelength at a time. A fringe is a few pixels of color on a rim, and on a
+    /// ghost dimmer than this there is no rim to see it on. Wide faint ghosts
+    /// part their colors by the most pixels, being the largest, and would
+    /// otherwise take seven passes each for nothing.
+    static let flareColoredFrom = 0.02
+    /// Samples per pixel on the canvas the followed ghosts are drawn on. A ghost's
+    /// mesh folds over itself along a caustic, and the fold is a silhouette: the
+    /// one edge of a ghost that no soft-edge test reaches, and at one sample a
+    /// staircase.
+    static let flareTraceSamples = 4
+    /// The most ghost passes one frame draws by following rays. A ghost whose
+    /// colors part takes seven; past this, the faintest give up their colors.
+    static let flareMaxTracedDraws = 144
+
+    /// The lens as the ray tracer needs it, or `nil` for one with more surfaces
+    /// than it carries.
+    private func traceUniforms(for lens: Lens) -> OllinLensTraceUniforms? {
+        let count = lens.interfaces.count
+        guard count >= 2, count <= Int(OLLIN_MAX_LENS_INTERFACES) else { return nil }
+        var uniforms = OllinLensTraceUniforms()
+        var vertex = 0.0
+        withUnsafeMutablePointer(to: &uniforms.surfaces) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: Int(OLLIN_MAX_LENS_INTERFACES)) { out in
+                for (i, face) in lens.interfaces.enumerated() {
+                    out[i] = SIMD4(Float(vertex), Float(face.radius), Float(face.height), face.isIris ? 1 : 0)
+                    vertex += face.thickness
+                }
+            }
+        }
+        withUnsafeMutablePointer(to: &uniforms.coatings) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: Int(OLLIN_MAX_LENS_INTERFACES)) { out in
+                for (i, face) in lens.interfaces.enumerated() {
+                    let design = lens.isExposed(i) ? (face.coating ?? lens.coatingWavelength) : 0
+                    out[i] = SIMD4(Float(design), 0, 0, 0)
+                }
+            }
+        }
+        let slots = Int(OLLIN_LENS_WAVELENGTH_SLOTS), row = Int(OLLIN_MAX_LENS_INTERFACES)
+        withUnsafeMutablePointer(to: &uniforms.index) { tuple in
+            tuple.withMemoryRebound(to: Float.self, capacity: slots * row) { out in
+                for slot in 0..<slots {
+                    for (i, face) in lens.interfaces.enumerated() {
+                        let wavelength = slot < Lens.spectrumWavelengths.count
+                            ? Lens.spectrumWavelengths[slot] : nil
+                        out[slot * row + i] = Float(wavelength.map { face.index(atWavelength: $0) } ?? face.ior)
+                    }
+                }
+            }
+        }
+        uniforms.frame = SIMD4(0, 0, Float(vertex), Float(count))
+        return uniforms
+    }
+
+    /// The multisampled canvas the followed ghosts are drawn on. Nothing is read
+    /// from it but its resolve, so it lives in tile memory and costs no storage.
+    private func flareSamples(width: Int, height: Int) -> MTLTexture? {
+        if let cached = flareSampleCache, cached.width == width, cached.height == height { return cached }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        descriptor.textureType = .type2DMultisample
+        descriptor.sampleCount = MetalRenderer.flareTraceSamples
+        descriptor.usage = .renderTarget
+        descriptor.storageMode = .memoryless
+        flareSampleCache = device.makeTexture(descriptor: descriptor)
+        return flareSampleCache
+    }
+
+    /// A grid's triangles, built once per size.
+    private func flareGrid(side: Int) -> (indices: MTLBuffer, count: Int)? {
+        if let cached = flareGridCache[side] { return cached }
+        var indices: [UInt16] = []
+        indices.reserveCapacity((side - 1) * (side - 1) * 6)
+        for line in 0..<(side - 1) {
+            for column in 0..<(side - 1) {
+                let a = UInt16(line * side + column), b = a + 1
+                let c = UInt16((line + 1) * side + column), d = c + 1
+                indices += [a, b, c, b, d, c]
+            }
+        }
+        guard let buffer = device.makeBuffer(bytes: indices, length: indices.count * 2,
+                                             options: .storageModeShared) else { return nil }
+        flareGridCache[side] = (buffer, indices.count)
+        return (buffer, indices.count)
+    }
+
+    /// How bright one ghost comes out, relative to the others, from a source of
+    /// angular radius `source` at the representative angle: its two coatings
+    /// over how widely it spreads the light, held down where the source's own
+    /// size spreads a ghost that lands near focus wider still.
+    ///
+    /// `cover` is how much of a normal frame the ghost fills, which is what
+    /// separates a ghost from a veil: the same brightness that reads as a clean
+    /// shape across a twentieth of the picture is a fog across all of it.
+    private func flareStanding(_ ghost: LensGhost, lens: Lens, optics: LensOptics,
+                               source: Double) -> (level: Double, cover: Double) {
+        let reflect = lens.ghostReflectance(ghost, angle: MetalRenderer.flareReferenceAngle)
+        let luminance = 0.2126 * reflect.x + 0.7152 * reflect.y + 0.0722 * reflect.z
+        let a = ghost.toSensor.a, b = ghost.toSensor.b
+        let throughIris = ghost.toIris.a * b / a - ghost.toIris.b
+        let overPupil = source * abs(b / a), overIris = source * abs(throughIris)
+        var share = 1.0
+        if overPupil > 0 { share = min(share, pow(optics.pupilRadius / overPupil, 2)) }
+        if overIris > 0 { share = min(share, pow(optics.openIrisRadius / overIris, 2)) }
+        // The ghost's own radius on the sensor, widened by the source's, against
+        // a frame eight tenths of the focal length across, which is about what a
+        // normal lens is asked to cover.
+        let sharp = min(optics.openIrisRadius / max(abs(ghost.toIris.a), 1e-9),
+                        optics.pupilRadius) * abs(a)
+        let area = Double.pi * (sharp * sharp + pow(source * b, 2))
+        let frame = pow(0.8 * max(abs(optics.focalLength), 1e-6), 2)
+        return (luminance / max(a * a, 1e-8) * share, min(1, area / frame))
+    }
+
     /// The paraxial description of a lens, worked out once and kept. None of it
     /// moves when the light does, so a sketch holding one lens pays for the ghost
-    /// enumeration on the first frame only.
-    func flareOptics(for lens: Lens) -> LensOptics {
-        if let cached = flareOpticsCache, cached.lens == lens { return cached.optics }
+    /// enumeration, the level, and the coating table on the first frame only.
+    func flareLens(for lens: Lens) -> FlareLens? {
+        if let cached = flareLensCache, cached.lens == lens { return cached }
         var optics = lens.optics()
+        let source = MetalRenderer.flareReferenceSource
         if optics.ghosts.count > Int(OLLIN_MAX_FLARE_GHOSTS) {
             // A complicated lens makes more ghost paths than the frame can carry,
-            // so keep the ones that will read: the two coating reflectances over
-            // how widely the ghost spreads its light. The angle here is fixed
-            // rather than the light's own, so which ghosts survive does not change
-            // as the light crosses the frame, which would pop them in and out.
-            let scored = optics.ghosts.map { ghost -> (LensGhost, Double) in
-                let reflect = lens.ghostReflectance(ghost, angle: 0.15)
-                let spread = max(ghost.toSensor.a * ghost.toSensor.a, 1e-9)
-                return (ghost, (reflect.x + reflect.y + reflect.z) / spread)
+            // so keep the ones that will read. The angle is fixed rather than the
+            // light's own, so which ghosts survive does not change as the light
+            // crosses the frame, which would pop them in and out.
+            let scored = optics.ghosts.map {
+                ($0, flareStanding($0, lens: lens, optics: optics, source: source).level)
             }
             optics.ghosts = scored.sorted { $0.1 > $1.1 }
                 .prefix(Int(OLLIN_MAX_FLARE_GHOSTS)).map(\.0)
         }
-        flareOpticsCache = (lens, optics)
-        return optics
+        // Two ceilings, and the lower one sets the level. No single ghost comes
+        // out above `lensFlareGain`, which is what holds a lens of few, compact
+        // ghosts. And all of them together add no more than `lensFlareVeil` to
+        // the frame on average, which is what holds a lens whose ghosts are all
+        // wide: each could sit at the first ceiling and the picture would still
+        // drown under ten of them laid over one another.
+        var peak = 0.0, veil = 0.0
+        for ghost in optics.ghosts {
+            let standing = flareStanding(ghost, lens: lens, optics: optics, source: source)
+            peak = max(peak, standing.level)
+            veil += standing.level * standing.cover
+        }
+        var level = 0.0
+        if peak > 0, veil > 0 {
+            level = min(MetalRenderer.lensFlareGain / peak, MetalRenderer.lensFlareVeil / veil)
+        }
+
+        let table = lens.coatingTable()
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba16Float, width: table.samples, height: table.rows, mipmapped: false)
+        descriptor.usage = .shaderRead
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        let half = table.values.map { Float16($0) }
+        half.withUnsafeBytes { bytes in
+            texture.replace(region: MTLRegionMake2D(0, 0, table.samples, table.rows),
+                            mipmapLevel: 0, withBytes: bytes.baseAddress!,
+                            bytesPerRow: table.samples * 8)
+        }
+        let built = FlareLens(lens: lens, optics: optics, level: level,
+                              coating: texture, coatingRows: table.rows,
+                              trace: traceUniforms(for: lens))
+        flareLensCache = built
+        return built
     }
 
-    /// What the lens's brightest ghost is worth, in linear light, at `strength` 1.
+    /// What the lens's brightest ghost is worth, in linear light, at `amount` 1,
+    /// under standard conditions: the iris wide open, the source at a
+    /// representative angle, and the source a standard size.
     ///
     /// One number sets the whole flare's level, and everything under it stays as
     /// the optics worked it out: how the ghosts compare to each other in size,
@@ -52,18 +230,32 @@ extension MetalRenderer {
     /// source is, so reading it literally would make one sketch's flare invisible
     /// and the next one's blinding.
     ///
-    /// The value is above 1 on purpose. A lens usually has one ghost that lands
-    /// near focus, which puts all its light in a small dot, and a dot like that
-    /// is meant to blow out: it is the brightest thing in the frame. The ghosts
-    /// spread wider come out far below it, which is what a real flare does.
-    static let lensFlareGain = 3.0
+    /// The conditions are standard rather than the frame's own so that the level
+    /// belongs to the lens. Measured against the frame instead, the level would
+    /// move whenever the hottest ghost did: a smaller source sharpens a ghost
+    /// near focus into a dot thousands of times brighter than the rest, and
+    /// anchoring on that dot would dim every other ghost to nothing. As it is, a
+    /// smaller source makes that one dot blow out, which is what it does in a
+    /// photograph, and leaves the others alone.
+    static let lensFlareGain = 0.1
+    /// What all a lens's ghosts together may add to the frame, as an average
+    /// over it, under the same standard conditions. See `flareLens(for:)`.
+    static let lensFlareVeil = 0.025
+    /// The angular radius, in radians, of the source the level is set for.
+    static let flareReferenceSource = 0.02
+    /// The angle off the axis, in radians, the level and the ghost ranking are
+    /// worked out at.
+    static let flareReferenceAngle = 0.15
 
-    /// How soft the iris edge is, as a fraction of the iris radius. A real
-    /// opening does not cut light off exactly at its rim: the edge diffracts, and
-    /// a hard cut reads as a sticker.
-    static let flareIrisSoftness = 0.12
-    /// The same feather on the front opening, which is a wider and harder stop.
-    static let flarePupilSoftness = 0.05
+    /// How much of a pixel a ghost's edge is softened by, over and above what the
+    /// source's size does, so an edge is never a stair even from a point source.
+    static let flarePixelSoftness = 0.6
+    /// The linear light under which a ghost is not drawn. More than half of a
+    /// lens's ghosts are usually far too faint to show, and they tend to be the
+    /// widest, so the dearest to draw. The bar is low enough that a dozen ghosts
+    /// left out together still add up to under two steps of an eight-bit frame,
+    /// so none is seen arriving as the light moves.
+    static let flareFaintest = 0.00012
 
     /// What one arm of the star is worth where the baked pattern reads 1, at
     /// `strength` and `star` both 1.
@@ -73,10 +265,15 @@ extension MetalRenderer {
     /// the arms in a range the picture can hold.
     static let lensFlareStarGain = 0.4
 
-    /// The star pattern for a blade count, baked once and kept.
-    func flareStar(blades: Int) -> MTLTexture? {
-        if let cached = flareStarCache, cached.blades == blades { return cached.texture }
-        let pattern = ApertureStar.bake(blades: blades)
+    /// The star pattern for a blade count and an amount of dust, baked once and
+    /// kept. Dust is held to twentieths, so a dial dragged across its range bakes
+    /// twenty patterns rather than one per frame.
+    func flareStar(blades: Int, dust: Double) -> MTLTexture? {
+        let step = Int((min(1, max(0, dust)) * 20).rounded())
+        if let cached = flareStarCache, cached.blades == blades, cached.dust == step {
+            return cached.texture
+        }
+        let pattern = ApertureStar.bake(blades: blades, dust: Double(step) / 20)
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba16Float, width: pattern.size, height: pattern.size,
             mipmapped: false)
@@ -90,7 +287,7 @@ extension MetalRenderer {
                             mipmapLevel: 0, withBytes: bytes.baseAddress!,
                             bytesPerRow: pattern.size * 8)
         }
-        flareStarCache = (blades, texture)
+        flareStarCache = (blades, step, texture)
         return texture
     }
 
@@ -131,8 +328,9 @@ extension MetalRenderer {
               projection.columns.1.y > 0, projection.columns.0.x > 0 else { return resolved }
         let tanHalfFieldOfView = 1 / Double(projection.columns.1.y)
         let lensAspect = Double(projection.columns.1.y / projection.columns.0.x)
-        let optics = flareOptics(for: flare.lens)
-        guard !optics.ghosts.isEmpty, optics.directScale != 0,
+        guard let flareLens = flareLens(for: flare.lens) else { return resolved }
+        let optics = flareLens.optics
+        guard !optics.ghosts.isEmpty, optics.directScale != 0, flareLens.level > 0,
               optics.pupilRadius > 0, optics.irisRadius > 0 else { return resolved }
 
         let viewProjection = projection * camera.viewMatrix
@@ -182,9 +380,17 @@ extension MetalRenderer {
         // The brightest source in the frame is the anchor the rest measure against.
         let brightest = sources.map(\.weight).max() ?? 1
 
+        // The ghosts are worked out at half the frame's size each way and the
+        // star at full size (see `ollin_flare_ghosts`).
+        let ghostWidth = max(1, (width + 1) / 2), ghostHeight = max(1, (height + 1) / 2)
         guard let visibility = acquireFilterTexture(width: Int(OLLIN_MAX_FLARE_LIGHTS),
                                                     height: 1, pooled: pooled),
+              let ghostLight = acquireFilterTexture(width: ghostWidth, height: ghostHeight,
+                                                    pooled: pooled),
               let output = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let tracedLight = acquireFilterTexture(width: ghostWidth, height: ghostHeight,
+                                                     pooled: pooled),
+              let ghostState = try? pipeline(.effect("ollin_flare_ghosts")),
               let state = try? pipeline(.effect("ollin_flare_composite")) else { return resolved }
 
         // How much of each source the camera can see, one light per pixel of a
@@ -213,30 +419,58 @@ extension MetalRenderer {
         // arms are visible only because the source is thousands of times brighter
         // than the scene, and that reach is far outside what a bake of this size
         // can hold. What stays physical is its shape and how it answers the iris.
-        let blades = max(0, camera.apertureBlades)
+        // More blades than the frame carries is an opening no eye tells from round.
+        let asked = max(0, camera.apertureBlades)
+        let blades = asked >= 3 && asked <= Int(OLLIN_MAX_FLARE_BLADES) ? asked : 0
+        // A bladed opening is the polygon inscribed in the iris's circle, so the
+        // distance to a blade's edge is shorter than the radius.
+        let inner = optics.irisRadius * (blades >= 3 ? cos(Double.pi / Double(blades)) : 1)
         // Held at eight times, since a lens stopped past that is a pinhole and its
         // star would otherwise reach across the whole picture.
-        let openness = optics.irisRadius > 0 ? optics.openIrisRadius / optics.irisRadius : 1
-        let starExtent = flare.star > 0 ? flare.starSize * min(openness, 8) : 0
+        let openness = min(8, optics.irisRadius > 0 ? optics.openIrisRadius / optics.irisRadius : 1)
+        let starExtent = flare.star > 0 ? flare.starSize * openness : 0
+        // The iris moves the flare's light around and neither adds nor removes
+        // any. Closing it shrinks a ghost, and the same light in a smaller shape
+        // is a brighter one, by as much as the shape shrank (`gathered`, below,
+        // worked out per ghost: a ghost the front opening bounds rather than the
+        // iris does not shrink, so it does not brighten either). The star goes
+        // the other way for the same reason. It grows as the iris closes, so the
+        // same light runs along longer arms and each stretch is fainter.
+        let concentration = openness * openness
+        /// How much brighter closing the iris has made one ghost: the area it
+        /// covered wide open over the area it covers now.
+        func gathered(_ ghost: LensGhost) -> Double {
+            let across = max(abs(ghost.toIris.a), 1e-9)
+            let open = min(optics.openIrisRadius / across, optics.pupilRadius)
+            let now = min(optics.irisRadius / across, optics.pupilRadius)
+            return min(64, (open * open) / max(now * now, 1e-12))
+        }
         uniforms.iris = SIMD4<Float>(Float(blades), Float(starExtent),
-                                     Float(MetalRenderer.flareIrisSoftness),
-                                     Float(MetalRenderer.flarePupilSoftness))
+                                     Float(inner), Float(flareLens.coatingRows))
+        withUnsafeMutablePointer(to: &uniforms.blades) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self,
+                                   capacity: Int(OLLIN_MAX_FLARE_BLADES) / 2) { buffer in
+                // An edge's normal points along the x axis first, which is how the
+                // star's bake and the defocus filter turn the same opening.
+                func normal(_ k: Int) -> SIMD2<Float> {
+                    guard k < blades else { return .zero }
+                    let turn = 2 * Double.pi * Double(k) / Double(blades)
+                    return SIMD2(Float(cos(turn)), Float(sin(turn)))
+                }
+                for pair in 0..<(Int(OLLIN_MAX_FLARE_BLADES) / 2) {
+                    let first = normal(pair * 2), second = normal(pair * 2 + 1)
+                    buffer[pair] = SIMD4(first.x, first.y, second.x, second.y)
+                }
+            }
+        }
         withUnsafeMutablePointer(to: &uniforms.starTints) { tuple in
             tuple.withMemoryRebound(to: simd_float4.self,
                                    capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
                 for (index, source) in sources.enumerated() {
                     let level = flare.amount * flare.star * MetalRenderer.lensFlareStarGain
+                        / concentration
                     let color = (source.color / brightest) * level
                     buffer[index] = SIMD4(Float(color.x), Float(color.y), Float(color.z), 0)
-                }
-            }
-        }
-        withUnsafeMutablePointer(to: &uniforms.ghosts) { tuple in
-            tuple.withMemoryRebound(to: simd_float4.self,
-                                   capacity: Int(OLLIN_MAX_FLARE_GHOSTS)) { buffer in
-                for (index, ghost) in optics.ghosts.enumerated() {
-                    buffer[index] = SIMD4(Float(ghost.toSensor.a), Float(ghost.toSensor.b),
-                                          Float(ghost.toIris.a), Float(ghost.toIris.b))
                 }
             }
         }
@@ -249,36 +483,323 @@ extension MetalRenderer {
                 }
             }
         }
-        let slots = Int(OLLIN_MAX_FLARE_LIGHTS) * Int(OLLIN_MAX_FLARE_GHOSTS)
-        withUnsafeMutablePointer(to: &uniforms.tints) { tuple in
-            tuple.withMemoryRebound(to: simd_float4.self, capacity: slots) { buffer in
-                for (lightIndex, source) in sources.enumerated() {
+        // The source's disc as an angle, and a pixel as a length on the sensor:
+        // the two things that soften a ghost's edge. `sourceSize` is a radius in
+        // frame heights, and the frame is two y-normalized units tall.
+        let sourceAngle = flare.sourceSize * 2 * tanHalfFieldOfView
+        let sensorPerUnit = optics.directScale * tanHalfFieldOfView
+        // A pixel of the canvas the ghosts are drawn on, which is the half-size one.
+        let pixel = MetalRenderer.flarePixelSoftness * abs(sensorPerUnit) * 2 / Double(ghostHeight)
+        let ghostCount = optics.ghosts.count
+        let widestAngle = sources.map { simd_length($0.angle) }.max() ?? 0
+        var shares = [Double](repeating: 1, count: Int(OLLIN_MAX_FLARE_GHOSTS))
+        // How much of each ghost is drawn by following rays, from 1 (all of it)
+        // to 0 (none). Following rays is the truer picture wherever a ghost has
+        // an edge to speak of: it is what bends the ghost, stops it at the
+        // barrel, and folds caustics into it. Where the source is wider than the
+        // opening the ghost is a picture of the source instead, all of that is
+        // smeared away, and first order already draws it right, so such a ghost
+        // stays with the pass above. Between the two a ghost is shared out, so
+        // nothing changes hands in one step as a dial moves.
+        var followed = [Double](repeating: 0, count: Int(OLLIN_MAX_FLARE_GHOSTS))
+        var softness = [(barrel: Double, iris: Double, floor: Double)](
+            repeating: (0, 0, 0), count: Int(OLLIN_MAX_FLARE_GHOSTS))
+        var maps = [SIMD4<Float>](repeating: .zero, count: Int(OLLIN_MAX_FLARE_GHOSTS) * 3)
+        var spreads = maps
+        var incidence = [SIMD4<Float>](repeating: .zero, count: Int(OLLIN_MAX_FLARE_GHOSTS))
+        var meeting = incidence
+        // A ghost exactly in focus has no scale to run backwards through; holding
+        // it a hair off keeps the map finite and looks the same.
+        func held(_ scale: Double) -> Double {
+            abs(scale) < 1e-4 ? (scale < 0 ? -1e-4 : 1e-4) : scale
+        }
+        for (index, ghost) in optics.ghosts.enumerated() {
+            let rows = Double(ghost.secondInterface * 2) + 256 * Double(ghost.firstInterface * 2 + 1)
+            var overPupils = [Double](repeating: 0, count: 3), overIrises = overPupils
+            for channel in 0..<3 {
+                let map = ghost.channels[channel]
+                let a = held(map.sensorA), b = map.sensorB
+                maps[index * 3 + channel] = SIMD4(Float(a), Float(b),
+                                                  Float(map.irisA), Float(map.irisB))
+                // Every point of the source throws its own copy of the ghost.
+                // Moving the source by an angle moves the ray that lands on a
+                // given pixel across the front opening by `b / a` of it, and
+                // across the iris by `throughIris` of it, so those are the radii
+                // the source's disc takes on the two planes the ghost is clipped
+                // in. On the sensor that is one radius for every color, `b` times
+                // the source's, which is why the spreads are worked out per
+                // channel: a picture of the source is the same size in red as in
+                // blue, however differently the two are magnified.
+                let throughIris = map.irisA * b / a - map.irisB
+                let overPupil = (pow(sourceAngle * b / a, 2) + pow(pixel / a, 2)).squareRoot()
+                let overIris = (pow(sourceAngle * throughIris, 2)
+                                + pow(pixel * map.irisA / a, 2)).squareRoot()
+                // Both tests dim a ghost smaller than the source by the ratio of
+                // the areas. Only the tighter of the two should: the wider
+                // opening has the narrower one inside it.
+                let pupilShare = overPupil > 0 ? min(1, pow(optics.pupilRadius / overPupil, 2)) : 1
+                let irisShare = overIris > 0 ? min(1, pow(inner / overIris, 2)) : 1
+                spreads[index * 3 + channel] = SIMD4(Float(overPupil), Float(overIris),
+                                                     Float(1 / max(pupilShare, irisShare, 1e-12)),
+                                                     Float(rows))
+                overPupils[channel] = overPupil
+                overIrises[channel] = overIris
+                if channel == 1 { shares[index] = min(pupilShare, irisShare) }
+            }
+            // How far the three channels part, measured on the two planes the
+            // ghost is clipped in. It sets two things: how far out, by the green
+            // map, a pixel can sit and still be reached by some channel, and how
+            // deep inside the ghost a pixel has to be before all three agree it
+            // is covered and their edges need not be worked out one by one.
+            let own = ghost.channels[1]
+            let ownScale = held(own.sensorA)
+            var reach = 0.0, room = 0.0
+            for channel in 0..<3 {
+                let other = ghost.channels[channel]
+                let scale = held(other.sensorA)
+                let slip = abs(own.sensorB - other.sensorB) * widestAngle
+                reach = max(reach, ((optics.pupilRadius + overPupils[channel]) * abs(scale) + slip)
+                            / abs(ownScale))
+                let onPupil = optics.pupilRadius * abs(ownScale / scale - 1) + slip / abs(scale)
+                let onIris = abs(other.irisA) * onPupil
+                    + abs(other.irisA - own.irisA) * optics.pupilRadius
+                    + abs(other.irisB - own.irisB) * widestAngle
+                room = max(room,
+                           (onPupil + abs(overPupils[channel] - overPupils[1])) / optics.pupilRadius,
+                           (onIris + abs(overIrises[channel] - overIrises[1])) / max(inner, 1e-9))
+            }
+            spreads[index * 3 + 1].w = Float(reach * 1.02)
+            spreads[index * 3 + 2].w = room * 1.25 < 0.35 ? Float(room * 1.25 + 0.01) : 0
+
+            if flareLens.trace != nil, MetalRenderer.flareFollowsRays {
+                let wide = max(overPupils[1] / optics.pupilRadius, overIrises[1] / max(inner, 1e-9))
+                let t = min(1, max(0, (wide - 0.3) / 0.3))
+                followed[index] = 1 - t * t * (3 - 2 * t)
+                // The least a bundle of rays can be squeezed to: the source's own
+                // picture on the sensor, and a pixel, however hard the lens
+                // focuses them. It is what keeps a caustic finite.
+                let blur = (pow(sourceAngle * own.sensorB, 2) + pow(pixel, 2)).squareRoot()
+                let narrow = blur / optics.pupilRadius
+                softness[index] = (overPupils[1] / optics.pupilRadius, overIrises[1],
+                                   narrow * max(abs(ownScale), narrow))
+            }
+            // What the analytic pass draws of this ghost: the share not followed
+            // ray by ray, at the brightness the iris has gathered it to.
+            for channel in 0..<3 {
+                spreads[index * 3 + channel].z *= Float((1 - followed[index]) * gathered(ghost))
+            }
+            incidence[index] = SIMD4(Float(ghost.outerIncidence.pupil), Float(ghost.outerIncidence.angle),
+                                     Float(ghost.innerIncidence.pupil), Float(ghost.innerIncidence.angle))
+
+            let green = ghost.channels[1]
+            let a = held(green.sensorA), b = green.sensorB
+            let throughIris = green.irisA * b / a - green.irisB
+            // As the source sees them: the front opening and the iris, each as a
+            // disc of angles. When the source is wider than the smaller of the
+            // two, that ghost is a picture of the source and the two openings
+            // have to be checked against each other.
+            let pupilAngle = abs(b) > 1e-9 ? optics.pupilRadius * abs(a / b) : Double.infinity
+            let irisAngle = abs(throughIris) > 1e-9 ? inner / abs(throughIris) : Double.infinity
+            let smaller = min(pupilAngle, irisAngle)
+            guard smaller.isFinite, smaller > 0 else { continue }
+            let t = min(1, max(0, (sourceAngle / smaller - 0.5) / 1.5))
+            let weight = t * t * (3 - 2 * t)
+            guard weight > 0 else { continue }
+            if pupilAngle <= irisAngle {
+                meeting[index] = SIMD4(Float(weight), 1, Float(green.irisB / b),
+                                       Float(optics.pupilRadius * abs(a * throughIris / b)))
+            } else {
+                let carry = b / (a * throughIris)
+                meeting[index] = SIMD4(Float(weight), 2, Float(carry), Float(inner * abs(carry)))
+            }
+        }
+        var lightLevels: [SIMD3<Double>] = []
+        var lightShows: [[(ghost: Int, peak: Double)]] = []
+        withUnsafeMutablePointer(to: &uniforms.levels) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self,
+                                   capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
+                for (index, source) in sources.enumerated() {
+                    // Measured against the frame's brightest source, so the dial
+                    // means the same thing whatever a sketch lights its scene with.
+                    let color = (source.color / brightest) * (flare.amount * flareLens.level)
+                    // Which of this light's ghosts could show. A ghost is judged
+                    // by the brightest its coatings come out anywhere across it,
+                    // the middle and either rim, since a rim met steeply can
+                    // reflect many times what the middle does.
+                    let strongest = max(color.x, color.y, color.z)
                     let angle = simd_length(source.angle)
-                    var raw: [SIMD3<Double>] = []
-                    raw.reserveCapacity(optics.ghosts.count)
-                    var peak = 0.0
-                    for ghost in optics.ghosts {
-                        let reflect = flare.lens.ghostReflectance(ghost, angle: angle)
-                        // A ghost spreads the light it carries over the square of
-                        // its magnification, which is why the small ones are the
-                        // bright ones.
-                        let spread = max(ghost.toSensor.a * ghost.toSensor.a, 1e-6)
-                        let value = reflect / spread
-                        raw.append(value)
-                        peak = max(peak, 0.2126 * value.x + 0.7152 * value.y + 0.0722 * value.z)
+                    var shows: UInt32 = 0
+                    lightLevels.append(color)
+                    lightShows.append([])
+                    for (ghostIndex, ghost) in optics.ghosts.enumerated() {
+                        let rim = min(optics.pupilRadius,
+                                      optics.irisRadius / max(abs(ghost.toIris.a), 1e-9))
+                        var reflect = 0.0
+                        for pupil in [0, rim, -rim] {
+                            let value = flare.lens.ghostReflectance(ghost, angle: angle, pupil: pupil)
+                            reflect = max(reflect, value.x, value.y, value.z)
+                        }
+                        let scale = held(ghost.channels[1].sensorA)
+                        let peak = strongest * reflect * shares[ghostIndex] * gathered(ghost)
+                            / (scale * scale)
+                        guard peak >= MetalRenderer.flareFaintest else { continue }
+                        lightShows[index].append((ghostIndex, peak))
+                        if followed[ghostIndex] < 1 { shows |= 1 << UInt32(ghostIndex) }
                     }
-                    guard peak > 0 else { continue }
-                    let scale = flare.amount * MetalRenderer.lensFlareGain
-                    for (ghostIndex, value) in raw.enumerated() {
-                        // Measured against the brightest ghost this source makes,
-                        // and tinted by both the coating and the source's color.
-                        let color = value * (scale / peak) * (source.color / brightest)
-                        buffer[lightIndex * Int(OLLIN_MAX_FLARE_GHOSTS) + ghostIndex] =
-                            SIMD4(Float(color.x), Float(color.y), Float(color.z), 0)
-                    }
+                    buffer[index] = SIMD4(Float(color.x), Float(color.y), Float(color.z), Float(shows))
                 }
             }
         }
+        withUnsafeMutablePointer(to: &uniforms.ghosts) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: maps.count) { buffer in
+                for index in 0..<(ghostCount * 3) { buffer[index] = maps[index] }
+            }
+        }
+        withUnsafeMutablePointer(to: &uniforms.incidence) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: incidence.count) { buffer in
+                for index in 0..<ghostCount { buffer[index] = incidence[index] }
+            }
+        }
+        withUnsafeMutablePointer(to: &uniforms.spreads) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: spreads.count) { buffer in
+                for index in 0..<(ghostCount * 3) { buffer[index] = spreads[index] }
+            }
+        }
+        withUnsafeMutablePointer(to: &uniforms.meeting) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self, capacity: meeting.count) { buffer in
+                for index in 0..<ghostCount { buffer[index] = meeting[index] }
+            }
+        }
+
+        let ghostPass = MTLRenderPassDescriptor()
+        ghostPass.colorAttachments[0].texture = ghostLight
+        ghostPass.colorAttachments[0].loadAction = .dontCare
+        ghostPass.colorAttachments[0].storeAction = .store
+        guard let ghostEncoder = countedEncoder(cb, ghostPass, caller: "lens flare ghosts") else {
+            return resolved
+        }
+        ghostEncoder.setRenderPipelineState(ghostState)
+        ghostEncoder.setFragmentTexture(visibility, index: 0)
+        ghostEncoder.setFragmentTexture(flareLens.coating, index: 1)
+        ghostEncoder.setFragmentSamplerState(imageSampler, index: 0)
+        ghostEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<OllinLensFlareUniforms>.stride,
+                                      index: 0)
+        ghostEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        ghostEncoder.endEncoding()
+
+        // The ghosts that are followed ray by ray, added over the ones above.
+        var hasTraced = false
+        if var lens = flareLens.trace, let traceState = try? pipeline(.flareGhostTrace),
+           let samples = flareSamples(width: ghostWidth, height: ghostHeight) {
+            lens.frame.x = Float(sensorPerUnit)
+            lens.frame.y = Float(lensAspect)
+            // Each ghost in its one-pass form, and in its seven-pass form when its
+            // colors part enough to need it.
+            var entries: [(single: OllinFlareGhostDraw, spectrum: [OllinFlareGhostDraw],
+                           peak: Double, side: Int)] = []
+            for (lightIndex, source) in sources.enumerated() {
+                let slope = source.angle
+                for shown in lightShows[lightIndex] where followed[shown.ghost] > 0 {
+                    let ghost = optics.ghosts[shown.ghost]
+                    let map = ghost.channels[1]
+                    // The grid covers the whole front opening, with room for the
+                    // soft edge, and the barrel and the iris do the clipping, which
+                    // they do exactly. Trimming the grid to the rays first order
+                    // says can clear the iris would save rays, and it is wrong in
+                    // the one case that matters: a strongly bent ghost's real rays
+                    // enter nowhere near where first order puts them, and the ghost
+                    // then comes out cut by the grid's own square, corners and all.
+                    let soft = softness[shown.ghost]
+                    let half = optics.pupilRadius * (1.12 + soft.barrel)
+                    let center = SIMD2<Double>.zero
+                    // Rays enough that a cell stays a few pixels across on the
+                    // canvas, whatever the ghost magnifies the opening by.
+                    let across = 2 * half * abs(held(ghost.toSensor.a)) / (pixel / MetalRenderer.flarePixelSoftness)
+                    let side = MetalRenderer.flareGridSides.first {
+                        Double($0) * MetalRenderer.flareCellPixels >= across }
+                        ?? MetalRenderer.flareGridSides[MetalRenderer.flareGridSides.count - 1]
+                    var draw = OllinFlareGhostDraw()
+                    draw.grid = SIMD4(Float(center.x), Float(center.y), Float(half), Float(side))
+                    draw.path = SIMD4(Float(slope.x), Float(slope.y),
+                                      Float(ghost.firstInterface), Float(ghost.secondInterface))
+                    let a = held(ghost.toSensor.a)
+                    draw.ring = SIMD4(Float(ghost.ringScale), Float(a * a),
+                                      Float(a), Float(ghost.toSensor.b))
+                    draw.source = SIMD4(Float(lightIndex), 0, 0, 0)
+                    let level = lightLevels[lightIndex] * (followed[shown.ghost] * gathered(ghost))
+
+                    // How far apart this ghost's colors land, against a pixel of
+                    // the canvas it is drawn on. Under a pixel, one pass carries
+                    // all three at the index the table prints. Over it, the ghost
+                    // is followed once per wavelength, each bent by its own glass.
+                    var parts = 0.0
+                    for channel in [0, 2] {
+                        let other = ghost.channels[channel]
+                        parts = max(parts, abs(other.sensorA - map.sensorA) * half
+                                    + abs(other.sensorB - map.sensorB) * simd_length(slope))
+                    }
+                    let channels = Lens.channelWavelengths
+                    var single = draw
+                    single.colors.0 = SIMD4(Float(level.x), 0, 0, Float(channels.x))
+                    single.colors.1 = SIMD4(0, Float(level.y), 0, Float(channels.y))
+                    single.colors.2 = SIMD4(0, 0, Float(level.z), Float(channels.z))
+                    single.soft = SIMD4(Float(soft.barrel), Float(soft.iris), Float(soft.floor),
+                                        Float(Int(OLLIN_LENS_WAVELENGTH_SLOTS) - 1))
+                    var spectrum: [OllinFlareGhostDraw] = []
+                    if parts > 1.5 * pixel / MetalRenderer.flarePixelSoftness,
+                       shown.peak >= MetalRenderer.flareColoredFrom {
+                        for (slot, wavelength) in Lens.spectrumWavelengths.enumerated() {
+                            var one = draw
+                            let tint = Lens.spectrumColors[slot] * level
+                            one.colors.0 = SIMD4(Float(tint.x), Float(tint.y), Float(tint.z), Float(wavelength))
+                            one.soft = SIMD4(Float(soft.barrel), Float(soft.iris), Float(soft.floor), Float(slot))
+                            spectrum.append(one)
+                        }
+                    }
+                    entries.append((single, spectrum, shown.peak, side))
+                }
+            }
+            // Over budget, the faintest ghosts give up their colors first.
+            var total = entries.reduce(0) { $0 + max(1, $1.spectrum.count) }
+            for index in entries.indices.sorted(by: { entries[$0].peak < entries[$1].peak })
+            where total > MetalRenderer.flareMaxTracedDraws && !entries[index].spectrum.isEmpty {
+                total -= entries[index].spectrum.count - 1
+                entries[index].spectrum = []
+            }
+            // One pass, cleared and resolved whether or not anything is drawn, so
+            // what the composite reads is always this frame's.
+            let tracePass = MTLRenderPassDescriptor()
+            tracePass.colorAttachments[0].texture = samples
+            tracePass.colorAttachments[0].resolveTexture = tracedLight
+            tracePass.colorAttachments[0].loadAction = .clear
+            tracePass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            tracePass.colorAttachments[0].storeAction = .multisampleResolve
+            if let traceEncoder = countedEncoder(cb, tracePass, caller: "lens flare rays") {
+                hasTraced = true
+                traceEncoder.setRenderPipelineState(traceState)
+                traceEncoder.setVertexBytes(&lens, length: MemoryLayout<OllinLensTraceUniforms>.stride, index: 0)
+                traceEncoder.setVertexTexture(visibility, index: 0)
+                traceEncoder.setFragmentBytes(&uniforms,
+                                              length: MemoryLayout<OllinLensFlareUniforms>.stride, index: 0)
+                // Ghosts of one grid size go out together, since they share triangles.
+                for side in MetalRenderer.flareGridSides {
+                    let draws = entries.filter { $0.side == side }
+                        .flatMap { $0.spectrum.isEmpty ? [$0.single] : $0.spectrum }
+                    guard !draws.isEmpty, let grid = flareGrid(side: side),
+                          let drawBuffer = device.makeBuffer(
+                            bytes: draws, length: draws.count * MemoryLayout<OllinFlareGhostDraw>.stride,
+                            options: .storageModeShared) else { continue }
+                    traceEncoder.setVertexBuffer(drawBuffer, offset: 0, index: 1)
+                    traceEncoder.drawIndexedPrimitives(type: .triangle, indexCount: grid.count,
+                                                       indexType: .uint16, indexBuffer: grid.indices,
+                                                       indexBufferOffset: 0, instanceCount: draws.count)
+                }
+                traceEncoder.endEncoding()
+            }
+        }
+        // Whether the composite has followed ghosts to add rides a slot the star
+        // leaves free.
+        uniforms.starTints.0.w = hasTraced ? 1 : 0
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
@@ -288,7 +809,11 @@ extension MetalRenderer {
         encoder.setRenderPipelineState(state)
         encoder.setFragmentTexture(resolved, index: 0)
         encoder.setFragmentTexture(visibility, index: 1)
-        encoder.setFragmentTexture(starExtent > 0 ? flareStar(blades: blades) : visibility, index: 2)
+        encoder.setFragmentTexture(starExtent > 0
+                                   ? flareStar(blades: blades, dust: flare.dust) : visibility,
+                                   index: 2)
+        encoder.setFragmentTexture(ghostLight, index: 3)
+        encoder.setFragmentTexture(hasTraced ? tracedLight : ghostLight, index: 4)
         encoder.setFragmentSamplerState(imageSampler, index: 0)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<OllinLensFlareUniforms>.stride,
                                  index: 0)

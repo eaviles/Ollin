@@ -50,9 +50,7 @@ efb8bedfd031  Docs/3D/HopfFibration.md:30  cannot find 'color' in scope
 b812ed7cfc27  Docs/3D/Instancing.md:63  cannot find type 'OllinMeshInstance' in scope
 fec8f6d8ac5d  Docs/3D/Instancing.md:82  cannot find 'stone' in scope
 43a39c2cea5f  Docs/3D/LensFlare.md:129  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
-90741f9fa00e  Docs/3D/LensFlare.md:146  cannot find 'lamp' in scope
 6ccc50251577  Docs/3D/LensFlare.md:15  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
-1ab33a663c8f  Docs/3D/LensFlare.md:40  cannot find 'myLens' in scope
 6b1f01db2204  Docs/3D/LineDrawing.md:40  cannot find 'mesh' in scope
 bec1cad205c6  Docs/3D/LineDrawing.md:53  for-in loop requires 'LineDrawing' to conform to 'Sequence'
 53deb147e8de  Docs/3D/LineDrawing.md:83  cannot find 'scene' in scope
