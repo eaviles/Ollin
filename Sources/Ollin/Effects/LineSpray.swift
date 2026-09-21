@@ -534,9 +534,20 @@ public final class LineSpray {
     }
 
     /// What the tests read: how many record buffers the ring holds, and the
-    /// point table's identity, so a rewrite in place can be told from a rebuild.
+    /// point table's and the particles' identity, so a rewrite in place can be
+    /// told from a rebuild.
     var ringDepth: Int { lineBuffers.count }
     var pointTable: AnyObject? { pointLines }
+    var particleStore: AnyObject? { points }
+
+    /// How many particles to make room for when a frame asks for `count`: a
+    /// sixteenth more, rounded up to a whole block, so a total that drifts from
+    /// frame to frame stays inside what is already there. Room is given back only
+    /// once a scene needs less than a quarter of it.
+    static func particleCapacity(for count: Int) -> Int {
+        let block = 4096
+        return (count + count / 16 + block - 1) / block * block
+    }
 
     /// Points per line for one pass: the same for every line, or shared by length.
     static func pointCounts(for lines: [SprayLine], sampling: Sampling) -> [Int] {
@@ -775,9 +786,16 @@ public final class LineSpray {
             lastSignature = signature
             accumulator.reset()
         }
-        if points == nil || pointsAllocated != count {
-            points = PingPong(count: count)
-            pointsAllocated = count
+        // The particles are kept from frame to frame and only ever grown. Under
+        // length sampling a scene whose lines stretch or whose surfaces breathe
+        // asks for a few points more or fewer every frame, and a buffer sized to
+        // the count exactly would be thrown away and made again each time, which
+        // at a few million points is hundreds of megabytes a frame. Nothing reads
+        // past `count`: both dispatches and the draw are handed it outright.
+        let wanted = LineSpray.particleCapacity(for: count)
+        if points == nil || count > pointsAllocated || wanted * 4 <= pointsAllocated {
+            points = PingPong(count: wanted)
+            pointsAllocated = wanted
         }
         guard let points else { return }
 

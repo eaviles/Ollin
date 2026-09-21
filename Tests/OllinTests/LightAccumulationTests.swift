@@ -489,6 +489,29 @@ struct LightAccumulationTests {
         stretching.stretch = { frame in 1 + Double(frame) * 0.5 }
         _ = try #require(OllinApp.image(of: stretching, frame: 2))
         #expect(stretching.spray.pointTable !== stretching.tableAtFirstDraw, "changed shares rebuild the point table")
+        // The particles are another matter. Shares that move change the total by
+        // a point or two every frame, and the buffer all of them land in is kept
+        // through that: made again for each new total, a few million points are
+        // hundreds of megabytes a frame.
+        #expect(stretching.totalsSeen.count > 1, "the total moved: \(stretching.totalsSeen.sorted())")
+        #expect(stretching.spray.particleStore === stretching.storeAtFirstDraw,
+                "the particles are kept while the total drifts")
+    }
+
+    /// Room for the particles is a little more than was asked for, in whole
+    /// blocks, so a total that drifts stays inside it, and it is handed back only
+    /// when a scene has shrunk to under a quarter of it.
+    @Test func sprayParticlesAreGivenRoomToDrift() {
+        for count in [1, 2400, 4096, 65_537, 6_000_000] {
+            let room = LineSpray.particleCapacity(for: count)
+            #expect(room >= count + count / 16, "\(count) points get \(room)")
+            #expect(room % 4096 == 0)
+            #expect(room <= count + count / 16 + 4096, "and no more than a block over: \(room)")
+            // What the same scene asks for a frame later, a little more or less,
+            // fits in what it already has.
+            #expect(LineSpray.particleCapacity(for: count - count / 64) * 4 > room)
+            #expect(count + count / 64 <= room)
+        }
     }
 
     /// `exportSettle` draws a written frame several times with the clock held: a
@@ -871,6 +894,9 @@ private final class MovingSpraySketch: Sketch {
     var stretch: (Int) -> Double = { _ in 1 }
     /// The point table as built in `setup()`, read on the first draw.
     var tableAtFirstDraw: AnyObject?
+    /// The particles as the first draw made them, and every total a draw asked for.
+    var storeAtFirstDraw: AnyObject?
+    var totalsSeen: Set<Int> = []
     override var canvasSize: CanvasSize { .square(96) }
 
     private func lines(frame: Int) -> [SprayLine] {
@@ -897,8 +923,11 @@ private final class MovingSpraySketch: Sketch {
         background(.black)
         camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
         if frameCount == 1 { tableAtFirstDraw = spray.pointTable }
-        spray.setLines(lines(frame: frameCount - 1))
+        let now = lines(frame: frameCount - 1)
+        spray.setLines(now)
         drawLineSpray(spray)
+        if frameCount == 1 { storeAtFirstDraw = spray.particleStore }
+        totalsSeen.insert(LineSpray.pointCounts(for: now, sampling: sampling).reduce(0, +))
         drawImage(spray.developed(exposure: 40).image, 0, 0)
     }
 }
