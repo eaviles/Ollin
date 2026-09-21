@@ -66,7 +66,8 @@ struct LensFlareRenderProbes {
     /// in linear light because that is where light adds: the same ghost over a
     /// lit floor and over a black wall rises by different amounts once encoded.
     private func ghostLight(_ lens: Lens, fStop: Double? = nil, sourceSize: Double = 0.015)
-        throws -> (total: Double, peak: Double, covered: Int, steepest: Double) {
+        throws -> (total: Double, peak: Double, covered: Int, steepest: Double,
+                   steepestAcross: Double, steepestUp: Double) {
         let stopped = fStop.map { lens.stopped(to: $0) } ?? lens
         let on = try #require(OllinApp.image(of: FlareProbe.make(
             occluder: .none, flare: true, sourceSize: sourceSize, amount: 0.12,
@@ -78,7 +79,7 @@ struct LensFlareRenderProbes {
             let v = Double(byte) / 255
             return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
         }
-        var total = 0.0, peak = 0.0, covered = 0, steepest = 0.0
+        var total = 0.0, peak = 0.0, covered = 0, across = 0.0, up = 0.0
         let width = on.width
         var rises = [Double](repeating: 0, count: a.count / 4)
         for i in stride(from: 0, to: a.count, by: 4) {
@@ -93,13 +94,17 @@ struct LensFlareRenderProbes {
         // lit bulb rises by nothing on it and by its whole level beside it, and
         // that step is the bulb's edge, which no source size softens.
         func plain(_ i: Int, _ j: Int) -> Bool {
-            (0..<3).allSatisfy { b[i * 4 + $0] < 48 && abs(Int(b[i * 4 + $0]) - Int(b[j * 4 + $0])) <= 1 }
+            for channel in 0..<3 {
+                let here = Int(b[i * 4 + channel]), there = Int(b[j * 4 + channel])
+                if here >= 48 || abs(here - there) > 1 { return false }
+            }
+            return true
         }
         for index in rises.indices where index % width != width - 1 && index + width < rises.count {
-            if plain(index, index + 1) { steepest = max(steepest, abs(rises[index + 1] - rises[index])) }
-            if plain(index, index + width) { steepest = max(steepest, abs(rises[index + width] - rises[index])) }
+            if plain(index, index + 1) { across = max(across, abs(rises[index + 1] - rises[index])) }
+            if plain(index, index + width) { up = max(up, abs(rises[index + width] - rises[index])) }
         }
-        return (total, peak, covered, steepest)
+        return (total, peak, covered, max(across, up), across, up)
     }
 
     /// A ghost is a picture taken with the source, so its edge is as soft as the
@@ -157,12 +162,14 @@ struct LensFlareRenderProbes {
     /// it over the same frame with a flare that leaves it out, so the ghosts
     /// cancel and only the extra is left.
     private func extraLight(streak: Double = 0, halo: Double = 0, dirt: Double = 0,
-                            occluder: FlareProbe.Occluder = .none)
+                            occluder: FlareProbe.Occluder = .none, haloSize: Double = 0.38,
+                            lens: Lens? = nil)
         throws -> (rise: [Double], width: Int, height: Int) {
         let with = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: occluder, flare: true, streak: streak, halo: halo, dirt: dirt), frame: 1))
+            occluder: occluder, flare: true, lens: lens, streak: streak, halo: halo, dirt: dirt,
+            haloSize: haloSize), frame: 1))
         let without = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: occluder, flare: true), frame: 1))
+            occluder: occluder, flare: true, lens: lens), frame: 1))
         let a = pixels(of: with), b = pixels(of: without)
         func linear(_ byte: UInt8) -> Double {
             let v = Double(byte) / 255
@@ -173,6 +180,63 @@ struct LensFlareRenderProbes {
             rise[i / 4] = (0..<3).map { max(0, linear(a[i + $0]) - linear(b[i + $0])) }.max() ?? 0
         }
         return (rise, with.width, with.height)
+    }
+
+    /// How far the ghosts' light is spread each way about its own middle, as the
+    /// variance of where it falls, weighted by how much falls there.
+    private func ghostSpread(_ lens: Lens) throws -> (across: Double, up: Double) {
+        let on = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: true, sourceSize: 0.004, amount: 0.12, lens: lens), frame: 1))
+        let off = try #require(OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: false, sourceSize: 0.004, lens: lens), frame: 1))
+        let a = pixels(of: on), b = pixels(of: off)
+        var total = 0.0, sumX = 0.0, sumY = 0.0, sumXX = 0.0, sumYY = 0.0
+        for y in 0..<on.height {
+            for x in 0..<on.width {
+                let i = (y * on.width + x) * 4
+                let rise = max(0, Double(a[i + 1]) - Double(b[i + 1]))
+                total += rise
+                sumX += rise * Double(x); sumY += rise * Double(y)
+                sumXX += rise * Double(x * x); sumYY += rise * Double(y * y)
+            }
+        }
+        guard total > 0 else { return (0, 0) }
+        let meanX = sumX / total, meanY = sumY / total
+        return (sumXX / total - meanX * meanX, sumYY / total - meanY * meanY)
+    }
+
+    /// An anamorphic front group stretches what forms behind it sideways, and
+    /// only sideways: the ghosts spread further across the frame and no further
+    /// up it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anAnamorphicLensStretchesTheGhostsSideways() throws {
+        let lens = Lens.doubleGauss.multicoated().stopped(to: 8)
+        let plain = try ghostSpread(lens)
+        let squeezed = try ghostSpread(lens.anamorphic(squeeze: 2))
+        #expect(plain.across > 0 && plain.up > 0)
+        #expect(squeezed.across > plain.across * 1.6,
+                "across: \(squeezed.across) squeezed against \(plain.across)")
+        #expect(squeezed.up < plain.up * 1.3,
+                "up: \(squeezed.up) squeezed against \(plain.up)")
+    }
+
+    /// Behind an anamorphic front group a round source is still round on the
+    /// frame, so it softens a ghost's edge by as much across as up. Left as a disc
+    /// on the sensor it would come out twice as wide as tall once the picture is
+    /// stretched back, and the edges facing sideways would be twice as soft: half
+    /// the step from one pixel to the next.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anAnamorphicGhostIsAsSoftAcrossAsUp() throws {
+        let lens = Lens.doubleGauss.multicoated().stopped(to: 8)
+        let plain = try ghostLight(lens, sourceSize: 0.03)
+        let squeezed = try ghostLight(lens.anamorphic(squeeze: 2), sourceSize: 0.03)
+        let before = plain.steepestAcross / plain.steepestUp
+        let after = squeezed.steepestAcross / squeezed.steepestUp
+        #expect(plain.steepestUp > 0 && squeezed.steepestUp > 0)
+        // Measured: 0.89 of the plain lens's own ratio, and 0.53 of it with every
+        // edge left as soft as the sensor has it, so the line sits between them.
+        #expect(after > before * 0.72,
+                "across over up: \(after) squeezed against \(before) plain")
     }
 
     /// Where the probe's lamp sits on the frame, as fractions of it.
@@ -210,6 +274,36 @@ struct LensFlareRenderProbes {
         #expect(above(0.2) < onRing / 6, "and the inside of it is dark: \(above(0.2))")
     }
 
+    /// The halo is drawn as something formed inside the lens, so an anamorphic
+    /// front group stretches it sideways with the ghosts: it crosses the lamp's
+    /// own row twice as far out as it stands above the lamp, and where a round
+    /// ring would cross that row there is nothing.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anAnamorphicLensStretchesTheHalo() throws {
+        let lens = Lens.heliar.multicoated().stopped(to: 4.5).anamorphic(squeeze: 2)
+        let (rise, width, height) = try extraLight(halo: 1, haloSize: 0.2, lens: lens)
+        let row = Int(lampAt.y * Double(height)), column = Int(lampAt.x * Double(width))
+        func beside(_ fraction: Double) -> Double {
+            let x = Int((lampAt.x - fraction) * Double(width))
+            guard x >= 0 else { return 0 }
+            var most = 0.0
+            for y in (row - 1)...(row + 1) { most = max(most, rise[y * width + x]) }
+            return most
+        }
+        func above(_ fraction: Double) -> Double {
+            let y = Int((lampAt.y - fraction) * Double(height))
+            guard y >= 0 else { return 0 }
+            var most = 0.0
+            for x in (column - 1)...(column + 1) { most = max(most, rise[y * width + x]) }
+            return most
+        }
+        let up = [0.19, 0.2, 0.21].map(above).max() ?? 0
+        let out = [0.39, 0.4, 0.41].map(beside).max() ?? 0
+        #expect(up > 0.004, "the ring stands its radius above the lamp: \(up)")
+        #expect(out > 0.004, "and twice that beside it: \(out)")
+        #expect(beside(0.2) < out / 4, "with nothing where a round ring would cross: \(beside(0.2))")
+    }
+
     /// Dirt is lit by the light it sits in front of, so it follows how much of
     /// that light the camera can see, like the rest of the flare: there with the
     /// lamp clear, gone with the lamp hidden.
@@ -219,6 +313,34 @@ struct LensFlareRenderProbes {
         let hidden = try extraLight(dirt: 1, occluder: .full).rise.reduce(0, +)
         #expect(clear > 1, "a dirty lens shows its dirt toward a light: \(clear)")
         #expect(hidden < clear * 0.1, "and not once the light is hidden: \(hidden) against \(clear)")
+    }
+
+    /// A flare is light arriving, so it can only add: no pixel of the frame is
+    /// darker with it than without. What broke this once was a sliver of a ghost's
+    /// mesh read past its own edge, which came back as less than no light and put
+    /// single black pixels in a veil.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theFlareNeverTakesLightAway() throws {
+        var darkened = 0, worst = 0
+        for lens in [Lens.doubleGauss.multicoated().stopped(to: 11),
+                     Lens.doubleGauss.multicoated().stopped(to: 11).anamorphic(squeeze: 2),
+                     Lens.heliar.multicoated()] {
+            let on = try #require(OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, sourceSize: 0.02, amount: 2, lens: lens), frame: 1))
+            let off = try #require(OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: false, sourceSize: 0.02, lens: lens), frame: 1))
+            let a = pixels(of: on), b = pixels(of: off)
+            for i in stride(from: 0, to: a.count, by: 4) {
+                // Two levels of room for the present pass's dither.
+                var drop = 0
+                for channel in 0..<3 {
+                    let without = Int(b[i + channel]), with = Int(a[i + channel])
+                    drop = max(drop, without - with)
+                }
+                if drop > 2 { darkened += 1; worst = max(worst, drop) }
+            }
+        }
+        #expect(darkened == 0, "\(darkened) pixels are darker with the flare on, by up to \(worst) levels")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -312,14 +434,15 @@ private final class FlareProbe: Sketch {
     var sourceSize = 0.015
     var amount = 1.0
     var lens: Lens?
-    var streak = 0.0, halo = 0.0, dirt = 0.0
+    var streak = 0.0, halo = 0.0, dirt = 0.0, haloSize = 0.38
 
     static func make(occluder: Occluder, flare: Bool, cancel: Bool = false,
                      fStop: Double = 4.5, star: Double = 0, blades: Int = 6,
                      sourceSize: Double = 0.015, amount: Double = 1,
                      lens: Lens? = nil, streak: Double = 0, halo: Double = 0,
-                     dirt: Double = 0) -> FlareProbe {
+                     dirt: Double = 0, haloSize: Double = 0.38) -> FlareProbe {
         let probe = FlareProbe()
+        probe.haloSize = haloSize
         probe.lens = lens
         probe.streak = streak
         probe.halo = halo
@@ -353,7 +476,7 @@ private final class FlareProbe: Sketch {
         if wantsFlare {
             lensFlare(LensFlare(lens: lens ?? Lens.heliar.multicoated().stopped(to: fStop),
                                 amount: amount, star: star, streak: streak, halo: halo,
-                                dirt: dirt, sourceSize: sourceSize))
+                                haloSize: haloSize, dirt: dirt, sourceSize: sourceSize))
         }
         if cancels { noLensFlare() }
 

@@ -4468,15 +4468,17 @@ struct LSystemModule: Equatable, Sendable
   let letter: Character
   let parameters: [Double]
 struct Lens: Equatable, Sendable
+  func anamorphic(squeeze: Double = default) -> Lens
   func multicoated(from: Double = default, to: Double = default) -> Lens
   func stopped(to: Double) -> Lens
-  init(interfaces: [LensInterface], coatingWavelength: Double = default, fStop: Double? = default)
+  init(interfaces: [LensInterface], coatingWavelength: Double = default, fStop: Double? = default, squeeze: Double = default)
   static let doubleGauss: Lens
   static let heliar: Lens
   static let standard: Lens
   var coatingWavelength: Double { get set }
   var fStop: Double? { get set }
   var interfaces: [LensInterface] { get set }
+  var squeeze: Double { get set }
 struct LensFlare: Equatable, Sendable
   init(lens: Lens = default, amount: Double = default, star: Double = default, starSize: Double = default, wear: Double = default, streak: Double = default, streakLength: Double = default, streakAngle: Double = default, streakTint: Color = default, halo: Double = default, haloSize: Double = default, dirt: Double = default, reach: Double = default, sourceSize: Double = default)
   var amount: Double { get set }

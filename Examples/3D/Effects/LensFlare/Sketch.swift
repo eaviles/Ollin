@@ -43,7 +43,10 @@ import Ollin
 /// the fans add up to one long thin line through the lamp. `dirt` is grime on the front element, so far
 /// out of focus that every speck is a soft picture of the iris, glowing where it
 /// sits near the lamp. `halo` is the thin rainbow ring around a light, which is a
-/// look and not optics, and the reference says so.
+/// look and not optics, and the reference says so. `squeeze` puts an anamorphic
+/// front group on the lens: at 2 the ghosts and the star stretch two to one
+/// sideways. It wants the streak with it, since the same cylindrical glass
+/// throws both.
 ///
 /// Watch the lamp go behind the slab. The flare does not switch off: it fades
 /// as the slab covers the source, because the strength follows how much of the
@@ -100,6 +103,9 @@ final class LensFlare: Sketch {
     @Param(0...1, icon: "aqi.low", group: "Extras")
     var dirt = 0.0
 
+    @Param(1...2, icon: "arrow.left.and.right", group: "Extras")
+    var squeeze = 1.0
+
     @Param(0.002...0.06, icon: "circle.dashed", group: "Flare")
     var sourceSize = 0.006
 
@@ -122,7 +128,8 @@ final class LensFlare: Sketch {
         // real point light, so it lights the room as well as flaring.
         let lamp = Vector3(-2.9 * cos(time * 0.35), 3.35 + 0.45 * sin(time * 0.27), -2.0)
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
-        let lens = multicoated ? glass.lens.multicoated() : glass.lens
+        let coated = multicoated ? glass.lens.multicoated() : glass.lens
+        let lens = coated.anamorphic(squeeze: squeeze)
         if flare {
             // The bulb is a small one, a few thousandths of the frame's height
             // across as the camera sees it. A ghost is a picture

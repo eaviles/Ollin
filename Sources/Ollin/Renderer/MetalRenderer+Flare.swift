@@ -411,7 +411,11 @@ extension MetalRenderer {
                                       Color.srgbToLinear(light.color.blue) * intensity)
             let weight = 0.2126 * color.x + 0.7152 * color.y + 0.0722 * color.z
             guard weight > 1e-4 else { continue }
-            sources.append(FlareSource(angle: frame * tanHalfFieldOfView, frame: frame,
+            // An anamorphic front group squeezes the view sideways before the lens
+            // sees it, so the light arrives at the lens itself from a shallower
+            // angle across than it stands at on the frame.
+            let seen = SIMD2(frame.x / flare.lens.squeeze, frame.y)
+            sources.append(FlareSource(angle: seen * tanHalfFieldOfView, frame: frame,
                                        depth: testDepth, color: color, weight: weight))
         }
         if sources.count > Int(OLLIN_MAX_FLARE_LIGHTS) {
@@ -505,6 +509,24 @@ extension MetalRenderer {
                 }
             }
         }
+        withUnsafeMutablePointer(to: &uniforms.bladeStretch) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self,
+                                   capacity: Int(OLLIN_MAX_FLARE_BLADES) / 4) { buffer in
+                // A step `d` along a normal `n` on the sensor is `(s n.x, n.y) d`
+                // on the frame, and the edge has turned with the stretch, so the
+                // distance to it there is `d` over the length of `(n.x / s, n.y)`.
+                let squeeze = max(flare.lens.squeeze, 1)
+                func stretch(_ k: Int) -> Float {
+                    guard k < blades else { return 1 }
+                    let turn = 2 * Double.pi * Double(k) / Double(blades)
+                    return Float(1 / (pow(cos(turn) / squeeze, 2) + pow(sin(turn), 2)).squareRoot())
+                }
+                for group in 0..<(Int(OLLIN_MAX_FLARE_BLADES) / 4) {
+                    buffer[group] = SIMD4(stretch(group * 4), stretch(group * 4 + 1),
+                                          stretch(group * 4 + 2), stretch(group * 4 + 3))
+                }
+            }
+        }
         withUnsafeMutablePointer(to: &uniforms.starTints) { tuple in
             tuple.withMemoryRebound(to: simd_float4.self,
                                    capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
@@ -538,7 +560,8 @@ extension MetalRenderer {
                                     Float(max(flare.sourceSize * 2 * 0.6, thinnest)))
         uniforms.halo = SIMD4(Float(flare.halo * MetalRenderer.flareHaloGain),
                               Float(flare.haloSize * 2),
-                              Float(flare.haloSize * 2 * MetalRenderer.flareHaloWidth), 0)
+                              Float(flare.haloSize * 2 * MetalRenderer.flareHaloWidth),
+                              Float(flare.lens.squeeze))
         let speckCount = Int((flare.dirt * Double(MetalRenderer.flareDirtSpecks)).rounded())
         uniforms.dirt = SIMD4(Float(speckCount), Float(MetalRenderer.flareDirtGain),
                               Float(MetalRenderer.flareDirtReach), 0)
@@ -559,6 +582,7 @@ extension MetalRenderer {
         // A pixel of the canvas the ghosts are drawn on, which is the half-size one.
         let pixel = MetalRenderer.flarePixelSoftness * abs(sensorPerUnit) * 2 / Double(ghostHeight)
         let ghostCount = optics.ghosts.count
+        let squeeze = max(flare.lens.squeeze, 1)
         let widestAngle = sources.map { simd_length($0.angle) }.max() ?? 0
         var shares = [Double](repeating: 1, count: Int(OLLIN_MAX_FLARE_GHOSTS))
         // How much of each ghost is drawn by following rays, from 1 (all of it)
@@ -605,8 +629,11 @@ extension MetalRenderer {
                 // Both tests dim a ghost smaller than the source by the ratio of
                 // the areas. Only the tighter of the two should: the wider
                 // opening has the narrower one inside it.
-                let pupilShare = overPupil > 0 ? min(1, pow(optics.pupilRadius / overPupil, 2)) : 1
-                let irisShare = overIris > 0 ? min(1, pow(inner / overIris, 2)) : 1
+                // Behind an anamorphic front group the source is an ellipse
+                // `1 / squeeze` as wide as it is tall, so that much less in area,
+                // which is the ratio the shader's own cap uses.
+                let pupilShare = overPupil > 0 ? min(1, squeeze * pow(optics.pupilRadius / overPupil, 2)) : 1
+                let irisShare = overIris > 0 ? min(1, squeeze * pow(inner / overIris, 2)) : 1
                 spreads[index * 3 + channel] = SIMD4(Float(overPupil), Float(overIris),
                                                      Float(1 / max(pupilShare, irisShare, 1e-12)),
                                                      Float(rows))
@@ -646,8 +673,11 @@ extension MetalRenderer {
                 // The least a bundle of rays can be squeezed to: the source's own
                 // picture on the sensor, and a pixel, however hard the lens
                 // focuses them. It is what keeps a caustic finite.
+                // The squeezed source's picture is `1 / squeeze` the area, and this
+                // floor is one on area, so each of its two lengths gives up the
+                // root of that.
                 let blur = (pow(sourceAngle * own.sensorB, 2) + pow(pixel, 2)).squareRoot()
-                let narrow = blur / optics.pupilRadius
+                let narrow = blur / optics.pupilRadius / squeeze.squareRoot()
                 softness[index] = (overPupils[1] / optics.pupilRadius, overIrises[1],
                                    narrow * max(abs(ownScale), narrow))
             }
@@ -790,7 +820,9 @@ extension MetalRenderer {
         if var lens = flareLens.trace, let traceState = try? pipeline(.flareGhostTrace),
            let samples = flareSamples(width: ghostWidth, height: ghostHeight) {
             lens.frame.x = Float(sensorPerUnit)
-            lens.frame.y = Float(lensAspect)
+            // The squeeze rides the aspect: a ghost's place across the sensor is
+            // stretched back out by it on the way to the frame.
+            lens.frame.y = Float(lensAspect / flare.lens.squeeze)
             // Each ghost in its one-pass form, and in its seven-pass form when its
             // colors part enough to need it.
             var entries: [(single: OllinFlareGhostDraw, spectrum: [OllinFlareGhostDraw],
@@ -812,7 +844,8 @@ extension MetalRenderer {
                     let center = SIMD2<Double>.zero
                     // Rays enough that a cell stays a few pixels across on the
                     // canvas, whatever the ghost magnifies the opening by.
-                    let across = 2 * half * abs(held(ghost.toSensor.a)) / (pixel / MetalRenderer.flarePixelSoftness)
+                    let across = 2 * half * abs(held(ghost.toSensor.a)) * flare.lens.squeeze
+                        / (pixel / MetalRenderer.flarePixelSoftness)
                     let side = MetalRenderer.flareGridSides.first {
                         Double($0) * MetalRenderer.flareCellPixels >= across }
                         ?? MetalRenderer.flareGridSides[MetalRenderer.flareGridSides.count - 1]

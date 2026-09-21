@@ -1654,6 +1654,12 @@ typedef struct {
     simd_float4 meeting[OLLIN_MAX_FLARE_GHOSTS];
     // The outward normals of the iris's edges, two to a vector, `iris.x` of them.
     simd_float4 blades[OLLIN_MAX_FLARE_BLADES / 2];
+    // Per edge, four to a vector: how much further a point is from that edge on
+    // the frame than on the sensor. It is 1 for every edge of a plain lens. Behind
+    // an anamorphic front group the frame is the sensor stretched sideways by the
+    // squeeze, so an edge that faces sideways is that much further away, one that
+    // faces up not at all, and the rest between.
+    simd_float4 bladeStretch[OLLIN_MAX_FLARE_BLADES / 4];
     // Per light: xy = the angle the light arrives at the front of the lens, in
     // radians; zw = where it sits on the frame, in y-normalized coordinates.
     simd_float4 lights[OLLIN_MAX_FLARE_LIGHTS];
@@ -1685,7 +1691,9 @@ typedef struct {
     simd_float4 streakTint;  // rgb = the filter glass's color, linear, w = the
                              // streak's half thickness, in y-normalized units
     simd_float4 halo;        // x = the ring's level (0 = none), y = its radius, in
-                             // y-normalized units, z = its width, w unused
+                             // y-normalized units, z = its width, w = how much an
+                             // anamorphic front group squeezes the picture
+                             // sideways (1 = an ordinary lens)
     simd_float4 dirt;        // x = how many specks there are (0 = a clean lens),
                              // y = what a speck is worth beside its light, z = how
                              // far from the light a speck's glow has halved, in

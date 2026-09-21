@@ -25,31 +25,81 @@
 // How far a point on the iris plane is from the edge of the opening, negative
 // inside. A round iris is a circle; a bladed one is a regular polygon, which is
 // what gives a stopped-down ghost its flat sides. The polygon is the region
-// every blade leaves clear, so the distance is the largest of the distances to
-// the blades' edges, and the edge normals arrive already worked out: a handful
-// of dot products, and no angle to fold.
+// every blade leaves clear, so inside it, and outside beside one edge, the
+// distance is the largest of the distances to the blades' edges, and the edge
+// normals arrive already worked out: a handful of dot products, and no angle to
+// fold.
 //
-// `facing` comes back as the outward normal of the edge the point is nearest,
-// which is what lets a caller move the point a little and have the new distance
-// for one dot product instead of asking again.
+// Outside past a corner, where two edges both call the point outside, the
+// nearest thing is the corner itself. Taking the larger of the two there carries
+// the corner outward as a sharp miter, which a wide soft rim shows as a spoke
+// from every corner, and draws a round source seen through a small opening as a
+// polygon. The true distance to the corner is one root from the two the walk
+// already has, and it rounds both.
+//
+// `stretched` measures all of this on the frame rather than the sensor, for a
+// lens with an anamorphic front group. The frame is the sensor stretched
+// sideways, and that is where a round source is round, so it is where an edge's
+// softness is one number whichever way the edge faces. Each blade's distance is
+// carried there before the largest is taken, since the blade a point is nearest
+// on the frame need not be the one it is nearest on the sensor, and choosing
+// first and carrying after leaves a crease along every corner's bisector. (A
+// round iris stays a plain distance on the sensor: its edge turns smoothly, and
+// the caller narrows the source along it, see `ollin_flare_narrowed`.)
+//
+// `carry` comes back as what a small step across the iris plane adds to the
+// distance, as a vector to dot the step with, which is what lets a caller move
+// the point a little and have the new distance for one dot product instead of
+// asking again. Its length is how much further the frame's distance runs than
+// the sensor's: 1 for a plain lens. That shortcut is exact only while the moved
+// point is still beside the same edge and short of any corner, and `slack` is
+// how far the point can move and be sure of both. Past it the caller asks again:
+// a ghost near focus parts its colors by more than its own width, and carrying
+// the distance that far draws a crease from every corner. (A round iris gives no
+// slack, asking again there being one length.)
 static inline float ollin_flare_iris_distance(float2 p, float inner,
                                               constant OllinLensFlareUniforms &flare,
-                                              thread float2 &facing) {
+                                              bool stretched, thread float2 &carry,
+                                              thread float &slack) {
     int count = int(flare.iris.x);
+    slack = 0.0;
     if (count < 3) {
         float out = length(p);
-        facing = out > 1e-6 ? p / out : float2(1.0, 0.0);
+        carry = out > 1e-6 ? p / out : float2(1.0, 0.0);
         return out - inner;
     }
-    float reach = -1e9;
-    facing = float2(1.0, 0.0);
+    float first = -1e9, second = -1e9, firstOwn = 1.0, secondOwn = 1.0;
+    float2 firstNormal = float2(1.0, 0.0), secondNormal = firstNormal;
     for (int k = 0; k < count; k++) {
         float4 pair = flare.blades[k / 2];
         float2 normal = (k & 1) == 0 ? pair.xy : pair.zw;
-        float along = dot(p, normal);
-        if (along > reach) { reach = along; facing = normal; }
+        float own = stretched ? flare.bladeStretch[k / 4][k & 3] : 1.0;
+        float along = (dot(p, normal) - inner) * own;
+        if (along > first) {
+            second = first; secondNormal = firstNormal; secondOwn = firstOwn;
+            first = along; firstNormal = normal; firstOwn = own;
+        } else if (along > second) {
+            second = along; secondNormal = normal; secondOwn = own;
+        }
     }
-    return reach - inner;
+    carry = firstNormal * firstOwn;
+    float squeeze = stretched ? max(flare.halo.w, 1.0) : 1.0;
+    // A step moves every blade's distance by no more than its length times the
+    // squeeze, so this far keeps the same blade first and the second one inside.
+    slack = max(min(0.5 * (first - second), -second), 0.0) / squeeze;
+    if (second <= 0.0) { return first; }
+    // Past a corner. The two edges' normals as they stand on the frame, of unit
+    // length there, and the point written as so much of each.
+    float2 one = float2(firstNormal.x / squeeze, firstNormal.y) * firstOwn;
+    float2 other = float2(secondNormal.x / squeeze, secondNormal.y) * secondOwn;
+    float between = dot(one, other);
+    if (second <= between * first) { return first; }
+    float rest = max(1.0 - between * between, 1e-6);
+    float away = sqrt(max(first * first + second * second - 2.0 * between * first * second, 0.0) / rest);
+    float2 toward = ((first - between * second) * one + (second - between * first) * other)
+                  / (rest * max(away, 1e-9));
+    carry = float2(toward.x * squeeze, toward.y);
+    return away;
 }
 
 // How much of a disc of radius `disc` lies inside an opening of radius
@@ -72,11 +122,44 @@ static inline float ollin_flare_iris_distance(float2 p, float inner,
 // areas), nothing well outside, and between them a smooth ramp exactly as wide
 // as the smaller of the two circles, centered where the larger one's edge is.
 // It stays within a twentieth of the true area across the ramp.
-static inline float ollin_flare_overlap(float apart, float opening, float disc) {
-    float larger = max(opening, disc), smaller = max(min(opening, disc), 1e-9);
-    float level = opening >= disc ? 1.0 : (opening * opening) / (disc * disc);
+//
+// Behind an anamorphic front group the source's disc is not a disc. The view
+// reaches the lens squeezed sideways, so a round source is an ellipse there,
+// `1 / squeeze` as wide as it is tall, and it is that ellipse every edge is seen
+// through. `narrow` is how much less than its full radius the ellipse reaches in
+// the direction being asked about (see `ollin_flare_narrowed`), and its area is
+// `1 / squeeze` of the disc's, which is what the cap is the ratio to. Stretched
+// back out for showing, the rim is then as soft across as it is up and down, and
+// a picture of a round source is round.
+static inline float ollin_flare_overlap(float apart, float opening, float disc,
+                                        float narrow, float squeeze) {
+    float reach = disc * narrow;
+    float larger = max(opening, reach), smaller = max(min(opening, reach), 1e-9);
+    float level = min(1.0, squeeze * (opening * opening) / max(disc * disc, 1e-18));
     float t = clamp((larger - apart) / smaller, -1.0, 1.0);
     return level * (0.5 + t * (0.75 - 0.25 * t * t));
+}
+
+static inline float ollin_flare_overlap(float apart, float opening, float disc) {
+    return ollin_flare_overlap(apart, opening, disc, 1.0, 1.0);
+}
+
+// How far the squeezed source reaches in one direction, as a share of its full
+// radius: between `1 / squeeze` across and 1 up and down. Which measure of an
+// ellipse is wanted depends on which of the two shapes is the larger. A source
+// smaller than the opening softens the opening's edge, and what softens an edge
+// is how far the ellipse reaches along that edge's `normal`. A source larger than
+// the opening makes the ghost a picture of itself, and the edge of that picture
+// is the ellipse's own outline in the direction `toward` the pixel. The two agree
+// on both axes and part between them, so one is faded into the other as the
+// source outgrows the opening.
+static inline float ollin_flare_narrowed(float2 normal, float2 toward, float opening,
+                                         float disc, float squeeze) {
+    float along = length(float2(normal.x / squeeze, normal.y));
+    float out = length(toward);
+    float outline = out > 1e-9 ? out / length(float2(toward.x * squeeze, toward.y)) : 1.0;
+    float picture = smoothstep(0.7, 1.4, disc * along / max(opening, 1e-9));
+    return mix(along, outline, picture);
 }
 
 // How much of each source the camera can actually see, one light per pixel of a
@@ -142,9 +225,13 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
     float rows = max(flare.iris.w, 1.0);
     float columns = float(coating.get_width());
     // Where this pixel sits on the frame, and where that is on the sensor in
-    // millimeters.
+    // millimeters. Behind an anamorphic front group the sensor holds the picture
+    // squeezed sideways, so a step across the frame is a smaller step across it.
+    float squeeze = max(flare.halo.w, 1.0);
+    bool anamorphic = squeeze > 1.0;
+    bool bladed = flare.iris.x >= 3.0;
     float2 screen = float2((in.uv.x * 2.0 - 1.0) * aspect, 1.0 - in.uv.y * 2.0);
-    float2 here = screen * sensor;
+    float2 here = float2(screen.x / squeeze, screen.y) * sensor;
 
     float3 sum = float3(0.0);
     for (int i = 0; i < flare.lightCount; i++) {
@@ -169,8 +256,9 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
             if (outside > spread.w) { continue; }
             // Forwards again to the iris, which is what shapes the ghost.
             float2 stop = green.z * entry + green.w * angle;
-            float2 facing;
-            float edgeGreen = ollin_flare_iris_distance(stop, inner, flare, facing);
+            float2 carry;
+            float slack;
+            float edgeGreen = ollin_flare_iris_distance(stop, inner, flare, anamorphic, carry, slack);
 
             // Glass bends each color a little differently, so the three channels'
             // ghosts differ in size and place by a few percent, and where they
@@ -179,7 +267,7 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
             // the per-channel edges are worked out in the rim alone.
             float3 cover = float3(0.0);
             float room = flare.spreads[g * 3 + 2].w;
-            if (room > 0.0 && edgeGreen < -(spread.y + room * inner)
+            if (room > 0.0 && edgeGreen < -(spread.y + room * inner * squeeze)
                 && outside < pupil - spread.x - room * pupil) {
                 for (int c = 0; c < 3; c++) {
                     float scale = flare.ghosts[g * 3 + c].x;
@@ -190,15 +278,32 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
                     float4 map = flare.ghosts[g * 3 + c];
                     float4 own = flare.spreads[g * 3 + c];
                     float2 from = (here - map.y * angle) / map.x;
-                    float front = ollin_flare_overlap(length(from), pupil, own.x);
+                    float out = length(from);
+                    float2 radial = out > 1e-9 ? from / out : float2(0.0, 1.0);
+                    float front = anamorphic
+                        ? ollin_flare_overlap(out, pupil, own.x,
+                                              ollin_flare_narrowed(radial, from, pupil, own.x, squeeze), squeeze)
+                        : ollin_flare_overlap(out, pupil, own.x);
                     // The other two channels cross the iris a little way from
-                    // where green does, and the edge green is nearest is the edge
-                    // they are nearest too, so their distance to it is green's
-                    // moved along that edge's normal: a dot product, where asking
-                    // the opening again would be a walk round every blade.
+                    // where green does, and while that is within green's slack
+                    // the edge green is nearest is the edge they are nearest too,
+                    // so their distance to it is green's carried that little way:
+                    // a dot product, where asking the opening again is a walk
+                    // round every blade.
                     float2 at = map.z * from + map.w * angle;
-                    float edge = edgeGreen + dot(facing, at - stop);
-                    float through = ollin_flare_overlap(max(inner + edge, 0.0), inner, own.y);
+                    float2 moved = at - stop, facing = carry;
+                    float edge = edgeGreen + dot(carry, moved);
+                    if (c != 1 && dot(moved, moved) > slack * slack) {
+                        float unused;
+                        edge = ollin_flare_iris_distance(at, inner, flare, anamorphic, facing, unused);
+                    }
+                    // A bladed iris has its distance on the frame already, where
+                    // the source is round; a round one narrows the source instead.
+                    float through = anamorphic
+                        ? ollin_flare_overlap(max(inner + edge, 0.0), inner, own.y,
+                                              bladed ? 1.0 : ollin_flare_narrowed(facing, at, inner, own.y, squeeze),
+                                              squeeze)
+                        : ollin_flare_overlap(max(inner + edge, 0.0), inner, own.y);
                     // A ghost spreads the light it carries over the square of its
                     // magnification, which is why the small ones are the bright ones.
                     cover[c] = front * through * own.z / max(map.x * map.x, 1e-8);
@@ -217,7 +322,12 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
             // is wider than the opening and `entry` itself can lie far outside
             // it. The middle of that stretch is the ray to read, and its angle
             // moves by what it takes to bring it there.
-            float middle = 0.5 * (max(-pupil, outside - spread.x) + min(pupil, outside + spread.x));
+            float across = spread.x;
+            if (anamorphic && outside > 1e-9) {
+                // The squeezed source reaches less far across the opening than up it.
+                across *= outside / length(float2(entry.x * squeeze, entry.y));
+            }
+            float middle = 0.5 * (max(-pupil, outside - across) + min(pupil, outside + across));
             float2 passing = outside > 1e-6 ? entry * (middle / outside) : entry;
             float2 arriving = angle;
             if (abs(green.y) > 1e-6) { arriving += (entry - passing) * (green.x / green.y); }
@@ -249,7 +359,8 @@ fragment float4 ollin_flare_ghosts(PresentOut in [[stage_in]],
                 if (meeting.y < 1.5) {
                     float2 center = meeting.z * here;
                     float2 unused;
-                    float edge = ollin_flare_iris_distance(center, inner, flare, unused);
+                    float spare;
+                    float edge = ollin_flare_iris_distance(center, inner, flare, false, unused, spare);
                     both = ollin_flare_overlap(max(inner + edge, 0.0), inner, meeting.w);
                 } else {
                     float2 center = entry - meeting.z * stop;
@@ -430,8 +541,15 @@ struct OllinFlareTraceOut {
     float4 position [[position]];
     float2 aperture;
     float relative;
-    float3 light;
-    float valid;
+    // The pass is multisampled, and a plain varying is worked out at the middle
+    // of the pixel even when the triangle covers only a sample in its corner. For
+    // a sliver beside a lost ray, where the light runs from nothing to its whole
+    // level across less than a pixel, that reads the slope on past the triangle
+    // and comes back with less than no light: a black pixel in the middle of a
+    // veil. Read at the middle of the samples it does cover, the light stays
+    // between what its three rays carry.
+    float3 light [[centroid_perspective]];
+    float valid [[centroid_perspective]];
     // What the fragment needs of its ghost, carried flat so that a pixel does not
     // have to fetch the ghost's whole record to read four numbers of it: how soft
     // the barrel's edge and the iris's are, the ringing scale, and the three
@@ -549,20 +667,6 @@ static inline float ollin_flare_edge_pattern(float w, float blur) {
     return 1.0 + tail + damp * ((f - g) * sin(phase) - (f + g) * cos(phase));
 }
 
-// The iris's edge again, for a pixel that only wants the distance: the same walk
-// round the blades with nothing kept but the largest.
-static inline float ollin_flare_iris_edge(float2 p, float inner,
-                                          constant OllinLensFlareUniforms &flare) {
-    int count = int(flare.iris.x);
-    if (count < 3) { return length(p) - inner; }
-    float reach = -1e9;
-    for (int k = 0; k < count; k++) {
-        float4 pair = flare.blades[k / 2];
-        reach = max(reach, dot(p, (k & 1) == 0 ? pair.xy : pair.zw));
-    }
-    return reach - inner;
-}
-
 fragment float4 ollin_flare_trace_fragment(OllinFlareTraceOut in [[stage_in]],
                                            constant OllinLensFlareUniforms &flare [[buffer(0)]]) {
     // A pixel the ghost does not reach is thrown away as early as that is known.
@@ -575,19 +679,44 @@ fragment float4 ollin_flare_trace_fragment(OllinFlareTraceOut in [[stage_in]],
     if (in.valid <= 0.0) { discard_fragment(); }
     // Stopped by the barrel: past the rim of some element along the way. The
     // edge is as soft as the source is wide, like every other edge of a ghost.
-    float rim = max(in.edges.x, 0.004);
+    //
+    // Behind an anamorphic front group the source is an ellipse, narrow across, so
+    // an edge is softened by less the more it faces sideways (see
+    // `ollin_flare_narrowed`). The barrel's edge has no normal to hand, so it is
+    // read off how `relative` runs across the frame, where a step across is
+    // `1 / squeeze` of the same step on the sensor.
+    float squeeze = max(flare.halo.w, 1.0);
+    bool anamorphic = squeeze > 1.0;
+    float rim = in.edges.x;
+    if (anamorphic) {
+        float2 slope = float2(dfdx(in.relative) * squeeze, dfdy(in.relative));
+        float steep = length(slope);
+        if (steep > 1e-9) { rim *= length(float2(slope.x / squeeze, slope.y)) / steep; }
+    }
+    rim = max(rim, 0.004);
     float barrel = 1.0 - smoothstep(1.0 - rim, 1.0 + rim, in.relative);
     if (barrel <= 0.0) { discard_fragment(); }
     float inner = flare.iris.z;
-    float edge = ollin_flare_iris_edge(in.aperture, inner, flare);
-    float through = ollin_flare_overlap(max(inner + edge, 0.0), inner, in.edges.y);
+    // The soft edge is worked out where the source is round, which behind an
+    // anamorphic front group is on the frame (a round iris narrows the source
+    // instead). The ringing below is a matter of the real distance to the real
+    // edge, so both come back to the sensor's measure afterwards.
+    float2 carry;
+    float spare;
+    float onFrame = ollin_flare_iris_distance(in.aperture, inner, flare, anamorphic, carry, spare);
+    float narrow = anamorphic && flare.iris.x < 3.0
+        ? ollin_flare_narrowed(carry, in.aperture, inner, in.edges.y, squeeze) : 1.0;
+    float through = ollin_flare_overlap(max(inner + onFrame, 0.0), inner, in.edges.y, narrow, squeeze);
+    float stretch = max(length(carry), 1e-6);
+    float edge = onFrame / stretch;
+    float soft = in.edges.y * narrow / stretch;
     if (through <= 0.0) { discard_fragment(); }
     float3 shaped = float3(through);
     // Close to a crisp edge the light rings. Only a small source shows it: once
     // the source's blur is as wide as the first ring, the plain soft edge is all
     // there is, and the pattern is not worked out at all.
     float scale = in.edges.z;
-    float blurred = in.edges.y * scale;
+    float blurred = soft * scale;
     if (scale > 0.0 && blurred < 1.0 && -edge * scale < 14.0 && -edge * scale > -6.0) {
         float keep = 1.0 - smoothstep(0.35, 1.0, blurred);
         if (in.wavelengths.y > 0.0) {
@@ -595,12 +724,12 @@ fragment float4 ollin_flare_trace_fragment(OllinFlareTraceOut in [[stage_in]],
             // what tints the rings.
             for (int c = 0; c < 3; c++) {
                 float own = scale * sqrt(550.0 / max(in.wavelengths[c], 1.0));
-                float pattern = ollin_flare_edge_pattern(-edge * own, in.edges.y * own);
+                float pattern = ollin_flare_edge_pattern(-edge * own, soft * own);
                 shaped[c] = mix(through, pattern, keep);
             }
         } else {
             float own = scale * sqrt(550.0 / max(in.wavelengths.x, 1.0));
-            shaped = float3(mix(through, ollin_flare_edge_pattern(-edge * own, in.edges.y * own), keep));
+            shaped = float3(mix(through, ollin_flare_edge_pattern(-edge * own, soft * own), keep));
         }
     }
     return float4(in.light * shaped * (barrel * in.valid * in.valid), 1.0);
@@ -637,6 +766,12 @@ vertex OllinFlareDirtOut ollin_flare_dirt_vertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(-1, 1),
                                 float2(1, -1), float2(1, 1), float2(-1, 1) };
     float2 corner = corners[vertexID % 6u] * 1.12;
+    // A speck keeps the iris's own proportions behind an anamorphic front group
+    // too. The tall oval such a lens is known for belongs to blur a long way off.
+    // For a point a distance z in front of the cylindrical pair the blur comes
+    // out (z + L + D) / (s z + L + D / s) as wide as it is tall (s the squeeze,
+    // L the pair's spacing, D the way on to the pupil): 1 / s far away, and about
+    // 1 for grime on the glass itself, where z is nothing.
     float2 at = speck.xy + corner * speck.z;
 
     OllinFlareDirtOut out;
@@ -699,7 +834,10 @@ fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
         // the arms count the blades and their tips fan into color.
         float reachOut = flare.iris.y;
         if (reachOut > 0.0) {
+            // The star forms at the iris, behind any anamorphic glass, so it is
+            // stretched sideways with the rest of what forms there.
             float2 offset = (screen - flare.lights[i].zw) / reachOut;
+            offset.x /= max(flare.halo.w, 1.0);
             if (abs(offset.x) < 1.0 && abs(offset.y) < 1.0) {
                 // The frame measures y upward and the baked pattern downward, so
                 // the read turns that axis over. Every regular opening's pattern
@@ -737,7 +875,9 @@ fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
         // look, not optics (nothing in a lens of plain spheres draws it), and it
         // is spread by color the way a diffraction ring would be.
         if (flare.halo.x > 0.0) {
-            float out = length(from);
+            // Drawn as something formed inside the lens, so an anamorphic front
+            // group stretches it sideways with the ghosts and the star.
+            float out = length(float2(from.x / max(flare.halo.w, 1.0), from.y));
             float radius = flare.halo.y, width = flare.halo.z;
             if (abs(out - radius) < 0.12 * radius + 4.0 * width) {
                 // Nine colors across the spectrum, each with its own radius, so the

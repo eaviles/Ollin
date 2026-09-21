@@ -100,11 +100,40 @@ public struct Lens: Equatable, Sendable {
     /// open at the opening the prescription gives it.
     public var fStop: Double?
 
+    /// How much an anamorphic front group squeezes the picture sideways. `1`,
+    /// the default, is an ordinary lens with none.
+    ///
+    /// An anamorphic lens carries cylindrical glass in front that squeezes a
+    /// wide view onto a narrow frame, and the picture is stretched back out when
+    /// it is shown. Everything that forms *behind* that glass is stretched with
+    /// it, so the ghosts, the star and the halo come out wide, two to one at the
+    /// usual squeeze of `2`. What stretches is the shape the iris gives a ghost:
+    /// the source is as round on the frame as it ever was, so a ghost's edge is
+    /// as soft across as up, and a ghost near focus, which is a picture of the
+    /// source, stays round. The streak stays one thin line.
+    ///
+    /// The dirt on the front is left as it was. The tall oval an
+    /// anamorphic lens is known for belongs to blur far from the lens, and it
+    /// rounds off as the blurred thing comes closer, until on the front glass
+    /// itself it is as wide as it is tall.
+    public var squeeze: Double
+
     public init(interfaces: [LensInterface], coatingWavelength: Double = 550,
-                fStop: Double? = nil) {
+                fStop: Double? = nil, squeeze: Double = 1) {
         self.interfaces = interfaces
         self.coatingWavelength = coatingWavelength
         self.fStop = fStop
+        self.squeeze = max(1, squeeze)
+    }
+
+    /// The same lens behind an anamorphic front group. `2` is the squeeze of the
+    /// classic wide-screen formats, and `1.33` and `1.5` are the milder ones.
+    /// Pair it with `LensFlare.streak`, since the cylindrical glass that does
+    /// the squeezing is also what throws the long line through a light.
+    public func anamorphic(squeeze: Double = 2) -> Lens {
+        var lens = self
+        lens.squeeze = max(1, squeeze)
+        return lens
     }
 
     /// The same lens stopped down to an f-number.

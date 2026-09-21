@@ -27,7 +27,7 @@ The flare is per-frame state, like the lights and the camera, so call it in `dra
 - [Turning it on](#on) - `lensFlare(...)` / `noLensFlare()`
 - [The star on the source](#star) - `star`, `starSize`, `wear`
 - [Streak, dirt, and halo](#extras) - `streak`, `dirt`, `halo`, off until asked for
-- [The lens](#lens) - `Lens.standard`, `Lens.doubleGauss`, `Lens.heliar`, `stopped(to:)`, `multicoated()`
+- [The lens](#lens) - `Lens.standard`, `Lens.doubleGauss`, `Lens.heliar`, `stopped(to:)`, `multicoated()`, `anamorphic()`
 - [Inside a ghost](#inside) - its bent shape, the barrel's cut, caustics, the colored rim, the soft edge
 - [Writing your own prescription](#prescription) - `LensInterface`, `abbeNumber`
 - [The iris](#iris) - `Camera3D.apertureBlades`
@@ -137,6 +137,12 @@ Lens.doubleGauss.multicoated().stopped(to: 11)
 
 - **`stopped(to:)`** closes the iris to an f-number, which shrinks the ghosts the iris shapes. A ghost is a picture of the opening the light came through, so a smaller opening gives a smaller ghost. **It gets brighter as it shrinks**, by as much as it shrank: the same light in a smaller shape. That is why a lens wide open hazes the frame and the same lens at f/16 throws hard bright polygons. A ghost the barrel bounds rather than the iris does not shrink, so it does not brighten either. It sets the lens's `fStop`, which is `nil` while the iris sits wide open at the opening the prescription gives it. A `Lens` also carries its `coatingWavelength` in nanometers, the wavelength its anti-reflective coating is tuned for: a coating cancels its own wavelength best and the ones either side of it least, which is why the ghosts come out colored rather than gray. Around 550 is the usual choice, the middle of what the eye sees best. Each `LensInterface` in the stack carries its own `coating` wavelength, and the one with `isIris` set is the adjustable opening that shapes every ghost and the star.
 - **`multicoated()`** coats each exposed surface for a different wavelength, the way a modern lens is made. One coating everywhere gives every ghost the same color, which is the single magenta cast of an older lens. A spread of coatings puts a lens's ghosts in lavenders, reds, and blues. The wavelengths are handed out so that surfaces next to each other land far apart in the range. A ghost is made by a pair of surfaces and the brightest pairs are neighbors. A plain front-to-back sweep would give each such pair two coatings nearly alike, and the whole chain would come out in one color.
+
+- **`anamorphic(squeeze:)`** puts an anamorphic front group on the lens, and it changes the look a good deal, so it is something you ask for. That group is cylindrical glass that squeezes a wide view onto a narrow frame, and the picture is stretched back out when it is shown. Everything that forms *behind* it is stretched with the picture: at the usual `squeeze` of `2` the ghosts, the star, and the [halo](#extras) come out twice as wide as they are tall, and the star's arms lie flatter. What stretches is the shape the iris gives a ghost. The source itself is as round on the frame as it ever was, so a ghost's edge is as soft across as it is up and down, and a ghost near focus, which is a picture of the source, stays round. The [streak](#extras) stays one thin line, and the [dirt](#extras) on the front keeps its shape. The tall oval an anamorphic lens is known for belongs to blur far from the lens. It rounds off as the blurred thing comes closer, and on the front glass itself it is as wide as it is tall. `1.33` and `1.5` are the milder squeezes. It sets the lens's `squeeze`, which is `1` on an ordinary lens. Pair it with [`streak`](#extras), since the same cylindrical glass throws both.
+
+```swift
+lensFlare(LensFlare(lens: .standard.anamorphic(), streak: 1))
+```
 
 <a id="inside"></a>
 ### Inside a ghost

@@ -409,6 +409,18 @@ struct LensFlareTests {
         #expect(pushed.wear == 1 && pushed.streak == 0 && pushed.halo == 0 && pushed.dirt == 1)
     }
 
+    /// An ordinary lens squeezes nothing, an anamorphic one squeezes by what it
+    /// is told, and nothing squeezes by less than one, which would be a lens
+    /// that stretches the view instead.
+    @Test func anAnamorphicLensIsAskedFor() {
+        #expect(Lens.standard.squeeze == 1 && Lens.heliar.squeeze == 1)
+        #expect(Lens.heliar.anamorphic().squeeze == 2)
+        #expect(Lens.heliar.anamorphic(squeeze: 1.33).squeeze == 1.33)
+        #expect(Lens.heliar.anamorphic(squeeze: 0.4).squeeze == 1)
+        // It is the same glass: the ghosts it makes are the ones it made before.
+        #expect(Lens.heliar.anamorphic().optics() == Lens.heliar.optics())
+    }
+
     /// The number the level is set against belongs to the lens: it does not move
     /// with the f-number, and a lens with better coatings carries less.
     @Test func whatTheGhostsCarryBelongsToTheLens() {
