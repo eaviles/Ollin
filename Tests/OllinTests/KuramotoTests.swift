@@ -301,4 +301,37 @@ struct KuramotoTests {
         #expect(sync.lattice == lattice)
         #expect(Kuramoto(count: 4).lattice == nil)
     }
+
+    // MARK: - The rates
+
+    @Test func theRatesAreTheNaturalPaceUntilTheCrowdAdvances() {
+        let sync = Kuramoto(count: 12, coupling: 2, seed: 3)
+        #expect(sync.rates == sync.frequencies)
+        sync.frequencies = sync.frequencies.map { $0 * 2 }
+        #expect(sync.rates == sync.frequencies)   // it follows a spectrum handed over before the first frame
+        sync.coupling = 0
+        sync.advance()
+        #expect(sync.rates == sync.frequencies)   // with no pull the rate is the natural pace
+    }
+
+    @Test func theRatesAreWhatTheLastSubstepMovedThePhasesBy() {
+        // One substep (dt of 1/240 s) moves every phase by exactly rate * dt, so
+        // the phases differenced across it, unwrapped, are the rates; on a
+        // three-layer lattice with a lag and a layer coupling, since every term
+        // of the pull is in the number.
+        let sync = Kuramoto(columns: 6, rows: 5, layout: .hex, layers: 3, coupling: 3, spread: 0.4,
+                            lag: 0.3, range: 1, layerCoupling: 1.5, seed: 12)
+        for _ in 0 ..< 30 { sync.advance() }
+        let before = sync.phases
+        let h = 1.0 / 240
+        sync.advance(by: h)
+        #expect(sync.rates.count == 90)
+        for i in 0 ..< 90 {
+            var moved = sync.phases[i] - before[i]
+            while moved < -.pi { moved += 2 * .pi }
+            while moved > .pi { moved -= 2 * .pi }
+            #expect(abs(moved / h - sync.rates[i]) < 1e-6)
+            #expect(sync.rates[i] != sync.frequencies[i])   // the pull is in it
+        }
+    }
 }

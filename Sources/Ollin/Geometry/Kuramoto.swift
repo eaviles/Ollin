@@ -88,6 +88,15 @@ public final class Kuramoto {
     /// `neighbors`. Its `index(column:row:)` names the site at a cell.
     public let lattice: Lattice?
 
+    /// Every oscillator's rate at the last substep, in radians per second: its
+    /// natural frequency plus the pull in force on it, the number its phase was
+    /// moved by. Equal to `frequencies` before the first `advance(by:)`. Carry a
+    /// phase forward by `rate * seconds` for a motion blur or a trail, or color a
+    /// dot by how far its rate sits from its natural pace.
+    public var rates: [Double] { lastRates ?? frequencies }
+
+    /// The rates of the last substep, `nil` until the crowd has advanced.
+    private var lastRates: [Double]?
     /// A graph of your own, one list of neighbor sites per site, and `nil` where
     /// the lattice or the ring lists in force were derived.
     private var graph: [[Int]]?
@@ -337,6 +346,7 @@ public final class Kuramoto {
         let layered = L > 1 && layerCoupling != 0
         let layerWeight = layered ? layerCoupling / Double(L - 1) : 0
         var rates = [Double](repeating: 0, count: S * L)
+        defer { lastRates = rates }
         var order = [(r: Double, psi: Double)](repeating: (0, 0), count: L)
         for _ in 0 ..< substeps {
             if lists == nil, reach == 0 {

@@ -1254,6 +1254,7 @@ final class Kuramoto
   var neighbors: [[Int]]? { get set }
   var phases: [Double] { get set }
   var range: Int { get set }
+  var rates: [Double] { get }
   var sites: Int { get }
 final class LineSpray: Sendable
   enum Sampling: Equatable, Sendable
