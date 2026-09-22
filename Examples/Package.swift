@@ -866,6 +866,12 @@ let package = Package(
         // A machine that composes in an artist's own language and weighs the
         // result, after Manuel Felguerez's "La maquina estetica".
         example("Recreations/ManuelFelguerez/MaquinaEstetica"),
+        // One form-idea cut from the circle, the triangle and the square, taken
+        // from the painting to the relief to the standing piece and back; and
+        // a design the machine accepted, raised into a lacquered relief under a
+        // raking light, after Manuel Felguérez.
+        example("Recreations/ManuelFelguerez/EspacioMultiple"),
+        example("Recreations/ManuelFelguerez/RelieveLacado"),
         // The cube as an instrument: its twelve lines as an alphabet, and the
         // diagonal paths of its four-dimensional relative, after Manfred Mohr.
         example("Recreations/ManfredMohr/CubicLimit"),

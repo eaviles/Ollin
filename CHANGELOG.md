@@ -4,7 +4,13 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **A second visit to Manuel Felguérez.** `Examples/Recreations/ManuelFelguerez` gains two sketches, after *El espacio múltiple* (1973) and the lacquered reliefs that followed the aesthetic machine. `EspacioMultiple` builds one form-idea from a square with rounded corners, a rectangle, a disk, a half disk and a right triangle, and carries it through its three states: the flat painting in a silver or a gold scheme, the relief the planes rise into under a light that rakes across the wall, and the standing piece the relief comes apart into, where the sheet becomes the floor, the band a shelf through the square and the displacement depth; a new combination of colors, displacement, rows and heights arrives with each cycle, and the cycle is the export loop. `stage` holds one state still, `unlit` shows that the relief seen straight on is the painting again, and `--export-svg` gives the plan. `RelieveLacado` composes and weighs a design exactly as `MaquinaEstetica` does, so the same seed is the same design in both, and raises it in lacquered layers, the largest element lowest and the pen's outline as a plate of aluminum, under a key light that circles slowly; `view` walks round it, sees it straight on, or shows the plan.
+
 ### Fixed
+
+- **The aesthetic machine weighed a quarter disk off center, and drew its ring as a cut disk.** `MaquinaEstetica` placed a wedge's weight at 0.3 of its radius from the corner rather than 4 / 3π, so a design with a wedge was kept or refused against the wrong center, and it drew its quarter ring through `drawPolygon`, which fans a concave outline, so the ring's inner arc came out as a straight chord. Both are fixed, and the sheets a seed produces change wherever a wedge or a ring appears.
 
 - **A line spray whose scene changes size no longer remakes its particles every frame.** Under `.byLength` sampling, lines that stretch or surfaces that breathe move the pass's total by a few points each frame, and the buffer all the points land in was sized to that total exactly, so it was thrown away and made again every frame: at six million points, 576 MB of new memory a frame, enough to stall the desktop under a live window. The particles are now kept and only grown, with room for the total to drift. A scene that only turns never saw it, since its lengths hold. See [Depth of field from light](Docs/Drawing/DepthOfField.md).
 

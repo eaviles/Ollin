@@ -256,7 +256,9 @@
       "Recreations/ManfredMohr/DiagonalPath"
     ],
     "Recreations/ManuelFelguerez": [
-      "Recreations/ManuelFelguerez/MaquinaEstetica"
+      "Recreations/ManuelFelguerez/EspacioMultiple",
+      "Recreations/ManuelFelguerez/MaquinaEstetica",
+      "Recreations/ManuelFelguerez/RelieveLacado"
     ],
     "Recreations/MonirFarmanfarmaian": [
       "Recreations/MonirFarmanfarmaian/MirrorFamily",
@@ -370,8 +372,8 @@
         "3D/Effects/LensFlare",
         "3D/Effects/SceneDefocus"
       ],
-      "image": "groups/3D-Effects.jpg?v=c2e74058",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=113e3b33"
+      "image": "groups/3D-Effects.jpg?v=1b1ca3d9",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=0e91ab9f"
     },
     "3D/Environments": {
       "of": [
@@ -675,10 +677,12 @@
     },
     "Recreations/ManuelFelguerez": {
       "of": [
-        "Recreations/ManuelFelguerez/MaquinaEstetica"
+        "Recreations/ManuelFelguerez/EspacioMultiple",
+        "Recreations/ManuelFelguerez/MaquinaEstetica",
+        "Recreations/ManuelFelguerez/RelieveLacado"
       ],
-      "image": "groups/Recreations-ManuelFelguerez.jpg?v=497089cb",
-      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3"
+      "image": "groups/Recreations-ManuelFelguerez.jpg?v=7d4fb91b",
+      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=82ad0274"
     },
     "Recreations/MonirFarmanfarmaian": {
       "of": [
@@ -8523,25 +8527,68 @@
       "stillSmall": "examples/Recreations/ManfredMohr/DiagonalPath/still-640.jpg?v=40742459",
       "width": 1080
     },
-    "Recreations/ManuelFelguerez/MaquinaEstetica": {
-      "bytes": {
-        "loop": 336832,
-        "loopSmall": 89837,
-        "still": 39916,
-        "stillSmall": 15897
-      },
-      "frame": 480,
-      "height": 810,
-      "length": "10s",
-      "loop": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/loop.mp4?v=2968ea02",
-      "loopSmall": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/loop-640.mp4?v=794edd78",
-      "motion": 43.283,
-      "rendered": "2026-09-10",
+    "Recreations/ManuelFelguerez/EspacioMultiple": {
+      "width": 1296,
+      "height": 1080,
+      "length": "lap",
       "seconds": 10.0,
-      "source": "19e21d0d013b725e",
-      "still": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still.jpg?v=793c7a6e",
-      "stillSmall": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=6305ae9f",
-      "width": 1080
+      "frame": 480,
+      "motion": 47.228,
+      "sound": false,
+      "source": "9fae2b94a71d29ff",
+      "rendered": "2026-09-21",
+      "bytes": {
+        "loop": 2718581,
+        "loopSmall": 615813,
+        "still": 57379,
+        "stillSmall": 25370
+      },
+      "loop": "examples/Recreations/ManuelFelguerez/EspacioMultiple/loop.mp4?v=05989c02",
+      "loopSmall": "examples/Recreations/ManuelFelguerez/EspacioMultiple/loop-640.mp4?v=1eb012bc",
+      "still": "examples/Recreations/ManuelFelguerez/EspacioMultiple/still.jpg?v=8a0dc71c",
+      "stillSmall": "examples/Recreations/ManuelFelguerez/EspacioMultiple/still-640.jpg?v=53c3b13a"
+    },
+    "Recreations/ManuelFelguerez/MaquinaEstetica": {
+      "width": 1440,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 36.667,
+      "sound": false,
+      "source": "45421d29bc0553c1",
+      "rendered": "2026-09-21",
+      "bytes": {
+        "loop": 355387,
+        "loopSmall": 96225,
+        "still": 29373,
+        "stillSmall": 13040
+      },
+      "loop": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/loop.mp4?v=f2f1c8f3",
+      "loopSmall": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/loop-640.mp4?v=f10ff72a",
+      "still": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still.jpg?v=98a6ac20",
+      "stillSmall": "examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=d66d2cfa"
+    },
+    "Recreations/ManuelFelguerez/RelieveLacado": {
+      "width": 1440,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.519,
+      "sound": false,
+      "source": "c74b873461c4b019",
+      "rendered": "2026-09-21",
+      "bytes": {
+        "loop": 940777,
+        "loopSmall": 216562,
+        "still": 66567,
+        "stillSmall": 25840
+      },
+      "loop": "examples/Recreations/ManuelFelguerez/RelieveLacado/loop.mp4?v=dd138c77",
+      "loopSmall": "examples/Recreations/ManuelFelguerez/RelieveLacado/loop-640.mp4?v=16e476fa",
+      "still": "examples/Recreations/ManuelFelguerez/RelieveLacado/still.jpg?v=ad5a7389",
+      "stillSmall": "examples/Recreations/ManuelFelguerez/RelieveLacado/still-640.jpg?v=c546d92f"
     },
     "Recreations/MonirFarmanfarmaian/BehindGlass": {
       "width": 1080,
