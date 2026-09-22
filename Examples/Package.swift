@@ -927,5 +927,10 @@ let package = Package(
         // Vladimir Bonačić.
         example("Recreations/VladimirBonacic/DynamicObject"),
         example("Recreations/VladimirBonacic/NamaFrieze", [.dmx]),
+        // The ruled sheets of the 1970s, registers of horizontals whose
+        // intervals gather and open, and the floating chevrons and fans of
+        // about 1980, after Nasreen Mohamedi.
+        example("Recreations/NasreenMohamedi/Registers"),
+        example("Recreations/NasreenMohamedi/Diagonals"),
     ]
 )

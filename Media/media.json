@@ -292,6 +292,10 @@
       "Recreations/VladimirBonacic/DynamicObject",
       "Recreations/VladimirBonacic/NamaFrieze"
     ],
+    "Recreations/NasreenMohamedi": [
+      "Recreations/NasreenMohamedi/Registers",
+      "Recreations/NasreenMohamedi/Diagonals"
+    ],
     "Rendering": [
       "Rendering/Grassland",
       "Rendering/MeshField",
@@ -691,6 +695,14 @@
       ],
       "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=19877e6d",
       "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=15da7df0"
+    },
+    "Recreations/NasreenMohamedi": {
+      "of": [
+        "Recreations/NasreenMohamedi/Registers",
+        "Recreations/NasreenMohamedi/Diagonals"
+      ],
+      "image": "groups/Recreations-NasreenMohamedi.jpg?v=c4dcd9d3",
+      "imageSmall": "groups/Recreations-NasreenMohamedi-640.jpg?v=36c02c9d"
     },
     "Recreations/OsamuSato": {
       "of": [
@@ -8652,6 +8664,48 @@
       "loopSmall": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/loop-640.mp4?v=f6d23083",
       "still": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/still.jpg?v=64def699",
       "stillSmall": "examples/Recreations/MonirFarmanfarmaian/MirrorFamily/still-640.jpg?v=199d7977"
+    },
+    "Recreations/NasreenMohamedi/Diagonals": {
+      "width": 1440,
+      "height": 1040,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.054,
+      "sound": false,
+      "source": "00eccd4e632bdbd6",
+      "rendered": "2026-09-22",
+      "bytes": {
+        "loop": 1797338,
+        "loopSmall": 266268,
+        "still": 54243,
+        "stillSmall": 15992
+      },
+      "loop": "examples/Recreations/NasreenMohamedi/Diagonals/loop.mp4?v=bc85f43e",
+      "loopSmall": "examples/Recreations/NasreenMohamedi/Diagonals/loop-640.mp4?v=e3e54816",
+      "still": "examples/Recreations/NasreenMohamedi/Diagonals/still.jpg?v=10df1d1e",
+      "stillSmall": "examples/Recreations/NasreenMohamedi/Diagonals/still-640.jpg?v=1f4c559f"
+    },
+    "Recreations/NasreenMohamedi/Registers": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.745,
+      "sound": false,
+      "source": "3c292a001d03ee3b",
+      "rendered": "2026-09-22",
+      "bytes": {
+        "loop": 3502049,
+        "loopSmall": 692363,
+        "still": 252254,
+        "stillSmall": 71642
+      },
+      "loop": "examples/Recreations/NasreenMohamedi/Registers/loop.mp4?v=0e65485b",
+      "loopSmall": "examples/Recreations/NasreenMohamedi/Registers/loop-640.mp4?v=67ba5ad0",
+      "still": "examples/Recreations/NasreenMohamedi/Registers/still.jpg?v=048252ec",
+      "stillSmall": "examples/Recreations/NasreenMohamedi/Registers/still-640.jpg?v=869a3c69"
     },
     "Recreations/OsamuSato/Alphabet": {
       "bytes": {
