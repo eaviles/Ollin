@@ -1,12 +1,12 @@
 import AVFoundation
 import CoreGraphics
 import ImageIO
-import Ollin
+@testable import Ollin
 import os
 import Testing
 
 /// Video and GIF export correctness: encode a short clip from a tiny
-/// deterministic sketch and verify the written file's structure — codec,
+/// deterministic sketch and verify the written file's structure: codec,
 /// container, dimensions, duration, frame count, and loop metadata. (Pixel
 /// correctness is the snapshot tests' job; these prove the encoding wrapper.)
 ///
@@ -82,65 +82,131 @@ struct VideoExportTests {
         #expect(frameGIF?[kCGImagePropertyGIFDelayTime] as? Double == 0.04)
     }
 
-    /// A GIF export's peak does not rise with its length: the same sketch at
-    /// six times the frames peaks where the short run did. Holding the frames
-    /// would have added about 90 MB at this size; the bound is well under
-    /// that, with room for whatever else the suite is doing meanwhile.
+    /// A GIF export holds no frame past the frame it was drawn in. See
+    /// `exportKeepsNoFramePastItsOwn`.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aGIFExportsPeakDoesNotRiseWithItsLength() throws {
-        let short = ollinTempPath("ollin-gif-peak-short.gif"), long = ollinTempPath("ollin-gif-peak-long.gif")
-        defer { try? FileManager.default.removeItem(atPath: short); try? FileManager.default.removeItem(atPath: long) }
-        let sampler = FootprintSampler()
-        sampler.start()
-        OllinApp.exportGIF(Wander(), to: short, frames: 20, fps: 25)
-        let shortPeak = sampler.stop()
-        sampler.start()
-        OllinApp.exportGIF(Wander(), to: long, frames: 120, fps: 25)
-        let longPeak = sampler.stop()
-        #expect(longPeak - shortPeak < 40 * 1024 * 1024,
-                "short \(shortPeak / 1_048_576) MB, long \(longPeak / 1_048_576) MB")
-        let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: long) as CFURL, nil))
+    func aGIFExportKeepsNoFramePastItsOwn() throws {
+        let path = ollinTempPath("ollin-gif-frames-alive.gif")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        exportKeepsNoFramePastItsOwn(frames: 120) {
+            OllinApp.exportGIF(Wander(), to: path, frames: 120, fps: 25)
+        }
+        let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         #expect(CGImageSourceGetCount(source) == 120)
+    }
+
+    /// A video export holds no frame past the frame it was drawn in either:
+    /// the encoder's own buffers come from its pool, and the frame handed to
+    /// it is let go once it is drawn in.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aVideoExportKeepsNoFramePastItsOwn() throws {
+        let path = ollinTempPath("ollin-video-frames-alive.mp4")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        exportKeepsNoFramePastItsOwn(frames: 60) {
+            OllinApp.exportVideo(Wander(), to: path, frames: 60, fps: 30)
+        }
+    }
+
+    /// The law: at no moment of an export is more than two frames' worth of
+    /// frame memory alive (the buffer the GPU read the frame back into and
+    /// the image built over it, both made for the frame and gone with it),
+    /// and every byte handed out has come home once the export returns.
+    /// Holding frames is what would have moved an export's peak with its
+    /// length.
+    ///
+    /// Read off memory the test hands the export (`OllinApp.frameMemory`)
+    /// and never off the process footprint, which is not evidence here.
+    /// The suite shares its process with every other suite in its shard, so
+    /// the process footprint is the sum of what all of them allocate in the
+    /// same seconds: it can fail on a neighbor's work, and it can equally
+    /// pass while the export leaks, if a neighbor frees as much in the same
+    /// window. `GIFMemoryTests` says the same of the writer. The hog here
+    /// allocates and touches 200 MB in this process for the whole run and
+    /// changes nothing, which is the point of it. The count of pieces handed
+    /// out is checked too, so a drive that stopped asking the ledger for its
+    /// memory could not pass by never being counted.
+    private func exportKeepsNoFramePastItsOwn(frames: Int, _ export: () -> Void) {
+        let ledger = FrameLedger()
+        let hog = Hog(bytes: 200 * 1024 * 1024)
+        hog.start()
+        OllinApp.frameMemory = ledger
+        export()
+        OllinApp.frameMemory = nil
+        hog.stop()
+        // The last buffer comes home when Metal lets it go, which can be a
+        // beat after the drive returns.
+        var waited = 0
+        while ledger.returned < ledger.handed, waited < 400 { usleep(5000); waited += 1 }
+
+        // One readback, rounded up to whole pages as Metal asks (16 KB on
+        // Apple silicon), and one image of exactly the frame's bytes.
+        let frameBytes = 480 * 480 * 4, page = Int(getpagesize())
+        let readbackBytes = (frameBytes + page - 1) / page * page
+        let mostFramesAlive = Double(ledger.mostBytesAlive) / Double(frameBytes)
+        #expect(ledger.mostBytesAlive <= readbackBytes + frameBytes,
+                "\(mostFramesAlive) frames' worth of frame memory were alive at once; the drive and the writer may hold two, the readback and its image; alive at the peak: \(ledger.sizesAtPeak)")
+        #expect(ledger.handed >= 2 * frames,
+                "the export asked for \(ledger.handed) pieces of frame memory over \(frames) frames; a readback and an image per frame are expected")
+        #expect(ledger.returned == ledger.handed,
+                "\(ledger.handed - ledger.returned) of \(ledger.handed) pieces of frame memory never came home")
     }
 }
 
-/// The process footprint, read every few milliseconds on a plain thread while
-/// an export runs on this one, so the peak inside the run is what is measured.
-///
-/// It is the whole process's number, which the suite shares with every other
-/// suite in its shard, so only the difference between two runs measured back
-/// to back means anything here, and even that is at the mercy of what a
-/// neighbor allocates in the same seconds. `GIFMemoryTests` used to read the
-/// same number and had to stop; see the note there.
-private final class FootprintSampler: @unchecked Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: (peak: 0, running: false))
+/// Memory the test owns, handed to an export for every buffer the GPU reads a
+/// frame back into and every image built over one, and counted as it comes
+/// home. `most` is the high-water mark of bytes alive at once.
+private final class FrameLedger: ExportFrameMemory, @unchecked Sendable {
+    private struct State { var alive = 0, most = 0, handed = 0, returned = 0; var live: [Int] = []; var atPeak: [Int] = [] }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
-    /// The bytes this process holds right now, as the kernel counts them.
-    static func footprint() -> Int {
-        var info = rusage_info_v4()
-        let result = withUnsafeMutablePointer(to: &info) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
-                proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0)
-            }
-        }
-        return result == 0 ? Int(info.ri_phys_footprint) : -1
+    func allocate(byteCount: Int) -> UnsafeMutableRawPointer {
+        var raw: UnsafeMutableRawPointer?
+        precondition(posix_memalign(&raw, Int(getpagesize()), byteCount) == 0, "out of memory")
+        state.withLock { $0.alive += byteCount; $0.handed += 1; $0.live.append(byteCount)
+            if $0.alive > $0.most { $0.most = $0.alive; $0.atPeak = $0.live } }
+        return raw!
     }
+
+    /// From whichever thread let go of the memory last, hence the lock.
+    func release(_ pointer: UnsafeMutableRawPointer, byteCount: Int) {
+        free(pointer)
+        state.withLock { $0.alive -= byteCount; $0.returned += 1
+            if let i = $0.live.firstIndex(of: byteCount) { $0.live.remove(at: i) } }
+    }
+
+    var mostBytesAlive: Int { state.withLock { $0.most } }
+    /// What was alive at the high-water mark, each size with its count, for
+    /// the failure to name.
+    var sizesAtPeak: [Int: Int] {
+        state.withLock { $0.atPeak.reduce(into: [:]) { $0[$1, default: 0] += 1 } }
+    }
+    var handed: Int { state.withLock { $0.handed } }
+    var returned: Int { state.withLock { $0.returned } }
+}
+
+/// A neighbor doing its own work in the same process: a thread that takes
+/// and touches `bytes` and holds them until told to stop. The law above
+/// never sees it, and that is what it is here to show.
+private final class Hog: @unchecked Sendable {
+    private let bytes: Int
+    private let stopped = OSAllocatedUnfairLock(initialState: false)
+    private var thread: Thread?
+
+    init(bytes: Int) { self.bytes = bytes }
 
     func start() {
-        state.withLock { $0 = (0, true) }
-        let thread = Thread { [state] in
-            while state.withLock({ $0.running }) {
-                let now = Self.footprint()
-                state.withLock { if now > $0.peak { $0.peak = now } }
-                usleep(3000)
-            }
+        let bytes = bytes, stopped = stopped
+        let thread = Thread {
+            guard let block = malloc(bytes) else { return }
+            memset(block, 0x5A, bytes)          // touched, so it is resident
+            while !stopped.withLock({ $0 }) { usleep(1000) }
+            free(block)
         }
         thread.start()
+        self.thread = thread
     }
 
-    func stop() -> Int {
-        state.withLock { $0.running = false; return $0.peak }
-    }
+    func stop() { stopped.withLock { $0 = true } }
 }
 
 /// A disc wandering over a flat field at a size worth measuring.
@@ -158,7 +224,7 @@ private final class Wander: Sketch {
 
 // MARK: - Fixture
 
-/// A dot crossing a flat field — tiny, deterministic, cheap to encode.
+/// A dot crossing a flat field: tiny, deterministic, cheap to encode.
 private final class MovingDot: Sketch {
     override var canvasSize: CanvasSize { .square(160) }
 

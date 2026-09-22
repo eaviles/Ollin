@@ -2145,6 +2145,27 @@
       "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg?v=d0d77e2f",
       "width": 1080
     },
+    "3D/Lighting/LightSets": {
+      "width": 1280,
+      "height": 720,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.364,
+      "sound": false,
+      "source": "142af19257bfcc67",
+      "rendered": "2026-09-22",
+      "bytes": {
+        "loop": 701670,
+        "loopSmall": 177928,
+        "still": 47519,
+        "stillSmall": 19267
+      },
+      "loop": "examples/3D/Lighting/LightSets/loop.mp4?v=d2487fd5",
+      "loopSmall": "examples/3D/Lighting/LightSets/loop-640.mp4?v=a7ee3ede",
+      "still": "examples/3D/Lighting/LightSets/still.jpg?v=6fc54467",
+      "stillSmall": "examples/3D/Lighting/LightSets/still-640.jpg?v=1fa3340d"
+    },
     "3D/Lighting/LightShaping": {
       "bytes": {
         "loop": 752668,

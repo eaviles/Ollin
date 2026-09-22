@@ -371,7 +371,7 @@ extension MetalRenderer {
         let bytesPerRow = outWidth * displayBytesPerPixel
         let byteCount = bytesPerRow * outHeight
         guard let display = makeDisplayTexture(width: outWidth, height: outHeight),
-              let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let readback = makeReadbackBuffer(byteCount: byteCount),
               let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: display))
         else { return nil }
         encodePresent(from: slot.output, drawer: drawer, into: presentEncoder,

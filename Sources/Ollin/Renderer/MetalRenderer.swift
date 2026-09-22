@@ -2444,7 +2444,7 @@ final class MetalRenderer {
         }
 
         let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
-        guard let readbackBuffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
+        guard let readbackBuffer = makeReadbackBuffer(byteCount: byteCount),
               let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
         blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
@@ -2526,8 +2526,7 @@ final class MetalRenderer {
     private static func cgImage(fromBGRA8 buffer: MTLBuffer, width: Int, height: Int,
                                 transparent: Bool) -> CGImage? {
         let bytesPerRow = width * 4, byteCount = bytesPerRow * height
-        let data = Data(bytes: buffer.contents(), count: byteCount)
-        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+        guard let provider = frameDataProvider(copying: buffer.contents(), byteCount: byteCount) else { return nil }
         let alpha: CGImageAlphaInfo = transparent ? .premultipliedFirst : .noneSkipFirst
         let bitmapInfo = CGBitmapInfo(rawValue: alpha.rawValue
                                       | CGBitmapInfo.byteOrder32Little.rawValue)
@@ -2546,8 +2545,7 @@ final class MetalRenderer {
     private static func cgImage(fromRGBA16Float buffer: MTLBuffer, width: Int, height: Int,
                                 transparent: Bool) -> CGImage? {
         let bytesPerRow = width * 8, byteCount = bytesPerRow * height
-        let data = Data(bytes: buffer.contents(), count: byteCount)
-        guard let provider = CGDataProvider(data: data as CFData),
+        guard let provider = frameDataProvider(copying: buffer.contents(), byteCount: byteCount),
               let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3) else { return nil }
         let alpha: CGImageAlphaInfo = transparent ? .premultipliedLast : .noneSkipLast
         let bitmapInfo = CGBitmapInfo(rawValue: CGBitmapInfo.floatComponents.rawValue
@@ -2635,7 +2633,7 @@ final class MetalRenderer {
         let bytesPerRow = outWidth * displayBytesPerPixel
         let byteCount = bytesPerRow * outHeight
 
-        guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
+        guard let readback = makeReadbackBuffer(byteCount: byteCount),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         // Path-traced export (`--path-traced`, headless only): trace the whole mesh
         // scene first, in its own completed command buffers, so the composite in the
