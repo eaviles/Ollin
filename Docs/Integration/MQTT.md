@@ -112,7 +112,7 @@ for message in bus.messages() where message.topic.hasSuffix("/button") {
 
 MQTT says nothing at all about what a payload means. It is bytes. What the devices in the wild actually write is one of three things, and `MQTTMessage` reads all three.
 
-A sensor writes a decimal number, so `number` and `int` parse one, ignoring whitespace a device left around it. A switch writes a word, so `bool` reads `ON`, `true`, `1`, `yes`, `open`, `online`, and `active` as true and their opposites as false, in any casing, and anything else as `nil`. A bridge writes a small JSON object, so `number(named:)`, `int(named:)`, `text(named:)`, and `bool(named:)` read one of its top-level fields:
+A sensor writes a decimal number, so `number` and `int` parse one, ignoring whitespace a device left around it; a number that is not finite or is too large for an `Int` reads as `nil` through `int`. A switch writes a word, so `bool` reads `ON`, `true`, `1`, `yes`, `open`, `online`, and `active` as true and their opposites as false, in any casing, and anything else as `nil`. A bridge writes a small JSON object, so `number(named:)`, `int(named:)`, `text(named:)`, and `bool(named:)` read one of its top-level fields:
 
 ```swift
 for message in bus.messages(matching: "zigbee2mqtt/+") {

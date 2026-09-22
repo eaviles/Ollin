@@ -163,9 +163,11 @@ public enum RemoteWire {
     /// kind is ignored, exactly as `restore` promises.
     public static func apply(_ value: ParamStored, to handle: ParamHandle) {
         if case .menu(let m) = handle.control {
-            guard case .number(let index) = value else { return }
-            let i = Int(index.rounded())
-            guard m.options.indices.contains(i) else { return }
+            // A number that is not finite, or too large to be an index, is not a
+            // menu choice, and is ignored like a payload of the wrong kind.
+            guard case .number(let index) = value,
+                  let i = index.int(rounded: .toNearestOrAwayFromZero),
+                  m.options.indices.contains(i) else { return }
             m.write(i)
             return
         }
@@ -276,11 +278,18 @@ public enum WebSocketFraming {
         encode(.text, payload: [UInt8](text.utf8))
     }
 
+    /// The most one frame may carry. The page sends a few hundred bytes of
+    /// JSON at a time, so a frame announcing more than this is not the page,
+    /// and refusing it is also what keeps a length off the wire from being
+    /// added to before it is checked: the eight-byte form can spell a number
+    /// one short of what an `Int` holds.
+    static let maxFrameBytes = 1 << 20
+
     /// Drains every complete frame at the front of `buffer`, unmasking client
     /// payloads, and removes the consumed bytes. Bytes of a frame still in
     /// flight stay in the buffer for the next call. Returns `nil` on a
-    /// malformed frame (an unknown opcode), telling the caller to drop the
-    /// connection.
+    /// malformed frame (an unknown opcode, or a length past `maxFrameBytes`),
+    /// telling the caller to drop the connection.
     public static func decode(buffer: inout [UInt8]) -> [Frame]? {
         var frames: [Frame] = []
         var start = 0
@@ -303,6 +312,7 @@ public enum WebSocketFraming {
                 length = narrow
                 offset += 8
             }
+            guard length <= maxFrameBytes else { return nil }
             let maskLength = masked ? 4 : 0
             guard buffer.count - offset >= maskLength + length else { break }
             var payload = [UInt8](buffer[(offset + maskLength)..<(offset + maskLength + length)])

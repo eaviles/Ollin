@@ -63,9 +63,16 @@ package enum USBMux {
         var request = baseRequest
         request["MessageType"] = "ListDevices"
         try send(fd, request)
-        guard let reply = recv(fd), let list = reply["DeviceList"] as? [[String: Any]] else {
+        guard let reply = recv(fd), reply["DeviceList"] != nil else {
             throw USBMuxError.handshakeFailed
         }
+        return devices(in: reply)
+    }
+
+    /// The devices a `ListDevices` reply names. An entry with no numeric
+    /// `DeviceID` is skipped; a missing property reads as an empty string.
+    package static func devices(in reply: [String: Any]) -> [DeviceInfo] {
+        guard let list = reply["DeviceList"] as? [[String: Any]] else { return [] }
         return list.compactMap { entry in
             guard let id = entry["DeviceID"] as? Int else { return nil }
             let props = entry["Properties"] as? [String: Any] ?? [:]
@@ -151,16 +158,34 @@ package enum USBMux {
     }
 
     private static func recv(_ fd: Int32) -> [String: Any]? {
-        let header = readFully(fd, 16)
+        guard let length = replyBodyLength(header: readFully(fd, 16)) else { return nil }
+        return reply(body: readFully(fd, length))
+    }
+
+    /// The most a reply body is allowed to claim. A device list is a few
+    /// hundred bytes; a header announcing more than this is a desynchronized
+    /// stream, and refusing it is what keeps a bad length from steering a
+    /// huge read.
+    package static let maxReplyBytes = 16 << 20
+
+    /// The body length a 16-byte reply header announces, or `nil` when the
+    /// header is short, claims less than its own size, or claims more than
+    /// `maxReplyBytes`.
+    package static func replyBodyLength(header: Data) -> Int? {
         guard header.count == 16 else { return nil }
         let total = header.withUnsafeBytes { raw -> UInt32 in
             var value: UInt32 = 0
             for i in 0..<4 { value |= UInt32(raw[i]) << (8 * i) }
             return value
         }
-        guard total >= 16 else { return nil }
-        let body = readFully(fd, Int(total) - 16)
-        return (try? PropertyListSerialization.propertyList(from: body, format: nil)) as? [String: Any]
+        guard total >= 16, Int(total) - 16 <= maxReplyBytes else { return nil }
+        return Int(total) - 16
+    }
+
+    /// A reply body read as the dictionary usbmuxd sends, or `nil` when the
+    /// bytes are not a property list holding one.
+    package static func reply(body: Data) -> [String: Any]? {
+        (try? PropertyListSerialization.propertyList(from: body, format: nil)) as? [String: Any]
     }
 
     // MARK: - Low-level read/write

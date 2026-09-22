@@ -451,8 +451,10 @@ extension Int: ParamValue {
     public static func stored(_ value: Int) -> ParamStored { .number(Double(value)) }
 
     public static func restored(_ stored: ParamStored) -> Int? {
+        // A stored number arrives from a file or a wire, so one that is not
+        // finite or does not fit in an `Int` restores nothing rather than trapping.
         guard case .number(let v) = stored else { return nil }
-        return Int(v.rounded())
+        return v.int(rounded: .toNearestOrAwayFromZero)
     }
 
     public static func control(for param: Param<Int>) -> ParamControl {

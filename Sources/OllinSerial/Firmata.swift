@@ -456,6 +456,10 @@ struct FirmataParser: Sendable {
     }
 
     private mutating func complete() -> [FirmataMessage] {
+        // The two messages read here carry two data bytes; a one-byte command
+        // (a program change, channel pressure) completes with one and reads
+        // as nothing, so the second byte is only read where it exists.
+        guard data.count >= 2 else { return [] }
         let value = Int(data[0]) | (Int(data[1]) << 7)
         switch command & 0xF0 {
         case 0xE0:

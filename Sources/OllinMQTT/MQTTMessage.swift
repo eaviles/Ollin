@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 
 /// How hard the two ends work to deliver one message.
 ///
@@ -97,11 +98,9 @@ public struct MQTTMessage: Sendable, Hashable {
         return Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
-    /// The payload read as a whole number, rounded from `number`.
-    public var int: Int? {
-        guard let number, number.isFinite else { return nil }
-        return Int(number.rounded())
-    }
+    /// The payload read as a whole number, rounded from `number`; `nil` when
+    /// the number is not finite or is too large for an `Int`.
+    public var int: Int? { number?.int(rounded: .toNearestOrAwayFromZero) }
 
     /// The payload read as a switch. `on`, `true`, `1`, `yes`, `open`, and
     /// `online` are true and their opposites are false, in any casing; anything
@@ -136,10 +135,10 @@ public struct MQTTMessage: Sendable, Hashable {
         }
     }
 
-    /// A named field of a JSON object payload, read as a whole number.
+    /// A named field of a JSON object payload, read as a whole number; `nil`
+    /// when the number is not finite or is too large for an `Int`.
     public func int(named key: String) -> Int? {
-        guard let value = number(named: key), value.isFinite else { return nil }
-        return Int(value.rounded())
+        number(named: key)?.int(rounded: .toNearestOrAwayFromZero)
     }
 
     /// A named field of a JSON object payload, read as a switch. A real JSON

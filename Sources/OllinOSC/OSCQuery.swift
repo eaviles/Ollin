@@ -386,11 +386,13 @@ enum OSCQueryWire {
     static func apply(_ payload: ParamStored, to handle: ParamHandle, leaf: Leaf) {
         switch (handle.control, payload) {
         case (.slider(let s), .number(let v)): s.write(v)
-        case (.stepper(let s), .number(let v)): s.write(Int(v.rounded()))
+        case (.stepper(let s), .number(let v)):
+            // A number that is not finite, or too large to be a step, is not a
+            // value for a stepper, and is ignored like a payload of the wrong kind.
+            if let i = v.int(rounded: .toNearestOrAwayFromZero) { s.write(i) }
         case (.toggle(let t), .boolean(let v)): t.write(v)
         case (.menu(let m), .number(let index)):
-            let i = Int(index.rounded())
-            if m.options.indices.contains(i) { m.write(i) }
+            if let i = index.int(rounded: .toNearestOrAwayFromZero), m.options.indices.contains(i) { m.write(i) }
         case (.colorWell(let c), .color(let r, let g, let b, let a)):
             c.write(Color(red: r, green: g, blue: b, alpha: a))
         case (.vector(let v), .vector(let x, let y)): v.write(Vector2(x, y))

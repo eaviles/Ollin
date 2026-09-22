@@ -71,13 +71,14 @@ public enum OSCArgument: Sendable, Equatable {
 
     /// The value as an `Int`, converting across the numeric tags (a fractional
     /// `float`/`double` is rounded toward zero; a `bool` reads as 0/1). `nil` for
-    /// the non-numeric tags.
+    /// the non-numeric tags, and for a `float` or `double` that is not finite
+    /// or is too large for an `Int`.
     public var int: Int? {
         switch self {
         case .int(let value): return Int(value)
         case .int64(let value): return Int(value)
-        case .float(let value): return Int(value)
-        case .double(let value): return Int(value)
+        case .float(let value): return Double(value).int()
+        case .double(let value): return value.int()
         case .bool(let value): return value ? 1 : 0
         default: return nil
         }

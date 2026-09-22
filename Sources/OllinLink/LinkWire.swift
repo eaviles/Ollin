@@ -86,6 +86,17 @@ enum LinkWire {
     /// Encoders must stay under 512 bytes; a full IPv4 state message is 107.
     static let maxDatagram = 511
 
+    /// The largest magnitude a beat or a time may carry: 2^50 micro-beats or
+    /// microseconds, about two years of beats at the fastest tempo and thirty
+    /// five years of clock. Nothing real is past it, and a value past it would
+    /// overflow the arithmetic every read of a timeline does, so an entry
+    /// carrying one is skipped like an entry of the wrong size.
+    static let maxMagnitude: Int64 = 1 << 50
+
+    static func inRange(_ value: Int64) -> Bool {
+        value >= -maxMagnitude && value <= maxMagnitude
+    }
+
     static func fourCC(_ text: String) -> UInt32 {
         precondition(text.utf8.count == 4)
         return text.utf8.reduce(0) { ($0 << 8) | UInt32($1) }
@@ -139,7 +150,8 @@ enum LinkWire {
             var entry = LinkByteReader(value)
             switch (key, size) {
             case (LinkPayloadKey.timeline, 24):
-                if let tempo = entry.i64BE(), let beat = entry.i64BE(), let time = entry.i64BE() {
+                if let tempo = entry.i64BE(), let beat = entry.i64BE(), let time = entry.i64BE(),
+                   inRange(beat), inRange(time) {
                     payload.timeline = LinkTimeline(
                         tempo: LinkTempo(wire: tempo),
                         anchorMicroBeats: beat,
@@ -149,7 +161,8 @@ enum LinkWire {
             case (LinkPayloadKey.session, 8):
                 if let raw = entry.u64BE() { payload.session = LinkNodeId(raw: raw) }
             case (LinkPayloadKey.startStop, 17):
-                if let flag = entry.u8(), let beats = entry.i64BE(), let stamp = entry.i64BE() {
+                if let flag = entry.u8(), let beats = entry.i64BE(), let stamp = entry.i64BE(),
+                   inRange(beats), inRange(stamp) {
                     payload.startStop = LinkStartStop(
                         isPlaying: flag != 0,
                         microBeats: beats,
@@ -161,11 +174,11 @@ enum LinkWire {
                     payload.measurementEndpoint = LinkEndpoint(address: address, port: port)
                 }
             case (LinkPayloadKey.hostTime, 8):
-                payload.hostTimeMicros = entry.i64BE()
+                payload.hostTimeMicros = entry.i64BE().flatMap { inRange($0) ? $0 : nil }
             case (LinkPayloadKey.ghostTime, 8):
-                payload.ghostTimeMicros = entry.i64BE()
+                payload.ghostTimeMicros = entry.i64BE().flatMap { inRange($0) ? $0 : nil }
             case (LinkPayloadKey.previousGhostTime, 8):
-                payload.previousGhostTimeMicros = entry.i64BE()
+                payload.previousGhostTimeMicros = entry.i64BE().flatMap { inRange($0) ? $0 : nil }
             default:
                 break   // unknown key, or a known key at an unexpected size: skip
             }

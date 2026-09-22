@@ -132,6 +132,48 @@ endpoint names, the Link session's UDP port, and a few fixed `$TMPDIR` paths are
 global to the machine. Don't run the suite in two checkouts at once, and never
 record snapshots while another session is running tests.
 
+## Bytes that arrived from outside
+
+Every decoder that reads a network or a cable runs under a seeded mutation
+harness: `OllinMutation` (a regular target under `Tests/`, Foundation only,
+for the same reason as the browser gate), driven from `OllinMutationTests`, one
+suite per wire. The one thing asserted is that every call comes back: a value,
+a `nil`, or a throw. A trap (an index out of range, an overflow, a narrowing
+that does not fit, a force unwrap) is the failure, because a stranger's packet
+must never end a show.
+
+`MutationRun.run(name, seeds:count:seed:sweeps:decode:)` takes the inputs a
+module's own encoder wrote and, for each, tries the seed itself, the empty
+input, every truncation, a field sweep (every value in `Mutator.extremes` at
+every width and byte order at every offset in the first 128 bytes and the last
+32, where the length fields live), and `count` random mutations of one to three
+stacked edits (truncate, flip a bit or a byte, splice, insert, delete, an
+extreme field, swap, repeat a run, and a number written as text such as `1e300`
+over a run of digits, the edit for a protocol that carries numbers as words).
+The report says how many cases decoded, were refused, or threw, and which seeds
+did not decode as given, since a seed that never decodes tests nothing.
+
+A trap ends the process, and the harness cannot catch that. What it does
+instead is write the case it is about to try, before every call, to
+`$TMPDIR/ollin-mutation/<name>.log` (the run's name, its seed, the case number,
+the byte count, and the bytes in hex), and remove the file when the run
+completes. So a log that exists after a run always means a run that died, and
+it holds the input that killed it: `MutationLog.lastEntry(for:)` reads it back
+and `MutationLog.bytes(fromHex:)` turns the hex into a test's fixture. The
+harness's own test proves this end to end: an unsafe decoder runs in a child
+process (`#expect(processExitsWith:)`), dies, and the parent reads the dying
+case from the child's log.
+
+Adding a decoder: build the seeds with the module's own encoder, hand `run` a
+closure that decodes *and reads* the result every way a sketch would (a reader
+that narrows a number is on the wire as much as the decoder before it, and
+nine of the thirteen traps found were readers), and assert `report.seedsRefused` is
+empty. A stateful reader is either fresh per case or small: a room that kept
+every mutated block rebuilt a mesh of thousands per case. A decoder reached
+only through state (a pong that lands on a measurement in flight) needs that
+state set up in the closure. A message the parser reads as nothing is not a
+seed.
+
 ## Adding a test
 
 - **Does it need a device?** Put an `.enabled(if:)` probe on it, so it refuses
@@ -144,6 +186,8 @@ record snapshots while another session is running tests.
 - **Does it set a process global?** Never hold one across an `await`.
 - **Does it want the machine to itself?** Run its whole target alone first. If it
   still fails there, it has a defect, and a phase is the wrong tool.
+- **Does it decode bytes from outside?** Put its decoder under the mutation
+  harness (`OllinMutationTests`, the section above) beside its round trips.
 
 ## Recording snapshot references
 

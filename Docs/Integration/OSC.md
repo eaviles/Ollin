@@ -54,7 +54,7 @@ OSCMessage("/x", .float(value), .int(count))     // a variable is wrapped by its
 
 An `OSCMessage` is an `address` and an array of `arguments`. A literal becomes an argument on its own, so the common case stays short. `0.8` is a float, `1` is an int, `"on"` is a string, and `true` is a bool. A value held in a variable is wrapped by its case, as `.float(x)`, `.int(n)`, or `.string(s)`. That step is needed because Swift does not convert a `Float` to an argument on its own.
 
-`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. When you read a value back, the coercing accessors save you a `switch`. Those accessors are `.number`, `.int`, `.text`, and `.bool`, and they convert across the numeric types where that makes sense.
+`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. When you read a value back, the coercing accessors save you a `switch`. Those accessors are `.number`, `.int`, `.text`, and `.bool`, and they convert across the numeric types where that makes sense. A `float` or `double` that is not finite, or is too large for an `Int`, reads as `nil` through `.int`, the way a non-numeric tag does.
 
 <a name="oscsender"></a>
 

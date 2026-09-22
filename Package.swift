@@ -1116,6 +1116,30 @@ let package = Package(
             name: "OllinWebGate",
             path: "Tests/OllinWebGate"
         ),
+        // The seeded mutation harness the byte decoders run under: truncations,
+        // bit flips, splices, and length fields pushed to their extremes, a seed
+        // log written before every case so a trap names the input that caused
+        // it. A regular target under `Tests/` for the same reason as the gate
+        // above, with nothing but Foundation in it.
+        .target(
+            name: "OllinMutation",
+            path: "Tests/OllinMutation"
+        ),
+        // Bytes off a wire never trap: every decoder that reads a network or a
+        // cable (OSC and TUIO, MQTT, Link, the phone wire both ways and the
+        // picture framing, the room, the HTTP head and the WebSocket frames,
+        // OSCQuery's request and message routes, MIDI and the timecode walk,
+        // Art-Net and sACN, the Record3D stream, the usbmux reply, Firmata and
+        // the serial lines, the Bluetooth formats) run under the harness. The
+        // one thing asserted is that every call comes back: a value, a `nil`,
+        // or a throw. A trap is the failure, and the harness's own self-test
+        // proves one is caught and its case recovered. GPU-free, runs in CI.
+        .testTarget(
+            name: "OllinMutationTests",
+            dependencies: ["OllinMutation", "Ollin", "OllinOSC", "OllinMQTT", "OllinLink", "OllinPhone",
+                           "OllinRoom", "OllinRemote", "OllinMIDI", "OllinDMX", "OllinRecord3D",
+                           "OllinUSBMux", "OllinSerial", "OllinBluetooth"]
+        ),
         // The Metal-to-GLSL rewriter: each rule pinned on a small source, and the
         // shader helper library translated whole and compiled in a headless
         // browser, since a rewrite that merely looks right is worth nothing.

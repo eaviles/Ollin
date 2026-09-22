@@ -1812,6 +1812,16 @@ public extension PhoneWire {
 
     /// Decode a payload of the given kind into a message. Returns `nil` on a short
     /// or malformed payload (the reader treats that as a skipped frame, not a desync).
+    /// Whether a grid of `width` by `height` fits in `count` samples, the
+    /// product taken carefully: two counts off the wire multiply past what an
+    /// `Int` holds, and every reader of a grid multiplies them, so a grid that
+    /// does not fit its samples is a message to drop here, once.
+    private static func gridFits(width: Int, height: Int, in count: Int) -> Bool {
+        guard width >= 0, height >= 0 else { return false }
+        let (cells, overflow) = width.multipliedReportingOverflow(by: height)
+        return !overflow && cells <= count
+    }
+
     static func decode(header: PhoneHeader, payload: Data) -> PhoneMessage? {
         switch header.kind {
         case .deviceMotion: return decodeMotion(payload).map(PhoneMessage.motion)
@@ -1984,6 +1994,7 @@ public extension PhoneWire {
         guard depthCount >= 0, data.count >= o + depthCount * 4 + 1 else { return nil }
         var depth = [Float](); depth.reserveCapacity(depthCount)
         for _ in 0..<depthCount { depth.append(f32()) }
+        guard gridFits(width: depthWidth, height: depthHeight, in: depth.count) else { return nil }
 
         let hasConfidence = data[s + o] != 0; o += 1
         var confidence: [UInt8]?
@@ -2020,6 +2031,7 @@ public extension PhoneWire {
         let matteCount = u32()
         guard matteCount >= 0, data.count >= o + matteCount else { return nil }
         let matte = [UInt8](data[(s + o)..<(s + o + matteCount)])
+        guard gridFits(width: matteWidth, height: matteHeight, in: matte.count) else { return nil }
 
         return PhoneSegmentationSample(isTracked: tracked, timestamp: timestamp,
                                        matteWidth: matteWidth, matteHeight: matteHeight,
@@ -2320,6 +2332,7 @@ public extension PhoneWire {
         let heatCount = u32()
         guard heatCount >= 0, data.count >= o + heatCount + 1 else { return nil }
         let heat = [UInt8](data[(s + o)..<(s + o + heatCount)]); o += heatCount
+        guard gridFits(width: heatWidth, height: heatHeight, in: heat.count) else { return nil }
 
         let regionCount = Int(data[s + o]); o += 1
         var regions = [PhoneSalientRegionSample](); regions.reserveCapacity(regionCount)
@@ -2415,6 +2428,7 @@ private extension PhoneWire {
             let y = readF32(data, s + o); o += 4
             flow.append(SIMD2<Float>(x, y))
         }
+        guard gridFits(width: flowWidth, height: flowHeight, in: flow.count) else { return nil }
         return PhoneFlowSample(isTracked: tracked, timestamp: timestamp, interval: interval,
                                flowWidth: flowWidth, flowHeight: flowHeight,
                                orientation: orientation, confidence: confidence,

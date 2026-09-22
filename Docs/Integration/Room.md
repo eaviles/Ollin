@@ -102,6 +102,8 @@ for message in room.messages() {
 }
 ```
 
+`int` rounds a number toward zero, and reads `nil` for one that is not finite or does not fit in an `Int`.
+
 **Bound to a parameter**, so another machine drives a `@Param` the way an external fader does:
 
 ```swift

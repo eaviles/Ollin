@@ -155,8 +155,7 @@ private extension Table {
     }
 
     static func int(_ cell: String?) -> Int? {
-        guard let value = number(cell), value.isFinite else { return nil }
-        return Int(value.rounded())
+        number(cell)?.int(rounded: .toNearestOrAwayFromZero)
     }
 
     static func bool(_ cell: String?) -> Bool? {

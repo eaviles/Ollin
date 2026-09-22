@@ -82,11 +82,12 @@ public extension RoomValue {
         }
     }
 
-    /// The value as an `Int`, rounding a number toward zero.
+    /// The value as an `Int`, rounding a number toward zero; `nil` for a number
+    /// that is not finite or is too large for an `Int`.
     var int: Int? {
         switch self {
         case .int(let value): value
-        case .number(let value): value.isFinite ? Int(value) : nil
+        case .number(let value): value.int()
         case .bool(let value): value ? 1 : 0
         default: nil
         }
