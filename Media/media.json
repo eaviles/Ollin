@@ -651,8 +651,8 @@
         "Recreations/HassanSharif/OctoberLines",
         "Recreations/HassanSharif/BodyAndSquares"
       ],
-      "image": "groups/Recreations-HassanSharif.jpg?v=a183100e",
-      "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=08d27318"
+      "image": "groups/Recreations-HassanSharif.jpg?v=50040bbf",
+      "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=68d4ada2"
     },
     "Recreations/JaredTarbell": {
       "of": [
@@ -8443,6 +8443,27 @@
       "still": "examples/Recreations/HassanSharif/AngularLines/still.jpg?v=e2d1c827",
       "stillSmall": "examples/Recreations/HassanSharif/AngularLines/still-640.jpg?v=27b46338"
     },
+    "Recreations/HassanSharif/BodyAndSquares": {
+      "width": 1620,
+      "height": 1080,
+      "length": "12s",
+      "seconds": 12.0,
+      "frame": 540,
+      "motion": 10.475,
+      "sound": false,
+      "source": "80041478a731f23d",
+      "rendered": "2026-09-22",
+      "bytes": {
+        "loop": 451891,
+        "loopSmall": 131515,
+        "still": 48319,
+        "stillSmall": 19293
+      },
+      "loop": "examples/Recreations/HassanSharif/BodyAndSquares/loop.mp4?v=d0b5d8cf",
+      "loopSmall": "examples/Recreations/HassanSharif/BodyAndSquares/loop-640.mp4?v=950efbe3",
+      "still": "examples/Recreations/HassanSharif/BodyAndSquares/still.jpg?v=2b162a60",
+      "stillSmall": "examples/Recreations/HassanSharif/BodyAndSquares/still-640.jpg?v=efbef26f"
+    },
     "Recreations/HassanSharif/DotsLinesForms": {
       "width": 1620,
       "height": 1080,
@@ -8463,6 +8484,27 @@
       "loopSmall": "examples/Recreations/HassanSharif/DotsLinesForms/loop-640.mp4?v=52fb17c2",
       "still": "examples/Recreations/HassanSharif/DotsLinesForms/still.jpg?v=6214eed6",
       "stillSmall": "examples/Recreations/HassanSharif/DotsLinesForms/still-640.jpg?v=eb6e9c6b"
+    },
+    "Recreations/HassanSharif/OctoberLines": {
+      "width": 1620,
+      "height": 1080,
+      "length": "16s",
+      "seconds": 16.0,
+      "frame": 720,
+      "motion": 25.925,
+      "sound": false,
+      "source": "a34ad528546868a7",
+      "rendered": "2026-09-22",
+      "bytes": {
+        "loop": 568827,
+        "loopSmall": 175343,
+        "still": 139445,
+        "stillSmall": 51349
+      },
+      "loop": "examples/Recreations/HassanSharif/OctoberLines/loop.mp4?v=f9682254",
+      "loopSmall": "examples/Recreations/HassanSharif/OctoberLines/loop-640.mp4?v=35976303",
+      "still": "examples/Recreations/HassanSharif/OctoberLines/still.jpg?v=1244b2c7",
+      "stillSmall": "examples/Recreations/HassanSharif/OctoberLines/still-640.jpg?v=53b76f4f"
     },
     "Recreations/JaredTarbell/Substrate": {
       "bytes": {
@@ -11268,14 +11310,6 @@
       "still": "examples/Web/BreathingRing/still.jpg?v=c2d38b5d",
       "stillSmall": "examples/Web/BreathingRing/still-640.jpg?v=592802a2",
       "width": 1080
-    },
-    "Recreations/HassanSharif/OctoberLines": {
-      "seconds": 16,
-      "frame": 720
-    },
-    "Recreations/HassanSharif/BodyAndSquares": {
-      "seconds": 12,
-      "frame": 540
     }
   },
   "passedOver": {

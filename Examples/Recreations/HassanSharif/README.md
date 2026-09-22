@@ -4,9 +4,9 @@
 
 ## Hassan Sharif
 
-| [![AngularLines](https://media.ollin.art/examples/Recreations/HassanSharif/AngularLines/still-640.jpg?v=27b46338)](AngularLines/) | [![DotsLinesForms](https://media.ollin.art/examples/Recreations/HassanSharif/DotsLinesForms/still-640.jpg?v=eb6e9c6b)](DotsLinesForms/) |  |  |
+| [![AngularLines](https://media.ollin.art/examples/Recreations/HassanSharif/AngularLines/still-640.jpg?v=27b46338)](AngularLines/) | [![BodyAndSquares](https://media.ollin.art/examples/Recreations/HassanSharif/BodyAndSquares/still-640.jpg?v=efbef26f)](BodyAndSquares/) | [![DotsLinesForms](https://media.ollin.art/examples/Recreations/HassanSharif/DotsLinesForms/still-640.jpg?v=eb6e9c6b)](DotsLinesForms/) | [![OctoberLines](https://media.ollin.art/examples/Recreations/HassanSharif/OctoberLines/still-640.jpg?v=53b76f4f)](OctoberLines/) |
 |---|---|---|---|
-| [AngularLines](AngularLines/) | [DotsLinesForms](DotsLinesForms/) |  |  |
+| [AngularLines](AngularLines/) | [BodyAndSquares](BodyAndSquares/) | [DotsLinesForms](DotsLinesForms/) | [OctoberLines](OctoberLines/) |
 
 **Hassan Sharif** (1951, Dubai; 2016, Dubai) is the artist the Gulf's conceptual art starts with. He drew cartoons for the Dubai papers in the 1970s, then went to England on a scholarship: a foundation year in Leamington Spa, and from 1980 to 1984 the Byam Shaw School of Art in London, in the abstract and experimental department that Tam Giles ran. There he read the British constructivists and took up Kenneth Martin's *Chance and Order*, a way of drawing Martin had used since the late 1960s and set out in a sentence: "The points of intersection on a grid of squares are numbered and the numbers are written on small cards and then picked at random. A line is made between each successive pair of numbers as they are picked out." Sharif kept the numbered grid and the picking, and put rules of his own over them, arbitrary and over-elaborate on purpose, worked out on a draft paper he kept with the finished drawing. He called them semi-systems. "I am not a systematic person," he said. "If somebody tells me this isn't a system, I'll say: this isn't a system, it's a semi-system." He did not correct a slip: "I believe that art is a result of errors."
 
