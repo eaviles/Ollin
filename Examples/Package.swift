@@ -904,6 +904,13 @@ let package = Package(
         // canvas, after Hassan Sharif.
         example("Recreations/HassanSharif/DotsLinesForms"),
         example("Recreations/HassanSharif/AngularLines"),
+        // A table of numbers cut by a wavy line, the numbers on its left
+        // summed digit by digit and ruled as bands of straight and wavy lines
+        // on the sheet and on the wall; and a body laid on a grid of
+        // twenty-five squares so its head, hands and feet land where the
+        // picked numbers say, the squares it covers filled in on the record.
+        example("Recreations/HassanSharif/OctoberLines"),
+        example("Recreations/HassanSharif/BodyAndSquares"),
         // The table of fractions woven and counted along its diagonals, and
         // the diagonal argument built out of a list of colored digits, after
         // two pages of one Owen Schuh notebook spread.

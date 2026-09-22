@@ -14,7 +14,9 @@ He went home in 1984 and spent the next thirty years making the ground other art
 
 *Dots, Lines and Forms* (1984, ink on paper with one draft paper) is a semi-system in its plainest form: one table of cells drawn three times across a sheet, once as the points a line touches, once as the line itself, once as the line inside its square. In his last years he returned to the sheets of small angular lines, *Lines No 2* (2012) and the *Six Points* and *Seven Points Angular Lines* (2013), each line a few straight pieces through numbered crossings of a fine grid, the numbers on draft papers that hang beside the work. From those sheets he picked lines, seemingly at random, and made them large: one painted black across a red canvas, one cut in wood.
 
-He belongs in this set because the draft paper is the program and the drawing is its run. Both sketches here keep the draft paper on the wall, so the numbers that made the picture can be read beside it.
+*10th to 13th October No. 1 & No. 2* (1984) is four days of the same work with the trials left in. The first sheet holds four pages of them, grids of digits, Latin squares, a red checker, a plan for fifteen drawings in five groups, most of it crossed out in red. The second, dated the 13th, holds the rule that survived: a table of two-digit numbers, a wavy line that cuts it, the numbers on the line's left taken in red, each turned into the sum of its digits, the repeated sums dropped, and, in his hand beside an arrow, the sums turned into lines, semi-straight or wavy, on paper or directly on the wall. The drawing under it is forty-one ruled lines in seven bands, straight and wavy in turn. A year earlier, home in Dubai for the summer, he had taken the semi-systems off the paper: for *Body and Squares* (1983) he drew a grid of twenty-five squares on the ground with a cube, the whole grid the size of his body, and lay down on it position after position while a camera on a tripod recorded which squares the body covered, the outcome of calculations by chance and order written on a long grid pinned above the prints.
+
+He belongs in this set because the draft paper is the program and the drawing is its run. All four sketches here keep the numbers on the wall beside what they made, so the picture can be read back off them.
 
 Learn more:
 
@@ -49,6 +51,30 @@ Learn more:
 
   ```sh
   swift run Example-Recreations-HassanSharif-AngularLines --export-svg wall.svg --frame 840
+  ```
+
+- [**OctoberLines**](OctoberLines/): the second sheet of the October work, cut again by chance. The table is his, a header 2 3 4 5 6 and the rows 22 to 56; for every row the cut passes between two columns, starting anywhere and stepping at most one column as it goes down. The numbers on its left turn red, each becomes the sum of its digits on the list, the repeats are dropped, and the sums go into the red box in the order they came. Then the pen rules one band per sum, as many lines as the sum, straight and wavy bands in turn, on the sheet in its red frame and at the same scale as a wall on the right, since the sheet says the wall will do. `pace` is lines a second, a finished sheet holds for `hold` seconds, `firstSheet` numbers the first, and a press starts the next. An original Ollin interpretation written from the two sheets. There is no code to port: the work is ink on paper.
+
+  ```sh
+  swift run Example-Recreations-HassanSharif-OctoberLines
+  ```
+
+  The rule back as marks, from a frame after the wall is painted: the cut's place in each row names the numbers taken, and every band holds its sum's worth of lines.
+
+  ```sh
+  swift run Example-Recreations-HassanSharif-OctoberLines --export-svg wall.svg --frame 1320 --param hold=40
+  ```
+
+- [**BodyAndSquares**](BodyAndSquares/): the ground and the record. A grid of five by five squares, its side one height, numbered 1 to 25. For every position chance picks five numbers without repeating, one each for the head, the two hands and the two feet, and the body lies down so that each lands in its square, the joints found by relaxing a chain of fixed bone lengths under the squares' pull; a pick the body cannot reach is struck through on the record, as he struck out what failed, and picked again. Once the body is down, every square it lies across is read off the ground and filled in on the record beside a small print of the position. `positions` is how many a sheet holds, `every` the seconds between them, `hold` how long a full sheet stays, `firstSheet` the first sheet's number, and a press starts the next. An original Ollin interpretation written from the documentation. There is no code to port: the work is a grid on the ground, a body, and a camera.
+
+  ```sh
+  swift run Example-Recreations-HassanSharif-BodyAndSquares
+  ```
+
+  The record back beside the bodies, from a frame after the sheet is full: for each print, the squares its limbs and head pass through are the squares filled in next to it.
+
+  ```sh
+  swift run Example-Recreations-HassanSharif-BodyAndSquares --export-svg record.svg --frame 1920 --param hold=40
   ```
 
 This is a homage after Hassan Sharif, made for learning. It isn't a reproduction of a specific work, and it isn't affiliated with or endorsed by the artist or his estate.

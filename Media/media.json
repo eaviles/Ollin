@@ -240,7 +240,9 @@
     ],
     "Recreations/HassanSharif": [
       "Recreations/HassanSharif/DotsLinesForms",
-      "Recreations/HassanSharif/AngularLines"
+      "Recreations/HassanSharif/AngularLines",
+      "Recreations/HassanSharif/OctoberLines",
+      "Recreations/HassanSharif/BodyAndSquares"
     ],
     "Recreations/JaredTarbell": [
       "Recreations/JaredTarbell/Substrate"
@@ -645,7 +647,9 @@
     "Recreations/HassanSharif": {
       "of": [
         "Recreations/HassanSharif/DotsLinesForms",
-        "Recreations/HassanSharif/AngularLines"
+        "Recreations/HassanSharif/AngularLines",
+        "Recreations/HassanSharif/OctoberLines",
+        "Recreations/HassanSharif/BodyAndSquares"
       ],
       "image": "groups/Recreations-HassanSharif.jpg?v=a183100e",
       "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=08d27318"
@@ -11264,6 +11268,14 @@
       "still": "examples/Web/BreathingRing/still.jpg?v=c2d38b5d",
       "stillSmall": "examples/Web/BreathingRing/still-640.jpg?v=592802a2",
       "width": 1080
+    },
+    "Recreations/HassanSharif/OctoberLines": {
+      "seconds": 16,
+      "frame": 720
+    },
+    "Recreations/HassanSharif/BodyAndSquares": {
+      "seconds": 12,
+      "frame": 540
     }
   },
   "passedOver": {
