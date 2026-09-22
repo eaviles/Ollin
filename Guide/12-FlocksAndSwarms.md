@@ -378,7 +378,23 @@ Each firefly is a phase, an angle going round, and it glows when the angle comes
 
 The left of the figure is one crowd at three moments, with the pull three times what it needs. The dots start everywhere, gather, and end in a bunch, and the arrow from the center grows with them. The right is what made the model famous. Below a critical coupling the crowd never locks, however long it runs, and r wanders near the floor. Above it a locked group forms and grows, and r climbs toward 1. The threshold is sharp, and Kuramoto found it exactly. `sync.criticalCoupling` names it for the spread you gave the crowd, and a slider taken across it is the whole demonstration: on one side of it nothing happens, and on the other side everything does, from a pull that changed by a few percent.
 
-The model is cheap in a way a flock is not. Nobody looks at anybody in particular. Each oscillator is pulled toward the crowd's own mean phase, so a frame is one pass over the crowd rather than a neighbor search, and thousands cost nothing you notice. Give it a `range` and each oscillator listens only to its neighbors on a ring instead, which locks locally and can keep a twist. [Chapter 19](19-GridSimulations.md)'s grids are neighbors in space. This is neighbors in time, with the same lesson: a local rule, a global result, and a threshold where the result appears.
+The model is cheap in a way a flock is not. Nobody looks at anybody in particular. Each oscillator is pulled toward the crowd's own mean phase, so a frame is one pass over the crowd rather than a neighbor search, and thousands cost nothing you notice. Give it a `range` and each oscillator listens only to its neighbors on a ring instead, which locks locally and can keep a twist. Make it with `columns` and `rows` and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out, and now the crowd has a geography: patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` reads, cell by cell, where it has locked.
+
+```swift
+var grid: HexGrid { hexGrid(columns: 24, rows: 20) }
+let sync = Kuramoto(columns: 24, rows: 20, layout: .hex, coupling: 3, spread: 0.3, range: 1, seed: 7)
+
+override func draw() {
+    sync.advance()
+    let locked = sync.localCoherence
+    for (i, cell) in grid.enumerated() {
+        fill(Color(hue: sync.phases[i] / .tau, saturation: locked[i], brightness: 0.9))
+        drawPolygon(cell.corners)
+    }
+}
+```
+
+The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way, so what you draw is what is coupled. [Chapter 19](19-GridSimulations.md)'s grids are neighbors in space. This is neighbors in time, with the same lesson: a local rule, a global result, and a threshold where the result appears.
 
 ## Putting it together: the living flock
 

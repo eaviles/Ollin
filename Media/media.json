@@ -10145,20 +10145,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 500,
-      "motion": 27.784,
+      "motion": 27.38,
       "sound": false,
-      "source": "3358190863910f06",
-      "rendered": "2026-09-13",
+      "source": "71d4aefdb3069621",
+      "rendered": "2026-09-22",
       "bytes": {
-        "loop": 4246019,
-        "loopSmall": 1249794,
-        "still": 272265,
-        "stillSmall": 106484
+        "loop": 4194118,
+        "loopSmall": 1217259,
+        "still": 267502,
+        "stillSmall": 104815
       },
-      "loop": "examples/Simulation/Kuramoto/loop.mp4?v=a3cb9643",
-      "loopSmall": "examples/Simulation/Kuramoto/loop-640.mp4?v=f6c32891",
-      "still": "examples/Simulation/Kuramoto/still.jpg?v=e96af7ba",
-      "stillSmall": "examples/Simulation/Kuramoto/still-640.jpg?v=f2864c53"
+      "loop": "examples/Simulation/Kuramoto/loop.mp4?v=a49abde6",
+      "loopSmall": "examples/Simulation/Kuramoto/loop-640.mp4?v=3de12a70",
+      "still": "examples/Simulation/Kuramoto/still.jpg?v=9ae0c50c",
+      "stillSmall": "examples/Simulation/Kuramoto/still-640.jpg?v=902d6a76"
     },
     "Simulation/LifeQuilt": {
       "bytes": {

@@ -84,6 +84,8 @@ withTarget(layer) {
 
 Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*, meaning its fill color and its geometry so far, and it leaves the canvas untouched. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw.
 
+The canvas's own `background()` is the other way around: it drops everything recorded so far this frame, and the geometry of every layer drawn before it goes too, while the `filtered` and `combined` passes that read those layers still run, over layers that are now empty. A `background()` placed after the layers were drawn leaves their composite black with no error. Clear the canvas first, at the top of `draw()`, then draw the layers (see [the frame](../Concepts/Frame.md)).
+
 <a id="image"></a>
 ### RenderTarget.image
 
@@ -326,7 +328,7 @@ layer.filtered(.threshold(0.5)).filtered(.gaussianBlur(radius: 3)).filtered(.gra
 
 A [`Filter`](#filter) reads one layer, while a `Combine` reads **two**. It takes a base layer and an auxiliary layer that modulates it, which is what masking, displacement, and cross-dissolve need. `base.combined(with: aux, op)` runs the op on the GPU and hands back a new layer. That layer is filterable and combinable in turn, so multi-input effects chain like single-input ones.
 
-A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold a `RenderTarget`, so the aux layer travels alongside it as the `with:` argument. The ops:
+A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold a `RenderTarget`, so the aux layer travels alongside it as the `with:` argument. A combine over a base that nothing drew into is skipped and its result stays empty, so draw the base first, if only a `background()`. The ops:
 
 - **`.mask(channel:inverted:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default, so draw the mask in white over transparent) or **opaque** (`channel: .alpha`). Everywhere else the base fades to transparent, and `inverted` flips that. Use it for a spotlight reveal, a vignette, or a clip to a shape.
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**. Red is horizontal, green is vertical, mid-gray is no shift, and the largest shift is `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat haze, and refraction.

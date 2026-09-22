@@ -1082,7 +1082,7 @@ public struct Sim: Sendable {
 /// `Sim.excitable`, `Sim.hodgepodge`, `Sim.forestFire`). With a `range` above 1 the same two shapes
 /// scale up: `.moore` is the full block within that distance, `.vonNeumann` the
 /// diamond.
-public enum CellNeighborhood: Sendable, Equatable {
+public enum CellNeighborhood: Sendable, Equatable, Hashable {
     /// The edge-sharing cells: four at range 1, a diamond further out.
     case vonNeumann
     /// The edge sharers plus the corners: eight at range 1, a full block further out.

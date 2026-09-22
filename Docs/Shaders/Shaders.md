@@ -76,6 +76,24 @@ A generator paints from math alone, like the plasma above. A filter transforms a
 
 `sample` and `sampleAux` read a layer as a straight sRGB color, which is the space your shader works in. When a layer holds *data* rather than a picture, read it with **`sampleRaw(info, uv)`** instead, and use **`sampleAuxRaw`** for a combine's second input. Both hand back the stored values with no color conversion at all. A [measured distance field](../Drawing/DistanceFields.md) is the case to reach for them. Its red channel is a distance in pixels and runs negative, and its green and blue are the two halves of a direction. None of that survives being read as a color.
 
+A data layer of your own, one texel per cell of a grid, wants its texels exact, and how you draw it decides that. An explicit-size layer, `makeRenderTarget(width:height:)`, is exactly that many texels on every path, live or exported, so a read at `(i + 0.5) / width` lands on one texel's center and blends nothing. What can go wrong is the drawing. A one-texel `drawRect` lays its anti-aliasing halo outside its edge, where the next texel's center is, so every texel ends up carrying most of whichever neighbor was drawn after it (63 percent, measured). Draw data as an image instead, one byte per channel per texel, at its native size:
+
+```swift
+let sync = Kuramoto(columns: 30, rows: 38, layout: .hex, coupling: 2, range: 1, seed: 4)
+var bytes: [UInt8] = []
+for phase in sync.phases {
+    let c = UInt8(((cos(phase) + 1) / 2 * 255).rounded())
+    let s = UInt8(((sin(phase) + 1) / 2 * 255).rounded())
+    bytes += [c, s, 0, 255]
+}
+let data = makeRenderTarget(width: 30, height: 38)
+withTarget(data) {
+    if let cells = Image(width: 30, height: 38, premultipliedRGBA: bytes) { drawImage(cells, 0, 0) }
+}
+```
+
+Read that layer with `sampleAux`, not the raw form: a byte image is stored the way a picture is, and `sampleAux` undoes that, so each channel comes back as its byte over 255. A byte is eight bits, so store an angle as its cosine and sine rather than the angle itself, which would wrap at the byte's rounding. A value that needs more than a byte goes through a mark several texels wide, read at the mark's center, or through a [simulation field](../Drawing/Effects.md#simfield), which keeps its cells as floats.
+
 ---
 
 ## `ShaderInfo` and params

@@ -1219,19 +1219,42 @@ final class Image
   subscript(_: Int, _: Int) -> Color { get set }
   var size: Vector2 { get }
 final class Kuramoto
+  enum Layout: Equatable, Hashable, Sendable
+    case hex
+    case square(CellNeighborhood)
   func advance(by: Double = default)
+  init(columns: Int, rows: Int, layout: Kuramoto.Layout = default, wraps: Bool = default, layers: Int = default, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, range: Int = default, layerCoupling: Double = default, seed: Int = default)
   init(count: Int, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, range: Int = default, seed: Int = default)
+  init(neighbors: [[Int]], layers: Int = default, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, layerCoupling: Double = default, seed: Int = default)
   let frequency: Double
+  let lattice: Kuramoto.Lattice?
+  let layers: Int
   let spread: Double
+  struct Lattice: Equatable, Hashable, Sendable
+    func column(of: Int) -> Int
+    func index(column: Int, row: Int) -> Int
+    func neighbors(of: Int, within: Int) -> [Int]
+    func neighbors(within: Int) -> [[Int]]
+    func row(of: Int) -> Int
+    init(columns: Int, rows: Int, layout: Kuramoto.Layout = default, wraps: Bool = default)
+    let columns: Int
+    let layout: Kuramoto.Layout
+    let rows: Int
+    let wraps: Bool
+    var count: Int { get }
   var coherence: Double { get }
   var count: Int { get }
   var coupling: Double { get set }
   var criticalCoupling: Double { get }
   var frequencies: [Double] { get set }
   var lag: Double { get set }
+  var layerCoupling: Double { get set }
+  var localCoherence: [Double] { get }
   var meanPhase: Double { get }
+  var neighbors: [[Int]]? { get set }
   var phases: [Double] { get set }
   var range: Int { get set }
+  var sites: Int { get }
 final class LineSpray: Sendable
   enum Sampling: Equatable, Sendable
     case byLength(pointsPerPass: Int)

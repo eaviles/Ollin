@@ -245,7 +245,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Watercolor simulation`](./Simulation/Watercolor.md) - wet paint on rough paper: a three-layer wash simulation (`watercolor(pigments:)`) with real pigment behavior and Kubelka-Munk glazing. Paint with any drawing call, call `dry()` between washes, and call `blot()` for backrun blooms.
 - [`Articulated & chaotic motion`](./Simulation/Motion.md) - CPU motion systems you step each frame: `IKChain` (inverse-kinematics tentacles and limbs), `DoublePendulum` (the classic chaos machine), and `NBody` (quadtree gravity for orbits, galaxies, and collisions)
 - [`Crowds`](./Simulation/Crowds.md) - `Crowd`, walkers that avoid each other by reciprocal velocity obstacles on the CPU: no overlap while every walker finds a safe velocity, obstacles and walls that hold even in a jam, `isJammed`, goals or a `preferredVelocity` rule
-- [`Coupled oscillators`](./Simulation/Oscillators.md) - `Kuramoto`, a crowd of oscillators each pulled toward the phase of the others, on the CPU: the order parameter `coherence`, the critical coupling where a locked group forms, and a ring form that locks locally and can hold a twist
+- [`Coupled oscillators`](./Simulation/Oscillators.md) - `Kuramoto`, a crowd of oscillators each pulled toward the phase of the others, on the CPU: the order parameter `coherence`, the critical coupling where a locked group forms, and local coupling on a ring, a square or hex lattice, or a graph of your own, with `localCoherence` for where the crowd has locked
 
 ### Integration
 
