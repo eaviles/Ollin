@@ -2,9 +2,9 @@
 import Testing
 import CoreGraphics
 
-/// Laws for the fractal leaves (`mandelbulb`, `mengerSponge`, `mandelbox`), pinned on the
+/// Invariants for the fractal leaves (`mandelbulb`, `mengerSponge`, `mandelbox`), pinned on the
 /// GPU through flat top-down renders, since the leaves have no CPU evaluator and a mean-diff
-/// snapshot cannot tell a right sponge from a wrong one. Each law is a property of the set
+/// snapshot cannot tell a right sponge from a wrong one. Each invariant is a property of the set
 /// itself: the sponge's silhouette down an axis is the Sierpinski carpet, so it covers
 /// (8/9)^k of its square and sees through its center; the bulb turns its power's symmetry
 /// about the y-axis; the box carries the octahedral symmetry of its folds; and `size` is an

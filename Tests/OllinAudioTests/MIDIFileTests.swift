@@ -6,7 +6,7 @@ import Testing
 
 /// Standard MIDI Files, read and written.
 ///
-/// The laws that matter are the ones a file has to keep to be worth anything:
+/// The invariants that matter are the ones a file has to keep to be worth anything:
 /// what goes out comes back the same, a file written by hand somewhere else
 /// says what its bytes say, and a file that is not one is refused rather than
 /// half read.
@@ -394,7 +394,7 @@ struct MIDIRecordingTests {
 
         // Both notes are asked for in one breath, the second with half a
         // second of lead, which at 120 a minute is one beat. The clock is a
-        // real one, so the gap between them is the law rather than either
+        // real one, so the gap between them is the invariant rather than either
         // note's own place.
         synth.play("C4", velocity: 0.8, for: 0.25)
         synth.play("E4", velocity: 0.5, for: 0.25, after: 0.5)

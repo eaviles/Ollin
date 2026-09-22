@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import Ollin
 
-/// Laws of the Kuramoto crowd, on the CPU: the transition at the critical
+/// Invariants of the Kuramoto crowd, on the CPU: the transition at the critical
 /// coupling, what the order parameter measures, determinism under a seed, the
 /// uncoupled limit, the lagged locked state, the ring, the lattice and the graph,
 /// the local order parameter, and the layers of one site.

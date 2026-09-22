@@ -260,7 +260,7 @@ struct LightAccumulationTests {
     }
 
     /// A quad's light is the whole quad's, however many points draw it and
-    /// whatever its area, which is the line's law one dimension up.
+    /// whatever its area, which is the line's rule one dimension up.
     @Test func aQuadsLightIsSpreadOverItsOwnPoints() {
         let small = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0),
                               light: SIMD3(repeating: 2))
@@ -342,7 +342,7 @@ struct LightAccumulationTests {
 
     /// The round aperture is the scatter every picture was made with before
     /// there was a choice, so a lens that does not ask for a shape has to draw
-    /// exactly what it drew before. This is the law that lets the aperture ship
+    /// exactly what it drew before. This is the invariant that lets the aperture ship
     /// without moving a single committed image.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theRoundApertureDrawsWhatItAlwaysDrew() throws {

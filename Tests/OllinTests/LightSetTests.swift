@@ -13,7 +13,7 @@ import COllinShaders
 /// sets its lamps the way every sketch always has must be the picture it always was,
 /// which means it records *no* scoped set and every batch reads the frame's own,
 /// since that is what the whole committed 3D reference set was recorded against. And
-/// a frame that scopes a set must keep the two apart: the interesting law here
+/// a frame that scopes a set must keep the two apart: the interesting test here
 /// renders a two-set scene and then each set alone, and demands that the shared
 /// frame's pixels match the solo ones, so a lamp leaking from one set into the other
 /// could not pass.
@@ -286,7 +286,7 @@ struct LightSetTests {
 }
 
 /// Two boxes side by side, each under its own lamp. `mode` renders the pair, or one
-/// box alone under its own set, which is how the leak law compares them.
+/// box alone under its own set, which is how the leak test compares them.
 final class TwoRooms: Sketch {
     enum Mode { case both, leftAlone, rightAlone, leftOnTheFrame }
     var mode = Mode.both
@@ -368,14 +368,14 @@ struct LightSetRenderProbes {
         let both = try rgba(TwoRooms.make(.both))
         let left = try rgba(TwoRooms.make(.leftAlone))
         let right = try rgba(TwoRooms.make(.rightAlone))
-        // Each box first has to be *lit*, or the law would pass on two black frames.
+        // Each box first has to be *lit*, or the test would pass on two black frames.
         let bl = pixel(both, TwoRooms.leftProbe), br = pixel(both, TwoRooms.rightProbe)
         #expect(bl.r > 40, "the warm box read \(bl)")
         #expect(br.b > 40, "the cool box read \(br)")
         // And each one is warm or cool, not the average of the two.
         #expect(bl.r > bl.b + 20, "the warm box should be warmer than it is cool: \(bl)")
         #expect(br.b > br.r + 20, "the cool box should be cooler than it is warm: \(br)")
-        // The law itself: sharing the frame changes neither box by a byte. A lamp
+        // The invariant itself: sharing the frame changes neither box by a byte. A lamp
         // leaking across the sets would move one of these.
         #expect(bl == pixel(left, TwoRooms.leftProbe),
                 "the warm box moved when the cool one joined: \(bl) against \(pixel(left, TwoRooms.leftProbe))")
@@ -404,7 +404,7 @@ struct LightSetRenderProbes {
         // grazing angle, so the two boxes look nothing alike.
         #expect(flat.r > 150, "the unlit box should read its bright fill, got \(flat)")
         #expect(flat.r > lit.r + 25, "the two boxes read alike: lit \(lit), flat \(flat)")
-        // The laws: the unlit scope left its lit neighbor untouched, and it rendered
+        // The tests: the unlit scope left its lit neighbor untouched, and it rendered
         // exactly what a frame-level `noLights()` renders.
         #expect(lit == pixel(litAlone, LitAndUnlit.litProbe),
                 "the lit box moved when the flat one joined: \(lit) against \(pixel(litAlone, LitAndUnlit.litProbe))")

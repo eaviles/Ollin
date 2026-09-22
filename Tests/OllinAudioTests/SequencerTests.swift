@@ -4,7 +4,7 @@ import Testing
 @testable import OllinAudio
 
 /// The sequencer and the arpeggiator answer a beat position with notes and the
-/// beats they land on, so their laws are read off those beats: swing moves only
+/// beats they land on, so their invariants are read off those beats: swing moves only
 /// the offbeats and by the fraction, a ratchet splits a step evenly, a chance is
 /// a coin the same seed always tosses the same way, and held notes cycle in
 /// order. The synth's wait, which is what lets those beats land between frames,
@@ -36,7 +36,7 @@ import Testing
         }
     }
 
-    /// The law the brief names: swing moves every other step, by the fraction,
+    /// The invariant the brief names: swing moves every other step, by the fraction,
     /// and leaves the downbeats where they were.
     @Test func swingMovesOnlyTheOffbeatsByTheFraction() {
         var straight = StepSequencer(Array(repeating: Pitch(60), count: 16))

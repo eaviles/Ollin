@@ -5,10 +5,10 @@ import Foundation
 
 /// Render checks on `.shock`, the coherence-enhancing filter.
 ///
-/// Each one is a law the technique promises rather than a picture, because the filter
+/// Each one is an invariant the technique promises rather than a picture, because the filter
 /// can look convincing while being wrong: a smoothing that runs across the flow
 /// instead of along it still flattens, a shock with its sign turned still sharpens,
-/// and a filter that invents colors still looks painterly. The laws:
+/// and a filter that invents colors still looks painterly. The tests:
 ///
 /// - a flat tone is left alone, to the level;
 /// - a soft edge gets narrower, and more rounds make it narrower still (the
@@ -131,7 +131,7 @@ struct ShockFilterTests {
             return gap - line
         }
         let noiseBefore = alongLineStd(plain), noiseAfter = alongLineStd(after)
-        #expect(noiseBefore > 8, "the lines have to be noisy for the law to mean anything: \(noiseBefore)")
+        #expect(noiseBefore > 8, "the lines have to be noisy for the test to mean anything: \(noiseBefore)")
         #expect(noiseAfter < noiseBefore * 0.5, "the noise along a line is averaged away: \(noiseBefore) -> \(noiseAfter)")
         let contrastBefore = contrast(plain), contrastAfter = contrast(after)
         #expect(contrastAfter > contrastBefore * 0.8,

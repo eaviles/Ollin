@@ -108,7 +108,7 @@ struct EmbroideryExportTests {
                 Int(((canvas.center.y - p.y) * s).rounded()))
     }
 
-    // MARK: - Laws
+    // MARK: - Invariants
 
     @Test func theFileIsAHeaderAndRecordsThatCountThemselves() {
         let sketch = probe { s in

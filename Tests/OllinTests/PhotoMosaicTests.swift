@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the photo mosaic. Two claims carry it: the average of a cell is
+/// Invariants for the photo mosaic. Two claims carry it: the average of a cell is
 /// worked out in linear light, and the picture that goes there is the nearest one
 /// by that average.
 @Suite
@@ -19,7 +19,7 @@ struct PhotoMosaicTests {
         }
     }
 
-    /// The law that says the averaging is right: half black and half white is
+    /// The invariant that says the averaging is right: half black and half white is
     /// middle gray in *linear light*, which is 0.5 there and about 0.74 written
     /// back out in sRGB. Averaging the sRGB numbers instead would answer 0.5, a
     /// full quarter too dark, and no picture would say so.
@@ -165,7 +165,7 @@ struct PhotoMosaicTests {
     }
 
     /// The sRGB transfer curve, written out here from its own definition rather
-    /// than borrowed, so the laws measure the framework rather than agree with it.
+    /// than borrowed, so the tests measure the framework rather than agree with it.
     private func linear(_ c: Double) -> Double {
         c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
     }

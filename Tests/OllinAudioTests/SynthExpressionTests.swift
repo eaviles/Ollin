@@ -4,7 +4,7 @@ import Testing
 
 /// One note bent, pressed, or slid on its own among others left alone. The
 /// renderer is driven directly with the events a `Synth` would send, so every
-/// law here is a measurement on samples: where a note's energy sits after a
+/// test here is a measurement on samples: where a note's energy sits after a
 /// bend, how loud a pressed note is against its twin, what a slide lets
 /// through the filter.
 @Suite struct SynthExpressionTests {

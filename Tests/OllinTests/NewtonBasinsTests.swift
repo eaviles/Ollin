@@ -2,7 +2,7 @@ import CoreGraphics
 import Testing
 @testable import Ollin
 
-/// Newton's basins, checked against the laws the method promises rather than
+/// Newton's basins, checked against the invariants the method promises rather than
 /// against a picture: a root sits inside its own basin, the three basins of the
 /// cube roots of one turn into each other by a third of a turn, wherever two
 /// basins meet the third is within reach (the boundary is a Wada set), a cycle
@@ -169,7 +169,7 @@ struct NewtonBasinsTests {
         // out and walks back for fifteen or so, so with shading on both read
         // darker, the second much more; with shading off the root and the
         // outward point match. (The contour per step keeps the shade from
-        // being monotonic pointwise, so the law compares far apart.)
+        // being monotonic pointwise, so the test compares far apart.)
         func brightness(_ shading: Double, at p: Vector2) throws -> Double {
             let probe = NewtonProbe(roots: Self.cubeRoots, shading: shading)
             let (_, n, rgb) = try basins(probe)

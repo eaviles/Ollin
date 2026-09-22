@@ -10,7 +10,7 @@ import Testing
 /// step moves exactly one frame; the loop region wraps the running clock) and
 /// the timeline model's edits (a key placed at the playhead holds the parameter's
 /// value, tracks stay sorted, edits round-trip to the file, and a track worked
-/// out from a formula is left alone), and the rule field's laws (a rule typed
+/// out from a formula is left alone), and the rule field's invariants (a rule typed
 /// for a parameter drives it and reaches the file, a rule that cannot be read is
 /// refused at its character and leaves the running one, a ring is refused where
 /// it is written, and only a number or a switch takes one).
@@ -29,7 +29,7 @@ struct ParameterTimelineTests {
         }
     }
 
-    /// Two parameters of different kinds, for the edit laws.
+    /// Two parameters of different kinds, for the edit tests.
     private final class ParameterProbe: Sketch {
         @Param(0...300) var radius = 120.0
         @Param var filled = true

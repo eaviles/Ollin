@@ -2,7 +2,7 @@ import CoreGraphics
 import Testing
 @testable import Ollin
 
-/// Laws for the small convenience helpers: the shaping additions (`wrap`, the
+/// Invariants for the small convenience helpers: the shaping additions (`wrap`, the
 /// generic `clamp`, `unipolar`/`bipolar`), the sequence builders (`fractions`,
 /// `angles`), the point helpers (`polar`, the angle units), the sketch
 /// properties (`mouse`, `previousMouse`, `shortSide`), and the one-call sugar

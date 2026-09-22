@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for `Filter.droste`, read off real renders. The construction promises one
+/// Invariants for `Filter.droste`, read off real renders. The construction promises one
 /// thing above all: the picture is unchanged by a particular scale-and-turn, which
 /// is what "inside itself, without end" means. That is a theorem about the map, so
 /// it is what the tests measure, together with the hole never being read and the
@@ -51,7 +51,7 @@ struct DrosteTests {
         #expect(checked >= 8, "expected the probe points to land on the canvas")
     }
 
-    /// The same law once the copies are wound into a spiral, where the step is a
+    /// The same invariant once the copies are wound into a spiral, where the step is a
     /// scale *and* a turn. Nothing but the right log-plane rotation satisfies it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aCopyOutIsTheSamePictureThroughTheTwist() throws {
@@ -59,7 +59,7 @@ struct DrosteTests {
         let pixels = try #require(Probe(render))
         let center = Vector2(120, 120)
         let step = repeatFactor(inner: 0.4, twist: 1)
-        #expect(step.turn > 0.1, "the spiral should really turn, or the law is vacuous")
+        #expect(step.turn > 0.1, "the spiral should really turn, or the test is vacuous")
 
         var checked = 0
         for angle in stride(from: 0.0, to: 2 * .pi, by: .pi / 5) {
@@ -74,7 +74,7 @@ struct DrosteTests {
     }
 
     /// The turn has to be part of it. Stepping out by the scale alone, with the
-    /// spiral on, lands somewhere else, so the law above is not passing by accident.
+    /// spiral on, lands somewhere else, so the test above is not passing by accident.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theTurnIsWhatMakesTheSpiralMatch() throws {
         let render = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))

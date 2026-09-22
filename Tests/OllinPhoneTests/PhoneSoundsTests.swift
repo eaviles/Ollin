@@ -4,8 +4,8 @@ import Ollin
 import OllinPhone
 
 /// Exercises the phone's ears with no phone attached: the `.sound` wire kind's
-/// round trip, and the laws `PhoneSounds` keeps over staged readings, which are
-/// the same laws the Mac's own classifier keeps (a level for every label, the
+/// round trip, and the invariants `PhoneSounds` keeps over staged readings, which are
+/// the same invariants the Mac's own classifier keeps (a level for every label, the
 /// strongest one whatever the threshold, an event only on a crossing from
 /// below). All GPU-free, so it runs anywhere.
 ///
@@ -68,7 +68,7 @@ import OllinPhone
         #expect(PhoneWire.decode(header: header, payload: payload) == nil)
     }
 
-    // MARK: The laws
+    // MARK: The invariants
 
     /// A level is there for every label the phone reported, whatever the
     /// threshold, and zero for one it never named.

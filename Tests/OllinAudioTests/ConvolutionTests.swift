@@ -5,7 +5,7 @@ import Testing
 @testable import Ollin
 @testable import OllinAudio
 
-/// A room of your own: the convolution reverb. The laws here are the ones
+/// A room of your own: the convolution reverb. The tests here are the ones
 /// that make it a convolution and not merely a wash: the convolver matches
 /// the sum it stands for at any block size, a click through the room is the
 /// room, the mix is linear, a turn of the mix keeps the tail, and the room

@@ -6,10 +6,10 @@ import Foundation
 /// Render checks on the two filters that ride on a summed-area table: `.boxBlur` and
 /// `.adaptiveThreshold`.
 ///
-/// Each one is checked against a law rather than against a picture, because both of them
+/// Each one is checked against an invariant rather than against a picture, because both of them
 /// can look completely convincing while being wrong. A box average that is off by a few
 /// percent still reads as a blur, and a threshold that has quietly stopped adapting still
-/// reads as lettering until the light moves. The three laws:
+/// reads as lettering until the light moves. The three tests:
 ///
 /// - the average a box lookup reports is the average of the texels it stands for, which
 ///   is checked against a table built independently on the CPU in `Double`;

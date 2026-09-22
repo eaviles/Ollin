@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// What `--list-params` says a sketch declares. The listing's one promise is
-/// that a line can be pasted back, so the law that matters is the round trip:
+/// that a line can be pasted back, so the invariant that matters is the round trip:
 /// every value it prints, read through `--param`, restores the value it printed.
 @Suite
 @MainActor

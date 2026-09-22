@@ -8,7 +8,7 @@
 #   Scripts/release-smoke.sh --with physics  # and the satellites a project wires in
 #   Scripts/release-smoke.sh --keep          # leave the project and the frame behind
 #   Scripts/release-smoke.sh --warm-cache    # reuse this machine's package cache
-#   Scripts/release-smoke.sh --selftest      # the render laws against their own fixtures
+#   Scripts/release-smoke.sh --selftest      # the render tests against their own fixtures
 #
 # Every other gate here reads the repository: the tests build the tree, the
 # figure gate renders out of it, preflight compiles the prose against it. None
@@ -31,7 +31,7 @@
 # for that release, and it is the last step of the release: cut the tag, push
 # it, run this.
 #
-# The laws, each printed as it passes:
+# The tests, each printed as it passes:
 #
 #   the tag         exists on origin, because that is where SwiftPM will look
 #   the manifest    pins the version under test with .upToNextMinor, the form
@@ -41,7 +41,7 @@
 #   the build       compiles with the dependency fetched, not pathed
 #   the frame       is the canvas the sketch declares, and it has ink on it
 #
-# The ink law is the one that would quietly go missing, because a framework
+# The ink test is the one that would quietly go missing, because a framework
 # that builds and renders nothing still writes a file. The frame is read back
 # through ImageIO and a pixel counts as ink when it differs from the corner by
 # more than a level or two, so a white circle on white would fail the way an
@@ -174,7 +174,7 @@ write(CommandLine.arguments[2], inked: true)
 SWIFT
 }
 
-# --selftest: the reader against a blank sheet and an inked one. The ink law is
+# --selftest: the reader against a blank sheet and an inked one. The ink test is
 # the one that rots into a check of whether a file exists, so it is proven to
 # go red before any run trusts it.
 if [[ $selftest -eq 1 ]]; then
@@ -202,7 +202,7 @@ if [[ $selftest -eq 1 ]]; then
         print -u2 "\nrelease-smoke --selftest: $failures failed."
         exit 1
     fi
-    print "\nrelease-smoke --selftest: the render laws hold."
+    print "\nrelease-smoke --selftest: the render tests hold."
     exit 0
 fi
 

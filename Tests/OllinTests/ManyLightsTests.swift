@@ -14,7 +14,7 @@ import COllinShaders
 /// committed 3D reference was recorded against. And a frame past that must be the
 /// picture brute-force forward lighting would draw, because the grid is only allowed
 /// to decide *which* lights a tile lists, never how one of them shades. The second
-/// is the law worth most here: it renders the same scene culled and unculled and
+/// is the test worth most here: it renders the same scene culled and unculled and
 /// compares the two, so a cull that wrongly dropped a light could not pass.
 @Suite(.serialized)
 @MainActor
@@ -24,7 +24,7 @@ struct ManyLightsTests {
 
     /// A courtyard of lamps: a floor, a few blocks, and `count` point lights on a
     /// grid, each reaching only as far as `reach`. `culls` is the internal switch the
-    /// correctness law flips; with it off every tile lists every light, which is
+    /// correctness test flips; with it off every tile lists every light, which is
     /// brute-force forward lighting through the same shading code.
     final class LampScene: Sketch {
         var count = 24
@@ -164,7 +164,7 @@ struct ManyLightsTests {
 
     // MARK: - The grid decides only which lights a tile lists
 
-    /// The law this whole slice rests on: the same sixty-four-lamp courtyard rendered
+    /// The invariant this whole slice rests on: the same sixty-four-lamp courtyard rendered
     /// with the grid culling and with every tile taking every light must be the same
     /// picture, byte for byte. A cull that dropped a light that reaches a pixel would
     /// show up here and nowhere else.

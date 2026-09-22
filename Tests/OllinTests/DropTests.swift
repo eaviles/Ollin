@@ -2,7 +2,7 @@
 import AppKit
 import Testing
 
-/// Files dropped on the window. The laws: a drop moves the pointer to where it
+/// Files dropped on the window. The tests: a drop moves the pointer to where it
 /// landed, queues the paths, and fires the hook once; the draining read hands
 /// every path over once, oldest first, and then nothing; drops that nobody
 /// read pile up in order; an empty drop is not a drop; and the canvas view

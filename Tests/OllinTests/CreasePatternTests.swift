@@ -2,7 +2,7 @@
 import Testing
 import Foundation
 
-/// Pure-CPU checks on crease patterns. Every one of these is a law rather than
+/// Pure-CPU checks on crease patterns. Every one of these is an invariant rather than
 /// a matter of taste, and that is the point: a fold pattern that is slightly
 /// wrong draws exactly as well as a right one, and only fails when somebody
 /// tries to fold the paper.
@@ -158,7 +158,7 @@ struct CreasePatternTests {
     /// where the moving is felt. Without this the two laws above could be
     /// reading zero for some reason of their own.
     ///
-    /// The reach is the law here, and it is wider than it first looks: the
+    /// The reach is the invariant here, and it is wider than it first looks: the
     /// vertex that moved breaks, and so do the four it is joined to, because
     /// the folds that run between them now arrive at a different angle. Nothing
     /// further away moves at all.
@@ -270,7 +270,7 @@ struct CreasePatternTests {
         #expect(abs(sheet.height) < 1e-12)
     }
 
-    /// The load-bearing law: paper does not stretch. Every crease is the same
+    /// The load-bearing invariant: paper does not stretch. Every crease is the same
     /// length in the folded sheet as it is on the flat one, at every stage of
     /// the fold. A folding that fails this is not a folding at all.
     @Test func paperDoesNotStretch() {

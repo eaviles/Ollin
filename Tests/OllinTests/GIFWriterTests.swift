@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// and the file has to be as good as the one the system writer lays down for
 /// the same frames: it decodes through ImageIO frame for frame within that
 /// writer's tolerance, it is no larger, and it carries the frame-to-frame
-/// diffing the format is built on. Every law here is pure, no device.
+/// diffing the format is built on. Every test here is pure, no device.
 @Suite
 struct GIFWriterTests {
 

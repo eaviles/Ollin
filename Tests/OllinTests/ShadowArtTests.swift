@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for shadow art. The claim is about what the carved solid throws, so the
+/// Invariants for shadow art. The claim is about what the carved solid throws, so the
 /// tests cast its shadows and compare them with the ones asked for.
 @Suite
 struct ShadowArtTests {
@@ -11,7 +11,7 @@ struct ShadowArtTests {
     ///
     /// The side shape is deliberately lopsided. A disc or a square is the same
     /// picture turned over, so reading that silhouette along the wrong axis would
-    /// carve a different solid and no law would notice.
+    /// carve a different solid and no invariant would notice.
     @Test func twoShadowsAreCastExactlyWhenTheirRowsAgree() {
         let circle = disc(size: 64)
         let bitten = bittenDisc(size: 64)     // the same rows, and not symmetric

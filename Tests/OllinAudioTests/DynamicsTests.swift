@@ -5,7 +5,7 @@ import Testing
 @testable import OllinAudio
 
 /// The three that hold a level: the compressor, the limiter, and the gate. The
-/// laws here are the ones that make each what it says it is rather than a
+/// tests here are the ones that make each what it says it is rather than a
 /// wobble in the loudness: a compressor lands a tone exactly where its ratio
 /// says it should, its attack and release take the times asked, its knee bends
 /// before the threshold, its makeupGain lifts by the decibels asked, and both sides

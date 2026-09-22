@@ -38,7 +38,7 @@ struct ImageFitTests {
                 "neither axis is whole: \(crop)")
     }
 
-    /// The deciding law: what the crop leaves must have the *box's* shape, or the
+    /// The deciding test: what the crop leaves must have the *box's* shape, or the
     /// picture arrives stretched after all. Measured in the picture's own pixels,
     /// which is where the two aspect ratios finally meet.
     @Test(arguments: [(Vector2(640, 480), Rectangle(x: 0, y: 0, width: 300, height: 300)),

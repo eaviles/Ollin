@@ -471,7 +471,7 @@ Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and
 
 - [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and parameter, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
-- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
+- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's four exact facts, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
 - [Crowds](../Docs/Simulation/Crowds.md): the `Crowd` reference, what the walkers promise and where the promise ends, obstacles and walls, and every setting.
 - [Coupled oscillators](../Docs/Simulation/Oscillators.md): the `Kuramoto` reference, the order parameter, the critical coupling, the lag, and the ring.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).

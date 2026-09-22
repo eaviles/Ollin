@@ -27,7 +27,7 @@ struct BilliardTests {
 
     // MARK: - A circle
 
-    /// The load-bearing law. A bounce turns the path about the radius, which
+    /// The load-bearing invariant. A bounce turns the path about the radius, which
     /// leaves untouched how far the chord passes from the middle. So every
     /// chord of the path misses the middle by the same distance, and the whole
     /// rosette wraps one smaller circle it never enters.

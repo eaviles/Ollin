@@ -5,7 +5,7 @@ import Foundation
 /// The stylus's own values: its lean, its turn, which end is down, and whether
 /// it is over the tablet at all.
 ///
-/// What a tablet sends can only be checked by hand at the desk, so the laws
+/// What a tablet sends can only be checked by hand at the desk, so the invariants
 /// here are the ones under that: the value clamps and folds what it is given, a
 /// sketch with no tablet reads as one, the pen path stays offered once a pen
 /// has been seen, a pen lifted out of range says so without forgetting that it

@@ -3,11 +3,11 @@ import Testing
 import CoreGraphics
 import Foundation
 
-/// The film look: `.halation` and `.filmGrain`, each checked as the laws the
+/// The film look: `.halation` and `.filmGrain`, each checked as the invariants the
 /// technique promises rather than as a picture, because both can look right
 /// while being wrong. A glow that merely tints the whole highlight still reads
 /// as a warm picture, and noise that is the same at every tone still reads as
-/// grain. The laws:
+/// grain. The invariants:
 ///
 /// Halation:
 /// - a frame with nothing above the threshold, or an amount of zero, comes back

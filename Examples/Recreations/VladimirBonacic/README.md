@@ -40,7 +40,7 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-DynamicObject
   ```
 
-  Frames of one run as marks, which is what its laws are read from: every residue class all lit or all dark, the indicators reading the same number, and the later frame equal to the earlier one multiplied by x once for every tick between them:
+  Frames of one run as marks, which is what its invariants are read from: every residue class all lit or all dark, the indicators reading the same number, and the later frame equal to the earlier one multiplied by x once for every tick between them:
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-DynamicObject --export-svg a.svg --frame 660 --seed 55
@@ -54,7 +54,7 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-NamaFrieze --param sendsToWall=true --param wallAddress=127.0.0.1
   ```
 
-  Frames of one run as marks, which is what its laws are read from: a panel's fifteen lamps always agree, each frame is the first one multiplied by x once for every step the rhythm let through, and the steps and holds repeat every fifteen ticks. With the wall on, any sACN monitor on this Mac reads the same images in the same order:
+  Frames of one run as marks, which is what its invariants are read from: a panel's fifteen lamps always agree, each frame is the first one multiplied by x once for every step the rhythm let through, and the steps and holds repeat every fifteen ticks. With the wall on, any sACN monitor on this Mac reads the same images in the same order:
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-NamaFrieze --export-svg a.svg --frame 24 --seed 18

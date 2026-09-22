@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for envelopes and the caustics built on them. An envelope is defined by
+/// Invariants for envelopes and the caustics built on them. An envelope is defined by
 /// touching: every line of the family has to touch the curve, and the curve has to
 /// be the one they all lean on. Both halves are measurable.
 @Suite
@@ -12,7 +12,7 @@ struct EnvelopeTests {
     ///
     /// It arrives rather than lands. Two neighboring tangents cross a little way
     /// outside the circle, and how far outside falls with the square of the step
-    /// between them, so the law is that shrinking: halve the step and the error
+    /// between them, so the invariant is that shrinking: halve the step and the error
     /// quarters.
     @Test func theTangentsOfACircleEnvelopeThatCircle() {
         let center = Vector2(30, -12)
@@ -172,7 +172,7 @@ struct EnvelopeTests {
     }
 }
 
-/// Laws for the Huygens construction: a front is where the wavelets lean, so
+/// Invariants for the Huygens construction: a front is where the wavelets lean, so
 /// every point of the answer is exactly a wavelet's radius from the old front and
 /// no nearer to any part of it.
 @Suite

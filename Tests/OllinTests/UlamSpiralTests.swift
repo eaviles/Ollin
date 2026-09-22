@@ -1,7 +1,7 @@
 import Ollin
 import Testing
 
-/// Laws for the primes and for the square spiral they are written on. The spiral
+/// Invariants for the primes and for the square spiral they are written on. The spiral
 /// is a bijection that steps one cell at a time, the odd squares sit on one
 /// diagonal, and a quadratic traces a straight line, which is the whole reason
 /// the picture has lines in it.

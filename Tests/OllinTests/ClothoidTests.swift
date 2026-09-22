@@ -2,12 +2,12 @@
 import Testing
 import Foundation
 
-/// Pure-CPU checks on the clothoid. Every one of these is a law rather than a
+/// Pure-CPU checks on the clothoid. Every one of these is an invariant rather than a
 /// matter of taste, which is the point: a curve that bends slightly wrong
 /// looks exactly as good as the right one, and the whole reason to reach for
 /// this curve instead of an arc is a property the eye cannot check.
 ///
-/// The load-bearing pair is the bend law and the Fresnel pair. The first says
+/// The load-bearing pair is the bend invariant and the Fresnel pair. The first says
 /// the bend is a straight line in the distance traveled, which is the entire
 /// definition of the curve. The second pins the position against numbers
 /// published long before any of this was written, so a quadrature that drifts
@@ -105,7 +105,7 @@ struct ClothoidTests {
 
     @Test func theSampledLengthIsTheLengthItWasGiven() {
         // A polyline is always shorter than the curve it samples, by the
-        // square of the step. So the law is not one number: it is that the
+        // square of the step. So the invariant is not one number: it is that the
         // shortfall falls by four every time the point count doubles.
         let curve = Clothoid(curvature: 0.002, curvatureRate: -0.0004, length: 420)
         var shortfalls = [Double]()
@@ -360,7 +360,7 @@ struct ClothoidTests {
         #expect(spread < 0.01, "the steps came out \(spread) uneven")
 
         // And the bend read by distance must never jump, which is the same
-        // law again from the driver's seat.
+        // invariant again from the driver's seat.
         var worst = 0.0
         for i in 1...4000 {
             let a = route.curvature(at: total * Double(i - 1) / 4000)!

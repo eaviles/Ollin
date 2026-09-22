@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Ollin
 
-/// Laws of the crowd that makes room (optimal reciprocal collision avoidance):
+/// Invariants of the crowd that makes room (optimal reciprocal collision avoidance):
 /// the unobstructed identity, the half-and-half share, no overlap while every
 /// agent finds a safe velocity, walls that hold even in a jam, the jam's small
 /// overlap, a door's flow against its width, lanes in opposing streams, and a

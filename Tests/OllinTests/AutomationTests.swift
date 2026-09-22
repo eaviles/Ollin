@@ -2,7 +2,7 @@
 import Foundation
 import Testing
 
-/// Keyframed parameters (`Automation`): the claims worth pinning are laws
+/// Keyframed parameters (`Automation`): the claims worth pinning are invariants
 /// rather than pictures. A key must read back as itself, a curve must leave 0
 /// and arrive at 1 without turning back, a value with nothing between two
 /// settings must step instead of blending, and the whole thing must survive a

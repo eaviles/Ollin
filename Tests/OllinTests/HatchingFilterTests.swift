@@ -5,9 +5,9 @@ import Foundation
 
 /// Render checks on `.hatching`, the pen filter whose strokes follow the picture.
 ///
-/// Each one is a law the technique promises rather than a picture, because hatching
+/// Each one is an invariant the technique promises rather than a picture, because hatching
 /// can look like hatching and be wrong: strokes laid at a fixed angle still read as
-/// pen work, and a screen that ignores the tone still covers the page. The laws:
+/// pen work, and a screen that ignores the tone still covers the page. The tests:
 ///
 /// - the ink covers as much of the paper as the picture is dark, tone by tone;
 /// - white paper is left bare and black is filled;

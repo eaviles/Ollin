@@ -332,7 +332,7 @@ enum SelfTest {
 
     /// The reading half, on text alone: the block under the caret at several
     /// places in one buffer, and what each kind of edit does to the run. The
-    /// laws themselves are pinned in `SourceRegionsTests`; what this phase adds
+    /// invariants themselves are pinned in `SourceRegionsTests`; what this phase adds
     /// is that the host's own evaluate path is looking at the same answers.
     @MainActor
     private static func checkRegionsAndChange() {

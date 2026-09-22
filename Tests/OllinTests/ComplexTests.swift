@@ -4,7 +4,7 @@ import Metal
 import Ollin
 import Testing
 
-/// Pure CPU laws on `Complex`: the literal and standard-library conformances,
+/// Pure CPU invariants on `Complex`: the literal and standard-library conformances,
 /// the arithmetic identities, and the transcendental functions against the
 /// closed forms. No Metal, so these run everywhere including CI.
 @Suite

@@ -3,7 +3,7 @@ import CoreGraphics
 import Testing
 @testable import Ollin
 
-/// Gabor noise, checked against the laws the technique promises rather than
+/// Gabor noise, checked against the invariants the technique promises rather than
 /// against a picture: the field is centered and scaled to three standard
 /// deviations, its spectrum peaks at the wavelength asked for and narrows with
 /// the bandwidth, one direction is one direction, the phase is a period, the

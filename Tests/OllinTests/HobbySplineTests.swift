@@ -4,7 +4,7 @@ import Foundation
 
 /// Pure-CPU checks on Hobby's spline. The fit is a linear system whose right
 /// answer looks no better to the eye than a slightly wrong one, so each test
-/// here is a law the published technique guarantees, or a number that can be
+/// here is an invariant the published technique guarantees, or a number that can be
 /// worked out by hand from its equations.
 ///
 /// The load-bearing pair: four points on a circle come out as the classic
@@ -24,7 +24,7 @@ struct HobbySplineTests {
         return abs(cross(u, v)) < tolerance && (u.x * v.x + u.y * v.y) > 0
     }
 
-    // MARK: Laws
+    // MARK: Invariants
 
     @Test func passesThroughEveryPoint() {
         let points = [Vector2(20, 40), Vector2(120, 10), Vector2(200, 90), Vector2(260, 30), Vector2(340, 80)]

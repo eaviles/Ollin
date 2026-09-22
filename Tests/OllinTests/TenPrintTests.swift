@@ -1,7 +1,7 @@
 import Ollin
 import Testing
 
-/// Laws for the maze of diagonals. Joining the diagonals into runs must not lose,
+/// Invariants for the maze of diagonals. Joining the diagonals into runs must not lose,
 /// duplicate, or invent a single one, every step of a run is a cell's diagonal,
 /// and a field of one diagonal joins into exactly the anti-diagonals of the grid.
 @Suite
@@ -103,8 +103,8 @@ struct TenPrintTests {
     /// a row leaning down, up, down join end to end into a single zigzag whose
     /// only odd corners are its two ends. A walk that starts in the middle of it
     /// leaves through one end and has to come back for the other half, so this is
-    /// the law that the start-where-a-path-must-end rule is for: without it every
-    /// other law here still passes and this one does not.
+    /// the invariant that the start-where-a-path-must-end rule is for: without it every
+    /// other test here still passes and this one does not.
     @Test func aChainWithTwoLooseEndsComesBackAsOneRun() {
         let design = maze(3, 1, bits: [false, true, false])
         let runs = design.runs

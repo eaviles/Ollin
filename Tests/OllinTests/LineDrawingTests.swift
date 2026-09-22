@@ -5,7 +5,7 @@ import Foundation
 /// Checks on `LineDrawing`, the hidden-line renderer that writes a scene down
 /// as plottable paths.
 ///
-/// The laws are what makes a drawing a drawing rather than a wireframe with
+/// The invariants are what makes a drawing a drawing rather than a wireframe with
 /// hope in it: a cube shows nine of its twelve edges and the three at the far
 /// corner are gone; a wall takes out the middle of what stands behind it and
 /// leaves the ends; a smooth ball is its silhouette alone, at the size the

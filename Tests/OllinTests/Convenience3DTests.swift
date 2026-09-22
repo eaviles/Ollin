@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import Ollin
 
-/// Laws for the 3D-and-layout convenience tier: `cameraRay` as the exact
+/// Invariants for the 3D-and-layout convenience tier: `cameraRay` as the exact
 /// inverse of `project`, the `moveAxis` key read, the ground slab and
 /// world-anchored label as byte-identical sugar, the point-cloud measurements,
 /// the height-field coloring, the frustum mesh, the sheet layout, and the

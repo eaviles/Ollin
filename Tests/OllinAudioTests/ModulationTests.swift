@@ -4,7 +4,7 @@ import Testing
 @testable import Ollin
 @testable import OllinAudio
 
-/// The four motions: chorus, flanger, phaser, and tremolo. The laws here are
+/// The four motions: chorus, flanger, phaser, and tremolo. The tests here are
 /// the ones that make each what it says it is rather than a wobble: a
 /// tremolo breathes between full and the depth at the rate asked, a chorus
 /// is a copy twenty milliseconds behind sliding by the wave, a flanger held
@@ -225,7 +225,7 @@ import Testing
         }
     }
 
-    // MARK: - Shared laws
+    // MARK: - Shared invariants
 
     @Test func aMixOfZeroIsThePlainSound() {
         let tone = sine(330, seconds: 0.1)

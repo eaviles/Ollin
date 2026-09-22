@@ -7,7 +7,7 @@ import Foundation
 /// as rivers whatever the numbers behind them say. So none of these look at
 /// the picture.
 ///
-/// Two laws carry the suite. `aTiltedPlaneCountsItsOwnRows` is an arrangement
+/// Two tests carry the suite. `aTiltedPlaneCountsItsOwnRows` is an arrangement
 /// with one correct answer that can be written down without running anything:
 /// on a plane leaning one way, every cell runs straight down its own column, so
 /// the flow at row `y` is `y + 1` and nothing else. `flowIsTheTotalOfEveryPath`

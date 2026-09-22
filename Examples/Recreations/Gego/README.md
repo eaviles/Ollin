@@ -40,7 +40,7 @@ Learn more:
   swift run Example-Recreations-Gego-Reticularea
   ```
 
-  Two frames of the same net from a fixed eye, which is what the net's laws are read from. Each node's dot is sized by how far off it is, so the drawing carries its own depth and the wires can be measured as wires:
+  Two frames of the same net from a fixed eye, which is what the net's invariants are read from. Each node's dot is sized by how far off it is, so the drawing carries its own depth and the wires can be measured as wires:
 
   ```sh
   swift run Example-Recreations-Gego-Reticularea --export-svg a.svg --frame 600 --param orbit=0 --seed 4181
@@ -53,7 +53,7 @@ Learn more:
   swift run Example-Recreations-Gego-DrawingWithoutPaper
   ```
 
-  One frame as marks, which is what the shadow's laws are read from: every wire, its shadow, and the lamp lie on one line, so the drawing says where the lamp was:
+  One frame as marks, which is what the shadow's invariants are read from: every wire, its shadow, and the lamp lie on one line, so the drawing says where the lamp was:
 
   ```sh
   swift run Example-Recreations-Gego-DrawingWithoutPaper --export-svg piece.svg --frame 900

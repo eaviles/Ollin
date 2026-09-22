@@ -81,7 +81,7 @@ struct ViewBoxTests {
 
     // MARK: A background belongs to its box
 
-    /// The deciding law. Two boxes wipe themselves in turn, and each keeps its
+    /// The deciding test. Two boxes wipe themselves in turn, and each keeps its
     /// own color. A wipe that reached the frame would leave the whole canvas
     /// whichever color went last.
     @Test(.enabled(if: Snapshot.hasMetal))

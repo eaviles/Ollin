@@ -4,10 +4,10 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws over the `Shaders/BlackHole` example's physics. The light paths, the
+/// Invariants over the `Shaders/BlackHole` example's physics. The light paths, the
 /// disk's shift and flux, and the color of heat are read from the example's own
 /// `physics.metal`, so these check the file that ships, run on the GPU in the
-/// float precision the picture uses. The reference for each law is worked out
+/// float precision the picture uses. The reference for each invariant is worked out
 /// here in double precision from a closed form or an exact integral, never from
 /// the shader.
 ///

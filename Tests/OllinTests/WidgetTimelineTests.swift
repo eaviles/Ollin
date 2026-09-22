@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import Ollin
 
-/// A widget's run, checked against the laws the surface promises rather than
+/// A widget's run, checked against the invariants the surface promises rather than
 /// against a picture: the moments land on a grid counted from midnight, the
 /// clock a picture is drawn on is the time of day, each picture gets a sketch
 /// of its own and exactly one draw, the same moment always draws the same

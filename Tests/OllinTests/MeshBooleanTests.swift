@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Pure-CPU checks on cutting one solid with another: the volumes obey the laws
+/// Pure-CPU checks on cutting one solid with another: the volumes obey the invariants
 /// a set operation has to obey, what comes out is still a printable solid, two
 /// solids that miss each other leave each other alone, a solid against itself is
 /// the hardest case there is (every face coincident), and the same two meshes
@@ -19,7 +19,7 @@ struct MeshBooleanTests {
         Mesh.sphere(radius: radius, segments: 24, rings: 12).mapPositions { $0 + offset }
     }
 
-    // MARK: - The laws
+    // MARK: - The invariants
 
     @Test func twoHalfOverlappingBoxesGiveTheVolumesArithmeticSays() {
         let a = box()

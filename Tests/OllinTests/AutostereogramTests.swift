@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the autostereogram. The whole picture rests on one rule, and it is
+/// Invariants for the autostereogram. The whole picture rests on one rule, and it is
 /// exactly measurable: two columns a separation apart hold the same color, and the
 /// separation is what the depth map asked for.
 @Suite

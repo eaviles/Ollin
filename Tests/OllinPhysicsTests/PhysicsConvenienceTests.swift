@@ -4,7 +4,7 @@ import Testing
 @testable import Ollin
 @testable import OllinPhysics
 
-/// Laws for the physics drawing-and-mouse conveniences: `drawBody` as the
+/// Invariants for the physics drawing-and-mouse conveniences: `drawBody` as the
 /// byte-identical form of the hand-written collider switch, `drawCollider`
 /// rendering every case (the hand switch's `default: break` let exotic bodies
 /// vanish), and the `dragBodies` press-drag-release lifecycle as one call.

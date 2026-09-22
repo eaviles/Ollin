@@ -147,7 +147,7 @@ struct TimerTests {
         #expect(!sketch.every(2))
     }
 
-    /// The deciding law, built from a second construction: the frame `every(p)`
+    /// The deciding test, built from a second construction: the frame `every(p)`
     /// calls a beat is exactly the frame on which `loopProgress(over: p)` has
     /// wrapped, and that helper shipped long before this one. Two independent
     /// readings of the same clock must name the same frames.

@@ -493,7 +493,7 @@ public final class TimelineModel {
     // MARK: What the lanes draw
 
     /// The panel's time axis: the span the ruler shows and the mapping between
-    /// moments and points. Pure, so the mapping is a law a test can hold.
+    /// moments and points. Pure, so the mapping is an invariant a test can hold.
     package struct Scale: Equatable {
         package var span: Double
 

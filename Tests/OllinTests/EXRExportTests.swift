@@ -7,7 +7,7 @@ import Testing
 /// `--export-exr` writes the frame as the renderer composited it: linear light,
 /// half-float components free to run above white, coverage in the alpha channel,
 /// and the distance from the eye as a `Z` channel when the frame was drawn
-/// through a 3D camera. The laws here read the written file back with a parser of
+/// through a 3D camera. The tests here read the written file back with a parser of
 /// their own (never the writer's structures) and, for the color channels, with
 /// the system's own OpenEXR reader as a second opinion.
 @Suite

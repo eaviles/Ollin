@@ -1,7 +1,7 @@
 import Ollin
 import Testing
 
-/// Pure-CPU laws for seam carving: a seam is connected and touches every row
+/// Pure-CPU invariants for seam carving: a seam is connected and touches every row
 /// once, it follows the cheapest way through, the forward cost really is the
 /// cost of the join it makes, the masks hold and release, growth puts pixels
 /// back, and the map agrees with the carve. No GPU is touched.
@@ -326,7 +326,7 @@ struct SeamCarveTests {
     }
 }
 
-// MARK: - Pictures the laws are read on
+// MARK: - Pictures the tests are read on
 
 /// A picture whose every column carries its own gray, with one free way down at
 /// column 7 (its neighbors match, so closing that gap costs nothing) and the

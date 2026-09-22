@@ -8,7 +8,7 @@ import os
 ///
 /// It exists because `mosquitto` is not installed on the machine these tests run
 /// on, and because a real broker cannot be asked to do the things the interesting
-/// laws need: cut a socket without warning so a will fires, sit on an
+/// tests need: cut a socket without warning so a will fires, sit on an
 /// acknowledgement so a resend can be seen, refuse a connection with a chosen
 /// code. It keeps retained values, fans a publish out to every matching
 /// subscription (the publisher included, which is what makes a round trip a round
@@ -62,7 +62,7 @@ final class MQTTStubBroker: @unchecked Sendable {
     }
 
     /// When true, a quality-of-service 1 publish is recorded but never
-    /// acknowledged, which is how the resend law is set up.
+    /// acknowledged, which is how the resend test is set up.
     var holdsAcknowledgements: Bool {
         get { settings.withLock { $0.holdsAcknowledgements } }
         set { settings.withLock { $0.holdsAcknowledgements = newValue } }

@@ -7,7 +7,7 @@ import Foundation
 /// the right place is to send light back along its path and see where the light
 /// arrives.
 ///
-/// Three laws carry the suite, and each one is derived away from the code that
+/// Three invariants carry the suite, and each one is derived away from the code that
 /// is being checked. `lightRunsBackToTheEye` is the reflection law itself,
 /// measured on the finished mark rather than assumed from the formula that made
 /// it. `heightIsSharedBetweenTheTwoLegs` reaches the same mirror point by a
@@ -51,14 +51,14 @@ struct AnamorphosisTests {
 
     // MARK: - The reflection itself
 
-    /// The load-bearing law. Take the finished mark, aim it at the place on the
+    /// The load-bearing test. Take the finished mark, aim it at the place on the
     /// mirror it is supposed to be seen at, bounce it off the glass, and the
     /// light must arrive at the eye. Nothing here reuses the map's own
     /// arithmetic: it measures the path that was produced.
     @Test func lightRunsBackToTheEye() {
         // Lifted off the page on purpose: a planted lower edge puts the mark
         // exactly under its own bounce, and a path of no length has no
-        // direction to measure. That edge is pinned by its own law below.
+        // direction to measure. That edge is pinned by its own invariant below.
         let mirror = setup(lift: 8)
         var checked = 0
         for point in probes(mirror) {
@@ -167,7 +167,7 @@ struct AnamorphosisTests {
     @Test func theMiddleOfThePictureStaysOnTheLineOfSight() {
         // Wherever the viewer stands, since the wrap is aimed at them. A wrap
         // turned away from the eye keeps no such symmetry, which is why the
-        // law is stated for the aimed case only.
+        // test is stated for the aimed case only.
         for spot in [Vector3(540, 1000, 430), Vector3(120, 300, 380), Vector3(900, 200, 500)] {
             let mirror = Anamorphosis(
                 center: Vector2(540, 540), radius: 110, eye: spot,

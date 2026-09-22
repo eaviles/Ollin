@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Pure-CPU checks on `SpatialIndex`. The law every test leans on is that an
+/// Pure-CPU checks on `SpatialIndex`. The invariant every test leans on is that an
 /// index is only ever a faster way to ask a question that has one right answer:
 /// whatever it says, a plain loop over every point has to say the same thing,
 /// index for index and in the same order. Both kinds are held to it, over point
@@ -80,7 +80,7 @@ struct SpatialIndexTests {
         return probes
     }
 
-    // MARK: - The law
+    // MARK: - The invariant
 
     @Test(arguments: [SpatialIndex.Kind.grid, .tree])
     func everyQueryAgreesWithAPlainLoop(kind: SpatialIndex.Kind) {

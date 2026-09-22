@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the power diagram. The definition is one comparison ("which site has
+/// Invariants for the power diagram. The definition is one comparison ("which site has
 /// the least power here"), so the tests ask the polygons to agree with that
 /// comparison, and ask the cells to behave the way the definition forces them to.
 @Suite
@@ -18,7 +18,7 @@ struct PowerDiagramTests {
         }
     }
 
-    /// The law the diagram is defined by, asked at a grid of points: whichever cell
+    /// The invariant the diagram is defined by, asked at a grid of points: whichever cell
     /// holds a point, that cell's site has the least power there.
     @Test func everyPointBelongsToTheSiteWithTheLeastPower() {
         let sites = scatter(14, seed: 4)

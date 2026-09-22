@@ -1,7 +1,7 @@
 import Ollin
 import Testing
 
-/// The two derive helpers, `reversed()` and `mirrored()`, as laws over the whole
+/// The two derive helpers, `reversed()` and `mirrored()`, as invariants over the whole
 /// catalog and over closure-built curves. Pure math, no GPU.
 @Suite
 struct EasingDerivedTests {
@@ -27,7 +27,7 @@ struct EasingDerivedTests {
 
     // MARK: reversed()
 
-    /// The law itself, over every catalog curve: reversing is reflection through
+    /// The invariant itself, over every catalog curve: reversing is reflection through
     /// the center, whatever the helper hands back.
     @Test(arguments: EasingTests.all)
     func reversedIsTheCurveReflectedThroughTheCenter(_ name: String, _ curve: Easing) {

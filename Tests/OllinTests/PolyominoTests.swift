@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for polyominoes and for fitting them together. The pieces are whole
+/// Invariants for polyominoes and for fitting them together. The pieces are whole
 /// numbers, so every claim here is exact: how many ways a piece can sit, which
 /// boards can be covered, and which famously cannot.
 @Suite

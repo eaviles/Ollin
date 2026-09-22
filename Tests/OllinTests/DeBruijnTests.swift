@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the de Bruijn sequence. The whole claim is a counting one, so the
+/// Invariants for the de Bruijn sequence. The whole claim is a counting one, so the
 /// tests count: the run is as long as it has to be, and every window turns up in
 /// it exactly once.
 @Suite

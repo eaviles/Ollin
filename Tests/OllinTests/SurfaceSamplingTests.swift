@@ -3,7 +3,7 @@ import simd
 import Testing
 @testable import Ollin
 
-/// Pure-CPU checks on scattering points over a mesh surface. The laws they lean
+/// Pure-CPU checks on scattering points over a mesh surface. The invariants they lean
 /// on are all statements about area, because area is the whole point of the
 /// feature: a triangle receives points in proportion to how much skin it owns,
 /// never to how many vertices it cost, and inside one triangle no corner is
@@ -87,7 +87,7 @@ struct SurfaceSamplingTests {
     }
 
     /// The even-spacing pass thins the draw down without favoring big triangles
-    /// or small ones, so the area law survives it.
+    /// or small ones, so the area invariant survives it.
     @Test func evenSpacingKeepsTheAreaShares() {
         var rng = SplitMix64(seed: 12)
         let n = 4_000

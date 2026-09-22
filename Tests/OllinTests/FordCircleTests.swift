@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the Farey sequence and the Ford circles built on it. Both are defined
+/// Invariants for the Farey sequence and the Ford circles built on it. Both are defined
 /// by exact statements about whole numbers, so the tests are those statements and
 /// not a look at the picture.
 @Suite
@@ -113,7 +113,7 @@ struct FordCircleTests {
 
     // MARK: - The circles
 
-    /// The law the whole picture rests on, measured on every pair at once: two Ford
+    /// The invariant the whole picture rests on, measured on every pair at once: two Ford
     /// circles touch when their fractions are neighbors, and are strictly apart
     /// otherwise. Never overlapping is the half that a picture cannot show.
     @Test func circlesTouchExactlyWhenTheirFractionsAreNeighbors() {

@@ -2,7 +2,7 @@ import Testing
 import Foundation
 import Ollin
 
-/// The questions an outline answers about itself, each pinned by a law rather
+/// The questions an outline answers about itself, each pinned by an invariant rather
 /// than by a copy of its own output: the tangent against a finite difference
 /// of `point(at:)`, the nearest point against a dense sampling, a piece's
 /// length against the fractions, crossings of known lines at their closed

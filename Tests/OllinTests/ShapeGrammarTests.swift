@@ -2,14 +2,14 @@
 import Testing
 import Foundation
 
-/// Pure-CPU checks on the shape grammar. Nearly every one is a law rather than
+/// Pure-CPU checks on the shape grammar. Nearly every one is an invariant rather than
 /// a matter of taste, which is what makes a rule-driven design testable at all:
 /// a lattice cut by the wrong lines looks exactly as convincing as one cut by
 /// the right ones.
 ///
 /// The load-bearing pair is area and corners. A cut is one straight line
 /// between two edges, so the parts must add back up to the whole, and they must
-/// carry `n + 4` corners between them. The second law is the surprise: hold the
+/// carry `n + 4` corners between them. The second invariant is the surprise: hold the
 /// corner count to `3...5` and the four rules of the classic lattice grammar
 /// fall out of that one arithmetic fact, rather than having to be written down
 /// one at a time.
@@ -117,7 +117,7 @@ struct ShapeGrammarTests {
             }
         }
         // Without this, a change that stops every cut from applying leaves the
-        // law above with nothing to check, and it passes having seen nothing.
+        // invariant above with nothing to check, and it passes having seen nothing.
         #expect(cuts > 150)
     }
 

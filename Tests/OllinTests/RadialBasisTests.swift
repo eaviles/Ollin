@@ -5,7 +5,7 @@ import Foundation
 /// Checks on the two fitting helpers: `RadialBasis`, which puts a smooth field through
 /// scattered values, and `Fit.minimize`, which walks a handful of numbers downhill.
 ///
-/// Both are checked against laws rather than against numbers somebody read off a run.
+/// Both are checked against invariants rather than against numbers somebody read off a run.
 /// A field that is slightly wrong still looks like a smooth field, and a minimizer that
 /// has stopped early still hands back a plausible answer, so eyeballing either one proves
 /// nothing. The two laws that carry the most weight:

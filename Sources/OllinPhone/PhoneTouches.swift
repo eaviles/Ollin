@@ -336,7 +336,7 @@ public final class PhoneTouches {
 /// one hand off a two-handed chord does not jump the pointer across the canvas.
 /// Only a finger that lands while nothing holds the pointer takes it.
 ///
-/// Pure, so its laws are pinned without a phone or a sketch.
+/// Pure, so its invariants are pinned without a phone or a sketch.
 struct PhonePointer: Sendable, Equatable {
 
     /// One thing the pointer did, with the position on the phone's -1 to 1 scale.

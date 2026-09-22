@@ -5,11 +5,11 @@ import Foundation
 
 /// Render checks on `.xdog`, the flow-based difference of Gaussians.
 ///
-/// Each one is a law the technique promises rather than a picture, because the filter
+/// Each one is an invariant the technique promises rather than a picture, because the filter
 /// can look convincing while being wrong in ways a snapshot's mean hides: a cut that
 /// lands on the wrong scale still draws lines, a walk that crosses the edge instead of
 /// following it still draws lines, and empty space read as ink looks like a design
-/// choice. The laws:
+/// choice. The tests:
 ///
 /// - a flat tone is paper or ink by the threshold alone, and the soft cut is the
 ///   published tanh ramp to the level;
@@ -136,7 +136,7 @@ struct XDoGTests {
 
         let a = starts(still), b = starts(flowing)
         #expect(jitter(a) > 0.3,
-                "the still line has to be ragged for the law to mean anything: \(jitter(a))")
+                "the still line has to be ragged for the test to mean anything: \(jitter(a))")
         #expect(jitter(b) < jitter(a) / 2, "the flow straightens it: \(jitter(a)) -> \(jitter(b))")
         #expect(breaks(b) <= 2 && breaks(b) <= breaks(a),
                 "under the flow the line runs the whole height: \(breaks(a)) -> \(breaks(b)) rows without ink")

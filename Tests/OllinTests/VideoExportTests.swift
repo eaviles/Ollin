@@ -107,7 +107,7 @@ struct VideoExportTests {
         }
     }
 
-    /// The law: at no moment of an export is more than two frames' worth of
+    /// The invariant: at no moment of an export is more than two frames' worth of
     /// frame memory alive (the buffer the GPU read the frame back into and
     /// the image built over it, both made for the frame and gone with it),
     /// and every byte handed out has come home once the export returns.
@@ -185,7 +185,7 @@ private final class FrameLedger: ExportFrameMemory, @unchecked Sendable {
 }
 
 /// A neighbor doing its own work in the same process: a thread that takes
-/// and touches `bytes` and holds them until told to stop. The law above
+/// and touches `bytes` and holds them until told to stop. The test above
 /// never sees it, and that is what it is here to show.
 private final class Hog: @unchecked Sendable {
     private let bytes: Int

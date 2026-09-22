@@ -602,7 +602,7 @@ final class Drawer {
 
     /// Whether the frame's lights are culled per screen tile once there are more of
     /// them than the inline set holds. Always true in a sketch: it is the internal
-    /// switch the cost measurement and the correctness law flip, since the culled and
+    /// switch the cost measurement and the correctness test flip, since the culled and
     /// unculled frames must be the same picture, and the only honest way to show that
     /// is to render both. Off, every tile lists every light, which is brute-force
     /// forward lighting with the same shading code.

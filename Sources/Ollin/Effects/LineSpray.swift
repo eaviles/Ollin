@@ -67,7 +67,7 @@ public struct SprayLine: Sendable, Equatable {
 ///           color: .white, intensity: 0.6)   // a lit floor, two units square
 /// ```
 ///
-/// The light follows the same law a line's does: `light` is the **whole quad's**
+/// The light follows the same rule a line's does: `light` is the **whole quad's**
 /// radiance per pass, not a brightness per unit of area. Scaling a quad spreads
 /// the same light over more surface rather than making it brighter, so a scene
 /// that works in light per unit area multiplies by its own extent on the way in.

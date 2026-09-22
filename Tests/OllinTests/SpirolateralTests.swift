@@ -2,8 +2,8 @@ import Foundation
 import Ollin
 import Testing
 
-/// Laws for the spirolateral. The walk is a run of growing steps repeated until
-/// it comes home, so the laws are about when it comes home, and about the turn
+/// Invariants for the spirolateral. The walk is a run of growing steps repeated until
+/// it comes home, so the invariants are about when it comes home, and about the turn
 /// that carries one run onto the next.
 @Suite
 struct SpirolateralTests {
@@ -73,7 +73,7 @@ struct SpirolateralTests {
     }
 
     /// The figure is one run turned about `center`, once per repeat. This is the
-    /// law the whole shape rests on, and it names the corner it checks.
+    /// invariant the whole shape rests on, and it names the corner it checks.
     @Test func everyRunIsTheFirstRunTurnedAboutTheCenter() {
         for order in [3, 5, 6, 7, 11] {
             let figure = Spirolateral(order: order, step: 7)

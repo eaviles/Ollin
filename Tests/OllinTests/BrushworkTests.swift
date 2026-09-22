@@ -5,10 +5,10 @@ import Foundation
 
 /// Render checks on `.brushwork`, the anisotropic Kuwahara filter.
 ///
-/// Each one is a law the technique promises rather than a picture, because a sector
+/// Each one is an invariant the technique promises rather than a picture, because a sector
 /// filter can look painterly while being wrong in ways a snapshot's mean hides: a
 /// brush that never stretches still flattens, a weighting that ignores the spread is
-/// only a blur, and a tensor read off the wrong axis still turns something. The laws:
+/// only a blur, and a tensor read off the wrong axis still turns something. The tests:
 ///
 /// - a flat tone comes back as itself;
 /// - a hard edge stays hard, with each side keeping its own tone, and with the

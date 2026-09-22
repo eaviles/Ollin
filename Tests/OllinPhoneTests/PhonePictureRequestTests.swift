@@ -4,7 +4,7 @@ import Ollin
 @testable import OllinPhone
 
 /// The picture request: the one Mac-to-phone message that is most of what crosses
-/// the cable. Pure codec and bookkeeping laws; the compressor's own round trip is
+/// the cable. Pure codec and bookkeeping invariants; the compressor's own round trip is
 /// `PhonePictureRoundTripTests`.
 @Suite(.timeLimit(.minutes(1))) struct PhonePictureRequestTests {
 

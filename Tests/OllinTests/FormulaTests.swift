@@ -6,7 +6,7 @@ import Testing
 /// grammar can get wrong without failing to parse: what binds tighter than
 /// what, which way a remainder falls for a negative number, and whether a
 /// misspelling is refused or quietly read as zero. Each of those changes a
-/// picture rather than breaking a build, which is why they are laws here.
+/// picture rather than breaking a build, which is why they are tests here.
 @Suite
 struct FormulaTests {
 

@@ -6,7 +6,7 @@ import Testing
 @testable import OllinAudio
 
 /// The two effects that work in the spectrum, and the stretch beside them.
-/// The laws are the ones that make a phase vocoder honest rather than a
+/// The invariants are the ones that make a phase vocoder honest rather than a
 /// smear: a shift of nothing is the sound itself, sample for sample; a
 /// shifted tone lands exactly where the ratio says at the level it had; a
 /// harmonizer keeps the original under the moved copy; the two sides move on
