@@ -923,10 +923,15 @@ let package = Package(
         example("Recreations/MonirFarmanfarmaian/MirrorFamily"),
         example("Recreations/MonirFarmanfarmaian/BehindGlass"),
         // A net of wire tied by hand, hung from the ceiling and drooping into
-        // the room; and a drawing without paper, a bent wire lattice hanging a
-        // little way off the wall whose shadow is the drawing, after Gego.
+        // the room; a drawing without paper, a bent wire lattice hanging a
+        // little way off the wall whose shadow is the drawing; a print cut
+        // into strips and woven with foil, weft over warp; and a fall of rods
+        // hooked end to end, hung from one point and let down to the floor,
+        // after Gego.
         example("Recreations/Gego/Reticularea", [.physics]),
         example("Recreations/Gego/DrawingWithoutPaper"),
+        example("Recreations/Gego/Tejedura"),
+        example("Recreations/Gego/Chorro", [.physics]),
         // A square of lamps lit a pattern at a time by a walk through the
         // Galois field of 2^32 elements; and a frieze of eighteen lamp panels
         // across a store front, stepping through all 262,143 nonzero states

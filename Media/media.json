@@ -233,7 +233,9 @@
     ],
     "Recreations/Gego": [
       "Recreations/Gego/Reticularea",
-      "Recreations/Gego/DrawingWithoutPaper"
+      "Recreations/Gego/DrawingWithoutPaper",
+      "Recreations/Gego/Tejedura",
+      "Recreations/Gego/Chorro"
     ],
     "Recreations/GeorgNees": [
       "Recreations/GeorgNees/Schotter"
@@ -632,10 +634,12 @@
     "Recreations/Gego": {
       "of": [
         "Recreations/Gego/Reticularea",
-        "Recreations/Gego/DrawingWithoutPaper"
+        "Recreations/Gego/DrawingWithoutPaper",
+        "Recreations/Gego/Tejedura",
+        "Recreations/Gego/Chorro"
       ],
-      "image": "groups/Recreations-Gego.jpg?v=0aa239d3",
-      "imageSmall": "groups/Recreations-Gego-640.jpg?v=8b5f0f3e"
+      "image": "groups/Recreations-Gego.jpg?v=aea79d1e",
+      "imageSmall": "groups/Recreations-Gego-640.jpg?v=a666b5d9"
     },
     "Recreations/GeorgNees": {
       "of": [
@@ -8364,6 +8368,27 @@
       "stillSmall": "examples/Recreations/FriederNake/HommageAPaulKlee/still-640.jpg?v=4b1402e3",
       "width": 1080
     },
+    "Recreations/Gego/Chorro": {
+      "width": 1080,
+      "height": 1080,
+      "length": "14.0s",
+      "seconds": 14.0,
+      "frame": 900,
+      "motion": 1.701,
+      "sound": false,
+      "source": "56fd584c259d1d39",
+      "rendered": "2026-09-23",
+      "bytes": {
+        "loop": 3079843,
+        "loopSmall": 557613,
+        "still": 49089,
+        "stillSmall": 16736
+      },
+      "loop": "examples/Recreations/Gego/Chorro/loop.mp4?v=3f5895b6",
+      "loopSmall": "examples/Recreations/Gego/Chorro/loop-640.mp4?v=cc628ec2",
+      "still": "examples/Recreations/Gego/Chorro/still.jpg?v=4fd2cf89",
+      "stillSmall": "examples/Recreations/Gego/Chorro/still-640.jpg?v=114ebef1"
+    },
     "Recreations/Gego/DrawingWithoutPaper": {
       "width": 1080,
       "height": 1080,
@@ -8405,6 +8430,27 @@
       "loopSmall": "examples/Recreations/Gego/Reticularea/loop-640.mp4?v=372e5137",
       "still": "examples/Recreations/Gego/Reticularea/still.jpg?v=4ef58e2d",
       "stillSmall": "examples/Recreations/Gego/Reticularea/still-640.jpg?v=3a9ba4cc"
+    },
+    "Recreations/Gego/Tejedura": {
+      "width": 1080,
+      "height": 1080,
+      "length": "20.0s",
+      "seconds": 20.0,
+      "frame": 900,
+      "motion": 18.29,
+      "sound": false,
+      "source": "8577b82d12cd7831",
+      "rendered": "2026-09-23",
+      "bytes": {
+        "loop": 2097682,
+        "loopSmall": 752257,
+        "still": 298181,
+        "stillSmall": 113534
+      },
+      "loop": "examples/Recreations/Gego/Tejedura/loop.mp4?v=ca61f7f9",
+      "loopSmall": "examples/Recreations/Gego/Tejedura/loop-640.mp4?v=0c86e947",
+      "still": "examples/Recreations/Gego/Tejedura/still.jpg?v=10e86a83",
+      "stillSmall": "examples/Recreations/Gego/Tejedura/still-640.jpg?v=2ed4ce11"
     },
     "Recreations/GeorgNees/Schotter": {
       "bytes": {

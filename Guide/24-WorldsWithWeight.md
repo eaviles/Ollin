@@ -583,6 +583,7 @@ Gears, racks, pulleys and tracks as *links between joints* rather than between b
 - [Tensegrity](../Docs/Generators/Tensegrity.md): the three ready-made forms, `imbalance`, and everything `addTensegrity` and `Tensegrity3D` take and read back.
 - Appendix B draws the ideas the solver rests on: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stack` and `Tumble` (stacking and contact), `Rockslide` (a slope of debris), `Windmill` and `Contraption` (joints and linkages, the second much larger than the one here), `Trigger` and `Sightlines` (queries), `Sieve` and `Flotsam` (collision groups), and `Imported` (a world read out of a USD file).
+- The Gego homage [`Chorro`](../Examples/Recreations/Gego/Chorro/Sketch.swift): a hundred and fifty capsules on ball joints and nothing else. Each rod is one `addBody`, each hook one `connect` with a `.ball` at the loop, the plate a kinematic sphere the air moves, and the floor is `ground`; the sketch draws none of the bodies, only a line between each rod's hooks, and the settling on the floor is what the solver does with the slack.
 
 ---
 
