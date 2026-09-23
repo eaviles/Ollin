@@ -144,7 +144,10 @@ tsan | --tsan)
     export TSAN_OPTIONS="halt_on_error=0 log_path=$reports/tsan suppressions=$PWD/Scripts/tsan-suppressions.txt${TSAN_OPTIONS:+ $TSAN_OPTIONS}"
     swift test --sanitize=thread --scratch-path .build/tsan --filter "$tsan"
     outcome=$?
-    found=$(cat "$reports"/tsan.* 2>/dev/null | grep -c '^SUMMARY: ThreadSanitizer') || true
+    # A clean run leaves no report file: the (N) qualifier makes the empty
+    # glob expand to nothing rather than an error, and stdin is closed so a
+    # `cat` with no files cannot sit waiting on the terminal.
+    found=$(cat "$reports"/tsan.*(N) < /dev/null 2>/dev/null | grep -c '^SUMMARY: ThreadSanitizer') || true
     if (( found > 0 )); then
         cat "$reports"/tsan.*
         echo "test.sh: Thread Sanitizer reported $found finding(s); the reports are above" >&2
