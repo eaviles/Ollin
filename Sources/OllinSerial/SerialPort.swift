@@ -74,10 +74,15 @@ public final class SerialPort: @unchecked Sendable {
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
-    /// What `openDescriptor` says when the system refuses the path.
+    /// What `openDescriptor` says when the system refuses the path, with the
+    /// errno it refused it with.
     private struct OpenFailure: Error, CustomStringConvertible {
+        let code: Int32
         let description: String
     }
+
+    /// What `lastError` says after the device read end of file.
+    static let wentAwayMessage = "the device went away"
 
     /// The open descriptor and its read source. Non-Sendable, so it lives
     /// behind an unchecked lock; `nil` whenever the device is not open.
@@ -148,7 +153,10 @@ public final class SerialPort: @unchecked Sendable {
     /// drawing, or `nil` once it is open: a path with no device at it, a port
     /// another program holds, a device that went away. `open()` keeps trying
     /// either way, and this says what it is waiting on; it clears the moment
-    /// the port opens.
+    /// the port opens. A device that went away stays `the device went away`
+    /// for as long as the retries find nothing at its path, since that is the
+    /// same fact; a retry that fails some other way (the port now held by
+    /// another program) replaces it.
     public var lastError: String? { state.withLock { $0.lastError } }
 
     /// Begins opening the device, and keeps at it: a device that is absent or
@@ -298,7 +306,7 @@ public final class SerialPort: @unchecked Sendable {
     private func attempt(_ generation: Int) {
         guard state.withLock({ $0.wantsOpen && $0.generation == generation }) else { return }
         guard let path = resolvePath() else {
-            recordFailure(SerialPort.noDeviceMessage(for: target))
+            recordFailure(SerialPort.noDeviceMessage(for: target), confirmsAbsence: true)
             scheduleRetry(generation)
             return
         }
@@ -306,7 +314,8 @@ public final class SerialPort: @unchecked Sendable {
         do {
             descriptor = try SerialPort.openDescriptor(path, baudRate: baudRate)
         } catch {
-            recordFailure("\(path): \(error)")
+            let absent = (error as? OpenFailure)?.code == ENOENT
+            recordFailure("\(path): \(error)", confirmsAbsence: absent)
             scheduleRetry(generation)
             return
         }
@@ -348,9 +357,16 @@ public final class SerialPort: @unchecked Sendable {
         }
     }
 
-    /// Remember what went wrong, for `lastError`.
-    private func recordFailure(_ message: String) {
-        state.withLock { $0.lastError = message }
+    /// Remember what went wrong, for `lastError`. A failure that only
+    /// confirms the device is absent (nothing at the path, no device
+    /// matching the needle) leaves `the device went away` standing: the
+    /// sketch is drawing that sentence, and the retry a second later found
+    /// out nothing it did not say. Any other failure replaces it.
+    func recordFailure(_ message: String, confirmsAbsence: Bool = false) {
+        state.withLock {
+            if confirmsAbsence, $0.lastError == SerialPort.wentAwayMessage { return }
+            $0.lastError = message
+        }
     }
 
     /// The path of the first device whose name or path contains `needle`,
@@ -369,7 +385,9 @@ public final class SerialPort: @unchecked Sendable {
     /// partly configured port still reads.
     private static func openDescriptor(_ path: String, baudRate: Int) throws -> Int32 {
         let descriptor = Darwin.open(path, O_RDWR | O_NOCTTY | O_NONBLOCK)
-        guard descriptor >= 0 else { throw OpenFailure(description: String(cString: strerror(errno))) }
+        guard descriptor >= 0 else {
+            throw OpenFailure(code: errno, description: String(cString: strerror(errno)))
+        }
         _ = ioctl(descriptor, TIOCEXCL)
         var settings = termios()
         if tcgetattr(descriptor, &settings) == 0 {
@@ -393,7 +411,7 @@ public final class SerialPort: @unchecked Sendable {
             if count == 0 {
                 // End of file: the device went away. Drop it and start
                 // waiting for it to come back.
-                recordFailure("the device went away")
+                recordFailure(SerialPort.wentAwayMessage)
                 disconnect(generation)
                 return
             }

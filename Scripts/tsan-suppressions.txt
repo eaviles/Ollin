@@ -1,0 +1,17 @@
+# Suppressions for Scripts/test.sh tsan (the handoffs under Thread Sanitizer),
+# in the sanitizer's own format: one `race:<function>` per line, matched
+# against every frame of both stacks of a report, with the reason above it.
+# One class of report belongs here and no other: an ordering that is real but
+# runs through a system framework the sanitizer never instrumented, so it
+# cannot see the edge. A race in Ollin's own handoffs is fixed in the source,
+# never listed. Keep each pattern to the narrowest frame that names the class
+# (an initializer, never a whole file or a callback), so that a real race on
+# the same object still reports.
+
+# Core MIDI hands a receive block to its own thread through the C port
+# creation call, and moves it there over a lock-free queue in its C++ runtime
+# that the sanitizer does not instrument. The block's first read of a field
+# the initializer wrote is therefore reported against that write, though the
+# port did not exist until the initializer had returned. Only the
+# initializer's stores are excused; every later access on the object reports.
+race:MIDIInput.init

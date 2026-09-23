@@ -2,6 +2,15 @@ import Foundation
 import Testing
 import OllinMutation
 
+/// Whether this process runs under Thread Sanitizer, read off the loaded
+/// images: the sanitizer's runtime is a dynamic library inserted at launch.
+/// `Scripts/test.sh tsan` is the run that sets it.
+private var underThreadSanitizer: Bool {
+    (0..<_dyld_image_count()).contains { index in
+        String(cString: _dyld_get_image_name(index)).contains("libclang_rt.tsan")
+    }
+}
+
 /// The harness's own tests: the generator repeats itself from a seed, every
 /// kind of edit turns up in a run, a run tries what it says it tries and
 /// counts what came back, and the one that matters most, a decoder that traps
@@ -132,7 +141,8 @@ import OllinMutation
     /// what is left. It runs the unsafe decoder in a child process and reads
     /// the child's log from here. The seed decodes (eight bytes), so the first
     /// case that dies is the second one, the empty input.
-    @Test func anUnsafeDecoderGoesRedAndTheLogNamesTheDyingCase() async throws {
+    @Test(.enabled(if: !underThreadSanitizer, "the child an exit test spawns does not come up under Thread Sanitizer: its exit is reported within a few milliseconds, before a sanitized process could have loaded, and the log its body would have written is absent"))
+    func anUnsafeDecoderGoesRedAndTheLogNamesTheDyingCase() async throws {
         try? FileManager.default.removeItem(at: MutationLog.url(for: "selftest-unsafe"))
         await #expect(processExitsWith: .failure) {
             _ = MutationRun.run("selftest-unsafe", seeds: [[1, 2, 3, 4, 5, 6, 7, 8]], count: 200, seed: 7) { bytes in

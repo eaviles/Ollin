@@ -168,5 +168,27 @@ struct SerialLoopbackTests {
         _ = try await waitFor { port.isOpen ? nil : true }
         #expect(!port.isOpen)
         #expect(port.lastError == "the device went away")
+
+        // The retries start a second later and find nothing at the path (on
+        // some machines it is gone by then; on others it lingers and refuses
+        // the open). Neither says anything the sentence did not, so the
+        // sentence stands rather than flipping to the system's own words.
+        try await Task.sleep(nanoseconds: 1_600_000_000)
+        #expect(!port.isOpen)
+        #expect(port.lastError == "the device went away", Comment(rawValue: port.lastError ?? "nil"))
+    }
+
+    /// The rule behind it, with no device: an absence found after the device
+    /// went away leaves the sentence standing, any other failure replaces it,
+    /// and an absence found first is said as itself.
+    @Test func absenceConfirmsGoingAwayAndNothingElseDoes() {
+        let port = SerialPort(path: "/dev/ollin-no-such-device", baudRate: 9600)
+        port.recordFailure("no device at /dev/ollin-no-such-device", confirmsAbsence: true)
+        #expect(port.lastError == "no device at /dev/ollin-no-such-device")
+        port.recordFailure(SerialPort.wentAwayMessage)
+        port.recordFailure("/dev/ollin-no-such-device: No such file or directory", confirmsAbsence: true)
+        #expect(port.lastError == "the device went away")
+        port.recordFailure("/dev/ollin-no-such-device: Resource busy")
+        #expect(port.lastError == "/dev/ollin-no-such-device: Resource busy")
     }
 }

@@ -13,6 +13,7 @@ Scripts/test.sh shard       # the whole suite, OllinTests split across processes
 Scripts/test.sh             # the whole suite, one process per phase
 Scripts/test.sh milestone   # the whole suite plus the five signed-bundle builds
 Scripts/test.sh ci          # the runner's own recipe, as build.yml runs it
+Scripts/test.sh tsan        # the non-GPU targets under Thread Sanitizer, a second build
 ```
 
 The whole suite takes many minutes, so run it in the background or with an
@@ -174,6 +175,82 @@ only through state (a pong that lands on a measurement in flight) needs that
 state set up in the closure. A message the parser reads as nothing is not a
 seed.
 
+## The handoffs under Thread Sanitizer
+
+`Scripts/test.sh tsan` builds the package a second time with `--sanitize=thread`,
+under `.build/tsan` so that no object is shared with the plain build, and runs
+every target whose tests run without the GPU. That is where the
+producer-to-reader shape lives: a wire's receiver, the audio analyzer, a phone
+reader, or a feed produces on a thread of its own and a sketch reads on the
+main one, through an `@unchecked Sendable` producer and an
+`OSAllocatedUnfairLock` handoff. The convention runs through a dozen
+satellites, and until this run no tool had ever checked it. The sanitizer
+watches every memory access and every lock, and reports two accesses to one
+address from two threads with nothing ordering them.
+
+**What is in.** The `tsan` list at the top of `Scripts/test.sh`: OSC, MIDI,
+MQTT, Link, Serial, DMX, the laser, Bluetooth, the controllers, haptics, the
+remote surface, the room, the phone's codecs and readers (`OllinPhoneTests`,
+`OllinRecord3DTests`), the audio engine, the mutation harness, and the two
+feeds out of `OllinTests` (`DataFeedTests`, `PushFeedTests`). One process, one
+phase: the sanitizer's own slowdown spreads the suites out, and the loopback
+windows held in the measured runs.
+
+**What stays out, and why.** The drawing suites: a render's threads are
+Metal's, and Metal, like every system framework, is not instrumented, so the
+sanitizer sees a render only where it comes back into Ollin's code; a snapshot
+compares pixels, not orderings; and a drawing suite is main-actor bound, so the
+run's several-fold slowdown lands on the one thread the whole suite waits on.
+Vision and the screen, for the same reasons (the Vision compute device and
+ScreenCaptureKit are not instrumented, and their probes pull the GPU in). The
+nested project builds, which spawn a `swiftc` the sanitizer has no business in.
+
+**What a run costs** (2026-09-23, the 8 GB M2, on battery). The cold
+instrumented build took 3m51s at a 1.7 GB peak, with free memory never under
+1.2 GB while a second, plain build ran beside it. The run took 9m28s for 1,310
+tests over 17 bundles, about four minutes of it the listing (each bundle is
+loaded under the sanitizer twice, once per testing library, before anything
+runs), at a 1.6 GB peak with free memory never under 2.4 GB. The tree under
+`.build/tsan` is 5.7 GB. That cost is why it is a milestone check rather than a
+preflight gate: `Scripts/preflight.sh --milestone` runs it, and a commit that
+touches a handoff should run it by hand.
+
+**How to read a report.** A report names two stacks, the access and the
+previous one, each with a file and line, and says which thread made each. The
+fix is a lock the two accesses share, or an ordering the sanitizer can see (a
+dispatch queue, a semaphore, an actor hop); a suppression is never the fix for
+Ollin's own code. The script writes the reports to files (`log_path`) and
+prints them after the run, so one cannot scroll off among ten thousand test
+lines; any report fails the run whatever the tests said, since the sanitizer
+sets its own exit status only when its runtime finalizes, which a test process
+does not always let it. Driving a bundle by hand, as `Scripts/shard-tests.sh`
+does, needs the runtime inserted (`DYLD_INSERT_LIBRARIES` naming the
+`libclang_rt.tsan_osx_dynamic.dylib` under the bundle's `Frameworks`), or the
+helper refuses to start; `swift test` sets it for its own children.
+
+**One class of report is excused**, in `Scripts/tsan-suppressions.txt`, with
+the reason above each entry: an ordering that is real and runs through a system
+framework the sanitizer cannot see into. Core MIDI moves a receive block to its
+own thread over a lock-free queue in its C++ runtime, so the block's first read
+of a field the initializer wrote reports against that write, though the port
+was created after the initializer returned. The entry is the narrowest frame
+that names the class (`MIDIInput.init`), so every later access on the object
+still reports; a race in Ollin's own handoff is fixed in the source, never
+listed.
+
+**The exit test's child does not come up under the sanitizer.** The harness's
+dying-case self-test (`anUnsafeDecoderGoesRedAndTheLogNamesTheDyingCase`)
+spawns a child through `#expect(processExitsWith:)`; under the sanitizer its
+exit is reported within a few milliseconds, before a sanitized process could
+have loaded, and the log the body would have written is absent. It refuses
+itself there through `underThreadSanitizer`, read off the loaded images, and
+runs in every plain run.
+
+**Proven both ways.** One lock dropped from one handoff (the serial port's
+descriptor store, read by `isOpen` on the test's thread while the read queue
+writes it) was reported at both lines with both stacks, and the helper exited
+nonzero; the committed tree reports nothing.
+
 ## Adding a test
 
 - **Does it need a device?** Put an `.enabled(if:)` probe on it, so it refuses
@@ -188,6 +265,9 @@ seed.
   still fails there, it has a defect, and a phase is the wrong tool.
 - **Does it decode bytes from outside?** Put its decoder under the mutation
   harness (`OllinMutationTests`, the section above) beside its round trips.
+- **Does it hand something between threads?** Run its target under
+  `Scripts/test.sh tsan` once before committing; a report there is a defect,
+  whatever the plain run said.
 
 ## Recording snapshot references
 
