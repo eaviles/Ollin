@@ -264,9 +264,17 @@
       "Recreations/ManuelFelguerez/MaquinaEstetica",
       "Recreations/ManuelFelguerez/RelieveLacado"
     ],
+    "Recreations/MohamedMelehi": [
+      "Recreations/MohamedMelehi/Waves",
+      "Recreations/MohamedMelehi/Flamme"
+    ],
     "Recreations/MonirFarmanfarmaian": [
       "Recreations/MonirFarmanfarmaian/MirrorFamily",
       "Recreations/MonirFarmanfarmaian/BehindGlass"
+    ],
+    "Recreations/NasreenMohamedi": [
+      "Recreations/NasreenMohamedi/Registers",
+      "Recreations/NasreenMohamedi/Diagonals"
     ],
     "Recreations/OsamuSato": [
       "Recreations/OsamuSato/Totem",
@@ -295,10 +303,6 @@
     "Recreations/VladimirBonacic": [
       "Recreations/VladimirBonacic/DynamicObject",
       "Recreations/VladimirBonacic/NamaFrieze"
-    ],
-    "Recreations/NasreenMohamedi": [
-      "Recreations/NasreenMohamedi/Registers",
-      "Recreations/NasreenMohamedi/Diagonals"
     ],
     "Rendering": [
       "Rendering/Grassland",
@@ -695,6 +699,14 @@
       ],
       "image": "groups/Recreations-ManuelFelguerez.jpg?v=7d4fb91b",
       "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=82ad0274"
+    },
+    "Recreations/MohamedMelehi": {
+      "of": [
+        "Recreations/MohamedMelehi/Waves",
+        "Recreations/MohamedMelehi/Flamme"
+      ],
+      "image": "groups/Recreations-MohamedMelehi.jpg?v=6abad30f",
+      "imageSmall": "groups/Recreations-MohamedMelehi-640.jpg?v=e9a2c8e7"
     },
     "Recreations/MonirFarmanfarmaian": {
       "of": [
@@ -8714,6 +8726,48 @@
       "loopSmall": "examples/Recreations/ManuelFelguerez/RelieveLacado/loop-640.mp4?v=16e476fa",
       "still": "examples/Recreations/ManuelFelguerez/RelieveLacado/still.jpg?v=ad5a7389",
       "stillSmall": "examples/Recreations/ManuelFelguerez/RelieveLacado/still-640.jpg?v=c546d92f"
+    },
+    "Recreations/MohamedMelehi/Flamme": {
+      "width": 940,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.024,
+      "sound": false,
+      "source": "b0d236a41b40c057",
+      "rendered": "2026-09-23",
+      "bytes": {
+        "loop": 1671208,
+        "loopSmall": 299186,
+        "still": 119912,
+        "stillSmall": 49784
+      },
+      "loop": "examples/Recreations/MohamedMelehi/Flamme/loop.mp4?v=0e20b14e",
+      "loopSmall": "examples/Recreations/MohamedMelehi/Flamme/loop-640.mp4?v=8a092a65",
+      "still": "examples/Recreations/MohamedMelehi/Flamme/still.jpg?v=370463c3",
+      "stillSmall": "examples/Recreations/MohamedMelehi/Flamme/still-640.jpg?v=4d3115fe"
+    },
+    "Recreations/MohamedMelehi/Waves": {
+      "width": 940,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.1,
+      "sound": false,
+      "source": "0683064086f2bd8c",
+      "rendered": "2026-09-23",
+      "bytes": {
+        "loop": 2546844,
+        "loopSmall": 578214,
+        "still": 120144,
+        "stillSmall": 50071
+      },
+      "loop": "examples/Recreations/MohamedMelehi/Waves/loop.mp4?v=cd4afdad",
+      "loopSmall": "examples/Recreations/MohamedMelehi/Waves/loop-640.mp4?v=a29a7b5a",
+      "still": "examples/Recreations/MohamedMelehi/Waves/still.jpg?v=83a230ae",
+      "stillSmall": "examples/Recreations/MohamedMelehi/Waves/still-640.jpg?v=fef33489"
     },
     "Recreations/MonirFarmanfarmaian/BehindGlass": {
       "width": 1080,

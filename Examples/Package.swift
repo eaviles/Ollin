@@ -944,5 +944,10 @@ let package = Package(
         // about 1980, after Nasreen Mohamedi.
         example("Recreations/NasreenMohamedi/Registers"),
         example("Recreations/NasreenMohamedi/Diagonals"),
+        // The hard-edge wave of the 1970s, a ribbon of bands that enters
+        // straight and breaks into the wave, and the wave standing up as a
+        // flame, after Mohamed Melehi.
+        example("Recreations/MohamedMelehi/Waves"),
+        example("Recreations/MohamedMelehi/Flamme"),
     ]
 )
