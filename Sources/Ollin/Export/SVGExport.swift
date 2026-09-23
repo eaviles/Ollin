@@ -610,7 +610,7 @@ extension OllinApp {
         // anywhere in it captures vector commands for `drawBatch` to splice.
         isVectorExporting = true
         defer { isRenderingHeadless = false; isVectorExporting = false }
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
         let recorder = SVGRecorder()

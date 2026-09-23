@@ -199,7 +199,7 @@ public extension OllinApp {
             ]
         }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         var settings: [String: Any] = [
             AVVideoCodecKey: codec.avCodec,
             AVVideoWidthKey: size.width,
@@ -401,7 +401,7 @@ public extension OllinApp {
                          effectiveFPS, fps))
         }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         let outWidth = targetWidth ?? size.width
         let outHeight = max(1, Int((Double(size.height) * Double(outWidth) / Double(size.width)).rounded()))
 

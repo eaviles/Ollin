@@ -572,6 +572,8 @@ swift run --package-path Examples Example-Live-Parameters --export keeper.png --
 swift run --package-path Examples Example-Live-Parameters --export dark.png --param paper=#101018 --param style=dots
 ```
 
+The value is on the sketch before its canvas is sized, so a `canvasSize` that reads a parameter exports at the run's size. A sketch that renders once per aspect for two feeds can pick its canvas that way, with `frame == .photo ? .photo1080 : .vertical1080`. The value is there before `setup()` too, and the [Parameters](../Helpers/Parameters.md) page has the order.
+
 The [recipe](#reproducibility-metadata) and `--param` work as a pair. Every export writes the parameter values it rendered with into the file, and `--param` puts those values back. A frame re-renders from its own recipe, with the sketch untouched.
 
 The value is read against the parameter's own kind:

@@ -360,7 +360,7 @@ extension OllinApp {
                                 remake: (() -> Sketch)? = nil) throws -> WebRecording {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         // Every stroke and fill is kept as its points from here on, a batch
         // made in `setup()` included.

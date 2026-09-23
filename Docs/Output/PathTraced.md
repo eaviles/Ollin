@@ -18,6 +18,8 @@ If you leave the count off, it follows `--render-quality`: 64 for performance, 2
 
 **The detail tier is a final render, so name a count for anything else.**
 
+`--pt-depth` is how many surfaces one path may touch, 8 unless you say otherwise. The cost is in the bounces that land on something. A ray that leaves the scene ends its path, and after the third bounce a path ends by chance in proportion to how much light it still carries. So a closed room, a mirror facing a mirror, and glass, which spends a bounce on every face it enters and leaves, use the depth in full. An open scene of opaque surfaces under an environment sees most of its paths end on their own, and there the depth is the first setting to cut. Two opaque meshes on nothing, lit by an environment, rendered at depth 2 in a little over half the time depth 8 took, with no visible difference. Glass, mirrors, and color carried between walls need the depth back.
+
 A still's render reports progress on one line, and a sequence keeps its usual per-frame line. The mode needs a ray-tracing GPU, which every Apple-silicon Mac has. On any other machine the export prints a note and renders with the raster pipeline.
 
 ### What the traced frame adds
@@ -57,10 +59,15 @@ The contact sheets, the vector exports (SVG and PDF), and the benchmark always u
 ### What the traced frame does not carry yet
 
 - **Height, detail, and decals stay raster refinements.** A traced hit reads the flat surface at its plain uv. So a height map's parallax relief, the tiled detail pair, and projected decals apply in the raster view only. The occlusion map dims the environment's share at a hit, which is the raster path's own convention. Light carried from surface to surface is real traced transport, blocked by the actual geometry.
-- **The layered lobes simplify.** Clearcoat, sheen, iridescence, anisotropy, and subsurface all trace as their metallic-roughness base. Toon, gooch, and the standard finish trace as matte surfaces that keep their raster brightness.
+- **The stylized finishes trace plain.** The tracer reads a material's metallic-roughness base, its transmission, its thin film, and its emission. The sheens the raster path paints on top have no traced form yet, so a sketch tuned on one loses it in the traced frame. Per library material:
+  - **Traced as drawn:** `.physicallyBased(metallic:roughness:)`, `.metal(roughness:)`, `.dielectric(roughness:)`, `.polishedMetal`, `.smoothPlastic`, `.roughPlastic`, `.glass(...)`, `.frostedGlass`, `.clearGlass`, `.gummy`, `.soapFilm(thickness:)`, `.anodized`, `.oilOnWater`, and `.nacre`. The thin film's interference colors trace, and so does a glass's dispersion.
+  - **Traced as the base, without the layer:** `.carPaint(roughness:)` and `.lacquer` (no clearcoat), `.satin` and `.felt` (no sheen), `.brushedMetal` (an even polish, no streak), `.skin(radius:)` and `.marble(radius:)` (no scattering under the surface).
+  - **Traced as a matte surface at its raster brightness:** the standard finishes `.matte`, `.clay`, `.rubber`, `.plastic`, `.ceramic`, `.glossy`, and `.polished` (their highlight drops), `.iridescent`, `.soapBubble`, `.oilSlick`, and `.beetle` (no rainbow sheen), `.glitter` and `.sequin` (no sparkle), `.velvet` (no rim glow), `.jade` and `.wax` (no glow through the edges), `.toon` (no bands), and `.gooch` (no warm and cool).
+  A vertex color, the `fill`, and `MeshMaterial.emissiveColor` travel on every finish.
 - **A glowing copy is not sampled as a light.** The tracer aims at an emissive *mesh* as a light. An emissive *copy* glows, and its light still reaches the scene. But it arrives only through the paths that happen to find it, so it converges more slowly. The cause is the light table, which weighs each glowing triangle by its area in the world, and a copy's triangles are unplaced. For two of the three placement forms, the CPU never sees where a copy stands at all. So if a shape has to light the room, draw it with a plain `drawMesh` or use an area light.
 - **Glass shadows are tinted, not focused.** Light through glass reaches a shadow as a straight, tinted pass. The bent, concentrated bright lines of a real caustic come from the live [`caustics()`](../3D/Caustics.md) feature instead.
 - **Volumetric shafts stay raster features.** Height fog and aerial perspective do apply to the traced frame, along the eye's path.
+- **Temporal anti-aliasing does nothing here, and motion blur still applies.** Temporal anti-aliasing refines edges by accumulating frames, and a traced pixel's edge is resolved by its own samples, so a traced frame reads the same with it on or off. Motion blur runs after the composite, from the depth the traced layer writes, so a moving camera streaks a traced frame as it streaks a raster one.
 
 ### The grain filter
 

@@ -72,7 +72,7 @@ public extension OllinApp {
             fatalError("Ollin: failed to create the spatial-video writer for \(path): \(error)")
         }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         // Either number given here overrides the sketch's own declaration on its
         // own, so naming just a convergence distance leaves a declared eye spacing
         // alone rather than quietly dropping it back to the derived one.
@@ -324,7 +324,7 @@ extension OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         let width = size.width, height = size.height
         let aspect = height > 0 ? Double(width) / Double(height) : 1
         let viewport = SIMD2<Float>(Float(width), Float(height))

@@ -675,6 +675,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         _ = Self.orthographicOverrideCleared
         self.sketch = sketch
+        // The run's `--param` values, before the canvas is sized from the sketch
+        // (a host reads `canvasSize` for the view before the first `setup()`).
+        sketch.applyCommandLineValues()
         do {
             // The drawable is single-sample (the final present target); MSAA happens
             // in the renderer's float intermediate, so pass the MSAA count directly.
@@ -2475,6 +2478,11 @@ public enum OllinApp {
     /// `swift run Example-X` path, reached via `Sketch.main()`.
     #if os(macOS)
     public static func run(_ sketch: Sketch) {
+        // The run's `--param` values go on the sketch before anything reads it
+        // for the window (its canvas, the window size, a declared installation),
+        // so a `canvasSize` that reads a parameter opens at the run's size; the
+        // runner applies them again around the first `setup()`.
+        sketch.applyCommandLineValues()
         // A piece asked to get itself back up becomes its own supervisor here,
         // and never reaches the line below: it starts the piece as a child
         // process instead and starts another whenever one ends badly. Before
@@ -2621,7 +2629,7 @@ public enum OllinApp {
     /// owns `isRenderingHeadless` and the renderer's quality fallback.
     static func renderImage(of sketch: Sketch, frame: Int, fps: Double,
                             renderer: MetalRenderer) -> CGImage? {
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
@@ -2769,7 +2777,7 @@ public enum OllinApp {
             fatalError("Ollin: failed to create \(directory): \(error)")
         }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
         // The clock the sketch is driven at, which is the rate these numbered
         // frames belong to: assemble them at `fps` and the motion plays slow.
@@ -2891,7 +2899,7 @@ public enum OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         let width = size.width, height = size.height
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
@@ -3042,7 +3050,7 @@ public enum OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         let n = max(1, frames)
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
         // One warm-up frame so first-time buffer growth doesn't skew the average.
@@ -3377,7 +3385,7 @@ public extension OllinApp {
         // drive is the vector exporter's, which runs `setup()` on its own.
         if args.contains("--list-params") {
             let sketch = make()
-            let size = sketch.canvasSize
+            let size = sketch.canvasSizeForRun()
             sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
             isRenderingHeadless = true
             defer { isRenderingHeadless = false }

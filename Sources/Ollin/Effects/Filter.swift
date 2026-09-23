@@ -458,7 +458,8 @@ public struct Filter: Sendable {
     /// lands where the emulsion still has room: each channel takes it in
     /// proportion to how far it sits below white, so a white core stays white and
     /// wears a warm ring, and a frame with nothing above the threshold comes
-    /// back byte for byte.
+    /// back byte for byte. The halo is the blurred highlight times the tint, so
+    /// `.white` keeps each highlight's own color in its fringe.
     public static func halation(threshold: Double = 0.8,
                                 radius: Double = 24,
                                 tint: Color = Color(red: 1, green: 0.35, blue: 0.1),
@@ -751,8 +752,9 @@ public struct Filter: Sendable {
     }
 
     /// Per-pixel noise at `amount`, the same at every tone. `seed` shifts the
-    /// pattern; feed it `time` or `frameCount` for noise that moves. For the grain
-    /// of a film stock, see `filmGrain`.
+    /// pattern; feed it `time` or `frameCount` for noise that moves. It clamps at
+    /// black, so a black field comes up as a scatter of specks; for the grain of
+    /// a film stock, which leaves black black, see `filmGrain`.
     public static func grain(amount: Double = 0.08, seed: Double = 0) -> Filter {
         Filter(kind: .grain(amount: max(0, amount), seed: seed))
     }
@@ -765,7 +767,9 @@ public struct Filter: Sendable {
     /// grain's spread at mid-gray as a fraction of the way to white (0.05 is about
     /// twelve levels of a display byte). The grains are clumps `size` pixels
     /// across, and the mean of any flat region is kept, so grain never lifts or
-    /// darkens a picture. `seed` picks the pattern; feed it `frameCount` for the
+    /// darkens a picture. Relative to the tone the spread is largest in the darkest
+    /// shades, so a near-black area shows the speckle first while a true black
+    /// stays clean. `seed` picks the pattern; feed it `frameCount` for the
     /// fresh grain every frame of a film has.
     public static func filmGrain(amount: Double = 0.05, size: Double = 2, seed: Double = 0) -> Filter {
         Filter(kind: .filmGrain(amount: max(0, amount), size: max(0.5, size), seed: seed))

@@ -210,7 +210,7 @@ extension OllinApp {
     static func recordSpatialFrame(of sketch: Sketch, frame: Int, fps: Double) -> Scene {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
-        let size = sketch.canvasSize
+        let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
         let recorder = SpatialRecorder()

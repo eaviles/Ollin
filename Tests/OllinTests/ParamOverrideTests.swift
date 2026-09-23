@@ -48,6 +48,14 @@ struct ParamOverrideTests {
         override func draw() { background(.white) }
     }
 
+    /// A sketch whose canvas is picked by a parameter, to prove the value is
+    /// there before the canvas is sized.
+    final class CanvasPicker: Sketch {
+        @Param var wide = false
+        override var canvasSize: CanvasSize { wide ? .size(96, 48) : .square(64) }
+        override func draw() { background(.white) }
+    }
+
     /// A sketch that builds something from a parameter in `setup()`, to prove
     /// the value is already there when it does.
     final class Builder: Sketch {
@@ -275,6 +283,34 @@ struct ParamOverrideTests {
         // A smaller radius covers less of the canvas, and by a lot: the flag
         // reached the frame rather than only the value.
         #expect(small < wide / 2)
+    }
+
+    /// The value lands before the canvas is sized, so a `canvasSize` that reads a
+    /// parameter (a sketch rendering once per aspect for two feeds) exports at
+    /// the run's size rather than the declared default, and a window's runner
+    /// reads the same size (found by a sketch sizing its canvas from `--param`,
+    /// 2026-09-23).
+    @Test func theCanvasIsSizedByTheFlaggedValue() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func size(_ overrides: [ParamOverride]) -> (Int, Int) {
+            var found = (0, 0)
+            withOverrides(overrides) {
+                guard let image = OllinApp.image(of: CanvasPicker(), frame: 0, fps: 60) else { return }
+                found = (image.width, image.height)
+            }
+            return found
+        }
+        #expect(size([]) == (64, 64))
+        #expect(size([.init(name: "wide", text: "true")]) == (96, 48))
+
+        let view = MTKView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
+        view.isPaused = true
+        view.enableSetNeedsDisplay = false
+        let sketch = CanvasPicker()
+        withOverrides([.init(name: "wide", text: "true")]) {
+            _ = SketchRunner(sketch: sketch, view: view, device: device)
+        }
+        #expect(sketch.canvasSize.width == 96 && sketch.canvasSize.height == 48)
     }
 
     @Test func aWindowTakesTheValueAtLaunchAndKeepsWhatIsTurnedAfter() throws {

@@ -151,7 +151,7 @@ extension OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
-        let canvas = first.canvasSize
+        let canvas = first.canvasSizeForRun()
         let tileW = max(64, tileWidth)
         let tileH = max(1, Int((Double(tileW) * Double(canvas.height) / Double(canvas.width)).rounded()))
         let cols = max(1, columns ?? Int(Double(tiles.count).squareRoot().rounded(.up)))

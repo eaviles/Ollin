@@ -13,9 +13,11 @@ import Foundation
 /// through the same restore path the hosts use to carry a tuned parameter across a
 /// reload (so it clamps to the declared range, the way dragging the row does).
 ///
-/// It applies after `setup()` and before the first frame: a value given here
-/// wins over the sketch's own `setup()`, and the export recipe (written once the
-/// sketch has run) names the value the frame was really drawn with.
+/// It lands before the canvas is sized and before `setup()`, and again after
+/// `setup()`: a `canvasSize` that reads a parameter is sized by the run's value,
+/// what `setup()` builds from a parameter reads it, a value given here wins over
+/// the sketch's own `setup()`, and the export recipe (written once the sketch has
+/// run) names the value the frame was really drawn with.
 struct ParamOverride: Equatable, Sendable {
     /// The `@Param` property name, spelled as it is in Swift (`radius`, not `Radius`).
     let name: String
@@ -318,6 +320,18 @@ extension Sketch {
         applyCommandLineValues()
         setup()
         applyCommandLineParams()
+    }
+
+    /// The canvas this run draws on: `canvasSize`, read with the run's `--param`
+    /// values already on the sketch, so a `canvasSize` that reads a parameter
+    /// (`frame == .photo ? .photo1080 : .vertical1080`) is sized by the value the
+    /// run was given rather than the declared default. Every drive reads this
+    /// rather than `canvasSize` before its `runSetup()`, which applies the values
+    /// again; applying twice is harmless. A value that cannot be applied stops
+    /// the run here, before a canvas is sized on it.
+    func canvasSizeForRun() -> CanvasSize {
+        applyCommandLineValues()
+        return canvasSize
     }
 
     /// The `--param` values alone, for the pass before `setup()`: a value that
