@@ -1753,8 +1753,10 @@ final class MetalRenderer {
     /// frame clears) when the size changes or the sketch calls `background(_:)`.
     /// Reusing the same MSAA target keeps the existing pipelines (no new sample-count
     /// variant) and preserves edge anti-aliasing while accumulating. The targets are
-    /// linear-float, so faint additive samples (below 1/255) sum correctly instead of
-    /// quantizing away — the precision the light-accumulation look needs. `accumResolve`
+    /// linear half float, so faint additive samples (below 1/255) sum instead of
+    /// quantizing away while a pixel is dark; once a sample falls under roughly one
+    /// part in a thousand of what the pixel holds it stops counting, which is why a
+    /// long sum belongs in a `.float32` feedback layer. `accumResolve`
     /// holds the raw linear pile; the present pass (and a frame grab) tone-maps it
     /// into display bytes, so a consumer never sees the raw HDR float.
     private var accumTarget: MTLTexture?

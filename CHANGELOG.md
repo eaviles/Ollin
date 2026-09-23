@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-23
+
 ### Added
 
 - **Mohamed Melehi joins the recreations.** `Examples/Recreations/MohamedMelehi` is new, after the hard-edge wave paintings of the 1970s, the folder's first artist from Africa. `Waves` sends one ribbon of flat bands across the panel: it enters straight and breaks into the wave part of the way over, every band edge is one curve moved over by the band's width so neighbors share their edge point for point, the palette hands its colors out by declared shares in its own order, and the wave travels because the phase is the clock, one wavelength per cycle, which is the export loop. `Flamme` stands the wave up: a row of pink and navy bands rises from the bottom edge, each cut flat at its own height, the tops stepping up to a peak and down again so the row reads as one flame, every top breathing within the steps to its neighbors, a straight ribbon of yellow, orange and blue crossing behind. Both export every band as one closed outline. Read off the SVG: every band's two sides differ by one constant vector of exactly one band width across the run, neighbors' shared edges are written identically, each edge fits the wave on the clock's phase to the file's precision, and the fills count out the shares; read off the PNG, every pixel along a shared edge is a blend of its two fills and never the ground.
@@ -21,6 +23,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **A second visit to Manuel Felguérez.** `Examples/Recreations/ManuelFelguerez` gains two sketches, after *El espacio múltiple* (1973) and the lacquered reliefs that followed the aesthetic machine. `EspacioMultiple` builds one form-idea from a square with rounded corners, a rectangle, a disk, a half disk and a right triangle, and carries it through its three states: the flat painting in a silver or a gold scheme, the relief the planes rise into under a light that rakes across the wall, and the standing piece the relief comes apart into, where the sheet becomes the floor, the band a shelf through the square and the displacement depth; a new combination of colors, displacement, rows and heights arrives with each cycle, and the cycle is the export loop. `stage` holds one state still, `unlit` shows that the relief seen straight on is the painting again, and `--export-svg` gives the plan. `RelieveLacado` composes and weighs a design exactly as `MaquinaEstetica` does, so the same seed is the same design in both, and raises it in lacquered layers, the largest element lowest and the pen's outline as a plate of aluminum, under a key light that circles slowly; `view` walks round it, sees it straight on, or shows the plan.
 
 ### Fixed
+
+- **The accumulation page says where a long sum stops.** It promised that a faint sample on a `noClear` canvas always adds up, but the surface is half float: a sample under about one part in a thousand of what the pixel already holds stops counting, so a long exposure of faint strokes stops brightening. The page now says so and sends a long sum to `makeFeedback(precision: .float32)`. [Accumulation](Docs/Drawing/Accumulation.md)
 
 - **The API diff reads a conformance to the standard library.** A type that became a `Collection` and dropped its own `count`, `first` and `isEmpty` read as three removals and a rename nobody made (`count` is `endIndex`), a major and three shim violations from 1.0 on, though every call site still compiled. `Scripts/api-diff.sh` now reads such a member as moved onto the protocol that still supplies it, from a table of what `Sequence`, the `Collection` family, `Equatable`, `Hashable`, `Comparable`, `Identifiable`, `CustomStringConvertible` and the string literals give a conforming type, and its self-test compiles a call against every line of that table. The report's rename count no longer counts a type that only gained conformances. [The API listings](API/README.md)
 
@@ -416,7 +420,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.10.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/eaviles/Ollin/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/eaviles/Ollin/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/eaviles/Ollin/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/eaviles/Ollin/compare/0.7.0...0.8.0
