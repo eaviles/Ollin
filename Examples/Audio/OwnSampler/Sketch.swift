@@ -49,7 +49,7 @@ final class OwnSampler: Sketch {
     override func setup() {
         // The whole point of the example: your own file, from your own bundle.
         // The bundle is named because a default would resolve to Ollin's own.
-        instrument = SampledInstrument(sfz: "Hum", in: .module)
+        instrument = try? SampledInstrument(sfz: "Hum", in: .module)
         synth.gain = 0.55
         synth.reverb = Reverb(.hall, mix: 0.25)
         roots = instrument?.recordingRoots ?? []

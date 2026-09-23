@@ -25,7 +25,7 @@ final class SlitScanDelay: Sketch {
     var scanned: Image?
 
     override func setup() {
-        let clip = VideoPlayer(url: SampleClip.dance.url)
+        let clip = try! VideoPlayer(url: SampleClip.dance.url)
         clip.isMuted = true
 
         let history = Ollin.SlitScan(capacity: 48)

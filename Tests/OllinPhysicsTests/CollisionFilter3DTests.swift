@@ -36,7 +36,7 @@ struct CollisionFilter3DTests {
 
     /// The headline, and the whole point of the tier: one call is the
     /// difference between landing on a shelf and falling straight through it.
-    @Test func aRuleIsWhatDecidesWhetherTwoThingsTouch() {
+    @Test func aRuleIsWhatDecidesWhetherTwoThingsTouch() throws {
         let stopped = dropOntoSlab(filtered: false)
         let through = dropOntoSlab(filtered: true)
         #expect(stopped > 1, "it rests on top of the slab at y = 1")
@@ -45,7 +45,7 @@ struct CollisionFilter3DTests {
 
     /// The rule is one fact about a pair, not a direction: saying it the other
     /// way round says the same thing.
-    @Test func aRuleReadsBothWays() {
+    @Test func aRuleReadsBothWays() throws {
         let world = World3D()
         world.ignoreCollisions(between: "b", and: "a")
         #expect(!world.collides(between: "a", and: "b"))
@@ -56,7 +56,7 @@ struct CollisionFilter3DTests {
 
     /// Everything collides until something says otherwise, the diagonal
     /// included: two bodies in one group are still two ordinary bodies.
-    @Test func agroupCollidesWithItselfUntilToldNotTo() {
+    @Test func agroupCollidesWithItselfUntilToldNotTo() throws {
         func topOfPile(ignoringItself: Bool) -> Double {
             let world = World3D()
             world.ground = 0
@@ -77,7 +77,7 @@ struct CollisionFilter3DTests {
 
     /// A world nobody has said anything to behaves as one with no groups at
     /// all: naming a group is not itself a rule.
-    @Test func namingAGroupIsNotARule() {
+    @Test func namingAGroupIsNotARule() throws {
         let world = World3D()
         world.ground = 0
         let crate = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
@@ -89,7 +89,7 @@ struct CollisionFilter3DTests {
 
     /// The groups a world knows, in the order named. This is what makes a typo
     /// findable: a misspelled name is a new group and shows up here.
-    @Test func theWorldListsTheGroupsItHasBeenTold() {
+    @Test func theWorldListsTheGroupsItHasBeenTold() throws {
         let world = World3D()
         world.addBody(.sphere(radius: 0.2), at: .zero, group: "sparks")
         world.ignoreCollisions(between: "sparks", and: "playr")   // the typo
@@ -102,7 +102,7 @@ struct CollisionFilter3DTests {
     /// A filtered pair never reaches the contact listener either: the solver
     /// stops looking before there is anything to report, so a sketch polling
     /// `contacts` sees the same answer the simulation does.
-    @Test func aFilteredTouchIsNeverReported() {
+    @Test func aFilteredTouchIsNeverReported() throws {
         func landings(filtered: Bool) -> Int {
             let world = World3D()
             world.ground = -4
@@ -128,7 +128,7 @@ struct CollisionFilter3DTests {
     /// A sensor is filtered like anything else, which is what makes a detector
     /// that only notices one kind of thing: the trigger is in a group, and
     /// whatever it ignores walks through unannounced.
-    @Test func aSensorOnlySeesWhatItsGroupCollidesWith() {
+    @Test func aSensorOnlySeesWhatItsGroupCollidesWith() throws {
         func sawIt(filtered: Bool) -> Bool {
             let world = World3D()
             world.ground = -6
@@ -169,7 +169,7 @@ struct CollisionFilter3DTests {
 
     /// The same narrowing on the other two query shapes, so a sketch does not
     /// have to learn which of them honors a group.
-    @Test func sweepsAndOverlapsNarrowTheSameWay() {
+    @Test func sweepsAndOverlapsNarrowTheSameWay() throws {
         let world = World3D()
         world.addBody(.box(width: 4, height: 4, depth: 0.2), at: Vector3(0, 0, 2),
                       kind: .static, group: "glass")
@@ -187,7 +187,7 @@ struct CollisionFilter3DTests {
 
     /// A body can be moved between groups mid-simulation: the same crate, the
     /// same shelf, and the moment the rule applies to it, it drops through.
-    @Test func aBodyCanChangeGroupWhileItRuns() {
+    @Test func aBodyCanChangeGroupWhileItRuns() throws {
         let world = World3D()
         world.ground = -4
         world.addBody(.box(width: 4, height: 0.4, depth: 4), at: Vector3(0, 1, 0),
@@ -207,7 +207,7 @@ struct CollisionFilter3DTests {
 
     /// The layer carries the kind and the group together, so changing one has
     /// to leave the other alone: a body let go from static keeps its group.
-    @Test func agroupSurvivesAMotionChange() {
+    @Test func agroupSurvivesAMotionChange() throws {
         let world = World3D()
         world.ground = -4
         world.addBody(.box(width: 4, height: 0.4, depth: 4), at: Vector3(0, 1, 0),
@@ -225,7 +225,7 @@ struct CollisionFilter3DTests {
     /// A rule written while things are already settled on each other still
     /// takes effect: bodies asleep on a contact are woken so the solver looks
     /// at the pair again.
-    @Test func aRuleWrittenAfterTheyHaveSettledStillApplies() {
+    @Test func aRuleWrittenAfterTheyHaveSettledStillApplies() throws {
         let world = World3D()
         world.ground = -4
         world.addBody(.box(width: 4, height: 0.4, depth: 4), at: Vector3(0, 1, 0),
@@ -245,7 +245,7 @@ struct CollisionFilter3DTests {
     /// A character's own sweep is filtered too, which is what makes a figure
     /// that walks through a wall rather than one that stands still in front of
     /// a wall it cannot see.
-    @Test func aCharacterWalksThroughWhatItsGroupIgnores() {
+    @Test func aCharacterWalksThroughWhatItsGroupIgnores() throws {
         func walkedTo(filtered: Bool) -> Double {
             let world = World3D()
             world.ground = 0
@@ -266,7 +266,7 @@ struct CollisionFilter3DTests {
     /// own list rather than through their layers, so the rule has to be applied
     /// there by hand. Without that, two figures told to ignore each other would
     /// still bump.
-    @Test func twoCharactersCanBeToldToIgnoreEachOther() {
+    @Test func twoCharactersCanBeToldToIgnoreEachOther() throws {
         /// The closest the two ever came, which is the measure that reads the
         /// same whether they stopped nose to nose or passed clean through and
         /// carried on (both leave them far apart at the end).
@@ -305,14 +305,14 @@ struct CollisionFilter3DTests {
             let world = World3D()
             world.ground = 0
             world.groundBody?.group = "road"
-            let car = try #require(world.addVehicle(
+            let car = try! world.addVehicle(
                 .box(width: 1.8, height: 0.6, depth: 4), at: Vector3(0, 1, 0),
                 wheels: [
                     .wheel(at: Vector3(0.9, -0.2, 1.3), steers: true),
                     .wheel(at: Vector3(-0.9, -0.2, 1.3), steers: true),
                     .wheel(at: Vector3(0.9, -0.2, -1.3), driven: true),
                     .wheel(at: Vector3(-0.9, -0.2, -1.3), driven: true),
-                ], group: "traffic"))
+                ], group: "traffic")
             if filtered { world.ignoreCollisions(between: "traffic", and: "road") }
             run(world, steps: 120)
             return car.body.position.y
@@ -328,14 +328,14 @@ struct CollisionFilter3DTests {
         world.ground = 0
         world.groundBody?.group = "road"
         world.ignoreCollisions(between: "traffic", and: "road")
-        let car = try #require(world.addVehicle(
+        let car = try world.addVehicle(
             .box(width: 1.8, height: 0.6, depth: 4), at: Vector3(0, 1, 0),
             wheels: [
                 .wheel(at: Vector3(0.9, -0.2, 1.3), steers: true),
                 .wheel(at: Vector3(-0.9, -0.2, 1.3), steers: true),
                 .wheel(at: Vector3(0.9, -0.2, -1.3), driven: true),
                 .wheel(at: Vector3(-0.9, -0.2, -1.3), driven: true),
-            ]))
+            ])
         run(world, steps: 60)
         #expect(car.body.position.y > 0.3, "the default group rides the road")
 
@@ -355,9 +355,9 @@ struct CollisionFilter3DTests {
             world.ground = -3
             world.addBody(.box(width: 2, height: 1, depth: 2), at: Vector3(0, 0, 0),
                           kind: .static, group: "props")
-            let cloth = try #require(world.addSoftBody(
+            let cloth = try! world.addSoftBody(
                 from: Mesh.plane(width: 2, depth: 2, segments: 8),
-                at: Vector3(0, 2, 0), mass: 0.5, group: "drapes"))
+                at: Vector3(0, 2, 0), mass: 0.5, group: "drapes")
             if filtered { world.ignoreCollisions(between: "drapes", and: "props") }
             run(world, steps: 240)
             return cloth.position.y
@@ -376,8 +376,8 @@ struct CollisionFilter3DTests {
         world.ground = 0
         world.addBody(.box(width: 6, height: 0.4, depth: 6), at: Vector3(0, 1, 0),
                       kind: .static, group: "shelf")
-        let figure = try #require(world.addRagdoll(from: scene, at: Vector3(0, 3, 0),
-                                                   group: "phantoms"))
+        let figure = try world.addRagdoll(from: scene, at: Vector3(0, 3, 0),
+                                                   group: "phantoms")
         world.ignoreCollisions(between: "phantoms", and: "shelf")
         run(world, steps: 200)
         #expect(figure.position.y < 1, "it fell past the shelf")
@@ -389,7 +389,7 @@ struct CollisionFilter3DTests {
     /// Buoyancy sweeps the world for what it can float by asking about a
     /// layer, and a layer carries a group as well as a kind. A grouped body
     /// has to float exactly as an ungrouped one does.
-    @Test func agroupedBodyStillFloats() {
+    @Test func agroupedBodyStillFloats() throws {
         func waterline(group: CollisionGroup) -> Double {
             let world = World3D()
             world.water = Water(level: 0)
@@ -408,7 +408,7 @@ struct CollisionFilter3DTests {
     /// Statics still ignore each other, sensors still pair only with moving
     /// bodies, and a grab anchor is still invisible: the fixed rules survive
     /// having a group packed in beside them.
-    @Test func theFixedRulesStillHold() {
+    @Test func theFixedRulesStillHold() throws {
         let world = World3D()
         let a = world.addBody(.box(width: 1, height: 1, depth: 1), at: .zero,
                               kind: .static, group: "scenery")
@@ -423,7 +423,7 @@ struct CollisionFilter3DTests {
     /// The table is a fixed size. A world that names more groups than it holds
     /// keeps the extras in the default group rather than quietly aliasing them
     /// onto a group already in use, which would filter the wrong things.
-    @Test func aWorldThatRunsOutOfGroupsFallsBackToTheDefault() {
+    @Test func aWorldThatRunsOutOfGroupsFallsBackToTheDefault() throws {
         let world = World3D()
         for index in 0 ..< 100 { _ = world.groupIndex(CollisionGroup("g\(index)")) }
         #expect(world.collisionGroups.count == World3D.maxCollisionGroups)
@@ -433,7 +433,7 @@ struct CollisionFilter3DTests {
 
     /// The same rules and the same scene replay identically, which is what the
     /// whole 3D tier promises within one build.
-    @Test func identicalRunsStayIdentical() {
+    @Test func identicalRunsStayIdentical() throws {
         func trace() -> [Double] {
             let world = World3D()
             world.ground = -4

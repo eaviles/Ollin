@@ -59,7 +59,7 @@ final class MotionBrush: Sketch {
 /// live `FlowTracker` publishes; only the camera has been replaced.
 @MainActor
 final class StageFilm {
-    private let clip = VideoPlayer(url: SampleClip.dance.url)
+    private let clip = try! VideoPlayer(url: SampleClip.dance.url)
     private var previous: Image?
     private var frame = 0
 

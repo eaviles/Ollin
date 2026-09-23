@@ -32,7 +32,7 @@ struct Buoyancy3DTests {
 
     /// The headline: one number decides it, and it is the density the body was
     /// built with.
-    @Test func aLightBodyFloatsWhereADenseOneSinks() {
+    @Test func aLightBodyFloatsWhereADenseOneSinks() throws {
         func settle(density: Double) -> Double {
             let world = pool(Water(level: 0))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -48,7 +48,7 @@ struct Buoyancy3DTests {
 
     /// A body only sinks because it is heavy, not because the water is missing:
     /// the same cork with no water at all goes straight down.
-    @Test func withoutWaterTheSameBodyJustFalls() {
+    @Test func withoutWaterTheSameBodyJustFalls() throws {
         func settle(_ water: Water?) -> Double {
             let world = pool(water)
             let cork = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -64,7 +64,7 @@ struct Buoyancy3DTests {
     /// with fraction d of itself under. The margin is what sleeping costs,
     /// since the solver freezes the body wherever its last small oscillation
     /// had reached rather than at the exact equilibrium.
-    @Test func theWaterlineSitsWhereTheDisplacedVolumeSays() {
+    @Test func theWaterlineSitsWhereTheDisplacedVolumeSays() throws {
         for density in [0.2, 0.4, 0.6, 0.8] {
             let world = pool(Water(level: 0))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -77,7 +77,7 @@ struct Buoyancy3DTests {
     }
 
     /// Water twice as heavy floats the same body twice as high.
-    @Test func denserWaterFloatsTheSameBodyHigher() {
+    @Test func denserWaterFloatsTheSameBodyHigher() throws {
         func settle(waterDensity: Double) -> Double {
             let world = pool(Water(level: 0, density: waterDensity))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -94,7 +94,7 @@ struct Buoyancy3DTests {
     /// Drag is what makes a dropped body settle instead of bobbing forever.
     /// Measured over the tail of a long run, so the initial splash is not
     /// counted either way.
-    @Test func dragSettlesABodyThatOtherwiseKeepsBobbing() {
+    @Test func dragSettlesABodyThatOtherwiseKeepsBobbing() throws {
         func tailSwing(drag: Double) -> Double {
             let world = pool(Water(level: 0, linearDrag: drag, angularDrag: drag))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -114,7 +114,7 @@ struct Buoyancy3DTests {
 
     /// The failure mode this whole tier has to survive: a body that settles and
     /// falls asleep stops being pushed up, so it must not then sink.
-    @Test func aFloaterThatFallsAsleepStaysAtItsWaterline() {
+    @Test func aFloaterThatFallsAsleepStaysAtItsWaterline() throws {
         let world = pool(Water(level: 0))
         let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 0.5, 0), density: 0.5)
@@ -131,7 +131,7 @@ struct Buoyancy3DTests {
     /// A tide has to reach a body that is already asleep, however far the new
     /// surface is from where it settled: the equilibrium moved, so the body has
     /// to be let go of.
-    @Test func raisingTheLevelWakesABodyAsleepAtTheOldOne() {
+    @Test func raisingTheLevelWakesABodyAsleepAtTheOldOne() throws {
         let world = pool(Water(level: 0))
         let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 0.5, 0), density: 0.5)
@@ -145,7 +145,7 @@ struct Buoyancy3DTests {
 
     /// Water added to a world that has already settled has to reach what is
     /// lying there asleep, the same way a tide does.
-    @Test func addingWaterLaterFloatsWhatHadAlreadySettled() {
+    @Test func addingWaterLaterFloatsWhatHadAlreadySettled() throws {
         let world = pool(nil)
         let cork = world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 2, 0), density: 0.4)
@@ -160,7 +160,7 @@ struct Buoyancy3DTests {
 
     /// A swell wakes what it washes over and leaves the bottom alone, which is
     /// what keeps a sunk pile from being stirred awake every step.
-    @Test func aSwellCarriesWhatFloatsAndLetsTheBottomSleep() {
+    @Test func aSwellCarriesWhatFloatsAndLetsTheBottomSleep() throws {
         let world = pool(Water(level: 0, waves: Water.Waves(amplitude: 0.4,
                                                             wavelength: 6)))
         let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
@@ -180,7 +180,7 @@ struct Buoyancy3DTests {
     }
 
     /// Still water is a flat plane, so nothing bobs at all.
-    @Test func stillWaterDoesNotBob() {
+    @Test func stillWaterDoesNotBob() throws {
         let world = pool(Water(level: 0))
         let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
                                  at: Vector3(0, 1, 0), density: 0.4)
@@ -195,7 +195,7 @@ struct Buoyancy3DTests {
 
     // MARK: The current, and the per-body parameter
 
-    @Test func aCurrentCarriesAFloaterDownstream() {
+    @Test func aCurrentCarriesAFloaterDownstream() throws {
         func drift(flow: Vector3) -> Double {
             let world = pool(Water(level: 0, flow: flow))
             let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
@@ -209,7 +209,7 @@ struct Buoyancy3DTests {
 
     /// The per-body override, both ways: enough of it floats a stone, none of
     /// it sinks a cork.
-    @Test func perBodyBuoyancyOverridesWhatDensityAloneWouldDo() {
+    @Test func perBodyBuoyancyOverridesWhatDensityAloneWouldDo() throws {
         func settle(density: Double, buoyancyScale: Double) -> Double {
             let world = pool(Water(level: 0))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -227,7 +227,7 @@ struct Buoyancy3DTests {
     /// A stone lifted by exactly its own density ratio rides half under, the
     /// same as a body whose density says so: the override is a plain multiplier
     /// on what the water would otherwise do.
-    @Test func perBodyBuoyancyMultipliesTheDensityRatio() {
+    @Test func perBodyBuoyancyMultipliesTheDensityRatio() throws {
         let world = pool(Water(level: 0))
         let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 2, 0), density: 3)
@@ -240,7 +240,7 @@ struct Buoyancy3DTests {
 
     /// A sensor is a detector, not a boat: the water must not push it off the
     /// spot the sketch put it on.
-    @Test func aSensorInTheWaterIsNotFloated() {
+    @Test func aSensorInTheWaterIsNotFloated() throws {
         let world = pool(Water(level: 0))
         let sensor = world.addBody(.box(width: 1, height: 1, depth: 1),
                                    at: Vector3(0, -0.5, 0), isSensor: true)
@@ -255,9 +255,8 @@ struct Buoyancy3DTests {
     @Test func aLightClothFloatsWhereAHeavyOneSinks() throws {
         func drop(density: Double) throws -> Double {
             let world = pool(Water(level: 0))
-            let cloth = try #require(
-                world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 8),
-                                  at: Vector3(0, 3, 0), mass: 1, stiffness: 0.9))
+            let cloth = try! world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 8),
+                                  at: Vector3(0, 3, 0), mass: 1, stiffness: 0.9)
             cloth.density = density
             run(world, steps: 900)
             return cloth.position.y
@@ -278,9 +277,9 @@ struct Buoyancy3DTests {
     @Test func aRaftRidesHigherTheLighterItIs() throws {
         func settle(density: Double) throws -> Double {
             let world = pool(Water(level: 0))
-            let raft = try #require(world.addSoftBody(from: Self.sheet,
+            let raft = try! world.addSoftBody(from: Self.sheet,
                                                       at: Vector3(0, 1.5, 0),
-                                                      mass: 2, stiffness: 0.9))
+                                                      mass: 2, stiffness: 0.9)
             raft.density = density
             run(world, steps: 900)
             return raft.position.y
@@ -296,12 +295,12 @@ struct Buoyancy3DTests {
     /// encloses nothing to work one out from, so it starts as heavy as water.
     @Test func aClosedSurfaceKnowsItsOwnDensity() throws {
         let world = pool(Water(level: 0))
-        let ball = try #require(world.addSoftBody(from: Mesh.icosphere(radius: 0.5,
+        let ball = try world.addSoftBody(from: Mesh.icosphere(radius: 0.5,
                                                                       subdivisions: 2),
                                                   at: Vector3(0, 1.5, 0), mass: 1,
-                                                  pressure: 3))
-        let cloth = try #require(world.addSoftBody(from: Self.sheet,
-                                                   at: Vector3(4, 1.5, 0), mass: 2))
+                                                  pressure: 3)
+        let cloth = try world.addSoftBody(from: Self.sheet,
+                                                   at: Vector3(4, 1.5, 0), mass: 2)
         // A 1 kg ball half a meter across is a balloon: light enough to ride
         // almost wholly out of the water.
         #expect(ball.density < 0.01)
@@ -318,9 +317,9 @@ struct Buoyancy3DTests {
     @Test func aSinkingClothKeepsGoingWhereAFloatingOneSettles() throws {
         func fall(density: Double) throws -> (half: Double, full: Double, awake: Bool) {
             let world = pool(Water(level: 0))
-            let cloth = try #require(world.addSoftBody(from: Self.sheet,
+            let cloth = try! world.addSoftBody(from: Self.sheet,
                                                        at: Vector3(0, 1, 0),
-                                                       mass: 2, stiffness: 0.9))
+                                                       mass: 2, stiffness: 0.9)
             cloth.density = density
             run(world, steps: 600)
             let half = cloth.position.y
@@ -341,9 +340,9 @@ struct Buoyancy3DTests {
     @Test func aSwellCarriesARaftAndACurrentDriftsIt() throws {
         func sail(waves: Water.Waves?, flow: Vector3) throws -> (heave: Double, drift: Double) {
             let world = pool(Water(level: 0, flow: flow, waves: waves))
-            let raft = try #require(world.addSoftBody(from: Self.sheet,
+            let raft = try! world.addSoftBody(from: Self.sheet,
                                                       at: Vector3(0, 0.6, 0),
-                                                      mass: 2, stiffness: 0.9))
+                                                      mass: 2, stiffness: 0.9)
             raft.density = 0.3
             var low = Double.infinity, high = -Double.infinity
             for step in 0 ..< 600 {
@@ -369,9 +368,9 @@ struct Buoyancy3DTests {
     /// lift it: a sheet pegged along one edge above the surface stays pegged.
     @Test func theWaterDoesNotLiftPinnedParticles() throws {
         let world = pool(Water(level: 0))
-        let flag = try #require(world.addSoftBody(from: Self.sheet, at: Vector3(0, 0.2, 0),
+        let flag = try world.addSoftBody(from: Self.sheet, at: Vector3(0, 0.2, 0),
                                                   mass: 2, stiffness: 0.9,
-                                                  pinned: { $0.z < -0.9 }))
+                                                  pinned: { $0.z < -0.9 })
         let pegged = flag.positions.enumerated()
             .filter { Self.sheet.positions[$0.offset].z < -0.9 }
         let before = pegged.map(\.element)
@@ -383,7 +382,7 @@ struct Buoyancy3DTests {
     // MARK: The surface a sketch draws
 
     /// Still water is flat, whatever it is asked.
-    @Test func stillWaterIsFlatEverywhere() {
+    @Test func stillWaterIsFlatEverywhere() throws {
         let world = pool(Water(level: 2.5))
         #expect(world.waterHeight(at: Vector3(13, 0, -7)) == 2.5)
         #expect(world.waterHeight(at: .zero) == 2.5)
@@ -407,7 +406,7 @@ struct Buoyancy3DTests {
 
     /// The wave normal is the analytic gradient, so it has to agree with the
     /// surface it claims to be tangent to.
-    @Test func theWaveNormalMatchesTheSurfaceSlope() {
+    @Test func theWaveNormalMatchesTheSurfaceSlope() throws {
         let water = Water(level: 0, waves: Water.Waves(amplitude: 0.4,
                                                        wavelength: 3.5,
                                                        heading: 0.8))
@@ -426,14 +425,14 @@ struct Buoyancy3DTests {
     }
 
     /// A swell of no amplitude is still water, exactly.
-    @Test func aFlatSwellIsStillWater() {
+    @Test func aFlatSwellIsStillWater() throws {
         let water = Water(level: 1, waves: Water.Waves(amplitude: 0))
         #expect(water.height(at: Vector3(3, 0, 4), phase: 9) == 1)
     }
 
     // MARK: Determinism
 
-    @Test func identicalRunsReplayIdentically() {
+    @Test func identicalRunsReplayIdentically() throws {
         func settle() -> [Vector3] {
             let world = pool(Water(level: 0, waves: Water.Waves(amplitude: 0.3,
                                                                 wavelength: 5)))

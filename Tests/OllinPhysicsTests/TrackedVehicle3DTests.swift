@@ -19,7 +19,7 @@ struct TrackedVehicle3DTests {
     static func crawler(in world: World3D, at position: Vector3 = Vector3(0, 1.2, 0),
                         mass: Double = 4000, engineTorque: Double = 500,
                         topSpeed: Double = 10, grip: Double = 1,
-                        sprocket: Int? = nil, oneSided: Bool = false) -> Vehicle3D? {
+                        sprocket: Int? = nil, oneSided: Bool = false) throws -> Vehicle3D {
         var wheels: [Wheel3D] = []
         for side in [1.05, oneSided ? 0.85 : -1.05] {
             for i in 0 ..< 5 {
@@ -33,7 +33,7 @@ struct TrackedVehicle3DTests {
                 wheels.append(wheel)
             }
         }
-        return world.addVehicle(.box(width: 2.6, height: 1, depth: 5),
+        return try world.addVehicle(.box(width: 2.6, height: 1, depth: 5),
                                 at: position, wheels: wheels, mass: mass,
                                 engineTorque: engineTorque, topSpeed: topSpeed,
                                 friction: 0.9, isTracked: true)
@@ -48,8 +48,8 @@ struct TrackedVehicle3DTests {
                   topSpeed: Double = 10) -> (World3D, Vehicle3D) {
         let world = World3D()
         world.ground = 0
-        let crawler = Self.crawler(in: world, engineTorque: engineTorque,
-                                   topSpeed: topSpeed, grip: grip)!
+        let crawler = try! Self.crawler(in: world, engineTorque: engineTorque,
+                                        topSpeed: topSpeed, grip: grip)
         run(world, steps: 120)
         return (world, crawler)
     }
@@ -62,7 +62,7 @@ struct TrackedVehicle3DTests {
 
     // MARK: Standing on its tracks
 
-    @Test func restsOnItsRoadWheelsWithEveryOneDown() {
+    @Test func restsOnItsRoadWheelsWithEveryOneDown() throws {
         let (world, crawler) = standing()
 
         #expect(crawler.isTracked)
@@ -78,7 +78,7 @@ struct TrackedVehicle3DTests {
     /// The bands are worked out from where the wheels sit, not from the order
     /// they were listed: the driver's right is -x, so the left band carries the
     /// wheels at positive x.
-    @Test func theWheelsSplitIntoTwoBandsBySideOfTheHull() {
+    @Test func theWheelsSplitIntoTwoBandsBySideOfTheHull() throws {
         let (_, crawler) = standing()
 
         let left = crawler.wheels(on: .left)
@@ -94,7 +94,7 @@ struct TrackedVehicle3DTests {
 
     /// A band is turned at one sprocket however many wheels were marked, and
     /// with nothing marked it is the rearmost.
-    @Test func eachBandIsTurnedAtOneSprocket() {
+    @Test func eachBandIsTurnedAtOneSprocket() throws {
         let (_, byDefault) = standing()
         let driven = byDefault.wheels.filter(\.isDriven)
         #expect(driven.count == 2)
@@ -102,24 +102,24 @@ struct TrackedVehicle3DTests {
 
         let world = World3D()
         world.ground = 0
-        let asked = Self.crawler(in: world, sprocket: 4)!
+        let asked = try! Self.crawler(in: world, sprocket: 4)
         #expect(asked.wheels.filter(\.isDriven).count == 2)
         #expect(asked.wheels.filter(\.isDriven).allSatisfy { $0.position.z == 1.8 })
     }
 
     /// Both bands are needed: a machine whose wheels all sit on one side of the
     /// hull is refused rather than half-built.
-    @Test func aMachineWithOnlyOneBandIsRefused() {
+    @Test func aMachineWithOnlyOneBandIsRefused() throws {
         let world = World3D()
         world.ground = 0
-        #expect(Self.crawler(in: world, oneSided: true) == nil)
+        #expect(throws: PhysicsError.self) { try Self.crawler(in: world, oneSided: true) }
         // And the chassis body it would have ridden on goes with it.
         #expect(world.bodies.isEmpty)
     }
 
     // MARK: Driving
 
-    @Test func theThrottleDrivesItForward() {
+    @Test func theThrottleDrivesItForward() throws {
         let (drivenWorld, driven) = standing()
         driven.throttle = 1
         run(drivenWorld, steps: 300)
@@ -134,7 +134,7 @@ struct TrackedVehicle3DTests {
 
     /// Both bands run together in a straight line, at the speed the machine is
     /// traveling: what a drawn track is scrolled by.
-    @Test func bothBandsRunTogetherInAStraightLine() {
+    @Test func bothBandsRunTogetherInAStraightLine() throws {
         let (world, crawler) = standing()
         crawler.throttle = 1
         run(world, steps: 300)
@@ -143,7 +143,7 @@ struct TrackedVehicle3DTests {
         #expect(abs(crawler.trackSpeed(.left) - crawler.speed) < 0.5)
     }
 
-    @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() {
+    @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() throws {
         let (slowWorld, slow) = standing(topSpeed: 5)
         slow.throttle = 1
         run(slowWorld, steps: 900)
@@ -161,7 +161,7 @@ struct TrackedVehicle3DTests {
     /// The headline difference: a machine with nothing to steer turns by
     /// running one band against the other, so full lock spins it where it
     /// stands. Its twin, given the same throttle and no steering, drives away.
-    @Test func fullLockSpinsItOnTheSpot() {
+    @Test func fullLockSpinsItOnTheSpot() throws {
         let (pivotWorld, pivot) = standing()
         pivot.throttle = 1
         pivot.steering = 1
@@ -190,7 +190,7 @@ struct TrackedVehicle3DTests {
         #expect(abs(heading(straight)) < 0.05)
     }
 
-    @Test func theTwoBandsRunOppositeWaysInAPivot() {
+    @Test func theTwoBandsRunOppositeWaysInAPivot() throws {
         let (world, crawler) = standing()
         crawler.throttle = 1
         crawler.steering = 1
@@ -202,7 +202,7 @@ struct TrackedVehicle3DTests {
 
     /// Half lock stops the inside band instead of reversing it, which is the
     /// turn a machine makes about its own inside track.
-    @Test func halfLockStopsTheInsideBand() {
+    @Test func halfLockStopsTheInsideBand() throws {
         let (world, crawler) = standing()
         crawler.throttle = 1
         crawler.steering = 0.5
@@ -212,7 +212,7 @@ struct TrackedVehicle3DTests {
         #expect(abs(crawler.trackSpeed(.right)) < 0.5)
     }
 
-    @Test func positiveSteeringTurnsToTheMachinesRight() {
+    @Test func positiveSteeringTurnsToTheMachinesRight() throws {
         let (world, crawler) = standing()
         crawler.throttle = 1
         crawler.steering = 0.6
@@ -227,7 +227,7 @@ struct TrackedVehicle3DTests {
     /// Steering without throttle does nothing, the way it does on a real one:
     /// the bands are turned by the engine, so with the engine idle there is
     /// nothing to run one against the other.
-    @Test func steeringNeedsThrottle() {
+    @Test func steeringNeedsThrottle() throws {
         let (world, crawler) = standing()
         crawler.steering = 1
         run(world, steps: 180)
@@ -238,7 +238,7 @@ struct TrackedVehicle3DTests {
     /// A road wheel under a band never turns, whatever the steering asks and
     /// whatever `steers` said, and it has no slip to report: it only ever runs
     /// as fast as the band it rides.
-    @Test func aRoadWheelNeitherSteersNorSlips() {
+    @Test func aRoadWheelNeitherSteersNorSlips() throws {
         let (world, crawler) = standing()
         crawler.throttle = 1
         crawler.steering = 1
@@ -252,7 +252,7 @@ struct TrackedVehicle3DTests {
 
     // MARK: The brake
 
-    @Test func theBrakeStopsItSoonerThanCoasting() {
+    @Test func theBrakeStopsItSoonerThanCoasting() throws {
         func distanceAfterLettingGo(braking: Bool) -> Double {
             let (world, crawler) = standing()
             crawler.throttle = 1
@@ -272,7 +272,7 @@ struct TrackedVehicle3DTests {
 
     /// A tracked machine has one brake, so the hand brake pulls the same one
     /// rather than doing nothing.
-    @Test func theHandBrakePullsTheSameBrake() {
+    @Test func theHandBrakePullsTheSameBrake() throws {
         func distanceAfterLettingGo(handBraking: Bool) -> Double {
             let (world, crawler) = standing()
             crawler.throttle = 1
@@ -290,7 +290,7 @@ struct TrackedVehicle3DTests {
 
     /// The brake belongs to the band rather than to a wheel, so a change to a
     /// road wheel's share of it has to reach the drivetrain to mean anything.
-    @Test func softeningTheWheelsSoftensTheBandsBrake() {
+    @Test func softeningTheWheelsSoftensTheBandsBrake() throws {
         func distanceAfterLettingGo(brakeTorque: Double) -> Double {
             let (world, crawler) = standing()
             crawler.throttle = 1
@@ -312,7 +312,7 @@ struct TrackedVehicle3DTests {
     /// Slick tracks climb less of the same bank: the band's grip is a flat
     /// coefficient rather than a tire's slip curve, and scaling it scales what
     /// the machine can drag itself up.
-    @Test func slickTracksClimbLessOfTheSameBank() {
+    @Test func slickTracksClimbLessOfTheSameBank() throws {
         func climbed(grip: Double) -> Double {
             let world = World3D()
             world.ground = nil
@@ -324,8 +324,8 @@ struct TrackedVehicle3DTests {
             world.addBody(.box(width: 24, height: 1, depth: 25),
                           at: along * 12.5 - normal * 0.5, kind: .static,
                           rotated: -angle, axis: .unitX, friction: 1)
-            let crawler = Self.crawler(in: world, at: Vector3(0, 1.2, -6),
-                                       grip: grip)!
+            let crawler = try! Self.crawler(in: world, at: Vector3(0, 1.2, -6),
+                                            grip: grip)
             run(world, steps: 120)
             let from = crawler.body.position.y
             crawler.throttle = 1
@@ -349,7 +349,7 @@ struct TrackedVehicle3DTests {
     /// Moving the sprocket is the gearbox rather than the wheel, so it rebuilds
     /// the drive rather than being refused: the machine keeps driving, and the
     /// flags report what it settled on.
-    @Test func movingTheSprocketRebuildsTheDrive() {
+    @Test func movingTheSprocketRebuildsTheDrive() throws {
         let (world, crawler) = standing()
         #expect(crawler.wheels.filter(\.isDriven).allSatisfy { $0.position.z == -1.8 })
 
@@ -369,7 +369,7 @@ struct TrackedVehicle3DTests {
     /// with slick front tyres, a car switched to front drive after it was built
     /// goes nowhere, and its twin left on rear drive keeps its legs. (This is
     /// the construction-time routing test, run through the live path.)
-    @Test func switchingWhichAxleDrivesReRoutesTheTorque() {
+    @Test func switchingWhichAxleDrivesReRoutesTheTorque() throws {
         func drivenDistance(switchToFront: Bool) -> Double {
             let world = World3D()
             world.ground = 0
@@ -392,7 +392,7 @@ struct TrackedVehicle3DTests {
     }
 
     /// A wheeled machine has no bands to report on.
-    @Test func trackSpeedIsZeroOnAWheeledMachine() {
+    @Test func trackSpeedIsZeroOnAWheeledMachine() throws {
         let world = World3D()
         world.ground = 0
         let car = Vehicle3DTests.car(in: world)
@@ -405,7 +405,7 @@ struct TrackedVehicle3DTests {
 
     // MARK: Determinism
 
-    @Test func identicalCrawlersReplayIdentically() {
+    @Test func identicalCrawlersReplayIdentically() throws {
         func drive() -> [Double] {
             let (world, crawler) = standing()
             crawler.throttle = 1

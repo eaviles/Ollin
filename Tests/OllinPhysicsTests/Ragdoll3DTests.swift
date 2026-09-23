@@ -59,7 +59,7 @@ struct Ragdoll3DTests {
     @Test func buildsOneLimbPerSkeletonJoint() throws {
         let scene = try Self.figure()
         let world = World3D()
-        let ragdoll = try #require(world.addRagdoll(from: scene))
+        let ragdoll = try world.addRagdoll(from: scene)
 
         #expect(ragdoll.limbs.count == 16)
         // Parents before children, so the root comes first.
@@ -78,7 +78,7 @@ struct Ragdoll3DTests {
     @Test func limbShapesAreFittedToTheMeshNotTheBone() throws {
         let scene = try Self.figure()
         let world = World3D()
-        let ragdoll = try #require(world.addRagdoll(from: scene))
+        let ragdoll = try world.addRagdoll(from: scene)
 
         func radius(_ name: String) throws -> Double {
             switch try limb(ragdoll, name).collider {
@@ -103,7 +103,7 @@ struct Ragdoll3DTests {
     @Test func massIsSplitBetweenTheLimbsByHowMuchOfTheFigureTheyFill() throws {
         let scene = try Self.figure()
         let world = World3D()
-        let ragdoll = try #require(world.addRagdoll(from: scene, mass: 70))
+        let ragdoll = try world.addRagdoll(from: scene, mass: 70)
 
         let total = ragdoll.limbs.map(\.body.mass).reduce(0, +)
         #expect(abs(total - 70) < 0.5)
@@ -112,37 +112,37 @@ struct Ragdoll3DTests {
             > limb(ragdoll, "handL").body.mass)
         // Twice the figure means twice every limb.
         let heavier = World3D()
-        let heavy = try #require(heavier.addRagdoll(from: scene, mass: 140))
+        let heavy = try heavier.addRagdoll(from: scene, mass: 140)
         #expect(abs(heavy.limbs.map(\.body.mass).reduce(0, +) - 140) < 1)
     }
 
     @Test func standsWhereItIsAskedTo() throws {
         let scene = try Self.figure()
         let world = World3D()
-        let placed = try #require(world.addRagdoll(from: scene, at: Vector3(2, 5, -1)))
+        let placed = try world.addRagdoll(from: scene, at: Vector3(2, 5, -1))
         #expect((placed.position - Vector3(2, 5, -1)).length < 1e-4)
 
         // With no placement it keeps the pose the file authored (hips at 0.95).
         let asAuthored = World3D()
-        let authored = try #require(asAuthored.addRagdoll(from: scene))
+        let authored = try asAuthored.addRagdoll(from: scene)
         #expect(abs(authored.position.y - 0.95) < 1e-4)
         #expect(abs(authored.position.x) < 1e-4)
     }
 
-    @Test func aSceneWithNoSkinBuildsNoRagdoll() {
+    @Test func aSceneWithNoSkinBuildsNoRagdoll() throws {
         let world = World3D()
         let plain = Scene(nodes: [SceneNode(name: "block", mesh: Mesh.box(width: 1,
                                                                          height: 1,
                                                                          depth: 1))])
-        #expect(world.addRagdoll(from: plain) == nil)
+        #expect(throws: PhysicsError.self) { try world.addRagdoll(from: plain) }
         #expect(world.ragdolls.isEmpty)
     }
 
     @Test func namedJointsBecomeLimbsAndTheRestRideThem() throws {
         let scene = try Self.figure()
         let world = World3D()
-        let ragdoll = try #require(world.addRagdoll(
-            from: scene, joints: ["spine", "armL", "armR", "legL", "legR"]))
+        let ragdoll = try world.addRagdoll(
+            from: scene, joints: ["spine", "armL", "armR", "legL", "legR"])
 
         // The five named joints plus the root, which is always kept: a figure
         // with nothing to hang off would be a pile of loose parts.
@@ -152,7 +152,7 @@ struct Ragdoll3DTests {
         // The forearm's flesh went to the arm that now carries it, so that limb
         // reaches further than it would have on its own.
         let everyJoint = World3D()
-        let whole = try #require(everyJoint.addRagdoll(from: scene))
+        let whole = try everyJoint.addRagdoll(from: scene)
         func reach(_ r: Ragdoll3D) throws -> Double {
             let arm = try limb(r, "armL")
             guard case .capsule(let height, let radius) = arm.collider else { return 0 }
@@ -167,7 +167,7 @@ struct Ragdoll3DTests {
         var scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0))
         run(world, steps: 40)
         scene.apply(ragdoll)
 
@@ -189,7 +189,7 @@ struct Ragdoll3DTests {
     @Test func jointsTheRagdollSkippedRideTheLimbAboveThem() throws {
         var scene = try Self.figure()
         let world = World3D()
-        let ragdoll = try #require(world.addRagdoll(from: scene, joints: ["armL", "armR"]))
+        let ragdoll = try world.addRagdoll(from: scene, joints: ["armL", "armR"])
         let elbowBefore = try #require(scene.node("forearmL")).position
 
         // Lift the arm that *is* simulated, then pose the scene from it.
@@ -211,7 +211,7 @@ struct Ragdoll3DTests {
         let rest = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: rest, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: rest, at: Vector3(0, 1.2, 0))
         let built = shape(of: ragdoll)
         run(world, steps: 150)
         #expect(shapeError(ragdoll, from: built) > 0.2)   // it fell in a heap
@@ -231,8 +231,8 @@ struct Ragdoll3DTests {
         for powered in [false, true] {
             let world = World3D()
             world.ground = 0
-            let ragdoll = try #require(world.addRagdoll(from: rest,
-                                                        at: Vector3(0, 1.2, 0)))
+            let ragdoll = try! world.addRagdoll(from: rest,
+                                                        at: Vector3(0, 1.2, 0))
             let built = shape(of: ragdoll)
             for _ in 0..<180 {
                 if powered { ragdoll.drive(toward: rest) }
@@ -251,7 +251,7 @@ struct Ragdoll3DTests {
         let rest = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: rest, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: rest, at: Vector3(0, 1.2, 0))
         let built = shape(of: ragdoll)
         for _ in 0..<120 {
             ragdoll.drive(toward: rest)
@@ -271,8 +271,8 @@ struct Ragdoll3DTests {
         for strength in [4.0, 400.0] {
             let world = World3D()
             world.ground = 0
-            let ragdoll = try #require(world.addRagdoll(from: rest,
-                                                        at: Vector3(0, 1.2, 0)))
+            let ragdoll = try! world.addRagdoll(from: rest,
+                                                        at: Vector3(0, 1.2, 0))
             let built = shape(of: ragdoll)
             for _ in 0..<180 {
                 ragdoll.drive(toward: rest, strength: strength)
@@ -288,7 +288,7 @@ struct Ragdoll3DTests {
         var target = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: target, at: Vector3(0, 0, 0)))
+        let ragdoll = try world.addRagdoll(from: target, at: Vector3(0, 0, 0))
         ragdoll.kind = .kinematic
         // A crate right where the figure's arm will sweep.
         let crate = world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
@@ -310,7 +310,7 @@ struct Ragdoll3DTests {
 
     // MARK: Limits
 
-    @Test func aConeLimitedJointStopsWhereAFreeOneKeepsGoing() {
+    @Test func aConeLimitedJointStopsWhereAFreeOneKeepsGoing() throws {
         /// A rod sticking out sideways from a small fixed post, hung on one
         /// joint at the post, left to fall under gravity. The rod's center
         /// height says how far it got: 0 is still horizontal, -0.5 is hanging
@@ -343,9 +343,9 @@ struct Ragdoll3DTests {
         for swing in [10 * Double.pi / 180, 80 * Double.pi / 180] {
             let world = World3D()
             world.ground = 0
-            let ragdoll = try #require(world.addRagdoll(from: scene,
+            let ragdoll = try! world.addRagdoll(from: scene,
                                                         at: Vector3(0, 1.2, 0),
-                                                        swing: swing))
+                                                        swing: swing)
             let built = shape(of: ragdoll)
             run(world, steps: 180)
             errors.append(shapeError(ragdoll, from: built))
@@ -372,8 +372,8 @@ struct Ragdoll3DTests {
             // Hung by the hips with the arms out, so nothing but gravity and
             // the limits decides where they end up.
             let world = World3D()
-            let ragdoll = try #require(world.addRagdoll(from: scene,
-                                                        swing: 6 * .pi / 180))
+            let ragdoll = try! world.addRagdoll(from: scene,
+                                                        swing: 6 * .pi / 180)
             ragdoll.limbs[0].body.kind = .kinematic
             if loosen { ragdoll.limit("forearmL", swing: 100 * .pi / 180) }
             run(world, steps: 180)
@@ -393,7 +393,7 @@ struct Ragdoll3DTests {
         let scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0))
 
         var landed: Set<String> = []
         for _ in 0..<180 {
@@ -416,7 +416,7 @@ struct Ragdoll3DTests {
         let scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 1.05, 0)))
+        let ragdoll = try world.addRagdoll(from: scene, at: Vector3(0, 1.05, 0))
         run(world, steps: 300)
 
         // A figure whose overlapping limbs collided would shake itself apart:
@@ -434,8 +434,8 @@ struct Ragdoll3DTests {
         let scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let lower = try #require(world.addRagdoll(from: scene, at: Vector3(0, 0.95, 0)))
-        let upper = try #require(world.addRagdoll(from: scene, at: Vector3(0, 3.4, 0)))
+        let lower = try world.addRagdoll(from: scene, at: Vector3(0, 0.95, 0))
+        let upper = try world.addRagdoll(from: scene, at: Vector3(0, 3.4, 0))
 
         // The group filter that stops one figure's own limbs from colliding is
         // per figure, so the dropped one lands *on* the standing one rather
@@ -470,7 +470,7 @@ struct Ragdoll3DTests {
         let scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0))
         let built = shape(of: ragdoll)
         // One impulse for the whole 72 kg figure: about 5 m/s downrange.
         ragdoll.applyImpulse(Vector3(0, 0, 360))
@@ -486,7 +486,7 @@ struct Ragdoll3DTests {
         let scene = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let ragdoll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0)))
+        let ragdoll = try world.addRagdoll(from: scene, at: Vector3(0, 1.2, 0))
         let ids = ragdoll.bodies.map(\.id)
         run(world, steps: 30)
         world.remove(ragdoll)
@@ -508,8 +508,8 @@ struct Ragdoll3DTests {
         func fall() throws -> [Vector3] {
             let world = World3D()
             world.ground = 0
-            let ragdoll = try #require(world.addRagdoll(from: scene,
-                                                        at: Vector3(0.2, 1.4, -0.1)))
+            let ragdoll = try! world.addRagdoll(from: scene,
+                                                        at: Vector3(0.2, 1.4, -0.1))
             run(world, steps: 200)
             return ragdoll.bodies.map(\.position)
         }

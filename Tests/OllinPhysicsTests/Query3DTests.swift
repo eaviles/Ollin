@@ -49,7 +49,7 @@ struct Query3DTests {
 
     /// Line of sight, the question this whole surface exists for: the target is
     /// what the ray finds only when nothing stands between.
-    @Test func aWallIsWhatBreaksTheLineOfSight() {
+    @Test func aWallIsWhatBreaksTheLineOfSight() throws {
         func canSee(throughAWall: Bool) -> Bool {
             let world = World3D()
             let target = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1, 6),
@@ -77,14 +77,14 @@ struct Query3DTests {
     }
 
     /// A ray is a segment, not a line: it stops where it was told to.
-    @Test func aRayReachesOnlyAsFarAsItsEnd() {
+    @Test func aRayReachesOnlyAsFarAsItsEnd() throws {
         let (world, _) = tower([1])
         #expect(world.raycast(from: Vector3(0, 5, 0), to: Vector3(0, 3, 0)) == nil)
         #expect(world.raycast(from: Vector3(0, 5, 0), to: Vector3(0, 1, 0)) != nil)
     }
 
     /// Everything along the way, nearest first.
-    @Test func everyHitComesBackNearestFirst() {
+    @Test func everyHitComesBackNearestFirst() throws {
         let (world, boxes) = tower([5, 3, 1])
         let hits = world.raycastAll(from: Vector3(0, 9, 0), to: Vector3(0, -9, 0))
         #expect(hits.count == 3, "found \(hits.count)")
@@ -164,7 +164,7 @@ struct Query3DTests {
     /// The reason a sweep exists: a ray answers what is in the way, a sweep
     /// answers whether something *fits*. The same line through the same gap is
     /// clear for one and blocked for the other.
-    @Test func aSweepIsStoppedByAGapARayPassesThrough() {
+    @Test func aSweepIsStoppedByAGapARayPassesThrough() throws {
         func slot() -> World3D {
             let world = World3D()
             // Two slabs with a 0.5-wide gap between their inner faces.
@@ -196,7 +196,7 @@ struct Query3DTests {
 
     /// Turning the probe changes what fits, the way a sheet of plywood goes
     /// through a doorway edge-on and not flat.
-    @Test func aRotatedProbeFitsWhereAnUprightOneDoesNot() {
+    @Test func aRotatedProbeFitsWhereAnUprightOneDoesNot() throws {
         func blocked(rotated angle: Double) -> Bool {
             let world = World3D()
             for side in [-1.0, 1.0] {
@@ -213,7 +213,7 @@ struct Query3DTests {
     }
 
     /// Everything a sweep brushes past, nearest first.
-    @Test func aSweepCanReportEverythingItTouches() {
+    @Test func aSweepCanReportEverythingItTouches() throws {
         let (world, boxes) = tower([5, 3, 1])
         let hits = world.sweepAll(.sphere(radius: 0.2), from: Vector3(0, 9, 0),
                                   to: Vector3(0, -9, 0))
@@ -222,7 +222,7 @@ struct Query3DTests {
 
     /// Scenery is not a probe: a mesh collider describes a landscape, and the
     /// narrow phase cannot sweep one, so the query says so rather than guessing.
-    @Test func sceneryColliderscannotBeUsedAsProbes() {
+    @Test func sceneryColliderscannotBeUsedAsProbes() throws {
         let (world, _) = tower([1])
         let mesh = Mesh.box(size: 1)
         #expect(world.sweep(.mesh(mesh), from: Vector3(0, 5, 0),
@@ -240,7 +240,7 @@ struct Query3DTests {
 
     /// What is inside a region, with no body built to hold it, and the region's
     /// own size deciding.
-    @Test func anOverlapFindsWhatIsInsideItAndNothingElse() {
+    @Test func anOverlapFindsWhatIsInsideItAndNothingElse() throws {
         let world = World3D()
         let near = world.addBody(.sphere(radius: 0.3), at: Vector3(1, 0, 0),
                                  kind: .static)
@@ -254,7 +254,7 @@ struct Query3DTests {
 
     /// One entry per body, however many of its parts are inside: a compound of
     /// twenty beads is one answer, not twenty.
-    @Test func aBodyIsReportedOnceHoweverManyPartsAreInside() {
+    @Test func aBodyIsReportedOnceHoweverManyPartsAreInside() throws {
         let world = World3D()
         var beads: [Collider3D.Part] = []
         for index in 0 ..< 20 {
@@ -268,7 +268,7 @@ struct Query3DTests {
 
     /// The same sensor rule as a ray: a detector volume is reported only when
     /// the query asks for one.
-    @Test func anOverlapSeesSensorsOnlyWhenAsked() {
+    @Test func anOverlapSeesSensorsOnlyWhenAsked() throws {
         let world = World3D()
         world.addBody(.box(width: 2, height: 2, depth: 2), at: .zero, isSensor: true)
         #expect(world.bodiesOverlapping(.sphere(radius: 1), at: .zero).isEmpty)
@@ -277,7 +277,7 @@ struct Query3DTests {
     }
 
     /// The exact form of the question: a point is inside a body or it is not.
-    @Test func aPointIsInsideOnlyWhatContainsIt() {
+    @Test func aPointIsInsideOnlyWhatContainsIt() throws {
         let world = World3D()
         let box = world.addBody(.box(width: 2, height: 2, depth: 2),
                                 at: Vector3(0, 1, 0), kind: .static)
@@ -301,7 +301,7 @@ struct Query3DTests {
                           kind: .static)
             var sheet: SoftBody3D?
             if cloth {
-                sheet = world.addSoftBody(from: Mesh.plane(width: 4, depth: 4, segments: 8),
+                sheet = try! world.addSoftBody(from: Mesh.plane(width: 4, depth: 4, segments: 8),
                                           at: Vector3(0, 3, 0))
             } else {
                 world.addBody(.box(width: 4, height: 0.1, depth: 4),
@@ -339,7 +339,7 @@ struct Query3DTests {
 
     /// A query is a question, not a step: asking twice answers the same, and
     /// asking at all leaves the world where it was.
-    @Test func askingChangesNothingAndAnswersTheSame() {
+    @Test func askingChangesNothingAndAnswersTheSame() throws {
         let world = World3D()
         world.ground = 0
         let box = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -355,7 +355,7 @@ struct Query3DTests {
 
     /// Two identical worlds answer identically, the determinism the whole 3D
     /// tier is pinned by.
-    @Test func identicalWorldsAnswerIdentically() {
+    @Test func identicalWorldsAnswerIdentically() throws {
         func probe() -> [Double] {
             let world = World3D()
             world.ground = 0

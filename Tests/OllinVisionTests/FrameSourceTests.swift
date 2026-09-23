@@ -80,7 +80,7 @@ import OllinVideo
     @Test func contoursTraceAPlayingVideo() async throws {
         guard let url = await writeDiskClip() else { return }   // soft-skip: no encoder
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         let detector = ContourDetector(player)
         player.loops = true
         player.play()

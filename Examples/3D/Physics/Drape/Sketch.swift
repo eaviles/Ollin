@@ -7,7 +7,7 @@ import OllinPhysics
 /// **Drag** any of them to take hold of it; **space** tosses the ball back up.
 ///
 /// The soft-body showcase for `World3D`. Everything here is one call:
-/// `world.addSoftBody(from:)` turns a mesh into simulated particles, `pinned:`
+/// `try? world.addSoftBody(from:)` turns a mesh into simulated particles, `pinned:`
 /// decides which of them are held, `pressure` is the air inside the ball, and
 /// `drawSoftBody` draws whatever shape the simulation arrived at.
 @main
@@ -73,7 +73,7 @@ final class Drape: Sketch {
         // `at:` places the mesh's own origin, and this plane's origin is its
         // center, so the body is dropped half its depth below the line for its
         // pegged edge to land on it.
-        banner = world.addSoftBody(from: .plane(width: 3.2, depth: 2.2, segments: 20),
+        banner = try? world.addSoftBody(from: .plane(width: 3.2, depth: 2.2, segments: 20),
                                    at: Vector3(-1.0, lineY - 1.1, -1.4),
                                    rotated: -.pi / 2, axis: Vector3(1, 0, 0),
                                    mass: 0.4, stiffness: 0.9, bend: 0.06,
@@ -82,13 +82,13 @@ final class Drape: Sketch {
 
         // A sheet dropped over the rail and the crate: nothing pins it, so the
         // shape it takes is the shape of what is under it.
-        sheet = world.addSoftBody(from: .plane(width: 2.6, depth: 2.6, segments: 20),
+        sheet = try? world.addSoftBody(from: .plane(width: 2.6, depth: 2.6, segments: 20),
                                   at: Vector3(1.5, 2.6, 1.2),
                                   mass: 0.6, stiffness: 0.95, bend: 0.25,
                                   friction: 0.9, vertexRadius: 0.015)
 
         // A closed surface, so the air inside it is what holds its shape.
-        ball = world.addSoftBody(from: .icosphere(radius: 0.55, subdivisions: 3),
+        ball = try? world.addSoftBody(from: .icosphere(radius: 0.55, subdivisions: 3),
                                  at: Vector3(-1.7, 2.2, 1.9),
                                  mass: 0.5, bend: 0.4, pressure: air,
                                  damping: 0.05, friction: 0.4, restitution: 0.3,

@@ -21,7 +21,7 @@ final class OpticalFlow: Sketch {
             let camera = Camera()
             if (try? camera.start()) != nil, camera.isRunning { return camera }
         }
-        let film = VideoPlayer(url: SampleClip.dance.url)
+        let film = try! VideoPlayer(url: SampleClip.dance.url)
         film.loops = true
         film.isMuted = true
         film.play()

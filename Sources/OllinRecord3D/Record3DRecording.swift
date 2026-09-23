@@ -93,11 +93,15 @@ public final class Record3DRecording {
         (captureIntrinsics, frameRate, poses) = try Self.parseMetadata(metadata)
     }
 
-    /// The camera-to-world pose of frame `index`, or nil when the recording has
-    /// no pose for it. See `poses`.
-    public func pose(at index: Int) -> simd_float4x4? {
-        guard index >= 0, index < poses.count else { return nil }
-        return poses[index]
+    /// The camera-to-world pose of frame `index`, or `nil` when the recording
+    /// carries no pose for that frame, which is not a failure (see `poses`).
+    /// An index outside the recording throws `frameOutOfRange`, the way
+    /// `frame(at:)` does for the same ask.
+    public func pose(at index: Int) throws -> simd_float4x4? {
+        guard index >= 0, index < frames.count else {
+            throw Record3DError.frameOutOfRange(index, count: frames.count)
+        }
+        return index < poses.count ? poses[index] : nil
     }
 
     /// Open the recording at a filesystem `path`. Throws if no file exists there.

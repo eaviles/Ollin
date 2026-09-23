@@ -93,6 +93,8 @@ public final class AudioPlayer: AudioSource {
     }
 
     /// Starts (or restarts) playback from the beginning, analyzing as it plays.
+    /// An engine that will not start leaves `isPlaying` false and says why in
+    /// `unavailableReason`.
     public func play() {
         if OllinApp.isRenderingHeadless {
             headlessPosition = 0
@@ -103,12 +105,23 @@ public final class AudioPlayer: AudioSource {
         installTapIfNeeded()
         if !engine.isRunning {
             engine.prepare()
-            try? engine.start()
+            do {
+                try engine.start()
+            } catch {
+                unavailableReason = "the audio engine could not start: \(error.localizedDescription)"
+                return
+            }
         }
+        unavailableReason = nil
         player.stop()
         scheduleBuffer()
         player.play()
     }
+
+    /// Why nothing plays, in a sentence worth drawing, or `nil` while the
+    /// file plays or has not been asked to. A `play()` that fails writes it,
+    /// and the next one that succeeds clears it.
+    public private(set) var unavailableReason: String?
 
     /// Pauses playback, keeping the position.
     public func pause() {
@@ -226,15 +239,22 @@ extension AudioPlayer: @MainActor FrameAdvancing {
     }
 }
 
-/// Errors thrown while loading audio.
+/// Errors thrown while loading audio: a player, a room, a grain source, or a
+/// sampled instrument.
 public enum AudioError: Error, CustomStringConvertible {
+    /// No file of that name in the bundle handed over.
     case resourceNotFound(String)
+    /// The file is there and is not something this reads.
     case couldNotDecode(String)
+    /// The file read, and holds nothing to play: no samples, or an
+    /// instrument whose every recording is missing.
+    case empty(String)
 
     public var description: String {
         switch self {
         case .resourceNotFound(let n): return "Audio resource not found: \(n)"
         case .couldNotDecode(let n): return "Could not decode audio: \(n)"
+        case .empty(let n): return "Nothing to play in: \(n)"
         }
     }
 }

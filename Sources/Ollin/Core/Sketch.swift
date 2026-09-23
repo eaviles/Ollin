@@ -4321,8 +4321,10 @@ open class Sketch {
         for e in extensions { e.afterDraw(self) }   // before the render — can draw
     }
 
-    /// Fired by the runner after the frame renders, with its timing. Headless
-    /// paths (export) don't call this — there's no live frame rate to report.
+    /// Fired after a frame renders, with its timing: by the runner after a
+    /// live frame, with the smoothed numbers, and by the headless drives after
+    /// every frame they render, with the export clock's rate and the frame's
+    /// own times (`OllinApp.reportHeadlessFrame`).
     func runAfterFrame(_ info: FrameInfo) {
         for e in extensions { e.afterFrame(self, info) }
     }

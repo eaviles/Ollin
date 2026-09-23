@@ -46,7 +46,7 @@ final class Crawler: Sketch {
                 wheels.append(wheel)
             }
         }
-        crawler = world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
+        crawler = try? world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
                                    at: Vector3(0, 1.2, -3), wheels: wheels,
                                    mass: 4200, engineTorque: 520, topSpeed: 9,
                                    isTracked: true)

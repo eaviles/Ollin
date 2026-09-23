@@ -63,7 +63,7 @@ final class Raft: Sketch {
     /// The deck: an ordinary plane mesh, stiff enough to carry a crate and
     /// still loose enough to bend over a wave.
     func buildRaft() {
-        raft = world.addSoftBody(from: .plane(width: deckSize, depth: deckSize,
+        raft = try? world.addSoftBody(from: .plane(width: deckSize, depth: deckSize,
                                               segments: 16),
                                  at: Vector3(0, 0.4, 0),
                                  mass: 300, stiffness: 0.998, bend: 1,

@@ -57,7 +57,7 @@ let mic = AudioInput()
 override func setup() { try? mic.start() }
 ```
 
-Capturing the microphone needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, the level reads as silence. A packaged app must include a microphone-usage description. Under `swift run`, the system prompts on first use instead.
+Capturing the microphone needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, the level reads as silence. `start()` throws for what it can see, an audio engine that will not start once permission is granted; a microphone that is refused, denied or restricted, or an engine that fails after the prompt has returned, is written to `unavailableReason` instead, a sentence worth drawing that is `nil` while nothing has gone wrong. `Tone.play()`, `AudioPlayer.play()` and `Synth.start()` carry the same property for an engine that will not start, since the first note calls the synth's start for you and has nobody to throw to; each is cleared by the next start that succeeds. A packaged app must include a microphone-usage description. Under `swift run`, the system prompts on first use instead.
 
 <a name="audioplayer"></a>
 

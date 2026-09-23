@@ -139,7 +139,7 @@ The reverb in that chain is one of four rooms somebody else built. Here is what 
 Clap once in a stairwell. What comes back is the stairwell: every surface and every distance, all at once, in the order the sound reached them. Record that and you have the room written down, as its answer to a single click. Play an instrument through the recording and it is heard in the stairwell. Every sample of the sound starts its own copy of the click's answer, and the answers add up. That is a convolution, and a reverb built this way is a convolution reverb.
 
 ```swift
-let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)!
+let stairwell = try ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)
 synth.reverb = Reverb(stairwell, mix: 0.4)
 ```
 
@@ -264,7 +264,7 @@ A `Voice` travels to the audio thread inside a note and has to be copyable a wor
 To load a real instrument, the format is **SFZ**. It is a text file listing which audio file answers which notes, with the audio beside it.
 
 ```swift
-let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
+let piano = try SampledInstrument(sfz: "Piano.sfz", in: .module)
 ```
 
 Where to find them, and the licenses, are on the [Synthesis](../Docs/Helpers/Synthesis.md#where-to-find-instruments) page. Here is the short version. [VCSL](https://github.com/sgossner/VCSL) and [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) are CC0, so you can do anything with them, including ship them. [Freesound](https://freesound.org/) is per-clip and mixes CC0 with non-commercial, so check each one. The [Philharmonia](https://philharmonia.co.uk/resources/sound-samples/) samples are free to make music with, but explicitly not free to pass on as a sampler instrument. That distinction is worth reading before you build something on them.

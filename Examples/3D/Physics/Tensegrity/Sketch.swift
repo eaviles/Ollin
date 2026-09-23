@@ -44,7 +44,7 @@ final class TensegritySketch: Sketch {
             (Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.95), 2.25, 0.4),
         ]
         for (index, (shape, x, lift)) in shapes.enumerated() {
-            guard let built = world.addTensegrity(shape,
+            guard let built = try? world.addTensegrity(shape,
                                                   at: Vector3(x, lift - shape.bottom, 0),
                                                   strutRadius: 0.038,
                                                   prestress: prestress,

@@ -523,7 +523,7 @@ struct UsdPhysicsTests {
         let settled = world.bodies.map(\.position)
 
         let back = World3D()
-        back.restore(world.snapshot())
+        try back.restore(world.snapshot())
         #expect(back.bodies.count == world.bodies.count)
         let error = zip(settled, back.bodies.map(\.position))
             .map { ($0 - $1).length }.max() ?? .infinity

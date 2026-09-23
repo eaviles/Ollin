@@ -44,22 +44,40 @@ public final class AudioInput: AudioSource {
     /// Begins capturing and analyzing input. Gates on microphone permission: if
     /// it's already granted, capture starts now; if it hasn't been asked yet, the
     /// system prompts and capture starts once the user allows it; if it's denied,
-    /// nothing starts (the level stays silent). Touching the input device before
-    /// permission is granted is what trips the system, so it's deferred to here.
+    /// nothing starts (the level stays silent) and `unavailableReason` says so.
+    /// It throws for what it can see for itself, an engine that will not start
+    /// on the granted path; anything that goes wrong after the prompt has
+    /// returned lands in `unavailableReason` instead, since by then there is
+    /// no caller left to throw to. Touching the input device before permission
+    /// is granted is what trips the system, so it's deferred to here.
     public func start() throws {
         guard !isRunning else { return }
+        unavailableReason = nil
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             try startEngine()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .audio) { granted in
-                guard granted else { return }
-                Task { @MainActor in try? self.startEngine() }
+                Task { @MainActor in
+                    guard granted else {
+                        self.unavailableReason = "microphone access was refused"
+                        return
+                    }
+                    do { try self.startEngine() }
+                    catch { self.unavailableReason = "the audio engine could not start: \(error.localizedDescription)" }
+                }
             }
         default:
-            break   // denied or restricted — stay silent
+            unavailableReason = "microphone access is denied or restricted for this app"
         }
     }
+
+    /// Why nothing is being captured, in a sentence worth drawing, or `nil`
+    /// while nothing has gone wrong. `start()` throws for what it can see
+    /// itself; this carries a refused, denied or restricted microphone, and
+    /// what went wrong once the permission prompt has returned and there is
+    /// no caller left to throw to.
+    public private(set) var unavailableReason: String?
 
     /// Stops capturing. Safe to call when not running.
     public func stop() {

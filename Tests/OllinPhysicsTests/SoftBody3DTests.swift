@@ -47,7 +47,7 @@ struct SoftBody3DTests {
         // the body would come apart into loose triangles.
         let mesh = Mesh.box(size: 1)
         let world = World3D()
-        let box = try #require(world.addSoftBody(from: mesh, at: Vector3(0, 2, 0)))
+        let box = try world.addSoftBody(from: mesh, at: Vector3(0, 2, 0))
         #expect(mesh.positions.count == 24)
         #expect(box.particleCount == 8)
         #expect(box.positions.count == mesh.positions.count)
@@ -55,8 +55,8 @@ struct SoftBody3DTests {
 
     @Test func aClosedSurfaceIsRecognisedAndAnOpenOneIsNot() throws {
         let world = World3D()
-        let sheet = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0)))
-        let sphere = try #require(world.addSoftBody(from: Self.ball, at: Vector3(4, 2, 0)))
+        let sheet = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0))
+        let sphere = try world.addSoftBody(from: Self.ball, at: Vector3(4, 2, 0))
         #expect(!sheet.isClosed)
         #expect(sphere.isClosed)
     }
@@ -66,7 +66,7 @@ struct SoftBody3DTests {
         world.ground = 0
         var source = Self.cloth
         source.material = MeshMaterial(baseColor: .crimson)
-        let cloth = try #require(world.addSoftBody(from: source, at: Vector3(0, 2, 0)))
+        let cloth = try world.addSoftBody(from: source, at: Vector3(0, 2, 0))
         run(world, steps: 30)
         let simulated = cloth.mesh
         #expect(simulated.indices == source.indices)
@@ -78,11 +78,11 @@ struct SoftBody3DTests {
         #expect(simulated.positions[0].y < source.positions[0].y + 2)
     }
 
-    @Test func aMeshWithNoUsableTriangleIsRefused() {
+    @Test func aMeshWithNoUsableTriangleIsRefused() throws {
         let world = World3D()
         let degenerate = Mesh(positions: [.zero, .zero, .zero],
                               indices: [0, 1, 2])
-        #expect(world.addSoftBody(from: degenerate, at: .zero) == nil)
+        #expect(throws: PhysicsError.self) { try world.addSoftBody(from: degenerate, at: .zero) }
         #expect(world.softBodies.isEmpty)
     }
 
@@ -91,9 +91,9 @@ struct SoftBody3DTests {
     @Test func aPinnedSheetHangsWhereAFreeOneFalls() throws {
         let world = World3D()
         world.ground = 0
-        let free = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0)))
-        let hung = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(6, 3, 0),
-                                                  pinned: { $0.z < -0.9 }))
+        let free = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0))
+        let hung = try world.addSoftBody(from: Self.cloth, at: Vector3(6, 3, 0),
+                                                  pinned: { $0.z < -0.9 })
         run(world, steps: 180)
         // The free sheet is on the floor; the hung one still reaches its pins.
         #expect(free.positions.map(\.y).max()! < 0.1)
@@ -107,9 +107,8 @@ struct SoftBody3DTests {
         world.ground = 0
         let obstacle = world.addBody(.sphere(radius: 0.6), at: Vector3(0, 0.6, 0),
                                      kind: .static)
-        let cloth = try #require(
-            world.addSoftBody(from: Mesh.plane(width: 3, depth: 3, segments: 14),
-                              at: Vector3(0, 2, 0), vertexRadius: 0.02))
+        let cloth = try! world.addSoftBody(from: Mesh.plane(width: 3, depth: 3, segments: 14),
+                              at: Vector3(0, 2, 0), vertexRadius: 0.02)
         run(world, steps: 240)
         let ys = cloth.positions.map(\.y)
         // It is held up over the sphere and hangs down to the floor around it,
@@ -124,7 +123,7 @@ struct SoftBody3DTests {
     @Test func aSettledBodyGoesToSleep() throws {
         let world = World3D()
         world.ground = 0
-        let cloth = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 0.5, 0)))
+        let cloth = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 0.5, 0))
         run(world, steps: 300)
         #expect(!cloth.isAwake)
         cloth.wake()
@@ -138,9 +137,8 @@ struct SoftBody3DTests {
         // world reads back its rest shape, not its last one.
         func hang(stiffness: Double) throws -> Double {
             let world = World3D()
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: 2,
-                                  stiffness: stiffness, pinned: { $0.z < -0.9 }))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: 2,
+                                  stiffness: stiffness, pinned: { $0.z < -0.9 })
             run(world, steps: 300)
             return meanStretch(cloth)
         }
@@ -154,9 +152,8 @@ struct SoftBody3DTests {
         // the body's own weight, and this is what pins that.
         func stretch(mass: Double) throws -> Double {
             let world = World3D()
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: mass,
-                                  stiffness: 0.2, pinned: { $0.z < -0.9 }))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: mass,
+                                  stiffness: 0.2, pinned: { $0.z < -0.9 })
             run(world, steps: 300)
             return meanStretch(cloth)
         }
@@ -171,9 +168,8 @@ struct SoftBody3DTests {
         // the pin like a handkerchief; one that resists folding stays a plate.
         func droop(bend: Double) throws -> Double {
             let world = World3D()
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), bend: bend,
-                                  pinned: { abs($0.x) < 0.1 && abs($0.z) < 0.1 }))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), bend: bend,
+                                  pinned: { abs($0.x) < 0.1 && abs($0.z) < 0.1 })
             run(world, steps: 300)
             return 3 - cloth.positions.map(\.y).min()!
         }
@@ -187,9 +183,8 @@ struct SoftBody3DTests {
         func rest(pressure: Double) throws -> (height: Double, volume: Double) {
             let world = World3D()
             world.ground = 0
-            let body = try #require(
-                world.addSoftBody(from: Self.ball, at: Vector3(0, 1.5, 0), mass: 1,
-                                  pressure: pressure))
+            let body = try! world.addSoftBody(from: Self.ball, at: Vector3(0, 1.5, 0), mass: 1,
+                                  pressure: pressure)
             run(world, steps: 180)
             let ys = body.positions.map(\.y)
             return (ys.max()! - ys.min()!, body.volume)
@@ -209,9 +204,8 @@ struct SoftBody3DTests {
         func settled(pressure: Double) throws -> [Vector3] {
             let world = World3D()
             world.ground = 0
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0),
-                                  pressure: pressure))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0),
+                                  pressure: pressure)
             run(world, steps: 120)
             return cloth.positions
         }
@@ -228,9 +222,8 @@ struct SoftBody3DTests {
             world.ground = 0
             let crate = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                       at: Vector3(0.25, 0.2, 0), density: 0.02)
-            let body = try #require(
-                world.addSoftBody(from: Mesh.icosphere(radius: 0.4, subdivisions: 2),
-                                  at: Vector3(0, 1.6, 0), mass: 30))
+            let body = try! world.addSoftBody(from: Mesh.icosphere(radius: 0.4, subdivisions: 2),
+                                  at: Vector3(0, 1.6, 0), mass: 30)
             // Set live rather than at build time, which also pins that the
             // setter reaches the solver.
             body.pressure = pressure
@@ -245,7 +238,7 @@ struct SoftBody3DTests {
     @Test func pinningHoldsAParticleAndUnpinningReleasesIt() throws {
         let world = World3D()
         let mesh = Self.cloth
-        let cloth = try #require(world.addSoftBody(from: mesh, at: Vector3(0, 3, 0)))
+        let cloth = try world.addSoftBody(from: mesh, at: Vector3(0, 3, 0))
         let edge = mesh.positions.indices.filter { mesh.positions[$0].z < -0.9 }
         #expect(!edge.isEmpty)
         for index in edge { cloth.pin(index) }
@@ -262,8 +255,8 @@ struct SoftBody3DTests {
 
     @Test func aMovedParticleArrivesWhereItWasSent() throws {
         let world = World3D()
-        let cloth = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0),
-                                                    pinned: { $0.z < -0.9 }))
+        let cloth = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0),
+                                                    pinned: { $0.z < -0.9 })
         let corner = try #require(cloth.nearestVertex(to: Vector3(1, 3, 1)))
         let target = Vector3(1, 3.5, 0.4)
         for _ in 0 ..< 90 {
@@ -288,9 +281,8 @@ struct SoftBody3DTests {
         // over the last second rather than read at one arbitrary step.
         func height(wind: Vector3) throws -> Double {
             let world = World3D()
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: 0.5,
-                                  pinned: { $0.z < -0.9 }))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 3, 0), mass: 0.5,
+                                  pinned: { $0.z < -0.9 })
             var total = 0.0
             var samples = 0
             for step in 0 ..< 300 {
@@ -310,7 +302,7 @@ struct SoftBody3DTests {
     @Test func aRemovedBodyLeavesTheWorld() throws {
         let world = World3D()
         world.ground = 0
-        let cloth = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0)))
+        let cloth = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0))
         #expect(world.softBodies.count == 1)
         world.remove(cloth)
         #expect(world.softBodies.isEmpty)
@@ -320,7 +312,7 @@ struct SoftBody3DTests {
     @Test func emptyingTheWorldTakesTheSoftBodiesWithIt() throws {
         let world = World3D()
         world.ground = 0
-        _ = try #require(world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0)))
+        _ = try world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0))
         world.removeAll()
         #expect(world.softBodies.isEmpty)
         run(world, steps: 10)
@@ -331,8 +323,7 @@ struct SoftBody3DTests {
             let world = World3D()
             world.ground = 0
             _ = world.addBody(.sphere(radius: 0.5), at: Vector3(0.2, 0.5, 0), kind: .static)
-            let cloth = try #require(
-                world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0), bend: 0.3))
+            let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0), bend: 0.3)
             run(world, steps: 150)
             return cloth.positions
         }

@@ -67,7 +67,7 @@ So the trigger you built for balls works for people, unchanged. The playable ver
 A character walks. A **vehicle** is the other thing you operate: a body carried on sprung wheels, with an engine behind the pedal. Same idea as the character, one step further out. You don't push it and you don't steer it by force. You press things.
 
 ```swift
-car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+car = try world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
                        at: Vector3(0, 2, 0),
                        wheels: [
                            .wheel(at: Vector3( 0.9, -0.15,  1.3), steers: true),
@@ -125,7 +125,7 @@ for side in [1.3, -1.3] {
                              radius: 0.44, width: 0.6))
     }
 }
-let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
+let crawler = try world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
                                at: Vector3(0, 1.2, 0), wheels: wheels,
                                mass: 4200, topSpeed: 9, isTracked: true)!
 ```
@@ -162,7 +162,7 @@ Back in "A mesh from a file" a skinned figure moved because a keyframe track tol
 
 ```swift
 figure = loadScene("figure.gltf")!
-ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 ```
 
 Each limb's shape is fitted to the figure's own mesh rather than guessed from bone lengths. The vertices a joint pulls hardest on get gathered up, and a capsule is laid along the way they spread. That's why a torso comes out thick and a forearm thin, from two bones of similar length. You never say how wide anything is.
@@ -205,7 +205,7 @@ Everything in this chapter so far moves as one solid piece. A crate can be anywh
 You build one from any mesh you already know how to draw.
 
 ```swift
-cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
+cloth = try world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
                           at: Vector3(0, 3, 0))
 ```
 
@@ -239,7 +239,7 @@ That closure is the whole hanging story. Two corners make a flag, one edge makes
 A **closed** mesh can do something a sheet cannot. It holds air.
 
 ```swift
-ball = world.addSoftBody(from: .icosphere(radius: 0.5, subdivisions: 3),
+ball = try world.addSoftBody(from: .icosphere(radius: 0.5, subdivisions: 3),
                          at: Vector3(0, 2, 0), pressure: 3)
 ```
 
@@ -260,7 +260,7 @@ The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it i
 `pinned:` holds a corner of cloth *still*. A cape needs the other thing, held to something that is moving and left to hang off it. Your figure from a page ago already has the moving thing in it, a skeleton. So you can name which joint of it carries which part of the cloth.
 
 ```swift
-cape = world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
+cape = try world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
                          rotation: .pi / 2, axis: Vector3(1, 0, 0),
                          pinned: { $0.z < -0.55 },      // clasped at the neck
                          skinnedTo: figure,
@@ -300,7 +300,7 @@ Two parameters work while it runs: `cape.swayScale` multiplies every leash at on
 Cloth is a surface. Plenty of what you want to hang in a scene is not one. A rope, a cable, a chain, a vine, or the stem of a plant are all curves, and you build one from a list of points.
 
 ```swift
-let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
+let rope = try world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
                          at: Vector3(0, 3, 0),
                          thickness: 0.04,
                          pinned: { $0.y > -0.001 })      // hung from the top
@@ -482,7 +482,7 @@ final class Yard: Sketch {
                 wheel.suspensionTravel = 0.2
                 return wheel
             }
-        truck = world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
+        truck = try? world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
                                  at: Vector3(2.6, 1.3, 3.0), wheels: wheels,
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
@@ -491,7 +491,7 @@ final class Yard: Sketch {
 
         // A soft body is its mesh. Pinning the two top corners is what turns a
         // sheet into a banner rather than a dropped cloth.
-        banner = world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -4.2),
+        banner = try? world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -4.2),
                                    mass: 1.2, stiffness: 0.7, damping: 0.2,
                                    pinned: { $0.z < -1.0 && abs($0.x) > 2.2 })
 

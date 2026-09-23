@@ -121,10 +121,10 @@ final class Crawler: Sketch {
                 wheels.append(wheel)
             }
         }
-        let built = world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
-                                     at: position, wheels: wheels, mass: 4200,
-                                     engineTorque: 520, topSpeed: topSpeed,
-                                     friction: 0.9, isTracked: true)!
+        let built = try! world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
+                                          at: position, wheels: wheels, mass: 4200,
+                                          engineTorque: 520, topSpeed: topSpeed,
+                                          friction: 0.9, isTracked: true)
         // A quarry has slopes an unlimited hull would happily lie down on.
         built.maxTilt = .pi / 3
         return built

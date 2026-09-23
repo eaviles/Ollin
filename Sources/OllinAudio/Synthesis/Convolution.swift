@@ -13,7 +13,7 @@ import os
 /// ``Reverb`` made from one is a convolution reverb.
 ///
 /// ```swift
-/// let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)!
+/// let stairwell = try ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)
 /// synth.reverb = Reverb(stairwell, mix: 0.4)
 /// ```
 ///
@@ -163,28 +163,26 @@ public struct ImpulseResponse: Sendable, Hashable, Codable {
 
     /// A room read from a recording: anything the system plays, WAV, AIFF,
     /// CAF, or a compressed file. The first two channels are kept, and a
-    /// response longer than ``maxSeconds`` is cut there. Nil, with a note,
-    /// when the file cannot be read.
-    public static func load(_ path: String) -> ImpulseResponse? {
-        ImpulseResponse(contentsOf: URL(fileURLWithPath: path))
+    /// response longer than ``maxSeconds`` is cut there. Throws the system's
+    /// own error for a file it cannot open, and `AudioError.empty` for one
+    /// that holds no sound.
+    public static func load(_ path: String) throws -> ImpulseResponse {
+        try ImpulseResponse(contentsOf: URL(fileURLWithPath: path))
     }
 
     /// A room read from a file in a bundle, the sketch's own by default.
+    /// Throws `AudioError.resourceNotFound` when the bundle has no such file.
     public static func resource(_ name: String, withExtension ext: String = "wav",
-                                in bundle: Bundle) -> ImpulseResponse? {
+                                in bundle: Bundle) throws -> ImpulseResponse {
         guard let url = bundle.url(forResource: name, withExtension: ext) else {
-            audioNoteOnce("no impulse response named \(name).\(ext) in the bundle.")
-            return nil
+            throw AudioError.resourceNotFound("\(name).\(ext)")
         }
-        return ImpulseResponse(contentsOf: url)
+        return try ImpulseResponse(contentsOf: url)
     }
 
-    /// A room read from a file.
-    public init?(contentsOf url: URL) {
-        guard let file = try? AVAudioFile(forReading: url) else {
-            audioNoteOnce("the impulse response at \(url.lastPathComponent) could not be read.")
-            return nil
-        }
+    /// A room read from a file. See `load(_:)` for what it throws.
+    public init(contentsOf url: URL) throws {
+        let file = try AVAudioFile(forReading: url)
         let format = file.processingFormat
         let rate = format.sampleRate
         let available = Int(file.length)
@@ -194,8 +192,7 @@ public struct ImpulseResponse: Sendable, Hashable, Codable {
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)),
               (try? file.read(into: buffer, frameCount: AVAudioFrameCount(count))) != nil,
               let data = buffer.floatChannelData else {
-            audioNoteOnce("the impulse response at \(url.lastPathComponent) holds no sound.")
-            return nil
+            throw AudioError.empty(url.lastPathComponent)
         }
         if available > limit {
             audioNoteOnce("the impulse response at \(url.lastPathComponent) is longer than "

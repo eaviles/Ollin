@@ -2410,6 +2410,10 @@ final class MetalRenderer {
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumExportDisplay,
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        // Counted and timed like `renderedFrame`, for the extensions' report.
+        profile.resetCounts()
+        profile.batches = drawer.batches.count
+        let encodeStart = CACurrentMediaTime()
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
@@ -2452,8 +2456,7 @@ final class MetalRenderer {
                   to: readbackBuffer, destinationOffset: 0,
                   destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
         blit.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        commitHeadless(commandBuffer, encodeStart: encodeStart)
         if let linearCapture {
             lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
                                                   width: width, height: height)
@@ -2582,11 +2585,12 @@ final class MetalRenderer {
         let scale = supersampleScale(width: outWidth, height: outHeight)
         let width = outWidth * scale, height = outHeight * scale
 
-        // Headless renders count too, so a test (and a batch export) can read the
-        // same profile the live window reports. This path waits for the GPU, so
-        // the timing it leaves behind belongs to the live loop, not to it.
+        // Headless renders count and time too, so a test and an export read the
+        // same profile the live window reports, handed to the extensions by the
+        // drive after each render (`OllinApp.reportHeadlessFrame`).
         profile.resetCounts()
         profile.batches = drawer.batches.count
+        let encodeStart = CACurrentMediaTime()
 
         // Float MSAA target + float resolve for the geometry, plus an sRGB display
         // texture the present pass tone-maps into and we read back.
@@ -2920,14 +2924,27 @@ final class MetalRenderer {
                   destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
         blit.endEncoding()
 
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        commitHeadless(commandBuffer, encodeStart: encodeStart)
 
         if let linearCapture {
             lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
                                                   width: outWidth, height: outHeight)
         }
         return (readback, bytesPerRow)
+    }
+
+    /// Commit a headless frame and wait for it, leaving the frame's three
+    /// measured times on the profile: the encode, the drive's own wait for the
+    /// GPU (a synchronous render waits on the frame itself rather than on the
+    /// in-flight ring, so this covers the GPU's run), and the GPU's run from
+    /// its own timestamps.
+    func commitHeadless(_ commandBuffer: MTLCommandBuffer, encodeStart: CFTimeInterval) {
+        let committed = CACurrentMediaTime()
+        profile.cpuEncodeMS = (committed - encodeStart) * 1000
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        profile.waitMS = (CACurrentMediaTime() - committed) * 1000
+        profile.gpuMS = (commandBuffer.gpuEndTime - commandBuffer.gpuStartTime) * 1000
     }
 
     /// Render `drawer`'s already-recorded scene `iterations` times into off-screen targets

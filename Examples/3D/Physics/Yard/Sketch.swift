@@ -85,11 +85,12 @@ final class Yard: Sketch {
         world.ground = nil
         world.restitution = 0.1
 
-        if world.load(contentsOf: file, resolving: asset) {
+        do {
+            try world.load(contentsOf: file, resolving: asset)
             adopt()
             kept = try? PhysicsSnapshot(contentsOf: file)
             say("loaded the yard from the last run")
-        } else {
+        } catch {
             build()
         }
     }
@@ -144,7 +145,7 @@ final class Yard: Sketch {
                 wheel.suspensionTravel = 0.2
                 return wheel
             }
-        truck = world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
+        truck = try? world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
                                  at: Vector3(2.4, 1.3, 2.4), wheels: wheels,
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
@@ -158,12 +159,12 @@ final class Yard: Sketch {
 
         // A second figure, dropped from a height so it lands in a heap: the
         // arrangement a snapshot exists to keep.
-        fallen = world.addRagdoll(from: skin, at: Vector3(-0.6, 2.4, -1.4),
+        fallen = try? world.addRagdoll(from: skin, at: Vector3(-0.6, 2.4, -1.4),
                                   mass: 68, friction: 0.7)
 
         // A banner strung between two posts. A soft body *is* its mesh, so a
         // name is what makes it saveable at all.
-        banner = world.addSoftBody(from: bannerMesh, at: Vector3(2.9, 2.7, -3.9),
+        banner = try? world.addSoftBody(from: bannerMesh, at: Vector3(2.9, 2.7, -3.9),
                                    mass: 1.2, stiffness: 0.7, damping: 0.2,
                                    pinned: { $0.z < -1.1 && abs($0.x) > 2.2 })
         banner?.assetName = "banner"
@@ -196,16 +197,17 @@ final class Yard: Sketch {
                 say("could not write \(file.path)")
             }
         case "l":
-            if world.load(contentsOf: file, resolving: asset) {
+            do {
+                try world.load(contentsOf: file, resolving: asset)
                 adopt()
                 kept = try? PhysicsSnapshot(contentsOf: file)
                 say("loaded the yard from the file")
-            } else {
+            } catch {
                 say("no file yet: press S first")
             }
         case "r":
             guard let kept else { return }
-            world.restore(kept, resolving: asset)
+            try? world.restore(kept, resolving: asset)
             adopt()
             say("back to the yard as it was saved")
         case "n":

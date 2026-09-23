@@ -107,12 +107,11 @@ struct VideoExportTests {
         }
     }
 
-    /// The invariant: at no moment of an export is more than two frames' worth of
-    /// frame memory alive (the buffer the GPU read the frame back into and
-    /// the image built over it, both made for the frame and gone with it),
-    /// and every byte handed out has come home once the export returns.
-    /// Holding frames is what would have moved an export's peak with its
-    /// length.
+    /// The invariant: no piece of frame memory (the buffer the GPU read the
+    /// frame back into, the image built over it) outlives its frame by more
+    /// than the beat Metal takes to let a readback go, and every byte handed
+    /// out has come home once the export returns. Holding frames is what
+    /// would have moved an export's peak with its length.
     ///
     /// Read off memory the test hands the export (`OllinApp.frameMemory`)
     /// and never off the process footprint, which is not evidence here.
@@ -138,13 +137,21 @@ struct VideoExportTests {
         var waited = 0
         while ledger.returned < ledger.handed, waited < 400 { usleep(5000); waited += 1 }
 
-        // One readback, rounded up to whole pages as Metal asks (16 KB on
-        // Apple silicon), and one image of exactly the frame's bytes.
-        let frameBytes = 480 * 480 * 4, page = Int(getpagesize())
-        let readbackBytes = (frameBytes + page - 1) / page * page
+        // A frame's two pieces are its readback and the image built over it,
+        // handed out in that order. The drive holds the pair for the frame
+        // and no longer, but the readback is let go by Metal from a thread of
+        // its own once the frame's commands are done, so the one before can
+        // still be on its way home while the next frame's is handed out: the
+        // runner showed two readbacks alive for a beat (2026-09-22), which a
+        // byte bound of one readback and one image read as a hold. What a
+        // hold is, and the only thing this refuses, is a piece alive while
+        // frames keep being handed out: measured in hand-outs, a beat's lag
+        // is two, a loaded machine's lag a frame or so more, and a held frame
+        // reads as the whole run behind (118 over 60 frames).
+        let frameBytes = 480 * 480 * 4
         let mostFramesAlive = Double(ledger.mostBytesAlive) / Double(frameBytes)
-        #expect(ledger.mostBytesAlive <= readbackBytes + frameBytes,
-                "\(mostFramesAlive) frames' worth of frame memory were alive at once; the drive and the writer may hold two, the readback and its image; alive at the peak: \(ledger.sizesAtPeak)")
+        #expect(ledger.longestLag <= 5,
+                "a piece of frame memory was still alive \(ledger.longestLag) hand-outs after its own, two per frame: a readback may come home a beat after its frame, never a whole run; \(mostFramesAlive) frames' worth were alive at the peak: \(ledger.sizesAtPeak)")
         #expect(ledger.handed >= 2 * frames,
                 "the export asked for \(ledger.handed) pieces of frame memory over \(frames) frames; a readback and an image per frame are expected")
         #expect(ledger.returned == ledger.handed,
@@ -154,27 +161,44 @@ struct VideoExportTests {
 
 /// Memory the test owns, handed to an export for every buffer the GPU reads a
 /// frame back into and every image built over one, and counted as it comes
-/// home. `most` is the high-water mark of bytes alive at once.
+/// home. Every piece is numbered as it goes out, and `longestLag` is the
+/// most hand-outs any piece was still alive after its own: the one number
+/// that tells a held frame (alive for the rest of the run) from a readback
+/// Metal let go of a beat late. `most` is the high-water mark of bytes alive.
 private final class FrameLedger: ExportFrameMemory, @unchecked Sendable {
-    private struct State { var alive = 0, most = 0, handed = 0, returned = 0; var live: [Int] = []; var atPeak: [Int] = [] }
+    private struct State {
+        var alive = 0, most = 0, handed = 0, returned = 0, longestLag = 0
+        var live: [UInt: (serial: Int, bytes: Int)] = [:]      // keyed by address
+        var atPeak: [Int] = []
+    }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     func allocate(byteCount: Int) -> UnsafeMutableRawPointer {
         var raw: UnsafeMutableRawPointer?
         precondition(posix_memalign(&raw, Int(getpagesize()), byteCount) == 0, "out of memory")
-        state.withLock { $0.alive += byteCount; $0.handed += 1; $0.live.append(byteCount)
-            if $0.alive > $0.most { $0.most = $0.alive; $0.atPeak = $0.live } }
-        return raw!
+        let pointer = raw!, key = UInt(bitPattern: pointer)
+        state.withLock {
+            let serial = $0.handed
+            if let oldest = $0.live.values.map(\.serial).min() {
+                $0.longestLag = max($0.longestLag, serial - oldest)
+            }
+            $0.alive += byteCount; $0.handed += 1
+            $0.live[key] = (serial, byteCount)
+            if $0.alive > $0.most { $0.most = $0.alive; $0.atPeak = $0.live.values.map(\.bytes) }
+        }
+        return pointer
     }
 
     /// From whichever thread let go of the memory last, hence the lock.
     func release(_ pointer: UnsafeMutableRawPointer, byteCount: Int) {
+        let key = UInt(bitPattern: pointer)
         free(pointer)
-        state.withLock { $0.alive -= byteCount; $0.returned += 1
-            if let i = $0.live.firstIndex(of: byteCount) { $0.live.remove(at: i) } }
+        state.withLock { $0.alive -= byteCount; $0.returned += 1; $0.live[key] = nil }
     }
 
     var mostBytesAlive: Int { state.withLock { $0.most } }
+    /// The most hand-outs any piece was still alive after its own.
+    var longestLag: Int { state.withLock { $0.longestLag } }
     /// What was alive at the high-water mark, each size with its count, for
     /// the failure to name.
     var sizesAtPeak: [Int: Int] {

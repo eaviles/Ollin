@@ -27,7 +27,7 @@ final class TensegrityFigure: Sketch {
             (Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.95), 2.25, 0.35),
         ]
         for (index, (shape, x, lift)) in shapes.enumerated() {
-            guard let built = world.addTensegrity(shape, at: Vector3(x, lift - shape.bottom, 0),
+            guard let built = try? world.addTensegrity(shape, at: Vector3(x, lift - shape.bottom, 0),
                                                   strutRadius: 0.038, friction: 0.7)
             else { continue }
             for strut in built.struts { strut.userData = strutColors[index] }

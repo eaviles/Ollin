@@ -102,7 +102,7 @@ A recording also carries the sweep's camera path:
 
 ```swift
 var poses: [simd_float4x4]                    // camera-to-world, one per frame
-func pose(at index: Int) -> simd_float4x4?    // nil past the recorded range
+func pose(at index: Int) throws -> simd_float4x4?   // nil when no pose was recorded for the frame; out of range throws, like frame(at:)
 ```
 
 Each pose places that frame's camera-space cloud into the gravity-aligned world of the capture session. That world is y up, and the first frame sits near the identity. Apply a pose with `PointCloud.transformed(by:)`, then fuse the placed frames with a [`WorldCloud`](../3D/RGBD.md). The pose translations are also the camera path that [`reconstructSurface(orientedToward:)`](../Generators/SurfaceReconstruction.md) needs.

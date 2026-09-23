@@ -8,7 +8,7 @@ import Foundation
 /// player, because opening a film belongs to `OllinVideo` and a satellite
 /// never depends on another satellite:
 ///
-///     let clip = VideoPlayer(url: SampleClip.dance.url)
+///     let clip = try VideoPlayer(url: SampleClip.dance.url)
 ///     clip.loops = true
 ///     clip.play()
 ///

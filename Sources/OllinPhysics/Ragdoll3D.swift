@@ -119,11 +119,7 @@ public final class Ragdoll3D {
                       twist: ClosedRange<Double>, mass: Double, friction: Double,
                       group: CollisionGroup) {
         let skeleton = scene.skeleton()
-        guard !skeleton.isEmpty else {
-            world.noteOnce("addRagdoll needs a scene with a skin (a skeleton posing "
-                           + "a mesh); this one has none.")
-            return nil
-        }
+        guard !skeleton.isEmpty else { return nil }     // `addRagdoll` says why
         let plan = RagdollPlan(skeleton: skeleton, vertices: scene.skinnedVertices(),
                                names: names, mass: mass,
                                offset: RagdollPlan.placement(of: skeleton, at: position))
@@ -184,10 +180,7 @@ public final class Ragdoll3D {
                                      world.groupIndex(group))
             }
         }
-        guard let created else {
-            world.noteOnce("the ragdoll could not be built from this skeleton.")
-            return nil
-        }
+        guard let created else { return nil }           // `addRagdoll` says why
         handle = created
 
         limbs = plan.limbs.enumerated().map { index, limb in

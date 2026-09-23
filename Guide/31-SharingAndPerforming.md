@@ -593,7 +593,7 @@ Each value is read against its own parameter. A number stays a number. A color i
 
 The three panels are one sketch rendered three times, with nothing but the flags changed. Under each render is the recipe the file carries, and it names the values the run was drawn with. That is the loop closing: a file tells you its parameters, and the flag hands them back.
 
-The value lands after `setup()` and before the first frame. So it wins over a value the sketch sets for itself, and the new file's recipe names it. A frame can be rendered again from its own recipe, with the sketch on disk untouched.
+The value is on the parameter before `setup()` runs, and it is applied again after. So what `setup()` builds reads it, it wins over a value the sketch sets for itself, and the new file's recipe names it. A frame can be rendered again from its own recipe, with the sketch on disk untouched.
 
 Ask for a parameter the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
 

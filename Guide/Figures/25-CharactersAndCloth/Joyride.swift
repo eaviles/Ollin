@@ -49,7 +49,7 @@ final class Joyride: Sketch {
             wheel.suspensionTravel = 0.26
             wheel.suspensionFrequency = 1.6
         }
-        car = world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.8),
+        car = try? world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.8),
                                at: Vector3(0, 0.9, -6), wheels: wheels,
                                mass: 1300, engineTorque: 520, topSpeed: 26)
         car.maxTilt = .pi / 3

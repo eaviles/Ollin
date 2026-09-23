@@ -32,9 +32,9 @@ struct Vehicle3DTests {
         for wheel in wheels { wheel.suspensionFrequency = suspensionFrequency }
         wheels[0].grip = frontGrip
         wheels[1].grip = frontGrip
-        return world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+        return try! world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
                                 at: position, wheels: wheels,
-                                engineTorque: engineTorque, topSpeed: topSpeed)!
+                                engineTorque: engineTorque, topSpeed: topSpeed)
     }
 
     enum Drive { case front, rear, all }
@@ -58,7 +58,7 @@ struct Vehicle3DTests {
 
     // MARK: Standing on its wheels
 
-    @Test func restsOnItsSuspensionWithEveryWheelDown() {
+    @Test func restsOnItsSuspensionWithEveryWheelDown() throws {
         let (world, car) = standing()
 
         #expect(car.isOnGround)
@@ -75,7 +75,7 @@ struct Vehicle3DTests {
         #expect(abs(car.body.mass - 1500) < 1)
     }
 
-    @Test func aStifferSpringSagsLess() {
+    @Test func aStifferSpringSagsLess() throws {
         let (softWorld, soft) = standing(suspensionFrequency: 1.0)
         let (stiffWorld, stiff) = standing(suspensionFrequency: 2.5)
         #expect(softWorld.vehicles.count == 1 && stiffWorld.vehicles.count == 1)
@@ -88,7 +88,7 @@ struct Vehicle3DTests {
         #expect(abs(stiff.wheels[0].center.y - soft.wheels[0].center.y) < 0.01)
     }
 
-    @Test func wheelsInTheAirAreNotOnTheGround() {
+    @Test func wheelsInTheAirAreNotOnTheGround() throws {
         let world = World3D()
         world.ground = 0
         let car = Self.car(in: world, at: Vector3(0, 12, 0))
@@ -104,7 +104,7 @@ struct Vehicle3DTests {
 
     // MARK: The throttle
 
-    @Test func theThrottleDrivesItForward() {
+    @Test func theThrottleDrivesItForward() throws {
         let (world, car) = standing()
         car.throttle = 1
         run(world, steps: 300)
@@ -124,7 +124,7 @@ struct Vehicle3DTests {
     /// The counterfactual that pins *which* wheels the engine turns: with the
     /// front tyres made slick, a front-driven car spins them and crawls while
     /// the same car driven from the back pulls away. Nothing else differs.
-    @Test func theEngineTurnsTheWheelsMarkedDriven() {
+    @Test func theEngineTurnsTheWheelsMarkedDriven() throws {
         let (frontWorld, frontDriven) = standing(drive: .front, frontGrip: 0.02)
         frontDriven.throttle = 1
         run(frontWorld, steps: 300)
@@ -139,7 +139,7 @@ struct Vehicle3DTests {
 
     /// Wheels sharing an axle are driven together, so the engine reaches the
     /// pair of whichever one was marked.
-    @Test func markingOneWheelOfAnAxleDrivesItsPair() {
+    @Test func markingOneWheelOfAnAxleDrivesItsPair() throws {
         let world = World3D()
         world.ground = 0
         let wheels = [
@@ -148,14 +148,14 @@ struct Vehicle3DTests {
             Wheel3D.wheel(at: Vector3(0.85, -0.1, -1.3), driven: true),
             Wheel3D.wheel(at: Vector3(-0.85, -0.1, -1.3)),
         ]
-        let car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
-                                   at: Vector3(0, 1, 0), wheels: wheels)!
+        let car = try world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+                                   at: Vector3(0, 1, 0), wheels: wheels)
 
         #expect(car.wheels[3].isDriven)
         #expect(!car.wheels[0].isDriven)
     }
 
-    @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() {
+    @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() throws {
         let (shortWorld, short) = standing(topSpeed: 12)
         short.throttle = 1
         run(shortWorld, steps: 1200)
@@ -173,7 +173,7 @@ struct Vehicle3DTests {
 
     // MARK: Steering
 
-    @Test func steeringCurvesThePath() {
+    @Test func steeringCurvesThePath() throws {
         let (straightWorld, straight) = standing()
         straight.throttle = 1
         run(straightWorld, steps: 360)
@@ -191,7 +191,7 @@ struct Vehicle3DTests {
 
     /// The sign, pinned: a vehicle facing its local +z has its right hand at
     /// -x, so positive steering takes it that way.
-    @Test func positiveSteeringTurnsToTheVehiclesRight() {
+    @Test func positiveSteeringTurnsToTheVehiclesRight() throws {
         let (world, car) = standing()
         car.throttle = 1
         car.steering = 1
@@ -205,7 +205,7 @@ struct Vehicle3DTests {
 
     // MARK: Stopping
 
-    @Test func theBrakeStopsItSoonerThanCoasting() {
+    @Test func theBrakeStopsItSoonerThanCoasting() throws {
         let (world, car) = standing()
         car.throttle = 1
         run(world, steps: 420)
@@ -228,7 +228,7 @@ struct Vehicle3DTests {
         #expect(braked < 0.6 * coasted)
     }
 
-    @Test func theHandBrakeLocksOnlyTheWheelsThatHaveIt() {
+    @Test func theHandBrakeLocksOnlyTheWheelsThatHaveIt() throws {
         let (world, car) = standing()
         car.throttle = 1
         run(world, steps: 300)
@@ -245,7 +245,7 @@ struct Vehicle3DTests {
 
     /// Asking for reverse while still rolling forward brakes rather than
     /// slamming into gear, so the vehicle slows where coasting would not.
-    @Test func askingForReverseWhileRollingBrakesFirst() {
+    @Test func askingForReverseWhileRollingBrakesFirst() throws {
         let (world, car) = standing()
         car.throttle = 1
         run(world, steps: 300)
@@ -264,7 +264,7 @@ struct Vehicle3DTests {
         #expect(car.gear >= 0)          // still not in reverse while rolling on
     }
 
-    @Test func itReversesOnceItHasStopped() {
+    @Test func itReversesOnceItHasStopped() throws {
         let (world, car) = standing()
         car.throttle = -1
         run(world, steps: 300)
@@ -292,17 +292,17 @@ struct Vehicle3DTests {
         back.suspensionLength = 0.5
         back.suspensionTravel = 0.2
         back.suspensionFrequency = 2
-        let bike = world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
+        let bike = try! world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
                                     at: Vector3(0, 1, 0), wheels: [front, back],
                                     mass: 240, engineTorque: 150, topSpeed: 30,
                                     centerOfMass: Vector3(0, -0.3, 0),
                                     rotated: tilt, axis: Vector3(0, 0, 1),
-                                    balances: balances)!
+                                    balances: balances)
         bike.maxTilt = maxTilt
         return bike
     }
 
-    @Test func aTwoWheelerRightsItselfAndFallsOverWithoutIt() {
+    @Test func aTwoWheelerRightsItselfAndFallsOverWithoutIt() throws {
         let lean = 25 * Double.pi / 180
         let world = World3D()
         world.ground = 0
@@ -322,7 +322,7 @@ struct Vehicle3DTests {
         #expect(abs(falls.speed) < 0.5)
     }
 
-    @Test func aTwoWheelerLeansIntoATurn() {
+    @Test func aTwoWheelerLeansIntoATurn() throws {
         let world = World3D()
         world.ground = 0
         let bike = Self.bike(in: world, balances: true, maxTilt: 60 * .pi / 180)
@@ -343,7 +343,7 @@ struct Vehicle3DTests {
     /// Wheels are grouped by where they sit along the vehicle, not by the
     /// order they were listed, so a car pairs left with right and a
     /// two-wheeler ends up with two axles of one wheel each.
-    @Test func wheelsArePairedIntoAxlesByWhereTheySit() {
+    @Test func wheelsArePairedIntoAxlesByWhereTheySit() throws {
         let carWheels = [
             Wheel3D.wheel(at: Vector3(0.85, 0, -1.3), driven: true),
             Wheel3D.wheel(at: Vector3(-0.85, 0, 1.3)),
@@ -370,7 +370,7 @@ struct Vehicle3DTests {
 
     /// With nothing marked, the back axle is driven: an engine that reaches no
     /// wheel is not a vehicle.
-    @Test func somethingIsAlwaysDriven() {
+    @Test func somethingIsAlwaysDriven() throws {
         let wheels = [
             Wheel3D.wheel(at: Vector3(0.85, 0, 1.3)),
             Wheel3D.wheel(at: Vector3(-0.85, 0, 1.3)),
@@ -385,7 +385,7 @@ struct Vehicle3DTests {
         #expect(wheels[Int(driven.leftWheel)].position.z < 0)
     }
 
-    @Test func removingAVehicleTakesItsChassisWithIt() {
+    @Test func removingAVehicleTakesItsChassisWithIt() throws {
         let world = World3D()
         world.ground = 0
         let car = Self.car(in: world)
@@ -402,7 +402,7 @@ struct Vehicle3DTests {
 
     // MARK: Determinism
 
-    @Test func identicalVehiclesReplayIdentically() {
+    @Test func identicalVehiclesReplayIdentically() throws {
         func drive() -> [Double] {
             let (world, car) = standing()
             car.throttle = 1

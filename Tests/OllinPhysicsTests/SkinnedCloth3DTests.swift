@@ -50,7 +50,7 @@ struct SkinnedCloth3DTests {
     func cape(in world: World3D, on scene: Scene?, sway: Double? = nil,
               backStop: Double? = nil, maxStretch: Double? = nil,
               sheet: Mesh = SkinnedCloth3DTests.sheet) throws -> SoftBody3D {
-        try #require(world.addSoftBody(
+        try! world.addSoftBody(
             from: sheet, at: Vector3(0, 0.9, -0.13),
             rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 0.6, stiffness: 0.9, bend: 0.02, damping: 0.2,
@@ -58,7 +58,7 @@ struct SkinnedCloth3DTests {
             skinnedTo: scene,
             carriedBy: scene == nil ? nil : { _ in "chest" },
             sway: sway.map { distance in { _ in distance } },
-            backStop: backStop, maxStretch: maxStretch))
+            backStop: backStop, maxStretch: maxStretch)
     }
 
     /// Slide a whole skeleton along x, the way a figure walking would, without
@@ -285,11 +285,11 @@ struct SkinnedCloth3DTests {
         for stretch in [nil, 1.0] as [Double?] {
             let world = World3D()
             world.ground = -20
-            let cloth = try #require(world.addSoftBody(
+            let cloth = try! world.addSoftBody(
                 from: Mesh.plane(width: 2, depth: 2, segments: 16),
                 at: Vector3(0, 4, 0), rotated: .pi / 2, axis: Vector3(1, 0, 0),
                 mass: 8, stiffness: 0.4, damping: 0.1,
-                pinned: { $0.z < -0.95 }, maxStretch: stretch))
+                pinned: { $0.z < -0.95 }, maxStretch: stretch)
             for _ in 0 ..< 600 { world.advance(by: 1.0 / 60) }
             lowest.append(cloth.particlePositions.min { $0.y < $1.y }!.y)
         }
@@ -309,13 +309,13 @@ struct SkinnedCloth3DTests {
             let figure = try Self.figure()
             let world = World3D()
             world.ground = 0
-            let cape = try #require(world.addSoftBody(
+            let cape = try! world.addSoftBody(
                 from: Self.sheet, at: Vector3(0, 0.9, -0.13),
                 rotated: .pi / 2, axis: Vector3(1, 0, 0),
                 mass: 6, stiffness: 0.3, damping: 0.2,
                 pinned: { $0.z < -0.5 },
                 skinnedTo: figure, carriedBy: { _ in "chest" },
-                maxStretch: stretch))
+                maxStretch: stretch)
             for _ in 0 ..< 600 {
                 cape.follow(figure)
                 world.advance(by: 1.0 / 60)
@@ -348,13 +348,13 @@ struct SkinnedCloth3DTests {
         let figure = try Self.figure()
         let world = World3D()
         world.ground = 0
-        let cape = try #require(world.addSoftBody(
+        let cape = try world.addSoftBody(
             from: Self.sheet, at: Vector3(0, 0.9, -0.13),
             rotated: .pi / 2, axis: Vector3(1, 0, 0),
             pinned: { $0.z < -0.5 },
             skinnedTo: figure,
             // Only the collar names a joint the figure has.
-            carriedBy: { $0.z < -0.5 ? "chest" : "tail" }))
+            carriedBy: { $0.z < -0.5 ? "chest" : "tail" })
         #expect(cape.isSkinned)
         #expect(cape.skinning.vertices.count < cape.particleCount,
                 "every particle was carried, so the unknown name was not skipped")
@@ -374,7 +374,7 @@ struct SkinnedCloth3DTests {
 
         let rebuilt = World3D()
         rebuilt.ground = 0
-        rebuilt.restore(saved) { $0 == "cape" ? .mesh(Self.sheet) : nil }
+        try rebuilt.restore(saved) { $0 == "cape" ? .mesh(Self.sheet) : nil }
         let back = try #require(rebuilt.softBodies.first)
         #expect(back.isSkinned)
         #expect(back.skinning.vertices.count == cape.skinning.vertices.count)

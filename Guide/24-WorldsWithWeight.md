@@ -340,7 +340,7 @@ let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.9
 **Then it gets weight.** `addTensegrity` builds a form in the world: a capsule body per strut, a `.cable` per cable, and a `.ball` joint wherever two struts meet at a node. Set it down a little above the floor and step the world. It lands, bounces on its own cables, and stands.
 
 ```swift
-let standing = world.addTensegrity(mast, at: Vector3(2.25, 0.4, 0))
+let standing = try world.addTensegrity(mast, at: Vector3(2.25, 0.4, 0))
 
 // each frame:
 world.advance(by: deltaTime)
@@ -367,7 +367,7 @@ So save it. `snapshot()` takes the whole world as it stands, and `restore(_:)` p
 ```swift
 let settled = world.snapshot()      // once the heap has come to rest
 // …knock it over, drag stones out of it, wreck it…
-world.restore(settled)              // exactly the heap you had
+try world.restore(settled)              // exactly the heap you had
 ```
 
 A snapshot is a value you can keep, so it also goes to a file, which is how a heap survives quitting:
@@ -375,7 +375,9 @@ A snapshot is a value you can keep, so it also goes to a file, which is how a he
 ```swift
 override func setup() {
     world.ground = 0
-    if !world.load(contentsOf: file) {   // nothing there the first time
+    do {
+        try world.load(contentsOf: file)
+    } catch {                              // nothing there the first time
         buildTheHeap()
         try? world.save(to: file)
     }
@@ -397,7 +399,7 @@ A snapshot holds every body with its collider and all its parameters, every join
 That last one is worth a moment, because it is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver actually holds is a shape per limb, the tree they hang in, and how far each joint may bend. *That* is small enough to write down. The skin stays where it always was, your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
 
 ```swift
-world.restore(saved)
+try world.restore(saved)
 if let ragdoll = world.ragdolls.first {   // the bodies are new ones
     figure.apply(ragdoll)                 // your mesh, over the restored pose
 }
@@ -415,7 +417,7 @@ banner?.assetName = "banner"
 and say what the names mean on the way back in:
 
 ```swift
-world.restore(saved) { name in
+try world.restore(saved) { name in
     name == "island" ? .heightfield(terrain) : .mesh(sheet)
 }
 ```

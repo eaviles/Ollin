@@ -271,10 +271,7 @@ import Testing
         }
         try write()
 
-        guard let room = ImpulseResponse.load(path) else {
-            Issue.record("the room did not load")
-            return
-        }
+        let room = try ImpulseResponse.load(path)
         #expect(room.sampleRate == source)
         #expect(room.channelCount == 2)
         #expect(room.frameCount == 2000)
@@ -291,7 +288,10 @@ import Testing
         #expect(abs(leftPeak - Int(100 * 48000 / source)) <= 2, "left click landed at \(leftPeak)")
         #expect(abs(rightPeak - Int(300 * 48000 / source)) <= 2, "right click landed at \(rightPeak)")
 
-        #expect(ImpulseResponse.load("/nowhere/at/all.wav") == nil)
+        #expect(throws: (any Error).self) { try ImpulseResponse.load("/nowhere/at/all.wav") }
+        #expect(throws: AudioError.self) {
+            try ImpulseResponse.resource("nowhere", withExtension: "wav", in: .main)
+        }
     }
 
     /// A room of noise is the same room every run for one seed, another

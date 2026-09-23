@@ -152,7 +152,7 @@ final class Reticularea: Sketch {
         }
 
         let mesh = Mesh(positions: positions, indices: indices)
-        net = world.addSoftBody(from: mesh, at: Vector3(0, ceiling, 0),
+        net = try? world.addSoftBody(from: mesh, at: Vector3(0, ceiling, 0),
                                 mass: 1.1, stiffness: 0.96, bend: 0.02,
                                 damping: 0.22, friction: 0.4, iterations: 8,
                                 vertexRadius: 0.004, isTwoSided: true)

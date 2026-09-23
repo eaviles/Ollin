@@ -46,7 +46,7 @@ final class Yard: Sketch {
                 wheel.suspensionTravel = 0.2
                 return wheel
             }
-        truck = world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
+        truck = try? world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
                                  at: Vector3(2.6, 1.3, 3.0), wheels: wheels,
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
@@ -55,7 +55,7 @@ final class Yard: Sketch {
 
         // A soft body is its mesh. Pinning the two top corners is what turns a
         // sheet into a banner rather than a dropped cloth.
-        banner = world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -4.2),
+        banner = try? world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -4.2),
                                    mass: 1.2, stiffness: 0.7, damping: 0.2,
                                    pinned: { $0.z < -1.0 && abs($0.x) > 2.2 })
 

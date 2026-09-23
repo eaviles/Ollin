@@ -115,6 +115,8 @@ The same three geometry totals reach an extension more cheaply on `FrameInfo` it
 
 The counts reflect what was drawn, not what was recorded, so a batch the renderer skipped does not appear in them.
 
+An export fires the same hook once per frame it renders, a warmup frame that renders or a settle draw included, so the cost of a written frame can be read from the run that writes it. The numbers there are the frame's own rather than smoothed. `frameRate` is the rate the frame was timed at and `deltaTime` the clock's step, zero for a settle draw. `cpuDrawMS` is that one draw. `waitMS` is the drive's wait for the GPU to finish the frame, which covers `gpuMS`, since a headless render is synchronous.
+
 ---
 
 Related: [Sketch](../Core/Sketch.md) - [Drawing](../Drawing/Drawing.md) - [Retained batches](../Drawing/Batches.md) - [Effects](../Drawing/Effects.md) - [Parameters](../Helpers/Parameters.md)

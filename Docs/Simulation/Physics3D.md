@@ -529,9 +529,9 @@ Every kind of thing takes a group:
 ```swift
 world.addBody(…, group: "phantoms")
 world.addCharacter(…, group: "phantoms")
-world.addVehicle(…, group: "traffic")
-world.addRagdoll(from: figure, group: "phantoms")
-world.addSoftBody(from: cloth, group: "drapes")
+try world.addVehicle(…, group: "traffic")
+try world.addRagdoll(from: figure, group: "phantoms")
+try world.addSoftBody(from: cloth, group: "drapes")
 world.addStaticBodies(from: hall, group: "scenery")
 ```
 
@@ -707,13 +707,15 @@ A `Vehicle3D` is a machine you operate rather than a body you push. It is a chas
 
 <img src="../../Guide/Images/25-CharactersAndCloth/Joyride.jpg" alt="A red car sliding sideways through a corner marked by a curve of colored cubes, its front wheels turned into the turn and a rear tire glowing yellow where it is spinning" width="560">
 
+Every `add…` call that builds something from what it is handed, a vehicle from its wheels, a figure from a scene, a cloth from a mesh, a rope through points, a structure from its struts, throws `PhysicsError.unbuildable` when it cannot, and the error's text says what it needed. A sketch that keeps the result in an optional writes `try?` and carries on with nothing added.
+
 ```swift
 let world = World3D()
 var car: Vehicle3D!
 
 override func setup() {
     world.ground = 0
-    car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+    car = try world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
                            at: Vector3(0, 2, 0),
                            wheels: [
                                .wheel(at: Vector3( 0.9, -0.15,  1.3), steers: true),
@@ -825,7 +827,7 @@ let front = Wheel3D.wheel(at: Vector3(0, -0.27, 0.75), radius: 0.31,
 front.casterAngle = .degrees(30)
 let back = Wheel3D.wheel(at: Vector3(0, -0.27, -0.75), radius: 0.31,
                          width: 0.05, driven: true)
-let bike = world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
+let bike = try world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
                             at: Vector3(0, 1, 0), wheels: [front, back],
                             mass: 240, engineTorque: 150, topSpeed: 30,
                             centerOfMass: Vector3(0, -0.3, 0), balances: true)
@@ -849,7 +851,7 @@ for side in [1.3, -1.3] {                       // +x is its left, -x its right
                              radius: 0.44, width: 0.6))
     }
 }
-let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
+let crawler = try world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
                                at: Vector3(0, 1.2, 0), wheels: wheels,
                                mass: 4200, topSpeed: 9, isTracked: true)!
 ```
@@ -892,7 +894,7 @@ var ragdoll: Ragdoll3D!
 override func setup() {
     figure = loadScene("figure.gltf")!
     world.ground = 0
-    ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+    ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 }
 
 override func draw() {
@@ -936,14 +938,14 @@ Nothing drives the root, so a powered figure still falls as a whole. The motors 
 **Limits and joints.** Every joint is a `.swingTwist`. It opens at the `swing` and `twist` the call was given, and you can retune one joint at a time while the figure hangs:
 
 ```swift
-world.addRagdoll(from: figure, swing: .degrees(50), twist: -0.3...0.3)
+try world.addRagdoll(from: figure, swing: .degrees(50), twist: -0.3...0.3)
 ragdoll.limit("forearmL", swing: .degrees(10))     // an elbow, not a shoulder
 ```
 
 A dense rig, such as a hand with twenty finger bones, does not need twenty bodies. Name the joints that should get one. The rest ride rigidly on the nearest limb above them, keeping their pose and their share of the flesh:
 
 ```swift
-world.addRagdoll(from: figure,
+try world.addRagdoll(from: figure,
                  joints: ["hips", "spine", "chest", "head",
                           "armL", "forearmL", "armR", "forearmR",
                           "legL", "shinL", "legR", "shinR"])
@@ -964,7 +966,7 @@ Everything above moves as one rigid piece. A **`SoftBody3D`** does not. Its stat
 Build one from any `Mesh`:
 
 ```swift
-let cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
+let cloth = try world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
                               at: Vector3(0, 3, 0),
                               pinned: { $0.z < -1.4 })   // hung from one edge
 
@@ -1055,7 +1057,7 @@ A soft body's shape is usually a surface. A rope's shape is a *curve*, and the d
 Build one from a polyline. Anything that makes points makes a rope. You can hand it points you placed yourself, a sampled `Path`, a `Contour`, a `randomWalk`, or a ridge off a `Heightfield`:
 
 ```swift
-let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
+let rope = try world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
                          at: Vector3(0, 3, 0),
                          radius: 0.04,
                          pinned: { $0.y > -0.001 })       // hung from the top
@@ -1079,7 +1081,7 @@ A long, finely divided rope is the case where `iterations` matters. Stiffness sp
 `maxStretch:` works here exactly as it does on cloth, and it is worth having on anything hung. It caps how far the rope may get from what holds it, measured along its own length. A heavy rope then stops creeping longer under load.
 
 ```swift
-let chain = world.addRope(through: links, at: Vector3(0, 3, 0),
+let chain = try world.addRope(through: links, at: Vector3(0, 3, 0),
                           mass: 4, bend: 0.06,
                           pinned: { $0.y > -0.001 },
                           maxStretch: 1)                  // does not stretch at all
@@ -1131,7 +1133,7 @@ The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope
 A tensegrity is a set of struts that never touch, held apart by cables. `addTensegrity` builds a [`Tensegrity`](../Generators/Tensegrity.md) in the world: a capsule body per strut, a `.cable` joint per cable, and a `.ball` joint wherever two struts share a node. Set it down a little above the floor and it lands on its own cables and stands.
 
 ```swift
-let mast = world.addTensegrity(Tensegrity.tower(levels: 3), at: Vector3(0, 0.3, 0),
+let mast = try world.addTensegrity(Tensegrity.tower(levels: 3), at: Vector3(0, 0.3, 0),
                                prestress: 0.02)          // cables 2% shorter than drawn
 // each frame:
 world.advance(by: deltaTime)
@@ -1147,7 +1149,7 @@ drawTensegrity(mast)
 `pinned:` holds part of a surface still. A cape needs something else. Part of it is held to a figure that is *moving*, and the rest hangs off that part and swings. Say which joint of a skinned scene's skeleton carries each part of the cloth, and hand the simulation this frame's pose:
 
 ```swift
-cape = world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
+cape = try world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
                          rotation: .pi / 2, axis: Vector3(1, 0, 0),
                          mass: 1.2, stiffness: 0.92,
                          pinned: { $0.z < -0.58 },        // clasped at the neck
@@ -1254,7 +1256,7 @@ Some arrangements are worth keeping. A heap of stones may take four hundred step
 ```swift
 let settled = world.snapshot()      // after the pile has come to rest
 // …knock it over, rummage through it…
-world.restore(settled)              // exactly the pile you had
+try world.restore(settled)              // exactly the pile you had
 ```
 
 <img src="../../Guide/Images/24-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labeled saved and restored, are identical stone for stone. The third, labeled simulated again, is a visibly different heap" width="720">
@@ -1263,7 +1265,7 @@ A `PhysicsSnapshot` is a value you can hold, hand around, and write to a file:
 
 ```swift
 try world.save(to: url)             // = try world.snapshot().write(to: url)
-world.load(contentsOf: url)         // false, and the world is untouched, if it can't be read
+try world.load(contentsOf: url)     // throws, and the world is untouched, if it can't be read
 ```
 
 That is how a settled arrangement becomes an asset the sketch opens with:
@@ -1271,14 +1273,16 @@ That is how a settled arrangement becomes an asset the sketch opens with:
 ```swift
 override func setup() {
     world.ground = 0
-    if !world.load(contentsOf: file) {
+    do {
+        try world.load(contentsOf: file)
+    } catch {                                 // nothing there the first time
         buildAndSettleTheHeap()
         try? world.save(to: file)
     }
 }
 ```
 
-The snapshot's own `bodyCount` and `jointCount` say what is in it before anything is restored. `PhysicsSnapshot(data:)`, `init(contentsOf:)`, and `init(resource:in:)` read one back. Anything that is not a snapshot is refused rather than half-read, throwing `PhysicsSnapshot.Failure.unreadable`. A snapshot that stops short leaves the world already standing untouched.
+The snapshot's own `bodyCount` and `jointCount` say what is in it before anything is restored. `PhysicsSnapshot(data:)`, `init(contentsOf:)`, and `init(resource:in:)` read one back, and each throws for what it can see: `PhysicsSnapshot.Failure.unreadable` for bytes that are not a snapshot, `.resourceNotFound` for a name the bundle does not have, and the system's own error for a file that is not there. `restore(_:)` and `load(contentsOf:)` throw the same way, and a snapshot that stops short or does not parse leaves the world already standing untouched. The refusal has one shape whichever door it comes through, so a sketch handles it once.
 
 **Restoring is exact.** A restored body is in the same pose, moving at the same speed, and spinning the same way. If it had settled it is still asleep, so a saved heap does not shudder back into shape on the way in. A world stepped on from a restore lands exactly where the one that was never interrupted does. It goes through the ordinary `addBody` and `connect` calls, so a restored world is one you could have built by hand. A joint also keeps the zero it was made at. A door saved standing half open is still half open, and it still stops where it used to.
 
@@ -1296,7 +1300,7 @@ The tiers above a loose body come back too, because none of them holds anything 
 - **Ragdolls** come back as the fitting they were built from: a shape for each limb, the tree they hang in, how far each joint may bend, and where every limb had reached. The skinned `Scene` is *not* in the file, and does not need to be. It is the sketch's own asset, still loaded, and `scene.apply(ragdoll)` writes the restored pose onto it exactly as before. So a figure comes back even in a run that has not read the file it was fitted from.
 
 ```swift
-world.restore(saved)
+try world.restore(saved)
 // the objects are new ones, so take them from the world again
 truck = world.vehicles.first
 walker = world.characters.first
@@ -1322,14 +1326,14 @@ let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8
                            at: .zero, kind: .static)
 island.assetName = "island"
 
-let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+let banner = try world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
 banner?.assetName = "banner"
 ```
 
 Then say what the names mean when the world comes back:
 
 ```swift
-world.restore(saved) { name in
+try world.restore(saved) { name in
     switch name {
     case "island": return .heightfield(terrain)
     case "banner": return .mesh(sheet)

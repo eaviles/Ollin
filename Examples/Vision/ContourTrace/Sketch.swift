@@ -41,7 +41,7 @@ final class ContourTrace: Sketch {
             feed = camera
             contours = ContourDetector(camera, detectsDarkOnLight: false)
         } else {
-            trace(VideoPlayer(url: SampleClip.dance.url))
+            trace(try! VideoPlayer(url: SampleClip.dance.url))
         }
     }
 

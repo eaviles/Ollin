@@ -88,6 +88,9 @@ enum JointLink3D: Sendable
 enum PhysicsAsset: Sendable
   case heightfield(Heightfield)
   case mesh(Mesh)
+enum PhysicsError: CustomStringConvertible, Error, Sendable
+  case unbuildable(String)
+  var description: String { get }
 extension Ollin.Scene
   mutating func apply(_: Ragdoll3D)
 final class Body
@@ -354,23 +357,23 @@ final class World3D
   @discardableResult func addBodies(from: Scene, usesSceneGravity: Bool = default, group: CollisionGroup = default) -> [Body3D]
   @discardableResult func addBody(_: Collider3D, at: Vector3, kind: Body3D.Kind = default, isSensor: Bool = default, rotated: Double = default, axis: Vector3 = default, density: Double = default, friction: Double = default, restitution: Double? = default, freedom: Freedom3D = default, gravityScale: Double = default, checksPath: Bool = default, group: CollisionGroup = default) -> Body3D
   @discardableResult func addCharacter(radius: Double = default, height: Double = default, at: Vector3, stepHeight: Double = default, stickToFloorDistance: Double = default, maxSlope: Double = default, mass: Double = default, pushStrength: Double = default, group: CollisionGroup = default) -> Character3D
-  @discardableResult func addRagdoll(from: Scene, at: Vector3? = default, joints: [String]? = default, swing: Double = default, twist: ClosedRange<Double> = default, mass: Double = default, friction: Double = default, group: CollisionGroup = default) -> Ragdoll3D?
-  @discardableResult func addRope(through: [Vector3], at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, radius: Double = default, sides: Int = default, mass: Double = default, stiffness: Double = default, bend: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, pinned: ((Vector3) -> Bool)? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> Rope3D?
-  @discardableResult func addSoftBody(from: Mesh, at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, mass: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, vertexRadius: Double = default, isTwoSided: Bool = default, pinned: ((Vector3) -> Bool)? = default, skinnedTo: Scene? = default, carriedBy: ((Vector3) -> String?)? = default, sway: ((Vector3) -> Double)? = default, backStop: Double? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> SoftBody3D?
+  @discardableResult func addRagdoll(from: Scene, at: Vector3? = default, joints: [String]? = default, swing: Double = default, twist: ClosedRange<Double> = default, mass: Double = default, friction: Double = default, group: CollisionGroup = default) throws -> Ragdoll3D
+  @discardableResult func addRope(through: [Vector3], at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, radius: Double = default, sides: Int = default, mass: Double = default, stiffness: Double = default, bend: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, pinned: ((Vector3) -> Bool)? = default, maxStretch: Double? = default, group: CollisionGroup = default) throws -> Rope3D
+  @discardableResult func addSoftBody(from: Mesh, at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, mass: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, vertexRadius: Double = default, isTwoSided: Bool = default, pinned: ((Vector3) -> Bool)? = default, skinnedTo: Scene? = default, carriedBy: ((Vector3) -> String?)? = default, sway: ((Vector3) -> Double)? = default, backStop: Double? = default, maxStretch: Double? = default, group: CollisionGroup = default) throws -> SoftBody3D
   @discardableResult func addStaticBodies(from: Scene, friction: Double = default, restitution: Double? = default, group: CollisionGroup = default) -> [Body3D]
-  @discardableResult func addTensegrity(_: Tensegrity, at: Vector3 = default, strutRadius: Double = default, prestress: Double = default, stiffness: Double = default, density: Double = default, friction: Double = default, group: CollisionGroup = default) -> Tensegrity3D?
-  @discardableResult func addVehicle(_: Collider3D, at: Vector3, wheels: [Wheel3D], mass: Double = default, engineTorque: Double = default, topSpeed: Double = default, centerOfMass: Vector3? = default, rotated: Double = default, axis: Vector3 = default, friction: Double = default, balances: Bool = default, maxLeanAngle: Double = default, isTracked: Bool = default, group: CollisionGroup = default) -> Vehicle3D?
+  @discardableResult func addTensegrity(_: Tensegrity, at: Vector3 = default, strutRadius: Double = default, prestress: Double = default, stiffness: Double = default, density: Double = default, friction: Double = default, group: CollisionGroup = default) throws -> Tensegrity3D
+  @discardableResult func addVehicle(_: Collider3D, at: Vector3, wheels: [Wheel3D], mass: Double = default, engineTorque: Double = default, topSpeed: Double = default, centerOfMass: Vector3? = default, rotated: Double = default, axis: Vector3 = default, friction: Double = default, balances: Bool = default, maxLeanAngle: Double = default, isTracked: Bool = default, group: CollisionGroup = default) throws -> Vehicle3D
   @discardableResult func connect(_: Body3D, _: Body3D, _: JointKind3D) -> Joint3D
   @discardableResult func connect(_: Body3D, toWorld: JointKind3D) -> Joint3D
   @discardableResult func connect(_: Joint3D, _: Joint3D, _: JointLink3D) -> Joint3D
   @discardableResult func grab(_: Body3D, at: Vector3) -> Joint3D
-  @discardableResult func load(contentsOf: Foundation.URL, resolving: PhysicsAssetResolver? = default) -> Bool
   func advance(by: Double)
   func allowCollisions(between: CollisionGroup, and: CollisionGroup)
   func bodiesContaining(_: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [any Colliding3D]
   func bodiesOverlapping(_: Collider3D, at: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [any Colliding3D]
   func collides(between: CollisionGroup, and: CollisionGroup) -> Bool
   func ignoreCollisions(between: CollisionGroup, and: CollisionGroup)
+  func load(contentsOf: Foundation.URL, resolving: PhysicsAssetResolver? = default) throws
   func raycast(from: Vector3, to: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> Hit3D?
   func raycastAll(from: Vector3, to: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [Hit3D]
   func remove(_: Body3D)
@@ -380,7 +383,7 @@ final class World3D
   func remove(_: Tensegrity3D)
   func remove(_: Vehicle3D)
   func removeAll()
-  func restore(_: PhysicsSnapshot, resolving: PhysicsAssetResolver? = default)
+  func restore(_: PhysicsSnapshot, resolving: PhysicsAssetResolver? = default) throws
   func save(to: Foundation.URL) throws
   func save(to: String) throws
   func snapshot() -> PhysicsSnapshot
@@ -470,13 +473,15 @@ struct Hit3D
   let normal: Vector3
   let point: Vector3
 struct PhysicsSnapshot: Equatable, Sendable
-  enum Failure: Equatable, Error, Hashable, Sendable
+  enum Failure: CustomStringConvertible, Equatable, Error, Hashable, Sendable
+    case resourceNotFound(String)
     case unreadable
+    var description: String { get }
   func write(to: Foundation.URL) throws
   func write(to: String) throws
   init(contentsOf: Foundation.URL) throws
-  init?(data: Foundation.Data)
-  init?(resource: String, withExtension: String = default, in: Foundation.Bundle)
+  init(data: Foundation.Data) throws
+  init(resource: String, withExtension: String = default, in: Foundation.Bundle) throws
   let bodyCount: Int
   let data: Foundation.Data
   let jointCount: Int

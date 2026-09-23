@@ -36,7 +36,7 @@ final class Record3DRecording
   convenience init(url: Foundation.URL) throws
   func frame(at: Int) throws -> RGBDFrame
   func pointCloud(at: Int, minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) throws -> PointCloud
-  func pose(at: Int) -> simd.simd_float4x4?
+  func pose(at: Int) throws -> simd.simd_float4x4?
   init(data: Foundation.Data) throws
   let frameRate: Double
   let poses: [simd.simd_float4x4]

@@ -67,6 +67,8 @@ swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.
 swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.png --frame 90 # a later frame
 ```
 
+`--frame` counts at 60 frames a second unless `--fps` says otherwise, so `--frame 30 --fps 10` is the moment a 10 fps sequence puts at its thirty-first frame, three seconds in. Every one-frame export reads the two flags the same way: the still, the EXR, the plates, and the vector files.
+
 Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 
 ```sh
@@ -587,9 +589,9 @@ The value is read against the parameter's own kind:
 | `String` | `"caption=a longer line"`, quoted for the shell when it holds a space |
 | `Palette`, `Ramp` | `inks=#000,#FFF,#F06`, spread evenly, or `#000@0,#F06@0.75` to place a stop |
 
-The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also overrides a value the sketch set for itself in `setup()`, and the recipe then names what the frame was drawn with. Beside a `--replay`, it overrides the take's recorded parameters, the way `--seed` overrides the take's seed. So the same gestures land on a different setting. A parameter named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run. The error says what value it expected, so the run never renders something you did not ask for.
+The value is on the parameter before `setup()` runs, so a count built there or an extension registered behind a switch reads it. It is applied again after `setup()` and before the first frame, so a value the sketch set for itself in `setup()` does not undo it, and the recipe names what the frame was drawn with. Both passes go through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. Beside a `--replay`, it overrides the take's recorded parameters, the way `--seed` overrides the take's seed. So the same gestures land on a different setting. A parameter named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run. The error says what value it expected, so the run never renders something you did not ask for.
 
-`--cue <name>` lands a saved [cue](../Helpers/Cues.md) the same way, every parameter it holds at once, after `setup()` and before any `--param`. `--cues <file>` names the sheet when the sketch is not carrying one; under OllinLive the `Sketch.cues.json` beside the sketch is installed first, so `--cue` alone finds it.
+`--cue <name>` lands a saved [cue](../Helpers/Cues.md) the same way, every parameter it holds at once, after `setup()` and under the `--param` values, so a value given by hand still wins. `--cues <file>` names the sheet when the sketch is not carrying one; under OllinLive the `Sketch.cues.json` beside the sketch is installed first, so `--cue` alone finds it.
 
 ---
 

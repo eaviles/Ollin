@@ -119,10 +119,10 @@ final class Joyride: Sketch {
             wheel.suspensionTravel = 0.24
             wheel.suspensionFrequency = springs
         }
-        let built = world.addVehicle(.box(width: 1.68, height: 0.75, depth: 3.9),
-                                     at: position, wheels: wheels, mass: 1300,
-                                     engineTorque: 520, topSpeed: topSpeed,
-                                     friction: 0.4)!
+        let built = try! world.addVehicle(.box(width: 1.68, height: 0.75, depth: 3.9),
+                                          at: position, wheels: wheels, mass: 1300,
+                                          engineTorque: 520, topSpeed: topSpeed,
+                                          friction: 0.4)
         // Keep it on its wheels: an island has slopes an unlimited chassis
         // would happily roll down on its roof.
         built.maxTilt = .pi / 3

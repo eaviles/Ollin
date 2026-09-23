@@ -480,8 +480,8 @@ The read head moves through a recording at whatever rate the pitch asks for. Tha
 #### Loading one
 
 ```swift
-let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)   // bundled with the sketch
-let other = SampledInstrument(contentsOf: url)                 // anywhere on disk
+let piano = try SampledInstrument(sfz: "Piano.sfz", in: .module)   // bundled with the sketch
+let other = try SampledInstrument(contentsOf: url)                 // anywhere on disk
 ```
 
 The format is **SFZ**, a plain text file listing regions. Each region names an audio file and the notes it answers to, with the audio beside it. That region arrives as a `SampledInstrument.Recording`: the samples, the `rootKey` it was recorded at, and the `lowKey` to `highKey` range it answers over, which defaults to the root note and nothing else. It is the format most freely licensed libraries ship in.
@@ -587,7 +587,7 @@ A grain is a piece of sound too short to have a pitch of its own, a few thousand
 Everything else that plays a recording moves both together, the way a tape does. A grain cloud has two clocks. The grains are read at whatever speed the note's pitch asks for. The place they are cut from travels at `speed`, which is its own control. Set `speed` to 0 and the position stops while the note keeps going: one moment of a sound, held, for as long as you like.
 
 ```swift
-synth.grainSource = GrainSource(contentsOf: url)
+synth.grainSource = try GrainSource(contentsOf: url)
 synth.voice = Voice(granular: GrainCloud(size: 0.08, density: 40, speed: 0))
 synth.play("C4", for: 8)                            // that moment, held
 
@@ -836,7 +836,7 @@ The rooms are `.room`, `.hall`, `.plate`, and `.cathedral`, biggest last. `mix` 
 #### A room of your own
 
 ```swift
-let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)!
+let stairwell = try ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)
 synth.reverb = Reverb(stairwell, mix: 0.4, preDelay: 0.02)
 ```
 
@@ -844,8 +844,8 @@ A room is what it does to a click. Clap once in a stairwell and what comes back 
 
 | Where a room comes from | What it is |
 |---|---|
-| `ImpulseResponse.load("stairwell.wav")` | a recording, in any file the system plays. The first two channels are kept |
-| `.resource("stairwell", withExtension: "wav", in: .module)` | the same, from the sketch's own bundle |
+| `try ImpulseResponse.load("stairwell.wav")` | a recording, in any file the system plays. The first two channels are kept |
+| `try .resource("stairwell", withExtension: "wav", in: .module)` | the same, from the sketch's own bundle |
 | `.decay(seconds: 3, damping: 0.6)` | fading noise, the plainest room there is. `seconds` is how long it takes to fall silent, and `damping` is how much faster the top end goes |
 | `ImpulseResponse(seconds: 2) { t, noise in ... }` | drawn from a rule. The closure is asked for every sample, with the time since the click and a noise value it may use or ignore |
 | `.reversed()` | the same room run backward, the reverse reverb of a thousand records |

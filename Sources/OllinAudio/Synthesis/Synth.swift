@@ -143,7 +143,7 @@ public final class Synth: AudioSource {
     /// So the voice says how to cut it up and this says what.
     ///
     /// ```swift
-    /// synth.grainSource = GrainSource(contentsOf: url)
+    /// synth.grainSource = try GrainSource(contentsOf: url)
     /// synth.voice = Voice(granular: GrainCloud(size: 0.08, speed: 0))
     /// ```
     ///
@@ -534,7 +534,9 @@ public final class Synth: AudioSource {
 
     // MARK: Engine
 
-    /// Starts the audio engine. Called for you by the first note.
+    /// Starts the audio engine. Called for you by the first note, which is
+    /// why a start that fails is written to `unavailableReason` rather than
+    /// thrown: the note that asked for it has nobody to throw to.
     ///
     /// Does nothing while a sketch is being exported: there is no hardware to
     /// start, and the notes are written down for the soundtrack instead.
@@ -545,10 +547,16 @@ public final class Synth: AudioSource {
         do {
             try engine.start()
             isRunning = true
+            unavailableReason = nil
         } catch {
-            audioNoteOnce("the audio engine could not start (\(error.localizedDescription)).")
+            unavailableReason = "the audio engine could not start: \(error.localizedDescription)"
         }
     }
+
+    /// Why nothing sounds, in a sentence worth drawing, or `nil` while the
+    /// engine runs or has not been asked to. A start that fails writes it,
+    /// and the next start that succeeds clears it.
+    public private(set) var unavailableReason: String?
 
     /// Stops the engine and everything sounding.
     public func stop() {
@@ -724,7 +732,7 @@ public struct Delay: Sendable, Hashable, Codable {
 /// ```swift
 /// synth.reverb = Reverb(.hall, mix: 0.3)
 /// synth.reverb = Reverb(.decay(seconds: 4, damping: 0.7), mix: 0.4)
-/// synth.reverb = Reverb(ImpulseResponse.load("stairwell.wav")!, mix: 0.5, preDelay: 0.02)
+/// synth.reverb = Reverb(try ImpulseResponse.load("stairwell.wav"), mix: 0.5, preDelay: 0.02)
 /// ```
 public struct Reverb: Sendable, Hashable, Codable {
     /// How big the room is.

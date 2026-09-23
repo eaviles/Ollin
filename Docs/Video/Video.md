@@ -40,11 +40,11 @@ final class Player: Sketch {
 
 ```swift
 VideoPlayer(path: String) throws            // a file on disk
-VideoPlayer(url: URL)                       // any file URL
+VideoPlayer(url: URL) throws                // any file URL
 VideoPlayer(resource: String, withExtension: String, in: Bundle) throws
 ```
 
-`path` throws `VideoError.fileNotFound` if no file exists there, and `resource` throws `VideoError.resourceNotFound` if the bundle does not contain it. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target. There is no default for `in:`, because a default would resolve to Ollin's bundle, not yours.
+`path` and `url` throw `VideoError.fileNotFound` if no file exists there, and `resource` throws `VideoError.resourceNotFound` if the bundle does not contain it. A file that is there and is not a movie opens, since nothing can tell until the system reads it, and then `unavailableReason` says why there are no frames, in a sentence worth drawing; `frame` stays `nil` the whole time it has something to say. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target. There is no default for `in:`, because a default would resolve to Ollin's bundle, not yours.
 
 The file's metadata loads in the background right after init, so `duration` and `size` are `nil` for the first moments and fill in shortly. Read them as optionals in `draw()`, in the same way you would read the first camera frame.
 

@@ -67,8 +67,8 @@ import OllinPhysics
 
 let world = World3D()
 world.ground = 0
-let mast = world.addTensegrity(Tensegrity.tower(levels: 3),
-                               at: Vector3(0, 0.3, 0))    // a little above the floor
+let mast = try! world.addTensegrity(Tensegrity.tower(levels: 3),
+                                at: Vector3(0, 0.3, 0))   // a little above the floor; a tower always has struts apart
 
 // each frame:
 world.advance(by: deltaTime)
@@ -119,7 +119,7 @@ let form = Tensegrity(nodes: points,
 print(form.imbalance)      // near zero if it can hold
 ```
 
-Nothing is checked at construction. `addTensegrity` skips a strut whose nodes coincide and a cable whose node no strut reaches, and returns `nil` if no strut is left. A cable may only join two different struts.
+Nothing is checked at construction. `addTensegrity` skips a strut whose nodes coincide and a cable whose node no strut reaches, and throws `PhysicsError.unbuildable` if no strut is left. A cable may only join two different struts.
 
 ### See also
 

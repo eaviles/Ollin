@@ -50,32 +50,32 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     /// How many joints it holds, gear and rack links included.
     public let jointCount: Int
 
-    /// Reads a snapshot's bytes back, or `nil` if they are not a snapshot (or
-    /// are in a format this version of Ollin does not read).
-    public init?(data: Data) {
-        guard let header = SnapshotHeader(of: data) else { return nil }
+    /// Reads a snapshot's bytes back. Throws `Failure.unreadable` if they are
+    /// not a snapshot (or are in a format this version of Ollin does not read).
+    public init(data: Data) throws {
+        guard let header = SnapshotHeader(of: data) else { throw Failure.unreadable }
         self.data = data
         self.bodyCount = header.bodies
         self.jointCount = header.joints
     }
 
-    /// Reads a snapshot from a file written by `write(to:)`.
+    /// Reads a snapshot from a file written by `write(to:)`. Throws the
+    /// system's error for a file it cannot open, and `Failure.unreadable` for
+    /// one that is not a snapshot.
     public init(contentsOf url: URL) throws {
-        guard let snapshot = PhysicsSnapshot(data: try Data(contentsOf: url)) else {
-            throw Failure.unreadable
-        }
-        self = snapshot
+        try self.init(data: try Data(contentsOf: url))
     }
 
     /// Reads a snapshot bundled as a resource. Pass the bundle explicitly
-    /// (`.module` from a sketch's own target).
-    public init?(resource name: String, withExtension ext: String = "physics",
-                 in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext),
-              let snapshot = try? PhysicsSnapshot(contentsOf: url) else {
-            return nil
+    /// (`.module` from a sketch's own target). Throws `Failure.resourceNotFound`
+    /// when the bundle has no such file, and what `init(contentsOf:)` throws
+    /// for one it has.
+    public init(resource name: String, withExtension ext: String = "physics",
+                in bundle: Bundle) throws {
+        guard let url = bundle.url(forResource: name, withExtension: ext) else {
+            throw Failure.resourceNotFound("\(name).\(ext)")
         }
-        self = snapshot
+        try self.init(contentsOf: url)
     }
 
     /// Writes the snapshot to a file.
@@ -89,9 +89,18 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     }
 
     /// What goes wrong reading a snapshot.
-    public enum Failure: Error {
+    public enum Failure: Error, Hashable, CustomStringConvertible {
         /// The bytes are not a snapshot, or were written by a later version.
         case unreadable
+        /// No file of that name in the bundle handed over.
+        case resourceNotFound(String)
+
+        public var description: String {
+            switch self {
+            case .unreadable: return "Not a physics snapshot this version of Ollin reads"
+            case .resourceNotFound(let name): return "Physics snapshot resource not found: \(name)"
+            }
+        }
     }
 
     /// Builds a snapshot from an already-encoded payload, compressing it when
@@ -307,17 +316,19 @@ extension World3D {
     /// restored world is one a sketch could have built by hand. Anything the
     /// world was holding beforehand is gone, characters, vehicles, ragdolls,
     /// and soft bodies included.
+    ///
+    /// Throws `PhysicsSnapshot.Failure.unreadable` for a snapshot that opens
+    /// and then stops short or does not parse, and leaves the world as it was.
     public func restore(_ snapshot: PhysicsSnapshot,
-                        resolving resolve: PhysicsAssetResolver? = nil) {
+                        resolving resolve: PhysicsAssetResolver? = nil) throws {
         guard let payload = snapshot.payload else {
-            noteOnce("this snapshot could not be read; the world is unchanged")
-            return
+            throw PhysicsSnapshot.Failure.unreadable
         }
         var reader = SnapshotReader(payload)
         do {
             try rebuild(from: &reader, resolving: resolve)
         } catch {
-            noteOnce("this snapshot could not be read; the world is unchanged")
+            throw PhysicsSnapshot.Failure.unreadable
         }
     }
 
@@ -331,14 +342,13 @@ extension World3D {
         try save(to: URL(fileURLWithPath: path))
     }
 
-    /// Read a snapshot from a file and restore it. Returns false, leaving the
-    /// world alone, when the file is missing or unreadable.
-    @discardableResult
+    /// Read a snapshot from a file and restore it. Throws what
+    /// `PhysicsSnapshot(contentsOf:)` and `restore(_:)` throw, the system's
+    /// error for a file that is not there among them, and leaves the world
+    /// alone whenever it throws.
     public func load(contentsOf url: URL,
-                     resolving resolve: PhysicsAssetResolver? = nil) -> Bool {
-        guard let snapshot = try? PhysicsSnapshot(contentsOf: url) else { return false }
-        restore(snapshot, resolving: resolve)
-        return true
+                     resolving resolve: PhysicsAssetResolver? = nil) throws {
+        try restore(try PhysicsSnapshot(contentsOf: url), resolving: resolve)
     }
 
     private func rebuild(from reader: inout SnapshotReader,
@@ -644,7 +654,7 @@ extension World3D {
         }
         // `addVehicle` takes an angle and an axis, so the saved orientation
         // goes on after: the chassis is a body like any other underneath.
-        guard let vehicle = addVehicle(saved.collider, at: saved.pose.position,
+        guard let vehicle = try? addVehicle(saved.collider, at: saved.pose.position,
                                        wheels: wheels, mass: saved.mass,
                                        engineTorque: saved.engineTorque,
                                        topSpeed: saved.topSpeed,

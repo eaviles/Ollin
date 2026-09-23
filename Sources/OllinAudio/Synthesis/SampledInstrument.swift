@@ -9,7 +9,7 @@ import Ollin
 /// nearest recording and moving it to the pitch asked for.
 ///
 /// ```swift
-/// let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
+/// let piano = try SampledInstrument(sfz: "Piano.sfz", in: .module)
 /// synth.instrument = piano
 /// synth.voice = Voice(sampled: Sampler(), envelope: .plucked)
 /// synth.play("C4", for: 1.5)
@@ -63,15 +63,17 @@ public final class SampledInstrument: @unchecked Sendable {
     // MARK: Loading
 
     /// Reads an instrument from an `.sfz` file and the recordings beside it.
+    /// Throws `AudioError.couldNotDecode` for a file that is not there or is
+    /// not an instrument map, and `AudioError.empty` for a map none of whose
+    /// recordings could be read.
     ///
     /// A region whose file is missing is skipped with a note rather than
     /// refused, so one absent recording costs one note of the range instead of
     /// the whole instrument.
-    public init?(contentsOf url: URL) {
+    public init(contentsOf url: URL) throws {
         name = url.deletingPathExtension().lastPathComponent
         guard let file = SFZFile(contentsOf: url) else {
-            audioNoteOnce("could not read the instrument at \(url.lastPathComponent).")
-            return nil
+            throw AudioError.couldNotDecode(url.lastPathComponent)
         }
         let folder = url.deletingLastPathComponent()
         for region in file.regions {
@@ -91,23 +93,21 @@ public final class SampledInstrument: @unchecked Sendable {
             ))
         }
         if zones.isEmpty {
-            audioNoteOnce("the instrument at \(url.lastPathComponent) has nothing "
-                          + "playable in it.")
-            return nil
+            throw AudioError.empty(url.lastPathComponent)
         }
     }
 
-    /// Reads an instrument bundled with a sketch.
+    /// Reads an instrument bundled with a sketch. Throws
+    /// `AudioError.resourceNotFound` when the bundle has no such map.
     ///
     /// The bundle is explicit because a default would resolve to Ollin's own
     /// rather than the caller's, which is the rule every loader here follows.
-    public convenience init?(sfz name: String, in bundle: Bundle) {
+    public convenience init(sfz name: String, in bundle: Bundle) throws {
         let base = (name as NSString).deletingPathExtension
         guard let url = bundle.url(forResource: base, withExtension: "sfz") else {
-            audioNoteOnce("no instrument named \(name) in that bundle.")
-            return nil
+            throw AudioError.resourceNotFound("\(base).sfz")
         }
-        self.init(contentsOf: url)
+        try self.init(contentsOf: url)
     }
 
     /// An instrument built from recordings already in hand.
@@ -189,12 +189,19 @@ public final class SampledInstrument: @unchecked Sendable {
     /// not harmonics, each partial fading at its own rate, which is expensive
     /// to work out and cheap to play back, and that is what a sampler is for.
     public static let builtIn: SampledInstrument? = {
+        // A framework resource that is not there is a broken build rather
+        // than a sketch's mistake, so it is said as a developer note.
         guard let url = Bundle.module.url(forResource: "Struck/Struck", withExtension: "sfz")
                 ?? Bundle.module.url(forResource: "Struck", withExtension: "sfz") else {
             audioNoteOnce("the bundled instrument is missing from this build.")
             return nil
         }
-        return SampledInstrument(contentsOf: url)
+        do {
+            return try SampledInstrument(contentsOf: url)
+        } catch {
+            audioNoteOnce("the bundled instrument could not be read (\(error)).")
+            return nil
+        }
     }()
 
     // MARK: Reading it back

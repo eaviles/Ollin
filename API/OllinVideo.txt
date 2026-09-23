@@ -12,7 +12,7 @@ final class VideoPlayer: AudioTapSource, ClipPlayback, FrameAdvancing, FrameSour
   func seek(to: Double)
   func snapshot() -> Image?
   func stop()
-  init(url: Foundation.URL)
+  init(url: Foundation.URL) throws
   let url: Foundation.URL
   var audioTap: AudioTap? { get set }
   var currentTime: Double { get }
@@ -25,4 +25,5 @@ final class VideoPlayer: AudioTapSource, ClipPlayback, FrameAdvancing, FrameSour
   var loops: Bool { get set }
   var rate: Double { get set }
   var size: Vector2? { get }
+  var unavailableReason: String? { get }
   var volume: Double { get set }

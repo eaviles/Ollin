@@ -184,7 +184,7 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
         guard FileManager.default.fileExists(atPath: path) else {
             throw VideoError.fileNotFound(path)
         }
-        self.init(url: URL(fileURLWithPath: path))
+        try self.init(url: URL(fileURLWithPath: path))
     }
 
     /// Opens a video bundled as a resource. Pass the caller's bundle as `bundle`
@@ -193,12 +193,25 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
         guard let url = bundle.url(forResource: name, withExtension: ext) else {
             throw VideoError.resourceNotFound("\(name).\(ext)")
         }
-        self.init(url: url)
+        try self.init(url: url)
     }
 
-    /// Opens the video at `url`. The file's metadata (`duration`, `size`) loads
-    /// asynchronously; a file that can't be read simply never produces frames.
-    public init(url: URL) {
+    /// Why there are no frames, in a sentence worth drawing, or `nil` while
+    /// nothing has gone wrong. The initializers throw for what they can see
+    /// themselves, a file that is not there; this carries what the system
+    /// finds later, once the file is opened and there is no caller left to
+    /// throw to: bytes that are not a movie, a codec it cannot decode. `frame`
+    /// stays `nil` the whole time this has something to say.
+    public private(set) var unavailableReason: String?
+
+    /// Opens the video at `url`. Throws if the URL names a file that does not
+    /// exist. The file's metadata (`duration`, `size`) loads asynchronously,
+    /// and a file that opens but cannot be read as a movie says so in
+    /// `unavailableReason` rather than never producing a frame in silence.
+    public init(url: URL) throws {
+        if url.isFileURL, !FileManager.default.fileExists(atPath: url.path) {
+            throw VideoError.fileNotFound(url.path)
+        }
         self.url = url
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
@@ -214,7 +227,16 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
             Task { @MainActor in self?.reachedEnd() }
         }
         Task { [weak self] in
-            guard let duration = try? await asset.load(.duration) else { return }
+            let duration: CMTime
+            do {
+                duration = try await asset.load(.duration)
+            } catch {
+                // The file opened and then would not read as a movie. Nobody
+                // is left to throw to, so the reason is written down instead.
+                self?.unavailableReason = "the movie at \(url.lastPathComponent) could not be read: "
+                    + error.localizedDescription
+                return
+            }
             var natural: CGSize?
             if let track = try? await asset.loadTracks(withMediaType: .video).first {
                 natural = try? await track.load(.naturalSize)
@@ -329,6 +351,9 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
         guard !headlessReaderFailed else { return nil }
         guard let reader = HeadlessVideoReader(url: url) else {
             headlessReaderFailed = true
+            if unavailableReason == nil {
+                unavailableReason = "the movie at \(url.lastPathComponent) could not be read"
+            }
             return nil
         }
         headlessReader = reader

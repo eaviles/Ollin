@@ -2,6 +2,7 @@
 // Change the source, then run it with --record; never edit this file by hand.
 enum AudioError: CustomStringConvertible, Error, Sendable
   case couldNotDecode(String)
+  case empty(String)
   case resourceNotFound(String)
   var description: String { get }
 enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
@@ -92,6 +93,7 @@ final class AudioInput: AudioTapSource, AudioSource, Sendable
   nonisolated let analyzer: AudioAnalyzer
   var audioTap: AudioTap? { get set }
   var isRunning: Bool { get }
+  var unavailableReason: String? { get }
 final class AudioPlayer: AudioTapSource, CaptureAudioSource, FrameAdvancing, AudioSource, Sendable
   convenience init(path: String, fftSize: Int = default, smoothing: Float = default) throws
   convenience init(resource: String, withExtension: String, in: Foundation.Bundle, fftSize: Int = default, smoothing: Float = default) throws
@@ -103,6 +105,7 @@ final class AudioPlayer: AudioTapSource, CaptureAudioSource, FrameAdvancing, Aud
   var audioTap: AudioTap? { get set }
   var isPlaying: Bool { get }
   var loops: Bool { get set }
+  var unavailableReason: String? { get }
 final class BeatFollower: Sendable
   func advance(to: Double)
   func reset()
@@ -113,10 +116,10 @@ final class BeatFollower: Sendable
   var steadiness: Double { get }
   var tempo: Double { get }
 final class GrainSource: Sendable
+  convenience init(contentsOf: Foundation.URL, rootKey: Int = default) throws
   convenience init(name: String = default, recording: SampledInstrument.Recording)
+  convenience init(named: String, withExtension: String = default, in: Foundation.Bundle, rootKey: Int = default) throws
   convenience init(waveform: Waveform, frequency: Double = default, seconds: Double = default, sampleRate: Double = default, seed: Int = default)
-  convenience init?(contentsOf: Foundation.URL, rootKey: Int = default)
-  convenience init?(named: String, withExtension: String = default, in: Foundation.Bundle, rootKey: Int = default)
   init(name: String = default, frames: [Float], sampleRate: Double, rootKey: Int = default)
   let frames: [Float]
   let name: String
@@ -126,11 +129,11 @@ final class GrainSource: Sendable
   var duration: Double { get }
   var isEmpty: Bool { get }
 final class SampledInstrument: Sendable
-  convenience init?(sfz: String, in: Foundation.Bundle)
+  convenience init(sfz: String, in: Foundation.Bundle) throws
   func recording(at: Int, over: ClosedRange<Int>) -> SampledInstrument.Recording
   func recordingIndex(for: Int, velocity: Double = default) -> Int?
+  init(contentsOf: Foundation.URL) throws
   init(name: String = default, recordings: [SampledInstrument.Recording])
-  init?(contentsOf: Foundation.URL)
   let name: String
   static let builtIn: SampledInstrument?
   struct Recording: Sendable
@@ -221,6 +224,7 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   var position: Vector3? { get }
   var pressure: Double { get set }
   var reverb: Reverb? { get set }
+  var unavailableReason: String? { get }
   var voice: Voice { get set }
   var wavetable: Wavetable? { get set }
 final class Tone: AudioTapSource, CaptureAudioSource, AudioSource, Sendable
@@ -233,6 +237,7 @@ final class Tone: AudioTapSource, CaptureAudioSource, AudioSource, Sendable
   var audioTap: AudioTap? { get set }
   var frequency: Double { get set }
   var isPlaying: Bool { get }
+  var unavailableReason: String? { get }
   var waveform: Tone.Waveform { get set }
 final class Wavetable: Sendable
   convenience init(name: String = default, frameCount: Int, _: (Double, Double) -> Double)
@@ -488,12 +493,12 @@ struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
   func stretched(by: Double) -> ImpulseResponse
   init(_: [Float], sampleRate: Double)
+  init(contentsOf: Foundation.URL) throws
   init(left: [Float], right: [Float], sampleRate: Double)
   init(seconds: Double, sampleRate: Double = default, seed: Int = default, _: (Double, Double) -> Double)
-  init?(contentsOf: Foundation.URL)
   static func decay(seconds: Double = default, damping: Double = default, sampleRate: Double = default, seed: Int = default) -> ImpulseResponse
-  static func load(_: String) -> ImpulseResponse?
-  static func resource(_: String, withExtension: String = default, in: Foundation.Bundle) -> ImpulseResponse?
+  static func load(_: String) throws -> ImpulseResponse
+  static func resource(_: String, withExtension: String = default, in: Foundation.Bundle) throws -> ImpulseResponse
   static let maxSeconds: Double
   var channelCount: Int { get }
   var channels: [[Float]] { get set }

@@ -52,7 +52,7 @@ final class Cape: Sketch {
         wave = figure.animations.first
         world.ground = 0
         world.restitution = 0.05
-        ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
+        ragdoll = try? world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
                                    mass: 72, friction: 0.7)
         standUp()
         hangTheCape()
@@ -62,7 +62,7 @@ final class Cape: Sketch {
     /// bind pose, so the cloth is built where it belongs and the skeleton's
     /// motion from here on is what carries it.
     func hangTheCape() {
-        cape = world.addSoftBody(
+        cape = try? world.addSoftBody(
             from: Cape.sheet,
             // The sheet is centered on its own origin, so standing the collar at
             // the shoulders puts the body half a cape lower.

@@ -40,6 +40,24 @@ import Testing
 
     // MARK: - Reading the map
 
+    /// A map the bundle does not have, a file that is not a map, and the
+    /// same two asks of a grain source each throw, the one shape a loader
+    /// has here; there is no `nil` beside a printed line any more.
+    @Test func aMissingOrUnreadableMapThrows() {
+        #expect(throws: AudioError.self) {
+            _ = try SampledInstrument(sfz: "no-such-instrument", in: .main)
+        }
+        #expect(throws: AudioError.self) {
+            _ = try SampledInstrument(contentsOf: URL(fileURLWithPath: "/nowhere/at/all.sfz"))
+        }
+        #expect(throws: AudioError.self) {
+            _ = try GrainSource(named: "no-such-sound", in: .main)
+        }
+        #expect(throws: AudioError.self) {
+            _ = try GrainSource(contentsOf: URL(fileURLWithPath: "/nowhere/at/all.wav"))
+        }
+    }
+
     @Test func sfzRegionsRead() {
         let file = SFZFile(text: """
         // a comment, and a blank line follow

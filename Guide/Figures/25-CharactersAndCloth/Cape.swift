@@ -46,14 +46,14 @@ final class Cape: Sketch {
     /// A figure standing at `x`, held up by a kinematic root so it can be
     /// walked rather than left to topple.
     func stand(at x: Double) -> Ragdoll3D {
-        let doll = world.addRagdoll(from: rest, at: Vector3(x, 0.95, 0),
-                                    mass: 72, friction: 0.7)!
+        let doll = try! world.addRagdoll(from: rest, at: Vector3(x, 0.95, 0),
+                                         mass: 72, friction: 0.7)
         doll.limbs[0].body.kind = .kinematic
         return doll
     }
 
     func hang(at x: Double, on figure: Scene?) -> SoftBody3D {
-        world.addSoftBody(
+        try! world.addSoftBody(
             from: Cape.sheet, at: Vector3(x, 1.45 - Cape.length / 2, -0.13),
             rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 1.0, stiffness: 0.92, bend: 0.01, damping: 0.06,
@@ -61,7 +61,7 @@ final class Cape: Sketch {
             pinned: { $0.z < Cape.collar && abs($0.x) < 0.2 },
             skinnedTo: figure,
             carriedBy: figure == nil ? nil : { _ in "chest" },
-            backStop: 0.05, maxStretch: 1.02)!
+            backStop: 0.05, maxStretch: 1.02)
     }
 
     override func draw() {

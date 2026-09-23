@@ -224,7 +224,7 @@ override func setup() {
 | `setup(_:)` | once, after the sketch's `setup()` | one-time prep |
 | `beforeDraw(_:)` | each frame, before `draw()` | set up per-frame state |
 | `afterDraw(_:)` | each frame, after `draw()`, before the render | draw *over* the sketch through the bare API |
-| `afterFrame(_:_:)` | each frame, after the render, with `FrameInfo` timing | observe (fps, frame time, geometry counts) without drawing |
+| `afterFrame(_:_:)` | each frame, after the render, with `FrameInfo` timing; in an export too, once per rendered frame, with the export clock's numbers | observe (fps, frame time, geometry counts) without drawing |
 | `frameRendered(_:image:)` | each frame, after the render, with the rendered `CGImage` | grab the rendered pixels to save, record, or snapshot |
 
 ```swift

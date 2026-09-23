@@ -25,9 +25,9 @@ final class Ragdolls: Sketch {
         held = rest
         world.ground = 0
         world.restitution = 0.05
-        limpDoll = world.addRagdoll(from: rest, at: Vector3(-0.85, 1.35, 0),
+        limpDoll = try? world.addRagdoll(from: rest, at: Vector3(-0.85, 1.35, 0),
                                     mass: 72, friction: 0.7)
-        heldDoll = world.addRagdoll(from: rest, at: Vector3(0.85, 1.35, 0),
+        heldDoll = try? world.addRagdoll(from: rest, at: Vector3(0.85, 1.35, 0),
                                     mass: 72, friction: 0.7)
     }
 

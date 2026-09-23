@@ -43,13 +43,13 @@ final class Rigging: Sketch {
 
         // Long enough that the end of it lies on the floor, which is what
         // reads as rope rather than as a dowel.
-        rope = world.addRope(through: hangingLine(56, spacing: 0.09),
+        rope = try? world.addRope(through: hangingLine(56, spacing: 0.09),
                              at: Vector3(-1.25, Rigging.beamHeight, 0),
                              radius: 0.035, mass: 1.6,
                              bend: 0.02, damping: 0.25, friction: 0.7,
                              pinned: { $0.y > -0.001 })
 
-        chain = world.addRope(through: hangingLine(20, spacing: 0.15),
+        chain = try? world.addRope(through: hangingLine(20, spacing: 0.15),
                               at: Vector3(0, Rigging.beamHeight, 0),
                               radius: 0.05, mass: 4,
                               bend: 0.06, damping: 0.2, friction: 0.6,
@@ -62,7 +62,7 @@ final class Rigging: Sketch {
             let t = Double(i) / 25
             return Vector3(sin(t * 2.1) * -0.5 * t, -t * 2.1, cos(t * 1.6) * 0.22 * t)
         }
-        vine = world.addRope(through: stem,
+        vine = try? world.addRope(through: stem,
                              at: Vector3(1.3, Rigging.beamHeight, 0),
                              radius: 0.022, mass: 0.5,
                              bend: 0.62, damping: 0.35,

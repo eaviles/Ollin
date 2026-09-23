@@ -32,7 +32,7 @@ struct Contact3DTests {
 
     // MARK: Landing on the floor
 
-    @Test func aFallingBodyReportsItsLanding() {
+    @Test func aFallingBodyReportsItsLanding() throws {
         let world = World3D()
         world.ground = 0
         let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0),
@@ -62,7 +62,7 @@ struct Contact3DTests {
 
     /// The impact reads the speed at the moment of contact, before the solver
     /// answers it, so a longer drop lands harder in the ratio free fall says.
-    @Test func impactSpeedFollowsTheDrop() {
+    @Test func impactSpeedFollowsTheDrop() throws {
         func landingSpeed(from height: Double) -> Double {
             let world = World3D()
             world.ground = 0
@@ -85,7 +85,7 @@ struct Contact3DTests {
     /// The pair still reports once: no step ever carries the same pair twice.
     /// The counterfactual twin is the same two boxes as separate bodies, which
     /// is genuinely two pairs and does report two events in the landing step.
-    @Test func aPairReportsOnceHoweverManyShapesTouch() {
+    @Test func aPairReportsOnceHoweverManyShapesTouch() throws {
         func pairKey(_ contact: Contact3D) -> String {
             "\(ObjectIdentifier(contact.a))-\(ObjectIdentifier(contact.b))"
         }
@@ -128,7 +128,7 @@ struct Contact3DTests {
     /// Contacts are transitions, not state: the step that filled the list owns
     /// it, reading it twice is not draining it, and a scene lying still
     /// reports nothing at all while `touching` still says what rests on what.
-    @Test func contactsBelongToTheirStep() {
+    @Test func contactsBelongToTheirStep() throws {
         let world = World3D()
         world.ground = 0
         let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.2, 0),
@@ -166,7 +166,7 @@ struct Contact3DTests {
     /// contacts, so `touching` empties out under a still stack. The answer for
     /// "what is resting in this region" is a sensor, which stays awake (see
     /// `aSleepingBodyStaysInsideASensor` for the counterfactual).
-    @Test func aSleepingPileStopsReportingItsTouches() {
+    @Test func aSleepingPileStopsReportingItsTouches() throws {
         let world = World3D()
         world.ground = 0
         let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -190,7 +190,7 @@ struct Contact3DTests {
     /// The headline counterfactual: a ball dropped through a sensor sphere
     /// falls exactly as if nothing were there and reports going in and coming
     /// out, while the same sphere made solid stops it.
-    @Test func aSensorReportsWhatPassesThroughAndSolidStops() {
+    @Test func aSensorReportsWhatPassesThroughAndSolidStops() throws {
         func drop(obstacle: Bool, sensing: Bool) -> (rest: Double, events: [Contact3D]) {
             let world = World3D()
             world.ground = 0
@@ -229,7 +229,7 @@ struct Contact3DTests {
     /// a body that settles inside one falls asleep, and a static sensor loses
     /// the contact the moment it does. The assert that the ball really is
     /// asleep is what makes this the counterfactual.
-    @Test func aSleepingBodyStaysInsideASensor() {
+    @Test func aSleepingBodyStaysInsideASensor() throws {
         let world = World3D()
         world.ground = 0
         let plate = world.addBody(.box(width: 4, height: 0.5, depth: 4),
@@ -247,7 +247,7 @@ struct Contact3DTests {
 
     /// A sensor is a region to be inside, not a surface to hit, so the ray the
     /// mouse picks with looks straight through it.
-    @Test func aSensorIsTransparentToPicking() {
+    @Test func aSensorIsTransparentToPicking() throws {
         func pick(sensing: Bool) -> Bool {
             let world = World3D()
             world.addBody(.box(width: 2, height: 2, depth: 2), at: Vector3(0, 0, 0),
@@ -261,7 +261,7 @@ struct Contact3DTests {
 
     /// A sensor's motion type is its own: it never falls, and the `kind` setter
     /// leaves it alone rather than quietly turning it into a solid.
-    @Test func aSensorHoldsItsPlaceAndItsKind() {
+    @Test func aSensorHoldsItsPlaceAndItsKind() throws {
         let world = World3D()
         world.ground = 0
         let zone = world.addBody(.sphere(radius: 1), at: Vector3(0, 4, 0),
@@ -284,7 +284,7 @@ struct Contact3DTests {
 
     // MARK: Touch bookkeeping
 
-    @Test func enteredAndExitedNameTheStepsTransitions() {
+    @Test func enteredAndExitedNameTheStepsTransitions() throws {
         let world = World3D()
         world.ground = 0
         let zone = world.addBody(.sphere(radius: 1), at: Vector3(0, 3, 0),
@@ -308,7 +308,7 @@ struct Contact3DTests {
     /// A body taken out of the world leaves no trace in anyone's touch list,
     /// and the parting the solver reports a step later is dropped rather than
     /// handed over pointing at a body that no longer exists.
-    @Test func aRemovedBodyLeavesNoStaleTouches() {
+    @Test func aRemovedBodyLeavesNoStaleTouches() throws {
         let world = World3D()
         world.ground = 0
         let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -332,7 +332,7 @@ struct Contact3DTests {
     /// The listener records on whichever worker thread finishes first, so the
     /// buffer is put in pair order before it leaves the bridge: two identical
     /// worlds must read the same events in the same order.
-    @Test func contactEventsReplayInTheSameOrder() {
+    @Test func contactEventsReplayInTheSameOrder() throws {
         func runScene() -> [String] {
             let world = World3D()
             world.ground = 0
@@ -372,8 +372,8 @@ struct Contact3DTests {
         func drop(onto floor: Bool) throws -> (contacts: [Contact3D], landedOn: Bool) {
             let world = World3D()
             if floor { world.ground = 0 }
-            let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
-                                                       at: Vector3(0, 2, 0)))
+            let cloth = try! world.addSoftBody(from: Self.clothMesh,
+                                                       at: Vector3(0, 2, 0))
             let seen = collect(world, steps: 90).filter { $0.involves(cloth) }
             let onGround = seen.contains {
                 $0.phase == .began && $0.other(than: cloth) === world.groundBody
@@ -399,8 +399,8 @@ struct Contact3DTests {
     @Test func aSettledClothHoldsItsTouchesWhereASettledCrateDropsThem() throws {
         let world = World3D()
         world.ground = 0
-        let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
-                                                   at: Vector3(0, 1, 0)))
+        let cloth = try world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 1, 0))
         let crate = world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
                                   at: Vector3(4, 1, 0))
         run(world, steps: 600)
@@ -415,8 +415,8 @@ struct Contact3DTests {
     @Test func liftingAClothOffReportsTheParting() throws {
         let world = World3D()
         world.ground = 0
-        let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
-                                                   at: Vector3(0, 1, 0)))
+        let cloth = try world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 1, 0))
         run(world, steps: 240)
         #expect(cloth.touching.count == 1)
 
@@ -443,8 +443,8 @@ struct Contact3DTests {
                                       at: Vector3(0, 0.6, 0), kind: .static,
                                       isSensor: true)
             if withCloth {
-                _ = try #require(world.addSoftBody(from: Self.clothMesh,
-                                                   at: Vector3(0, 2, 0)))
+                _ = try! world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 2, 0))
             }
             var seen = 0
             for _ in 0 ..< 120 {
@@ -465,7 +465,7 @@ struct Contact3DTests {
             world.ground = 0
             world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0.6, 0.5, 0),
                           kind: .static)
-            _ = try #require(world.addSoftBody(from: Self.clothMesh, at: Vector3(0, 2, 0)))
+            _ = try! world.addSoftBody(from: Self.clothMesh, at: Vector3(0, 2, 0))
             var lines: [String] = []
             for step in 0 ..< 200 {
                 world.advance(by: 1.0 / 60)

@@ -304,21 +304,37 @@ extension OllinApp {
 
 extension Sketch {
 
-    /// Run `setup()`, then apply whatever `--param name=value` set on top of it.
-    /// Every drive calls this rather than `setup()` directly, so a value given
-    /// on the command line wins over the sketch's own `setup()` and reaches the
-    /// export recipe, which is written once the sketch has run.
+    /// Run `setup()` between two applications of whatever `--param name=value`
+    /// set: once before, so anything `setup()` builds from a parameter (a count
+    /// of things, an extension registered behind a switch) reads the value the
+    /// run was given, and once after, so a `setup()` that assigns the parameter
+    /// itself does not undo it and the value reaches the export recipe, which
+    /// is written once the sketch has run. Every drive calls this rather than
+    /// `setup()` directly.
     ///
     /// A value that cannot be applied stops the run rather than rendering
     /// something nobody asked for.
     func runSetup() {
+        applyCommandLineValues()
         setup()
         applyCommandLineParams()
     }
 
-    /// Apply this run's `--param` values on their own, for a caller that runs
-    /// `setup()` itself because something else has to happen in between (the
-    /// window path restores a saved checkpoint there).
+    /// The `--param` values alone, for the pass before `setup()`: a value that
+    /// cannot be applied stops the run here, before anything is built on it.
+    func applyCommandLineValues() {
+        let problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
+        guard problems.isEmpty else {
+            for problem in problems {
+                FileHandle.standardError.write(Data(("Ollin: " + problem + "\n").utf8))
+            }
+            exit(1)
+        }
+    }
+
+    /// Apply this run's `--param` values and its cue after `setup()`, for a
+    /// caller that runs `setup()` itself because something else has to happen
+    /// in between (the window path restores a saved checkpoint there).
     func applyCommandLineParams() {
         var problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
         // A cue sheet named on the command line rides along, and the cue named

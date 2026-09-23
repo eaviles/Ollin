@@ -307,7 +307,7 @@ You can also set a parameter from the command line, on any export path and on a 
 swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
 ```
 
-`--param name=value` can repeat. The value is read against the parameter's own kind. You can pass a color, a vector, a menu choice, or a swatch strip as easily as a number. The value lands after `setup()`, through the same `restore` path described below. Every export writes its parameter values into the file's recipe, so this flag is how a frame re-renders from the recipe it carries. The kinds and their spellings are on the [Export](../Output/Export.md#setting-a-parameter-for-the-run) page.
+`--param name=value` can repeat. The value is read against the parameter's own kind. You can pass a color, a vector, a menu choice, or a swatch strip as easily as a number. The value is on the parameter before `setup()` runs, so anything built there from it reads the run's value, and it is applied again after, so a `setup()` that sets the parameter itself does not undo it. Both passes go through the same `restore` path described below. Every export writes its parameter values into the file's recipe, so this flag is how a frame re-renders from the recipe it carries. The kinds and their spellings are on the [Export](../Output/Export.md#setting-a-parameter-for-the-run) page.
 
 `--list-params` beside any sketch says what there is to set. Every parameter with its kind, what it accepts, and what it holds, each value in the spelling the flag reads back. See [Checking the machine](../Tools/Doctor.md#what-the-sketch-itself-declares).
 

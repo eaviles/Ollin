@@ -48,6 +48,16 @@ struct ParamOverrideTests {
         override func draw() { background(.white) }
     }
 
+    /// A sketch that builds something from a parameter in `setup()`, to prove
+    /// the value is already there when it does.
+    final class Builder: Sketch {
+        override var canvasSize: CanvasSize { .square(64) }
+        @Param(1...100) var count = 3
+        var built = 0
+        override func setup() { built = count }
+        override func draw() { background(.white) }
+    }
+
     /// Run `body` with `overrides` standing in for this run's command line.
     private func withOverrides(_ overrides: [ParamOverride], _ body: () -> Void) {
         let previous = OllinApp.paramOverrides
@@ -213,6 +223,31 @@ struct ParamOverrideTests {
         let plain = Opinionated()
         withOverrides([]) { plain.runSetup() }
         #expect(plain.radius == 77)
+    }
+
+    /// The value lands before `setup()` as well as after it, so what `setup()`
+    /// builds from a parameter (a count, an extension behind a switch) reads
+    /// the run's value rather than the declared default (found by a sketch
+    /// registering an extension in `setup()` behind a `--param`, 2026-09-22).
+    @Test func theValueIsThereWhenSetupRuns() {
+        let sketch = Builder()
+        withOverrides([.init(name: "count", text: "12")]) { sketch.runSetup() }
+        #expect(sketch.built == 12, "setup() must read the launch value, not the declared default")
+        #expect(sketch.count == 12)
+    }
+
+    @Test func theWindowPathHasTheValueWhenSetupRunsToo() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = MTKView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
+        view.drawableSize = CGSize(width: 64, height: 64)
+        view.isPaused = true
+        view.enableSetNeedsDisplay = false
+        let sketch = Builder()
+        withOverrides([.init(name: "count", text: "12")]) {
+            let runner = SketchRunner(sketch: sketch, view: view, device: device)
+            runner.draw(in: view)
+        }
+        #expect(sketch.built == 12)
     }
 
     @Test func theRecipeNamesTheValueTheFrameWasDrawnWith() {

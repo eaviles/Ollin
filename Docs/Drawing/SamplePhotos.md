@@ -133,7 +133,7 @@ Some techniques need motion and a still cannot stand in for it: optical flow mea
 It is vended as a URL rather than as a player, because opening a film belongs to `OllinVideo` and no satellite depends on another:
 
 ```swift
-let film = VideoPlayer(url: SampleClip.dance.url)
+let film = try VideoPlayer(url: SampleClip.dance.url)
 film.loops = true
 film.play()
 ```

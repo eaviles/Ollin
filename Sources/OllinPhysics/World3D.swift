@@ -449,10 +449,9 @@ public final class World3D {
                            balances: Bool = false,
                            maxLeanAngle: Double = 45 * .pi / 180,
                            isTracked: Bool = false,
-                           group: CollisionGroup = .default) -> Vehicle3D? {
+                           group: CollisionGroup = .default) throws -> Vehicle3D {
         guard !wheels.isEmpty else {
-            noteOnce("a vehicle needs at least one wheel")
-            return nil
+            throw PhysicsError.unbuildable("a vehicle needs at least one wheel")
         }
         if isTracked, balances {
             noteOnce("a tracked machine does not lean; ignoring balances")
@@ -475,11 +474,10 @@ public final class World3D {
                                       tracked: isTracked, mass: mass,
                                       centerOfMass: hang) else {
             remove(body)
-            noteOnce(isTracked
+            throw PhysicsError.unbuildable(isTracked
                      ? "a tracked machine needs road wheels on both sides of "
                         + "the hull; check where its wheels sit"
                      : "the vehicle could not be built; check its wheels")
-            return nil
         }
         vehicles.append(vehicle)
         return vehicle
@@ -524,12 +522,16 @@ public final class World3D {
                            twist: ClosedRange<Double> = -0.3...0.3,
                            mass: Double = 70,
                            friction: Double = 0.5,
-                           group: CollisionGroup = .default) -> Ragdoll3D? {
+                           group: CollisionGroup = .default) throws -> Ragdoll3D {
+        guard !scene.skeleton().isEmpty else {
+            throw PhysicsError.unbuildable("addRagdoll needs a scene with a skin (a skeleton "
+                                           + "posing a mesh); this one has none")
+        }
         guard let ragdoll = Ragdoll3D(world: self, scene: scene, at: position,
                                       joints: joints, swing: swing, twist: twist,
                                       mass: mass, friction: friction,
                                       group: group) else {
-            return nil
+            throw PhysicsError.unbuildable("the ragdoll could not be built from this skeleton")
         }
         ragdolls.append(ragdoll)
         return ragdoll
@@ -620,7 +622,7 @@ public final class World3D {
                             sway: ((Vector3) -> Double)? = nil,
                             backStop: Double? = nil,
                             maxStretch: Double? = nil,
-                            group: CollisionGroup = .default) -> SoftBody3D? {
+                            group: CollisionGroup = .default) throws -> SoftBody3D {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
@@ -629,15 +631,19 @@ public final class World3D {
                      + "skinnedTo: scene to look them up in; the surface is "
                      + "ordinary cloth")
         }
-        return makeSoftBody(mesh: mesh, position: position, rotation: turn,
-                            mass: mass, stiffness: stiffness, bend: bend,
-                            pressure: pressure, damping: damping,
-                            friction: friction, restitution: restitution ?? self.restitution,
-                            iterations: iterations, vertexRadius: vertexRadius,
-                            isTwoSided: twoSided, pinned: pinned, group: group,
-                            skeleton: scene?.skeleton() ?? [],
-                            carriedBy: carriedBy, sway: sway, backStop: backStop,
-                            maxStretch: maxStretch, restoredSkin: nil)
+        guard let soft = makeSoftBody(mesh: mesh, position: position, rotation: turn,
+                                      mass: mass, stiffness: stiffness, bend: bend,
+                                      pressure: pressure, damping: damping,
+                                      friction: friction, restitution: restitution ?? self.restitution,
+                                      iterations: iterations, vertexRadius: vertexRadius,
+                                      isTwoSided: twoSided, pinned: pinned, group: group,
+                                      skeleton: scene?.skeleton() ?? [],
+                                      carriedBy: carriedBy, sway: sway, backStop: backStop,
+                                      maxStretch: maxStretch, restoredSkin: nil) else {
+            throw PhysicsError.unbuildable("addSoftBody needs a mesh with at least one triangle "
+                                           + "whose corners are distinct; nothing was added")
+        }
+        return soft
     }
 
     /// The one place a soft body is built and registered. A restore comes
@@ -668,8 +674,6 @@ public final class World3D {
                                     backStop: backStop, maxStretch: maxStretch,
                                     restoredSkin: restoredSkin)
         else {
-            noteOnce("addSoftBody needs a mesh with at least one triangle whose "
-                     + "corners are distinct; nothing was added.")
             return nil
         }
         softBodies.append(soft)
@@ -733,16 +737,20 @@ public final class World3D {
                         iterations: Int = 5,
                         pinned: ((Vector3) -> Bool)? = nil,
                         maxStretch: Double? = nil,
-                        group: CollisionGroup = .default) -> Rope3D? {
+                        group: CollisionGroup = .default) throws -> Rope3D {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
-        return makeRope(points: points, position: position, rotation: turn,
-                        radius: radius, sides: sides, mass: mass,
-                        stiffness: stiffness, bend: bend, damping: damping,
-                        friction: friction, restitution: restitution ?? self.restitution,
-                        iterations: iterations, pinned: pinned,
-                        maxStretch: maxStretch, group: group)
+        guard let rope = makeRope(points: points, position: position, rotation: turn,
+                                  radius: radius, sides: sides, mass: mass,
+                                  stiffness: stiffness, bend: bend, damping: damping,
+                                  friction: friction, restitution: restitution ?? self.restitution,
+                                  iterations: iterations, pinned: pinned,
+                                  maxStretch: maxStretch, group: group) else {
+            throw PhysicsError.unbuildable("addRope needs at least two points that are not "
+                                           + "on top of each other; nothing was added")
+        }
+        return rope
     }
 
     /// The one place a rope is built and registered, which a restore comes
@@ -763,8 +771,6 @@ public final class World3D {
                                 pinned: pinned, maxStretch: maxStretch,
                                 group: group, rodRotations: rodRotations)
         else {
-            noteOnce("addRope needs at least two points that are not on top of "
-                     + "each other; nothing was added.")
             return nil
         }
         softBodies.append(rope)
@@ -813,16 +819,15 @@ public final class World3D {
                               strutRadius: Double = 0.04, prestress: Double = 0.02,
                               stiffness: Double = 1, density: Double = 1,
                               friction: Double = 0.6,
-                              group: CollisionGroup = .default) -> Tensegrity3D? {
+                              group: CollisionGroup = .default) throws -> Tensegrity3D {
         guard let built = Tensegrity3D(world: self, structure: structure,
                                        position: position, strutRadius: strutRadius,
                                        prestress: prestress, stiffness: stiffness,
                                        density: density, friction: friction,
                                        group: group)
         else {
-            noteOnce("addTensegrity needs at least one strut whose two nodes "
-                     + "are apart; nothing was added.")
-            return nil
+            throw PhysicsError.unbuildable("addTensegrity needs at least one strut whose "
+                                           + "two nodes are apart; nothing was added")
         }
         tensegrities.append(built)
         return built

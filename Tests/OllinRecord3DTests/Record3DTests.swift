@@ -60,6 +60,16 @@ import Ollin
         #expect(throws: (any Error).self) { _ = try recording.frame(at: -1) }
     }
 
+    /// The same ask through the pose door is the same failure: out of the
+    /// recording's range throws, where a frame with no recorded pose is `nil`.
+    @Test func poseOutOfRangeThrowsLikeAFrame() throws {
+        let recording = try Record3DRecording(data: makeRecording())
+        #expect(throws: Record3DError.self) { _ = try recording.pose(at: 1) }
+        #expect(throws: Record3DError.self) { _ = try recording.pose(at: -1) }
+        // Frame 0 exists; whether it carries a pose is not a failure either way.
+        _ = try recording.pose(at: 0)
+    }
+
     // MARK: Frame decode
 
     @Test func decodesFrameDepthAndConfidence() throws {

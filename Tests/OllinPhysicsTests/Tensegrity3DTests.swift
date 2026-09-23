@@ -17,11 +17,11 @@ struct Tensegrity3DTests {
 
     /// A world with a floor and the structure standing `lift` above it.
     func standing(_ form: Tensegrity, lift: Double = 0.3,
-                  prestress: Double = 0.02) -> (World3D, Tensegrity3D)? {
+                  prestress: Double = 0.02) throws -> (World3D, Tensegrity3D) {
         let world = World3D()
         world.ground = 0
-        guard let built = world.addTensegrity(form, at: Vector3(0, lift - form.bottom, 0),
-                                              prestress: prestress) else { return nil }
+        let built = try world.addTensegrity(form, at: Vector3(0, lift - form.bottom, 0),
+                                              prestress: prestress)
         return (world, built)
     }
 
@@ -45,9 +45,9 @@ struct Tensegrity3DTests {
     /// cabled ones are still standing after the fall.
     @Test func aTensegrityStandsWhereItsStrutsAloneCollapse() throws {
         let prism = Tensegrity.prism(struts: 3, radius: 1, height: 1.5)
-        let (world, whole) = try #require(standing(prism))
+        let (world, whole) = try standing(prism)
         let bare = Tensegrity(nodes: prism.nodes, struts: prism.struts, cables: [])
-        let (twinWorld, loose) = try #require(standing(bare))
+        let (twinWorld, loose) = try standing(bare)
         let startTop = whole.top
         run(world, seconds: 6)
         run(twinWorld, seconds: 6)
@@ -60,7 +60,7 @@ struct Tensegrity3DTests {
 
     @Test func theIcosahedronLandsWithEveryCableTaut() throws {
         let ball = Tensegrity.icosahedron(strutLength: 1.6)
-        let (world, built) = try #require(standing(ball))
+        let (world, built) = try standing(ball)
         #expect(built.struts.count == 6)
         #expect(built.cables.count == 24)
         #expect(built.jointsBetweenStruts.isEmpty, "no two struts touch")
@@ -80,7 +80,7 @@ struct Tensegrity3DTests {
 
     @Test func aTowerTiesItsLevelsWhereTheyMeet() throws {
         let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 1, levelHeight: 1.4)
-        let (world, built) = try #require(standing(mast))
+        let (world, built) = try standing(mast)
         #expect(built.struts.count == 9)
         #expect(built.cables.count == 21)
         // Two shared polygons of three nodes, a ball joint at each.
@@ -109,7 +109,7 @@ struct Tensegrity3DTests {
     /// as one structure: the same struts, cables, and shared joints, its
     /// nodes where they were, and the grouping running on.
     @Test func aTensegrityComesBackFromASnapshotAsOneStructure() throws {
-        let (world, built) = try #require(standing(Tensegrity.tower(levels: 3)))
+        let (world, built) = try standing(Tensegrity.tower(levels: 3))
         run(world, seconds: 2)
         let nodesBefore = built.nodes
 
@@ -119,7 +119,7 @@ struct Tensegrity3DTests {
         try world.save(to: url)
 
         let fresh = World3D()
-        #expect(fresh.load(contentsOf: url))
+        try fresh.load(contentsOf: url)
         let back = try #require(fresh.tensegrities.first)
         #expect(fresh.tensegrities.count == 1)
         #expect(back.struts.count == 9 && back.cables.count == 21)
@@ -132,9 +132,9 @@ struct Tensegrity3DTests {
             #expect(a.distance(to: b) < 1e-6)
         }
         // Restored and captured again, the bytes settle and do not move.
-        fresh.restore(fresh.snapshot())
+        try fresh.restore(fresh.snapshot())
         let settled = fresh.snapshot()
-        fresh.restore(settled)
+        try fresh.restore(settled)
         #expect(fresh.snapshot() == settled)
         #expect(fresh.tensegrities.count == 1)
         // And it carries on standing.
@@ -147,8 +147,8 @@ struct Tensegrity3DTests {
     /// stays there.
     @Test func aPrismAtTheWrongTwistTurnsTowardTheBalancedOne() throws {
         let balanced = Tensegrity.prismTwist(struts: 3)
-        let (wrongWorld, wrong) = try #require(standing(Tensegrity.prism(twist: 0.2)))
-        let (rightWorld, right) = try #require(standing(Tensegrity.prism()))
+        let (wrongWorld, wrong) = try standing(Tensegrity.prism(twist: 0.2))
+        let (rightWorld, right) = try standing(Tensegrity.prism())
         let wrongBefore = twist(of: wrong, struts: 3)
         #expect(abs(wrongBefore - 0.2) < 1e-6)
         run(wrongWorld, seconds: 8)
@@ -164,7 +164,7 @@ struct Tensegrity3DTests {
     /// A cable and a rod between the same two bodies, pushed together: the
     /// cabled body comes freely, the rodded one is held. Pulled apart, both
     /// are stopped at the length.
-    @Test func aCableHoldsItsLengthOneWayOnly() {
+    @Test func aCableHoldsItsLengthOneWayOnly() throws {
         func drift(_ kind: JointKind3D, push: Double) -> Double {
             let world = World3D()
             world.ground = nil
@@ -187,7 +187,7 @@ struct Tensegrity3DTests {
 
     /// A cable shorter than its anchors' spacing starts taut and pulls them
     /// together, which is what a prestressed cable does.
-    @Test func aShortCablePullsItsAnchorsTogether() {
+    @Test func aShortCablePullsItsAnchorsTogether() throws {
         func spacing(length: Double?) -> Double {
             let world = World3D()
             world.ground = nil
@@ -206,7 +206,7 @@ struct Tensegrity3DTests {
 
     @Test func aShovedFormMovesAsOneAndKeepsItsCablesTaut() throws {
         let ball = Tensegrity.icosahedron(strutLength: 1.6)
-        let (world, built) = try #require(standing(ball, lift: 0.05))
+        let (world, built) = try standing(ball, lift: 0.05)
         run(world, seconds: 3)
         let restTop = built.top
         built.applyImpulse(Vector3(6, 0, 0))
@@ -226,7 +226,7 @@ struct Tensegrity3DTests {
     }
 
     @Test func removingATensegrityTakesItsStrutsAndCables() throws {
-        let (world, built) = try #require(standing(Tensegrity.tower(levels: 2)))
+        let (world, built) = try standing(Tensegrity.tower(levels: 2))
         let crate = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 2, 0))
         #expect(world.tensegrities.count == 1)
         #expect(world.bodies.count == 6 + 1)
@@ -239,11 +239,11 @@ struct Tensegrity3DTests {
         #expect(crate.position.y < 2, "the world still runs")
     }
 
-    @Test func aStructureWithNoUsableStrutIsRefused() {
+    @Test func aStructureWithNoUsableStrutIsRefused() throws {
         let world = World3D()
         let point = Tensegrity(nodes: [Vector3(0, 1, 0), Vector3(0, 1, 0)],
                                struts: [Tensegrity.Member(0, 1)], cables: [])
-        #expect(world.addTensegrity(point) == nil)
+        #expect(throws: PhysicsError.self) { try world.addTensegrity(point) }
         #expect(world.tensegrities.isEmpty && world.bodies.isEmpty)
     }
 
@@ -253,7 +253,7 @@ struct Tensegrity3DTests {
         var prism = Tensegrity.prism()
         prism.nodes.append(Vector3(0, 4, 0))            // a node nothing ends on
         prism.cables.append(Tensegrity.Member(0, prism.nodes.count - 1))
-        let (world, built) = try #require(standing(prism))
+        let (world, built) = try standing(prism)
         #expect(built.cables.count == 9)
         #expect(built.cableRestLengths.count == 9)
         #expect(built.cableLengths.count == 9)
@@ -262,7 +262,7 @@ struct Tensegrity3DTests {
     }
 
     @Test func aTensegrityGoesToSleepOnceItHasSettled() throws {
-        let (world, built) = try #require(standing(Tensegrity.icosahedron(strutLength: 1.6)))
+        let (world, built) = try standing(Tensegrity.icosahedron(strutLength: 1.6))
         run(world, seconds: 4)
         #expect(!built.isAwake)
         built.wake()

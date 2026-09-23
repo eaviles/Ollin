@@ -31,7 +31,7 @@ final class FlowArrows: Sketch {
     override func setup() {
         // A moment where one arm sweeps across the frame while the far leg
         // holds still: the two cases the field has to tell apart.
-        let clip = VideoPlayer(url: SampleClip.dance.url)
+        let clip = try! VideoPlayer(url: SampleClip.dance.url)
         clip.isMuted = true
         clip.seek(to: 1.5)
         guard let before = clip.snapshot() else { return }

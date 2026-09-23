@@ -155,36 +155,36 @@ e10e73130c14  Guide/24-WorldsWithWeight.md:287  cannot find 'world' in scope
 ce51672c1b67  Guide/24-WorldsWithWeight.md:305  cannot find 'world' in scope
 db8431ac70a1  Guide/24-WorldsWithWeight.md:317  cannot find 'world' in scope
 8378d7a7198b  Guide/24-WorldsWithWeight.md:329  cannot find 'world' in scope
-5a7e6948dfec  Guide/24-WorldsWithWeight.md:342  cannot find 'world' in scope
-3b24b2bd1c66  Guide/24-WorldsWithWeight.md:367  cannot find 'world' in scope
-11274cdabc98  Guide/24-WorldsWithWeight.md:375  cannot find 'world' in scope
-ba741ed44437  Guide/24-WorldsWithWeight.md:399  cannot find 'world' in scope
-ab56176ee878  Guide/24-WorldsWithWeight.md:410  cannot find 'island' in scope
-02698ee714d5  Guide/24-WorldsWithWeight.md:417  cannot find 'world' in scope
-a2328aeea45a  Guide/24-WorldsWithWeight.md:427  cannot find 'world' in scope
+4f33255a4409  Guide/24-WorldsWithWeight.md:342  cannot find 'world' in scope
+a0a833fd37c1  Guide/24-WorldsWithWeight.md:367  cannot find 'world' in scope
+16367da2091f  Guide/24-WorldsWithWeight.md:375  cannot find 'world' in scope
+8ab73098a6ad  Guide/24-WorldsWithWeight.md:401  cannot find 'world' in scope
+ab56176ee878  Guide/24-WorldsWithWeight.md:412  cannot find 'island' in scope
+96f087b1e562  Guide/24-WorldsWithWeight.md:419  cannot find 'world' in scope
+a2328aeea45a  Guide/24-WorldsWithWeight.md:429  cannot find 'world' in scope
 ec7989d78e47  Guide/24-WorldsWithWeight.md:50  cannot find 'world' in scope
 7df97e94d8b3  Guide/24-WorldsWithWeight.md:74  cannot find 'world' in scope
 de01483cf250  Guide/24-WorldsWithWeight.md:87  cannot find 'world' in scope
 0adc8b169179  Guide/24-WorldsWithWeight.md:98  cannot find 'world' in scope
 7ff359543b63  Guide/25-CharactersAndCloth.md:105  cannot find 'wheel' in scope
-15cb65133557  Guide/25-CharactersAndCloth.md:120  cannot find 'world' in scope
+8e46ce6f6598  Guide/25-CharactersAndCloth.md:120  cannot find 'world' in scope
 966c62e5d1c6  Guide/25-CharactersAndCloth.md:137  cannot find 'crawler' in scope
 f7e7df7712cf  Guide/25-CharactersAndCloth.md:146  cannot find 'crawler' in scope
-be6a2cd456e5  Guide/25-CharactersAndCloth.md:163  cannot find 'figure' in scope
+2995d1747307  Guide/25-CharactersAndCloth.md:163  cannot find 'figure' in scope
 94fba7b9e938  Guide/25-CharactersAndCloth.md:172  cannot find 'world' in scope
 2f38c4b11af4  Guide/25-CharactersAndCloth.md:182  cannot find 'target' in scope
 4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
-9a7b0d19f580  Guide/25-CharactersAndCloth.md:207  cannot find 'cloth' in scope
+58b997f77e8d  Guide/25-CharactersAndCloth.md:207  cannot find 'cloth' in scope
 aa17eb972ebd  Guide/25-CharactersAndCloth.md:214  cannot find 'world' in scope
 e99e6b150018  Guide/25-CharactersAndCloth.md:224  consecutive statements on a line must be separated by ';'
 7b23b6918cf2  Guide/25-CharactersAndCloth.md:233  labeled block needs 'do'
-5b54aa9e8493  Guide/25-CharactersAndCloth.md:241  cannot find 'ball' in scope
+48566b6adcee  Guide/25-CharactersAndCloth.md:241  cannot find 'ball' in scope
 8fe6c50adef5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
 dee0a1efaea9  Guide/25-CharactersAndCloth.md:252  cannot find 'banner' in scope
-4e6a38ca9ad1  Guide/25-CharactersAndCloth.md:262  cannot find 'cape' in scope
+5861da65fcc2  Guide/25-CharactersAndCloth.md:262  cannot find 'cape' in scope
 e63def96d4af  Guide/25-CharactersAndCloth.md:272  cannot find 'figure' in scope
 90cafc6b1b58  Guide/25-CharactersAndCloth.md:288  labeled block needs 'do'
-fc436a16e28e  Guide/25-CharactersAndCloth.md:302  cannot find 'world' in scope
+5f3e78885466  Guide/25-CharactersAndCloth.md:302  cannot find 'world' in scope
 b9f15e308a54  Guide/25-CharactersAndCloth.md:313  consecutive statements on a line must be separated by ';'
 144a05ac56ff  Guide/25-CharactersAndCloth.md:326  cannot find 'chain' in scope
 c863fba0a7c9  Guide/25-CharactersAndCloth.md:348  cannot find 'world' in scope
@@ -198,7 +198,7 @@ bc882c038a58  Guide/25-CharactersAndCloth.md:418  cannot find 'world' in scope
 50ebedf565e1  Guide/25-CharactersAndCloth.md:426  cannot find 'contact' in scope
 ff8f4ca0b8bd  Guide/25-CharactersAndCloth.md:52  cannot find 'walker' in scope
 53d9e47e66f9  Guide/25-CharactersAndCloth.md:59  cannot find 'lookout' in scope
-2cd2985c6a8e  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
+fad6c6de25fa  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
 c10ff351dd09  Guide/25-CharactersAndCloth.md:84  cannot find 'car' in scope
 ed348ec0d2b1  Guide/26-SculptingWithFields.md:158  cannot find 'box' in scope
 b17151cd7343  Guide/26-SculptingWithFields.md:182  cannot find 'ring' in scope
@@ -258,7 +258,7 @@ c6da73302d67  Guide/28-SoundAndControl.md:438  cannot find 'ship' in scope
 6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
 3a65eb414a42  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
 09d5961233f3  Guide/29-MakingSound.md:117  cannot find 'synth' in scope
-cccb28333938  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scope
+e5980fec109a  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scope
 d66ebfc13577  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
 139bec613386  Guide/29-MakingSound.md:167  cannot find 'synth' in scope
 a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
@@ -266,7 +266,7 @@ a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
 1331fb3327dd  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
 a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
 5f7fa83f1394  Guide/29-MakingSound.md:257  cannot find 'synth' in scope
-587bb669d987  Guide/29-MakingSound.md:266  cannot find 'SampledInstrument' in scope
+ac07403f16af  Guide/29-MakingSound.md:266  cannot find 'SampledInstrument' in scope
 639123956822  Guide/29-MakingSound.md:276  cannot find 'synth' in scope
 7fef9776e0fa  Guide/29-MakingSound.md:289  cannot find 'synth' in scope
 65dc6673aa04  Guide/29-MakingSound.md:29  cannot find 'synth' in scope

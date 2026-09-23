@@ -23,7 +23,7 @@ final class Raft: Sketch {
                             waves: Water.Waves(amplitude: 0.08, wavelength: 9,
                                                speed: 1.2))
 
-        raft = world.addSoftBody(from: .plane(width: deckSize, depth: deckSize,
+        raft = try? world.addSoftBody(from: .plane(width: deckSize, depth: deckSize,
                                               segments: 14),
                                  at: Vector3(0, 0.4, 0), mass: 240,
                                  stiffness: 0.998, bend: 1, damping: 0.1,

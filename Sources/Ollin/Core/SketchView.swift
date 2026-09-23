@@ -157,12 +157,20 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var didRestoreCheckpoint = false
     private var didLogFirstSave = false
     /// Whether this run's `--param` values have been applied. They are a launch
-    /// instruction, not a standing one: they land once, on the first `setup()`,
-    /// and a reload afterwards keeps whatever the inspector has since turned
-    /// (which the host carries across the swap anyway).
+    /// instruction, not a standing one: they land once, around the first
+    /// `setup()`, and a reload afterwards keeps whatever the inspector has since
+    /// turned (which the host carries across the swap anyway).
     private var didApplyLaunchParams = false
 
-    /// Apply the parameter values this run was started with, the first time only.
+    /// Put the parameter values this run was started with on the sketch before
+    /// its first `setup()`, so what `setup()` builds from a parameter reads them.
+    private func applyLaunchParamsBeforeSetup() {
+        guard !didApplyLaunchParams else { return }
+        sketch.applyCommandLineValues()
+    }
+
+    /// Apply the parameter values this run was started with after its first
+    /// `setup()`, the first time only, so they win over a value it set itself.
     private func applyLaunchParams() {
         guard !didApplyLaunchParams else { return }
         didApplyLaunchParams = true
@@ -528,6 +536,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // long jump from ending with a few thousand readbacks still resident.
         autoreleasepool {
             if !didSetup {
+                applyLaunchParamsBeforeSetup()
                 sketch.setup()
                 applyLaunchParams()
                 didSetup = true
@@ -1020,6 +1029,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             #if os(macOS)
             (view as? OllinMTKView)?.seedPointer()
             #endif
+            applyLaunchParamsBeforeSetup()
             sketch.setup()
             restored?.applyAfterSetup(to: sketch)
             applyLaunchParams()
@@ -2627,6 +2637,7 @@ public enum OllinApp {
         // renderer steps its persistent layers), and the last draw is the one
         // returned: a running mean settles before the still is taken.
         let settle = max(1, exportSettle)
+        var drawSeconds = 0.0                        // the last draw's own time, reported with its render
         for k in 0...target {                        // advance so frame N is correct
             let draws = k == target ? settle : 1
             for pass in 0..<draws {
@@ -2634,8 +2645,12 @@ public enum OllinApp {
                 // for arrives autoreleased, and this drive never returns to the run
                 // loop that would otherwise empty the pool. `HeadlessDrainTests`.
                 autoreleasepool {
-                    sketch.advance(time: Double(k) / fps, deltaTime: pass == 0 ? 1 / fps : 0, frameRate: fps)
+                    let deltaTime = pass == 0 ? 1 / fps : 0
+                    sketch.advance(time: Double(k) / fps, deltaTime: deltaTime, frameRate: fps)
+                    let drawStart = CACurrentMediaTime()
                     sketch.performDraw()
+                    drawSeconds = CACurrentMediaTime() - drawStart
+                    var rendered = true
                     if sketch.drawer.accumulates {
                         accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
                                                                 width: width, height: height)
@@ -2647,18 +2662,45 @@ public enum OllinApp {
                         // layer it is there to settle.
                         fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
                                                  width: width, height: height)
-                    } else if k < target {
+                    } else {
+                        rendered = false
                         // A stateful compute sim must run on the GPU every frame to evolve;
                         // the intermediate frames we don't capture still need their steps
                         // executed (only the final frame is rendered + read back below).
-                        renderer.stepCompute(sketch.drawer)
+                        if k < target { renderer.stepCompute(sketch.drawer) }
+                    }
+                    // A frame that rendered reports its timing, as a live frame does.
+                    if rendered {
+                        reportHeadlessFrame(sketch, renderer: renderer, deltaTime: deltaTime,
+                                            fps: fps, drawSeconds: drawSeconds)
                     }
                 }
             }
         }
         if sketch.drawer.accumulates { return accumulated }
         if sketch.drawer.usesFeedback || settle > 1 { return fedBack }
-        return renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
+        let image = renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
+        reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 1 / fps, fps: fps, drawSeconds: drawSeconds)
+        return image
+    }
+
+    /// Hand a headless frame's timing to the sketch's extensions, the way the
+    /// runner does after a live frame (`afterFrame`). The numbers are the
+    /// frame's own rather than smoothed: `deltaTime` and `frameRate` are the
+    /// export clock's, the draw time is this draw's, and the profile is what
+    /// the renderer counted and timed for this render, its wait being the
+    /// drive's own wait for the GPU, since a headless render is synchronous.
+    static func reportHeadlessFrame(_ sketch: Sketch, renderer: MetalRenderer,
+                                    deltaTime: Double, fps: Double, drawSeconds: Double) {
+        var profile = renderer.profile
+        profile.cpuDrawMS = drawSeconds * 1000
+        sketch.runAfterFrame(FrameInfo(deltaTime: deltaTime, frameRate: fps,
+                                       cpuDrawMS: profile.cpuDrawMS,
+                                       vertexCount: sketch.drawer.vertices.count,
+                                       sdfCount: sketch.drawer.sdfInstances.count,
+                                       pointCount: sketch.drawer.points.count,
+                                       particleCount: sketch.drawer.particleCount,
+                                       profile: profile))
     }
 
     /// Render one frame of `sketch` off-screen and write it as a still, with no
@@ -2879,7 +2921,9 @@ public enum OllinApp {
             // until the machine is swapping. `HeadlessDrainTests` pins it.
             autoreleasepool {
                 sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
+                var drawStart = CACurrentMediaTime()
                 sketch.performDraw()                          // run every frame so state settles
+                var drawSeconds = CACurrentMediaTime() - drawStart
 
                 // Whether the interpolator can work on this sketch at all is only
                 // knowable once it has drawn, so it is asked at the first frame,
@@ -2901,6 +2945,10 @@ public enum OllinApp {
                     rendered = accumulates
                         ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
                         : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    // Every rendered frame reports its timing to the extensions, a
+                    // warmup frame and a settle draw included, as a live frame does.
+                    reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 1 / clock,
+                                        fps: clock, drawSeconds: drawSeconds)
                     // A written frame settles: the same moment drawn again `exportSettle`
                     // times with the clock held (no `deltaTime`, the frame count moving
                     // on so the renderer steps its persistent layers), and the last
@@ -2913,10 +2961,14 @@ public enum OllinApp {
                             // the pass before it go here rather than at the frame's end.
                             autoreleasepool {
                                 sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
+                                drawStart = CACurrentMediaTime()
                                 sketch.performDraw()
+                                drawSeconds = CACurrentMediaTime() - drawStart
                                 rendered = accumulates
                                     ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
                                     : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                                reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 0,
+                                                    fps: clock, drawSeconds: drawSeconds)
                             }
                         }
                     }
@@ -3133,6 +3185,21 @@ public extension OllinApp {
     /// `Sketch.main()` routes every `@main` sketch through here.
     @MainActor
     @discardableResult
+    /// The two flags every one-frame export reads: `--frame N`, the frame to
+    /// render (0 unless given), and `--fps F`, the rate its clock counts at (60
+    /// unless given). One reader for the still, the linear frame, the plates
+    /// and the vector files, so each lands on the moment `--export-sequence`
+    /// puts at its frame N + 1 for the same rate: a still taken at `--frame 30
+    /// --fps 10` is the sequence's frame at three seconds, not at half a second.
+    internal static func stillFlags(_ args: [String]) -> (frame: Int, fps: FrameRate) {
+        func value(_ flag: String) -> String? {
+            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+            return args[i + 1]
+        }
+        return (value("--frame").flatMap(Int.init) ?? 0,
+                value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60)
+    }
+
     static func handleCommandLine(_ args: [String] = CommandLine.arguments,
                                   makeSketch: () -> Sketch) -> Bool {
         // `--capture-source` beside any export flag ties the files to the source
@@ -3746,7 +3813,7 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let frame = value("--frame").flatMap(Int.init) ?? 0
+            let (frame, fps) = stillFlags(args)
             var profile: ICCProfile?
             if let named = value("--profile") {
                 let expanded = (named as NSString).expandingTildeInPath
@@ -3784,7 +3851,7 @@ public extension OllinApp {
                 return true
             }
             OllinApp.exportPlates(make(), to: args[i + 1], profile: profile, intent: intent,
-                                  simulatesPaper: args.contains("--paper"), frame: frame,
+                                  simulatesPaper: args.contains("--paper"), frame: frame, fps: fps,
                                   drawsRegistrationMarks: !args.contains("--no-marks"),
                                   quality: renderQuality, screen: screen)
             return true
@@ -3794,19 +3861,13 @@ public extension OllinApp {
         // every other still export ends at, with the scene's depth beside the
         // color when the frame was drawn through a 3D camera.
         if let i = args.firstIndex(of: "--export-exr"), i + 1 < args.count {
-            var frame = 0
-            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
-                frame = Int(args[f + 1]) ?? 0
-            }
-            OllinApp.exportEXR(make(), to: args[i + 1], frame: frame, quality: renderQuality)
+            let (frame, fps) = stillFlags(args)
+            OllinApp.exportEXR(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
             return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
-            var frame = 0
-            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
-                frame = Int(args[f + 1]) ?? 0
-            }
-            OllinApp.export(make(), to: args[i + 1], frame: frame, quality: renderQuality)
+            let (frame, fps) = stillFlags(args)
+            OllinApp.export(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
             return true
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
@@ -3826,8 +3887,7 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            var frame = 0
-            if let f = value("--frame").flatMap(Int.init) { frame = f }
+            let (frame, fps) = stillFlags(args)
             var hatching: Hatching?
             if args.contains("--hatch") || args.contains("--cross-hatch") {
                 var h = Hatching()
@@ -3838,11 +3898,11 @@ public extension OllinApp {
             }
             var handled = false
             if let i = svgFlag, i + 1 < args.count {
-                OllinApp.exportSVG(make(), to: args[i + 1], frame: frame, hatching: hatching)
+                OllinApp.exportSVG(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if let i = pdfFlag, i + 1 < args.count {
-                OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, hatching: hatching)
+                OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if let i = gcodeFlag, i + 1 < args.count {
@@ -3866,7 +3926,7 @@ public extension OllinApp {
                     settings = GCode(machine, width: width, margin: margin ?? 0)
                 }
                 OllinApp.exportGCode(make(), to: args[i + 1], settings: settings,
-                                     frame: frame, hatching: hatching)
+                                     frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if let i = embroideryFlag, i + 1 < args.count {
@@ -3879,7 +3939,8 @@ public extension OllinApp {
                 let spacing = value("--fill-spacing").flatMap(Double.init) ?? 0.4
                 let settings = Embroidery(width: width, margin: margin, stitchLength: stitch,
                                           fillSpacing: spacing > 0 ? spacing : nil)
-                OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings, frame: frame)
+                OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings,
+                                          frame: frame, fps: fps)
                 handled = true
             }
             if let i = dxfFlag, i + 1 < args.count {
@@ -3900,7 +3961,7 @@ public extension OllinApp {
                     settings = DXF(width: width, margin: margin ?? 0)
                 }
                 OllinApp.exportDXF(make(), to: args[i + 1], settings: settings,
-                                   frame: frame, hatching: hatching)
+                                   frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if !handled {

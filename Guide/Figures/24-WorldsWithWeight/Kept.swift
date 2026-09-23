@@ -22,7 +22,7 @@ final class Kept: Sketch {
         let saved = build(nudge: 0)
 
         let restored = World3D()
-        restored.restore(saved.snapshot())
+        try? restored.restore(saved.snapshot())
 
         heaps = [saved, restored, build(nudge: 1e-7)]
     }

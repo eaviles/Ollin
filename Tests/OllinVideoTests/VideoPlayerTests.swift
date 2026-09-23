@@ -94,7 +94,7 @@ import os
     @Test func metadataLoads() async throws {
         guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         guard let duration = await waitFor(seconds: 5, { player.duration }) else {
             return   // soft-skip: metadata never loaded headless
         }
@@ -106,7 +106,7 @@ import os
     @Test func snapshotDecodesPixels() async throws {
         guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         player.play()
         guard let snapshot = await waitFor(seconds: 5, { player.snapshot() }) else {
             return   // soft-skip: decode never produced a frame headless
@@ -123,7 +123,7 @@ import os
         guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
         guard let url = await writeTestClip() else { return }
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         player.loops = true
         player.play()
         guard let frame = await waitFor(seconds: 5, { player.frame }) else {
@@ -138,7 +138,7 @@ import os
     @Test func frameTapDeliversCPUFrames() async throws {
         guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         // Count deliveries and remember the last frame's size (CGImage isn't
         // Sendable, so only plain values cross out of the tap).
         let seen = OSAllocatedUnfairLock(initialState: (count: 0, width: 0, height: 0))
@@ -173,6 +173,30 @@ import os
         #expect(throws: VideoError.self) {
             _ = try VideoPlayer(path: "/nonexistent/clip.mp4")
         }
+        // The same missing file through the other two doors, so an
+        // unreadable clip is an error whichever door was used.
+        #expect(throws: VideoError.self) {
+            _ = try VideoPlayer(url: URL(fileURLWithPath: "/nonexistent/clip.mp4"))
+        }
+        #expect(throws: VideoError.self) {
+            _ = try VideoPlayer(resource: "nonexistent", withExtension: "mp4", in: .main)
+        }
+    }
+
+    /// A file that is there and is not a movie opens, since nothing can tell
+    /// until the system reads it, and then says why there are no frames.
+    @Test func anUnreadableFileSaysWhy() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-not-a-movie-\(UUID().uuidString).mp4")
+        try Data("this is not a movie".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let player = try VideoPlayer(url: url)
+        #expect(player.unavailableReason == nil, "nothing has been read yet")
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        #expect(player.frame == nil)
+        #expect(player.unavailableReason?.contains("could not be read") == true,
+                "the reason: \(player.unavailableReason ?? "none")")
     }
 
     /// A headless export must show the video frame the sketch clock asks for,
@@ -188,7 +212,7 @@ import os
 
         func exportedBlue(atFrame frame: Int) -> Double? {
             let sketch = VideoExportProbeSketch()
-            sketch.player = VideoPlayer(url: url)
+            sketch.player = try? VideoPlayer(url: url)
             guard let cgImage = OllinApp.image(of: sketch, frame: frame, fps: 60) else { return nil }
             return Image(cgImage: cgImage)[32, 32].blue
         }
@@ -216,7 +240,7 @@ import os
         guard let url = await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) })
         else { return }                                               // soft-skip: no encoder
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
 
         OllinApp.isRenderingHeadless = true
         player.seek(to: 6.5 / 12)          // inside clip frame 6: blue 130
@@ -247,7 +271,7 @@ import os
             "Examples/Video/SoundReactive/voladores-fandanguito.mp4")
         guard FileManager.default.fileExists(atPath: clip.path) else { return }   // soft-skip
 
-        let player = VideoPlayer(url: clip)
+        let player = try VideoPlayer(url: clip)
         // Near-silent output keeps the test quiet; the tap hears the pre-volume
         // signal regardless. (`isMuted = true` would stop audio processing
         // entirely and starve the tap, which is why it isn't used here.)
@@ -289,7 +313,7 @@ import os
         OllinApp.isRenderingHeadless = true
         defer { OllinApp.isRenderingHeadless = false }
 
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         #expect(!player.isPlaying)
         player.play()
         #expect(player.isPlaying)
@@ -315,7 +339,7 @@ import os
     @Test func fittedRectLetterboxes() async throws {
         guard let url = await writeTestClip() else { return }
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = VideoPlayer(url: url)
+        let player = try VideoPlayer(url: url)
         guard await waitFor(seconds: 5, { player.size }) != nil else { return }
         // A square video in a wide container: full height, centered horizontally.
         let rect = player.fittedRectangle(in: Rectangle(x: 0, y: 0, width: 200, height: 100))

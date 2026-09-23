@@ -80,14 +80,26 @@ public final class Tone: AudioSource {
         engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
     }
 
-    /// Starts the oscillator.
+    /// Starts the oscillator. An engine that will not start leaves `isPlaying`
+    /// false and says why in `unavailableReason`.
     public func play() {
         guard !isPlaying else { return }
         installTapIfNeeded()
         engine.prepare()
-        try? engine.start()
+        do {
+            try engine.start()
+        } catch {
+            unavailableReason = "the audio engine could not start: \(error.localizedDescription)"
+            return
+        }
+        unavailableReason = nil
         isPlaying = true
     }
+
+    /// Why nothing sounds, in a sentence worth drawing, or `nil` while the
+    /// tone plays or has not been asked to. A `play()` that fails writes it,
+    /// and the next one that succeeds clears it.
+    public private(set) var unavailableReason: String?
 
     /// Stops the oscillator.
     public func stop() {

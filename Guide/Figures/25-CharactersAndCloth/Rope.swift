@@ -26,7 +26,7 @@ final class Rope: Sketch {
     override func setup() {
         world.ground = 0
         for (index, bend) in [0.0, 0.5, 1.0].enumerated() {
-            let line = world.addRope(through: Rope.arm(22, spacing: 0.061),
+            let line = try? world.addRope(through: Rope.arm(22, spacing: 0.061),
                                      // A little in front of the posts, so a
                                      // line that folds down hangs clear of one.
                                      at: Vector3(-2.45 + Double(index) * 1.5, 2.52, 0.14),
@@ -36,7 +36,7 @@ final class Rope: Sketch {
             if let line { arms.append(line) }
         }
         // The same limp rope again, with something to carry.
-        chain = world.addRope(through: (0 ..< 13).map { Vector3(0, -Double($0) * 0.155, 0) },
+        chain = try? world.addRope(through: (0 ..< 13).map { Vector3(0, -Double($0) * 0.155, 0) },
                               at: Vector3(2.22, 2.52, 0.5),
                               radius: 0.055, mass: 2.5,
                               bend: 0.06, damping: 0.4, iterations: 10,

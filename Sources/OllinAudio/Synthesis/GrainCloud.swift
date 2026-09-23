@@ -63,28 +63,28 @@ public final class GrainSource: @unchecked Sendable {
     }
 
     /// A source read from an audio file. Folded to one channel, like every
-    /// other recording here.
-    public convenience init?(contentsOf url: URL, rootKey: Int = 60) {
+    /// other recording here. Throws `AudioError.couldNotDecode` for a file
+    /// that is not there or is not a sound.
+    public convenience init(contentsOf url: URL, rootKey: Int = 60) throws {
         guard let (frames, rate) = SampledInstrument.read(url) else {
-            audioNoteOnce("could not read the sound at \(url.lastPathComponent).")
-            return nil
+            throw AudioError.couldNotDecode(url.lastPathComponent)
         }
         self.init(name: url.deletingPathExtension().lastPathComponent,
                   frames: frames, sampleRate: rate, rootKey: rootKey)
     }
 
-    /// A source read from an audio file bundled with a sketch.
+    /// A source read from an audio file bundled with a sketch. Throws
+    /// `AudioError.resourceNotFound` when the bundle has no such file.
     ///
     /// The bundle is explicit because a default would resolve to Ollin's own
     /// rather than the caller's, which is the rule every loader here follows.
-    public convenience init?(named name: String, withExtension ext: String = "wav",
-                             in bundle: Bundle, rootKey: Int = 60) {
+    public convenience init(named name: String, withExtension ext: String = "wav",
+                            in bundle: Bundle, rootKey: Int = 60) throws {
         let base = (name as NSString).deletingPathExtension
         guard let url = bundle.url(forResource: base, withExtension: ext) else {
-            audioNoteOnce("no sound named \(name) in that bundle.")
-            return nil
+            throw AudioError.resourceNotFound("\(base).\(ext)")
         }
-        self.init(contentsOf: url, rootKey: rootKey)
+        try self.init(contentsOf: url, rootKey: rootKey)
     }
 
     /// A source drawn rather than recorded: `seconds` of a wave at `frequency`,

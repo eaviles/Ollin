@@ -46,7 +46,7 @@ final class Ragdoll: Sketch {
         wave = figure.animations.first
         world.ground = 0
         world.restitution = 0.05
-        ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
+        ragdoll = try? world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
                                    mass: 72, friction: 0.7)
         standUp()
     }

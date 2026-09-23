@@ -23,16 +23,16 @@ final class Cloth: Sketch {
         world.addBody(.sphere(radius: 0.62), at: Vector3(-1.05, 0.62, 0),
                       kind: .static, friction: 0.8)
 
-        sheet = world.addSoftBody(from: .plane(width: 2.2, depth: 2.2, segments: 22),
+        sheet = try? world.addSoftBody(from: .plane(width: 2.2, depth: 2.2, segments: 22),
                                   at: Vector3(-1.05, 2.1, 0),
                                   mass: 0.5, stiffness: 0.95, bend: 0.2,
                                   friction: 0.9, vertexRadius: 0.012)
 
         // The same mesh twice; the only difference is the air in it.
         let shell = Mesh.icosphere(radius: ballRadius, subdivisions: 4)
-        limp = world.addSoftBody(from: shell, at: Vector3(0.75, 1.6, 0.25),
+        limp = try? world.addSoftBody(from: shell, at: Vector3(0.75, 1.6, 0.25),
                                  mass: 0.5, bend: 0.12, pressure: 0, friction: 0.6)
-        firm = world.addSoftBody(from: shell, at: Vector3(2.0, 1.6, -0.15),
+        firm = try? world.addSoftBody(from: shell, at: Vector3(2.0, 1.6, -0.15),
                                  mass: 0.5, bend: 0.12, pressure: 3, friction: 0.6)
     }
 
