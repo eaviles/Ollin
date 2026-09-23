@@ -40,18 +40,6 @@ import os
 /// the way.
 public final class PointSegmenter: VisionTracking, @unchecked Sendable {
 
-    /// Why a run couldn't happen.
-    public enum Error: Swift.Error, CustomStringConvertible {
-        /// The models aren't usable here; the text is `unavailableReason`.
-        case unavailable(String)
-
-        public var description: String {
-            switch self {
-            case .unavailable(let reason): return reason
-            }
-        }
-    }
-
     /// One answered pick: the thing under the point(s), lifted. Handed over
     /// whole, its images built fresh per answer and never mutated after,
     /// which is the `@unchecked Sendable` promise (the same one
@@ -246,13 +234,13 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
     /// Pick from a still image, once: segment the thing under `points`
     /// (image pixel coordinates), steered away from any `avoiding` points.
     /// Waits for the models to load on the first call; throws
-    /// `Error.unavailable` when they can't load or can't run here. `nil`
+    /// `VisionError.unavailable` when they can't load or can't run here. `nil`
     /// when the prompt matched nothing.
     public func detect(in image: Image, at points: [Vector2],
                        avoiding: [Vector2] = []) async throws -> Pick? {
         await ensureLoading().value
         guard let models = lock.withLockUnchecked({ $0.models }) else {
-            throw Error.unavailable(status.reason ?? "The models aren't available.")
+            throw VisionError.unavailable(status.reason ?? "The models aren't available.")
         }
         let frame = FrameBox(image.currentCGImage())
         let pixels = Rectangle(x: 0, y: 0,
@@ -375,7 +363,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
                             [kCVPixelBufferCGImageCompatibilityKey: true] as CFDictionary,
                             &pixelBuffer)
         guard let buffer = pixelBuffer else {
-            throw Error.unavailable("Couldn't allocate the model's input buffer.")
+            throw VisionError.unavailable("Couldn't allocate the model's input buffer.")
         }
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
@@ -386,7 +374,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
                 | CGBitmapInfo.byteOrder32Little.rawValue) else {
-            throw Error.unavailable("Couldn't draw into the model's input buffer.")
+            throw VisionError.unavailable("Couldn't draw into the model's input buffer.")
         }
         context.interpolationQuality = .high
         context.draw(frame.cgImage, in: CGRect(x: 0, y: 0, width: edge, height: edge))
@@ -396,7 +384,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
         guard let image = output.featureValue(for: "image_embedding")?.multiArrayValue,
               let coarse = output.featureValue(for: "feats_s0")?.multiArrayValue,
               let fine = output.featureValue(for: "feats_s1")?.multiArrayValue else {
-            throw Error.unavailable("The image encoder produced no embedding.")
+            throw VisionError.unavailable("The image encoder produced no embedding.")
         }
         return Embeddings(image: image, coarse: coarse, fine: fine)
     }
@@ -419,7 +407,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
                                                            "labels": labels]))
         guard let sparse = prompt.featureValue(for: "sparse_embeddings")?.multiArrayValue,
               let dense = prompt.featureValue(for: "dense_embeddings")?.multiArrayValue else {
-            throw Error.unavailable("The prompt encoder produced no embedding.")
+            throw VisionError.unavailable("The prompt encoder produced no embedding.")
         }
         let output = try models.maskDecoder.prediction(
             from: MLDictionaryFeatureProvider(dictionary: [
@@ -430,7 +418,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
                 "dense_embedding": dense]))
         guard let scores = output.featureValue(for: "scores")?.multiArrayValue,
               let masks = output.featureValue(for: "low_res_masks")?.multiArrayValue else {
-            throw Error.unavailable("The mask decoder produced no mask.")
+            throw VisionError.unavailable("The mask decoder produced no mask.")
         }
 
         // Three candidate readings; the best-scored one wins.

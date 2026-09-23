@@ -446,7 +446,7 @@ if let body = tracker.body {
 PersonSegmenter(_ source: any FrameSource, quality: Quality = .balanced)
 var matte: Image? { get }
 var cutout: Image? { get }
-static func detect(in: Image, quality: Quality = .accurate) async throws -> Segmentation?
+static func detect(in: Image, quality: Quality = .accurate) async throws -> Segmentation
 ```
 
 `PersonSegmenter` separates the people from the rest of the frame. The pose trackers reduce a person to joints, while this one gives you their **pixels**. `matte` is a soft white silhouette of everyone in view, and its alpha is the per-pixel confidence. `tint(_:)` recolors it into a shadow, a glow, or a flat silhouette. `cutout` is the frame's own pixels with the background removed, ready to composite over anything the sketch draws. Both are plain `Image`s, so draw them into the same rectangle as the frame and they sit exactly on the picture.
@@ -506,7 +506,7 @@ var isPicking: Bool { get }
 func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> Pick?
 ```
 
-A tracker that runs a model of its own throws when the model will not load: `PointSegmenter.Error`, `ModelTracker.Error`, `ConceptTracker.Error`, `DepthTracker.Error`, and `DepthClip.Error` are each an `.unavailable(String)` carrying the reason in a sentence worth printing, usually a missing or mismatched model file.
+A tracker that runs a model of its own throws `VisionError.unavailable` from a call made while the model will not load or run here, carrying the same sentence its `unavailableReason` holds, usually a missing or mismatched model file: a call in hand can throw, where a frame drawn without one can only read the property. `VisionError.failed` is the other case, a run that went through and could not produce its result. The depth tracker and the depth clip never throw; a model that answers wrongly lands in their `unavailableReason`.
 
 `PointSegmenter` lifts **whatever you point at**. `SubjectSegmenter` decides for itself what stands out. This one takes direction: give it one point, and it segments the thing under that point, whatever that thing is. A click picks the mug, not the person holding it. It uses a promptable-segmentation model in three parts. `Scripts/fetch-models.sh` fetches the parts, and they are never committed. Hand the three files to the initializer.
 
@@ -899,7 +899,7 @@ struct Saliency {
 }
 ```
 
-`Saliency` is what the still-image `detect(in:mode:)` returns: the same three surfaces the live tracker publishes, as one value. It is `nil` only if the heat map could not be converted.
+`Saliency` is what the still-image `detect(in:mode:)` returns: the same three surfaces the live tracker publishes, as one value. A heat map the system will not convert throws `VisionError.failed` rather than coming back as nothing.
 
 <a name="concepttracker"></a>
 

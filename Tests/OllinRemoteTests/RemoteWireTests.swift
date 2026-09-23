@@ -220,6 +220,45 @@ private final class RemoteProbeSketch: Sketch {
 
     // MARK: The apply path, end to end without a socket
 
+    /// A port another program holds is said, not printed, and is not the end:
+    /// `isRunning` stays false with the reason in a sentence, `boundPort` is
+    /// nil, and `start()` tries again once the port is free.
+    @Test func aPortAlreadyTakenIsSaidAndTriedAgain() async throws {
+        let blocker = try RemotePortBlocker()
+        let sketch = RemoteProbeSketch()
+        let remote = RemoteInspector(port: blocker.port)
+        remote.setup(sketch)
+        defer { remote.stop() }
+
+        let reason = try await waitFor { remote.unavailableReason }
+        #expect(reason.contains("\(blocker.port)"), Comment(rawValue: reason))
+        #expect(!remote.isRunning)
+        #expect(remote.boundPort == nil)
+
+        blocker.close()
+        remote.start()
+        _ = try await waitFor { remote.boundPort }
+        #expect(remote.isRunning)
+        #expect(remote.unavailableReason == nil)
+
+        remote.stop()
+        #expect(!remote.isRunning)
+        #expect(remote.boundPort == nil, "a stopped server has no port")
+    }
+
+    private struct WaitTimeout: Error {}
+
+    /// Probe first, then read the clock, so a task handed back late still
+    /// sees an answer that is already there.
+    private func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async throws -> T {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if let value = probe() { return value }
+            guard Date() < deadline else { throw WaitTimeout() }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     @Test func queuedValuesApplyOnTheNextBeforeDraw() {
         let sketch = RemoteProbeSketch()
         let remote = RemoteInspector(port: 0)
@@ -235,4 +274,46 @@ private final class RemoteProbeSketch: Sketch {
         #expect(sketch.trails == false)
         #expect(sketch.focus == Vector2(0.25, 0.75))
     }
+}
+
+/// A plain listening TCP socket on a port the system picks, so a server asked
+/// for that port meets an owner that does not share it.
+final class RemotePortBlocker {
+    let port: Int
+    private var descriptor: Int32
+
+    init() throws {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+        address.sin_port = 0
+        let bound = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        guard bound == 0, listen(fd, 1) == 0 else {
+            struct CannotBind: Error {}
+            throw CannotBind()
+        }
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let named = withUnsafeMutablePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &length) }
+        }
+        guard named == 0 else {
+            struct CannotName: Error {}
+            throw CannotName()
+        }
+        descriptor = fd
+        port = Int(UInt16(bigEndian: address.sin_port))
+    }
+
+    func close() {
+        guard descriptor >= 0 else { return }
+        Darwin.close(descriptor)
+        descriptor = -1
+    }
+
+    deinit { close() }
 }

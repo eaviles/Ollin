@@ -53,9 +53,12 @@ final class RemoteInspector: SketchExtension, Sendable
   func afterFrame(_: Sketch, _: FrameInfo)
   func beforeDraw(_: Sketch)
   func setup(_: Sketch)
+  func start()
   func stop()
   init(port: Int = default)
   var boundPort: Int? { get }
+  var isRunning: Bool { get }
+  var unavailableReason: String? { get }
   var url: String? { get }
 struct RemoteHello: Decodable, Encodable, Sendable
   var host: String { get set }

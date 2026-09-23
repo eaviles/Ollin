@@ -34,7 +34,7 @@ import Ollin
             vocabularyAt: URL(fileURLWithPath: "/nowhere/vocab.txt"),
             concepts: ["anything"])
         let image = Image(width: 32, height: 32, color: .white)
-        await #expect(throws: ConceptTracker.Error.self) {
+        await #expect(throws: VisionError.self) {
             _ = try await tracker.detect(in: image)
         }
         #expect(!tracker.isAvailable)

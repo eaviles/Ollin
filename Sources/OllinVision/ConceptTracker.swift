@@ -41,18 +41,6 @@ import os
 /// frame after the models load).
 public final class ConceptTracker: VisionTracking, @unchecked Sendable {
 
-    /// Why a run couldn't happen.
-    public enum Error: Swift.Error, CustomStringConvertible {
-        /// The model isn't usable here; the text is `unavailableReason`.
-        case unavailable(String)
-
-        public var description: String {
-            switch self {
-            case .unavailable(let reason): return reason
-            }
-        }
-    }
-
     private struct State {
         /// The image-encoder request, built once the models load.
         var request: CoreMLRequest?
@@ -200,12 +188,12 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     }
 
     /// Score a still image, once, against the tracker's `concepts`. Waits
-    /// for the models to load on the first call. Throws `Error.unavailable`
+    /// for the models to load on the first call. Throws `VisionError.unavailable`
     /// when they can't load (a file is missing) or can't run here.
     public func detect(in image: Image) async throws -> [Classification] {
         await ensureLoading().value
         guard let request = lock.withLockUnchecked({ $0.request }) else {
-            throw Error.unavailable(status.reason ?? "The models aren't available.")
+            throw VisionError.unavailable(status.reason ?? "The models aren't available.")
         }
         let concepts = lock.withLockUnchecked { $0.concepts }
         var texts: [(String, [Float])] = []
@@ -214,7 +202,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
         }
         let observations = try await request.perform(on: image.currentCGImage())
         guard let embedding = Self.embedding(in: observations) else {
-            throw Error.unavailable("The image encoder produced no embedding.")
+            throw VisionError.unavailable("The image encoder produced no embedding.")
         }
         return Self.scores(image: embedding, texts: texts)
     }
@@ -345,7 +333,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             ($0.textModel, $0.tokenizer, $0.textInputName, $0.textOutputName)
         }
         guard let model, let tokenizer else {
-            throw Error.unavailable(status.reason ?? "The models aren't available.")
+            throw VisionError.unavailable(status.reason ?? "The models aren't available.")
         }
         let tokens = tokenizer.encode(phrase)
         let shaped = MLShapedArray<Int32>(scalars: tokens, shape: [1, tokens.count])
@@ -353,7 +341,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             dictionary: [inputName: MLMultiArray(shaped)])
         let output = try model.prediction(from: input)
         guard let array = output.featureValue(for: outputName)?.multiArrayValue else {
-            throw Error.unavailable("The text encoder produced no embedding.")
+            throw VisionError.unavailable("The text encoder produced no embedding.")
         }
         let embedding = Self.normalized(MLShapedArray<Float>(array).scalars)
         lock.withLockUnchecked { $0.textEmbeddings[key] = embedding }

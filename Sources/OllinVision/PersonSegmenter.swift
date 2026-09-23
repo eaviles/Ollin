@@ -100,7 +100,7 @@ public final class PersonSegmenter: VisionTracking, @unchecked Sendable {
     /// one in the picture (it's simply transparent everywhere); `nil` only if the
     /// matte couldn't be converted. The default quality here is `.accurate` —
     /// a still pays for the best matte, where the live path defaults to `.balanced`.
-    public static func detect(in image: Image, quality: Quality = .accurate) async throws -> Segmentation? {
+    public static func detect(in image: Image, quality: Quality = .accurate) async throws -> Segmentation {
         let request = GeneratePersonSegmentationRequest()
         request.qualityLevel = quality.visionLevel
         let source = image.currentCGImage()
@@ -108,7 +108,7 @@ public final class PersonSegmenter: VisionTracking, @unchecked Sendable {
         let matteGray = try observation.cgImage
         guard let matte = SegmentationImages.matteImage(from: matteGray),
               let cutout = SegmentationImages.cutoutImage(frame: source, matte: matteGray) else {
-            return nil
+            throw VisionError.failed("The person matte could not be converted to an image.")
         }
         return Segmentation(matte: matte, cutout: cutout)
     }

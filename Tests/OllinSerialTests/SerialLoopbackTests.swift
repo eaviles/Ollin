@@ -78,7 +78,21 @@ struct SerialLoopbackTests {
         let port = SerialPort(path: pty.path, baudRate: 9600)
         port.open()
         _ = try await waitFor { port.isOpen ? true : nil }
+        #expect(port.lastError == nil, "an open port has nothing to report")
         return (pty, port)
+    }
+
+    /// A path with no device at it is not silence any more: `open()` keeps
+    /// trying, as it always did, and `lastError` says what it is waiting on.
+    @Test func aPathWithNoDeviceSaysSo() async throws {
+        let port = SerialPort(path: "/dev/ollin-no-such-device", baudRate: 9600)
+        defer { port.close() }
+        #expect(port.lastError == nil, "nothing has been tried yet")
+        port.open()
+        let reason = try await waitFor { port.lastError }
+        #expect(reason.contains("/dev/ollin-no-such-device"), Comment(rawValue: reason))
+        #expect(reason.contains("No such file"), Comment(rawValue: reason))
+        #expect(!port.isOpen)
     }
 
     @Test func deliversLinesAndTypedValues() async throws {
@@ -153,5 +167,6 @@ struct SerialLoopbackTests {
         close(pty.manager)
         _ = try await waitFor { port.isOpen ? nil : true }
         #expect(!port.isOpen)
+        #expect(port.lastError == "the device went away")
     }
 }

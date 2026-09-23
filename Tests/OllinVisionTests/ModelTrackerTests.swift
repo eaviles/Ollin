@@ -39,7 +39,7 @@ import Ollin
     @Test func missingModelFileSurfacesInsteadOfFailingSilently() async {
         let tracker = ModelTracker(modelAt: URL(fileURLWithPath: "/nowhere/NoSuchModel.mlpackage"))
         let image = Image(width: 32, height: 32, color: .white)
-        await #expect(throws: ModelTracker.Error.self) {
+        await #expect(throws: VisionError.self) {
             _ = try await tracker.detect(in: image)
         }
         #expect(!tracker.isAvailable)

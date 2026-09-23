@@ -35,6 +35,16 @@ import CSyphon
         _ = SyphonClient.availableServers()
     }
 
+    /// A source that is not there is said, not swallowed: the client stands
+    /// unconnected with a sentence naming what it looked for.
+    @Test func aMissingSourceSaysSo() {
+        let client = SyphonClient(named: "ollin-no-such-source", appName: "ollin-no-such-app")
+        #expect(!client.isConnected)
+        #expect(client.frame == nil)
+        let reason = client.unavailableReason ?? ""
+        #expect(reason.contains("ollin-no-such-source") && reason.contains("ollin-no-such-app"), Comment(rawValue: reason))
+    }
+
     @Test(.enabled(if: SyphonLoopbackTests.hasMetal))
     func publishedSourceIsDiscoveredAndDelivered() async {
         let device = MTLCreateSystemDefaultDevice()!

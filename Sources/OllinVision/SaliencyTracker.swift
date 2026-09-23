@@ -146,10 +146,12 @@ public final class SaliencyTracker: VisionTracking, @unchecked Sendable {
 
     /// Map the salience of a still image, once. `nil` only if the heat map
     /// couldn't be converted.
-    public static func detect(in image: Image, mode: Mode = .attention) async throws -> Saliency? {
+    public static func detect(in image: Image, mode: Mode = .attention) async throws -> Saliency {
         let observation = try await perform(mode, on: image.currentCGImage())
-        guard let matteGray = try? observation.heatMap.cgImage,
-              let heatMap = SegmentationImages.matteImage(from: matteGray) else { return nil }
+        let matteGray = try observation.heatMap.cgImage
+        guard let heatMap = SegmentationImages.matteImage(from: matteGray) else {
+            throw VisionError.failed("The salience map could not be converted to an image.")
+        }
         return Saliency(heatMap: heatMap,
                         regions: observation.salientObjects.map(DetectedRectangle.init),
                         observation: observation)

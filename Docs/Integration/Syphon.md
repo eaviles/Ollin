@@ -108,7 +108,7 @@ final class Viewer: Sketch {
 }
 ```
 
-Read `frame` once per frame and draw the result. Do not keep it across frames, because the next read gives you the current frame. A source can come and go. If the publishing app quits, `isActive` goes `false` and `frame` reads `nil`, and `connect()` looks for a source again. The returned `Image` wraps a live texture for drawing, so its CPU side (the `[x, y]` pixel subscript and `cgImage`) is not meaningful.
+Read `frame` once per frame and draw the result. Do not keep it across frames, because the next read gives you the current frame. A source can come and go. If the publishing app quits, `isConnected` goes `false` and `frame` reads `nil`, and `connect()` looks for a source again. The returned `Image` wraps a live texture for drawing, so its CPU side (the `[x, y]` pixel subscript and `cgImage`) is not meaningful. `unavailableReason` says why there are no frames, in a sentence worth drawing: no source of that name was available when the client looked, no Metal device, a source that refused the connection, or one that has since gone away; it is `nil` while the connection stands.
 
 <a name="discovering-sources"></a>
 

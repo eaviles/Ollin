@@ -51,7 +51,11 @@ link.start()                       // join the local network's session
 link.stop()                        // leave it (peers are told goodbye)
 link.isRunning                     // whether the clock participates
 link.peerCount                     // how many other participants are in the session
+link.interfaceCount                // how many network interfaces it speaks on, loopback included
+link.unavailableReason             // why it is on no network at all, or nil
 ```
+
+A running clock that could open no interface is as silent as one alone on the network, which is what `unavailableReason` is for: it holds a sentence while `interfaceCount` is zero on a running clock, naming the last socket that failed, and clears on its own once an interface opens, since every interface is tried again about every five seconds.
 
 `start()` begins announcing on every network interface, loopback included, so two sketches on one machine sync with no network at all. Each start uses a fresh identity, which means a restarted sketch joins the running session instead of imposing its old state on it.
 

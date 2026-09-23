@@ -156,19 +156,6 @@ public struct ModelOutput: @unchecked Sendable {
 /// `isAvailable` / `unavailableReason` instead of failing silently.
 public final class ModelTracker: VisionTracking, @unchecked Sendable {
 
-    /// Why a model run couldn't happen.
-    public enum Error: Swift.Error, CustomStringConvertible {
-        /// The model isn't usable here — the file is missing or failed to
-        /// load; the text is `unavailableReason`.
-        case unavailable(String)
-
-        public var description: String {
-            switch self {
-            case .unavailable(let reason): return reason
-            }
-        }
-    }
-
     private struct State {
         /// The live request — built once the model loads, re-performed every
         /// frame (the loaded container is what carries the model's cost).
@@ -338,12 +325,12 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     }
 
     /// Run the model on a still image, once — waits for the model to load on
-    /// the first call. Throws `Error.unavailable` when the model can't load
+    /// the first call. Throws `VisionError.unavailable` when the model can't load
     /// (the file is missing) or can't run here.
     public func detect(in image: Image) async throws -> ModelOutput {
         await ensureLoading().value
         guard let request = lock.withLockUnchecked({ $0.request }) else {
-            throw Error.unavailable(status.reason ?? "The model isn't available.")
+            throw VisionError.unavailable(status.reason ?? "The model isn't available.")
         }
         let observations = try await request.perform(on: image.currentCGImage())
         let decoded = Self.decode(observations)

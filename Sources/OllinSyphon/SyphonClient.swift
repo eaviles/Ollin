@@ -56,6 +56,8 @@ public final class SyphonClient {
 
     private let device: MTLDevice?
     private var client: SyphonMetalClient?
+    /// Why the last open produced no connection, or `nil` when it did.
+    private var openFailure: String?
 
     /// The connected source's name, if any.
     public private(set) var serverName: String?
@@ -84,6 +86,18 @@ public final class SyphonClient {
     /// further frames will arrive (the source went away); call
     /// ``connect(named:appName:)``.
     public var isConnected: Bool { client?.isValid ?? false }
+
+    /// Why there are no frames, in a sentence worth drawing, or `nil` while
+    /// the connection stands: no source of that name was available, no Metal
+    /// device, a connection the source refused, or a source that has since
+    /// gone away. `connect(named:appName:)` clears it when it finds a source.
+    public var unavailableReason: String? {
+        if let openFailure { return openFailure }
+        if client != nil, !isConnected {
+            return "the Syphon source \(serverName ?? "") went away"
+        }
+        return nil
+    }
 
     /// Whether a new frame has arrived since the last read of ``frame``.
     public var hasNewFrame: Bool { client?.hasNewFrame ?? false }
@@ -131,16 +145,29 @@ public final class SyphonClient {
         let match = SyphonClient.availableServers().first { info in
             (name == nil || info.name == name) && (appName == nil || info.appName == appName)
         }
-        guard let match else { return }
+        guard let match else {
+            let wanted = [name.map { "named \"\($0)\"" }, appName.map { "from \"\($0)\"" }]
+                .compactMap { $0 }.joined(separator: " ")
+            openFailure = wanted.isEmpty
+                ? "no Syphon source is available"
+                : "no Syphon source \(wanted) is available"
+            return
+        }
         open(to: match.description)
     }
 
     private func open(to description: [String: Any]) {
-        guard let device else { return }
         serverName = description[SyphonServerDescriptionNameKey] as? String
         appName = description[SyphonServerDescriptionAppNameKey] as? String
+        guard let device else {
+            openFailure = "no Metal device is available to receive Syphon frames"
+            return
+        }
         client = SyphonMetalClient(serverDescription: description, device: device,
                                    options: nil, newFrameHandler: nil)
+        openFailure = client == nil
+            ? "the Syphon source \(serverName ?? "") refused the connection"
+            : nil
     }
 
     /// Bridge a Syphon description (an `NSDictionary` of `id<NSCoding>` values) to

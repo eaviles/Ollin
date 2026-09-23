@@ -11,9 +11,11 @@ final class LinkClock: Sendable
   var beatCount: Int { get }
   var beats: Double { get }
   var beatsPerBar: Int { get set }
+  var interfaceCount: Int { get }
   var isPlaying: Bool { get set }
   var isRunning: Bool { get }
   var peerCount: Int { get }
   var phase: Double { get }
   var tempo: Double { get set }
   var timeSinceBeat: Double { get }
+  var unavailableReason: String? { get }

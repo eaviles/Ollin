@@ -12,6 +12,7 @@ final class SyphonClient: Sendable
   var hasNewFrame: Bool { get }
   var isConnected: Bool { get }
   var serverName: String? { get }
+  var unavailableReason: String? { get }
 final class SyphonServer: SketchExtension, Sendable
   func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
   func stop()

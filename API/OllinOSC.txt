@@ -40,12 +40,15 @@ final class OSCQueryServer: SketchExtension, Sendable
   func beforeDraw(_: Sketch)
   func namespace() -> OSCQueryNode
   func setup(_: Sketch)
+  func start()
   func stop()
   init(receiver: OSCReceiver, port: Int? = default, name: String? = default)
   let receiver: OSCReceiver
   var advertises: Bool { get set }
   var boundPort: Int? { get }
+  var isRunning: Bool { get }
   var name: String? { get }
+  var unavailableReason: String? { get }
   var url: String? { get }
 final class OSCReceiver: Sendable
   func arguments(_: String) -> [OSCArgument]?

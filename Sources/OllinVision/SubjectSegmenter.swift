@@ -87,11 +87,14 @@ public final class SubjectSegmenter: VisionTracking, @unchecked Sendable {
     public static func detect(in image: Image) async throws -> Segmentation? {
         let request = GenerateForegroundInstanceMaskRequest()
         let source = image.currentCGImage()
+        // No subject is an answer, not a failure; a matte that would not
+        // convert is a failure, and throws rather than looking like one.
         guard let observation = try await request.perform(on: source),
-              let matteGray = try matteGray(from: observation),
+              !observation.allInstances.isEmpty else { return nil }
+        guard let matteGray = try matteGray(from: observation),
               let matte = SegmentationImages.matteImage(from: matteGray),
               let cutout = SegmentationImages.cutoutImage(frame: source, matte: matteGray) else {
-            return nil
+            throw VisionError.failed("The subject matte could not be converted to an image.")
         }
         return Segmentation(matte: matte, cutout: cutout)
     }

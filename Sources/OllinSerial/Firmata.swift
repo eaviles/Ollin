@@ -92,6 +92,12 @@ public final class FirmataBoard: @unchecked Sendable {
     /// `firmware` is set.
     public var isOpen: Bool { port.isOpen }
 
+    /// The last thing that went wrong with the port, or `nil` once it is
+    /// open; see `SerialPort.lastError`. A board that is open and has not
+    /// announced itself yet is not a failure: `firmware` is `nil` while it
+    /// boots, and stays `nil` on a board that is not running Firmata.
+    public var lastError: String? { port.lastError }
+
     /// What the board said it runs, once it has said so; `nil` until then.
     public var firmware: FirmataFirmware? { state.withLock { $0.firmware } }
 

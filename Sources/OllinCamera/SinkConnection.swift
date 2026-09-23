@@ -3,7 +3,7 @@ import CoreMedia
 import CoreMediaIO
 
 /// Why the virtual camera can't be published to, in user-actionable terms.
-public enum VirtualCameraError: Error, CustomStringConvertible {
+enum VirtualCameraError: Error, CustomStringConvertible {
     /// No camera device with the expected name exists on the system.
     case deviceNotFound(String)
     /// The device exists but has no sink (writable) stream — an old extension build.
@@ -13,7 +13,7 @@ public enum VirtualCameraError: Error, CustomStringConvertible {
     /// The sink stream refused to start.
     case startFailed(OSStatus)
 
-    public var description: String {
+    var description: String {
         switch self {
         case .deviceNotFound(let name):
             return "\"\(name)\" is not installed — open OllinCamera.app once to install the virtual camera."

@@ -230,7 +230,7 @@ public final class DepthClip: @unchecked Sendable {
                 return pass
             }
             guard FileManager.default.fileExists(atPath: modelURL.path) else {
-                throw Error.unavailable(
+                throw VisionError.unavailable(
                     "Model file not found: \(modelURL.path). Run Scripts/fetch-models.sh and relaunch.")
             }
             var frames = try FileFrames(url: clipURL)
@@ -250,7 +250,7 @@ public final class DepthClip: @unchecked Sendable {
             return try Pass(contentsOf: cached)
         case .frames(let list):
             guard FileManager.default.fileExists(atPath: modelURL.path) else {
-                throw Error.unavailable(
+                throw VisionError.unavailable(
                     "Model file not found: \(modelURL.path). Run Scripts/fetch-models.sh and relaunch.")
             }
             var frames = ArrayFrames(list)
@@ -312,7 +312,7 @@ public final class DepthClip: @unchecked Sendable {
                 }
             }
             if finished {
-                if realCount == 0 { throw Error.unavailable("The clip has no frames to read.") }
+                if realCount == 0 { throw VisionError.unavailable("The clip has no frames to read.") }
                 let stepCount = step
                 let append = (stepCount - (realCount % stepCount)) % stepCount + (windowLength - stepCount)
                 padded(to: realCount + append)
@@ -326,7 +326,7 @@ public final class DepthClip: @unchecked Sendable {
             }
             let out = try runner.run(inputs)
             guard out.count == windowLength else {
-                throw Error.unavailable("The model answered \(out.count) maps for a window of \(windowLength).")
+                throw VisionError.unavailable("The model answered \(out.count) maps for a window of \(windowLength).")
             }
 
             if reference == nil {
@@ -400,17 +400,6 @@ public final class DepthClip: @unchecked Sendable {
             "\(name)-\(ModelTracker.stamp(for: clip))-\(ModelTracker.stamp(for: model)).depthclip")
     }
 
-    /// Why the pass couldn't run.
-    public enum Error: Swift.Error, CustomStringConvertible {
-        /// The pass isn't possible here; the text is `unavailableReason`.
-        case unavailable(String)
-
-        public var description: String {
-            switch self {
-            case .unavailable(let reason): return reason
-            }
-        }
-    }
 }
 
 // MARK: - The pass file
@@ -439,10 +428,10 @@ struct DepthClipPass {
 
     init(contentsOf url: URL) throws {
         let data = try Data(contentsOf: url, options: .alwaysMapped)
-        guard data.count >= Self.headerSize else { throw DepthClip.Error.unavailable("The pass file is truncated.") }
+        guard data.count >= Self.headerSize else { throw VisionError.unavailable("The pass file is truncated.") }
         func word(_ offset: Int) -> UInt32 { data.load(offset, as: UInt32.self) }
         guard word(0) == Self.magic, word(4) == Self.version else {
-            throw DepthClip.Error.unavailable("The pass file is not a depth pass.")
+            throw VisionError.unavailable("The pass file is not a depth pass.")
         }
         width = Int(word(8))
         height = Int(word(12))
@@ -454,7 +443,7 @@ struct DepthClipPass {
         guard width > 0, height > 0, frames > 0,
               timesOffset + frames * 8 <= data.count,
               planesOffset + frames * width * height * 2 <= timesOffset else {
-            throw DepthClip.Error.unavailable("The pass file is truncated.")
+            throw VisionError.unavailable("The pass file is truncated.")
         }
         times = (0..<frames).map { data.load(timesOffset + $0 * 8, as: Double.self) }
         range = low...max(high, low + 1e-6)
@@ -629,7 +618,7 @@ struct FileFrames: FrameProvider {
         let asset = AVURLAsset(url: url)
         let loaded = Self.loadBlocking(asset)
         guard let track = loaded.track else {
-            throw DepthClip.Error.unavailable("No video track could be read at \(url.path).")
+            throw VisionError.unavailable("No video track could be read at \(url.path).")
         }
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
@@ -637,11 +626,11 @@ struct FileFrames: FrameProvider {
         ])
         output.alwaysCopiesSampleData = false
         guard reader.canAdd(output) else {
-            throw DepthClip.Error.unavailable("The video track at \(url.path) can't be decoded.")
+            throw VisionError.unavailable("The video track at \(url.path) can't be decoded.")
         }
         reader.add(output)
         guard reader.startReading() else {
-            throw DepthClip.Error.unavailable(
+            throw VisionError.unavailable(
                 "The video at \(url.path) couldn't be read: \(reader.error?.localizedDescription ?? "unknown error").")
         }
         self.reader = reader
@@ -659,13 +648,13 @@ struct FileFrames: FrameProvider {
             var image: CGImage?
             let status = VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &image)
             guard status == noErr, let image else {
-                throw DepthClip.Error.unavailable("A frame couldn't be converted (VideoToolbox error \(status)).")
+                throw VisionError.unavailable("A frame couldn't be converted (VideoToolbox error \(status)).")
             }
             let pts = CMSampleBufferGetPresentationTimeStamp(sample)
             return (image, pts.isValid ? pts.seconds : 0)
         }
         if reader.status == .failed {
-            throw DepthClip.Error.unavailable(
+            throw VisionError.unavailable(
                 "The clip stopped decoding: \(reader.error?.localizedDescription ?? "unknown error").")
         }
         return nil
@@ -719,7 +708,7 @@ final class ModelWindowRunner: WindowRunner {
         guard let constraint = description.inputDescriptionsByName["frame_0"]?.imageConstraint,
               description.inputDescriptionsByName["frame_\(DepthClip.windowLength - 1)"] != nil,
               description.outputDescriptionsByName["depth"] != nil else {
-            throw DepthClip.Error.unavailable(
+            throw VisionError.unavailable(
                 "The model at \(url.path) isn't the clip window model (it wants frame_0 … frame_31 and answers depth).")
         }
         self.model = model
@@ -747,12 +736,12 @@ final class ModelWindowRunner: WindowRunner {
         features = keep
         let output = try model.prediction(from: try MLDictionaryFeatureProvider(dictionary: dictionary))
         guard let depth = output.featureValue(for: "depth")?.multiArrayValue else {
-            throw DepthClip.Error.unavailable("The model produced no depth maps.")
+            throw VisionError.unavailable("The model produced no depth maps.")
         }
         let shape = depth.shape.map(\.intValue)
         let count = DepthClip.windowLength
         guard shape.reduce(1, *) == count * width * height else {
-            throw DepthClip.Error.unavailable("The model answered maps of shape \(shape).")
+            throw VisionError.unavailable("The model answered maps of shape \(shape).")
         }
         let plane = width * height
         let values: [Float] = depth.withUnsafeBufferPointer(ofType: Float.self) { Array($0) }
@@ -782,7 +771,7 @@ final class ModelWindowRunner: WindowRunner {
         do {
             return try box.result!.get()
         } catch {
-            throw DepthClip.Error.unavailable(
+            throw VisionError.unavailable(
                 "The model at \(url.path) couldn't load: \(error.localizedDescription)")
         }
     }

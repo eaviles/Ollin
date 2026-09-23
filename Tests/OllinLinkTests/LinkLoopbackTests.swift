@@ -30,10 +30,27 @@ struct LinkLoopbackTests {
         }
     }
 
+    /// A running clock says whether it is on any network at all: loopback
+    /// opens on every Mac, so here it speaks on one interface and has no
+    /// reason to give; stopped, it is silent by choice and says nothing.
+    @Test func aRunningClockSaysWhetherItIsOnAnyNetwork() async throws {
+        let clock = LinkClock(tempo: 120, restrictsToLoopback: true)
+        clock.start()
+        defer { clock.stop() }
+        _ = try await waitFor { clock.interfaceCount > 0 ? true : nil }
+        #expect(clock.interfaceCount == 1)
+        #expect(clock.unavailableReason == nil)
+        clock.stop()
+        #expect(clock.interfaceCount == 0)
+        #expect(clock.unavailableReason == nil)
+    }
+
     @Test func aloneItFreeRuns() async throws {
         let clock = LinkClock(tempo: 120, restrictsToLoopback: true)
         #expect(!clock.isRunning)
         #expect(clock.peerCount == 0)
+        #expect(clock.interfaceCount == 0)
+        #expect(clock.unavailableReason == nil, "a stopped clock has nothing to say")
         #expect(abs(clock.tempo - 120) < 0.01)
 
         // The beat grid runs with no session and no network: at 120 BPM the

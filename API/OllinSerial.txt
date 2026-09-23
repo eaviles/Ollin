@@ -28,6 +28,7 @@ final class FirmataBoard: Sendable
   let port: SerialPort
   var firmware: FirmataFirmware? { get }
   var isOpen: Bool { get }
+  var lastError: String? { get }
 final class SerialPort: Sendable
   convenience init(device: SerialDevice, baudRate: Int = default)
   func bind(to: Param<Double>, from: ClosedRange<Double> = default)
@@ -49,6 +50,7 @@ final class SerialPort: Sendable
   init(path: String, baudRate: Int = default)
   static func availableDevices() -> [SerialDevice]
   var isOpen: Bool { get }
+  var lastError: String? { get }
   var latestLine: String? { get }
 struct FirmataFirmware: Equatable, Sendable
   init(name: String, majorVersion: Int, minorVersion: Int)

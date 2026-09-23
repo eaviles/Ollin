@@ -86,6 +86,10 @@ enum HandJoint: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sen
   case thumbTip
   case wrist
   static let tips: [HandJoint]
+enum VisionError: CustomStringConvertible, Error, Sendable
+  case failed(String)
+  case unavailable(String)
+  var description: String { get }
 enum VisionSpace
   static func fittedRectangle(imageSize: Vector2, in: Rectangle) -> Rectangle
   static func normalizedPoint(_: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
@@ -146,9 +150,6 @@ final class ClassMask: Sendable
   let width: Int
   var presentLabels: [String] { get }
 final class ConceptTracker: VisionAvailability, Sendable
-  enum Error: CustomStringConvertible, Error, Sendable
-    case unavailable(String)
-    var description: String { get }
   func detect(in: Image) throws -> [Classification]
   func embedding(of: String) throws -> [Double]
   func share(of: String) -> Double
@@ -174,9 +175,6 @@ final class ContourDetector: VisionAvailability, Sendable
   var isAvailable: Bool { get }
   var unavailableReason: String? { get }
 final class DepthClip: Sendable
-  enum Error: CustomStringConvertible, Error, Sendable
-    case unavailable(String)
-    var description: String { get }
   func map(at: Double) -> Image?
   func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
   func value(at: Vector2, in: Rectangle, time: Double, mirrored: Bool = default) -> Double
@@ -191,9 +189,6 @@ final class DepthClip: Sendable
   var range: ClosedRange<Double>? { get }
   var unavailableReason: String? { get }
 final class DepthTracker: VisionAvailability, Sendable
-  enum Error: CustomStringConvertible, Error, Sendable
-    case unavailable(String)
-    var description: String { get }
   func reset()
   func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
   func valueNormalized(at: Vector2) -> Double
@@ -244,9 +239,6 @@ final class ImageClassifier: VisionAvailability, Sendable
   var topClassification: Classification? { get }
   var unavailableReason: String? { get }
 final class ModelTracker: VisionAvailability, Sendable
-  enum Error: CustomStringConvertible, Error, Sendable
-    case unavailable(String)
-    var description: String { get }
   func confidence(of: String) -> Double
   func detect(in: Image) throws -> ModelOutput
   func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
@@ -281,15 +273,12 @@ final class PersonSegmenter: VisionAvailability, Sendable
     case balanced
     case fast
   init(_: any FrameSource, quality: PersonSegmenter.Quality = default)
-  static func detect(in: Image, quality: PersonSegmenter.Quality = default) throws -> Segmentation?
+  static func detect(in: Image, quality: PersonSegmenter.Quality = default) throws -> Segmentation
   var cutout: Image? { get }
   var isAvailable: Bool { get }
   var matte: Image? { get }
   var unavailableReason: String? { get }
 final class PointSegmenter: VisionAvailability, Sendable
-  enum Error: CustomStringConvertible, Error, Sendable
-    case unavailable(String)
-    var description: String { get }
   func detect(in: Image, at: [Vector2], avoiding: [Vector2] = default) throws -> PointSegmenter.Pick?
   func exclude(_: Vector2, in: Rectangle)
   func include(_: Vector2, in: Rectangle)
@@ -326,7 +315,7 @@ final class SaliencyTracker: VisionAvailability, Sendable
   func salienceNormalized(at: Vector2) -> Double
   init(_: any FrameSource, mode: SaliencyTracker.Mode = default)
   let mode: SaliencyTracker.Mode
-  static func detect(in: Image, mode: SaliencyTracker.Mode = default) throws -> Saliency?
+  static func detect(in: Image, mode: SaliencyTracker.Mode = default) throws -> Saliency
   var heatMap: Image? { get }
   var isAvailable: Bool { get }
   var regions: [DetectedRectangle] { get }

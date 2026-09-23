@@ -54,6 +54,8 @@ public final class LinkClock: @unchecked Sendable {
         var isRunning = false
         var quantumMicroBeats: Int64 = 4 * linkMicroBeatsPerBeat
         var ticksSinceRescan = 0
+        /// What the last interface that would not open said, for `unavailableReason`.
+        var lastGatewayFailure: String?
     }
 
     private let shared: OSAllocatedUnfairLock<Shared>
@@ -124,6 +126,27 @@ public final class LinkClock: @unchecked Sendable {
     /// How many other participants are in the session right now. `0` means
     /// the clock free-runs on its own.
     public var peerCount: Int { shared.withLock { $0.engine.sessionPeerCount } }
+
+    /// How many network interfaces the clock is speaking on right now,
+    /// loopback included. `0` while it is stopped, and `0` while running
+    /// means it is alone by necessity: see `unavailableReason`.
+    public var interfaceCount: Int { shared.withLock { $0.gateways.count } }
+
+    /// Why the clock is on no network at all, in a sentence worth drawing,
+    /// or `nil` while it speaks on at least one interface or is not running.
+    /// A running clock with no interface open is exactly as silent as one
+    /// alone on the network otherwise, which is why this exists. Every
+    /// interface is tried again about every five seconds, so it clears on
+    /// its own once one opens.
+    public var unavailableReason: String? {
+        shared.withLock { state in
+            guard state.isRunning, state.gateways.isEmpty else { return nil }
+            if let failure = state.lastGatewayFailure {
+                return "no network interface could be opened; the last one said: \(failure)"
+            }
+            return "no usable network interface was found"
+        }
+    }
 
     deinit { stop() }
 
@@ -291,8 +314,18 @@ public final class LinkClock: @unchecked Sendable {
         }
         closing.forEach { $0.close() }
 
+        var failure: String?
         for address in missing {
-            guard let gateway = try? LinkGateway(address: address) else { continue }
+            let gateway: LinkGateway
+            do {
+                gateway = try LinkGateway(address: address)
+            } catch let error as LinkGateway.SocketError {
+                failure = "the \(error.stage) socket failed (errno \(error.code))"
+                continue
+            } catch {
+                failure = "\(error)"
+                continue
+            }
             gateway.start(
                 queue: queue,
                 onDiscovery: { [weak self] data, source in
@@ -309,6 +342,7 @@ public final class LinkClock: @unchecked Sendable {
             }
             if !inserted { gateway.close() }
         }
+        if let failure { shared.withLock { $0.lastGatewayFailure = failure } }
     }
 
     // MARK: Receiving (background queue)

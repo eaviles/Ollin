@@ -60,7 +60,7 @@ import Ollin
             promptEncoderAt: URL(fileURLWithPath: "/nowhere/prompt.mlpackage"),
             maskDecoderAt: URL(fileURLWithPath: "/nowhere/decoder.mlpackage"))
         let image = Image(width: 32, height: 32, color: .white)
-        await #expect(throws: PointSegmenter.Error.self) {
+        await #expect(throws: VisionError.self) {
             _ = try await segmenter.detect(in: image, at: [Vector2(16, 16)])
         }
         #expect(!segmenter.isAvailable)

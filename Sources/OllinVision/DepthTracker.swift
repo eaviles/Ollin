@@ -202,6 +202,9 @@ public final class DepthTracker: VisionTracking, @unchecked Sendable {
                 if wantsMap { state.map = map }
                 if wantsSourceFrame { state.sourceFrame = sourceFrame }
             }
+        } catch let error as VisionError {
+            // The model answered wrongly, which is not a bad frame: say so.
+            status.markUnavailable(error.description)
         } catch {
             status.recordFailure(error)
         }
@@ -229,7 +232,7 @@ public final class DepthTracker: VisionTracking, @unchecked Sendable {
         let output = try loaded.model.prediction(from: input, using: loaded.session)
         guard let depth = output.featureValue(for: "depth")?.multiArrayValue,
               depth.shape.count == 4 else {
-            throw Error.unavailable("The model produced no depth map.")
+            throw VisionError.unavailable("The model produced no depth map.")
         }
         let height = depth.shape[2].intValue
         let width = depth.shape[3].intValue
@@ -289,18 +292,6 @@ public final class DepthTracker: VisionTracking, @unchecked Sendable {
     }
 
     // MARK: Loading
-
-    /// Why the model couldn't run.
-    public enum Error: Swift.Error, CustomStringConvertible {
-        /// The model isn't usable here; the text is `unavailableReason`.
-        case unavailable(String)
-
-        public var description: String {
-            switch self {
-            case .unavailable(let reason): return reason
-            }
-        }
-    }
 
     /// The one background load, started by the first frame.
     @discardableResult

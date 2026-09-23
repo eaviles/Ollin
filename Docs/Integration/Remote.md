@@ -50,6 +50,9 @@ extend(RemoteInspector(port: 0))    // or any free port the system picks
 ```swift
 remote.url        // "http://your-mac.local:9330", nil until the listener is up
 remote.boundPort  // the port actually bound, useful with port 0
+remote.isRunning         // whether the listener is up
+remote.unavailableReason // why it is not, in a sentence, or nil
+remote.start()           // serve again after stop(), or try the port again
 ```
 
 Keep a reference to the extension if you want the sketch to draw the address on the canvas. The example below does that, so the piece itself tells visitors how to reach it.
@@ -88,7 +91,7 @@ A value from the phone is queued, then applied on the main thread at the next fr
 
 The server listens on every interface of the Mac. While it is up, anyone on the same network who has the address can open the page and move the parameters. There is no account and no pairing code, so holding the address is the only thing needed to get in. It is built for the studio and the venue, so run it on your own Wi-Fi or on a private show network. Do not leave it running on a hostile network.
 
-The server stops when the sketch goes away. That includes a live reload, which builds a fresh sketch and a fresh extension. Call `stop()` to end it earlier by hand.
+The server stops when the sketch goes away. That includes a live reload, which builds a fresh sketch and a fresh extension. Call `stop()` to end it earlier by hand, and `start()` to serve again. A port another program holds, or a bind the system refuses, leaves `isRunning` false and puts the reason in `unavailableReason`, which clears when the listener comes up.
 
 <a name="trying-it"></a>
 

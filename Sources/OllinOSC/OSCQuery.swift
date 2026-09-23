@@ -521,6 +521,8 @@ public final class OSCQueryServer: SketchExtension {
 
     private let engine: OSCQueryEngine
     private let givenName: String?
+    /// The name `setup` served under, so `start()` can serve it again.
+    private var startName: String?
 
     // Main-actor state, only ever touched from the sketch's loop.
     private var handles: [ParamHandle] = []
@@ -585,11 +587,31 @@ public final class OSCQueryServer: SketchExtension {
         engine.shutdown()
     }
 
+    /// Why the namespace is not being served, in a sentence worth drawing, or
+    /// `nil` while it is, or before `setup` has run: a port another program
+    /// holds, a bind the system refused, the OSC port that would not open. It
+    /// follows the listener's own state, so it says so the moment the system
+    /// does, and clears when the listener comes up.
+    public var unavailableReason: String? { engine.unavailableReason }
+
+    /// Whether the namespace is being served right now: the listener is up
+    /// and `boundPort` says where.
+    public var isRunning: Bool { engine.boundPort != nil }
+
+    /// Serves again after `stop()`, or tries the port again after a start that
+    /// failed. `setup` calls it for you the first time; before that it does
+    /// nothing, since there is no namespace to serve yet.
+    public func start() {
+        guard let startName else { return }
+        engine.start(name: startName)
+    }
+
     // MARK: Extension hooks
 
     public func setup(_ sketch: Sketch) {
         discover(sketch)
-        engine.start(name: givenName ?? String(describing: type(of: sketch)))
+        startName = givenName ?? String(describing: type(of: sketch))
+        start()
     }
 
     /// The socket-free half of `setup`: parameter discovery and the first
@@ -653,6 +675,17 @@ final class OSCQueryEngine: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.ollin.osc.query")
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
     private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
+    /// Why nothing is served, for the server's `unavailableReason`.
+    private let reasonStore = OSAllocatedUnfairLock<String?>(initialState: nil)
+
+    var unavailableReason: String? { reasonStore.withLock { $0 } }
+
+    /// Record why the namespace is not served, and say it once on stderr for
+    /// the developer watching the terminal; the sketch reads the property.
+    private func fail(_ message: String) {
+        reasonStore.withLock { $0 = message }
+        FileHandle.standardError.write(Data("OSCQuery: \(message)\n".utf8))
+    }
     private let links = OSAllocatedUnfairLock<[ObjectIdentifier: Link]>(uncheckedState: [:])
     private let nameStore = OSAllocatedUnfairLock<String?>(initialState: nil)
     private let advertisesStore = OSAllocatedUnfairLock(initialState: true)
@@ -718,7 +751,7 @@ final class OSCQueryEngine: @unchecked Sendable {
         do {
             try receiver.start()
         } catch {
-            print("OSCQuery: could not open the OSC port \(receiver.requestedPort): \(error)")
+            fail("could not open the OSC port \(receiver.requestedPort): \(error)")
         }
 
         let alreadyRunning = listenerStore.withLock { $0 != nil }
@@ -734,7 +767,7 @@ final class OSCQueryEngine: @unchecked Sendable {
                 listener = try NWListener(using: parameters, on: port)
             }
         } catch {
-            print("OSCQuery: could not open port \(httpPort): \(error)")
+            fail("could not open port \(httpPort): \(error)")
             return
         }
         if advertises {
@@ -745,10 +778,16 @@ final class OSCQueryEngine: @unchecked Sendable {
             switch state {
             case .ready:
                 self.resolvedPort.withLock { $0 = listener.port?.rawValue }
+                self.reasonStore.withLock { $0 = nil }
             case .failed(let error):
-                print("OSCQuery: the listener failed: \(error)")
+                // The port is somebody else's, or the bind was refused: let
+                // the listener go, so a later `start` tries again.
+                listener.cancel()
+                self.listenerStore.withLock { $0 = nil }
+                self.resolvedPort.withLock { $0 = nil }
+                self.fail("could not open port \(self.httpPort): \(error)")
             case .waiting(let error):
-                print("OSCQuery: waiting to open the port: \(error)")
+                self.reasonStore.withLock { $0 = "waiting to open port \(self.httpPort): \(error)" }
             default:
                 break
             }
@@ -766,6 +805,7 @@ final class OSCQueryEngine: @unchecked Sendable {
             listener = nil
         }
         resolvedPort.withLock { $0 = nil }
+        reasonStore.withLock { $0 = nil }
         links.withLock { all in
             for link in all.values { link.connection.cancel() }
             all.removeAll()

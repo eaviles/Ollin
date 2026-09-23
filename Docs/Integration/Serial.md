@@ -65,9 +65,10 @@ The match is case-insensitive, and it runs again on every connection attempt. Th
 func open()      // never gives up; retries every second until the device appears
 func close()     // stops reading and stops reconnecting
 var isOpen: Bool
+var lastError: String?   // what it is waiting on, in a sentence; nil once open
 ```
 
-`open()` returns immediately and then keeps trying. A device that is missing, busy, or unplugged later is simply waited for. The port reconnects on its own the moment the device comes back. A cable bump or a firmware re-flash in the middle of a performance therefore recovers without a restart. `isOpen` tells you where things stand, so a sketch can draw a waiting state.
+`open()` returns immediately and then keeps trying. A device that is missing, busy, or unplugged later is simply waited for. `lastError` says which of those it is, in a sentence worth drawing: `no device at /dev/cu.usbmodem101`, a port another program holds, `the device went away`. It clears the moment the port opens, so `isOpen` false with `lastError` nil is a port still on its first try. `FirmataBoard.lastError` reads the same sentence through the board. The port reconnects on its own the moment the device comes back. A cable bump or a firmware re-flash in the middle of a performance therefore recovers without a restart. `isOpen` tells you where things stand, so a sketch can draw a waiting state.
 
 The port holds the device exclusively, because two readers on one port would each get half the bytes. Uploading new firmware therefore needs the port free, so call `close()` first or quit the sketch. If you only `close()` for the upload, the reconnection loop reopens the port for you afterwards.
 

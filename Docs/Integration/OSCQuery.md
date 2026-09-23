@@ -48,9 +48,14 @@ var name: String?
 var boundPort: Int?
 var url: String?
 var advertises: Bool
+var isRunning: Bool
+var unavailableReason: String?
 func namespace() -> OSCQueryNode
+func start()
 func stop()
 ```
+
+`isRunning` is true while the listener is up. When it is not, `unavailableReason` says why in a sentence worth drawing: a port another program holds, a bind the system refused, the OSC port that would not open. It follows the listener's own state, so it says so the moment the system does, and it clears when the listener comes up. `start()` serves again after `stop()`, or tries the port again after a start that failed; `setup` calls it for you the first time.
 
 Register an `OSCQueryServer` with `extend(...)` in `setup()`. It discovers the sketch's parameters and opens two ports at one number. The namespace answers over HTTP on TCP, and the values arrive over OSC on UDP, at the same number. Both are advertised on the local network under the sketch's type name, or the `name` you give it. The service types are `_oscjson._tcp` and `_osc._udp`, so an app that browses for either finds the sketch. Pass `port: 0` to let the system pick, and read the numbers back from `boundPort` and `receiver.boundPort`.
 

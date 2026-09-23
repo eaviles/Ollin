@@ -56,6 +56,21 @@ public final class RemoteInspector: SketchExtension {
     /// The port actually bound, once the listener is up.
     public var boundPort: Int? { server.boundPort }
 
+    /// Why the surface is not being served, in a sentence worth drawing, or
+    /// `nil` while it is, or before `setup` has run: a port another program
+    /// holds, or a bind the system refused. It follows the listener's own
+    /// state, so it says so the moment the system does, and clears when the
+    /// listener comes up.
+    public var unavailableReason: String? { server.unavailableReason }
+
+    /// Whether the surface is being served right now: the listener is up and
+    /// `boundPort` says where.
+    public var isRunning: Bool { server.boundPort != nil }
+
+    /// Serves again after `stop()`, or tries the port again after a start that
+    /// failed. `setup` calls it for you the first time.
+    public func start() { server.start() }
+
     /// The address a phone on the same network opens, once the listener is up.
     public var url: String? {
         guard let port = server.boundPort else { return nil }
@@ -178,6 +193,17 @@ final class RemoteServer: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.ollin.remote.inspector")
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
     private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
+    /// Why nothing is served, for the inspector's `unavailableReason`.
+    private let reasonStore = OSAllocatedUnfairLock<String?>(initialState: nil)
+
+    var unavailableReason: String? { reasonStore.withLock { $0 } }
+
+    /// Record why the surface is not served, and say it once on stderr for
+    /// the developer watching the terminal; the sketch reads the property.
+    private func fail(_ message: String) {
+        reasonStore.withLock { $0 = message }
+        FileHandle.standardError.write(Data("Remote surface: \(message)\n".utf8))
+    }
     private let links = OSAllocatedUnfairLock<[ObjectIdentifier: Link]>(uncheckedState: [:])
     private let pendingSets = OSAllocatedUnfairLock<[(name: String, value: ParamStored)]>(initialState: [])
     private let snapshot = OSAllocatedUnfairLock(initialState: Snapshot())
@@ -240,7 +266,7 @@ final class RemoteServer: @unchecked Sendable {
         do {
             listener = try NWListener(using: parameters, on: port)
         } catch {
-            print("Remote surface: could not open port \(desiredPort): \(error)")
+            fail("could not open port \(desiredPort): \(error)")
             return
         }
 
@@ -249,12 +275,16 @@ final class RemoteServer: @unchecked Sendable {
             switch state {
             case .ready:
                 self.resolvedPort.withLock { $0 = listener.port?.rawValue }
+                self.reasonStore.withLock { $0 = nil }
             case .failed(let error):
-                // Said out loud on purpose: a port already in use, or a policy
-                // that refuses the bind, would otherwise look like silence.
-                print("Remote surface: the listener failed: \(error)")
+                // A port already in use, or a policy that refuses the bind:
+                // let the listener go, so a later `start` tries again.
+                listener.cancel()
+                self.listenerStore.withLock { $0 = nil }
+                self.resolvedPort.withLock { $0 = nil }
+                self.fail("could not open port \(self.desiredPort): \(error)")
             case .waiting(let error):
-                print("Remote surface: waiting to open the port: \(error)")
+                self.reasonStore.withLock { $0 = "waiting to open port \(self.desiredPort): \(error)" }
             default:
                 break
             }
@@ -271,6 +301,9 @@ final class RemoteServer: @unchecked Sendable {
             listener?.cancel()
             listener = nil
         }
+        // Nothing is bound once the listener is gone, and nothing is wrong.
+        resolvedPort.withLock { $0 = nil }
+        reasonStore.withLock { $0 = nil }
         links.withLock { all in
             for link in all.values { link.connection.cancel() }
             all.removeAll()
