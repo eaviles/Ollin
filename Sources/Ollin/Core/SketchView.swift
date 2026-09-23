@@ -3172,6 +3172,21 @@ public extension Sketch {
 #endif
 
 public extension OllinApp {
+    /// The two flags every one-frame export reads: `--frame N`, the frame to
+    /// render (0 unless given), and `--fps F`, the rate its clock counts at (60
+    /// unless given). One reader for the still, the linear frame, the plates
+    /// and the vector files, so each lands on the moment `--export-sequence`
+    /// puts at its frame N + 1 for the same rate: a still taken at `--frame 30
+    /// --fps 10` is the sequence's frame at three seconds, not at half a second.
+    internal static func stillFlags(_ args: [String]) -> (frame: Int, fps: FrameRate) {
+        func value(_ flag: String) -> String? {
+            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+            return args[i + 1]
+        }
+        return (value("--frame").flatMap(Int.init) ?? 0,
+                value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60)
+    }
+
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
     /// `--export-loop`, `--export-spatial`, `--export-svg`, `--export-pdf`,
@@ -3193,21 +3208,6 @@ public extension OllinApp {
     /// `Sketch.main()` routes every `@main` sketch through here.
     @MainActor
     @discardableResult
-    /// The two flags every one-frame export reads: `--frame N`, the frame to
-    /// render (0 unless given), and `--fps F`, the rate its clock counts at (60
-    /// unless given). One reader for the still, the linear frame, the plates
-    /// and the vector files, so each lands on the moment `--export-sequence`
-    /// puts at its frame N + 1 for the same rate: a still taken at `--frame 30
-    /// --fps 10` is the sequence's frame at three seconds, not at half a second.
-    internal static func stillFlags(_ args: [String]) -> (frame: Int, fps: FrameRate) {
-        func value(_ flag: String) -> String? {
-            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
-            return args[i + 1]
-        }
-        return (value("--frame").flatMap(Int.init) ?? 0,
-                value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60)
-    }
-
     static func handleCommandLine(_ args: [String] = CommandLine.arguments,
                                   makeSketch: () -> Sketch) -> Bool {
         // `--capture-source` beside any export flag ties the files to the source

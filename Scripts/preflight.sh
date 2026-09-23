@@ -19,6 +19,8 @@
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #       -> the parked-thread net over Tests/
+#       -> the attribute net (a doc comment directly under an attribute line)
+#          over every Swift file in Sources/, Examples/ and Tests/
 #       -> Scripts/check-flags.sh (the command's flags against the table the
 #          shell completes from, and the checked-in completion file)
 #       -> Scripts/check-api-names.sh (the public surface under API/ against
@@ -166,6 +168,23 @@ if [[ -n "$parked" ]]; then
     echo "preflight: a test parks a thread; hop with 'await MainActor.run' instead:" >&2
     echo "$parked" >&2
     failures+=("parked thread in Tests/")
+fi
+
+# An attribute stays on its declaration. A declaration inserted between an
+# attribute and the one it was written for takes the attribute with it, and a
+# doc comment directly under an attribute line is that shape: on 2026-09-22 a
+# new helper went in under `@MainActor @discardableResult` and above
+# `handleCommandLine`, which lost the attribute (a warning at every call that
+# ignored its result) and its whole doc comment, and the API listing recorded
+# the loss without anyone reading that line. About a second over every Swift
+# file in the tree, so it runs every time.
+stranded=$(awk 'FNR == 1 { prev = "" }
+    prev ~ /^[ \t]*@[A-Za-z]+(\([^)]*\))?[ \t]*$/ && $0 ~ /^[ \t]*\/\/\// { print FILENAME ":" FNR - 1 ": " prev }
+    { prev = $0 }' ${(f)"$(git ls-files 'Sources/*.swift' 'Examples/*.swift' 'Tests/*.swift')"})
+if [[ -n "$stranded" ]]; then
+    echo "preflight: a doc comment sits under an attribute, so the attribute belongs to the next declaration:" >&2
+    echo "$stranded" >&2
+    failures+=("an attribute off its declaration")
 fi
 
 # Every name the prose puts in backticks, against the tree and the public

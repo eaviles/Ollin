@@ -15,7 +15,9 @@
 # Scripts/api-surface.sh) at two points and says what changed between them:
 # every line added, removed, renamed, changed in signature, or deprecated,
 # with a removal paired to the addition it became when the same container
-# holds one of the same name or the same shape. From that it names the bump
+# holds one of the same name or the same shape, and a member a protocol the
+# type conforms to still supplies (one of Ollin's, or `count` and `first` from
+# the standard library's Collection) read as moved. From that it names the bump
 # the next release needs. At major zero any public change is a minor, which is
 # what the README promises a consumer pinning .upToNextMinor. From 1.0 on a
 # removal is a major, an addition or a deprecation is a minor, and a release
@@ -55,7 +57,7 @@ while [[ $# -gt 0 ]]; do
     --strict | --warn | --changelog | --summary) pass+=("$1") ;;
     --selftest) exec python3 Scripts/api-diff.py --selftest ;;
     --help | -h)
-        sed -n '3,42p' "$0" | sed 's|^# \?||'
+        sed -n '3,44p' "$0" | sed -E 's|^# ?||'
         exit 0
         ;;
     *) echo "api-diff: unknown argument $1" >&2; exit 2 ;;

@@ -383,6 +383,7 @@ enum ModelUnit: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sen
 enum OllinApp: Sendable
   @discardableResult static func exportHEIC(_: CoreGraphics.CGImage, to: String) -> OllinApp.StillExport?
   @discardableResult static func exportWidget(to: String, from: Foundation.Date = default, size: CanvasSize? = default, count: Int? = default, of: () -> Sketch) -> [String]
+  @discardableResult static func handleCommandLine(_: [String] = default, makeSketch: () -> Sketch) -> Bool
   static func configureTransport(_: [String], for: Sketch)
   static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
   static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
@@ -411,7 +412,6 @@ enum OllinApp: Sendable
   static func exportVideo(_: Sketch, to: String, frames: Int, fps: FrameRate = default, codec: VideoCodec = default, bitsPerSecond: Int? = default, encodeQuality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default, slowMotion: SlowMotion? = default)
   static func exportWeb(_: Sketch, to: String, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default)
   static func gcode(of: Sketch, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
-  static func handleCommandLine(_: [String] = default, makeSketch: () -> Sketch) -> Bool
   static func image(of: Sketch, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
   static func pdf(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> Foundation.Data
   static func plates(of: Sketch, profile: ICCProfile? = default, intent: RenderingIntent = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) -> ProcessSeparation?

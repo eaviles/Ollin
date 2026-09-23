@@ -13,7 +13,11 @@ in the same container before either is reported on its own: the same name
 with other labels or types is a signature change, the same types under another
 name is a rename, and what is left is paired by text similarity and marked as
 likely. A removed type folds its members into itself, and a removed type whose
-members reappear under another name is a renamed type.
+members reappear under another name is a renamed type. A member the type
+stops declaring moved, rather than went away, when a protocol it conforms to
+still supplies it: one of Ollin's own, found by its line in the same listing,
+or one of the standard library's, found in the STANDARD table below, which the
+self-test compiles against the real library.
 
 The bump follows the version the diff starts from. At major zero every change
 is a minor (a breaking change and a new feature both bump the minor, and a
@@ -50,6 +54,113 @@ MODIFIERS = {
     "@frozen",
 }
 LIKELY = 0.75  # how alike two names must be for a leftover pair to be called a rename
+
+# What the standard library's protocols give a type that conforms to them. A
+# listing only carries what Ollin declares, so none of this shows in one: a
+# requirement the compiler writes (`==`, `hash(into:)`), a default the
+# protocol's own extension provides (`count`, `first`, `isEmpty`), or a
+# requirement something outside the listing satisfies. A type that drops its
+# own `count` when it becomes a collection would read as a removal, and then
+# as one half of a rename nobody made, with every call site still compiling.
+# A removed line that matches an entry here, once its placeholders are read
+# off the type, resolves at every call site to a member of the same shape, so
+# it moved onto the protocol.
+#
+# The placeholders are Self (the type), Element, Index, and the literal types,
+# read off the type's own listing at the end (a typealias, the type of
+# startIndex, the subscript that takes an Index, the parameter of
+# init(stringLiteral:)); one the listing does not settle matches nothing, so a
+# gap in the reading reports a removal and never a move. The condition beside
+# a line is another protocol the type must conform to, `class`, or
+# `Index == Int` (the strideable index the random-access defaults need).
+#
+# Left out on purpose: members whose meaning a type may own differently from
+# the protocol, since a match here tells the changelog nothing changed.
+# `contains(_:)` is the one the tree already carries: Contour is a collection
+# of points whose own `contains(_:)` is a hit test, the library's is a
+# membership test, and dropping the first would compile and quietly answer
+# the second. `min()`, `max()`, `sorted()` and `reversed()` go with it (an
+# ordering of the type's own, or a reversal that returns its own type, as
+# Ramp's does), and so do `randomElement()` and `shuffled()`, which draw from
+# the system generator where a seeded sketch would draw from its own. The
+# literal protocols other than the string family require an initializer whose
+# parameter only the conformance fixes and supply nothing else, so they are
+# named with nothing under them.
+#
+# Scripts/api-diff.sh --selftest compiles a call against every line here, on
+# a type that declares only what the protocol requires.
+STANDARD = [
+    ("RangeReplaceableCollection", [
+        ("mutating func append(_: Element)", None),
+        ("mutating func insert(_: Element, at: Index)", None),
+        ("mutating func popLast() -> Element?", "BidirectionalCollection"),
+        ("mutating func remove(at: Index) -> Element", None),
+        ("mutating func removeAll(keepingCapacity: Bool = default)", None),
+        ("mutating func removeFirst() -> Element", None),
+        ("mutating func removeLast() -> Element", "BidirectionalCollection"),
+        ("mutating func reserveCapacity(_: Int)", None),
+        ("init(repeating: Element, count: Int)", None),
+    ]),
+    ("MutableCollection", [
+        ("mutating func reverse()", "BidirectionalCollection"),
+        ("mutating func swapAt(_: Index, _: Index)", None),
+    ]),
+    ("RandomAccessCollection", [
+        ("func distance(from: Index, to: Index) -> Int", "Index == Int"),
+        ("func index(_: Index, offsetBy: Int) -> Index", "Index == Int"),
+        ("func index(after: Index) -> Index", "Index == Int"),
+        ("func index(before: Index) -> Index", "Index == Int"),
+        ("var indices: Range<Index> { get }", "Index == Int"),
+    ]),
+    ("BidirectionalCollection", [
+        ("var last: Element? { get }", None),
+    ]),
+    ("Collection", [
+        ("var count: Int { get }", None),
+        ("var first: Element? { get }", None),
+        ("var isEmpty: Bool { get }", None),
+        ("var underestimatedCount: Int { get }", None),
+    ]),
+    ("Sequence", [
+        ("var underestimatedCount: Int { get }", None),
+    ]),
+    ("Hashable", [
+        ("func hash(into: Hasher)", None),
+        ("var hashValue: Int { get }", None),
+    ]),
+    ("Comparable", [
+        ("static func ...(_: Self, _: Self) -> ClosedRange<Self>", None),
+        ("static func ..<(_: Self, _: Self) -> Range<Self>", None),
+        ("static func <(_: Self, _: Self) -> Bool", None),
+        ("static func <=(_: Self, _: Self) -> Bool", None),
+        ("static func >(_: Self, _: Self) -> Bool", None),
+        ("static func >=(_: Self, _: Self) -> Bool", None),
+    ]),
+    ("Equatable", [
+        ("static func !=(_: Self, _: Self) -> Bool", None),
+        ("static func ==(_: Self, _: Self) -> Bool", None),
+    ]),
+    ("Identifiable", [
+        ("var id: ObjectIdentifier { get }", "class"),
+    ]),
+    ("CustomStringConvertible", [
+        ("var description: String { get }", None),
+    ]),
+    ("ExpressibleByStringLiteral", [
+        ("init(extendedGraphemeClusterLiteral: StringLiteralType)", None),
+    ]),
+    ("ExpressibleByExtendedGraphemeClusterLiteral", [
+        ("init(unicodeScalarLiteral: ExtendedGraphemeClusterLiteralType)", None),
+    ]),
+    ("ExpressibleByUnicodeScalarLiteral", []),
+    ("ExpressibleByIntegerLiteral", []),
+    ("ExpressibleByFloatLiteral", []),
+    ("ExpressibleByBooleanLiteral", []),
+    ("ExpressibleByArrayLiteral", []),
+    ("ExpressibleByDictionaryLiteral", []),
+    ("ExpressibleByNilLiteral", []),
+]
+PLACEHOLDER = re.compile(r"\b(Element|Index|StringLiteralType|ExtendedGraphemeClusterLiteralType)\b")
 
 
 class Entry:
@@ -158,11 +269,14 @@ def describe(text):
                     defaults=defaults, ret=tail)
         return decl
     if head.startswith("init"):
+        # Failability is part of what an initializer returns, not its name,
+        # so an `init?` that now throws reads as a change to one initializer.
         open_index = rest.index("(")
         close = balanced(rest, open_index)
         labels, types, defaults = parameters(rest[open_index + 1:close])
-        decl.update(kind="init", name=rest[:open_index], labels=labels, types=types,
-                    defaults=defaults, ret=rest[close + 1:].strip())
+        failable = rest[len("init"):open_index]
+        decl.update(kind="init", name="init", labels=labels, types=types,
+                    defaults=defaults, ret=(failable + " " + rest[close + 1:].strip()).strip())
         return decl
     if head.startswith("subscript"):
         open_index = rest.index("(")
@@ -295,6 +409,79 @@ def head_loses(old, new):
     new_sig = re.search(r"<[^>]*>", new.decl["ret"].split(":")[0])
     return (not old_names <= new_names or old_where != new_where
             or (old_sig.group(0) if old_sig else "") != (new_sig.group(0) if new_sig else ""))
+
+
+def settled_types(members):
+    """The associated types a type's listing settles for it: every typealias,
+    then Index from startIndex, Element from the subscript that takes an
+    Index, and the string literal types from their initializers."""
+    decls = [describe(text) for text in members]
+    values = {d["name"]: d["ret"] for d in decls if d["kind"] == "typealias"}
+    if "Index" not in values:
+        starts = [d["ret"] for d in decls if d["kind"] == "var" and d["name"] == "startIndex"]
+        if len(starts) == 1:
+            values["Index"] = re.sub(r" \{ get( set)? \}$", "", starts[0])
+    if "Element" not in values and "Index" in values:
+        found = {re.sub(r"^-> | \{ get( set)? \}$", "", d["ret"]) for d in decls
+                 if d["kind"] == "subscript" and d["labels"] == ("_",) and d["types"] == (values["Index"],)}
+        if len(found) == 1:
+            values["Element"] = found.pop()
+    for placeholder, label in (("StringLiteralType", "stringLiteral"),
+                               ("ExtendedGraphemeClusterLiteralType", "extendedGraphemeClusterLiteral")):
+        if placeholder not in values:
+            found = {d["types"][0] for d in decls if d["kind"] == "init" and d["labels"] == (label,)}
+            if len(found) == 1:
+                values[placeholder] = found.pop()
+    if "ExtendedGraphemeClusterLiteralType" not in values and "StringLiteralType" in values:
+        values["ExtendedGraphemeClusterLiteralType"] = values["StringLiteralType"]
+    return values
+
+
+def as_self(text, path):
+    """A line with the type it sits in read as `Self`, and without the one
+    attribute that never breaks a call site, so a line the type declared and
+    a line the library supplies compare as text."""
+    owner = ".".join(k.split(" ", 1)[1] for k in path if not k.startswith("extension "))
+    text = text.replace("@discardableResult ", "")
+    return re.sub(rf"(?<![\w.]){re.escape(owner)}\b", "Self", text) if owner else text
+
+
+def standard_supplier(entry, head, members, gained):
+    """The standard-library protocol that still gives a type a member it no
+    longer declares, or None. Only a struct, class or enum is read, and only
+    when the type declares nothing else under that name and those labels at
+    the end (then the member changed rather than moved, and the pairing
+    reports it)."""
+    if head is None or head.decl["type_kind"] not in ("struct", "class", "enum"):
+        return None
+    decl = entry.decl
+    for text in members:
+        other = describe(text)
+        if (other["kind"], other["name"], other["labels"]) == (decl["kind"], decl["name"], decl["labels"]):
+            return None
+    conforms = inherits(head.text)[0]
+    values = settled_types(members)
+    wanted = as_self(entry.text, entry.path)
+    found = []
+    for protocol, lines in STANDARD:
+        if protocol not in conforms:
+            continue
+        for line, condition in lines:
+            if condition == "class" and head.decl["type_kind"] != "class":
+                continue
+            if condition == "Index == Int" and values.get("Index") != "Int":
+                continue
+            if condition not in (None, "class", "Index == Int") and condition not in conforms:
+                continue
+            unsettled = [p for p in PLACEHOLDER.findall(line) if p not in values]
+            if unsettled:
+                continue
+            text = PLACEHOLDER.sub(lambda m: values[m.group(1)], line)
+            if as_self(text, entry.path) == wanted:
+                found.append(protocol)
+    if not found:
+        return None
+    return ([p for p in found if p in gained] or found)[0]
 
 
 def classify_pair(old, new, sure):
@@ -434,13 +621,19 @@ def diff_module(module, old, new):
         protocols = supplied.get(normalized, set()) | supplied.get(entry.text, set())
         head = heads.get(entry.path)
         conforms = {p for p in protocols if head is None or re.search(rf"\b{re.escape(p)}\b", head.text)}
+        # Several protocols can supply the same line; the one the type gained
+        # in this diff is the one it moved onto.
+        old_head = next((e for e in old_entries if e.own_path == entry.path and e.container_key), None)
+        gained = (inherits(head.text)[0] - inherits(old_head.text)[0]) if head is not None and old_head is not None else set()
         if conforms:
-            # Several protocols can supply the same line; the one the type
-            # gained in this diff is the one it moved onto.
-            old_head = next((e for e in old_entries if e.own_path == entry.path and e.container_key), None)
-            gained = (inherits(head.text)[0] - inherits(old_head.text)[0]) if head is not None and old_head is not None else set()
             preferred = sorted(conforms & gained) or sorted(conforms)
             result.moved.append((entry, preferred[0]))
+            continue
+        # A protocol of the standard library's has no line to find, so its
+        # table stands in for one.
+        standard = standard_supplier(entry, head, new_members.get(entry.path, set()), gained)
+        if standard:
+            result.moved.append((entry, standard))
         else:
             still_removed.append(entry)
     removed = still_removed
@@ -557,7 +750,7 @@ def report(diffs, args, out=sys.stdout):
         n_removed = len(d.removed) + len(d.finished) + len(d.removed_types)
         if n_removed:
             counts.append(f"{n_removed} removed")
-        n_renamed = sum(1 for k, *_ in d.pairs if k != "changed") + len(d.renamed_types)
+        n_renamed = sum(1 for k, *_ in d.pairs if k not in ("changed", "extended")) + len(d.renamed_types)
         if n_renamed:
             counts.append(f"{n_renamed} renamed")
         n_changed = sum(1 for k, *_ in d.pairs if k == "changed")
@@ -803,8 +996,216 @@ struct Vec2: Equatable, Vec
 """
 
 
+# The fixtures for the standard-library table: a type gaining a protocol (or
+# holding one already) and dropping what that protocol gives it, beside the
+# drops the table must leave as removals.
+STANDARD_BAG_OLD = """struct Bag: Equatable, Sendable
+  init(_: [Int])
+  var count: Int { get }
+  var first: Int? { get }
+  var isEmpty: Bool { get }
+  var items: [Int] { get }
+"""
+
+STANDARD_BAG_NEW = """struct Bag: BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+  init(_: [Int])
+  subscript(_: Int) -> Int { get }
+  var endIndex: Int { get }
+  var items: [Int] { get }
+  var startIndex: Int { get }
+"""
+
+STANDARD_OLD = """struct Cells: Equatable
+  var count: Double { get }
+  var items: [Grid.Cell] { get }
+struct Region: Sendable
+  func contains(_: Vector2) -> Bool
+  var points: [Vector2] { get }
+struct Shelf: Collection, Sequence
+  func index(after: Int) -> Int
+  subscript(_: Int) -> Int { get }
+  var endIndex: Int { get }
+  var isEmpty: Bool { get }
+  var startIndex: Int { get }
+struct Tag: Sendable
+  var id: ObjectIdentifier { get }
+enum Tone: Sendable
+  case high
+  case low
+  static func <(_: Tone, _: Tone) -> Bool
+final class Voice
+  var id: ObjectIdentifier { get }
+struct Word: ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral
+  init(stringLiteral: String)
+  init(unicodeScalarLiteral: String)
+"""
+
+STANDARD_NEW = """struct Cells: Collection, Equatable, Sequence
+  func index(after: Int) -> Int
+  subscript(_: Int) -> Grid.Cell { get }
+  var endIndex: Int { get }
+  var items: [Grid.Cell] { get }
+  var startIndex: Int { get }
+struct Region: BidirectionalCollection, Collection, RandomAccessCollection, Sendable, Sequence
+  subscript(_: Int) -> Vector2 { get }
+  var endIndex: Int { get }
+  var points: [Vector2] { get }
+  var startIndex: Int { get }
+struct Shelf: Collection, Sequence
+  func index(after: Int) -> Int
+  subscript(_: Int) -> Int { get }
+  var endIndex: Int { get }
+  var startIndex: Int { get }
+struct Tag: Identifiable, Sendable
+enum Tone: Comparable, Equatable, Sendable
+  case high
+  case low
+final class Voice: Identifiable
+struct Word: ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral
+  init(stringLiteral: String)
+"""
+
+# The types the table's lines are compiled against: each conforms to its
+# protocol (and to whatever that protocol's conditions ask) and declares only
+# what the protocol requires, with Int for the element and the index.
+PROBE_TYPES = {
+    "RangeReplaceableCollection": ("""struct ProbeReplaceable: RandomAccessCollection, RangeReplaceableCollection {
+    var items: [Int] = []
+    init() {}
+    var startIndex: Int { 0 }
+    var endIndex: Int { items.count }
+    subscript(position: Int) -> Int { items[position] }
+    mutating func replaceSubrange<C: Collection>(_ range: Range<Int>, with elements: C) where C.Element == Int {
+        items.replaceSubrange(range, with: elements)
+    }
+}""", "ProbeReplaceable()"),
+    "MutableCollection": ("""struct ProbeMutable: RandomAccessCollection, MutableCollection {
+    var items = [1, 2]
+    var startIndex: Int { 0 }
+    var endIndex: Int { items.count }
+    subscript(position: Int) -> Int {
+        get { items[position] }
+        set { items[position] = newValue }
+    }
+}""", "ProbeMutable()"),
+    "RandomAccessCollection": ("""struct ProbeRandomAccess: RandomAccessCollection {
+    var startIndex: Int { 0 }
+    var endIndex: Int { 1 }
+    subscript(position: Int) -> Int { position }
+}""", "ProbeRandomAccess()"),
+    "BidirectionalCollection": ("""struct ProbeBidirectional: BidirectionalCollection {
+    var startIndex: Int { 0 }
+    var endIndex: Int { 1 }
+    func index(after i: Int) -> Int { i + 1 }
+    func index(before i: Int) -> Int { i - 1 }
+    subscript(position: Int) -> Int { position }
+}""", "ProbeBidirectional()"),
+    "Collection": ("""struct ProbeCollection: Collection {
+    var startIndex: Int { 0 }
+    var endIndex: Int { 1 }
+    func index(after i: Int) -> Int { i + 1 }
+    subscript(position: Int) -> Int { position }
+}""", "ProbeCollection()"),
+    "Sequence": ("""struct ProbeSequence: Sequence {
+    func makeIterator() -> IndexingIterator<[Int]> { [1].makeIterator() }
+}""", "ProbeSequence()"),
+    "Hashable": ("struct ProbeHashable: Hashable { var x = 0 }", "ProbeHashable()"),
+    "Comparable": ("enum ProbeComparable: Comparable { case low, high }", "ProbeComparable.low"),
+    "Equatable": ("struct ProbeEquatable: Equatable { var x = 0 }", "ProbeEquatable()"),
+    "Identifiable": ("final class ProbeIdentifiable: Identifiable {}", "ProbeIdentifiable()"),
+    "CustomStringConvertible": ("""struct ProbeDescribed: CustomStringConvertible {
+    var description: String { "" }
+}""", "ProbeDescribed()"),
+    "ExpressibleByStringLiteral": ("""struct ProbeString: ExpressibleByStringLiteral {
+    init(stringLiteral value: String) {}
+}""", "ProbeString(stringLiteral: \"\")"),
+    "ExpressibleByExtendedGraphemeClusterLiteral": ("""struct ProbeGrapheme: ExpressibleByExtendedGraphemeClusterLiteral {
+    init(extendedGraphemeClusterLiteral value: String) {}
+}""", "ProbeGrapheme(extendedGraphemeClusterLiteral: \"\")"),
+}
+PROBE_VALUES = {"Element": "Int", "Index": "Int", "StringLiteralType": "String",
+                "ExtendedGraphemeClusterLiteralType": "String"}
+
+
+def probe_calls(line, type_name):
+    """Swift statements that call a table line the way a call site written
+    against it would. Each binds the result and hands it on `inout` with the
+    type the line claims, which admits no conversion, so a line that says
+    `Element?` where the library returns `Element` fails here rather than
+    passing on the optional promotion a plain `let x: T =` would allow (and
+    an `if let` at a real call site would not)."""
+    text = PLACEHOLDER.sub(lambda m: PROBE_VALUES[m.group(1)], line).replace("Self", type_name)
+    decl = describe(text)
+
+    def exactly(expression, typed):
+        return f"do {{ var result = {expression}; same(&result, ({typed}).self) }}"
+
+    if decl["kind"] == "var":
+        return [exactly(f"value.{decl['name']}", re.sub(r" \{ get( set)? \}$", "", decl["ret"]))]
+    returned = decl["ret"][len("-> "):] if decl["ret"].startswith("-> ") else ""
+    if decl["kind"] == "func" and not re.match(r"^\w+$", decl["name"]):
+        return [exactly(f"value {decl['name']} value", returned)]
+    arguments = {"Int": "0", "Bool": "false", "String": '""', "Hasher": "&hasher", type_name: "value"}
+
+    def call(keep_defaults):
+        parts = []
+        for label, typed, default in zip(decl["labels"], decl["types"], decl["defaults"]):
+            if default and not keep_defaults:
+                continue
+            argument = arguments[typed]
+            parts.append(argument if label == "_" else f"{label}: {argument}")
+        head = type_name if decl["kind"] == "init" else f"value.{decl['name']}"
+        return f"{head}({', '.join(parts)})"
+
+    forms = [call(True)] + ([call(False)] if any(decl["defaults"]) else [])
+    if decl["kind"] == "init":
+        return [exactly(form, type_name) for form in forms]
+    return [exactly(form, returned) if returned else form for form in forms]
+
+
+def standard_probe():
+    """The Swift file that calls every line of the table, and for each line of
+    that file the table line it came from."""
+    lines = ["// Written by Scripts/api-diff.py --selftest; every call is one line of its table.",
+             "func same<T>(_ value: inout T, _ type: T.Type) {}"]
+    origin = {}
+    for index, (protocol, entries) in enumerate(STANDARD):
+        if not entries:
+            continue
+        declaration, construction = PROBE_TYPES[protocol]
+        type_name = re.search(r"(?:struct|class|enum) (\w+)", declaration).group(1)
+        lines.extend(["", *declaration.split("\n"), f"func probe{index}() {{",
+                      f"    var value = {construction}", "    var hasher = Hasher()",
+                      "    _ = (value, hasher)"])
+        for entry, _ in entries:
+            for statement in probe_calls(entry, type_name):
+                lines.append("    " + statement)
+                origin[len(lines)] = f"{protocol}: {entry}"
+        lines.append("}")
+    return "\n".join(lines) + "\n", origin
+
+
+def compile_probe(work):
+    """Type-check the probe. None when it compiles, else what failed."""
+    import shutil
+    import subprocess
+    if not shutil.which("xcrun"):
+        return "skipped"
+    source, origin = standard_probe()
+    path = os.path.join(work, "StandardProbe.swift")
+    with open(path, "w") as handle:
+        handle.write(source)
+    run = subprocess.run(["xcrun", "swiftc", "-typecheck", path], capture_output=True, text=True)
+    if run.returncode == 0:
+        return None
+    lines = sorted({int(n) for n in re.findall(r"StandardProbe\.swift:(\d+):\d+: error", run.stderr)})
+    named = [origin.get(n, f"line {n} of the probe") for n in lines] or [run.stderr.strip()[:400]]
+    return "; ".join(named)
+
+
 def selftest():
     failures = []
+    compiled = "skipped"
 
     def check(condition, what):
         if not condition:
@@ -830,6 +1231,10 @@ def selftest():
         check("static" in d["mods"] and "@discardableResult" in d["mods"], "modifiers")
         d = describe("init?(resource: String, withExtension: String? = default, in: Foundation.Bundle)")
         check(d["kind"] == "init" and d["labels"] == ("resource", "withExtension", "in"), "init labels")
+        failable, throwing = Entry((), "init?(data: Data)", False, 0), Entry((), "init(data: Data) throws", False, 0)
+        check(failable.decl["name"] == "init" and failable.decl["ret"] == "?", f"failability is the return: {failable.decl}")
+        check(score(failable, throwing) == 3.0 and classify_pair(failable, throwing, True) == "changed",
+              "an init? that now throws is one initializer changed")
         d = describe("case object([String : JSON])")
         check(d["kind"] == "case" and d["name"] == "object", "case name")
         d = describe("struct Crowd<T>: Equatable where T: Hashable")
@@ -907,11 +1312,58 @@ def selftest():
         check(any("Deprecations.swift:2: a shim with no renamed" in p for p in problems), f"a shim without its fix-it: {problems}")
         check(len(problems) == 2, f"exactly two problems, got {problems}")
 
+        # The standard library: a type that becomes a collection and drops its
+        # own count, first and isEmpty moved them onto Collection, with no
+        # rename invented from the leftovers and no removal for the rule.
+        header = "// Ollin: header\n// header\n"
+        for name, text in (("bag-old", STANDARD_BAG_OLD), ("bag-new", STANDARD_BAG_NEW),
+                           ("std-old", STANDARD_BAG_OLD + STANDARD_OLD), ("std-new", STANDARD_BAG_NEW + STANDARD_NEW)):
+            os.mkdir(os.path.join(work, name))
+            with open(os.path.join(work, name, "Ollin.txt"), "w") as handle:
+                handle.write(header + text)
+        diffs = diff_all(os.path.join(work, "bag-old"), os.path.join(work, "bag-new"))
+        d = diffs[0]
+        moved = sorted((selector(e), p) for e, p in d.moved)
+        check(moved == [("Bag.count", "Collection"), ("Bag.first", "Collection"), ("Bag.isEmpty", "Collection")],
+              f"the collection's own members moved onto it: {moved}")
+        check([k for k, *_ in d.pairs] == ["extended"], f"no rename invented: {[(k, selector(o), selector(n)) for k, o, n, _ in d.pairs]}")
+        check(d.removed == [] and d.violations == [], f"nothing removed: {[selector(e) for e in d.removed]}")
+        check(bump(diffs, 1) == "minor" and bump(diffs, 0) == "minor", "gaining Collection is a minor")
+
+        # The table's edges: a member of another type, a member the table
+        # leaves out on purpose, and a condition that fails all stay removals;
+        # a type that was a collection already, a synthesized operator, a
+        # class's identity and a literal's default initializer move.
+        diffs = diff_all(os.path.join(work, "std-old"), os.path.join(work, "std-new"))
+        d = diffs[0]
+        moved = sorted((selector(e), p) for e, p in d.moved)
+        check(moved == sorted([("Bag.count", "Collection"), ("Bag.first", "Collection"), ("Bag.isEmpty", "Collection"),
+                               ("Shelf.isEmpty", "Collection"), ("Tone.<(_:_:)", "Comparable"), ("Voice.id", "Identifiable"),
+                               ("Word(unicodeScalarLiteral:)", "ExpressibleByExtendedGraphemeClusterLiteral")]),
+              f"what the library supplies moved: {moved}")
+        removed = sorted(selector(e) for e in d.removed)
+        check(removed == ["Cells.count", "Region.contains(_:)", "Tag.id"], f"what it does not stays removed: {removed}")
+        check(all(k == "extended" for k, *_ in d.pairs), f"no pairing among the leftovers: {[(k, selector(o), selector(n)) for k, o, n, _ in d.pairs]}")
+        check(bump(diffs, 1) == "major", "a real removal beside the moves is still a major")
+        values = settled_types(["subscript(_: Int) -> Grid.Cell { get }", "var startIndex: Int { get }", "init(stringLiteral: String)"])
+        check(values == {"Index": "Int", "Element": "Grid.Cell", "StringLiteralType": "String",
+                         "ExtendedGraphemeClusterLiteralType": "String"}, f"settled types {values}")
+        check("Element" not in settled_types(["subscript(_: Int) -> Int { get }"]), "no Element without an Index to read it by")
+
+        # The table holds against the compiler: every line is called on a type
+        # that declares only what its protocol requires.
+        compiled = compile_probe(work)
+        if compiled != "skipped":
+            check(compiled is None, f"the standard-library table does not compile: {compiled}")
+
     if failures:
         for failure in failures:
             print(f"api-diff selftest: {failure}", file=sys.stderr)
         return 1
-    print("api-diff selftest: every class of change lands where it should")
+    lines = sum(len(entries) for _, entries in STANDARD)
+    table = f"the standard-library table ({lines} members over {len(STANDARD)} protocols)"
+    print(f"api-diff selftest: every class of change lands where it should, and {table}"
+          f"{' was not compiled' if compiled == 'skipped' else ' compiles'}")
     return 0
 
 
