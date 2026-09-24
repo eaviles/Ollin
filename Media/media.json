@@ -300,7 +300,9 @@
     ],
     "Recreations/VicenteRojo": [
       "Recreations/VicenteRojo/Negaciones",
-      "Recreations/VicenteRojo/MexicoBajoLaLluvia"
+      "Recreations/VicenteRojo/MexicoBajoLaLluvia",
+      "Recreations/VicenteRojo/Senales",
+      "Recreations/VicenteRojo/PiramidesYVolcanes"
     ],
     "Recreations/VladimirBonacic": [
       "Recreations/VladimirBonacic/DynamicObject",
@@ -771,10 +773,12 @@
     "Recreations/VicenteRojo": {
       "of": [
         "Recreations/VicenteRojo/Negaciones",
-        "Recreations/VicenteRojo/MexicoBajoLaLluvia"
+        "Recreations/VicenteRojo/MexicoBajoLaLluvia",
+        "Recreations/VicenteRojo/Senales",
+        "Recreations/VicenteRojo/PiramidesYVolcanes"
       ],
-      "image": "groups/Recreations-VicenteRojo.jpg?v=4afe3aa1",
-      "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=8659ae06"
+      "image": "groups/Recreations-VicenteRojo.jpg?v=f8fef023",
+      "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=215aa774"
     },
     "Recreations/VladimirBonacic": {
       "of": [
@@ -9138,6 +9142,48 @@
       "loopSmall": "examples/Recreations/VicenteRojo/Negaciones/loop-640.mp4?v=3108053f",
       "still": "examples/Recreations/VicenteRojo/Negaciones/still.jpg?v=cc0414e3",
       "stillSmall": "examples/Recreations/VicenteRojo/Negaciones/still-640.jpg?v=49392fc3"
+    },
+    "Recreations/VicenteRojo/PiramidesYVolcanes": {
+      "width": 1100,
+      "height": 1000,
+      "length": "24.0s",
+      "seconds": 24.0,
+      "frame": 965,
+      "motion": 14.095,
+      "sound": false,
+      "source": "89e92e980525454f",
+      "rendered": "2026-09-24",
+      "bytes": {
+        "loop": 1936862,
+        "loopSmall": 574373,
+        "still": 143417,
+        "stillSmall": 52884
+      },
+      "loop": "examples/Recreations/VicenteRojo/PiramidesYVolcanes/loop.mp4?v=7a8b4a3d",
+      "loopSmall": "examples/Recreations/VicenteRojo/PiramidesYVolcanes/loop-640.mp4?v=4c539b20",
+      "still": "examples/Recreations/VicenteRojo/PiramidesYVolcanes/still.jpg?v=1b395651",
+      "stillSmall": "examples/Recreations/VicenteRojo/PiramidesYVolcanes/still-640.jpg?v=c0677d80"
+    },
+    "Recreations/VicenteRojo/Senales": {
+      "width": 900,
+      "height": 1200,
+      "length": "20.0s",
+      "seconds": 20.0,
+      "frame": 540,
+      "motion": 12.451,
+      "sound": false,
+      "source": "e91a40c6db41755f",
+      "rendered": "2026-09-24",
+      "bytes": {
+        "loop": 1012168,
+        "loopSmall": 270001,
+        "still": 52794,
+        "stillSmall": 19768
+      },
+      "loop": "examples/Recreations/VicenteRojo/Senales/loop.mp4?v=448d60e2",
+      "loopSmall": "examples/Recreations/VicenteRojo/Senales/loop-640.mp4?v=8b2e866b",
+      "still": "examples/Recreations/VicenteRojo/Senales/still.jpg?v=4d0bd82a",
+      "stillSmall": "examples/Recreations/VicenteRojo/Senales/still-640.jpg?v=28c23029"
     },
     "Recreations/VladimirBonacic/DynamicObject": {
       "width": 1080,

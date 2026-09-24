@@ -890,9 +890,13 @@ let package = Package(
         example("Recreations/CaseyReas/Touching"),
         example("Recreations/CaseyReas/Planes"),
         // The letter T painted only as the shadow it casts, panel after panel,
-        // and rain falling across a square, after Vicente Rojo.
+        // rain falling across a square, signs cut from the circle, the triangle
+        // and the square, and a stepped pyramid the lava runs down, after
+        // Vicente Rojo.
         example("Recreations/VicenteRojo/Negaciones"),
         example("Recreations/VicenteRojo/MexicoBajoLaLluvia"),
+        example("Recreations/VicenteRojo/Senales"),
+        example("Recreations/VicenteRojo/PiramidesYVolcanes"),
         // Fields of black and white squares that a coin or a die decided, painted
         // from a drawn corner area after area, and runs whose lengths are the sums
         // of two dice, after Ryszard Winiarski.

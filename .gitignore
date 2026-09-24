@@ -11,6 +11,9 @@ DerivedData/
 *.xcuserstate
 *.xcscmblueprint
 
+# Nova editor project settings
+.nova/
+
 # macOS
 .DS_Store
 *.swp
