@@ -533,7 +533,9 @@ scale is a dial.
 `.diffuse` holds every drawn pixel as a color source and lets the color out into the
 empty space between them until it settles. Away from the marks every pixel ends up the
 average of its four neighbors, which is the rule a soap film obeys. So the field is
-smooth everywhere, nothing overshoots, and no color appears that was not put there.
+smooth everywhere, nothing overshoots, and no color appears that was not put there. In
+the math it is a Laplace solve, the fill also called harmonic, membrane, or Poisson
+interpolation. It is not `poissonDisk`, which scatters points.
 
 - **`.diffuse(threshold:sharpness:)`** a pixel counts as a source when its alpha is at
   least `threshold`, and a half-opaque mark pulls half as hard as a solid one. So draw

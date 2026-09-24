@@ -119,6 +119,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 | `millis()` | `time`, in seconds |
 | `radians(45)` | `.degrees(45)`, which converts degrees to the radians every drawing call takes |
 | `beginShape()` and `endShape()` | `drawShape { }` with a `Path`, or `drawPolyline` for points |
+| a Poisson fill, a Laplace or membrane fill of the space between marks | [`.diffuse()`](Drawing/Effects.md#generate) filtered over a layer holding the marks. `poissonDisk` is something else: it scatters points. |
 
 <a name="units"></a>
 
