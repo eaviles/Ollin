@@ -38,6 +38,7 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 - **One mesh from several.** Meshes placed by their transforms join into one mesh, with no boolean. The result is one draw call and one file for a printer.
 - **Three more filters.** A channel mixer weighs each output channel from the input channels. Lens distortion bends a layer into a barrel or a pincushion. A corner pin lays a layer onto four points.
 - **Small sketch conveniences.** `redraw()` draws one frame of a sketch that has stopped looping. A sketch can set the pointer's shape or hide it, and spherical coordinates sit beside `polar`. A file can be picked through the system's open panel, and the frame can be copied to the clipboard.
+- **Putting a parameter back.** A parameter tuned in the inspector goes back to the value its `@Param` line declares, with no need to quit the host. One row resets from its context menu, or from a small mark that only a tuned row shows. *Reset all* puts every tuned value back at once, and each group card does the same for its own rows. The clock, the seed, and the canvas carry on as they were.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 
