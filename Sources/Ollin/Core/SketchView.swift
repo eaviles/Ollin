@@ -2752,7 +2752,7 @@ public enum OllinApp {
     /// (`deltaTime = 1/fps`, `time = frame/fps`), decoupled from wall-clock, so
     /// every frame renders the exact moment it should no matter how long it takes
     /// — a ten-minute render still assembles into a smooth `fps` video. Frames are
-    /// written as `frame_00001.png`, `frame_00002.png`, … (zero-padded from
+    /// written as `frame-00001.png`, `frame-00002.png`, … (zero-padded from
     /// `startFrame`), ready for `ffmpeg`. One sketch instance and renderer are
     /// reused across the run, so stateful sketches evolve frame to frame.
     ///

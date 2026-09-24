@@ -750,6 +750,28 @@ struct SiteTests {
         return text
     }
 
+    @Test("The checkout's llms.txt is what the reference writes, and every link in it is a file here")
+    func checkoutIndex() throws {
+        let root = try #require(Self.repositoryRoot())
+        let written = SiteBuilder(root: root).checkoutIndex()
+        let committed = try String(contentsOf: root.appendingPathComponent("llms.txt"), encoding: .utf8)
+        #expect(committed == written, "llms.txt is stale: run Scripts/llms.sh and commit it")
+        #expect(written.hasPrefix("# Ollin"))
+        #expect(written.contains("## Start here\n\n- [Ollin quick reference](Docs/QuickReference.md)"))
+        #expect(written.contains("Scripts/ollin api <name>"))
+        var links = 0
+        var rest = Substring(written)
+        while let open = rest.range(of: "]("), let close = rest[open.upperBound...].firstIndex(of: ")") {
+            let path = String(rest[open.upperBound ..< close])
+            #expect(!path.hasPrefix("http"), "\(path) is an address, not a path in the checkout")
+            #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent(path).path), "\(path) is not in the checkout")
+            links += 1
+            rest = rest[close...]
+        }
+        #expect(links > 200, "found only \(links) links")
+        #expect(!written.contains("\u{2014}"))
+    }
+
     @Test("The site carries an index for an agent, and it points at markdown")
     func llmsIndex() throws {
         let root = try #require(Self.repositoryRoot())

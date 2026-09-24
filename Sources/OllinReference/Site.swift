@@ -929,13 +929,20 @@ public struct SiteBuilder {
     /// It is a *curated* map, not a sitemap. Five hundred examples would
     /// bury the reference under a list nobody needs in context, so the
     /// examples are one link to their index and the detail lives behind it.
-    func llmsIndex(plan: Plan) -> String {
+    ///
+    /// `inCheckout` writes the same map for the root of a checkout, the
+    /// `llms.txt` committed there (`Scripts/llms.sh`): links are paths from
+    /// the root rather than addresses on the site, and it names the commands
+    /// that look a detail up from the checkout, which a site cannot run.
+    func llmsIndex(plan: Plan, inCheckout: Bool = false) -> String {
         let base = siteBase ?? ""
+        func address(_ page: Page) -> String {
+            inCheckout ? page.repoPath : base + Self.markdownPath(for: page.sitePath)
+        }
         // One sentence per page. The index's whole purpose is to be small
         // enough to hold in context while the detail waits behind the links,
         // and the reference's own summaries run to several sentences.
         func link(_ page: Page) -> String {
-            let path = Self.markdownPath(for: page.sitePath)
             var summary = page.summary
             if let stop = Self.firstSentence(of: summary) { summary = stop }
             // A summary written as one long sentence still has to fit, so it
@@ -945,16 +952,47 @@ public struct SiteBuilder {
                 let word = cut.lastIndex(of: " ").map { String(cut[..<$0]) } ?? String(cut)
                 summary = word.trimmingCharacters(in: CharacterSet(charactersIn: " ,;:")) + "…"
             }
-            return "- [\(page.title)](\(base)\(path))" + (summary.isEmpty ? "" : ": \(summary)")
+            // A title written with a dash between its parts reads as the
+            // same title with a colon, and the index stays in plain text.
+            let title = page.title.replacingOccurrences(of: " \u{2014} ", with: ": ")
+            return "- [\(title)](\(address(page)))" + (summary.isEmpty ? "" : ": \(summary)")
         }
         var out = """
         # Ollin
 
         > \(Self.tagline) Sketches are Swift classes with a `setup()` and a `draw()` that runs every frame; the renderer sits on Metal and composites in linear light.
 
-        Every page on this site has a markdown twin at the same address with `.md` in place of `.html`, which is what these links point at. The reference is the authority on what exists and how it behaves; the guide teaches it in order; the examples are runnable sketches.
 
         """
+        if inCheckout {
+            out += """
+            This file sits at the root of a checkout of the framework, and its links are paths from here. Read the quick reference first. Then look a detail up from this folder rather than reading pages whole:
+
+            - `Scripts/ollin api <name>`: every declaration a public name has, as its source writes it, with the comment above it (where units and ranges are written down), the pages that document it, and examples that use it. A name it does not know is not public.
+            - `Scripts/ollin docs <topic>`, or `<topic>#<heading>` for one section, and `Scripts/ollin docs --search "<text>"` for every line that says it.
+            - `Scripts/ollin examples <word>`, and `--source` to print one.
+
+            The reference is the authority on what exists and how it behaves; the guide teaches it in order; the examples are runnable sketches; `API/` lists the public surface, one line per declaration.
+
+
+            """
+        } else {
+            out += """
+            Every page on this site has a markdown twin at the same address with `.md` in place of `.html`, which is what these links point at. The reference is the authority on what exists and how it behaves; the guide teaches it in order; the examples are runnable sketches.
+
+
+            """
+        }
+        // The two pages meant to be read first, with lines of their own: the
+        // index lists neither under a group.
+        var start: [String] = []
+        if let page = plan.byRepoPath["Docs/QuickReference.md"] {
+            start.append("- [\(page.title)](\(address(page))): the framework in one read: the lifecycle, the calls by area and their units, the command line, and the mistakes that fail with no error")
+        }
+        if let page = plan.byRepoPath["Docs/Swift.md"] {
+            start.append("- [\(page.title)](\(address(page))): just enough of the language to write a sketch")
+        }
+        if !start.isEmpty { out += "## Start here\n\n" + start.joined(separator: "\n") + "\n\n" }
         let chapters = plan.pages.filter { $0.repoPath.hasPrefix("Guide/") && $0.repoPath.dropFirst(6).first?.isNumber == true }
         if !chapters.isEmpty {
             out += "## Guide\n\n" + chapters.map(link).joined(separator: "\n") + "\n\n"
@@ -966,7 +1004,7 @@ public struct SiteBuilder {
         }
         var project: [String] = []
         if let examples = plan.byRepoPath["Examples/README.md"] {
-            project.append("- [Examples](\(base)\(Self.markdownPath(for: examples.sitePath))): \(plan.examples.count) runnable sketches by category, each with its whole source")
+            project.append("- [Examples](\(address(examples))): \(plan.examples.count) runnable sketches by category, each with its whole source")
         }
         for name in ["ARCHITECTURE.md", "CAPABILITIES.md", "CHANGELOG.md"] {
             if let page = plan.byRepoPath[name] { project.append(link(page)) }
@@ -978,6 +1016,13 @@ public struct SiteBuilder {
         }
         if !optional.isEmpty { out += "## Optional\n\n" + optional.joined(separator: "\n") + "\n" }
         return out
+    }
+
+    /// `llms.txt` for the root of this checkout: the site's map with paths
+    /// from the root for links, and the commands that look a detail up.
+    /// `Scripts/llms.sh` writes it and checks it.
+    public func checkoutIndex() -> String {
+        llmsIndex(plan: plan(), inCheckout: true)
     }
 
     /// The page's own path from the site's root, which is empty for the front

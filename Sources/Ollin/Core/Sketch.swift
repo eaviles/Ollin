@@ -24,7 +24,7 @@ public enum WindowMode: Sendable {
 /// Base class for an Ollin sketch.
 ///
 /// Subclass it, override `setup()` (once) and `draw()` (every frame), and call
-/// the bare drawing functions (`background`, `stroke`, `circle`, …):
+/// the bare drawing functions (`background`, `stroke`, `drawCircle`, …):
 ///
 /// ```swift
 /// final class HelloCircle: Sketch {
@@ -251,8 +251,9 @@ open class Sketch {
     /// How the preview window is sized, relative to `canvasSize`. Defaults to
     /// `.auto`: it opens at 1:1 when the screen has room for the full `canvasSize`
     /// and steps down to fit otherwise, so it always fits. Override with `.fixed(_)`
-    /// to pin a preview zoom. The window is never user-resizable. The screen-fit
-    /// itself lives in the host, so this stays pure data with no screen dependency.
+    /// to pin a preview zoom, or `.resizable` for a window the user can resize,
+    /// where `width` and `height` follow the view. The screen-fit itself lives
+    /// in the host, so this stays pure data with no screen dependency.
     open var windowMode: WindowMode { .auto }
 
     /// How far above white the display can currently go, as a multiple of it:
@@ -3225,6 +3226,10 @@ open class Sketch {
     public func record(into mark: inout StrokeMark) {
         mark.record(Vector2(mouseX, mouseY), deltaTime: deltaTime, pressure: pressure)
     }
+    /// A filled polygon through `points`, plus a stroked closed outline when a
+    /// stroke is set. It fills as a fan from the first point, which is right
+    /// for a convex outline only; a concave one or one with holes fills wrong
+    /// with no error, so build a `Shape` and draw it with `drawShape`.
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
 

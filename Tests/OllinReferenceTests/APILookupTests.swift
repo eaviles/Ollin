@@ -86,7 +86,32 @@ struct APILookupTests {
         // misspelling of it.
         #expect(APIListing.answer("clamp", in: all).nearby.isEmpty)
         #expect(APIListing.distance("bloom", "blom") == 1)
+        #expect(APIListing.camelHead("strokeWidth") == "stroke")
+        #expect(APIListing.camelHead("URLSession") == "urlsession")
         #expect(APIListing.distance("", "abc") == 3)
+    }
+
+    @Test("A bare name that is no sketch call leads with the sketch calls spelled like it")
+    func bareCalls() {
+        let all = APIListing.declarations(in: """
+        open class Sketch: Sendable
+          func stroke(_: Color)
+          func strokeCap(_: StrokeCap)
+          func strokeWeight(_: Double)
+          func drawCircle(_: Double, _: Double, _: Double)
+        struct Element
+          let strokeWidth: Double?
+        enum Tip
+          case circle
+        """, module: "Ollin")
+        let width = APIListing.answer("strokeWidth", in: all)
+        #expect(width.declarations.map(\.qualifiedName) == ["Element.strokeWidth"])
+        #expect(width.bare.first == "strokeWeight")
+        #expect(Set(width.bare) == ["strokeWeight", "strokeCap", "stroke"])
+        #expect(APIListing.answer("circle", in: all).bare == ["drawCircle"])
+        // A sketch call, a type, or a name asked for on a type needs no hint.
+        #expect(APIListing.answer("strokeWeight", in: all).bare.isEmpty)
+        #expect(APIListing.answer("Element.strokeWidth", in: all).bare.isEmpty)
     }
 
     // MARK: - The source
@@ -154,6 +179,30 @@ struct APILookupTests {
         #expect(written.contains { $0.name == "Sketch" && $0.isExtension })
     }
 
+    @Test("Overloads with the same labels are told apart by their parameter types")
+    func overloadsByType() {
+        let written = SourceComments.declarations(in: """
+        public extension Sketch {
+            /// Flat.
+            func grow(_ amount: Double) {}
+            /// In space.
+            func grow(_ amount: Vector3, @ViewBuilder then: () -> Void = {}) {}
+        }
+        """)
+        let listed = APIListing.declarations(in: """
+        extension Sketch
+          func grow(_: Vector3, then: () -> Void = default)
+          func grow(_: Double)
+        """, module: "Ollin")
+        for declaration in listed where declaration.kind == .function {
+            let paired = written.filter { SourceComments.pairs(declaration, with: $0) }
+            let exact = paired.filter { SourceComments.sameTypes(declaration, $0) }
+            #expect(exact.count == 1, "\(declaration.text)")
+            #expect(exact.first?.comment == [declaration.text.contains("Vector3") ? "In space." : "Flat."])
+        }
+        #expect(APIListing.parameterTypes(of: "func f(_ x: inout Foundation.URL, y: [Int] = [1, 2])") == ["URL", "[Int]"])
+    }
+
     @Test("A name is used where code writes it the way it is reached, never inside a longer name or as a label")
     func mentions() {
         #expect(APIUsage.mentions("drawCircle", in: "drawCircle(x, y, 4)", reach: .bare))
@@ -161,6 +210,7 @@ struct APILookupTests {
         #expect(!APIUsage.mentions("tube", in: "drawTorus(radius: 0.5, tube: 0.3)", reach: .bare))
         #expect(!APIUsage.mentions("tube", in: "drawTorus(radius: 0.5, tube: 0.3)", reach: .member))
         #expect(APIUsage.mentions("tube", in: "let m = Mesh.tube(along: path)", reach: .member))
+        #expect(!APIUsage.mentions("rotate", in: "self.rotate(time, axis: .unitY)", reach: .member))
         #expect(APIUsage.mentions("width", in: "drawCircle(width / 2, height / 2, 40)", reach: .bare))
         #expect(APIUsage.mentions("Mesh", in: "let m: Mesh = .sphere()", reach: .type))
         #expect(APIUsage.spans(in: "Call `drawCircle(x, y, r)` or `drawRect`.") == "drawCircle(x, y, r) drawRect")
@@ -178,14 +228,29 @@ struct APILookupTests {
         let places = SourceComments.places(of: answer.declarations, inSources: root.appendingPathComponent("Sources"))
         #expect(places.count == 3)
         #expect(places.values.allSatisfy { $0.file.lastPathComponent == "Sketch.swift" })
-        let pages = APIUsage.pages(naming: "drawCircle", reach: .bare, owners: ["Sketch"],
-                                   in: ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs")))
+        let corpus = UsageCorpus(root: root)
+        let pages = APIUsage.pages(naming: "drawCircle", reach: .bare, owners: ["Sketch"], in: corpus)
         #expect(!pages.isEmpty)
-        let examples = APIUsage.examples(using: "drawCircle", reach: .bare,
-                                         in: ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples")),
-                                         root: root)
+        let examples = APIUsage.examples(using: "drawCircle", reach: .bare, in: corpus)
         #expect(examples.count == 3)
         #expect(examples.allSatisfy { $0.place.hasPrefix("Examples/") && $0.text.contains("drawCircle(") })
+    }
+
+    @Test("A sketch call shows its source's own parameter names, and is documented where the drawing page names it")
+    func rotate() throws {
+        let root = try #require(ReferenceCatalogTests.repositoryRoot())
+        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let onSketch = APIListing.answer("Sketch.rotate", in: all).declarations
+            .filter { APIListing.labels(of: $0.text) == ["_"] && $0.text.contains("Double") }
+        let declaration = try #require(onSketch.first)
+        let places = SourceComments.places(of: [declaration], inSources: root.appendingPathComponent("Sources"))
+        let place = try #require(places[0])
+        let signature = try #require(SourceComments.signature(of: declaration, at: place))
+        #expect(signature.contains("radians"), "\(signature)")
+        #expect(!signature.hasPrefix("public"))
+        #expect(!signature.contains("{"))
+        let pages = APIUsage.pages(naming: "rotate", reach: .bare, owners: [], in: UsageCorpus(root: root))
+        #expect(pages.first?.place == "Drawing/Drawing", "\(pages.map(\.address))")
     }
 
     /// The reader is written for the shape this tree is in, not for Swift

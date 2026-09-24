@@ -27,6 +27,9 @@ public enum SourceComments {
         var found: [Int: SourcePlace] = [:]
         let byModule = Dictionary(grouping: declarations.indices.filter { !declarations[$0].isExtension },
                                   by: { declarations[$0].module })
+        // A match on labels alone is held until the end, in case the same
+        // labels turn up later with the same parameter types too.
+        var loose: [Int: SourcePlace] = [:]
         for (module, indices) in byModule {
             var waiting = Dictionary(grouping: indices, by: { declarations[$0].name })
             for file in swiftFiles(in: sources.appendingPathComponent(module)) {
@@ -36,10 +39,13 @@ public enum SourceComments {
                 for written in self.declarations(in: text) {
                     for name in Set(written.names + [written.name]) {
                         guard let candidates = waiting[name] else { continue }
-                        let paired = candidates.filter { pairs(declarations[$0], with: written) }
-                        guard !paired.isEmpty else { continue }
-                        for index in paired {
-                            found[index] = SourcePlace(file: file, line: written.line, comment: written.comment)
+                        for index in candidates where pairs(declarations[index], with: written) {
+                            let place = SourcePlace(file: file, line: written.line, comment: written.comment)
+                            if sameTypes(declarations[index], written) {
+                                found[index] = place
+                            } else if loose[index] == nil {
+                                loose[index] = place
+                            }
                         }
                         let left = candidates.filter { found[$0] == nil }
                         waiting[name] = left.isEmpty ? nil : left
@@ -47,7 +53,7 @@ public enum SourceComments {
                 }
             }
         }
-        return found
+        return found.merging(loose) { exact, _ in exact }
     }
 
     /// A declaration as the source writes it.
@@ -61,6 +67,8 @@ public enum SourceComments {
         var line: Int
         var comment: [String]
         var isExtension = false
+        /// The parameter types, for telling apart overloads with the same labels.
+        var types: [String]?
     }
 
     static func pairs(_ listed: APIDeclaration, with written: Written) -> Bool {
@@ -76,6 +84,52 @@ public enum SourceComments {
         default:
             return written.kind == listed.kind
         }
+    }
+
+    /// A function's, initializer's or subscript's declaration as its source
+    /// writes it, one line: the parameter names and the default values the
+    /// listing leaves out, without the access level, the compiler-filled
+    /// source-location parameters, or the body. Nil for anything else, whose
+    /// listing line already says all of it.
+    public static func signature(of declaration: APIDeclaration, at place: SourcePlace) -> String? {
+        guard [.function, .initializer, .subscriptMember].contains(declaration.kind),
+              let text = try? String(contentsOf: place.file, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: "\n")
+        guard place.line >= 1, place.line <= lines.count else { return nil }
+        var inString = false
+        let code = lines[(place.line - 1) ..< min(lines.count, place.line + 39)].map { line -> String in
+            codePart(of: line, inString: &inString).trimmingCharacters(in: .whitespaces)
+        }
+        var joined = ""
+        var depth = 0
+        var opened = false
+        scan: for line in code {
+            for character in line {
+                if character == "(" { depth += 1; opened = true }
+                if character == ")" { depth -= 1 }
+                // The body starts at the first brace outside the arguments.
+                if character == "{", depth == 0, opened { break scan }
+                joined.append(character)
+            }
+            joined.append(" ")
+        }
+        var out = joined.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "( ", with: "(").replacingOccurrences(of: " )", with: ")")
+            .trimmingCharacters(in: .whitespaces)
+        out = out.replacingOccurrences(
+            of: #",\s*file: StaticString = #\w+,\s*line: (Int|UInt) = #line,\s*column: (Int|UInt) = #column"#,
+            with: "", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"^(?:(?:public|open|package|nonisolated|final)\s+)+"#,
+                                       with: "", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"(^|\s)(?:(?:public|open)\s+)"#, with: "$1", options: .regularExpression)
+        return out.isEmpty ? nil : out
+    }
+
+    /// Whether a paired declaration's parameters are the same types. Only
+    /// something with an argument list can differ here.
+    static func sameTypes(_ listed: APIDeclaration, _ written: Written) -> Bool {
+        guard let types = written.types else { return true }
+        return APIListing.parameterTypes(of: listed.text) == types
     }
 
     /// The listing writes a type's full nesting; the source may reach it
@@ -110,11 +164,14 @@ public enum SourceComments {
             if atMemberLevel, !trimmed.isEmpty, let (kind, name) = APIListing.declaration(in: trimmed) {
                 var names = [name]
                 var labels: [String]?
+                var types: [String]?
                 switch kind {
                 case .enumCase:
                     names = caseNames(continued(from: index, in: lines))
                 case .function, .initializer, .subscriptMember:
-                    labels = sourceLabels(signature(from: index, in: lines), kind: kind, name: name)
+                    let signature = signature(from: index, in: lines)
+                    labels = sourceLabels(signature, kind: kind, name: name)
+                    types = APIListing.parameterTypes(of: signature)
                 case .type:
                     pending = typeName(trimmed)
                 default: break
@@ -123,7 +180,8 @@ public enum SourceComments {
                 let above = comment(above: index, in: lines)
                 found.append(Written(owner: owner, name: name, kind: kind,
                                      names: names, labels: labels, line: index + 1,
-                                     comment: above, isExtension: kind == .type && isExtension(trimmed)))
+                                     comment: above, isExtension: kind == .type && isExtension(trimmed),
+                                     types: types))
                 // `enum Kind { case left, right }` declares its cases on the
                 // line that opens it, and they read as the type's.
                 if kind == .type, let body = trimmed.firstIndex(of: "{") {

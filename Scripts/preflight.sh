@@ -23,6 +23,9 @@
 #          over every Swift file in Sources/, Examples/ and Tests/
 #       -> Scripts/check-flags.sh (the command's flags against the table the
 #          shell completes from, and the checked-in completion file)
+#       -> Scripts/llms.sh --check (the checkout's llms.txt against what the
+#          reference writes; every line comes from a page title or an index
+#          line, so any prose change can stale it)
 #       -> Scripts/check-api-names.sh (the public surface under API/ against
 #          the settled naming rules; a listing is recorded on purpose, so
 #          this reads the whole surface rather than the diff; under a second)
@@ -208,6 +211,12 @@ run "check-api-pages" Scripts/check-api-pages.sh
 # scoped to the diff either: a flag dropped from a host stales the table
 # whether or not the table was touched.
 run "check-flags" Scripts/check-flags.sh
+
+# The checkout's llms.txt, the map an assistant reads, against what the
+# reference writes for it. Every line comes from a page's title, the line the
+# reference index says about it, or the group it is filed under, so an edit to
+# any page or index can stale it; that is why this is not scoped to the diff.
+run "llms" Scripts/llms.sh --check
 
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder

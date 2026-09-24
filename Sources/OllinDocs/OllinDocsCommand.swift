@@ -39,6 +39,10 @@ struct OllinDocsCommand {
         case "examples": examples(arguments, options: options)
         case "api": api(arguments, options: options)
         case "site": site(arguments)
+        // The checkout's llms.txt, printed for Scripts/llms.sh to write and
+        // check. Spelled by that script, not by a person, so the usage leaves
+        // it out.
+        case "llms": print(SiteBuilder(root: checkout()).checkoutIndex(), terminator: "")
         case "completions": completions(options: options)
         case "help", "--help", "-h": printUsage()
         default: fail("unknown command \"\(command)\". Try docs, examples, api, site, or completions.")
@@ -336,6 +340,17 @@ struct OllinDocsCommand {
             exit(1)
         }
 
+        // A name carried over from somewhere else can be a real member of
+        // some other type; say so first, and name the calls it may have
+        // meant, before the answer that is true but not what was wanted.
+        if !answer.bare.isEmpty {
+            print(style.dim("No sketch call is named \"\(query)\". Sketch calls spelled like it:"))
+            print("  " + answer.bare.joined(separator: ", "))
+            print("")
+            print(style.dim("What is named \"\(query)\":"))
+            print("")
+        }
+
         let shown = Array(answer.declarations.prefix(40))
         let places = SourceComments.places(of: shown, inSources: root.appendingPathComponent("Sources"))
 
@@ -352,13 +367,27 @@ struct OllinDocsCommand {
             return left != right ? left : false
         }
 
-        for key in order {
+        // Pages and examples come per type: `rotate` on a sketch is called
+        // bare and documented on the drawing page, `rotate` on a scene node
+        // is reached with a dot and documented with scenes. Past a few types,
+        // naming the one wanted is quicker than reading them all.
+        let corpus = UsageCorpus(root: root)
+        let label = { (text: String) in style.dim(text.padding(toLength: 12, withPad: " ", startingAt: 0)) }
+        let room = max(20, style.width - 14)
+
+        for (position, key) in order.enumerated() {
             let indices = blocks[key]!
             let first = shown[indices[0]]
             print(style.bold(first.qualifiedName) + style.dim("  " + first.module))
             for index in indices {
                 let declaration = shown[index]
-                print("  " + (style.color ? style.code(APIListing.tidy(declaration.text)) : APIListing.tidy(declaration.text)))
+                // The source's own spelling where the declaration was found:
+                // its parameter names (`_ radians: Double`) and its real
+                // defaults (`phase: Double = 0`) say what the listing's
+                // `_: Double = default` cannot.
+                let spelled = places[index].flatMap { SourceComments.signature(of: declaration, at: $0) }
+                    ?? APIListing.tidy(declaration.text)
+                print("  " + (style.color ? style.code(spelled) : spelled))
                 guard let place = places[index] else { continue }
                 print("      " + style.dim("\(relative(place.file, to: root)):\(place.line)"))
                 for line in place.comment.prefix(24) { print("      " + line) }
@@ -369,6 +398,39 @@ struct OllinDocsCommand {
             if first.kind == .type {
                 members(of: first, in: all, style: style)
             }
+            guard position < 3 else {
+                print("")
+                continue
+            }
+
+            // Where it is written about, and used. An initializer is written
+            // as its type called; a member of a type other than a sketch is
+            // reached with a dot.
+            let spelledName = first.kind == .initializer ? (first.owner.last ?? first.name) : first.name
+            let reach: APIReach = first.kind == .type || first.kind == .initializer ? .type
+                : (first.owner.isEmpty || first.owner == ["Sketch"]) ? .bare : .member
+            let owners = first.kind == .type ? [] : Array(first.owner.suffix(1))
+            let pages = APIUsage.pages(naming: spelledName, reach: reach, owners: owners, in: corpus)
+            let examples = APIUsage.examples(using: spelledName, reach: reach, in: corpus)
+            print("")
+            if pages.isEmpty {
+                print("  " + label("documented") + style.dim("no page writes it as code"))
+            }
+            for (number, page) in pages.enumerated() {
+                print("  " + label(number == 0 ? "documented" : "") + page.address)
+            }
+            if examples.isEmpty {
+                print("  " + label("used in") + style.dim("no example"))
+            }
+            for (number, example) in examples.enumerated() {
+                print("  " + label(number == 0 ? "used in" : "") + example.address)
+                let line = example.text.count > room ? String(example.text.prefix(room - 1)) + "…" : example.text
+                print("  " + label("") + style.dim(line))
+            }
+            print("")
+        }
+        if order.count > 3 {
+            print(style.dim("Pages and examples are listed for the first three; name the type for another: ollin api <Type>.\(first(of: query))"))
             print("")
         }
         if answer.declarations.count > shown.count {
@@ -376,37 +438,8 @@ struct OllinDocsCommand {
             print("")
         }
 
-        // Where it is written about, and used. An initializer is written as
-        // its type called.
         let lead = shown[0]
-        let isType = lead.kind == .type
-        let spelled = lead.kind == .initializer ? (lead.owner.last ?? lead.name) : lead.name
-        let owners = Array(Set(shown.compactMap(\.owner.last))).sorted()
-        let reach: APIReach = isType || lead.kind == .initializer ? .type
-            : shown.allSatisfy { $0.owner.isEmpty || $0.owner == ["Sketch"] } ? .bare : .member
-        let pages = APIUsage.pages(naming: spelled, reach: reach, owners: isType ? [] : owners,
-                                   in: ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs")))
-        let examples = APIUsage.examples(using: spelled, reach: reach,
-                                         in: ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples")),
-                                         root: root)
-        let label = { (text: String) in style.dim(text.padding(toLength: 12, withPad: " ", startingAt: 0)) }
-        if pages.isEmpty {
-            print("  " + label("documented") + style.dim("no page writes it as code"))
-        }
-        for (number, page) in pages.enumerated() {
-            print("  " + label(number == 0 ? "documented" : "") + page.address)
-        }
-        if examples.isEmpty {
-            print("  " + label("used in") + style.dim("no example"))
-        }
-        let room = max(20, style.width - 14)
-        for (number, example) in examples.enumerated() {
-            print("  " + label(number == 0 ? "used in" : "") + example.address)
-            let line = example.text.count > room ? String(example.text.prefix(room - 1)) + "…" : example.text
-            print("  " + label("") + style.dim(line))
-        }
-        if !isType, lead.kind != .initializer, !answer.nearby.isEmpty {
-            print("")
+        if lead.kind != .type, lead.kind != .initializer, !answer.nearby.isEmpty {
             let also = answer.nearby.prefix(10).joined(separator: ", ")
             for (number, line) in Markdown.wrapped(also, width: max(20, style.width - 8)).enumerated() {
                 print("  " + label(number == 0 ? "see also" : "") + style.dim(line))

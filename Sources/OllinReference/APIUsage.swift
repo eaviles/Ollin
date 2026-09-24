@@ -33,6 +33,24 @@ public enum APIReach: Sendable {
     case bare
 }
 
+/// The reference pages and the example sketches, read once so a lookup that
+/// asks about several types reads each file one time.
+public struct UsageCorpus: Sendable {
+    public let root: URL
+    public let pages: [(page: ReferencePage, text: String)]
+    public let examples: [(entry: ExampleEntry, text: String)]
+
+    public init(root: URL) {
+        self.root = root
+        pages = ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs")).compactMap { page in
+            (try? String(contentsOf: page.url, encoding: .utf8)).map { (page, $0) }
+        }
+        examples = ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples")).compactMap { entry in
+            (try? String(contentsOf: entry.sketch, encoding: .utf8)).map { (entry, $0) }
+        }
+    }
+}
+
 /// Where a public name is documented, and which examples use it.
 ///
 /// Both read the checkout as it stands, the way the rest of the reference
@@ -50,12 +68,11 @@ public enum APIUsage {
     public static func pages(naming name: String,
                              reach: APIReach,
                              owners: [String],
-                             in pages: [ReferencePage],
+                             in corpus: UsageCorpus,
                              limit: Int = 3) -> [APIMention] {
         var scored: [(score: Int, mention: APIMention)] = []
         let owners = owners.filter { $0 != "Sketch" && $0 != name }
-        for page in pages {
-            guard let text = try? String(contentsOf: page.url, encoding: .utf8), text.contains(name) else { continue }
+        for (page, text) in corpus.pages where text.contains(name) {
             var heading = ""
             var fenced = false
             // A fence of shell commands or printed output shows a call being
@@ -117,12 +134,11 @@ public enum APIUsage {
     /// shortest is the one that shows it with the least around it.
     public static func examples(using name: String,
                                 reach: APIReach,
-                                in entries: [ExampleEntry],
-                                root: URL,
+                                in corpus: UsageCorpus,
                                 limit: Int = 3) -> [APIMention] {
         var found: [(length: Int, mention: APIMention)] = []
-        for entry in entries {
-            guard let text = try? String(contentsOf: entry.sketch, encoding: .utf8), text.contains(name) else { continue }
+        let root = corpus.root
+        for (entry, text) in corpus.examples where text.contains(name) {
             let lines = text.components(separatedBy: "\n")
             for (number, line) in lines.enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -158,7 +174,10 @@ public enum APIUsage {
             if !isWordCharacter(before), !isWordCharacter(after) {
                 switch reach {
                 case .type: return true
-                case .member: if before == "." { return true }
+                // `self.rotate(` is the sketch's own call, not a member of
+                // another type reached with a dot.
+                case .member:
+                    if before == ".", !code[..<range.lowerBound].hasSuffix("self.") { return true }
                 case .bare: if after != ":" { return true }
                 }
             }

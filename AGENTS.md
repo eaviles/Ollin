@@ -2,6 +2,18 @@
 
 Ollin is a creative-coding framework for Swift and Metal on Apple platforms, aiming for p5.js ergonomics on an OPENRNDR-grade core. If you're an AI coding agent working in this repo, start here.
 
+## Writing a sketch rather than working on Ollin
+
+The rest of this file is for changing the framework. If you are helping somebody write a sketch *with* it, you need much less. Read [`Docs/QuickReference.md`](Docs/QuickReference.md) once: the lifecycle, the calls by area, their units, the command line, and the mistakes that fail with no error. Then look details up from this checkout rather than reading pages whole:
+
+```sh
+Scripts/ollin api drawCircle       # a public name: its declarations, its comment, its pages, examples that use it
+Scripts/ollin docs Drawing/Color   # one page, or Drawing/Color#ramp for one section
+Scripts/ollin examples flocking    # the examples that match; --source prints one
+```
+
+[`llms.txt`](llms.txt) maps every page in one line each. The listings under [`API/`](API/README.md) are the public surface, so a name that is not there cannot be reached from a sketch. `CLAUDE.md` and the gates below are for changing Ollin, not for using it.
+
 ## Read this first
 
 The full development guidance lives in [`CLAUDE.md`](CLAUDE.md). It's the single source of truth for how the project is built and the conventions that hold it together, so read it before making changes. This file is a short orientation that points there rather than restating it. When you're about to change one of the larger systems (the renderer, the effects, the 3D path), [`ARCHITECTURE.md`](ARCHITECTURE.md) is the companion that explains how it works inside, the how-and-why behind the terse invariants in `CLAUDE.md`.

@@ -171,9 +171,15 @@ Every page has a search. Press `/`, or the command key with K, or the button in 
 
 `--domain ollin.art` writes the `CNAME` file for a custom domain, and it makes every page's canonical address absolute. A link to any page unfurls with the mark as its card, in a message or a feed. The card is `Logo/ollin-social.png`, which `Scripts/logo.sh` writes from the logo's master. The repository's own workflow (`.github/workflows/site.yml`) runs the same command and publishes the result to GitHub Pages.
 
+## For an assistant
+
+An assistant helping somebody write a sketch reads the same pages, and two files give it a way in. [`llms.txt`](../../llms.txt) at the root of the checkout maps the reference in one line a page, following the `llms.txt` convention. It says what Ollin is, gives the three commands above and the [quick reference](../QuickReference.md) to read first, then lists every Guide chapter and reference page. Its links are paths in the checkout. `Scripts/llms.sh` writes it from the pages themselves, and preflight fails when a page's title or its line in the index has moved on without it.
+
+The website carries a map of the same shape at its own root. Every page there has a markdown twin at the same address, with `.md` in place of `.html`, so a tool that follows a link keeps reading markdown. Each page's head names both.
+
 ## What it is not
 
-The command prints pages for a person to read, and nothing else. The website is the same pages for a browser. Its search index is for the page's own script: headings and first lines with the words under them, not a copy of the reference. There is no machine-readable output, and no index written for another program to read. That is a decision rather than a gap. Anything that points a tool at the reference raises the question of [where the line falls](../../ROADMAP.md#a-third-party-extension-ecosystem), and that question is still open here. Printing a page somebody asked for takes no position on it.
+The commands print pages for a person to read. The two maps above point at those pages rather than holding a copy of them. The site's search index is for the page's own script, and holds headings and first lines rather than a copy of the reference. There is no server answering questions about the reference. Whether Ollin should run one is an [open question](../../ROADMAP.md#a-third-party-extension-ecosystem), and nothing here takes a position on it.
 
 ---
 
@@ -183,3 +189,4 @@ The command prints pages for a person to read, and nothing else. The website is 
 - [Examples](../../Examples/README.md): the sketches, by category
 - [Project generator](./ProjectGenerator.md): starting a project from a template or from an example
 - [Single-file sketches](./SingleFile.md): the rest of what the `ollin` command does
+- [Ollin quick reference](../QuickReference.md): the framework on one page, the first thing to read

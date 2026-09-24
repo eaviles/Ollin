@@ -129,7 +129,7 @@ override func filesDropped() {
 reloaded()
 ```
 
-Ollin calls this once after the live-reload host hot-swaps the sketch, right after the new sketch's `setup()`. It never runs on first launch. See [live reload](../../README.md#live-reload).
+Ollin calls this once after the live-reload host hot-swaps the sketch, right after the new sketch's `setup()`. When the live-coding host carries the run across an edit, `setup()` is skipped and this runs on the first frame instead. It never runs on first launch. See [live reload](../../README.md#live-reload).
 
 <a name="temporal-state"></a>
 

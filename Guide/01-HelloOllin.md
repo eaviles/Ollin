@@ -531,7 +531,8 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [Checking the machine](../Docs/Tools/Doctor.md): `ollin doctor` answer by answer, installing the shell completions, and `--list-params` for everything a sketch declares.
-- [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
+- [The reference offline](../Docs/Tools/Reference.md): `ollin docs`, `ollin examples`, and `ollin api` in full, including one section of a page, the search across everything, and what happens in a pipe.
+- [The Ollin quick reference](../Docs/QuickReference.md): the whole framework on one page, with the units every call takes and the mistakes that give a wrong picture with no error. Keep it open while you work.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full parameter family, from toggles and menus to draggable pads, plus grouping them into cards, icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language taught in order, every construct these sketches lean on. [The Swift quick reference](../Docs/Swift.md) is the short version, for whenever a single construct felt mysterious.

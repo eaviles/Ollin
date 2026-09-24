@@ -218,7 +218,7 @@ Good places to start:
 - [3D](Docs/3D/3D.md), the opt-in third dimension
 - [Export](Docs/Output/Export.md), getting work out of the window
 
-If you are new to Swift, the [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`. The Guide's [Appendix A](Guide/A-JustEnoughSwift.md) covers the same ground more slowly, as narrative.
+The [Ollin quick reference](Docs/QuickReference.md) is the framework in one read: the lifecycle, the calls by area, their units, the command line, and the mistakes that fail with no error. If you are new to Swift, the [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`. The Guide's [Appendix A](Guide/A-JustEnoughSwift.md) covers the same ground more slowly, as narrative.
 
 You can also read the reference and examples from your checkout without a browser:
 

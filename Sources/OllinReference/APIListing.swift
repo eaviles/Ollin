@@ -93,6 +93,11 @@ public enum APIListing {
     public struct Answer: Sendable, Equatable {
         public var declarations: [APIDeclaration]
         public var nearby: [String]
+        /// For a bare name that is not a sketch call, the sketch calls
+        /// spelled like it: `strokeWidth` is a property of an SVG element,
+        /// and a sketch sets its line with `strokeWeight`. Empty when the
+        /// name is a sketch call, a type, or asked for on a type.
+        public var bare: [String] = []
     }
 
     /// Answers `drawCircle`, `Mesh.tube`, `Light.Kind`, or `Material`.
@@ -119,8 +124,47 @@ public enum APIListing {
             let lower = name.lowercased()
             exact = all.filter { $0.name.lowercased() == lower && !$0.isExtension && sits($0, caseless: true) }
         }
-        return Answer(declarations: exact,
-                      nearby: nearby(name, in: all, excluding: Set(exact.map(\.qualifiedName)), fuzzy: exact.isEmpty))
+        var answer = Answer(declarations: exact,
+                            nearby: nearby(name, in: all, excluding: Set(exact.map(\.qualifiedName)), fuzzy: exact.isEmpty))
+        let callable = exact.contains { $0.kind == .type || $0.owner.isEmpty || $0.owner == ["Sketch"] }
+        if owner.isEmpty, !exact.isEmpty, !callable {
+            answer.bare = bareCalls(like: name, in: all)
+        }
+        return answer
+    }
+
+    /// The sketch calls, and the functions at the top level, whose names hold
+    /// the one asked for, start with its first word, or are a letter or two
+    /// off it.
+    static func bareCalls(like name: String, in all: [APIDeclaration], limit: Int = 8) -> [String] {
+        let wanted = name.lowercased()
+        let head = camelHead(name)
+        var scored: [String: Int] = [:]
+        for declaration in all where (declaration.owner == ["Sketch"] || declaration.owner.isEmpty)
+            && declaration.kind != .type && declaration.kind != .initializer && scored[declaration.name] == nil {
+            let candidate = declaration.name.lowercased()
+            var score: Int?
+            if candidate.contains(wanted) { score = 0 }
+            else if head.count >= 3, candidate.hasPrefix(head) { score = 1 }
+            else if wanted.count >= 5, abs(candidate.count - wanted.count) <= 2, distance(candidate, wanted) <= 2 { score = 1 }
+            // Among names found the same way, the one sharing the longest
+            // start with the name asked for, then the fewest edits from it:
+            // `strokeWeight` shares `strokew` with `strokeWidth`.
+            let shared = zip(candidate, wanted).prefix { $0 == $1 }.count
+            if let score { scored[declaration.name] = score * 1_000_000 - shared * 1000 + distance(candidate, wanted) }
+        }
+        return scored.sorted { $0.value != $1.value ? $0.value < $1.value : $0.key < $1.key }
+            .prefix(limit).map(\.key)
+    }
+
+    /// The first word of a camel-case name, lower-cased: `stroke` for
+    /// `strokeWidth`. A name with no second word is its own head.
+    static func camelHead(_ name: String) -> String {
+        let characters = Array(name)
+        guard let first = characters.indices.dropFirst().first(where: { index in
+            characters[index].isUppercase && characters[index - 1].isLowercase
+        }) else { return name.lowercased() }
+        return String(characters[..<first]).lowercased()
     }
 
     /// The members a type's listing writes under it, across every library
@@ -247,6 +291,43 @@ public enum APIListing {
             skipAttributes(&words)
             return words.split(separator: " ").first.map(String.init)
         }
+    }
+
+    /// The parameter types of the first argument list, spelled alike
+    /// whoever wrote them: no attributes, no `inout`, no module names, no
+    /// spaces, and no default value. Two overloads with the same labels
+    /// (`scale(_: Double)` beside `scale(_: Vector3)`) differ only here.
+    static func parameterTypes(of text: String) -> [String]? {
+        var declaration = Substring(text.trimmingCharacters(in: .whitespaces))
+        skipAttributes(&declaration)
+        guard let list = argumentList(in: String(declaration)) else { return nil }
+        return split(list).map { parameter in
+            guard let colon = parameter.firstIndex(of: ":") else { return "" }
+            var type = String(parameter[parameter.index(after: colon)...])
+            if let equals = topLevelEquals(in: type) { type = String(type[..<equals]) }
+            type = tidy(type)
+                .replacingOccurrences(of: #"@\w+(\([^)]*\))?"#, with: "", options: .regularExpression)
+                .replacingOccurrences(of: "inout ", with: "")
+            return type.filter { !$0.isWhitespace }
+        }
+    }
+
+    /// Where a default value starts: the first `=` outside brackets.
+    static func topLevelEquals(in text: String) -> String.Index? {
+        var depth = 0
+        var previous: Character = " "
+        for index in text.indices {
+            let character = text[index]
+            switch character {
+            case "(", "[", "<", "{": depth += 1
+            case ")", "]", "}": depth -= 1
+            case ">" where previous != "-": depth -= 1
+            case "=" where depth == 0: return index
+            default: break
+            }
+            previous = character
+        }
+        return nil
     }
 
     /// The text between the first argument list's parentheses, skipping a

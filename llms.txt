@@ -1,0 +1,312 @@
+# Ollin
+
+> A Metal-rendered creative-coding framework for Swift on Apple platforms. Sketches are Swift classes with a `setup()` and a `draw()` that runs every frame; the renderer sits on Metal and composites in linear light.
+
+This file sits at the root of a checkout of the framework, and its links are paths from here. Read the quick reference first. Then look a detail up from this folder rather than reading pages whole:
+
+- `Scripts/ollin api <name>`: every declaration a public name has, as its source writes it, with the comment above it (where units and ranges are written down), the pages that document it, and examples that use it. A name it does not know is not public.
+- `Scripts/ollin docs <topic>`, or `<topic>#<heading>` for one section, and `Scripts/ollin docs --search "<text>"` for every line that says it.
+- `Scripts/ollin examples <word>`, and `--source` to print one.
+
+The reference is the authority on what exists and how it behaves; the guide teaches it in order; the examples are runnable sketches; `API/` lists the public surface, one line per declaration.
+
+## Start here
+
+- [Ollin quick reference](Docs/QuickReference.md): the framework in one read: the lifecycle, the calls by area and their units, the command line, and the mistakes that fail with no error
+- [Swift quick reference](Docs/Swift.md): just enough of the language to write a sketch
+
+## Guide
+
+- [1. Hello, Ollin](Guide/01-HelloOllin.md)
+- [2. Color that works](Guide/02-Color.md)
+- [3. Motion and time](Guide/03-MotionAndTime.md)
+- [4. Randomness](Guide/04-Randomness.md)
+- [5. Noise](Guide/05-Noise.md)
+- [6. Grids and repetition](Guide/06-GridsAndRepetition.md)
+- [7. Tiles that cover the plane](Guide/07-Tiles.md)
+- [8. Words](Guide/08-Words.md)
+- [9. Pictures and data](Guide/09-Pictures.md)
+- [10. Vectors, gently](Guide/10-Vectors.md)
+- [11. Forces and physics](Guide/11-ForcesAndPhysics.md)
+- [12. Flocks and swarms](Guide/12-FlocksAndSwarms.md)
+- [13. Growing things](Guide/13-GrowingThings.md)
+- [14. Fields and flow](Guide/14-FieldsAndFlow.md)
+- [15. Shapes as material](Guide/15-ShapesAsMaterial.md)
+- [16. Layers and effects](Guide/16-LayersAndEffects.md)
+- [17. Your first shader](Guide/17-YourFirstShader.md)
+- [18. Iterated forms](Guide/18-IteratedForms.md)
+- [19. Simulations on a grid](Guide/19-GridSimulations.md)
+- [20. Simulations made of particles](Guide/20-ParticleSimulations.md)
+- [21. 3D, gently](Guide/21-3DGently.md)
+- [22. Meshes, maps, and materials](Guide/22-Meshes.md)
+- [23. Landscapes and multitudes](Guide/23-Landscapes.md)
+- [24. Worlds with weight](Guide/24-WorldsWithWeight.md)
+- [25. Characters, vehicles, and cloth](Guide/25-CharactersAndCloth.md)
+- [26. Sculpting with fields](Guide/26-SculptingWithFields.md)
+- [27. Depth and the iPhone as a sensor](Guide/27-DepthAndThePhone.md)
+- [28. Sound and control](Guide/28-SoundAndControl.md)
+- [29. Making sound](Guide/29-MakingSound.md)
+- [30. Seeing](Guide/30-Seeing.md)
+- [31. Sharing and performing](Guide/31-SharingAndPerforming.md)
+- [32. Installations](Guide/32-Installations.md)
+
+## Concepts
+
+- [The frame](Docs/Concepts/Frame.md): what a drawing call does, and what happens between `draw()` and the picture
+- [Where a point is](Docs/Concepts/Coordinates.md): the canvas coordinates and their units, and the other coordinate frames a sketch meets
+- [Layers](Docs/Concepts/Layers.md): what an off-screen layer is, what it costs, and when you need one
+- [What survives a frame](Docs/Concepts/Persistence.md): what Ollin keeps between frames and what it drops: state, the canvas, layers, batches, saved values
+- [Why a run repeats](Docs/Concepts/Determinism.md): the seed and the clock, and what makes a sketch draw the same picture twice
+- [Light and color](Docs/Concepts/Light.md): why color mixes in linear light, and what the last pass of a frame does
+- [Values and bare calls](Docs/Concepts/Values.md): the typed values under `drawCircle(x, y, r)`, and when to use them
+
+## Core
+
+- [Sketch](Docs/Core/Sketch.md): the lifecycle (`setup`/`draw`), the clock values (`time`, `frameCount`, …), and loop control
+- [Canvas, size, and export](Docs/Core/Canvas.md): `scale`, the `canvasSize` export presets, and the preview window (`windowMode`)
+- [Variations](Docs/Core/Variations.md): `variation`, the seed a run starts from.
+- [Record & replay](Docs/Core/Replay.md): record a run's seed, clock, inputs, and parameter changes as a take (`--record-take`).
+- [Keyframed parameters](Docs/Core/Automation.md): keyframed parameters.
+
+## Drawing
+
+- [Drawing](Docs/Drawing/Drawing.md): `background`, `fill`/`stroke`, the shapes, the transform stack, and the views over it (`withClip`, `withViewBox`, `viewControl`)
+- [Accumulation](Docs/Drawing/Accumulation.md): `noClear` keeps the canvas across frames, so drawing builds up (long exposures, paint on canvas). `Accumulator` is a layer that keeps the running mean, so a picture built from…
+- [Depth of field from light](Docs/Drawing/DepthOfField.md): `LineSpray` and `Bokeh`. Lines are drawn as millions of scattered points through a lens and added into a running mean until bokeh appears.
+- [HDR & tone mapping](Docs/Drawing/HDR.md): `toneMap` rolls bright, out-of-range light off instead of clipping it.
+- [Wide gamut & HDR output](Docs/Drawing/ColorOutput.md): `colorOutput` to present through Display P3 and keep highlights brighter than white, `Color(displayP3:)` for colors outside sRGB, and HDR10 video export
+- [Retained batches](Docs/Drawing/Batches.md): `makeBatch` records heavy static drawing once, and `drawBatch` replays it each frame from the GPU at almost no cost.
+- [Layered effects](Docs/Drawing/Effects.md): `renderTarget`/`withTarget` draw into off-screen layers. `filtered`/`postProcess` run GPU filters over them (blur, bloom, halation, film grain, color grade, gradient map, edges…
+- [Looks: a grade from a .cube file](Docs/Drawing/Looks.md): `ColorLUT` reads a `.cube` file, the color table a grading tool exports, and `Filter.lut` applies it to a layer or the whole frame, a cube by tetrahedral interpolation.
+- [Marks](Docs/Drawing/Marks.md): `StrokeMark`/`drawMark` and `StrokeDynamics`. Width and opacity follow how a mark is being made, rather than where you are along the path.
+- [Text](Docs/Drawing/Text.md): `drawText` with bitmap, outline (`.ttf`/`.otf`), and stroke (single-line / plotter) fonts, plus `textToShapes` (text as geometry) and text in any script (right-to-left…
+- [Images](Docs/Drawing/Images.md): `loadImage`, `drawImage`, `tint`, and pixel access.
+- [Sample photographs](Docs/Drawing/SamplePhotos.md): `SamplePhoto`, twenty bundled photographs with their credits, one import away, for trying an image technique or a filter on a real picture.
+- [Glyph mosaic](Docs/Drawing/GlyphMosaic.md): `drawGlyphMosaic` rebuilds an image as a grid of text glyphs.
+- [Halftone](Docs/Drawing/Halftone.md): `drawHalftone` rebuilds an image as the classic print dot screen: area-exact dots on a rotated grid, drawn as real circles for the plotter path.
+- [Autostereogram](Docs/Drawing/Autostereogram.md): `Image.autostereogram` hides a depth map in a repeating pattern.
+- [Photo mosaic](Docs/Drawing/PhotoMosaic.md): `Image.mosaic` + `averageColor` + `drawMosaic` rebuild a picture out of many smaller pictures.
+- [Pixel sorting](Docs/Drawing/PixelSorting.md): `Image.pixelSorted` reorders runs of an image's own pixels along rows or columns, with each run bounded by brightness (the classic glitch melt).
+- [Seam carving](Docs/Drawing/SeamCarving.md): `Image.seamCarved` and `SeamMap` resize a picture by removing the paths through it that matter least, so what matters keeps its shape.
+- [Color](Docs/Drawing/Color.md): the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s (loaded from a file or extracted from an image), dithering an image down to a palette, and perceptual…
+- [Spectral color](Docs/Drawing/Spectrum.md): `Spectrum`, the reflectance curve behind a color.
+- [Geometry](Docs/Drawing/Geometry.md): the `Vector2`, `Vector3` (sharing one `Vector` surface), `Rotation3D`, `Ray3`, `Rectangle`, `Grid`, `Shape`/`Contour`, `Path`, and `HobbySpline` value types (including the `Grid`…
+- [SVG import](Docs/Drawing/SVG.md): `loadSVG`/`drawSVG` read vector artwork into `Shape`s and `Contour`s: paths with curves and arcs, the basic shapes, groups and transforms, fills and strokes.
+- [Fourier epicycles](Docs/Drawing/Epicycles.md): `Epicycles` + `drawEpicycles` rebuild any closed outline as a chain of spinning circles.
+- [Envelopes & caustics](Docs/Drawing/Envelopes.md): `envelope` + `caustic`. An envelope is the curve a family of lines is tangent to, and a caustic is the bright curve where reflected or bent light gathers.
+- [Classic curves](Docs/Drawing/Curves.md): the classic closed-form curves as geometry builders: `phyllotaxis`, `lissajous`, `rose`, `superellipse`, `supershape`, `hypotrochoid`/`epitrochoid` (the spirograph gears)…
+- [Anamorphosis: a drawing only a mirror can read](Docs/Drawing/Anamorphosis.md): `Anamorphosis`, a plate that reads correctly only in a mirrored cylinder standing on the page, seen from one viewing spot.
+- [Clothoid: the curve that bends at a steady rate](Docs/Drawing/Clothoid.md): the curve whose bend grows at a steady rate (the Euler or Cornu spiral).
+- [Shape morphing](Docs/Drawing/Morphing.md): `ShapeMorph` tweens one `Shape` into another, and every in-between is a real vector shape (contour pairing, corner-keeping correspondence, holes that grow in and out). `Shape` is…
+- [Voronoi & Delaunay](Docs/Drawing/Voronoi.md): tessellate points into vector geometry: Voronoi cells (the "crystallization" look) and the dual Delaunay triangle mesh, with Lloyd relaxation and weighted power diagrams
+- [Spatial index](Docs/Drawing/SpatialIndex.md): `SpatialIndex`, the structure that answers what is near a point without reading every point.
+- [Fitting](Docs/Drawing/Fitting.md): `RadialBasis`, a smooth field of numbers, vectors, or colors fitted through values you know at a few scattered places (a field of vectors also works as a warp). `Fit.minimize`…
+- [Truchet tiling](Docs/Drawing/Truchet.md): one tile per grid cell, turned to a random orientation, so identical parts join into flowing loops (`.arcs`) or a maze (`.diagonals`)
+- [Hitomezashi stitching](Docs/Drawing/Hitomezashi.md): one bit per grid line sets the phase of its dashes, and the shifted lines weave into staircases, loops, and a two-tone cloth
+- [Ten print](Docs/Drawing/TenPrint.md): `tenPrint`, one of two diagonals per cell chosen by a coin flip, joined into the long connected paths the picture is known for
+- [Kolam and sona](Docs/Drawing/Kolam.md): one line launched between a field of dots and bounced off the edges until it closes.
+- [Celtic knotwork](Docs/Drawing/Knotwork.md): the same line given width and an alternating over-under rule, returned already broken where each cord passes under another
+- [Crease patterns: folding and cutting](Docs/Drawing/CreasePattern.md): the flat sheet a folded or cut object comes from: the Miura fold with its rigid folding in three dimensions, rotating-squares kirigami, and Kawasaki's and Maekawa's laws, which…
+- [Tiling & layout](Docs/Drawing/Tiling.md): the other ways to divide a canvas: `HexGrid`/`TriangleGrid` (the hex and triangle tilings, with hex distance, neighbors, and exact picking), `subdivide` (recursive panels, binary…
+- [Aperiodic tilings](Docs/Drawing/AperiodicTilings.md): the tilings that never repeat: `penroseTiling` (kites and darts, rhombs, with the matching-rule arcs), `wangTiling` (edge-matching squares as one connected quilt), `girihPattern`…
+- [Parquet deformations](Docs/Drawing/ParquetDeformation.md): `parquetDeformation` draws a tiling whose tile changes shape as you read across it.
+- [Hyperbolic tiling](Docs/Drawing/HyperbolicTiling.md): regular tilings of the hyperbolic plane in the Poincaré disk. `hyperbolicTiling` takes any {p,q} with (p-2)(q-2) > 4 and returns typed tiles with depth and a two-coloring parity…
+- [Strange attractors & chaotic maps](Docs/Drawing/Attractors.md): chaotic systems as points.
+- [SDF combinators](Docs/Drawing/Combinators.md): compose signed-distance fields so shapes *merge* instead of stacking: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile.
+- [Measured distance fields](Docs/Drawing/DistanceFields.md): measure a distance field back out of a drawn layer with `Filter.distanceField`: how far every pixel is from the nearest edge, and in which direction. `Filter.fieldMap` reads it…
+- [The frequency domain](Docs/Drawing/Fourier.md): a picture read as a sum of waves instead of a grid of pixels. `Filter.fourier` writes the spectrum on the GPU and `.inverseFourier` reads it back.
+- [Light in a flat sketch](Docs/Drawing/Light.md): `Combine.light` computes the light that reaches every pixel of a flat scene.
+- [Local averages](Docs/Drawing/LocalAverages.md): the average of the neighborhood around every pixel at a fixed cost, over a summed-area table. `Filter.boxBlur` costs the same at any radius, and `Filter.adaptiveThreshold` cuts a…
+
+## Shaders
+
+- [User-supplied shaders](Docs/Shaders/Shaders.md): write your own fragment shader (`Shader` + a `shade(uv, info)` function) and run it through the effect graph as a generator, filter, or combine.
+- [Visual chains](Docs/Shaders/Visuals.md): compose animated imagery by chaining a `Visual`: sources (oscillator, noise, voronoi, shape) pass through warps, color moves, blends, and modulations.
+- [The shader library](Docs/Shaders/ShaderLibrary.md): reference for the helper functions a fragment shader or compute kernel can call: color/OKLab, hashes, value/gradient/curl noise, the 2D signed-distance catalog (`smin`…
+- [Compute & GPU particles](Docs/Shaders/Compute.md): GPU compute over buffers and textures. `Particles` updates and draws a million particles on the GPU each frame (the "sandpainting" engine), and `Simulation` runs…
+
+## 3D
+
+- [3D](Docs/3D/3D.md): opt into a 3D camera and depth buffer.
+- [Scenes (structure-preserving import)](Docs/3D/Scenes.md): `loadScene` keeps a glTF or USD file's *structure* instead of merging it.
+- [Instanced meshes](Docs/3D/Instancing.md): draw one mesh thousands of times in one call. `drawMesh(_:instances:)` takes a list of `MeshInstance` placements (position, rotation, scale, tint) that the GPU applies per copy.
+- [The Hopf fibration](Docs/3D/HopfFibration.md): a sphere's worth of circles, where no two circles meet and every two are linked exactly once. `hopfFibers` returns them as `[Vector3]` paths for `drawTube`, and `hopfBases`…
+- [Strand fields](Docs/3D/Strands.md): grass that a mesh pipeline grows inside the draw call itself. `StrandField` + `drawStrands` draw half a million bending, swaying blades with no vertex or instance buffer anywhere.
+- [The ocean](Docs/3D/Ocean.md): a sea built the way the ocean is measured. `makeOceanField` writes a wave spectrum, and one inverse Fourier transform turns it into the moving surface. `drawOcean` draws it as…
+- [Combining 3D features](Docs/3D/Combining.md): the practical map of what works with what: which geometry takes lights, materials, matcaps, and environment light; what casts, receives, and appears in shadows and reflections…
+- [Camera control](Docs/3D/Camera.md): move the camera by hand (`cameraControl()`: drag to orbit, scroll to dolly, right-drag or modifier-drag to pan, all damped) or play a ready-made cinematic move (`cameraMove(_:)`…
+- [Caustics: the light glass and metal focus](Docs/3D/Caustics.md): the light that glass and metal focus. `caustics()` photon-traces the caster light through every transmissive and mirror-polished surface and draws where it lands.
+- [Lens flare: the light the camera adds by itself](Docs/3D/LensFlare.md): the light the camera itself adds to a picture. `lensFlare()` works out the ghosts a real lens prescription makes of each bright source.
+- [Line drawing: a scene as line work a machine can follow](Docs/3D/LineDrawing.md): a 3D scene written down as 2D line work, with everything the surfaces hide taken out, so a pen plotter, a laser, or a vector file can have the scene the way only a picture could…
+- [Atmosphere: fog, aerial perspective & volumetric light](Docs/3D/Atmosphere.md): the air between the camera and the scene. `fog` fades surfaces with distance and pools low with a height falloff (exact closed-form transmittance). `aerialPerspective` splits the…
+- [Depth compositing](Docs/3D/DepthCompositing.md): place 2D drawing *inside* a 3D scene, so it occludes the geometry and is occluded by it: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the…
+- [Record3D (RGBD recordings)](Docs/3D/Record3D.md): `import OllinRecord3D` turns an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream
+- [RGBD frames and depth-lifted pose](Docs/3D/RGBD.md): the one `RGBDFrame` (color + depth + intrinsics) that any depth source produces.
+- [Phone (iPhone sensor stream)](Docs/3D/Phone.md): `import OllinPhone` reads a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app, over the USB cable.
+
+## Generators
+
+- [Random](Docs/Generators/Random.md): `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
+- [Noise](Docs/Generators/Noise.md): Perlin `noise` / `signedNoise`, seamlessly looping `noise(loop:)`, layered `fbm`, and `curlNoise` flow fields
+- [Blue noise](Docs/Generators/BlueNoise.md): `poissonDisk`, an even but organic scatter with no clumps or gaps (Poisson-disk sampling)
+- [Low-discrepancy sampling](Docs/Generators/LowDiscrepancy.md): `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points and never moves them
+- [Points on a surface](Docs/Generators/SurfaceSampling.md): `surfacePoints`, points scattered over a mesh's surface rather than its vertex list.
+- [Stippling](Docs/Generators/Stippling.md): `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling) or any density function
+- [De Bruijn sequences](Docs/Generators/DeBruijn.md): `deBruijnSequence` + `DeBruijnCode`, a cyclic sequence that holds every window of a given length exactly once, so a glimpse of a few symbols tells you where it came from
+- [Ford circles](Docs/Generators/FordCircles.md): `fordCircles`, a circle for every fraction, each touching its neighbors and overlapping nothing, built over `fareySequence` and the exact `Fraction` type
+- [Shadow art](Docs/Generators/ShadowArt.md): `shadowArt`, a solid carved so that it throws the silhouettes you ask for, with the shadows it really casts so you can compare them
+- [Polyominoes](Docs/Generators/Polyominoes.md): `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search that fits a bag of pieces into a region, or reports that no fit exists
+- [Ulam spiral](Docs/Generators/UlamSpiral.md): `ulamSpiral`, the whole numbers written in a square spiral, so a test on them becomes a picture.
+- [Fractals](Docs/Generators/Fractals.md): `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
+- [Chaotic maps & bifurcation](Docs/Generators/Bifurcation.md): `IteratedMap`, the one-dimensional route to chaos: the logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image…
+- [Single line](Docs/Generators/SingleLine.md): `singleLine`, one continuous tour through an image's stipple (TSP art), returned as a plotter-friendly `Contour`
+- [Ant colony](Docs/Generators/AntColony.md): `AntColony`, a colony that lays pheromone trails and narrows a web of possible routes down to a short tour.
+- [Spanning tree](Docs/Generators/SpanningTree.md): `spanningTree`, the minimum spanning tree of an image's stipple: the branching, vein-like relative of the single line
+- [String art](Docs/Generators/StringArt.md): `StringArt`, one continuous thread wound over rim pins until the crossings reproduce a picture (a stateful stepper)
+- [Percolation](Docs/Generators/Percolation.md): `Percolation`, site-percolation clusters over a seeded grid: largest-first labeling, the spanning cluster, cell rectangles, and traced boundary loops
+- [Isolines](Docs/Generators/Isolines.md): `isolines`, level curves of any scalar field or of an image's tone, by marching squares: from metaball outlines to contour maps
+- [Isosurfaces and metaballs](Docs/Generators/Isosurface.md): `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh` (dual contouring where the field has corners to keep): soft spheres that…
+- [Subdivision surfaces](Docs/Generators/SubdivisionSurfaces.md): `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules, with welding and open-edge handling built in
+- [Mesh growth](Docs/Generators/MeshGrowth.md): `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for and folds: brain coral, branching coral, a ruffled leaf margin
+- [Surface reconstruction](Docs/Generators/SurfaceReconstruction.md): `reconstructSurface` / `particleSurface`, from points back to a `Mesh`. Rebuild a scanned room or object with its holes kept, or skin a particle set as one blended body.
+- [Breaking things](Docs/Generators/Fracture.md): `fractured`, breaking a `Shape` or a `Mesh` into pieces that fit back together with no gap and no overlap, evenly or crowded around a blow; plus `convexHull` in space and the…
+- [Hulls](Docs/Generators/Hulls.md): `concaveHull` / `alphaShape`, two tighter answers to "what shape are these points?": one simple polygon that follows the gulfs, or the scatter's true footprint with islands and…
+- [Medial axis](Docs/Generators/MedialAxis.md): `medialAxis`, a shape reduced to its skeleton, with every point carrying its inscribed-disk radius
+- [Straight skeleton](Docs/Generators/StraightSkeleton.md): `straightSkeleton`, the ridge network a shrinking boundary traces, with faces and exact mitered insets (`inset(by:)`).
+- [Force-directed layout](Docs/Generators/ForceLayout.md): `ForceLayout`, a graph that untangles itself: repulsion between all nodes, attraction along edges, and cooling into an even web you can grow, pin, and drag
+- [Tensegrity](Docs/Generators/Tensegrity.md): `Tensegrity` / `addTensegrity`, struts held apart by cables: the prism, the six-strut icosahedron, and a stacked mast, each in its balanced shape, with `imbalance` to check a form…
+- [Marbling](Docs/Generators/Marbling.md): `Marbling` / `drawMarbling`, paper marbling in closed form: drops, tines, combs, and swirls rake vector ink outlines into feathered papers
+- [Watercolor](Docs/Generators/Watercolor.md): `Watercolor` / `drawWatercolor`, watercolor pigment from recursively deformed polygons stacked as translucent layers
+- [Chladni figures](Docs/Generators/Chladni.md): `chladni`, a ringing plate's standing-wave field in closed form, plus the `.chladni` generator's sand and wave readings and the mode-by-pitch join to audio
+- [Billiards: one rule, and the room does the rest](Docs/Generators/Billiards.md): `Billiard`, a ball that bounces forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it.
+- [Drainage: rivers worked out from the ground](Docs/Generators/Drainage.md): `Drainage`, rivers computed from a `Heightfield` rather than drawn.
+- [Terrain](Docs/Generators/Terrain.md): `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, and emitted as terrain meshes, heightmaps, and contours
+- [Random walks](Docs/Generators/Walks.md): `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the single stroke that never crosses itself
+- [Circle packing](Docs/Generators/Packing.md): `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
+- [ShapeGrammar](Docs/Generators/ShapeGrammar.md): `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested…
+- [L-systems](Docs/Generators/LSystem.md): `drawLSystem` and a preset catalog: a rewriting grammar that a turtle walks into fractal curves and branching plants, symbolic or parametric (symbols carry numbers, for fractional…
+- [Differential growth](Docs/Generators/DifferentialGrowth.md): `DifferentialGrowth`, a line of nodes that grows and folds into an organic, brain-coral structure (a stateful stepper)
+- [Meander](Docs/Generators/Meander.md): `Meander`, a river centerline that migrates by curvature, cutting off oxbow lakes and recording scars (a stateful stepper)
+- [Wave Function Collapse](Docs/Generators/WaveFunctionCollapse.md): `wfc` fills a grid so every neighbor is legal, from a tileset you declare or from the patches of an example picture (constraint-solved tile layouts, texture synthesis)
+- [Cellular automata](Docs/Generators/CellularAutomata.md): `elementaryCA`/`totalisticCA` row stacks chosen by rule number, and `Turmite` walkers (Langton's ant and its relatives) painting a wrapped grid
+- [Shape packing](Docs/Generators/ShapePacking.md): `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
+- [Flow fields](Docs/Generators/FlowField.md): `FlowField`, streamlines traced through a direction field (the flow-field look) and particles advected along it
+- [Flocking (boids)](Docs/Generators/Boids.md): `Boids`, a flock that steers by separation, alignment, and cohesion into emergent flocking motion
+- [Pursuit](Docs/Generators/Pursuit.md): `Pursuit`, runners that head straight at each other and leave logarithmic spirals: the ring of mice, and a quarry that runs straight (a stateful stepper)
+- [Steering behaviors](Docs/Generators/Steering.md): `Vehicle`, a creature moved by composable steering forces (seek, flee, arrive, pursue, wander, follow a path or flow field)
+- [Space colonization](Docs/Generators/SpaceColonization.md): `SpaceColonization`, branching growth (veins, roots, trees) toward scattered attraction points (a stateful stepper)
+- [Diffusion-limited aggregation](Docs/Generators/DiffusionLimitedAggregation.md): `DiffusionLimitedAggregation`, branching clusters frozen out of random walkers (frost and coral; a stateful stepper)
+- [Dielectric breakdown](Docs/Generators/DielectricBreakdown.md): `DielectricBreakdown`, lightning grown where the solved electric field is strongest.
+- [Crack growth](Docs/Generators/CrackGrowth.md): `CrackGrowth`, perpendicular cracks that subdivide the plane into city-block cells, each dragging a one-sided watercolor wash (a stateful stepper)
+
+## Helpers
+
+- [Math helpers](Docs/Helpers/Math.md): `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), and `Double.tau`
+- [Complex numbers](Docs/Helpers/Complex.md): `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `exp`/`log`/`pow`/`sqrt` and the trigonometric functions on the principal branch, the…
+- [Animation](Docs/Helpers/Animation.md): looping progress (`loopProgress`/`pingPong`), the timers (`every`/`after`/`everyFrames`), `sway` (a value that travels between two ends and back, over five shapes), the `Easing`…
+- [A number written as a rule](Docs/Helpers/Formula.md): a number written as a rule and read from text: `drive($radius, "190 + sin(time) * 80")`. The page covers the arithmetic a formula understands, the clock, canvas, pointer, and…
+- [Parameters](Docs/Helpers/Parameters.md): `@Param` tunable parameters: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards (with `.folded` sections that…
+- [Cues: looks you can call back](Docs/Helpers/Cues.md): looks you can call back: `saveCue` stores every parameter's value under a name, `cue(_:over:)` brings them back at once or over a fade, the inspector's Cues card lists and saves…
+- [Input](Docs/Helpers/Input.md): mouse and keyboard
+- [Accessibility](Docs/Helpers/Accessibility.md): see your colors as the three kinds of color vision see them, check whether a palette's colors stay apart, and read the system's reduce-motion setting
+- [Data](Docs/Helpers/Data.md): `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach into by name and index
+- [Live data](Docs/Helpers/LiveData.md): `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now.
+- [The weather outside](Docs/Helpers/Weather.md): `Weather`, the sky over a place or a name as plain readings (temperature, clouds, wind, rain, the condition in a word), and `Place.sun(at:)` for where the sun is, with no network
+- [Audio](Docs/Helpers/Audio.md): `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values, beats, and the note heard (`pitch`, `chroma`) you read in…
+- [Listening](Docs/Helpers/Listening.md): speech as a caption you can draw and phrases you can act on, plus about 300 everyday sounds named as they happen, over any audio source
+- [Synthesis](Docs/Helpers/Synthesis.md): `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, a wavetable read by position, a grain cloud cut out of a…
+- [Composition](Docs/Helpers/Composition.md): working out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences, as pure values of a step number, plus a step sequencer with swing, chance, and…
+- [MIDI files](Docs/Helpers/MIDIFiles.md): a piece as a Standard MIDI File, read into notes a sketch plays or draws and written back out, with the tempo map that turns its beats into seconds, and a take recorded off a live…
+- [Sonification](Docs/Helpers/Sonification.md): numbers played as notes: a table column, a terrain profile, or a picture row, spread over a range of pitch and snapped to a scale
+
+## Simulation
+
+- [Physics](Docs/Simulation/Physics.md): `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation.
+- [3D physics](Docs/Simulation/Physics3D.md): rigid bodies inside the 3D scene.
+- [Swarm](Docs/Simulation/Swarm.md): the steering behaviors at GPU scale: separation, alignment, cohesion, seek, flee, arrive, wander, and flow following, as weights over tens or hundreds of thousands of agents
+- [Artificial life](Docs/Simulation/ArtificialLife.md): three emergent-behavior systems on the GPU: `ParticleLife`, the `PPS` turning rule, and `Physarum` slime mold.
+- [Evolution](Docs/Simulation/Evolution.md): populations that get better at something. `Evolution` breeds tens of thousands of GPU flights toward a target past obstacles by tournament selection, and `Population` breeds a…
+- [Fluids & soft bodies](Docs/Simulation/Fluids.md): GPU particle dynamics: `ParticleFluid` (smoothed-particle hydrodynamics) and `SoftBodies` (shape-matched jelly blobs), both in a walled box you can splash and knead with the mouse
+- [Watercolor](Docs/Simulation/Watercolor.md): wet paint on rough paper: a three-layer wash simulation (`watercolor(pigments:)`) with real pigment behavior and Kubelka-Munk glazing.
+- [Articulated & chaotic motion](Docs/Simulation/Motion.md): CPU motion systems you step each frame: `IKChain` (inverse-kinematics tentacles and limbs), `DoublePendulum` (the classic chaos machine), and `NBody` (quadtree gravity for orbits…
+- [Crowds](Docs/Simulation/Crowds.md): `Crowd`, walkers that avoid each other by reciprocal velocity obstacles on the CPU: no overlap while every walker finds a safe velocity, obstacles and walls that hold even in a…
+- [Coupled oscillators](Docs/Simulation/Oscillators.md): `Kuramoto`, a crowd of oscillators each pulled toward the phase of the others, on the CPU: the order parameter `coherence`, the critical coupling where a locked group forms, and…
+
+## Integration
+
+- [OSC](Docs/Integration/OSC.md): `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`
+- [OSCQuery](Docs/Integration/OSCQuery.md): `import OllinOSC` to publish the sketch's `@Param` parameters as a namespace a control app finds on the network and builds its own controls from, the values coming back over OSC…
+- [TUIO](Docs/Integration/TUIO.md): `import OllinOSC` to read a tangible surface: touches, tagged pieces, and shapes from a marker table, a touch wall, or a phone app, each keeping its id while it stays on the…
+- [MIDI](Docs/Integration/MIDI.md): `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`
+- [Link](Docs/Integration/Link.md): `import OllinLink` to join the local network's shared tempo-and-phase session (the Link protocol most music apps support).
+- [Serial](Docs/Integration/Serial.md): `import OllinSerial` to read a USB microcontroller's sensor lines in `draw()` (or bound to a `@Param`) and write lines back to drive servos and LEDs.
+- [Bluetooth](Docs/Integration/Bluetooth.md): `import OllinBluetooth` to read a Bluetooth Low Energy sensor in `draw()` (or bound to a `@Param`) and write back to it.
+- [MQTT](Docs/Integration/MQTT.md): `import OllinMQTT` to join the message bus a building speaks.
+- [Remote](Docs/Integration/Remote.md): `import OllinRemote` to serve the sketch's `@Param` parameters to a phone or a second machine on the local network: a touch surface in any browser, live in both directions, for…
+- [Room](Docs/Integration/Room.md): `import OllinRoom` to let several machines on one network draw one piece.
+- [DMX](Docs/Integration/DMX.md): `import OllinDMX` to drive stage lights and dimmers from `draw()` over Art-Net or sACN (a `DMXUniverse` of 512 channels, with a named-fixture shorthand).
+- [Laser](Docs/Integration/Laser.md): `import OllinLaser` to draw with a show laser from `draw()`. Line work is optimized into the point stream a projector scans (spacing, corner and blanking dwell, path order, the…
+- [Syphon](Docs/Integration/Syphon.md): `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming…
+- [Virtual camera](Docs/Integration/VirtualCamera.md): `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so webcam apps and browser tools (Zoom, OBS, Hydra via `getUserMedia`, …) read the sketch as a…
+- [Game controllers](Docs/Integration/Controller.md): `import OllinController` to read a game controller in `draw()`: sticks, triggers, and buttons on any pad, plus motion and a touchpad on hardware that has them, with several…
+- [Haptics](Docs/Integration/Haptics.md): `import OllinHaptics` to add touch feedback beside the picture.
+- [Screen capture](Docs/Integration/ScreenCapture.md): `import OllinScreen` to take any display, app, or window on the Mac as a live GPU-textured frame source, drawn and filtered like any image and read by the vision trackers.
+
+## Vision
+
+- [Vision](Docs/Vision/Vision.md): `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, returned as typed results you read in `draw()`. Nineteen trackers…
+
+## Video
+
+- [Video](Docs/Video/Video.md): `import OllinVideo` to play a video file into a sketch as a live image.
+- [Slit scan](Docs/Video/SlitScan.md): `SlitScan`, a rolling frame history read back through a per-pixel time delay: the classic scan, time ripples, displacement maps
+
+## Output
+
+- [Export](Docs/Output/Export.md): save frames as raster (PNG, sequences), motion (video, animated GIF), vector (SVG for pen plotters, PDF for print), or linear EXR with depth, for a compositor
+- [A sketch as a web page](Docs/Output/Web.md): `--export-web` records what a sketch draws and writes a page that plays it back in a browser, as one self-contained file or as a fragment for a page of your own
+- [Path-traced export](Docs/Output/PathTraced.md): `--path-traced` renders the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
+- [Recording](Docs/Output/Recording.md): record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time
+- [Fabrication](Docs/Output/Fabrication.md): write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
+- [G-code](Docs/Output/GCode.md): write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly
+- [DXF](Docs/Output/DXF.md): write a frame as a DXF drawing a CAD program or a laser cutter's software opens: lines, polylines, and true circles in millimeters, each color on its own layer
+- [Embroidery](Docs/Output/Embroidery.md): write a frame as the stitches an embroidery machine sews, a `.dst` file with strokes as running stitch, fills as rows, and each color as its own thread
+- [Running unattended](Docs/Output/Installation.md): leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that restarts it, and the building's hours
+- [A sketch as an app](Docs/Output/App.md): wrap a finished piece as a signed, double-clickable Mac app that runs without the toolchain, with a frame of itself as its icon
+- [A sketch as the machine's screen saver](Docs/Output/ScreenSaver.md): wrap a sketch as the machine's screen saver: one command writes the project, one script installs it, and the sketch stays an ordinary sketch
+- [A sketch as the desktop wallpaper](Docs/Output/Wallpaper.md): run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar item to quit it
+- [A sketch in the menu bar](Docs/Output/MenuBar.md): run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
+- [A sketch as a widget](Docs/Output/Widget.md): show a sketch as a widget on the desktop, drawn one picture per moment, so the piece changes through the day rather than moving
+- [Print separations](Docs/Output/PrintSeparations.md): split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
+- [Print color](Docs/Output/PrintColor.md): soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures
+- [Spatial export](Docs/Output/Spatial.md): write a 3D frame or a `Scene` as USDZ, so a piece opens in Quick Look, sends in a message, and stands on a real table through AR.
+
+## Tools
+
+- [The project generator](Docs/Tools/ProjectGenerator.md): `ollin new` and `ollin generate`: a ready-to-run sketch folder from a few questions, with templates you can watch running before you pick one
+- [Single-file sketches](Docs/Tools/SingleFile.md): the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed
+- [The sketch on the phone](Docs/Tools/OnThePhone.md): `ollin phone`: the sketch on a paired iPhone or iPad.
+- [Live coding](Docs/Tools/LiveCoding.md): the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
+- [Bringing a shader over](Docs/Tools/ShaderImport.md): `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
+- [Checking the machine](Docs/Tools/Doctor.md): `ollin doctor`: what this machine can run, with the line that fixes each answer; shell completions, and `--list-params` for what a sketch declares
+- [Checking a shader](Docs/Tools/ShaderCheck.md): `ollin check`: compile a `.metal` file on this machine's GPU and see the errors at your own line numbers, what kind of shader it is, and the parameters it reads
+- [Bringing a scene over](Docs/Tools/SceneImport.md): `ollin new --from-scene`: a glTF or USD scene written out as the camera, lights and placement calls that draw it
+- [Writing an extension](Docs/Tools/Extensions.md): `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
+- [Dragging a shape](Docs/Tools/DragToEdit.md): Command-drag a shape in the live window, or on the performance stage, to move it, drag a corner to resize it, or drag the knob above it to turn it.
+- [The parameter timeline](Docs/Tools/Timeline.md): OllinLive's timeline panel: a lane per automated parameter, keys placed from the inspector's diamonds and dragged by hand, a playhead over the sketch clock, and a round trip to…
+- [The reference offline](Docs/Tools/Reference.md): `ollin docs`, `ollin examples`, `ollin api`, and `ollin site`: these pages, every example sketch, and every public name, read in the terminal or written out as a website.
+- [Profiling](Docs/Tools/Profiling.md): the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
+
+## The project
+
+- [Examples](Examples/README.md): 588 runnable sketches by category, each with its whole source
+- [Ollin architecture & internals](ARCHITECTURE.md)
+- [Ollin: the shipped-capability inventory](CAPABILITIES.md)
+- [Changelog](CHANGELOG.md)
+
+## Optional
+
+- [Ollin roadmap](ROADMAP.md)
+- [Ollin design notes](DESIGN-NOTES.md)
+- [Influences & attribution](ATTRIBUTION.md)
+- [Contributing to Ollin](CONTRIBUTING.md)

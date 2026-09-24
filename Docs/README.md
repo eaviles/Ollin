@@ -6,7 +6,7 @@
 
 This is the reference for Ollin's drawing surface and helpers. The bare calls you write in `draw()` forward to an internal `Drawer` (see [How it works](../README.md#how-it-works)). Everything on these pages is callable bare inside a `Sketch`.
 
-If you are new to Swift, start with the [Swift quick reference](./Swift.md). It covers just enough of the language to be productive in `draw()`. If you come from p5.js or Processing, [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin. [Appendix E](../Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR.
+The [Ollin quick reference](./QuickReference.md) is the whole framework in one read: how a sketch runs, what the calls are called, the units they take, the command line, and the mistakes that fail with no error. If you are new to Swift, start with the [Swift quick reference](./Swift.md). It covers just enough of the language to be productive in `draw()`. If you come from p5.js or Processing, [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin. [Appendix E](../Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR.
 
 ### The catalog
 
@@ -309,7 +309,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 - [`Dragging a shape`](./Tools/DragToEdit.md) - Command-drag a shape in the live window, or on the performance stage, to move it, drag a corner to resize it, or drag the knob above it to turn it. The numbers in your own code change, with your spacing and comments untouched.
 - [`The parameter timeline`](./Tools/Timeline.md) - OllinLive's timeline panel: a lane per automated parameter, keys placed from the inspector's diamonds and dragged by hand, a playhead over the sketch clock, and a round trip to the automation file
-- [`The reference offline`](./Tools/Reference.md) - `ollin docs`, `ollin examples`, and `ollin site`: these pages and every example sketch, read in the terminal or written out as a website. They come from the checkout you build against, and a search covers the whole reference
+- [`The reference offline`](./Tools/Reference.md) - `ollin docs`, `ollin examples`, `ollin api`, and `ollin site`: these pages, every example sketch, and every public name, read in the terminal or written out as a website. They come from the checkout you build against, and a search covers the whole reference
 - [`Profiling`](./Tools/Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR. The [Where a point is](./Concepts/Coordinates.md) page covers this in one screen, including the units.

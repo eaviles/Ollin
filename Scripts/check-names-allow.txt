@@ -18,6 +18,10 @@ pushStyle
 popStyle
 PVector
 CENTER
+saveFrame                       # named in Docs/QuickReference.md's table of names from elsewhere
+millis                          # named in Docs/QuickReference.md's table of names from elsewhere
+beginShape                      # named in Docs/QuickReference.md's table of names from elsewhere
+endShape                        # named in Docs/QuickReference.md's table of names from elsewhere
 
 # Other frameworks, formats, and languages the prose compares against or quotes.
 ofSignedNoise                   # openFrameworks

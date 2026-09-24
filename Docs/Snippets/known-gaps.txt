@@ -1058,6 +1058,7 @@ f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 2061a81c0661  Docs/Output/Spatial.md:35  cannot find 'sketch' in scope
 690a25f392d7  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
 1f2cfde3b6d6  Docs/Output/Wallpaper.md:30  '@main' attribute cannot be applied to this declaration
+68da6254f5c3  Docs/QuickReference.md:30  '@main' attribute cannot be applied to this declaration
 04f155b00209  Docs/Shaders/Compute.md:109  cannot find 'sand' in scope
 0c5eda7debcd  Docs/Shaders/Compute.md:129  '@main' attribute cannot be applied to this declaration
 b1d2e70e3760  Docs/Shaders/Compute.md:193  cannot find 'generator' in scope

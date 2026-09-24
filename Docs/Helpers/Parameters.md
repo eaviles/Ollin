@@ -212,7 +212,7 @@ Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `
 
 A standalone run of an example shows the same controls in the inspector panel, under View ▸ Show Inspector (⌘/). The examples gallery shows them in its right sidebar.
 
-Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value is right, [save it into the declaration](#saving).
+Headless export never opens an inspector, so a render uses the defaults written in code, or the values `--param` gives on the command line. Once a tuned value is right, [save it into the declaration](#saving).
 
 <a name="saving"></a>
 
@@ -293,7 +293,7 @@ $radius.jump(to: 200)   // jump straight there, skipping any smoothing glide
 $radius.range       // the declared bounds (Double and Int parameters)
 ```
 
-Assignment sets a new target, and the parameter glides to it when it is smoothed. `set(_:)` lands immediately. The live host uses `set` to restore your tuned values across a reload, because gliding in from the default would look wrong there.
+Assignment sets a new target, and the parameter glides to it when it is smoothed. `jump(to:)` lands immediately. The live host puts your tuned values back the same way across a reload, because gliding in from the default would look wrong there.
 
 You can also sweep a parameter offline. `--export-sweep` renders a proof sheet along one parameter's range, with one tile per value. Every tile uses the same seed, so the parameter is the only thing that changes across the sheet. A seed keeps the meaning it has on the [Variations](../Core/Variations.md) page, where it is the sketch's identity. A sweep is a tuning tool. It shows on one sheet the values you would otherwise reach by dragging the inspector control:
 
