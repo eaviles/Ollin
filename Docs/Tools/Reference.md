@@ -4,11 +4,12 @@
 
 # The reference offline
 
-Everything in [`Docs/`](../README.md) and every sketch in [`Examples/`](../../Examples/README.md) is already on your machine, in the checkout you build against. `ollin docs` and `ollin examples` read them from there, so looking something up takes one command instead of a browser, a network, and a search box.
+Everything in [`Docs/`](../README.md) and every sketch in [`Examples/`](../../Examples/README.md) is already on your machine, in the checkout you build against. `ollin docs` and `ollin examples` read them from there, and `ollin api` reads the public surface, so looking something up takes one command instead of a browser, a network, and a search box.
 
 ```sh
 ollin docs color
 ollin examples flocking
+ollin api drawCircle
 ```
 
 It reads the checkout you are running, so the answer describes the version you build against rather than whatever is published somewhere. That also means you have the whole reference with no network, on a plane, on a train, or on a machine that is offline. When a browser is the better place to read, `ollin site` writes the same pages out as a website.
@@ -101,6 +102,45 @@ ollin examples ocean --source
 ```
 
 To start your own project from an example rather than read it, hand the example to the generator. `ollin new MyOcean --from 3D/Geometry/Ocean` copies the sketch and everything beside it. See [the project generator](./ProjectGenerator.md).
+
+## A name, and what it takes
+
+When you know the name, or half of it, `ollin api` says what it is:
+
+```sh
+ollin api loopProgress
+```
+
+```text
+Sketch.loopProgress  Ollin
+  func loopProgress(over: Double, phase: Double = default) -> Double
+      Sources/Ollin/Math/Math.swift:264
+      How far through a repeating loop the clock is: `0...1` over `duration`
+      seconds, wrapping back to `0` as each lap completes.
+      ...
+
+  documented  Helpers/Animation#looping-progress
+  used in     Examples/Patterns/Apollonian/Sketch.swift:27
+              let phase = loopProgress(over: 8)
+```
+
+It prints every declaration the name has, spelled the way you call it, with its argument labels and which ones have a default. Under each is the comment written above it in the source, which is where a value's unit, range, and direction are written down, and the file and line it is declared on. Then come the pages that document it, as addresses `ollin docs` opens, and the shortest examples that use it.
+
+The listings under [`API/`](../../API/README.md) are where it reads from. Those are the whole public surface, one line per declaration, so a name that is not there cannot be reached from a sketch at all. `ollin api` answers "is it public?" as well as "what does it take?".
+
+Put the type in front of the name to pick one out. A bare type lists everything on it:
+
+```sh
+ollin api Mesh.tube          # the tube on Mesh, not the tube light
+ollin api Param              # every way to declare a parameter
+ollin api Vector2.init       # every way to make a Vector2
+```
+
+A type with more than sixty members lists just their names, so `ollin api Sketch` fits on a screen. A name nothing is called prints the names spelled like it instead. That is the question you have when you know roughly what a call is called and not its exact spelling:
+
+```sh
+ollin api blom               # Filter.bloom, and the others spelled like it
+```
 
 ## In a terminal, and in a pipe
 

@@ -17,6 +17,7 @@ public enum ShellCompletions {
         ("check", "compile a shader on this machine's GPU and say what it found"),
         ("docs", "the written reference, here in the terminal"),
         ("examples", "the examples set: what each one shows and how to run it"),
+        ("api", "a public name: what it takes, what its comment says, where it is used"),
         ("site", "the same pages as a website, written into a folder"),
         ("doctor", "say what this machine can run"),
         ("completions", "print the zsh completion function"),
@@ -66,6 +67,7 @@ public enum ShellCompletions {
         for (branch, scope) in [("new", CommandFlag.Scope.new),
                                 ("docs", .docs),
                                 ("examples", .examples),
+                                ("api", .api),
                                 ("site", .site),
                                 ("check", .check),
                                 ("phone", .phone),
@@ -120,6 +122,7 @@ public enum ShellCompletions {
         case "new": return "'*:name:'"
         case "docs": return "'*:topic:'"
         case "examples": return "'*:example:'"
+        case "api": return "'*:name:'"
         case "site": return "'*:folder:_files -/'"
         case "check": return "'*:shader:{_files -g \"*.metal\"}'"
         case "phone": return "'*:sketch:{_files -g \"*.swift\"}'"

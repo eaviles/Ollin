@@ -2,13 +2,14 @@ import Darwin
 import Foundation
 import OllinReference
 
-/// `ollin docs` and `ollin examples`: the written reference and the examples
-/// set, read in the terminal out of this checkout.
+/// `ollin docs`, `ollin examples`, and `ollin api`: the written reference, the
+/// examples set, and the public surface, read in the terminal out of this
+/// checkout.
 ///
-/// Both commands live in one binary because they answer one question from two
-/// directions ("what does this do" and "show me one that does it"), and
-/// because a single small target keeps the first run a second or two rather
-/// than a framework build. It links nothing but Foundation and the two text
+/// They live in one binary because they answer one question from three
+/// directions ("what does this do", "show me one that does it", and "what is
+/// it called and what does it take"), and because a single small target keeps
+/// the first run a second or two rather than a framework build. It links nothing but Foundation and the two text
 /// targets, exactly as the project generator's command line does.
 ///
 /// What it prints is written for a person and nothing else: no machine format,
@@ -36,10 +37,11 @@ struct OllinDocsCommand {
         switch command {
         case "docs": docs(arguments, options: options)
         case "examples": examples(arguments, options: options)
+        case "api": api(arguments, options: options)
         case "site": site(arguments)
         case "completions": completions(options: options)
         case "help", "--help", "-h": printUsage()
-        default: fail("unknown command \"\(command)\". Try docs, examples, site, or completions.")
+        default: fail("unknown command \"\(command)\". Try docs, examples, api, site, or completions.")
         }
     }
 
@@ -295,6 +297,146 @@ struct OllinDocsCommand {
         }
     }
 
+    // MARK: - The public surface
+
+    /// `ollin api <name>`: what a public name is, read from the listings under
+    /// `API/`. Every declaration it names, as the listing spells it, with the
+    /// doc comment above it in `Sources/` and the line it is written on; then
+    /// the pages that document it and the examples that use it. A type also
+    /// lists its members. A name nothing is called prints the names spelled
+    /// like it instead, which answers "what is it called".
+    ///
+    /// Not listed means not public, so this is also the answer to whether a
+    /// sketch can reach something at all.
+    static func api(_ arguments: [String], options: Options) {
+        let root = checkout()
+        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        guard !all.isEmpty else {
+            fail("no listings found under \(root.appendingPathComponent("API").path). Is this a full checkout?")
+        }
+        guard let query = arguments.first?.trimmingCharacters(in: CharacterSet(charactersIn: ".`() ")),
+              !query.isEmpty else {
+            fail("name something: `ollin api drawCircle`, `ollin api Mesh.tube`, `ollin api Material`.")
+        }
+        if query == "init" {
+            fail("name the type as well: `ollin api Vector2.init`, or `ollin api Vector2` for all of it.")
+        }
+        let style = options.style
+
+        let answer = APIListing.answer(query, in: all)
+        guard !answer.declarations.isEmpty else {
+            guard !answer.nearby.isEmpty else {
+                fail("no public name is \"\(query)\", and none is spelled like it. `ollin docs --search \(query)` reads the pages for it.")
+            }
+            print(style.dim("No public name is \"\(query)\". These are spelled like it:"))
+            print("")
+            for name in answer.nearby { print("  " + name) }
+            print("")
+            print(style.dim("one of them: ollin api <name>"))
+            exit(1)
+        }
+
+        let shown = Array(answer.declarations.prefix(40))
+        let places = SourceComments.places(of: shown, inSources: root.appendingPathComponent("Sources"))
+
+        // One block per type the name sits on, a type's own block first.
+        var order: [String] = []
+        var blocks: [String: [Int]] = [:]
+        for (index, declaration) in shown.enumerated() {
+            let key = declaration.module + " " + declaration.qualifiedName
+            if blocks[key] == nil { order.append(key) }
+            blocks[key, default: []].append(index)
+        }
+        order.sort { a, b in
+            let left = shown[blocks[a]![0]].kind == .type, right = shown[blocks[b]![0]].kind == .type
+            return left != right ? left : false
+        }
+
+        for key in order {
+            let indices = blocks[key]!
+            let first = shown[indices[0]]
+            print(style.bold(first.qualifiedName) + style.dim("  " + first.module))
+            for index in indices {
+                let declaration = shown[index]
+                print("  " + (style.color ? style.code(APIListing.tidy(declaration.text)) : APIListing.tidy(declaration.text)))
+                guard let place = places[index] else { continue }
+                print("      " + style.dim("\(relative(place.file, to: root)):\(place.line)"))
+                for line in place.comment.prefix(24) { print("      " + line) }
+                if place.comment.count > 24 {
+                    print("      " + style.dim("(\(place.comment.count - 24) more lines in the source)"))
+                }
+            }
+            if first.kind == .type {
+                members(of: first, in: all, style: style)
+            }
+            print("")
+        }
+        if answer.declarations.count > shown.count {
+            print(style.dim("\(answer.declarations.count - shown.count) more declarations are named \"\(query)\"; name the type as well to narrow it: ollin api <Type>.\(first(of: query))"))
+            print("")
+        }
+
+        // Where it is written about, and used. An initializer is written as
+        // its type called.
+        let lead = shown[0]
+        let isType = lead.kind == .type
+        let spelled = lead.kind == .initializer ? (lead.owner.last ?? lead.name) : lead.name
+        let owners = Array(Set(shown.compactMap(\.owner.last))).sorted()
+        let reach: APIReach = isType || lead.kind == .initializer ? .type
+            : shown.allSatisfy { $0.owner.isEmpty || $0.owner == ["Sketch"] } ? .bare : .member
+        let pages = APIUsage.pages(naming: spelled, reach: reach, owners: isType ? [] : owners,
+                                   in: ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs")))
+        let examples = APIUsage.examples(using: spelled, reach: reach,
+                                         in: ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples")),
+                                         root: root)
+        let label = { (text: String) in style.dim(text.padding(toLength: 12, withPad: " ", startingAt: 0)) }
+        if pages.isEmpty {
+            print("  " + label("documented") + style.dim("no page writes it as code"))
+        }
+        for (number, page) in pages.enumerated() {
+            print("  " + label(number == 0 ? "documented" : "") + page.address)
+        }
+        if examples.isEmpty {
+            print("  " + label("used in") + style.dim("no example"))
+        }
+        let room = max(20, style.width - 14)
+        for (number, example) in examples.enumerated() {
+            print("  " + label(number == 0 ? "used in" : "") + example.address)
+            let line = example.text.count > room ? String(example.text.prefix(room - 1)) + "…" : example.text
+            print("  " + label("") + style.dim(line))
+        }
+        if !isType, lead.kind != .initializer, !answer.nearby.isEmpty {
+            print("")
+            let also = answer.nearby.prefix(10).joined(separator: ", ")
+            for (number, line) in Markdown.wrapped(also, width: max(20, style.width - 8)).enumerated() {
+                print("  " + label(number == 0 ? "see also" : "") + style.dim(line))
+            }
+        }
+    }
+
+    /// A type's members: every line when there are few enough to read, and
+    /// just the names when there are not.
+    static func members(of type: APIDeclaration, in all: [APIDeclaration], style: TerminalStyle) {
+        let members = APIListing.members(of: type, in: all)
+        guard !members.isEmpty else { return }
+        print("")
+        guard members.count > 60 else {
+            print("  " + style.dim("\(members.count) members"))
+            for member in members { print("    " + APIListing.tidy(member.text)) }
+            return
+        }
+        var seen: Set<String> = []
+        let names = members.map(\.name).filter { seen.insert($0).inserted }.sorted()
+        print("  " + style.dim("\(members.count) members under \(names.count) names; one of them: ollin api \(type.name).<name>"))
+        for line in Markdown.wrapped(names.joined(separator: ", "), width: max(20, style.width - 4)) {
+            print("    " + line)
+        }
+    }
+
+    static func first(of query: String) -> String {
+        String(query.split(separator: ".").last ?? Substring(query))
+    }
+
     // MARK: - Printing
 
     /// A name in one column and what it is in the next, wrapped under itself.
@@ -449,6 +591,12 @@ struct OllinDocsCommand {
                ollin examples <filter>         the ones matching a name, folder, or description
                ollin examples <name> --source  print the sketch itself
                ollin examples --list           one path per line
+
+               ollin api <name>                a public name: its declarations, what the
+                                               source says above each, the pages that
+                                               document it, and examples that use it;
+                                               `Mesh.tube` for one type's, `Material` for
+                                               a whole type
 
                ollin site [folder]             the same pages as a website, written into
                                                a folder (default: .build/site);

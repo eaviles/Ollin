@@ -6,6 +6,7 @@
 #   ollin Dots.swift --installation                 # put it up: its own window, left running
 #   ollin Dots.swift --export-gif dots.gif --seconds 4   # headless export, same flags
 #   ollin new Dots.swift                            # write a starter sketch
+#   ollin api drawCircle                            # what a public name is and takes
 #   ollin install                                   # put `ollin` on your PATH
 #
 # One .swift file is the whole sketch: no package, no target, no project. The
@@ -63,6 +64,10 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               whole reference for a word
        ollin examples [filter]                the examples set: what each one shows,
                                               how to run it, --source to read it
+       ollin api <name>                       a public name: its declarations, the
+                                              comment above each in the source,
+                                              the pages that document it, and
+                                              examples that use it
        ollin site [folder]                    the same pages as a website, written
                                               into a folder (.build/site by default)
        ollin doctor                           what this machine can run: the
@@ -111,9 +116,45 @@ cmd_check() {
     exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinCheck "${args[@]}"
 }
 
-# ollin docs [topic] / ollin examples [filter]: the reference and the examples
-# set, read out of this checkout. Like the generator, it links no framework, so
-# the first run is a second or two.
+# The reference's own binary, as a command in $reference. The pages are read
+# when it runs, so a build goes stale only when its own code changes. `swift
+# run` spends about four seconds asking whether it has, and holds this
+# checkout's build lock while it asks, so a lookup through it waits out any
+# build already running here. So the question is asked once: a stamp beside
+# the build records when it was last brought up to date, and while no file
+# under the four folders the binary is built from is newer than the stamp, it
+# runs straight from the build. The binary's own time can't stand in for the
+# stamp, because the build leaves a binary alone when a source changed and
+# its output did not, and every lookup after that would build again.
+reference_tool() {
+    local config="${OLLIN_CONFIG:-debug}"
+    local built="$repo/.build/$config/OllinDocs"
+    local stamp="$repo/.build/ollin-reference-$config.checked"
+    local -a sources=("$repo"/Sources/{OllinDocs,OllinReference,OllinProjects,OllinShaderText})
+    if [[ ! -x "$built" || ! -e "$stamp" ||
+          -n "$(find "${sources[@]}" -type f -newer "$stamp" -print -quit 2>/dev/null)" ]]; then
+        # Stamped with the time the build starts, so an edit made while it
+        # runs is still newer than the stamp next time.
+        local pending="$stamp.$$"
+        : > "$pending"
+        if swift build -c "$config" --package-path "$repo" --product OllinDocs --quiet >&2; then
+            mv -f "$pending" "$stamp"
+        else
+            rm -f "$pending"
+            # A checkout caught mid-edit still has pages to read, and the last
+            # build that worked can read them. The stamp stays old, so the next
+            # lookup tries the build again.
+            [[ -x "$built" ]] || exit 1
+            echo "ollin: the reference's own code did not build, so this is the last build that did" >&2
+        fi
+    fi
+    reference=("$built")
+}
+
+# ollin docs [topic] / ollin examples [filter] / ollin api <name>: the
+# reference, the examples set, and the public surface, read out of this
+# checkout. Like the generator, it links no framework, so the first run is a
+# second or two.
 #
 # The pager is the shell's job, not the command's: only the shell knows whether
 # a person is looking. When one is, the terminal's own colors are asked for
@@ -127,13 +168,14 @@ cmd_reference() {
     for a in "${args[@]}"; do
         if [[ "$a" == "--no-pager" ]]; then paged=0; else kept+=("$a"); fi
     done
+    local -a reference
+    reference_tool
     if [[ -t 1 && $paged == 1 ]]; then
         local pager="${PAGER:-less -FRX}"
-        swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs \
-            "${kept[@]}" --color | ${=pager}
+        "${reference[@]}" "${kept[@]}" --color | ${=pager}
         return ${pipestatus[1]}
     fi
-    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
+    exec "${reference[@]}" "${kept[@]}"
 }
 
 # ollin site [folder]: the reference, the Guide, and the examples as a website,
@@ -154,7 +196,9 @@ cmd_site() {
         # A flag's own value is a name, not a folder.
         if [[ "$a" == "--domain" || "$a" == "--repository" || "$a" == "--branch" ]]; then value=1; fi
     done
-    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
+    local -a reference
+    reference_tool
+    exec "${reference[@]}" "${kept[@]}"
 }
 
 # ollin doctor: what this machine can run. It links the framework, because the
@@ -168,7 +212,9 @@ cmd_doctor() {
 # reference and no pager: it is meant to be redirected into a file on your
 # fpath, which is what `ollin install` does for you.
 cmd_completions() {
-    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs completions "$@"
+    local -a reference
+    reference_tool
+    exec "${reference[@]}" completions "$@"
 }
 
 # Where zsh would look for a completion function. The first writable one that
@@ -257,7 +303,7 @@ case "${1:-}" in
         shift; cmd_generate "$@" ;;
     check)
         shift; cmd_check "$@" ;;
-    docs|examples)
+    docs|examples|api)
         cmd_reference "$@" ;;
     doctor)
         shift; cmd_doctor "$@" ;;

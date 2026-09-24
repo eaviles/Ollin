@@ -424,6 +424,14 @@ The examples answer the other side of the same question. `ollin examples` with n
 ollin examples ocean --source
 ```
 
+When you know what something is called and want what it takes, ask for the name itself:
+
+```sh
+ollin api drawCircle
+```
+
+That prints each way to call it with its labels, the comment its source carries, the pages that document it, and a few examples that use it. A name you only half remember prints the names spelled like it.
+
 None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including how it behaves in a pipe and how `ollin site` writes all of it out as a website.
 
 ## Putting it together: a breathing ring

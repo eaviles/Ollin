@@ -19,6 +19,7 @@ _ollin() {
     'check:compile a shader on this machine'\''s GPU and say what it found'
     'docs:the written reference, here in the terminal'
     'examples:the examples set - what each one shows and how to run it'
+    'api:a public name - what it takes, what its comment says, where it is used'
     'site:the same pages as a website, written into a folder'
     'doctor:say what this machine can run'
     'completions:print the zsh completion function'
@@ -77,6 +78,15 @@ _ollin() {
             '--plain[no color, whatever the terminal is]' \
             '--no-pager[print straight out instead of opening a pager]' \
             '*:example:'
+          ;;
+        api)
+          _arguments \
+            '--width[wrap to this many columns]:n:' \
+            '--plain[no color, whatever the terminal is]' \
+            '--color[color, even when the output is a pipe]' \
+            '--no-pager[print straight out instead of opening a pager]' \
+            '--help[what this command takes]' \
+            '*:name:'
           ;;
         site)
           _arguments \

@@ -18,7 +18,7 @@ public struct CommandFlag: Sendable, Equatable {
     public enum Scope: String, Sendable, CaseIterable {
         /// Typed after a sketch file: the export surface and the hosts' own.
         case run
-        case new, docs, examples, site, check, phone, doctor
+        case new, docs, examples, api, site, check, phone, doctor
         /// Spelled by a host or a harness, never by a person. Completed nowhere.
         case internalUse
     }
@@ -231,6 +231,11 @@ public extension CommandFlag {
         .init("--width", .examples, .value("n"), "wrap to this many columns"),
         .init("--plain", .examples, .nothing, "no color, whatever the terminal is"),
         .init("--no-pager", .examples, .nothing, "print straight out instead of opening a pager"),
+        .init("--width", .api, .value("n"), "wrap to this many columns"),
+        .init("--plain", .api, .nothing, "no color, whatever the terminal is"),
+        .init("--color", .api, .nothing, "color, even when the output is a pipe"),
+        .init("--no-pager", .api, .nothing, "print straight out instead of opening a pager"),
+        .init("--help", .api, .nothing, "what this command takes"),
         .init("--domain", .site, .value("name"), "write the CNAME for this domain"),
         .init("--repository", .site, .value("owner/name"), "the repository the pages link into"),
         .init("--branch", .site, .value("name"), "the branch the pages link into"),
