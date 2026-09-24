@@ -270,7 +270,9 @@
     ],
     "Recreations/MonirFarmanfarmaian": [
       "Recreations/MonirFarmanfarmaian/MirrorFamily",
-      "Recreations/MonirFarmanfarmaian/BehindGlass"
+      "Recreations/MonirFarmanfarmaian/BehindGlass",
+      "Recreations/MonirFarmanfarmaian/Geometric",
+      "Recreations/MonirFarmanfarmaian/Convertible"
     ],
     "Recreations/NasreenMohamedi": [
       "Recreations/NasreenMohamedi/Registers",
@@ -711,10 +713,12 @@
     "Recreations/MonirFarmanfarmaian": {
       "of": [
         "Recreations/MonirFarmanfarmaian/MirrorFamily",
-        "Recreations/MonirFarmanfarmaian/BehindGlass"
+        "Recreations/MonirFarmanfarmaian/BehindGlass",
+        "Recreations/MonirFarmanfarmaian/Geometric",
+        "Recreations/MonirFarmanfarmaian/Convertible"
       ],
-      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=19877e6d",
-      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=15da7df0"
+      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=d0451d4c",
+      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=2972a2b4"
     },
     "Recreations/NasreenMohamedi": {
       "of": [
@@ -8789,6 +8793,48 @@
       "loopSmall": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/loop-640.mp4?v=c680d601",
       "still": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/still.jpg?v=d8fbc307",
       "stillSmall": "examples/Recreations/MonirFarmanfarmaian/BehindGlass/still-640.jpg?v=3cb6caa2"
+    },
+    "Recreations/MonirFarmanfarmaian/Convertible": {
+      "width": 1080,
+      "height": 1080,
+      "length": "28.0s",
+      "seconds": 28.0,
+      "frame": 560,
+      "motion": 14.2,
+      "sound": false,
+      "source": "f62191aaccd98b77",
+      "rendered": "2026-09-24",
+      "bytes": {
+        "loop": 10377748,
+        "loopSmall": 1799627,
+        "still": 168481,
+        "stillSmall": 55449
+      },
+      "loop": "examples/Recreations/MonirFarmanfarmaian/Convertible/loop.mp4?v=11fbf9fd",
+      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/Convertible/loop-640.mp4?v=0e61da00",
+      "still": "examples/Recreations/MonirFarmanfarmaian/Convertible/still.jpg?v=56d52d23",
+      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/Convertible/still-640.jpg?v=880f1a7e"
+    },
+    "Recreations/MonirFarmanfarmaian/Geometric": {
+      "width": 1400,
+      "height": 1000,
+      "length": "32.0s",
+      "seconds": 32.0,
+      "frame": 1860,
+      "motion": 1.443,
+      "sound": false,
+      "source": "e0df547db4179661",
+      "rendered": "2026-09-24",
+      "bytes": {
+        "loop": 2945379,
+        "loopSmall": 1166878,
+        "still": 428603,
+        "stillSmall": 139656
+      },
+      "loop": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop.mp4?v=fc20d71b",
+      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop-640.mp4?v=b03cb984",
+      "still": "examples/Recreations/MonirFarmanfarmaian/Geometric/still.jpg?v=9ed43abc",
+      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/still-640.jpg?v=472949f0"
     },
     "Recreations/MonirFarmanfarmaian/MirrorFamily": {
       "width": 1080,

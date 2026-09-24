@@ -917,11 +917,15 @@ let package = Package(
         example("Recreations/OwenSchuh/CountingTheRationals"),
         example("Recreations/OwenSchuh/DiagonalArgument"),
         // A family of mirror reliefs cut from the circle, triangle to decagon,
-        // set piece by piece and lit by a moving lamp; and maze panels painted
-        // on the back of the glass and turned over, after Monir Shahroudy
-        // Farmanfarmaian.
+        // set piece by piece and lit by a moving lamp; maze panels painted on
+        // the back of the glass and turned over; a sheet ruled with a grid of
+        // triangles, nested hexagons hatched into a tunnel and triangles filled
+        // with felt-tip; and a polygon's kites rehung on the wall in every
+        // arrangement they allow, after Monir Shahroudy Farmanfarmaian.
         example("Recreations/MonirFarmanfarmaian/MirrorFamily"),
         example("Recreations/MonirFarmanfarmaian/BehindGlass"),
+        example("Recreations/MonirFarmanfarmaian/Geometric"),
+        example("Recreations/MonirFarmanfarmaian/Convertible"),
         // A net of wire tied by hand, hung from the ceiling and drooping into
         // the room; a drawing without paper, a bent wire lattice hanging a
         // little way off the wall whose shadow is the drawing; a print cut
