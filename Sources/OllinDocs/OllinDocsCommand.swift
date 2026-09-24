@@ -397,7 +397,7 @@ struct OllinDocsCommand {
                 }
             }
             if first.kind == .type {
-                members(of: first, in: all, style: style)
+                members(of: first, in: all, sources: root.appendingPathComponent("Sources"), style: style)
             }
             guard position < 3 else {
                 print("")
@@ -462,13 +462,23 @@ struct OllinDocsCommand {
 
     /// A type's members: every line when there are few enough to read, and
     /// just the names when there are not.
-    static func members(of type: APIDeclaration, in all: [APIDeclaration], style: TerminalStyle) {
+    ///
+    /// Each line is spelled the way the member lookup spells it: the source's
+    /// own signature where it was found, and what tells two look-alike lines
+    /// apart (an extension's `where` clause, a protocol's `requirement`).
+    static func members(of type: APIDeclaration, in all: [APIDeclaration], sources: URL, style: TerminalStyle) {
         let members = APIListing.members(of: type, in: all)
         guard !members.isEmpty else { return }
         print("")
         guard members.count > 60 else {
             print("  " + style.dim("\(members.count) members"))
-            for member in members { print("    " + APIListing.tidy(member.text)) }
+            let places = SourceComments.places(of: members, inSources: sources)
+            for (index, member) in members.enumerated() {
+                let spelled = places[index].flatMap { SourceComments.signature(of: member, at: $0) }
+                    ?? APIListing.tidy(member.text)
+                let constraint = places[index]?.constraint.map { "  " + style.dim($0) } ?? ""
+                print("    " + spelled + constraint)
+            }
             return
         }
         var seen: Set<String> = []
