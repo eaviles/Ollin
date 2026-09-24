@@ -243,7 +243,9 @@ In the live host the button writes the file, so the watcher reloads the sketch, 
 
 ### Scrubbing values
 
-Every numeric value box scrubs. Drag horizontally across it to change the value, as professional inspectors do. Hold **Option** while dragging for a fine adjustment at a tenth of the speed, or **Shift** for a coarse one at ten times the speed. A plain click starts typing instead, and a typed value is clamped to the range when you commit it. A click on the inspector's empty surface ends the typing. The slider, the box, and the scrub all drive the same parameter.
+Every numeric value box scrubs. Drag horizontally across it to change the value, as professional inspectors do. Hold **Option** while dragging for a fine adjustment at a tenth of the speed, or **Shift** for a coarse one at ten times the speed. A plain click starts typing instead. What you type stays as you typed it until you press Return or Tab, or click away. Only then is it clamped to the range. Meanwhile, a number already inside the range shows on the canvas as you type. In a box that runs from 10 to 30, typing 20 shows 20, never 10 after the first key. **Escape** puts back the value you started from. A click on the inspector's empty surface ends the typing. The slider, the box, and the scrub all drive the same parameter.
+
+A box shows a value without trailing zeros or a thousands separator: `175`, `0.25`, `25000`. A drag lands on round values, so a slider leaves `2.4` rather than a long fraction. The save button writes the same digits the box shows.
 
 <a name="smoothing"></a>
 

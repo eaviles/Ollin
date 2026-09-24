@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Fixed
+
+- **Typing a number into an inspector box does what you typed.** The box used to clamp each key as it arrived, so a first "2" in a box running from 10 to 375 became "10.00" and the next keys piled onto it, "300" over 50...500 came out as 500, a maximum typed through a value under the minimum moved the minimum, and Return rounded a value to two decimals (0.007 in 0...0.01 became 0.01). The save button then wrote those values into the sketch. Now the text is yours until Return, Tab or a click away commits it, clamped; a number already in range shows on the canvas as you type; Escape puts the starting value back; and a min/max end committed past the other pushes it along. Boxes show a value's own digits without trailing zeros or a thousands separator (`175`, `0.004`, `25000`), and a slider, scrub or pad drag lands on round values (`2.4`, not `2.4027931415929205`), which is also what Save writes.
+
 ## [0.11.0] - 2026-09-23
 
 ### Added

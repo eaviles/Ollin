@@ -1116,11 +1116,6 @@ private func ollinColor(_ color: SwiftUI.Color) -> Color? {
     #endif
 }
 
-/// Whole numbers over a wide (pixel-sized) range, decimals over a narrow one.
-private func paramFieldDigits(for range: ClosedRange<Double>) -> Int {
-    range.upperBound - range.lowerBound > 20 ? 0 : 2
-}
-
 /// The leading label of a row: the optional SF Symbol icon (or its reserved
 /// gutter, so labels align down a card that mixes both) and the display name.
 private struct ParamRowLabel: View {
@@ -1233,13 +1228,18 @@ struct KeyframeDiamond: View {
 /// An editable mono value pill that also *scrubs*: drag horizontally across it
 /// to change the value (hold Option for a fine adjust, Shift for a coarse one),
 /// or click once to type. The pill shows the resize cursor so the drag invites
-/// itself; a value committed by typing is clamped by the row.
+/// itself.
+///
+/// Typing follows `ParamNumberEdit`: the text is the typist's until Return,
+/// Tab, or a click away commits it (clamped to `range`), and Escape puts the
+/// starting value back. The pill reads the value with its trailing zeros taken
+/// off (`ParamNumberText.display`), and a scrub lands on the drag's grid, so
+/// what it leaves reads as a person would have typed it.
 ///
 /// While the field is being scrubbed or has keyboard focus it flips
 /// `isInteracting` so the owning row parks its sync pull.
 private struct ScrubbableField: View {
     @Binding var value: Double
-    let fractionDigits: Int
     /// Value change per dragged point at normal speed.
     let perPoint: Double
     /// Snap scrubbed values to multiples of this (from `snapOrigin`), if given.
@@ -1250,13 +1250,18 @@ private struct ScrubbableField: View {
     let palette: OllinInspector.Palette
     /// A tiny leading tag inside the pill (the "x"/"y" of a vector field).
     var prefix: String? = nil
+    /// Whether a typed value inside `range` may show before the commit. The
+    /// min/max pair turns down one that would cross its other end, which would
+    /// otherwise move a field nobody is typing in.
+    var previews: (Double) -> Bool = { _ in true }
 
     /// The value under the pointer when the scrub began; nil while not scrubbing.
     @State private var scrubBase: Double?
+    @State private var edit = ParamNumberEdit()
     @FocusState private var isTyping: Bool
 
     var body: some View {
-        HStack(spacing: 4) {
+        let pill = HStack(spacing: 4) {
             if let prefix {
                 Text(prefix)
                     .font(.system(size: 9, weight: .semibold))
@@ -1266,17 +1271,21 @@ private struct ScrubbableField: View {
                     // silently vanishes; the fields hold their floor either way.
                     .fixedSize()
             }
-            TextField("", value: $value, format: .number.precision(.fractionLength(fractionDigits)))
+            TextField("", text: typedText)
                 .textFieldStyle(.plain)
                 .focused($isTyping)
                 .multilineTextAlignment(.trailing)
                 .font(.system(size: 12, design: .monospaced))
+                .autocorrectionDisabled()
                 // Hug the number (don't stretch across the row) so the pill is
                 // compact and content-sized, matching the design's value field.
                 .fixedSize(horizontal: true, vertical: false)
                 // A floor so short values stay ~uniform; the prefixed (paired)
                 // pills take a smaller one since the tag shares their row.
                 .frame(minWidth: prefix == nil ? 42 : 34, alignment: .trailing)
+                // Return commits and keeps the keys, so the next value can be
+                // typed straight over the last.
+                .onSubmit(commit)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
@@ -1284,7 +1293,38 @@ private struct ScrubbableField: View {
         .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
             .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
         .overlay { scrubSurface }
-        .onChange(of: isTyping) { _, typing in isInteracting = typing || scrubBase != nil }
+        .onChange(of: isTyping) { _, typing in
+            // Losing the keys (Tab, a click away) commits, as Return does.
+            if !typing { commit() }
+            isInteracting = typing || scrubBase != nil
+        }
+        #if os(macOS)
+        return pill.onExitCommand {
+            if let original = edit.cancel() { value = original }
+            isTyping = false
+        }
+        #else
+        return pill
+        #endif
+    }
+
+    /// The field's text: the value, read plainly, until a key is typed, and
+    /// from then until the commit, exactly what was typed. A number that reads
+    /// and sits in range goes to the value as it is typed, so the canvas
+    /// follows; the clamp and step the row applies to it never come back here.
+    private var typedText: Binding<String> {
+        Binding(
+            get: { edit.text(for: value) },
+            set: { text in
+                // The field hands back the text it already shows as it takes
+                // or gives up the keys; only a real edit starts a draft.
+                guard text != edit.text(for: value) else { return }
+                if let shown = edit.type(text, over: value, in: range, accepts: previews) { value = shown }
+            })
+    }
+
+    private func commit() {
+        if let committed = edit.commit(in: range) { value = committed }
     }
 
     /// The transparent layer that owns the drag. It sits over the text field
@@ -1325,8 +1365,10 @@ private struct ScrubbableField: View {
                         var v = base + drag.translation.width * perPoint * gain
                         if let snap, snap > 0 {
                             v = snapOrigin + ((v - snapOrigin) / snap).rounded() * snap
+                            value = Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
+                        } else {
+                            value = ParamNumberText.dragged(v, perPoint: perPoint * gain, in: range)
                         }
-                        value = Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
                     }
                     .onEnded { _ in
                         scrubBase = nil
@@ -1406,10 +1448,16 @@ private struct ParamXYPad: View {
         let area = travel(size)
         let tx = Double((location.x - Self.inset) / area.width)
         let ty = Double((location.y - Self.inset) / area.height)
-        let clampedX = Swift.min(Swift.max(tx, 0), 1)
-        let clampedY = Swift.min(Swift.max(ty, 0), 1)
-        x = xRange.lowerBound + clampedX * (xRange.upperBound - xRange.lowerBound)
-        y = yRange.lowerBound + clampedY * (yRange.upperBound - yRange.lowerBound)
+        x = Self.value(at: tx, in: xRange, points: area.width)
+        y = Self.value(at: ty, in: yRange, points: area.height)
+    }
+
+    /// The value a fraction `t` of the pad's travel stands for, on the grid a
+    /// point of that travel covers.
+    private static func value(at t: Double, in range: ClosedRange<Double>, points: CGFloat) -> Double {
+        let span = range.upperBound - range.lowerBound
+        let raw = range.lowerBound + Swift.min(Swift.max(t, 0), 1) * span
+        return ParamNumberText.dragged(raw, perPoint: span / Double(points), in: range)
     }
 }
 
@@ -1487,10 +1535,13 @@ private struct ParamRangeSlider: View {
         return Self.thumbRadius + CGFloat((value - outer.lowerBound) / span) * travel
     }
 
+    /// The value under `x`, on the grid a point of the track covers.
     private func value(at x: CGFloat, width: CGFloat) -> Double {
         let travel = max(width - Self.thumbRadius * 2, 1)
         let t = Double((x - Self.thumbRadius) / travel)
-        return outer.lowerBound + Swift.min(Swift.max(t, 0), 1) * (outer.upperBound - outer.lowerBound)
+        let span = outer.upperBound - outer.lowerBound
+        let raw = outer.lowerBound + Swift.min(Swift.max(t, 0), 1) * span
+        return ParamNumberText.dragged(raw, perPoint: span / Double(travel), in: outer)
     }
 }
 
@@ -1598,10 +1649,15 @@ private struct SliderParamRow: View {
         }
     }
 
+    /// Value change per point of drag: the scrub's rate, and the grid the slider
+    /// lands on (a sidebar track is about this many points long).
+    private var perPoint: Double {
+        (control.range.upperBound - control.range.lowerBound) / 250
+    }
+
     private var valueField: some View {
         ScrubbableField(
-            value: $value, fractionDigits: 2,
-            perPoint: (control.range.upperBound - control.range.lowerBound) / 250,
+            value: $value, perPoint: perPoint,
             snap: control.step, snapOrigin: control.range.lowerBound,
             range: control.range, isInteracting: $isEditingField, palette: palette)
     }
@@ -1610,7 +1666,12 @@ private struct SliderParamRow: View {
         if let step = control.step, step > 0 {
             Slider(value: $value, in: control.range, step: step) { isDragging = $0 }
         } else {
-            Slider(value: $value, in: control.range) { isDragging = $0 }
+            // Unstepped, a slider hands back whatever its pixel works out to
+            // (2.4027931415929205); on the drag's grid it hands back 2.4.
+            Slider(value: Binding(
+                get: { value },
+                set: { value = ParamNumberText.dragged($0, perPoint: perPoint, in: control.range) }),
+                   in: control.range) { isDragging = $0 }
         }
     }
 }
@@ -1834,7 +1895,7 @@ private struct StepperParamRow: View {
             HStack(spacing: 2) {
                 stepButton("minus", by: -control.step, disabled: Int(value) <= control.range.lowerBound)
                 ScrubbableField(
-                    value: $value, fractionDigits: 0,
+                    value: $value,
                     perPoint: Double(control.step) / 8,   // ~8 points of drag per step
                     snap: Double(control.step), snapOrigin: Double(control.range.lowerBound),
                     range: doubleRange, isInteracting: $isEditingField, palette: palette)
@@ -2152,12 +2213,12 @@ private struct VectorParamRow: View {
     private var fields: some View {
         HStack(spacing: 6) {
             ScrubbableField(
-                value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
+                value: $x,
                 perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
                 snap: nil, snapOrigin: 0, range: control.xRange,
                 isInteracting: $isEditingX, palette: palette, prefix: "x")
             ScrubbableField(
-                value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
+                value: $y,
                 perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
                 snap: nil, snapOrigin: 0, range: control.yRange,
                 isInteracting: $isEditingY, palette: palette, prefix: "y")
@@ -2218,12 +2279,12 @@ private struct Vector3ParamRow: View {
                 Spacer(minLength: 16)
                 KeyframeDiamond(handle: handle, palette: palette)
                 ScrubbableField(
-                    value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
+                    value: $x,
                     perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
                     snap: nil, snapOrigin: 0, range: control.xRange,
                     isInteracting: $isEditingX, palette: palette, prefix: "x")
                 ScrubbableField(
-                    value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
+                    value: $y,
                     perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
                     snap: nil, snapOrigin: 0, range: control.yRange,
                     isInteracting: $isEditingY, palette: palette, prefix: "y")
@@ -2231,7 +2292,7 @@ private struct Vector3ParamRow: View {
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
                 ScrubbableField(
-                    value: $z, fractionDigits: paramFieldDigits(for: control.zRange),
+                    value: $z,
                     perPoint: (control.zRange.upperBound - control.zRange.lowerBound) / 250,
                     snap: nil, snapOrigin: 0, range: control.zRange,
                     isInteracting: $isEditingZ, palette: palette, prefix: "z")
@@ -2347,7 +2408,7 @@ private struct RectangleParamRow: View {
     private func field(_ value: Binding<Double>, range: ClosedRange<Double>,
                        editing index: Int, prefix: String) -> some View {
         ScrubbableField(
-            value: value, fractionDigits: paramFieldDigits(for: range),
+            value: value,
             perPoint: (range.upperBound - range.lowerBound) / 250,
             snap: nil, snapOrigin: 0, range: range,
             isInteracting: $editing[index], palette: palette, prefix: prefix)
@@ -2442,7 +2503,7 @@ private struct InsetsParamRow: View {
 
     private func field(_ value: Binding<Double>, editing index: Int, prefix: String) -> some View {
         ScrubbableField(
-            value: value, fractionDigits: paramFieldDigits(for: control.edgeRange),
+            value: value,
             perPoint: (control.edgeRange.upperBound - control.edgeRange.lowerBound) / 250,
             snap: nil, snapOrigin: 0, range: control.edgeRange,
             isInteracting: $editing[index], palette: palette, prefix: prefix)
@@ -2465,9 +2526,10 @@ private struct InsetsParamRow: View {
     }
 }
 
-/// A `ClosedRange<Double>` row: paired min/max scrubbable fields. The param
-/// keeps the pair ordered, so dragging the minimum past the maximum pushes
-/// the maximum along.
+/// A `ClosedRange<Double>` row: paired min/max scrubbable fields. The pair
+/// stays ordered: an end dragged or typed past the other pushes it along, and
+/// a number being typed shows before the commit only while it keeps the order
+/// (a first "9" of "90" in the maximum would otherwise drag the minimum down).
 private struct RangeParamRow: View {
     let handle: ParamHandle
     let control: ParamControl.RangeFields
@@ -2499,8 +2561,8 @@ private struct RangeParamRow: View {
 
     var body: some View {
         layout
-        .onChange(of: lower) { _, _ in push() }
-        .onChange(of: upper) { _, _ in push() }
+        .onChange(of: lower) { _, _ in push(edited: .lower) }
+        .onChange(of: upper) { _, _ in push(edited: .upper) }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
@@ -2542,23 +2604,26 @@ private struct RangeParamRow: View {
     private var fields: some View {
         HStack(spacing: 6) {
             ScrubbableField(
-                value: $lower, fractionDigits: paramFieldDigits(for: control.outer),
+                value: $lower,
                 perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
                 snap: nil, snapOrigin: 0, range: control.outer,
-                isInteracting: $isEditingLower, palette: palette, prefix: "min")
+                isInteracting: $isEditingLower, palette: palette, prefix: "min",
+                previews: { $0 <= upper })
             ScrubbableField(
-                value: $upper, fractionDigits: paramFieldDigits(for: control.outer),
+                value: $upper,
                 perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
                 snap: nil, snapOrigin: 0, range: control.outer,
-                isInteracting: $isEditingUpper, palette: palette, prefix: "max")
+                isInteracting: $isEditingUpper, palette: palette, prefix: "max",
+                previews: { $0 >= lower })
         }
     }
 
     /// Write the edited pair through the param, read back the ordered, clamped
-    /// pair it actually holds, and reflect + report that.
-    private func push() {
+    /// pair it actually holds, and reflect + report that. The end that was set
+    /// keeps its place, and the other moves to meet it if it was crossed.
+    private func push(edited: ParamRangeEnd) {
         guard lower != lastKnown.lowerBound || upper != lastKnown.upperBound else { return }
-        control.write(Swift.min(lower, upper)...Swift.max(lower, upper))
+        control.write(edited.ordered(lower: lower, upper: upper))
         let actual = control.read()
         if actual.lowerBound != lower { lower = actual.lowerBound }
         if actual.upperBound != upper { upper = actual.upperBound }
