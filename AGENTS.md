@@ -11,7 +11,8 @@ The full development guidance lives in [`CLAUDE.md`](CLAUDE.md). It's the single
 Building and running needs **macOS 26+ and a Metal-capable GPU**. The Swift toolchain and Metal are the hard requirements, so changes are verified on a Mac.
 
 ```sh
-swift build                       # compile the framework and examples
+swift build                       # compile the framework (the examples are a separate package)
+swift build --package-path Examples   # compile every example
 swift run --package-path Examples Example-Basic-HelloCircle     # open a window running an example
 Scripts/test.sh <SuiteName>       # the tests for the area you touched (seconds)
 Scripts/test.sh quick             # the sub-minute pass, no GPU snapshots or nested builds
@@ -22,13 +23,13 @@ A change isn't verified until it builds and runs. If `swift --version` and `xcru
 
 On a fresh clone, run `Scripts/install-git-hooks.sh` once: it links the pre-commit hook that lints staged Swift with SwiftFormat and SwiftLint (both from brew; a missing tool blocks the commit rather than skipping). Before committing, `Scripts/preflight.sh` runs the doc and figure gates the diff calls for.
 
-Three test-running rules, learned the hard way:
+Three test-running rules:
 
 - **The full suite takes many minutes.** Never run it as a plain foreground call with a default command timeout; run it in the background or with an explicit long timeout, and use the filtered forms for the edit loop.
-- **A full-run failure in a wall-clock suite earns an isolation rerun, not a diagnosis.** `DataFeedTests` and `ListeningTests` measure elapsed time or wait on a system model, and `SpatialVideoTests` wants the video decoder to itself, so `Scripts/test.sh` runs them first on a quiet machine. If one fails inside a plain `swift test`, rerun it alone (`Scripts/test.sh <SuiteName>`) before treating it as a signal, and say which tests failed rather than reporting the suite red. **What that rerun must not become is "so it was load."** Measured 2026-08-26: `OllinVisionTests` starved to 113 s *with the target running alone*, and `PushFeedTests` was frozen by its own helper parking all eight cooperative-pool threads. Phase 1 only helps a suite competing with *other targets* for a device; a suite that fails while running alone has a defect, and a timeout while the process burns 2% CPU is a parked thread pool rather than a busy machine.
+- **A full-run failure in a wall-clock suite earns an isolation rerun, not a diagnosis.** `DataFeedTests` and `ListeningTests` measure elapsed time or wait on a system model, and `SpatialVideoTests` wants the video decoder to itself, so `Scripts/test.sh` runs them first on a quiet machine. If one fails inside a plain `swift test`, rerun it alone (`Scripts/test.sh <SuiteName>`) before treating it as a signal, and say which tests failed rather than reporting the suite red. **What that rerun must not become is "so it was load."** A suite can starve *with its target running alone*, or freeze by parking every cooperative-pool thread itself. Phase 1 only helps a suite competing with *other targets* for a device; a suite that fails while running alone has a defect, and a timeout while the process burns 2% CPU is a parked thread pool rather than a busy machine.
 - **Skip patterns are unanchored regexes over the full test ID.** Write `OllinTests.SnapshotTests`, never a bare `SnapshotTests`, which also matches `PhysicsSnapshotTests` and silently drops 46 real tests.
 
-If another session or agent is working in this repo at the same time: work in a git worktree, expect a second SwiftPM invocation in the same checkout to block on the `.build` lock rather than fail, and never run `OLLIN_RECORD_SNAPSHOTS` or a full test pass while the other session is mid-build (the load makes the wall-clock suites fail, and recording rewrites 242 tracked files under them).
+If another session or agent is working in this repo at the same time: work in a git worktree, expect a second SwiftPM invocation in the same checkout to block on the `.build` lock rather than fail, and never run `OLLIN_RECORD_SNAPSHOTS` or a full test pass while the other session is mid-build (the load makes the wall-clock suites fail, and recording rewrites the tracked reference images under them).
 
 ## A few load-bearing rules
 
