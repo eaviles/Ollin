@@ -15,7 +15,8 @@ extension MetalRenderer {
 
     /// A linear-float MSAA color target. `storageMode` is `.memoryless` for the
     /// transient per-frame targets (the samples live only in tile memory, never
-    /// backed by DRAM, since the frame clears each time) and `.private` for the
+    /// backed by DRAM, since the frame clears each time), `.private` for one whose
+    /// pass is too heavy to bin whole (`attachmentStorage`), and `.private` for the
     /// accumulation target (its samples must persist across frames).
     func makeFloatMSAA(width: Int, height: Int, storage: MTLStorageMode,
                        format: MTLPixelFormat? = nil) -> MTLTexture? {
@@ -29,30 +30,31 @@ extension MetalRenderer {
     }
 
     /// A multisample depth target for a 3D pass, matching the geometry MSAA target's
-    /// size and sample count. Memoryless — depth is consumed within the pass
-    /// (storeAction `.dontCare`), never backed by DRAM.
-    func makeDepthMSAA(width: Int, height: Int) -> MTLTexture? {
+    /// size and sample count. Memoryless for an ordinary pass, since depth is
+    /// consumed within the pass (storeAction `.dontCare`); private for a pass with
+    /// more geometry than tile memory alone can bin (`attachmentStorage`).
+    func makeDepthMSAA(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
         desc.textureType = .type2DMultisample
         desc.sampleCount = sampleCount
         desc.usage = .renderTarget
-        desc.storageMode = .memoryless
+        desc.storageMode = storage
         return device.makeTexture(descriptor: desc)
     }
 
     /// A multisample `stencil8` attachment for a clipping pass (`withClip`), matching
-    /// the geometry MSAA target's size and sample count. Memoryless like the depth
-    /// attachment: the stencil is cleared at pass start and consumed within the pass
-    /// (storeAction `.dontCare`), so it holds no data between passes and one cached
-    /// texture per size serves every pass and frame safely.
-    func makeStencilMSAA(width: Int, height: Int) -> MTLTexture? {
+    /// the geometry MSAA target's size and sample count, in the pass's storage like
+    /// the depth attachment: the stencil is cleared at pass start and consumed within
+    /// the pass (storeAction `.dontCare`), so it holds no data between passes and one
+    /// cached texture per size and storage serves every pass and frame safely.
+    func makeStencilMSAA(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .stencil8, width: width, height: height, mipmapped: false)
         desc.textureType = .type2DMultisample
         desc.sampleCount = sampleCount
         desc.usage = .renderTarget
-        desc.storageMode = .memoryless
+        desc.storageMode = storage
         return device.makeTexture(descriptor: desc)
     }
 
@@ -60,9 +62,12 @@ extension MetalRenderer {
     /// on this pass's surface), returning whether the pass now carries one, which is
     /// what `encode` keys its stencil states and pipeline variants on. Cleared to 0
     /// (unclipped) and never stored; a failed allocation leaves the pass unclipped.
+    /// `storage` is the pass's own (`attachmentStorage`), so a heavy pass's
+    /// stencil can be stored mid-pass like its color.
     func attachClipStencil(to pass: MTLRenderPassDescriptor, active: Bool,
-                           width: Int, height: Int) -> Bool {
-        guard active, let stencil = clipStencilTexture(width: width, height: height) else { return false }
+                           width: Int, height: Int, storage: MTLStorageMode) -> Bool {
+        guard active, let stencil = clipStencilTexture(width: width, height: height,
+                                                       storage: storage) else { return false }
         pass.stencilAttachment.texture = stencil
         pass.stencilAttachment.loadAction = .clear
         pass.stencilAttachment.clearStencil = 0
@@ -70,14 +75,18 @@ extension MetalRenderer {
         return true
     }
 
-    /// The cached memoryless stencil attachment for a clipping pass at this size,
-    /// made on first use. Bounded against size churn (a resize drops the cache; the
-    /// textures have no backing store, so churn only costs the descriptor).
-    func clipStencilTexture(width: Int, height: Int) -> MTLTexture? {
-        if let cached = clipStencilTextures.first(where: { $0.width == width && $0.height == height }) {
+    /// The cached stencil attachment for a clipping pass at this size and storage,
+    /// made on first use. Bounded against size churn (a resize drops the cache; a
+    /// memoryless texture has no backing store, so churn only costs the descriptor).
+    /// A private one is cleared at the start of every pass and never stored, so
+    /// passes that share it still see nothing of each other.
+    func clipStencilTexture(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
+        if let cached = clipStencilTextures.first(where: {
+            $0.width == width && $0.height == height && $0.storageMode == storage
+        }) {
             return cached
         }
-        guard let made = makeStencilMSAA(width: width, height: height) else { return nil }
+        guard let made = makeStencilMSAA(width: width, height: height, storage: storage) else { return nil }
         if clipStencilTextures.count >= 8 { clipStencilTextures.removeAll(keepingCapacity: true) }
         clipStencilTextures.append(made)
         return made
@@ -3025,9 +3034,11 @@ extension MetalRenderer {
         // drawing it would be pure cost.
         guard reflectAccel == nil else { return nil }
 
-        if sceneBehindSize != (width, height) || sceneBehindResolveTex == nil {
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
-                  let depth = makeDepthMSAA(width: width, height: height),
+        let storage = attachmentStorage(for: drawer, target: nil)
+        if sceneBehindSize != (width, height) || sceneBehindResolveTex == nil
+            || sceneBehindMSAATex?.storageMode != storage {
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: storage),
+                  let depth = makeDepthMSAA(width: width, height: height, storage: storage),
                   let depthResolve = makeDepthResolve(width: width, height: height),
                   let resolve = makeFloatResolveMipped(width: width, height: height)
             else { return nil }
@@ -3054,7 +3065,7 @@ extension MetalRenderer {
         pass.depthAttachment.storeAction = .multisampleResolve
         pass.depthAttachment.depthResolveFilter = .min
         let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                           width: width, height: height)
+                                           width: width, height: height, storage: storage)
         guard let enc = countedEncoder(cb, pass, caller: "scene behind glass") else { return nil }
         // The geometry buffers already hold this frame's data (the main pass or the
         // caller filled them), and re-copying them is harmless: `encode` writes the same

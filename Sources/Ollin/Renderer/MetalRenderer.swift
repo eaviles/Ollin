@@ -649,6 +649,11 @@ final class MetalRenderer {
     /// frames later, which the smoothing in `FrameStats` hides.
     let gpuFrameMS = OSAllocatedUnfairLock(initialState: 0.0)
 
+    /// What finished frames said about themselves: a failed command buffer is
+    /// written to standard error, and an overflow of memoryless attachments
+    /// turns every later pass to backed ones (`attachmentStorage`).
+    let gpuFailures = GPUFailures()
+
     /// Make a render encoder and count the pass. Every pass in the renderer
     /// goes through here, so the profile's pass count stays honest as passes
     /// are added: a new shadow, probe, or filter pass counts itself.
@@ -852,8 +857,9 @@ final class MetalRenderer {
         return made
     }
 
-    /// Cached memoryless MSAA stencil attachments for clipping passes, one per size
-    /// (see `clipStencilTexture`). Tile-only, so reuse across passes and frames is safe.
+    /// Cached MSAA stencil attachments for clipping passes, one per size and storage
+    /// (see `clipStencilTexture`). Cleared by every pass and never stored, so reuse
+    /// across passes and frames is safe.
     var clipStencilTextures: [MTLTexture] = []
 
     /// Shadow mapping (opt-in via `castShadows()`). The depth pass from the casting
@@ -1057,11 +1063,12 @@ final class MetalRenderer {
     }()
 
     /// The on-screen geometry targets: this frame's geometry composites into a
-    /// linear-float MSAA target (`mainMSAA`, `.memoryless` — it lives only in tile
-    /// memory since the frame clears each time and the samples aren't needed after
-    /// the resolve), resolves into a single-sample float texture (`mainResolve`),
-    /// and the present pass then tone-maps that into the drawable. Reused across
-    /// frames; rebuilt on a size change.
+    /// linear-float MSAA target (`mainMSAA`), resolves into a single-sample float
+    /// texture (`mainResolve`), and the present pass then tone-maps that into the
+    /// drawable. The MSAA target is memoryless: it lives only in tile memory, since
+    /// the frame clears each time and the samples aren't needed after the resolve.
+    /// A frame too heavy to bin whole takes a private one (`attachmentStorage`).
+    /// Reused across frames; rebuilt on a size or storage change.
     private var mainMSAA: MTLTexture?
     private var mainResolve: MTLTexture?
     private var mainSize = (width: 0, height: 0)
@@ -1135,7 +1142,7 @@ final class MetalRenderer {
     var satTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     /// Depth attachments for a render target that holds a 3D scene: an MSAA depth
-    /// buffer (memoryless, tile-only) that resolves into a single-sample sampleable
+    /// buffer (in the pass's storage, `attachmentStorage`) that resolves into a single-sample sampleable
     /// `depth32Float`, the `depth` layer reads from. Pooled like the color targets,
     /// but only a depth-carrying target ever pulls from it, so 2D targets cost nothing.
     var targetDepthPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int)]] =
@@ -1931,9 +1938,13 @@ final class MetalRenderer {
             : (width, height)
 
         // (Re)allocate the cached float geometry targets on a size change. The MSAA
-        // target is memoryless (tile-only); the resolve is sampled by the present pass.
-        if mainSize != (renderWidth, renderHeight) || mainMSAA == nil || mainResolve == nil {
-            guard let msaa = makeFloatMSAA(width: renderWidth, height: renderHeight, storage: .memoryless),
+        // target is memoryless (tile-only) unless this frame's canvas pass holds more
+        // geometry than tile memory alone can bin; the resolve is sampled by the
+        // present pass.
+        let storage = attachmentStorage(for: drawer, target: nil)
+        if mainSize != (renderWidth, renderHeight) || mainMSAA == nil || mainResolve == nil
+            || mainMSAA?.storageMode != storage {
+            guard let msaa = makeFloatMSAA(width: renderWidth, height: renderHeight, storage: storage),
                   let resolve = makeFloatResolve(width: renderWidth, height: renderHeight) else { return }
             mainMSAA = msaa; mainResolve = resolve; mainSize = (renderWidth, renderHeight)
         }
@@ -1972,8 +1983,9 @@ final class MetalRenderer {
         let interpolationActive = frameInterpolationActive(drawer)
         var passDepthFormat: MTLPixelFormat? = nil
         if drawer.usesDepthBuffer {
-            if mainDepth?.width != renderWidth || mainDepth?.height != renderHeight {
-                mainDepth = makeDepthMSAA(width: renderWidth, height: renderHeight)
+            if mainDepth?.width != renderWidth || mainDepth?.height != renderHeight
+                || mainDepth?.storageMode != storage {
+                mainDepth = makeDepthMSAA(width: renderWidth, height: renderHeight, storage: storage)
             }
             if let depth = mainDepth {
                 geomPass.depthAttachment.texture = depth
@@ -1996,7 +2008,8 @@ final class MetalRenderer {
         // A clipping frame (`withClip` on the canvas) adds a stencil attachment the
         // same lazy way; an unclipped frame allocates none and stays byte-identical.
         let passHasStencil = attachClipStencil(to: geomPass, active: drawer.usesClipStencil,
-                                               width: renderWidth, height: renderHeight)
+                                               width: renderWidth, height: renderHeight,
+                                               storage: storage)
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             returnFrameSlot()   // nothing encoded; hand the slot back
@@ -2157,11 +2170,12 @@ final class MetalRenderer {
         // Runs off the main actor when the GPU finishes, so it touches only the
         // semaphore and the lock. The GPU's own timestamps are the honest half
         // of the frame split: everything else here is measured on the CPU.
-        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS] buffer in
+        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS, gpuFailures] buffer in
             // Read the timestamps out first: the command buffer is not `Sendable`,
             // so it must not be captured by the lock's own closure.
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
+            gpuFailures.check(buffer)
             framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }
@@ -2307,7 +2321,8 @@ final class MetalRenderer {
         // Clipping works while accumulating too: the stencil is per-frame (cleared
         // each pass) even though the color pile persists.
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                               width: width, height: height)
+                                               width: width, height: height,
+                                               storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         // The accumulating path culls its own lights too. Even a frame that has none
         // has to make the call, or a lit pass here would read whatever grid the last
@@ -2318,9 +2333,10 @@ final class MetalRenderer {
             returnFrameSlot()      // nothing encoded; hand the slot back
             return
         }
-        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS] buffer in
+        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS, gpuFailures] buffer in
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
+            gpuFailures.check(buffer)
             framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }
@@ -2417,7 +2433,8 @@ final class MetalRenderer {
         profile.batches = drawer.batches.count
         let encodeStart = CACurrentMediaTime()
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                               width: width, height: height)
+                                               width: width, height: height,
+                                               storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating, headless)") else { return nil }
 
@@ -2596,7 +2613,8 @@ final class MetalRenderer {
 
         // Float MSAA target + float resolve for the geometry, plus an sRGB display
         // texture the present pass tone-maps into and we read back.
-        guard let msaaTexture = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+        let storage = attachmentStorage(for: drawer, target: nil)
+        guard let msaaTexture = makeFloatMSAA(width: width, height: height, storage: storage),
               let resolveTexture = makeFloatResolve(width: width, height: height),
               let displayTexture = makeDisplayTexture(width: outWidth, height: outHeight) else { return nil }
 
@@ -2607,15 +2625,16 @@ final class MetalRenderer {
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
 
-        // A 3D camera or a depth scene adds a (freshly allocated, memoryless) depth
-        // attachment so the headless/snapshot path z-tests exactly like the live window.
+        // A 3D camera or a depth scene adds a freshly allocated depth attachment, in
+        // the pass's storage, so the headless/snapshot path z-tests exactly like the
+        // live window.
         // Motion blur and the lens flare additionally resolve the depth (`.min`, the
         // front surface, the live path's rule) for the velocity fill and for reading
         // how much of a source the camera can see; a frame using neither attaches no
         // resolve and stays byte-identical.
         var passDepthFormat: MTLPixelFormat? = nil
         var sceneDepthResolve: MTLTexture? = nil
-        if drawer.usesDepthBuffer, let depth = makeDepthMSAA(width: width, height: height) {
+        if drawer.usesDepthBuffer, let depth = makeDepthMSAA(width: width, height: height, storage: storage) {
             pass.depthAttachment.texture = depth
             pass.depthAttachment.loadAction = .clear
             pass.depthAttachment.clearDepth = 1.0
@@ -2634,7 +2653,7 @@ final class MetalRenderer {
         }
         // A clipping frame adds a stencil attachment, so exports clip like the window.
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                               width: width, height: height)
+                                               width: width, height: height, storage: storage)
 
         let bytesPerRow = outWidth * displayBytesPerPixel
         let byteCount = bytesPerRow * outHeight
@@ -2947,6 +2966,7 @@ final class MetalRenderer {
         commandBuffer.waitUntilCompleted()
         profile.waitMS = (CACurrentMediaTime() - committed) * 1000
         profile.gpuMS = (commandBuffer.gpuEndTime - commandBuffer.gpuStartTime) * 1000
+        gpuFailures.check(commandBuffer)
     }
 
     /// Render `drawer`'s already-recorded scene `iterations` times into off-screen targets
@@ -2956,11 +2976,13 @@ final class MetalRenderer {
     /// is dropped as warm-up. Returns 0 on setup failure.
     func benchmarkGPUMilliseconds(_ drawer: Drawer, viewport: SIMD2<Float>,
                                   width: Int, height: Int, iterations: Int) -> Double {
+        let storage = attachmentStorage(for: drawer, target: nil)
         guard width > 0, height > 0, iterations > 1,
-              let msaaTexture = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+              let msaaTexture = makeFloatMSAA(width: width, height: height, storage: storage),
               let resolveTexture = makeFloatResolve(width: width, height: height),
               let displayTexture = makeDisplayTexture(width: width, height: height) else { return 0 }
-        let depthTexture = drawer.usesDepthBuffer ? makeDepthMSAA(width: width, height: height) : nil
+        let depthTexture = drawer.usesDepthBuffer
+            ? makeDepthMSAA(width: width, height: height, storage: storage) : nil
         let meshBuf = exportMeshBuffer(for: tracedMeshVertexCount(drawer))
         // The frame's geometry uploads, shared by the effect-target passes and the main
         // pass, so a sketch that uses effects (e.g. a `.defocus` combine) is timed in full.
@@ -3010,7 +3032,7 @@ final class MetalRenderer {
                 }
             }
             let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                                   width: width, height: height)
+                                                   width: width, height: height, storage: storage)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
             encodeMeshFieldCulling(drawer, into: cb,

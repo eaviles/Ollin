@@ -1464,7 +1464,9 @@ public struct Filter: Sendable {
     /// marks, every pixel ends up the average of its four neighbors. That single
     /// sentence is why the result looks the way it does. Nothing overshoots, no
     /// color appears that was not put there, and a mark's influence falls away
-    /// smoothly in every direction at once.
+    /// smoothly in every direction at once. In the math it is a Laplace solve,
+    /// the fill also called harmonic, membrane, or Poisson interpolation. It is
+    /// not `poissonDisk`, which scatters points.
     ///
     /// A pixel counts as a source when its alpha is at least `threshold`, so
     /// draw the marks into a layer of their own and filter that:

@@ -103,8 +103,9 @@ extension MetalRenderer {
         for target in drawer.renderTargets {
             guard case .geometry = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
+            let storage = attachmentStorage(for: drawer, target: target)
             guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
-                                                  format: target.pixelFormat) else { continue }
+                                                  format: target.pixelFormat, storage: storage) else { continue }
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = tex.msaa
             pass.colorAttachments[0].resolveTexture = tex.resolve
@@ -116,7 +117,8 @@ extension MetalRenderer {
             // (nearest sample) into a sampleable single-sample buffer; a 2D target
             // takes none of this, so its pass is byte-identical to before.
             var depthResolve: MTLTexture? = nil
-            if target.needsDepth, let depth = acquireTargetDepth(width: pw, height: ph, pooled: pooled) {
+            if target.needsDepth,
+               let depth = acquireTargetDepth(width: pw, height: ph, pooled: pooled, storage: storage) {
                 pass.depthAttachment.texture = depth.msaa
                 pass.depthAttachment.resolveTexture = depth.resolve
                 pass.depthAttachment.loadAction = .clear
@@ -127,7 +129,7 @@ extension MetalRenderer {
             }
             // A clip pushed inside this layer gives its pass a stencil attachment.
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
-                                                   width: pw, height: ph)
+                                                   width: pw, height: ph, storage: storage)
             guard let enc = countedEncoder(cb, pass) else { continue }
             // Geometry inside the block used canvas coordinates, so map by the logical
             // size; a fraction-res layer's smaller attachment just downsamples.
@@ -176,8 +178,9 @@ extension MetalRenderer {
         for target in drawer.renderTargets {
             guard case let .feedback(fb) = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
+            let storage = attachmentStorage(for: drawer, target: target)
             guard let slot = feedbackSlot(for: fb, width: pw, height: ph, format: target.pixelFormat, into: cb),
-                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless,
+                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: storage,
                                            format: target.pixelFormat) else { continue }
             let front = slot.flipped ? slot.b : slot.a
             let back  = slot.flipped ? slot.a : slot.b
@@ -198,7 +201,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
-                                                   width: pw, height: ph)
+                                                   width: pw, height: ph, storage: storage)
             guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -228,7 +231,9 @@ extension MetalRenderer {
                 acc.sumLayer.texture = slot.sum
                 continue
             }
-            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled) else { continue }
+            let storage = attachmentStorage(for: drawer, target: target)
+            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
+                                                  storage: storage) else { continue }
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = tex.msaa
             pass.colorAttachments[0].resolveTexture = tex.resolve
@@ -236,7 +241,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
-                                                   width: pw, height: ph)
+                                                   width: pw, height: ph, storage: storage)
             guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -286,7 +291,8 @@ extension MetalRenderer {
             // marks draw through are built for the target's format, and an attachment
             // of another format reads back as noise (alpha 1.875 on a full mark, seen
             // once when a `.float32` field drew into a half-float seed).
-            guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless,
+            let storage = attachmentStorage(for: drawer, target: target)
+            guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: storage,
                                            format: target.pixelFormat),
                   let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled,
                                                   format: target.pixelFormat) else { continue }
@@ -300,7 +306,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
-                                                   width: pw, height: ph)
+                                                   width: pw, height: ph, storage: storage)
             if let enc = countedEncoder(cb, pass) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -2659,19 +2665,21 @@ extension MetalRenderer {
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot
     /// for this frame-ring index (safe: the frame semaphore gates slot reuse).
     private func acquireTargetTextures(width: Int, height: Int, pooled: Bool,
-                                       format: MTLPixelFormat? = nil) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+                                       format: MTLPixelFormat? = nil,
+                                       storage: MTLStorageMode) -> (msaa: MTLTexture, resolve: MTLTexture)? {
         let format = format ?? linearFormat
         guard pooled else {
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless, format: format),
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: storage, format: format),
                   let resolve = makeFloatResolve(width: width, height: height, format: format) else { return nil }
             return (msaa, resolve)
         }
         let slot = targetTexNext; targetTexNext += 1
         var pool = targetTexPool[frameIndex]
-        if slot < pool.count, pool[slot].w == width, pool[slot].h == height, pool[slot].format == format {
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height, pool[slot].format == format,
+           pool[slot].msaa.storageMode == storage {
             return (pool[slot].msaa, pool[slot].resolve)
         }
-        guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless, format: format),
+        guard let msaa = makeFloatMSAA(width: width, height: height, storage: storage, format: format),
               let resolve = makeFloatResolve(width: width, height: height, format: format) else { return nil }
         let entry = (msaa, resolve, width, height, format)
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
@@ -2680,20 +2688,23 @@ extension MetalRenderer {
     }
 
     /// Acquire an MSAA + resolve depth pair for a 3D-holding render target, mirroring
-    /// `acquireTargetTextures`. The MSAA buffer is memoryless (tile-only); the resolve
-    /// is the sampleable single-sample `depth32Float` the `depth` layer reads from.
-    private func acquireTargetDepth(width: Int, height: Int, pooled: Bool) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+    /// `acquireTargetTextures`. The MSAA buffer is in the pass's storage (memoryless,
+    /// tile-only, unless the pass is too heavy to bin whole); the resolve is the
+    /// sampleable single-sample `depth32Float` the `depth` layer reads from.
+    private func acquireTargetDepth(width: Int, height: Int, pooled: Bool,
+                                    storage: MTLStorageMode) -> (msaa: MTLTexture, resolve: MTLTexture)? {
         guard pooled else {
-            guard let msaa = makeDepthMSAA(width: width, height: height),
+            guard let msaa = makeDepthMSAA(width: width, height: height, storage: storage),
                   let resolve = makeDepthResolve(width: width, height: height) else { return nil }
             return (msaa, resolve)
         }
         let slot = targetDepthNext; targetDepthNext += 1
         var pool = targetDepthPool[frameIndex]
-        if slot < pool.count, pool[slot].w == width, pool[slot].h == height {
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height,
+           pool[slot].msaa.storageMode == storage {
             return (pool[slot].msaa, pool[slot].resolve)
         }
-        guard let msaa = makeDepthMSAA(width: width, height: height),
+        guard let msaa = makeDepthMSAA(width: width, height: height, storage: storage),
               let resolve = makeDepthResolve(width: width, height: height) else { return nil }
         let entry = (msaa, resolve, width, height)
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }

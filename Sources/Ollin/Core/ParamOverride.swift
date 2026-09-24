@@ -268,8 +268,9 @@ extension OllinApp {
     static var paramOverrides: [ParamOverride] = []
 
     /// The cue sheet this run was given (`--cues <file>`) and the cue it should
-    /// start at (`--cue <name>`), applied after `setup()` like `--param`, so an
-    /// export renders a look that was saved rather than typed in.
+    /// start at (`--cue <name>`), applied around `setup()` like `--param` and
+    /// just before it, so an export renders a look that was saved rather than
+    /// typed in, and a `--param` beside it adjusts that look.
     static var cueSheetPath: String?
     static var startingCue: String?
 
@@ -306,8 +307,8 @@ extension OllinApp {
 
 extension Sketch {
 
-    /// Run `setup()` between two applications of whatever `--param name=value`
-    /// set: once before, so anything `setup()` builds from a parameter (a count
+    /// Run `setup()` between two applications of the run's `--cue` and whatever
+    /// `--param name=value` set: once before, so anything `setup()` builds from a parameter (a count
     /// of things, an extension registered behind a switch) reads the value the
     /// run was given, and once after, so a `setup()` that assigns the parameter
     /// itself does not undo it and the value reaches the export recipe, which
@@ -334,32 +335,44 @@ extension Sketch {
         return canvasSize
     }
 
-    /// The `--param` values alone, for the pass before `setup()`: a value that
-    /// cannot be applied stops the run here, before anything is built on it.
+    /// The cue and the `--param` values, for the pass before `setup()`: a value
+    /// that cannot be applied stops the run here, before anything is built on
+    /// it. A cue the sheet does not hold yet is no failure here, since the sheet
+    /// may be the one `setup()` loads; the pass after it says so.
     func applyCommandLineValues() {
-        let problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
-        guard problems.isEmpty else {
-            for problem in problems {
-                FileHandle.standardError.write(Data(("Ollin: " + problem + "\n").utf8))
-            }
-            exit(1)
-        }
+        applyStartingCue()
+        stopOnProblems(ParamOverride.apply(OllinApp.paramOverrides, to: self))
     }
 
-    /// Apply this run's `--param` values and its cue after `setup()`, for a
+    /// Apply this run's cue and its `--param` values after `setup()`, for a
     /// caller that runs `setup()` itself because something else has to happen
     /// in between (the window path restores a saved checkpoint there).
     func applyCommandLineParams() {
-        var problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
-        // A cue sheet named on the command line rides along, and the cue named
-        // with it lands after `--param`, so a value given by hand still wins.
-        if let path = OllinApp.cueSheetPath, let sheet = try? CueSheet.load(from: path) {
-            cueSheet = sheet
-        }
-        if let name = OllinApp.startingCue, !cue(name) {
+        var problems: [String] = []
+        if !applyStartingCue(), let name = OllinApp.startingCue {
             problems.append("no cue named \"\(name)\"; the sheet holds "
                             + (cueSheet.cues.isEmpty ? "none" : cueSheet.cues.map(\.name).joined(separator: ", ")))
         }
+        problems += ParamOverride.apply(OllinApp.paramOverrides, to: self)
+        stopOnProblems(problems)
+    }
+
+    /// Carry the cue sheet named on the command line and call the cue named
+    /// with it. The cue lands before `--param` in both passes, so a value given
+    /// by hand wins over the saved look it adjusts. False when a cue is named
+    /// and the sheet holds none by that name. The sheet itself was read once
+    /// already, when the flags were, and a sheet that could not be read
+    /// stopped the run there.
+    @discardableResult
+    private func applyStartingCue() -> Bool {
+        if let path = OllinApp.cueSheetPath, let sheet = try? CueSheet.load(from: path) {
+            cueSheet = sheet
+        }
+        guard let name = OllinApp.startingCue else { return true }
+        return cue(name)
+    }
+
+    private func stopOnProblems(_ problems: [String]) {
         guard problems.isEmpty else {
             for problem in problems {
                 FileHandle.standardError.write(Data(("Ollin: " + problem + "\n").utf8))

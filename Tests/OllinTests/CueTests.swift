@@ -199,4 +199,46 @@ struct CueTests {
         own.runSetup()
         #expect(own.size == 64)
     }
+
+    /// A sketch that builds from a parameter in `setup()`, to see which value
+    /// was on it when it did.
+    private final class Built: Sketch {
+        @Param(0 ... 100) var size = 10.0
+        @Param(0 ... 10) var count = 2
+        var builtFrom = -1
+        override func setup() { builtFrom = count }
+        override func draw() {}
+    }
+
+    @Test func aParamGivenByHandWinsOverTheCueAndTheCueReachesSetup() throws {
+        let path = NSTemporaryDirectory() + "ollin-cues-\(UUID().uuidString).json"
+        let previous = OllinApp.paramOverrides
+        defer {
+            try? FileManager.default.removeItem(atPath: path)
+            OllinApp.cueSheetPath = nil
+            OllinApp.startingCue = nil
+            OllinApp.paramOverrides = previous
+        }
+        let author = Built()
+        author.size = 64; author.count = 7; author.saveCue("poster")
+        try author.saveCues(to: path)
+        OllinApp.readCueFlags(["--cues", path, "--cue", "poster"])
+        guard case .value(let overrides) = ParamOverride.parse(["--param", "size=12"]) else {
+            Issue.record("the flag should read")
+            return
+        }
+        OllinApp.paramOverrides = overrides
+        let s = Built()
+        s.runSetup()
+        // The cue holds size 64, the command line says 12: the hand wins.
+        #expect(s.size == 12)
+        // The cue's count is on the sketch, and it was there when setup() read it.
+        #expect(s.count == 7 && s.builtFrom == 7)
+        #expect(s.currentCue == "poster")
+        // The window path runs setup() itself and applies the pass after it.
+        let window = Built()
+        window.setup()
+        window.applyCommandLineParams()
+        #expect(window.size == 12 && window.count == 7)
+    }
 }

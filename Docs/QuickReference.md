@@ -223,7 +223,6 @@ Each of these gives a wrong or empty picture and no error.
 - **Values the command line reads loosely.** A `--param` outside the declared range is clamped, an unknown `--render-quality` becomes `detail`, and an `--fps` that does not parse becomes the default. None of them says so.
 - **`Filter.grain` in the shadows.** It adds noise and clips it, which lifts black. `.filmGrain` leaves black and white alone, though its grain still shows most in near-black tones.
 - **A `@Param` icon that is not an SF Symbol.** The row shows an empty space where the icon goes.
-- **A `LineSpray` past about 11 million points a frame.** Lines times points per line times `passesPerFrame`: measured on an M2, 9,986,800 lands and 11,235,150 lays down no light at all. `passes` counts on as if it had, so keep a spray under that.
 - **3D on a `noClear()` canvas.** Nothing is sorted by depth and nothing casts a shadow.
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
 - **A `print` during an exported sequence.** It lands on the same terminal line as the progress text, and later than expected when the output is piped. Write to standard error with a newline first, or read the value after the run.
