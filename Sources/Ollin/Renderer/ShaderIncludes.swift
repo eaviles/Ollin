@@ -131,7 +131,7 @@ enum ShaderIncludes {
                 leadingLineDirective: leadingLineDirective,
                 rootKey: rootKey) { spelling, askedBy in
             for path in candidatePaths(for: spelling, askedBy: askedBy, searchPaths: searchPaths) {
-                guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
+                guard let text = NamedFile.text(at: URL(fileURLWithPath: path)) else { continue }
                 // Standardize the path so the same file reached two ways (a `../` detour,
                 // a symlinked folder) is still spliced once.
                 let key = URL(fileURLWithPath: path).resolvingSymlinksInPath()

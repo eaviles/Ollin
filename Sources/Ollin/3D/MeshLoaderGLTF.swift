@@ -34,19 +34,30 @@ extension Mesh {
     /// file can't be read or holds no triangles.
     static func loadGLTF(_ url: URL) -> Mesh? {
         guard let doc = GLTFDocument(contentsOf: url) else { return nil }
+        return loadGLTF(doc)
+    }
+
+    /// The merged mesh of an already parsed document: the half of `loadGLTF(_:)`
+    /// that reads no file, so bytes held in memory load the same way.
+    static func loadGLTF(_ doc: GLTFDocument) -> Mesh? {
         let gltf = doc.gltf
 
         // Walk the scene's node tree, composing each node's world transform, and
         // collect every (mesh, world-matrix) instance.
         let nodes = gltf.nodes ?? []
         var instances: [(mesh: Int, world: simd_float4x4)] = []
-        func visit(_ ni: Int, parent: simd_float4x4) {
-            guard ni >= 0, ni < nodes.count else { return }
+        // The format gives every node one parent at most and forbids cycles; a
+        // file may still hold either, so each node is walked once, and never
+        // deeper than `GLTFDocument.maxNodeDepth`.
+        var visited = Set<Int>()
+        func visit(_ ni: Int, parent: simd_float4x4, depth: Int) {
+            guard ni >= 0, ni < nodes.count, depth < GLTFDocument.maxNodeDepth,
+                  visited.insert(ni).inserted else { return }
             let world = parent * nodes[ni].localMatrix
             if let m = nodes[ni].mesh { instances.append((m, world)) }
-            for c in nodes[ni].children ?? [] { visit(c, parent: world) }
+            for c in nodes[ni].children ?? [] { visit(c, parent: world, depth: depth + 1) }
         }
-        for r in doc.rootNodes { visit(r, parent: matrix_identity_float4x4) }
+        for r in doc.rootNodes { visit(r, parent: matrix_identity_float4x4, depth: 0) }
 
         let meshes = gltf.meshes ?? []
         var positions: [Vector3] = []
@@ -145,7 +156,8 @@ extension Mesh {
                     if !chosenHasTexture, doc.materialHasTexture(mi) { chosenMaterial = mi; chosenHasTexture = true }
                 }
 
-                let primIndices = prim.indices.flatMap(doc.readIndices) ?? Array(0..<UInt32(localPos.count))
+                let primIndices = GLTFDocument.triangles(prim.indices.flatMap(doc.readIndices),
+                                                         vertexCount: localPos.count)
                 for idx in primIndices { indices.append(base + idx) }
 
                 // If this primitive carried no normals, smooth them across its faces.
@@ -206,18 +218,24 @@ struct GLTFDocument {
     /// buffer: an embedded base64 data-URI, an external file beside the `.gltf`, or
     /// the `.glb`'s own BIN chunk (buffer 0). Returns `nil` on any unreadable piece.
     init?(contentsOf url: URL) {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        self.init(data: data, isBinary: url.pathExtension.lowercased() == "glb",
+                  baseDirectory: url.deletingLastPathComponent())
+    }
+
+    /// Parse the bytes of a `.gltf` (`isBinary` false) or a `.glb` (true), with
+    /// external buffers resolved against `baseDirectory`.
+    init?(data: Data, isBinary: Bool, baseDirectory baseDir: URL) {
         let jsonData: Data
         var glbBinary: Data?
-        if url.pathExtension.lowercased() == "glb" {
-            guard let (json, bin) = GLTFDocument.parseGLB(url) else { return nil }
+        if isBinary {
+            guard let (json, bin) = GLTFDocument.parseGLB(data) else { return nil }
             jsonData = json; glbBinary = bin
         } else {
-            guard let d = try? Data(contentsOf: url) else { return nil }
-            jsonData = d
+            jsonData = data
         }
         guard let gltf = try? JSONDecoder().decode(GLTF.self, from: jsonData) else { return nil }
 
-        let baseDir = url.deletingLastPathComponent()
         var buffers: [Data] = []
         for (i, b) in (gltf.buffers ?? []).enumerated() {
             if let uri = b.uri {
@@ -227,7 +245,7 @@ struct GLTFDocument {
                     buffers.append(data)
                 } else {
                     let path = uri.removingPercentEncoding ?? uri
-                    guard let data = try? Data(contentsOf: baseDir.appendingPathComponent(path)) else { return nil }
+                    guard let data = NamedFile.data(at: baseDir.appendingPathComponent(path)) else { return nil }
                     buffers.append(data)
                 }
             } else if i == 0, let bin = glbBinary {
@@ -241,6 +259,35 @@ struct GLTFDocument {
         self.baseDir = baseDir
     }
 
+    /// How deep a node tree may nest before the rest of it is left out. Every
+    /// walk of a loaded scene (its bounds, the world transforms, the posing,
+    /// the draw) recurses once per level, and in a debug build the heaviest
+    /// takes about six and a half kilobytes a level, so this is the depth that
+    /// fits the half megabyte of stack a background thread or a task gets
+    /// (measured in `DeepInputTests`). A file that nests further would run that
+    /// stack out; no model a person authors comes near it.
+    static let maxNodeDepth = 64
+
+    /// A primitive's triangle list with every triangle that names a vertex the
+    /// primitive does not have left out, and with it any stray index past the
+    /// last whole triangle: each pass that reads a triangle looks its corners up
+    /// in the positions. A primitive with no index accessor draws its vertices
+    /// in order, as the format says.
+    static func triangles(_ indices: [UInt32]?, vertexCount: Int) -> [UInt32] {
+        guard let indices else { return Array(0..<UInt32(clamping: vertexCount)) }
+        var kept: [UInt32] = []
+        kept.reserveCapacity(indices.count)
+        var i = 0
+        while i + 2 < indices.count {
+            let a = indices[i], b = indices[i + 1], c = indices[i + 2]
+            if Int(a) < vertexCount, Int(b) < vertexCount, Int(c) < vertexCount {
+                kept.append(a); kept.append(b); kept.append(c)
+            }
+            i += 3
+        }
+        return kept
+    }
+
     /// The root node indices of the default scene (falling back to every node when
     /// the file declares no scenes).
     var rootNodes: [Int] {
@@ -250,6 +297,53 @@ struct GLTFDocument {
             : Array(0..<nodes.count)
     }
 
+    /// Where an accessor's elements sit: the buffer, the first element's
+    /// byte, and the step to the next, checked so that every one of the
+    /// accessor's `count` elements of `size` bytes lies inside the buffer
+    /// before anything is set aside for them. `nil` for an index out of range
+    /// either way, a negative offset or stride, a count below one, or
+    /// arithmetic that would overflow on the way to the last element: the
+    /// numbers come from the file, and a file may say anything.
+    private func elements(of a: GLTF.Accessor, size: Int) -> (buffer: Data, start: Int, stride: Int)? {
+        let views = gltf.bufferViews ?? []
+        guard let bvi = a.bufferView, bvi >= 0, bvi < views.count else { return nil }
+        let bv = views[bvi]
+        guard bv.buffer >= 0, bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? size
+        let viewOffset = bv.byteOffset ?? 0, accessorOffset = a.byteOffset ?? 0
+        guard a.count > 0, stride > 0, viewOffset >= 0, accessorOffset >= 0 else { return nil }
+        let (start, o1) = viewOffset.addingReportingOverflow(accessorOffset)
+        let (reach, o2) = (a.count - 1).multipliedReportingOverflow(by: stride)
+        let (last, o3) = start.addingReportingOverflow(reach)
+        let (end, o4) = last.addingReportingOverflow(size)
+        guard !o1, !o2, !o3, !o4, end <= buf.count else { return nil }
+        return (buf, start, stride)
+    }
+
+    /// `count` tightly packed elements of `size` bytes from a buffer view at
+    /// `offset`: the buffer and the first byte, checked the same way.
+    private func packed(view: Int, offset: Int?, count: Int, size: Int) -> (buffer: Data, start: Int)? {
+        let views = gltf.bufferViews ?? []
+        guard view >= 0, view < views.count else { return nil }
+        let bv = views[view]
+        guard bv.buffer >= 0, bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let viewOffset = bv.byteOffset ?? 0, extra = offset ?? 0
+        guard count > 0, viewOffset >= 0, extra >= 0 else { return nil }
+        let (start, o1) = viewOffset.addingReportingOverflow(extra)
+        let (length, o2) = count.multipliedReportingOverflow(by: size)
+        let (end, o3) = start.addingReportingOverflow(length)
+        guard !o1, !o2, !o3, end <= buf.count else { return nil }
+        return (buf, start)
+    }
+
+    /// Every byte the document's buffers hold, the most elements any accessor
+    /// could be backed by. An accessor with no buffer view (zeros, perhaps with
+    /// a sparse substitution) is held to it, since nothing in the file stands
+    /// behind the count it declares.
+    private var bufferBytes: Int { buffers.reduce(0) { $0 + $1.count } }
+
     /// Read a VEC3-of-float accessor (positions, normals, morph displacements) as
     /// `[Vector3]`, honoring the buffer view's byte offset and (interleaved) stride.
     /// An accessor with no buffer view reads as zeros, and a sparse accessor
@@ -258,20 +352,13 @@ struct GLTFDocument {
     /// vertices are stored).
     func readVec3(_ index: Int) -> [Vector3]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         guard a.type == "VEC3", a.componentType == 5126,         // VEC3, FLOAT
               a.count > 0 else { return nil }
         var out: [Vector3]
-        if let bvi = a.bufferView {
-            guard bvi < views.count else { return nil }
-            let bv = views[bvi]
-            guard bv.buffer < buffers.count else { return nil }
-            let buf = buffers[bv.buffer]
-            let stride = bv.byteStride ?? 12
-            let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-            guard start + (a.count - 1) * stride + 12 <= buf.count else { return nil }
+        if a.bufferView != nil {
+            guard let (buf, start, stride) = elements(of: a, size: 12) else { return nil }
             var read = [Vector3](); read.reserveCapacity(a.count)
             buf.withUnsafeBytes { raw in
                 for i in 0..<a.count {
@@ -284,6 +371,7 @@ struct GLTFDocument {
             }
             out = read
         } else {
+            guard a.count <= bufferBytes else { return nil }
             out = [Vector3](repeating: .zero, count: a.count)
         }
         if let sp = a.sparse {
@@ -299,17 +387,12 @@ struct GLTFDocument {
     /// A sparse accessor's substitution indices: `count` tightly-packed unsigned
     /// ints (u8/u16/u32) from its own buffer view.
     private func sparseIndices(_ sp: GLTF.Sparse) -> [Int]? {
-        let views = gltf.bufferViews ?? []
-        guard sp.indices.bufferView >= 0, sp.indices.bufferView < views.count else { return nil }
-        let bv = views[sp.indices.bufferView]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
         let size: Int
         switch sp.indices.componentType {
         case 5121: size = 1; case 5123: size = 2; case 5125: size = 4; default: return nil
         }
-        let start = (bv.byteOffset ?? 0) + (sp.indices.byteOffset ?? 0)
-        guard sp.count > 0, start + sp.count * size <= buf.count else { return nil }
+        guard let (buf, start) = packed(view: sp.indices.bufferView, offset: sp.indices.byteOffset,
+                                        count: sp.count, size: size) else { return nil }
         var out = [Int](); out.reserveCapacity(sp.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<sp.count {
@@ -327,13 +410,7 @@ struct GLTFDocument {
     /// `count` tightly-packed float VEC3 elements straight from a buffer view (a
     /// sparse accessor's values, which carry no accessor of their own).
     private func packedVec3(view: Int, offset: Int, count: Int) -> [Vector3]? {
-        let views = gltf.bufferViews ?? []
-        guard view >= 0, view < views.count else { return nil }
-        let bv = views[view]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let start = (bv.byteOffset ?? 0) + offset
-        guard count > 0, start + count * 12 <= buf.count else { return nil }
+        guard let (buf, start) = packed(view: view, offset: offset, count: count, size: 12) else { return nil }
         var out = [Vector3](); out.reserveCapacity(count)
         buf.withUnsafeBytes { raw in
             for i in 0..<count {
@@ -349,18 +426,12 @@ struct GLTFDocument {
     /// Read a SCALAR index accessor (u8/u16/u32) as `[UInt32]`.
     func readIndices(_ index: Int) -> [UInt32]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
-        guard a.type == "SCALAR", let bvi = a.bufferView, bvi < views.count else { return nil }
+        guard a.type == "SCALAR" else { return nil }
         let size: Int
         switch a.componentType { case 5121: size = 1; case 5123: size = 2; case 5125: size = 4; default: return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? size
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + size <= buf.count else { return nil }
+        guard let (buf, start, stride) = elements(of: a, size: size) else { return nil }
         var out = [UInt32](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -378,17 +449,10 @@ struct GLTFDocument {
     /// Read a SCALAR-of-float accessor (animation keyframe times) as `[Double]`.
     func readFloats(_ index: Int) -> [Double]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         guard a.type == "SCALAR", a.componentType == 5126,        // SCALAR, FLOAT
-              let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? 4
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + 4 <= buf.count else { return nil }
+              let (buf, start, stride) = elements(of: a, size: 4) else { return nil }
         var out = [Double](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -403,10 +467,9 @@ struct GLTFDocument {
     /// output, decoded by the spec's int-to-float equations.
     func readVec4(_ index: Int) -> [SIMD4<Float>]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
-        guard a.type == "VEC4", let bvi = a.bufferView, bvi < views.count else { return nil }
+        guard a.type == "VEC4" else { return nil }
         let size: Int
         switch a.componentType {
         case 5126: size = 4                                       // FLOAT
@@ -414,12 +477,7 @@ struct GLTFDocument {
         case 5122, 5123: size = 2                                 // SHORT, UNSIGNED_SHORT
         default: return nil
         }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? size * 4
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + size * 4 <= buf.count else { return nil }
+        guard let (buf, start, stride) = elements(of: a, size: size * 4) else { return nil }
         var out = [SIMD4<Float>](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -444,17 +502,10 @@ struct GLTFDocument {
     /// back nil, so that primitive is treated as having no UVs.
     func readVec2(_ index: Int) -> [Vector2]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         guard a.type == "VEC2", a.componentType == 5126,         // VEC2, FLOAT
-              let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? 8
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + 8 <= buf.count else { return nil }
+              let (buf, start, stride) = elements(of: a, size: 8) else { return nil }
         var out = [Vector2](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -475,7 +526,6 @@ struct GLTFDocument {
     /// coverage fraction and stays linear).
     func readColors(_ index: Int) -> [Color]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         let channels: Int
@@ -488,13 +538,7 @@ struct GLTFDocument {
         default: return nil
         }
         let element = channels * size
-        guard let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? element
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + element <= buf.count else { return nil }
+        guard let (buf, start, stride) = elements(of: a, size: element) else { return nil }
         var out = [Color](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             func component(_ offset: Int) -> Double {
@@ -518,17 +562,10 @@ struct GLTFDocument {
     /// column-major `simd_float4x4`s, honoring offset and stride.
     func readMat4(_ index: Int) -> [simd_float4x4]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         guard a.type == "MAT4", a.componentType == 5126,          // MAT4, FLOAT
-              let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? 64
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + 64 <= buf.count else { return nil }
+              let (buf, start, stride) = elements(of: a, size: 64) else { return nil }
         var out = [simd_float4x4](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -550,7 +587,6 @@ struct GLTFDocument {
     /// `joints` array.
     func readJointIndices(_ index: Int) -> [SIMD4<UInt16>]? {
         let accessors = gltf.accessors ?? []
-        let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         let size: Int
@@ -559,13 +595,7 @@ struct GLTFDocument {
         case 5123: size = 2                                       // UNSIGNED_SHORT
         default: return nil
         }
-        guard a.type == "VEC4", let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
-        guard bv.buffer < buffers.count else { return nil }
-        let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? size * 4
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + size * 4 <= buf.count else { return nil }
+        guard a.type == "VEC4", let (buf, start, stride) = elements(of: a, size: size * 4) else { return nil }
         var out = [SIMD4<UInt16>](); out.reserveCapacity(a.count)
         buf.withUnsafeBytes { raw in
             for i in 0..<a.count {
@@ -594,15 +624,11 @@ struct GLTFDocument {
                 return data
             }
             let path = uri.removingPercentEncoding ?? uri
-            return try? Data(contentsOf: baseDir.appendingPathComponent(path))
+            return NamedFile.data(at: baseDir.appendingPathComponent(path))
         }
-        if let bvi = img.bufferView, bvi < views.count {
-            let bv = views[bvi]
-            guard bv.buffer < buffers.count else { return nil }
-            let buf = buffers[bv.buffer]
-            let start = bv.byteOffset ?? 0
-            guard start + bv.byteLength <= buf.count else { return nil }
-            return buf.subdata(in: start..<(start + bv.byteLength))
+        if let bvi = img.bufferView, bvi >= 0, bvi < views.count,
+           let (buf, start) = packed(view: bvi, offset: nil, count: views[bvi].byteLength, size: 1) {
+            return buf.subdata(in: start..<(start + views[bvi].byteLength))
         }
         return nil
     }
@@ -858,7 +884,8 @@ struct GLTFDocument {
                 if !chosenHasTexture, materialHasTexture(mi) { chosenMaterial = mi; chosenHasTexture = true }
             }
 
-            let primIndices = prim.indices.flatMap(readIndices) ?? Array(0..<UInt32(localPos.count))
+            let primIndices = GLTFDocument.triangles(prim.indices.flatMap(readIndices),
+                                                     vertexCount: localPos.count)
             let spanStart = indices.count
             for idx in primIndices { indices.append(base + idx) }
             primitiveSpans.append((material: prim.material, span: spanStart..<indices.count))
@@ -941,8 +968,8 @@ struct GLTFDocument {
     }
 
     /// Split a `.glb` container into its JSON chunk and (optional) BIN chunk.
-    private static func parseGLB(_ url: URL) -> (json: Data, bin: Data?)? {
-        guard let data = try? Data(contentsOf: url), data.count >= 12 else { return nil }
+    private static func parseGLB(_ data: Data) -> (json: Data, bin: Data?)? {
+        guard data.count >= 12 else { return nil }
         return data.withUnsafeBytes { raw -> (Data, Data?)? in
             guard raw.loadUnaligned(fromByteOffset: 0, as: UInt32.self) == 0x4654_6C67 else { return nil }  // "glTF"
             var offset = 12

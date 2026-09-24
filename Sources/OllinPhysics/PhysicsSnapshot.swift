@@ -131,6 +131,11 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     var payload: Data? {
         guard let header = SnapshotHeader(of: data) else { return nil }
         let stored = Data(data.dropFirst(SnapshotHeader.size))
+        // The header's length is what the payload unpacks to, and it is set
+        // aside before a byte is unpacked, so it is held to what the stored
+        // bytes could become first: a world's doubles pack about ninefold, and
+        // no world packs past a few thousand to one.
+        guard !header.isCompressed || header.payloadBytes <= stored.count * 4096 + 65_536 else { return nil }
         let unpacked = header.isCompressed
             ? SnapshotCompression.decompress(stored, to: header.payloadBytes)
             : stored
@@ -363,7 +368,11 @@ extension World3D {
         let ground = try reader.optionalDouble()
         let bounce = try reader.f64()
         let maxTimestep = try reader.f64()
+        // The scale divides every saved number on its way to the solver, so it
+        // is held to a range that keeps a billion units inside the solver's
+        // own bound: from a unit of ten kilometers to a micrometer.
         let unitsPerMeter = try reader.f64()
+        guard unitsPerMeter >= 1e-4, unitsPerMeter <= 1e6 else { throw SnapshotReader.Failure.notANumber }
         let water = try reader.water()
         let waterPhase = try reader.f64()
 
@@ -431,7 +440,10 @@ extension World3D {
             }
         }
         for pair in separated {
-            cjolt_world_set_group_collision(handle, Int32(pair.0), Int32(pair.1), false)
+            // A pair naming a group the table does not hold is left out.
+            guard let a = Int32(exactly: pair.0), let b = Int32(exactly: pair.1),
+                  Int(a) < groupNames.count, Int(b) < groupNames.count else { continue }
+            cjolt_world_set_group_collision(handle, a, b, false)
         }
 
         // Take the old floor away before the scale moves, so it is built once,
@@ -441,7 +453,7 @@ extension World3D {
         self.restitution = bounce
         self.maxTimestep = maxTimestep
         self.gravity = gravity
-        groundGroup = group(at: Int32(groundGroupIndex))
+        groundGroup = group(saved: groundGroupIndex)
         self.ground = ground
         self.water = water
         self.waterPhase = waterPhase
@@ -467,7 +479,7 @@ extension World3D {
                                centerOfMass: .zero, freedom: saved.freedom,
                                gravityScale: saved.gravityScale,
                                checksPath: saved.checksPath,
-                               group: group(at: Int32(saved.group)),
+                               group: group(saved: saved.group),
                                orientation: saved.rotation,
                                velocity: saved.velocity,
                                angularVelocity: saved.angularVelocity,
@@ -526,7 +538,7 @@ extension World3D {
                                          stickToFloorDistance: saved.stickToFloorDistance,
                                          maxSlope: saved.maxSlope, mass: saved.mass,
                                          pushStrength: saved.pushStrength,
-                                         group: group(at: Int32(saved.group)))
+                                         group: group(saved: saved.group))
             character.velocity = saved.velocity
             character.facing = saved.facing
         }
@@ -590,7 +602,7 @@ extension World3D {
                                       restitution: saved.restitution,
                                       iterations: saved.iterations,
                                       pinned: nil, maxStretch: saved.maxStretch,
-                                      group: group(at: Int32(saved.group)),
+                                      group: group(saved: saved.group),
                                       rodRotations: rope.rodRotations)
             else { return }
             if !saved.assetName.isEmpty { body.assetName = saved.assetName }
@@ -622,7 +634,7 @@ extension World3D {
                                       iterations: saved.iterations,
                                       vertexRadius: saved.vertexRadius,
                                       isTwoSided: saved.isTwoSided, pinned: nil,
-                                      group: group(at: Int32(saved.group)),
+                                      group: group(saved: saved.group),
                                       skeleton: [], carriedBy: nil, sway: nil,
                                       backStop: nil,
                                       maxStretch: saved.maxStretch,
@@ -663,7 +675,7 @@ extension World3D {
                                        balances: saved.balances,
                                        maxLeanAngle: saved.maxLeanAngle,
                                        isTracked: saved.tracked,
-                                       group: group(at: Int32(saved.group)))
+                                       group: group(saved: saved.group))
         else { return nil }
         place(vehicle.body, at: saved.pose)
         vehicle.body.velocity = saved.velocity
@@ -690,7 +702,7 @@ extension World3D {
     private func restoreRagdoll(_ saved: SavedRagdoll) {
         guard let ragdoll = addRagdoll(plan: saved.plan, limits: saved.limits,
                                        friction: saved.friction,
-                                       group: group(at: Int32(saved.group)))
+                                       group: group(saved: saved.group))
         else { return }
         ragdoll.kind = saved.kind
         for (limb, pose) in zip(ragdoll.limbs, saved.poses) {
@@ -1535,7 +1547,7 @@ private struct SnapshotReader {
         self.offset = 0
     }
 
-    enum Failure: Error { case truncated, unknownTag }
+    enum Failure: Error { case truncated, unknownTag, notANumber, outOfRange }
 
     /// Whether every byte has been read, which is how a section added to the
     /// format later is told apart from a file written before it existed.
@@ -1573,15 +1585,40 @@ private struct SnapshotReader {
         return pattern
     }
 
+    /// The largest magnitude a saved world's numbers may have: a billion
+    /// units. The solver keeps single precision and stops simulating sensibly
+    /// kilometers from its origin, and it checks, in a debug build by stopping
+    /// the process, that nothing it holds passes 1e15 meters, so a number past
+    /// this (or one that is not a number, or an infinity) is refused here
+    /// rather than restored.
+    static let largestMagnitude = 1e9
+
+    /// A number as the writer wrote it, held to `largestMagnitude`.
     mutating func f64() throws -> Double {
-        Double(bitPattern: try u64())
+        let value = Double(bitPattern: try u64())
+        guard value.isFinite, abs(value) <= Self.largestMagnitude else { throw Failure.notANumber }
+        return value
     }
 
+    /// A single-precision number, held to `largestMagnitude` like the rest.
     mutating func f32() throws -> Float {
         let raw = try bytes(4)
         var pattern: UInt32 = 0
         for (shift, byte) in raw.enumerated() { pattern |= UInt32(byte) << (8 * shift) }
-        return Float(bitPattern: pattern)
+        let value = Float(bitPattern: pattern)
+        guard value.isFinite, abs(value) <= Float(Self.largestMagnitude) else { throw Failure.notANumber }
+        return value
+    }
+
+    /// The most sides a saved rope's tube may have: far past any round
+    /// section that reads as round.
+    static let mostRopeSides = 256
+
+    /// An index that has to name one of `count` things already read.
+    mutating func index(below count: Int) throws -> Int {
+        let value = Int(try u32())
+        guard value < count else { throw Failure.outOfRange }
+        return value
     }
 
     mutating func vector() throws -> Vector3 {
@@ -1592,8 +1629,12 @@ private struct SnapshotReader {
         Vector2(try f64(), try f64())
     }
 
+    /// A rotation: finite, and long enough to be made a unit one.
     mutating func quaternion() throws -> SIMD4<Double> {
-        SIMD4(try f64(), try f64(), try f64(), try f64())
+        let q = SIMD4(try f64(), try f64(), try f64(), try f64())
+        let length = (q * q).sum()
+        guard length.isFinite, length > 1e-12 else { throw Failure.notANumber }
+        return q
     }
 
     mutating func pose() throws -> Pose3D {
@@ -1946,10 +1987,12 @@ private struct SnapshotReader {
             }
             skin.binds.append(m)
         }
+        // A carried vertex names one of the particles above and one of the
+        // binds; the solver takes both as indices it does not check.
         for _ in 0 ..< (try count()) {
             var carried = CJoltSoftSkinVertex()
-            carried.vertex = Int32(try u32())
-            carried.joints.0 = try u32()
+            carried.vertex = Int32(try index(below: particles))
+            carried.joints.0 = UInt32(try index(below: skin.binds.count))
             carried.weights.0 = try f32()
             carried.maxDistance = try f32()
             carried.backStopDistance = try f32()
@@ -1966,7 +2009,8 @@ private struct SnapshotReader {
             points.reserveCapacity(ropePoints)
             for _ in 0 ..< ropePoints { points.append(try vector()) }
             let radius = try f64()
-            let sides = Int(try u32())
+            // The drawn tube is built with this many sides every frame.
+            let sides = try index(below: SnapshotReader.mostRopeSides + 1)
             var frames: [simd_quatd] = []
             for _ in 0 ..< (try count()) {
                 frames.append(simd_quatd(ix: Double(try f32()), iy: Double(try f32()),
@@ -1994,11 +2038,17 @@ private struct SnapshotReader {
         var plan = RagdollPlan()
         plan.skinJointCount = Int(try u32())
         let limbCount = try count()
-        for _ in 0 ..< limbCount {
-            let skinIndex = Int(try u32())
+        for limb in 0 ..< limbCount {
+            // A limb's skin joint is one of the figure's, and its parent a limb
+            // before it (the plan lists parents first); the solver and the
+            // posing both index with them.
+            let skinIndex = try index(below: plan.skinJointCount)
             let name = try string()
             let sourceIndex = Int(try u32())
             let rawParent = try u32()
+            guard rawParent == PhysicsSnapshot.groundIndex || Int(rawParent) < limb else {
+                throw Failure.outOfRange
+            }
             let parent = rawParent == PhysicsSnapshot.groundIndex ? -1 : Int(rawParent)
             let collider = try collider()
             let shapeCenter = try vector()

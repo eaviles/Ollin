@@ -1,4 +1,5 @@
 import Foundation
+import COllinAllocationWatch
 
 // A seeded mutation harness for the decoders that read bytes a sketch did not
 // write: a datagram off the network, a frame off a cable, a file somebody hands
@@ -14,8 +15,17 @@ import Foundation
 // number, and the bytes themselves in hex, which is everything needed to put
 // the dying input straight into a test.
 //
+// A reader of a file owes one thing more: a count the bytes declare is checked
+// against the bytes that remain before anything is set aside for it, so a
+// forty-byte file that says it holds four billion entries is refused rather
+// than answered with a gigabyte. That is invisible to the trap check, since a
+// block reserved and never touched costs nothing a test can see, so a run can
+// also watch the largest single block the decoding thread asks for and hold it
+// to a bound on the input's size (`AllocationWatch`, `AllocationBound`).
+//
 // A regular target kept under `Tests/` (a test target may depend on a library
-// target, never on another test target), with nothing but Foundation in it.
+// target, never on another test target), with nothing but Foundation and the
+// allocation watch's small C hook in it.
 
 // MARK: - The generator
 
@@ -64,6 +74,19 @@ package struct Mutator {
         "9223372036854775807", "9223372036854775808", "-9223372036854775808", "-9223372036854775809",
         "18446744073709551615", "18446744073709551616", "99999999999999999999", "-0", "0x7fffffffffffffff",
         "4294967296", "2147483648", "65536", "0.1e1", "1.", ".5", "1e", "-", "+", "1_000", "١٢٣",
+    ]
+
+    /// The numbers the number sweep writes over each number in a text input:
+    /// the values a count, an index, an offset, or a size is most often wrong
+    /// at (negative, zero, the edges of a byte and a 16-bit field, where a
+    /// format's own ceiling most often sits, one past a 31- and 32-bit field, one past what
+    /// a `Double` counts exactly, the ends of an `Int`, and a number far past
+    /// them), plus a fraction where a whole number was meant, and the text a
+    /// reader of floating point accepts for the infinities.
+    package static let numberSpellings: [String] = [
+        "-1", "0", "1", "255", "256", "65535", "65536", "2147483648", "4294967296", "-2147483649", "9007199254740993",
+        "9223372036854775807", "-9223372036854775808", "99999999999999999999", "1e300", "-1e300", "1e999",
+        "0.5", "nan", "inf",
     ]
 
     /// The seed this generator was made with.
@@ -404,10 +427,36 @@ package enum MutationRun {
         /// seed that never decodes tests nothing, so a test asserts this is
         /// empty.
         package var seedsRefused: [Int] = []
+        /// The largest single block the decoding thread asked for in any one
+        /// case, in bytes, when the run watched its allocations; 0 otherwise.
+        package var largestAllocation = 0
+        /// The cases that asked for more than the run's bound allowed, the
+        /// first sixteen of them, and how many there were in all. A test
+        /// asserts `oversizedCount` is zero.
+        package var oversized: [Oversized] = []
+        package var oversizedCount = 0
 
         package var description: String {
             "\(name) (seed \(seed)): \(cases) cases, \(decoded) decoded, \(refused) refused, \(threw) threw"
             + (seedsRefused.isEmpty ? "" : ", seeds refused at \(seedsRefused)")
+            + (largestAllocation == 0 ? "" : ", largest block \(largestAllocation) bytes")
+            + (oversizedCount == 0 ? "" : ", \(oversizedCount) over the bound, first at \(oversized[0])")
+        }
+    }
+
+    /// One case that asked for more than its bound.
+    package struct Oversized: CustomStringConvertible, Sendable {
+        /// The case number, as the log would name it.
+        package var index: Int
+        /// The input it was given.
+        package var bytes: [UInt8]
+        /// The largest single block it asked for.
+        package var allocated: Int
+        /// What the bound allowed for an input of its size.
+        package var limit: Int
+
+        package var description: String {
+            "case \(index) (\(bytes.count) bytes) asked for \(allocated) bytes against \(limit)"
         }
     }
 
@@ -421,12 +470,21 @@ package enum MutationRun {
     /// so a case number identifies its bytes for a given seed and set of
     /// inputs. `sweeps` turns the field sweep off for an input too large to
     /// afford it.
+    ///
+    /// `allocations` watches the largest single block the decoding thread asks
+    /// for in each case and records every case that asks for more than the
+    /// bound allows for an input of its size (`Report.oversized`). A block past
+    /// `AllocationWatch.ceiling` is not recorded but stops the process, since a
+    /// decoder that asked for it may be about to touch it, and the log holds
+    /// the case as it would for a trap.
     package static func run(
         _ name: String,
         seeds: [[UInt8]],
         count: Int = 400,
         seed: UInt64 = 1,
         sweeps: Bool = true,
+        numberSweep: Bool = false,
+        allocations: AllocationBound? = nil,
         decode: ([UInt8]) throws -> Bool
     ) -> Report {
         var report = Report(name: name, seed: seed)
@@ -435,9 +493,25 @@ package enum MutationRun {
         var index = 0
 
         func attempt(_ bytes: [UInt8]) -> Bool? {
-            log?.note(MutationLog.Entry(name: name, seed: seed, index: index, bytes: bytes))
+            let entry = MutationLog.Entry(name: name, seed: seed, index: index, bytes: bytes)
+            log?.note(entry)
             index += 1
             report.cases += 1
+            let watch = allocations == nil ? nil : AllocationWatch.begin(naming: entry.line)
+            defer {
+                if let watch, let allocations {
+                    let largest = AllocationWatch.end(watch)
+                    report.largestAllocation = max(report.largestAllocation, largest)
+                    let limit = allocations.limit(forInputOf: bytes.count)
+                    if largest > limit {
+                        report.oversizedCount += 1
+                        if report.oversized.count < 16 {
+                            report.oversized.append(Oversized(index: entry.index, bytes: bytes,
+                                                              allocated: largest, limit: limit))
+                        }
+                    }
+                }
+            }
             do {
                 let decoded = try decode(bytes)
                 if decoded { report.decoded += 1 } else { report.refused += 1 }
@@ -466,6 +540,9 @@ package enum MutationRun {
                     }
                 }
             }
+            if numberSweep {
+                for variant in numberSweepVariants(of: input) { _ = attempt(variant) }
+            }
             for _ in 0..<max(0, count) {
                 _ = attempt(mutator.mutate(input))
             }
@@ -473,6 +550,56 @@ package enum MutationRun {
 
         log?.finish()
         return report
+    }
+
+    /// The number sweep, the field sweep's twin for a format that writes its
+    /// numbers as text (JSON, a line of an OBJ, a `.cube` entry, an SVG path):
+    /// every number in the input replaced, one at a time, by each spelling in
+    /// `Mutator.numberSpellings`, which are the values a count, an index, or a
+    /// size is most often wrong at. A number is a run that starts on a digit,
+    /// or on a sign or a point directly before one, and runs on through
+    /// digits, points, and an exponent.
+    package static func numberSweepVariants(of input: [UInt8]) -> [[UInt8]] {
+        var variants: [[UInt8]] = []
+        for range in numberRuns(in: input) {
+            for spelling in Mutator.numberSpellings {
+                var out = input
+                out.replaceSubrange(range, with: Array(spelling.utf8))
+                if out != input { variants.append(out) }
+            }
+        }
+        return variants
+    }
+
+    /// Where the numbers written as text sit in `bytes`.
+    package static func numberRuns(in bytes: [UInt8]) -> [Range<Int>] {
+        func isDigit(_ byte: UInt8) -> Bool { (48...57).contains(byte) }
+        var runs: [Range<Int>] = []
+        var index = 0
+        while index < bytes.count {
+            let byte = bytes[index]
+            let signed = (byte == 45 || byte == 43 || byte == 46) && index + 1 < bytes.count && isDigit(bytes[index + 1])
+            // A digit glued to a letter before it is part of a name (`x2`, `TEXCOORD_0`), not a number.
+            let gluedToName = index > 0 && (bytes[index - 1] == 95 || (65...90).contains(bytes[index - 1])
+                                            || (97...122).contains(bytes[index - 1]))
+            guard isDigit(byte) || signed, !gluedToName else { index += 1; continue }
+            var end = index + 1
+            while end < bytes.count {
+                let next = bytes[end]
+                if isDigit(next) || next == 46 {
+                    end += 1
+                } else if next == 101 || next == 69, end + 1 < bytes.count,
+                          isDigit(bytes[end + 1]) || ((bytes[end + 1] == 45 || bytes[end + 1] == 43)
+                                                     && end + 2 < bytes.count && isDigit(bytes[end + 2])) {
+                    end += 2
+                } else {
+                    break
+                }
+            }
+            runs.append(index..<end)
+            index = end
+        }
+        return runs
     }
 
     /// The offsets the field sweep writes at: the first 128 bytes and the
@@ -494,5 +621,79 @@ package enum MutationRun {
         for step in 0..<256 { lengths.insert(1 + step * (count - 1) / 256) }
         for length in max(1, count - 32)..<count { lengths.insert(length) }
         return lengths.sorted()
+    }
+}
+
+// MARK: - The allocation watch
+
+/// How large a single block a decoder may ask for while it reads an input of a
+/// given size: a floor any input may use, plus so many bytes for every byte
+/// of input. A reader that sets aside what a count field declares before it
+/// checks the count against the bytes that remain asks for far more than
+/// either, which is the case this bound is for.
+package struct AllocationBound: Sendable {
+    /// The most any input may ask for in one block, whatever its size.
+    package var floor: Int
+    /// How many bytes one byte of input may grow into: 1 for a reader that
+    /// copies, more for text read into numbers or a compressed stream opened.
+    package var perInputByte: Int
+
+    package init(floor: Int = 16 << 20, perInputByte: Int) {
+        self.floor = floor
+        self.perInputByte = perInputByte
+    }
+
+    /// The largest block allowed while reading `count` bytes.
+    package func limit(forInputOf count: Int) -> Int {
+        floor + perInputByte * count
+    }
+}
+
+/// The largest single block one thread asks the system allocator for over a
+/// stretch of its work.
+///
+/// It listens through the allocator's own logging hook, the one the system's
+/// stack logging installs: every allocation in the process reports its size
+/// there, the hook keeps the largest one made by each thread being watched,
+/// and ignores the rest. The hook is installed once and never removed, and it
+/// is written in C (`COllinAllocationWatch`) because it runs inside the
+/// allocator, where it must not allocate, and generic Swift in a debug build
+/// does. Where the allocator does not report (a sanitizer that brings its
+/// own), `isAvailable` is false and nothing is watched.
+package enum AllocationWatch {
+
+    /// A block larger than this, asked for on a watched thread, stops the
+    /// process before the caller can touch it: it writes the case it was
+    /// given to standard error and aborts. A gigabyte is past anything a
+    /// reader here should ask for, and on a machine with eight gigabytes a
+    /// few such blocks filled at once would take the machine down with the
+    /// test.
+    package static var ceiling: Int { Int(ollin_allocation_watch_ceiling()) }
+
+    /// Whether the allocator reports to the watch in this process, proved by
+    /// watching a probe block of a size nothing else asks for.
+    package static let isAvailable: Bool = {
+        guard let slot = begin(naming: "probe") else { return false }
+        let probe = malloc(7_777_777)
+        free(probe)
+        return end(slot) >= 7_777_777
+    }()
+
+    /// Starts watching the calling thread, and returns the slot to hand to
+    /// `end(_:)`; `nil` when the watch is not available or every slot is
+    /// taken. `note` is what a block past the ceiling writes before the
+    /// process stops, so it names the case.
+    package static func begin(naming note: String) -> Int? {
+        let bytes = Array(note.utf8)
+        let slot = bytes.withUnsafeBufferPointer { buffer in
+            buffer.withMemoryRebound(to: CChar.self) { ollin_allocation_watch_begin($0.baseAddress, $0.count) }
+        }
+        return slot < 0 ? nil : Int(slot)
+    }
+
+    /// Stops watching and returns the largest single block the thread asked
+    /// for since `begin`, in bytes.
+    package static func end(_ slot: Int) -> Int {
+        Int(clamping: ollin_allocation_watch_end(Int32(slot)))
     }
 }

@@ -213,7 +213,9 @@ public extension Color {
     /// or any unbounded value without bookkeeping; saturation and brightness
     /// clamp to `0...1`.
     init(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1.0) {
-        let h = (hue - hue.rounded(.down)) * 6
+        // A hue that is not a number (an infinity has no fraction either) reads
+        // as red rather than ending the sketch at the narrowing below.
+        let h = hue.isFinite ? (hue - hue.rounded(.down)) * 6 : 0
         let s = min(max(saturation, 0), 1)
         let v = min(max(brightness, 0), 1)
         let sector = Int(h)

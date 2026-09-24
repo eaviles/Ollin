@@ -28,6 +28,20 @@ struct PerlinNoise: Sendable {
     /// only a few percent clipped at the extremes.
     private static let gain = 2.0
 
+    /// The lattice cell a coordinate falls in, wrapped to the table's 256.
+    /// Inside an `Int`'s range this is `Int(floor(x)) & 255` exactly, so every
+    /// field keeps its bits; past it (a clock run for ages, a coordinate read
+    /// from a file) the floor is wrapped while it is still a `Double`, since
+    /// narrowing it first traps, and a coordinate that is not a number lands
+    /// on cell 0.
+    @inline(__always)
+    static func cell(_ x: Double) -> Int {
+        let f = floor(x)
+        if Swift.abs(f) < 9.0e18 { return Int(f) & 255 }
+        guard f.isFinite else { return 0 }
+        return Int(f - 256 * floor(f / 256)) & 255
+    }
+
     /// Unsigned noise in `0...1` (contrast-calibrated to fill the range).
     func value(_ x: Double, _ y: Double, _ z: Double) -> Double {
         (signedValue(x, y, z) + 1) / 2
@@ -40,7 +54,7 @@ struct PerlinNoise: Sendable {
 
     /// Raw improved-Perlin value — roughly `[-1, 1]`, but concentrated near 0.
     private func rawValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
-        let xi = Int(floor(x)) & 255, yi = Int(floor(y)) & 255, zi = Int(floor(z)) & 255
+        let xi = PerlinNoise.cell(x), yi = PerlinNoise.cell(y), zi = PerlinNoise.cell(z)
         let xf = x - floor(x), yf = y - floor(y), zf = z - floor(z)
         let u = fade(xf), v = fade(yf), w = fade(zf)
 
@@ -82,7 +96,7 @@ struct PerlinNoise: Sendable {
     /// fade curve's slope times the difference the interpolation takes across
     /// that axis.
     private func rawValueAndGradient(_ x: Double, _ y: Double, _ z: Double) -> (Double, SIMD3<Double>) {
-        let xi = Int(floor(x)) & 255, yi = Int(floor(y)) & 255, zi = Int(floor(z)) & 255
+        let xi = PerlinNoise.cell(x), yi = PerlinNoise.cell(y), zi = PerlinNoise.cell(z)
         let xf = x - floor(x), yf = y - floor(y), zf = z - floor(z)
         let u = fade(xf), v = fade(yf), w = fade(zf)
         let du = fadeSlope(xf), dv = fadeSlope(yf), dw = fadeSlope(zf)
@@ -162,8 +176,8 @@ struct PerlinNoise: Sendable {
     /// Raw classic-Perlin value on the 4D lattice: the 3D scheme extended one
     /// axis (16 hypercube corners, the standard 32-direction gradient set).
     private func rawValue(_ x: Double, _ y: Double, _ z: Double, _ w: Double) -> Double {
-        let xi = Int(floor(x)) & 255, yi = Int(floor(y)) & 255
-        let zi = Int(floor(z)) & 255, wi = Int(floor(w)) & 255
+        let xi = PerlinNoise.cell(x), yi = PerlinNoise.cell(y)
+        let zi = PerlinNoise.cell(z), wi = PerlinNoise.cell(w)
         let xf = x - floor(x), yf = y - floor(y), zf = z - floor(z), wf = w - floor(w)
         let u = fade(xf), v = fade(yf), s = fade(zf), t = fade(wf)
 

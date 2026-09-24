@@ -1006,6 +1006,9 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
 
 void cjolt_body_destroy(CJoltWorld *world, CJoltBodyID body) {
     BodyID id{body};
+    // A body whose shape could not be made was never created, and Jolt
+    // indexes its body array with whatever ID it is asked to destroy.
+    if (id.IsInvalid()) { return; }
     BodyInterface &bodies = world->physics.GetBodyInterface();
     bodies.RemoveBody(id);
     bodies.DestroyBody(id);

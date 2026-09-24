@@ -477,19 +477,52 @@ extension Scene {
     /// both resolved through their node's world transform.
     static func loadGLTFScene(_ url: URL) -> Scene? {
         guard let doc = GLTFDocument(contentsOf: url) else { return nil }
+        return loadGLTFScene(doc)
+    }
+
+    /// The scene of an already parsed document, the half of `loadGLTFScene(_:)`
+    /// that reads no file.
+    static func loadGLTFScene(_ doc: GLTFDocument) -> Scene? {
         let gltf = doc.gltf
         let gltfNodes = gltf.nodes ?? []
 
-        // Build the value-typed node tree. glTF forbids cycles, but the file is
-        // untrusted input, so a visited set turns a malformed loop into a skip.
+        // Build the value-typed node tree. glTF forbids cycles and gives each
+        // node one parent at most, but the file is untrusted input, so each
+        // node is built once (a loop, or a node listed under two parents, is
+        // skipped where it comes back).
         let lightDefs = gltf.extensions?.KHR_lights_punctual?.lights ?? []
-        var building = Set<Int>()
-        func build(_ ni: Int) -> SceneNode? {
-            guard ni >= 0, ni < gltfNodes.count, !building.contains(ni) else { return nil }
-            building.insert(ni)
-            defer { building.remove(ni) }
+        // The tree's shape is walked first, as indices and with a stack of its
+        // own, in the order a depth-first walk takes: a node is built once,
+        // under the first parent that reaches it, and no deeper than
+        // `GLTFDocument.maxNodeDepth`. The nodes are then made children first,
+        // so nothing recurses while holding a node: a node is a large value,
+        // and a recursion that returns one keeps a dozen kilobytes of stack on
+        // every level of a debug build, more than a background thread holds
+        // for a deep file.
+        var built = Set<Int>()
+        var childrenOf: [Int: [Int]] = [:]
+        var childrenFirst: [Int] = []
+        var rootIndices: [Int] = []
+        for root in doc.rootNodes where root >= 0 && root < gltfNodes.count && built.insert(root).inserted {
+            rootIndices.append(root)
+            var path: [(node: Int, depth: Int, next: Int)] = [(root, 0, 0)]
+            while let top = path.last {
+                let children = gltfNodes[top.node].children ?? []
+                guard top.next < children.count else {
+                    childrenFirst.append(top.node)
+                    path.removeLast()
+                    continue
+                }
+                path[path.count - 1].next += 1
+                let child = children[top.next]
+                guard child >= 0, child < gltfNodes.count, top.depth + 1 < GLTFDocument.maxNodeDepth,
+                      built.insert(child).inserted else { continue }
+                childrenOf[top.node, default: []].append(child)
+                path.append((child, top.depth + 1, 0))
+            }
+        }
+        func node(_ ni: Int, children: [SceneNode]) -> SceneNode {
             let n = gltfNodes[ni]
-            let children = (n.children ?? []).compactMap(build)
             let meshData = n.mesh.flatMap(doc.localMeshData)
             var node = SceneNode(name: n.name ?? "",
                                  mesh: meshData?.mesh,
@@ -525,7 +558,15 @@ extension Scene {
             }
             return node
         }
-        let roots = doc.rootNodes.compactMap(build)
+        var made: [Int: SceneNode] = [:]
+        for ni in childrenFirst {
+            var children: [SceneNode] = []
+            for child in childrenOf[ni] ?? [] {
+                if let node = made.removeValue(forKey: child) { children.append(node) }
+            }
+            made[ni] = node(ni, children: children)
+        }
+        let roots = rootIndices.compactMap { made[$0] }
 
         var scene = Scene(nodes: roots)
         Scene.normalizeLightSpecs(in: &scene.nodes)

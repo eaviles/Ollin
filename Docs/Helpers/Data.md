@@ -205,7 +205,7 @@ json.survey.title.text          // the same, written as properties
 .isNull     // true for a null, and for a key that isn't there
 ```
 
-**A key that isn't there answers null rather than stopping**, and so does every step after it. That is what makes a whole path safe to write in one line. It is also why `.array` is not optional. A loop over a key that isn't there runs zero times, so you need no check first.
+**A key that isn't there answers null rather than stopping**, and so does every step after it. That is what makes a whole path safe to write in one line. It is also why `.array` is not optional. A loop over a key that isn't there runs zero times, so you need no check first. A number no `Int` holds (`1e300` in a file) reads as `nil` through `.int` for the same reason.
 
 ```swift
 for point in json["points"].array {

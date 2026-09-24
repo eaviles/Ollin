@@ -17,6 +17,12 @@ enum USDLZ4 {
     /// past ~2 GB per block). Blocks are the standard LZ4 block format, which
     /// Apple Compression decodes as `COMPRESSION_LZ4_RAW`.
     static func decompress(_ data: Data, capacity: Int, exact: Bool = true) throws -> Data {
+        // LZ4 turns one byte into at most 255, so a blob declaring more than
+        // that is refused (or, for a working buffer that only bounds its size,
+        // held to it) before the output is set aside.
+        let most = data.count.multipliedReportingOverflow(by: 256).partialValue + 64
+        if exact, capacity > most { throw USDError.malformed("usdc: LZ4 blob declares more than it can hold") }
+        let capacity = Swift.min(Swift.max(capacity, 0), most)
         guard let first = data.first else {
             guard capacity == 0 || !exact else { throw USDError.malformed("usdc: empty LZ4 blob") }
             return Data()
@@ -71,6 +77,11 @@ enum USDIntegerCoding {
     /// Code widths: 0 = the common delta, 1 = int8, 2 = int16, 3 = int32.
     static func decodeInt32(_ data: Data, count: Int) throws -> [Int32] {
         guard count > 0 else { return [] }
+        // Two bits of code per integer, behind LZ4: no blob holds more than
+        // this many, and a count past it is refused before anything is made.
+        guard count <= data.count.multipliedReportingOverflow(by: 1024).partialValue + 1024 else {
+            throw USDError.malformed("usdc: integer count past what the blob can hold")
+        }
         let codesStart = 4
         let vintStart = codesStart + (2 * count + 7) / 8
         let workSize = vintStart + 4 * count
@@ -107,6 +118,9 @@ enum USDIntegerCoding {
     /// 32-bit variant's: 1 = int16, 2 = int32, 3 = int64.
     static func decodeInt64(_ data: Data, count: Int) throws -> [Int64] {
         guard count > 0 else { return [] }
+        guard count <= data.count.multipliedReportingOverflow(by: 1024).partialValue + 1024 else {
+            throw USDError.malformed("usdc: integer count past what the blob can hold")
+        }
         let codesStart = 8
         let vintStart = codesStart + (2 * count + 7) / 8
         let workSize = vintStart + 8 * count

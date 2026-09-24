@@ -113,6 +113,13 @@ extension World3D {
         return groupNames.indices.contains(slot) ? groupNames[slot] : .default
     }
 
+    /// The group a saved index names, or the default group for an index the
+    /// table does not hold (a file may carry any number there).
+    func group(saved index: UInt32) -> CollisionGroup {
+        let slot = Int(index)
+        return groupNames.indices.contains(slot) ? groupNames[slot] : .default
+    }
+
     /// Wakes every body so a changed rule is acted on rather than waited out.
     private func wakeEverything() {
         for body in bodies where body.kind != .static { body.wake() }

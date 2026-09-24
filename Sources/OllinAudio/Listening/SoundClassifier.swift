@@ -209,23 +209,10 @@ extension SoundClassifier {
 
 /// Reads a whole audio file into mono samples.
 func monoSamples(contentsOf url: URL) throws -> ([Float], Double) {
-    let file = try AVAudioFile(forReading: url)
-    let format = file.processingFormat
-    let frames = AVAudioFrameCount(file.length)
-    guard frames > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames) else {
-        return ([], format.sampleRate)
+    guard let frames = try AudioFileFrames.read(url) else {
+        return ([], try AVAudioFile(forReading: url).processingFormat.sampleRate)
     }
-    try file.read(into: buffer)
-    let count = Int(buffer.frameLength)
-    guard let channels = buffer.floatChannelData, count > 0 else { return ([], format.sampleRate) }
-    let channelCount = Int(format.channelCount)
-    var mono = [Float](repeating: 0, count: count)
-    let inv = Float(1) / Float(channelCount)
-    for c in 0..<channelCount {
-        let src = channels[c]
-        for i in 0..<count { mono[i] += src[i] * inv }
-    }
-    return (mono, format.sampleRate)
+    return (frames.mono, frames.sampleRate)
 }
 
 // MARK: The engine

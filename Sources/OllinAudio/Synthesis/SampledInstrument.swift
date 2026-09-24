@@ -151,26 +151,8 @@ public final class SampledInstrument: @unchecked Sendable {
     /// Folded to mono, because a sampled voice is one stream the same as every
     /// other voice here, and stereo would have to be thrown away somewhere.
     static func read(_ url: URL) -> ([Float], Double)? {
-        guard let file = try? AVAudioFile(forReading: url) else { return nil }
-        let format = file.processingFormat
-        let count = AVAudioFrameCount(file.length)
-        guard count > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                                                       frameCapacity: count),
-              (try? file.read(into: buffer)) != nil,
-              let channels = buffer.floatChannelData else { return nil }
-
-        let frames = Int(buffer.frameLength)
-        var mono = [Float](repeating: 0, count: frames)
-        let channelCount = Int(format.channelCount)
-        for channel in 0..<channelCount {
-            let data = channels[channel]
-            for index in 0..<frames { mono[index] += data[index] }
-        }
-        if channelCount > 1 {
-            let scale = Float(1.0 / Double(channelCount))
-            for index in mono.indices { mono[index] *= scale }
-        }
-        return (mono, format.sampleRate)
+        guard let frames = try? AudioFileFrames.read(url) else { return nil }
+        return (frames.mono, frames.sampleRate)
     }
 
     // MARK: The bundled one

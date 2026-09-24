@@ -73,10 +73,10 @@ public extension JSON {
         }
     }
 
-    /// The number as a whole one, rounding a decimal.
+    /// The number as a whole one, rounding a decimal; `nil` for one past what
+    /// an `Int` holds.
     var int: Int? {
-        guard let value = number, value.isFinite else { return nil }
-        return Int(value.rounded())
+        number?.int(rounded: .toNearestOrAwayFromZero)
     }
 
     /// The flag, when this is one. A number reads as a flag the way a condition

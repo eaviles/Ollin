@@ -68,26 +68,26 @@ final class USDCrateReader {
         guard major == 0, (8...10).contains(minor) else {
             throw USDError.unsupportedVersion("\(major).\(minor).\(patch)")
         }
-        let tocOffset = Int(try i64(at: 16))
+        let tocOffset = try i64(at: 16)
         guard tocOffset > 0, tocOffset < data.count else {
             throw USDError.malformed("usdc: bad TOC offset")
         }
+        let toc = Int(tocOffset)
 
         var sections: [String: (start: Int, size: Int)] = [:]
-        let sectionCount = Int(try u64(at: tocOffset))
-        guard sectionCount >= 0, sectionCount < 1024 else {
+        let sectionCount = try self.count(at: toc)
+        guard sectionCount < 1024 else {
             throw USDError.malformed("usdc: implausible section count")
         }
         for s in 0..<sectionCount {
-            let base = tocOffset + 8 + s * 32
+            let base = toc + 8 + s * 32
             let nameBytes = try bytes(at: base, count: 16)
             let name = String(decoding: nameBytes.prefix { $0 != 0 }, as: UTF8.self)
-            let start = Int(try i64(at: base + 16))
-            let size = Int(try i64(at: base + 24))
-            guard start >= 0, size >= 0, start + size <= data.count else {
+            let start = try i64(at: base + 16), size = try i64(at: base + 24)
+            guard start >= 0, size >= 0, start <= data.count, size <= Int64(data.count) - start else {
                 throw USDError.malformed("usdc: section '\(name)' out of bounds")
             }
-            sections[name] = (start, size)
+            sections[name] = (Int(start), Int(size))
         }
         for required in ["TOKENS", "FIELDS", "FIELDSETS", "PATHS", "SPECS"] {
             guard sections[required] != nil else {
@@ -104,12 +104,16 @@ final class USDCrateReader {
     }
 
     private func readTokens(at start: Int) throws {
-        let count = Int(try u64(at: start))
-        let uncompressed = Int(try u64(at: start + 8))
-        let compressed = Int(try u64(at: start + 16))
+        let count = try self.count(at: start)
+        let uncompressed = try self.count(at: start + 8, within: .compressed)
+        let compressed = try self.count(at: start + 16)
         let blob = try bytes(at: start + 24, count: compressed)
         let buf = try USDLZ4.decompress(blob, capacity: uncompressed)
         guard buf.last == 0 else { throw USDError.malformed("usdc: token pool not terminated") }
+        // Every token ends in a zero byte, so the pool holds no more tokens
+        // than it has bytes: a count past that is refused before anything is
+        // set aside for it.
+        guard count <= buf.count else { throw USDError.malformed("usdc: more tokens than the pool holds") }
         tokens = []
         tokens.reserveCapacity(count)
         var cursor = buf.startIndex
@@ -124,19 +128,19 @@ final class USDCrateReader {
     }
 
     private func readStrings(at start: Int) throws {
-        let count = Int(try u64(at: start))
+        let count = try self.count(at: start)
         stringTokenIndexes = try loadArray(at: start + 8, count: count, as: UInt32.self)
     }
 
     private func readFields(at start: Int) throws {
-        let count = Int(try u64(at: start))
+        let count = try self.count(at: start, within: .compressed)
         var cursor = start + 8
-        let indexesSize = Int(try u64(at: cursor)); cursor += 8
+        let indexesSize = try self.count(at: cursor); cursor += 8
         fieldNameIndexes = try USDIntegerCoding.decodeInt32(try bytes(at: cursor, count: indexesSize),
                                                             count: count)
             .map { UInt32(bitPattern: $0) }
         cursor += indexesSize
-        let repsSize = Int(try u64(at: cursor)); cursor += 8
+        let repsSize = try self.count(at: cursor); cursor += 8
         let repsBuf = try USDLZ4.decompress(try bytes(at: cursor, count: repsSize),
                                             capacity: count * 8)
         fieldReps = repsBuf.withUnsafeBytes { raw in
@@ -148,8 +152,8 @@ final class USDCrateReader {
     }
 
     private func readFieldSets(at start: Int) throws {
-        let count = Int(try u64(at: start))
-        let size = Int(try u64(at: start + 8))
+        let count = try self.count(at: start, within: .compressed)
+        let size = try self.count(at: start + 8)
         fieldSets = try USDIntegerCoding.decodeInt32(try bytes(at: start + 16, count: size),
                                                      count: count)
             .map { UInt32(bitPattern: $0) }
@@ -159,11 +163,11 @@ final class USDCrateReader {
     }
 
     private func readPaths(at start: Int) throws {
-        let numPaths = Int(try u64(at: start))
-        let numEncoded = Int(try u64(at: start + 8))
+        let numPaths = try self.count(at: start, within: .compressed)
+        let numEncoded = try self.count(at: start + 8, within: .compressed)
         var cursor = start + 16
         func codedInts() throws -> [Int32] {
-            let size = Int(try u64(at: cursor))
+            let size = try self.count(at: cursor)
             cursor += 8
             let out = try USDIntegerCoding.decodeInt32(try bytes(at: cursor, count: size),
                                                        count: numEncoded)
@@ -174,6 +178,11 @@ final class USDCrateReader {
         let elementTokens = try codedInts()
         let jumps = try codedInts()
 
+        // Every path is defined by one encoded entry, so the table is no
+        // larger than the entries that fill it, whatever the count says.
+        guard numPaths <= numEncoded else {
+            throw USDError.malformed("usdc: more paths than encoded entries")
+        }
         paths = Array(repeating: PathEntry(), count: numPaths)
         childOrder = Array(repeating: [], count: numPaths)
         guard numEncoded > 0 else { return }
@@ -183,7 +192,11 @@ final class USDCrateReader {
         // sibling-only (0), or both (sibling at +jump). Iterative with an
         // explicit stack so deep scenes can't overflow the call stack; a
         // pushed sibling keeps its own parent context.
+        // Each entry is read once: a jump table that led back to an entry
+        // already read would let a small file ask for a walk exponential in
+        // its size.
         var stack: [(start: Int, parent: Int)] = [(0, -1)]
+        var read = [Bool](repeating: false, count: numEncoded)
         while let top = stack.popLast() {
             var cur = top.start
             var parent = top.parent
@@ -191,6 +204,8 @@ final class USDCrateReader {
                 guard cur >= 0, cur < numEncoded else {
                     throw USDError.malformed("usdc: path traversal out of range")
                 }
+                guard !read[cur] else { throw USDError.malformed("usdc: path traversal revisits an entry") }
+                read[cur] = true
                 let this = cur
                 cur += 1
                 let pathIdx = Int(UInt32(bitPattern: pathIndexes[this]))
@@ -238,10 +253,10 @@ final class USDCrateReader {
     }
 
     private func readSpecs(at start: Int) throws {
-        let count = Int(try u64(at: start))
+        let count = try self.count(at: start, within: .compressed)
         var cursor = start + 8
         func codedInts() throws -> [Int32] {
-            let size = Int(try u64(at: cursor))
+            let size = try self.count(at: cursor)
             cursor += 8
             let out = try USDIntegerCoding.decodeInt32(try bytes(at: cursor, count: size),
                                                        count: count)
@@ -285,14 +300,19 @@ final class USDCrateReader {
         }
 
         let rootPrims = orderedChildren(of: rootPathIndex, by: rootChildNames)
+        var built = Set<Int>()
         for index in rootPrims {
-            if let prim = try buildPrim(at: index) { stage.prims.append(prim) }
+            if let prim = try buildPrim(at: index, depth: 0, built: &built) { stage.prims.append(prim) }
         }
         return stage
     }
 
-    private func buildPrim(at pathIndex: Int) throws -> USDPrim? {
-        guard let spec = specs[pathIndex], spec.type == SpecType.prim else { return nil }
+    /// One prim and everything under it. A path is built once, however many
+    /// times the traversal listed it under a parent (a file can list a path
+    /// under itself), and the tree stops at `USDStage.maxDepth`.
+    private func buildPrim(at pathIndex: Int, depth: Int, built: inout Set<Int>) throws -> USDPrim? {
+        guard depth < USDStage.maxDepth, built.insert(pathIndex).inserted,
+              let spec = specs[pathIndex], spec.type == SpecType.prim else { return nil }
         var prim = USDPrim(name: paths[pathIndex].element)
         var childNames: [String]?
         var propertyNames: [String]?
@@ -333,7 +353,7 @@ final class USDCrateReader {
 
         let childIndexes = childOrder[pathIndex].filter { !paths[$0].isProperty }
         for index in orderedByName(childIndexes, names: childNames) {
-            if let child = try buildPrim(at: index) { prim.children.append(child) }
+            if let child = try buildPrim(at: index, depth: depth + 1, built: &built) { prim.children.append(child) }
         }
         return prim
     }
@@ -487,11 +507,11 @@ final class USDCrateReader {
         case 33: return .stringArray(try readListOp(at: rep.offset) { try self.string(atStringIndex: $0) })
         case 34: return .pathArray(try readListOp(at: rep.offset) { try self.path(at: $0) })
         case 40:
-            let count = Int(try u64(at: rep.offset))
+            let count = try self.count(at: rep.offset)
             let indexes = try loadArray(at: rep.offset + 8, count: count, as: UInt32.self)
             return .pathArray(try indexes.map { try path(at: Int($0)) })
         case 41:
-            let count = Int(try u64(at: rep.offset))
+            let count = try self.count(at: rep.offset)
             let indexes = try loadArray(at: rep.offset + 8, count: count, as: UInt32.self)
             return .tokenArray(try indexes.map { try token(at: Int($0)) })
         case 42:
@@ -503,7 +523,7 @@ final class USDCrateReader {
         case 43: return .token(rep.inlined == 1 ? "private" : "public")
         case 44: return .token(rep.inlined == 0 ? "varying" : "uniform")
         case 45:
-            let count = Int(try u64(at: rep.offset))
+            let count = try self.count(at: rep.offset)
             var map: [String: USDValue] = [:]
             var cursor = rep.offset + 8
             for _ in 0..<count {
@@ -515,10 +535,10 @@ final class USDCrateReader {
             return .dictionary(map)
         case 46: return try unpackTimeSamples(at: rep.offset, depth: depth)
         case 48:
-            let count = Int(try u64(at: rep.offset))
+            let count = try self.count(at: rep.offset)
             return .doubleArray(try loadArray(at: rep.offset + 8, count: count, as: Double.self))
         case 50:
-            let count = Int(try u64(at: rep.offset))
+            let count = try self.count(at: rep.offset)
             let indexes = try loadArray(at: rep.offset + 8, count: count, as: UInt32.self)
             return .stringArray(try indexes.map { try string(atStringIndex: Int($0)) })
         case 51: return .block
@@ -600,7 +620,7 @@ final class USDCrateReader {
         if rep.payload == 0 { return Self.emptyArray(of: rep.type) }
         if rep.isCompressed { return try unpackCompressedArray(rep) }
         let offset = rep.offset
-        let count = Int(try u64(at: offset))
+        let count = try self.count(at: offset)
         let body = offset + 8
         switch rep.type {
         case 1:
@@ -658,10 +678,7 @@ final class USDCrateReader {
 
     private func unpackCompressedArray(_ rep: Rep) throws -> USDValue {
         let offset = rep.offset
-        let count = Int(try u64(at: offset))
-        guard count >= 0, count <= data.count else {
-            throw USDError.malformed("usdc: implausible array count")
-        }
+        let count = try self.count(at: offset)
         let body = offset + 8
 
         // Small arrays (fewer than 16 elements) store raw even when the
@@ -732,7 +749,7 @@ final class USDCrateReader {
     /// The `uint64 compressedSize` + bytes shape shared by every compressed
     /// array payload.
     private func compressedBody(at offset: Int) throws -> Data {
-        let size = Int(try u64(at: offset))
+        let size = try self.count(at: offset)
         return try bytes(at: offset + 8, count: size)
     }
 
@@ -762,7 +779,7 @@ final class USDCrateReader {
     /// A dictionary body: count, then per entry a string-index key and a
     /// nested value. `cursor` advances past the dictionary.
     private func readDictionary(at cursor: inout Int, depth: Int) throws -> [String: USDValue] {
-        let count = Int(try u64(at: cursor))
+        let count = try self.count(at: cursor)
         cursor += 8
         var result: [String: USDValue] = [:]
         for _ in 0..<count {
@@ -778,18 +795,17 @@ final class USDCrateReader {
     private func readNestedValue(at cursor: inout Int, depth: Int) throws -> USDValue {
         guard depth < 32 else { throw USDError.malformed("usdc: value nesting too deep") }
         let fieldPos = cursor
-        let forward = Int(try i64(at: fieldPos))
-        guard forward >= 8 else { throw USDError.malformed("usdc: bad nested value offset") }
-        let rep = try u64(at: fieldPos + forward)
-        cursor = fieldPos + forward + 8
+        let target = try offset(fieldPos, by: try i64(at: fieldPos))
+        guard target >= fieldPos + 8 else { throw USDError.malformed("usdc: bad nested value offset") }
+        let rep = try u64(at: target)
+        cursor = target + 8
         return try unpack(rep, depth: depth + 1)
     }
 
     /// Time samples: a forward offset to the times rep, then a forward offset
     /// to the per-sample rep list.
     private func unpackTimeSamples(at offset: Int, depth: Int) throws -> USDValue {
-        let offA = Int(try i64(at: offset))
-        let timesRepPos = offset + offA
+        let timesRepPos = try self.offset(offset, by: try i64(at: offset))
         let timesValue = try unpack(try u64(at: timesRepPos), depth: depth + 1)
         let times: [Double]
         switch timesValue {
@@ -799,9 +815,8 @@ final class USDCrateReader {
         default: throw USDError.malformed("usdc: time samples times are not numeric")
         }
         let p2 = timesRepPos + 8
-        let offB = Int(try i64(at: p2))
-        var cursor = p2 + offB
-        let numValues = Int(try u64(at: cursor))
+        var cursor = try self.offset(p2, by: try i64(at: p2))
+        let numValues = try self.count(at: cursor)
         cursor += 8
         guard numValues == times.count else {
             throw USDError.malformed("usdc: time samples count mismatch")
@@ -826,7 +841,7 @@ final class USDCrateReader {
         let isExplicit = header & 1 != 0
         func vector(if bit: UInt8) throws -> [String] {
             guard header & bit != 0 else { return [] }
-            let count = Int(try u64(at: cursor))
+            let count = try self.count(at: cursor)
             cursor += 8
             let indexes = try loadArray(at: cursor, count: count, as: UInt32.self)
             cursor += count * 4
@@ -900,6 +915,35 @@ final class USDCrateReader {
         return data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt64.self) }
     }
 
+    /// How far a count read from the file may reach. A plain count names
+    /// elements that each take at least a byte of the file, so it is no larger
+    /// than the file. A count behind the integer coding or LZ4 may reach a
+    /// little over a thousand times the file (the coding spends two bits on a
+    /// repeated value, and LZ4 turns a byte into at most 255), and no more.
+    enum Reach { case file, compressed }
+
+    /// A count or a size at `offset`, refused when it is past what the file
+    /// could hold, so nothing is set aside for it and no arithmetic on it can
+    /// overflow.
+    private func count(at offset: Int, within reach: Reach = .file) throws -> Int {
+        let value = try u64(at: offset)
+        let limit = reach == .file ? UInt64(data.count) : UInt64(data.count) * 1024 + 1024
+        guard value <= limit else {
+            throw USDError.malformed("usdc: a count of \(value) in a file of \(data.count) bytes")
+        }
+        return Int(value)
+    }
+
+    /// `base` moved by a signed distance read from the file, refused when it
+    /// lands outside the file.
+    private func offset(_ base: Int, by distance: Int64) throws -> Int {
+        let (target, overflow) = Int64(base).addingReportingOverflow(distance)
+        guard !overflow, target >= 0, target <= data.count else {
+            throw USDError.malformed("usdc: an offset outside the file")
+        }
+        return Int(target)
+    }
+
     private func i64(at offset: Int) throws -> Int64 {
         Int64(bitPattern: try u64(at: offset))
     }
@@ -910,8 +954,8 @@ final class USDCrateReader {
 
     /// Bulk-load `count` bitwise elements at `offset`.
     private func loadArray<T>(at offset: Int, count: Int, as type: T.Type) throws -> [T] {
-        let byteCount = count * MemoryLayout<T>.stride
-        guard offset >= 0, count >= 0, offset <= data.count, byteCount <= data.count - offset else {
+        let (byteCount, overflow) = count.multipliedReportingOverflow(by: MemoryLayout<T>.stride)
+        guard !overflow, offset >= 0, count >= 0, offset <= data.count, byteCount <= data.count - offset else {
             throw USDError.malformed("usdc: array read out of bounds")
         }
         return data.withUnsafeBytes { raw in

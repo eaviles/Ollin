@@ -488,7 +488,7 @@ The format is **SFZ**, a plain text file listing regions. Each region names an a
 
 Ollin reads the opcodes that decide which file plays and at what pitch. They are `sample`, `lokey` / `hikey` / `key`, `pitch_keycenter`, `lovel` / `hivel`, `tune`, `transpose`, `volume`, and the loop points. SFZ has hundreds of others covering filters, envelopes, round robins and modulation.
 
-**An unknown opcode is skipped rather than refused**, so a library that uses them loads and plays, without the parts this does not model. A region whose audio file is missing costs you that part of the range rather than the whole instrument.
+**An unknown opcode is skipped rather than refused**, so a library that uses them loads and plays, without the parts this does not model. A region whose audio file is missing costs you that part of the range rather than the whole instrument. The numbers are held to the ranges the format gives them. Keys and velocities run 0 to 127. `tune` stays within eight octaves and `transpose` within 127 semitones. `volume` runs from -144 to 48 dB, and a loop point is never below zero. A value past its range reads as the nearest end, and one that is not a number reads as the default.
 
 `Examples/Audio/OwnSampler` is an instrument made rather than downloaded. It has three recordings generated beside the sketch and a three-region map, read with `SampledInstrument(sfz:in:)`. Each recording is drawn with its loop region shaded. `Examples/Audio/Sampler` plays the bundled one.
 
@@ -844,7 +844,7 @@ A room is what it does to a click. Clap once in a stairwell and what comes back 
 
 | Where a room comes from | What it is |
 |---|---|
-| `try ImpulseResponse.load("stairwell.wav")` | a recording, in any file the system plays. The first two channels are kept |
+| `try ImpulseResponse.load("stairwell.wav")` | a recording, in any file the system plays. The first two channels are kept, up to `ImpulseResponse.maxSeconds` of it |
 | `try .resource("stairwell", withExtension: "wav", in: .module)` | the same, from the sketch's own bundle |
 | `.decay(seconds: 3, damping: 0.6)` | fading noise, the plainest room there is. `seconds` is how long it takes to fall silent, and `damping` is how much faster the top end goes |
 | `ImpulseResponse(seconds: 2) { t, noise in ... }` | drawn from a rule. The closure is asked for every sample, with the time since the click and a noise value it may use or ignore |

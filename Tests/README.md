@@ -135,8 +135,8 @@ record snapshots while another session is running tests.
 
 ## Bytes that arrived from outside
 
-Every decoder that reads a network or a cable runs under a seeded mutation
-harness: `OllinMutation` (a regular target under `Tests/`, Foundation only,
+Every decoder that reads a network or a cable, and every reader of a file a
+sketch is handed, runs under a seeded mutation harness: `OllinMutation` (a regular target under `Tests/`, Foundation only,
 for the same reason as the browser gate), driven from `OllinMutationTests`, one
 suite per wire. The one thing asserted is that every call comes back: a value,
 a `nil`, or a throw. A trap (an index out of range, an overflow, a narrowing
@@ -174,6 +174,53 @@ every mutated block rebuilt a mesh of thousands per case. A decoder reached
 only through state (a pong that lands on a measurement in flight) needs that
 state set up in the closure. A message the parser reads as nothing is not a
 seed.
+
+### Files, and what a file declares
+
+The readers of the files a sketch is handed run under the same harness, one
+suite per family: color files (`.cube`, palettes, ICC), timelines (takes,
+automations, cue sheets, formula text), MIDI, IES, and SVG, models (glTF text
+and binary, OBJ and its material, PLY and STL through Model I/O, and USD as
+text, crate, and package), depth recordings and sound files and SFZ
+instruments, shader text (the GLSL importer and the include resolver), data
+tables and JSON, and physics snapshots. A reader that only opens a path is
+handed each case through a file in a `ScratchFolder`. A file adds two things a
+datagram does not have.
+
+**What a file declares.** A count or a size in a file is checked against the
+bytes that remain before anything is set aside for it, so a forty-byte file
+that claims four billion entries is refused rather than answered with a
+gigabyte. A block set aside and never touched costs nothing a trap check can
+see, so a run can pass `allocations:` and the harness watches the largest
+single block the decoding thread asks for, through the allocator's own logging
+hook (`AllocationWatch`, written in C in `COllinAllocationWatch` because it
+runs inside the allocator, where generic Swift in a debug build allocates). A
+case over its `AllocationBound` (16 MB plus so much per byte of input, 64 for
+most readers, 4096 for a USD crate, whose LZ4 and integer coding together pack
+a thousand values into a byte) is named in `report.oversized`; a block past a
+gigabyte stops the process before it can be filled, writing the case to
+standard error, and the log holds it as it would for a trap. The watch cannot
+see past Thread Sanitizer's own allocator, so the file suites stand down under
+`Scripts/test.sh tsan`. Text formats take the **number sweep**
+(`numberSweep: true`): every number in the input replaced, one at a time, by
+each of `Mutator.numberSpellings` (`-1`, `256`, `65536`, `2147483648`,
+`9223372036854775807`, `1e999`, `nan`, …), the field sweep's twin for a format
+that writes its numbers as words. A seed built with `JSONSerialization` is
+written with `.sortedKeys`, or its bytes (and every case number) change with
+the process's hash seed.
+
+**How deep a file nests.** A stack overflow is a trap the edits never reach:
+they do not nest a structure ten thousand deep. `DeepInputTests` hands each
+reader that recurses such an input directly, on a thread with a 512 KB stack,
+the size a background thread or a task gets, where the main thread's eight
+megabytes would hide a recursion a background load dies of. The limits are
+measured there: a scene nests at most 64 levels (glTF's
+`GLTFDocument.maxNodeDepth` and USD's `USDStage.maxDepth`), because a walk of a
+scene takes about six and a half kilobytes a level in a debug build; a formula
+is at most 1,024 tokens nested 64 deep; the include resolver stops at 32. A
+file that names another file (a model's buffer, a material's picture, a
+shader's include) reads it only when it is a regular file, never a device such
+as `/dev/zero`.
 
 ## The handoffs under Thread Sanitizer
 

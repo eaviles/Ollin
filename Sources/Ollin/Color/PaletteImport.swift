@@ -287,30 +287,42 @@ private struct ByteReader {
         return String(decoding: scalars, as: UTF16.self)
     }
 
-    /// A four-character model tag, its floats, and the swatch's color type.
+    /// A four-character model tag, its floats, and the swatch's color type. A
+    /// swatch whose numbers are not all finite is not a color and reads as
+    /// `nil`, so it is skipped rather than handed on as a color no hue can be
+    /// taken of.
     mutating func color() -> Color? {
         guard let model = ascii(4) else { return nil }
         var color: Color?
+        func floats(_ count: Int) -> [Float]? {
+            var values: [Float] = []
+            for _ in 0..<count {
+                guard let v = f32() else { return nil }
+                values.append(v)
+            }
+            return values.allSatisfy(\.isFinite) ? values : nil
+        }
         switch model.trimmingCharacters(in: .whitespaces).uppercased() {
         case "RGB":
-            if let r = f32(), let g = f32(), let b = f32() {
-                color = Color(red: clamped(r), green: clamped(g), blue: clamped(b))
+            if let v = floats(3) {
+                color = Color(red: clamped(v[0]), green: clamped(v[1]), blue: clamped(v[2]))
             }
         case "GRAY":
-            if let v = f32() {
-                let g = clamped(v)
+            if let v = floats(1) {
+                let g = clamped(v[0])
                 color = Color(red: g, green: g, blue: g)
             }
         case "CMYK":
-            if let c = f32(), let m = f32(), let y = f32(), let k = f32() {
+            if let v = floats(4) {
+                let (c, m, y, k) = (v[0], v[1], v[2], v[3])
                 color = Color(red: clamped((1 - c) * (1 - k)),
                               green: clamped((1 - m) * (1 - k)),
                               blue: clamped((1 - y) * (1 - k)))
             }
         case "LAB":
             // Lightness arrives as 0...1 here, not the 0...100 of CIELAB proper.
-            if let l = f32(), let a = f32(), let b = f32() {
-                color = colorFromCIELAB(lightness: Double(l) * 100, a: Double(a), b: Double(b))
+            if let v = floats(3) {
+                color = colorFromCIELAB(lightness: Double(v[0]) * 100, a: Double(v[1]), b: Double(v[2]))
             }
         default:
             return nil
@@ -319,7 +331,7 @@ private struct ByteReader {
         return color
     }
 
-    private func clamped(_ v: Float) -> Double { min(max(Double(v), 0), 1) }
+    private func clamped(_ v: Float) -> Double { v.isNaN ? 0 : min(max(Double(v), 0), 1) }
 }
 
 /// CIELAB to sRGB through XYZ, on the D50 white point swatch files are written
@@ -346,7 +358,9 @@ private func colorFromCIELAB(lightness l: Double, a: Double, b: Double) -> Color
     let g = -0.9787684 * x + 1.9161415 * y + 0.0334540 * z
     let bl = 0.0719453 * x - 0.2289914 * y + 1.4052427 * z
 
-    func encode(_ c: Double) -> Double { min(max(Color.linearToSrgb(min(max(c, 0), 1)), 0), 1) }
+    func encode(_ c: Double) -> Double {
+        c.isNaN ? 0 : min(max(Color.linearToSrgb(min(max(c, 0), 1)), 0), 1)
+    }
     return Color(red: encode(r), green: encode(g), blue: encode(bl))
 }
 

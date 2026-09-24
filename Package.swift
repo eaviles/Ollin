@@ -1123,22 +1123,36 @@ let package = Package(
         // above, with nothing but Foundation in it.
         .target(
             name: "OllinMutation",
+            dependencies: ["COllinAllocationWatch"],
             path: "Tests/OllinMutation"
         ),
-        // Bytes off a wire never trap: every decoder that reads a network or a
-        // cable (OSC and TUIO, MQTT, Link, the phone wire both ways and the
-        // picture framing, the room, the HTTP head and the WebSocket frames,
-        // OSCQuery's request and message routes, MIDI and the timecode walk,
-        // Art-Net and sACN, the Record3D stream, the usbmux reply, Firmata and
-        // the serial lines, the Bluetooth formats) run under the harness. The
-        // one thing asserted is that every call comes back: a value, a `nil`,
-        // or a throw. A trap is the failure, and the harness's own self-test
-        // proves one is caught and its case recovered. GPU-free, runs in CI.
+        // The harness's allocation watch: the allocator's logging hook, kept in
+        // C because it runs inside the allocator and must not allocate, which
+        // generic Swift in a debug build does.
+        .target(
+            name: "COllinAllocationWatch",
+            path: "Tests/COllinAllocationWatch"
+        ),
+        // Bytes off a wire, and bytes in a file, never trap: every decoder that
+        // reads a network or a cable (OSC and TUIO, MQTT, Link, the phone wire
+        // both ways and the picture framing, the room, the HTTP head and the
+        // WebSocket frames, OSCQuery's request and message routes, MIDI and
+        // the timecode walk, Art-Net and sACN, the RGBD USB stream, the usbmux
+        // reply, Firmata and the serial lines, the Bluetooth formats) and every
+        // reader of a file a sketch is handed (looks, palettes, profiles,
+        // timelines, music, light profiles, drawings, models and scenes,
+        // recordings, sounds, instruments, shader text, tables, snapshots) run
+        // under the harness. The one thing asserted is that every call comes
+        // back: a value, a `nil`, or a throw. A trap is the failure; for a file,
+        // so is setting aside memory a count declares before checking it, and
+        // recursing into what it nests past a measured limit. The harness's own
+        // self-tests prove each is caught. GPU-free, runs in CI.
         .testTarget(
             name: "OllinMutationTests",
             dependencies: ["OllinMutation", "Ollin", "OllinOSC", "OllinMQTT", "OllinLink", "OllinPhone",
                            "OllinRoom", "OllinRemote", "OllinMIDI", "OllinDMX", "OllinRecord3D",
-                           "OllinUSBMux", "OllinSerial", "OllinBluetooth"]
+                           "OllinUSBMux", "OllinSerial", "OllinBluetooth", "OllinAudio", "OllinPhysics",
+                           "OllinProjects", "OllinShaderText"]
         ),
         // The Metal-to-GLSL rewriter: each rule pinned on a small source, and the
         // shader helper library translated whole and compiled in a headless

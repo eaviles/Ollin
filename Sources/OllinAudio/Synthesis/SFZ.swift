@@ -143,20 +143,28 @@ struct SFZRegion {
         // With no center given, the file is taken to be recorded at the bottom
         // of its own range, which is what a one-file-per-note library means.
         rootKey = opcodes["pitch_keycenter"].flatMap(SFZRegion.note) ?? key ?? lowKey
-        lowVelocity = opcodes["lovel"].flatMap { Int($0) } ?? 0
-        highVelocity = opcodes["hivel"].flatMap { Int($0) } ?? 127
+        // Every number below is held to the range the format gives it: a key
+        // or a velocity is a MIDI number, a correction is a few octaves at
+        // most, and a level is in decibels. A value past its range (or not a
+        // number) would reach the voice as a pitch step no playback can take.
+        func velocity(_ text: String?) -> Int? { text.flatMap { Int($0) }.map { min(max($0, 0), 127) } }
+        func number(_ text: String?, in range: ClosedRange<Double>) -> Double? {
+            guard let value = text.flatMap({ Double($0) }), value.isFinite else { return nil }
+            return min(max(value, range.lowerBound), range.upperBound)
+        }
+        lowVelocity = velocity(opcodes["lovel"]) ?? 0
+        highVelocity = velocity(opcodes["hivel"]) ?? 127
 
-        let cents = opcodes["tune"].flatMap { Double($0) } ?? 0
-        let semitones = opcodes["transpose"].flatMap { Double($0) } ?? 0
+        let cents = number(opcodes["tune"], in: -9600...9600) ?? 0
+        let semitones = number(opcodes["transpose"], in: -127...127) ?? 0
         tune = cents + semitones * 100
-        volume = opcodes["volume"].flatMap { Double($0) } ?? 0
+        volume = number(opcodes["volume"], in: -144...48) ?? 0
 
         let mode = opcodes["loop_mode"] ?? ""
         loops = mode == "loop_continuous" || mode == "loop_sustain"
-        loopStart = opcodes["loop_start"].flatMap { Int($0) }
-            ?? opcodes["loopstart"].flatMap { Int($0) }
-        loopEnd = opcodes["loop_end"].flatMap { Int($0) }
-            ?? opcodes["loopend"].flatMap { Int($0) }
+        func frame(_ text: String?) -> Int? { text.flatMap { Int($0) }.flatMap { $0 >= 0 ? $0 : nil } }
+        loopStart = frame(opcodes["loop_start"]) ?? frame(opcodes["loopstart"])
+        loopEnd = frame(opcodes["loop_end"]) ?? frame(opcodes["loopend"])
     }
 
     /// A note as a number, written either way round: `60` or `c4`.
@@ -165,7 +173,8 @@ struct SFZRegion {
     /// half of them for no reason a user could see.
     static func note(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        if let number = Int(trimmed) { return number }
+        // A key is a MIDI number; -1 is the format's way of saying none.
+        if let number = Int(trimmed) { return (-1...127).contains(number) ? number : nil }
 
         var characters = Array(trimmed.lowercased())
         guard !characters.isEmpty else { return nil }
@@ -177,8 +186,9 @@ struct SFZRegion {
             semitone += first == "#" ? 1 : -1
             characters.removeFirst()
         }
-        guard let octave = Int(String(characters)) else { return nil }
+        guard let octave = Int(String(characters)), (-1...9).contains(octave) else { return nil }
         // The convention SFZ uses puts middle C at 60, which is c4 here.
-        return (octave + 1) * 12 + semitone
+        let number = (octave + 1) * 12 + semitone
+        return (-1...127).contains(number) ? number : nil
     }
 }

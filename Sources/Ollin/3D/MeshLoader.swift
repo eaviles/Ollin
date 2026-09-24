@@ -204,7 +204,7 @@ extension Mesh {
     /// color, `map_Kd` → texture image (relative to the `.mtl`'s folder). OBJ has no
     /// color-space tag, so `Kd` is taken as the display (sRGB) color directly.
     private static func loadMTL(_ url: URL, use name: String?) -> MeshMaterial? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        guard let text = NamedFile.text(at: url) else { return nil }
         let dir = url.deletingLastPathComponent()
         struct M { var kd: Color?; var mapKd: String?; var clamped = false }
         var mats: [String: M] = [:]
@@ -240,7 +240,7 @@ extension Mesh {
         var texture: Image?
         if let file = m.mapKd {
             let path = file.removingPercentEncoding ?? file
-            if let data = try? Data(contentsOf: dir.appendingPathComponent(path)) { texture = Image(data: data) }
+            if let data = NamedFile.data(at: dir.appendingPathComponent(path)) { texture = Image(data: data) }
         }
         if m.kd == nil, texture == nil { return nil }
         return MeshMaterial(baseColor: m.kd ?? .white, texture: texture,
@@ -260,6 +260,12 @@ extension Mesh {
     /// UVs are kept only when every part has them (a partial set can't map).
     static func loadUSD(_ url: URL) -> Mesh? {
         guard let scene = Scene.loadUSDScene(url) else { return nil }
+        return merged(scene)
+    }
+
+    /// A USD scene merged to one mesh, the half of `loadUSD(_:)` that reads no
+    /// file.
+    static func merged(_ scene: Scene) -> Mesh? {
 
         var positions: [Vector3] = []
         var normals: [Vector3] = []
@@ -268,29 +274,33 @@ extension Mesh {
         var allHaveUV = true
         var material: MeshMaterial?
 
+        // The walk holds only the world transform; one node's work is its own
+        // call, so its locals are not on the stack of every level.
+        func add(_ mesh: Mesh, at world: simd_float4x4) {
+            guard !mesh.positions.isEmpty, !mesh.indices.isEmpty else { return }
+            let normalMatrix = world.normalMatrix
+            let base = UInt32(positions.count)
+            for p in mesh.positions {
+                let w = world * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                positions.append(Vector3(Double(w.x), Double(w.y), Double(w.z)))
+            }
+            for n in mesh.normals {
+                let w = normalMatrix * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z))
+                let v = Vector3(Double(w.x), Double(w.y), Double(w.z))
+                normals.append(v.lengthSquared > 1e-12 ? v.normalized : .unitY)
+            }
+            if mesh.uvs.count == mesh.positions.count {
+                uvs.append(contentsOf: mesh.uvs)
+            } else {
+                allHaveUV = false
+                uvs.append(contentsOf: repeatElement(.zero, count: mesh.positions.count))
+            }
+            indices.append(contentsOf: mesh.indices.map { base + $0 })
+            if material == nil { material = mesh.material }
+        }
         func visit(_ node: SceneNode, parent: simd_float4x4) {
             let world = parent * node.localTransform
-            if let mesh = node.mesh, !mesh.positions.isEmpty, !mesh.indices.isEmpty {
-                let normalMatrix = world.normalMatrix
-                let base = UInt32(positions.count)
-                for p in mesh.positions {
-                    let w = world * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
-                    positions.append(Vector3(Double(w.x), Double(w.y), Double(w.z)))
-                }
-                for n in mesh.normals {
-                    let w = normalMatrix * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z))
-                    let v = Vector3(Double(w.x), Double(w.y), Double(w.z))
-                    normals.append(v.lengthSquared > 1e-12 ? v.normalized : .unitY)
-                }
-                if mesh.uvs.count == mesh.positions.count {
-                    uvs.append(contentsOf: mesh.uvs)
-                } else {
-                    allHaveUV = false
-                    uvs.append(contentsOf: repeatElement(.zero, count: mesh.positions.count))
-                }
-                indices.append(contentsOf: mesh.indices.map { base + $0 })
-                if material == nil { material = mesh.material }
-            }
+            if let mesh = node.mesh { add(mesh, at: world) }
             for child in node.children { visit(child, parent: world) }
         }
         for node in scene.nodes { visit(node, parent: matrix_identity_float4x4) }
@@ -335,6 +345,7 @@ extension Mesh {
     /// handled) and submesh index buffers at their own bit depth. The merged mesh wears
     /// the first submesh material that carries a base color or texture.
     static func loadViaModelIO(_ url: URL) -> Mesh? {
+        if url.pathExtension.lowercased() == "stl", !stlFits(url) { return nil }
         let asset = MDLAsset(url: url)
         guard let mdlMeshes = asset.childObjects(of: MDLMesh.self) as? [MDLMesh],
               !mdlMeshes.isEmpty else { return nil }
@@ -384,7 +395,15 @@ extension Mesh {
     /// for a mesh with no position data.
     static func readMDLMesh(_ mdl: MDLMesh) -> MDLMeshData? {
         let normalAttr = mdl.vertexDescriptor.attributeNamed(MDLVertexAttributeNormal)
-        if normalAttr == nil || normalAttr?.format == MDLVertexFormat.invalid {
+        let authoredNormals = !(normalAttr == nil || normalAttr?.format == MDLVertexFormat.invalid)
+        // Model I/O hands a file's triangles through as it read them, and its
+        // own normal generation reads past the vertices when one names a vertex
+        // the mesh does not have. So the triangles are checked first: a mesh
+        // whose triangles all fit has its normals made there, as it always has,
+        // and one that does not keeps the triangles that fit and has smooth
+        // normals made here instead.
+        let trianglesFit = Self.trianglesFit(mdl)
+        if !authoredNormals, trianglesFit {
             mdl.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0.2)
         }
         guard let posAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition,
@@ -455,27 +474,74 @@ extension Mesh {
 
         for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
             if material == nil, let m = submesh.material { material = readMaterial(m) }
-            guard submesh.geometryType == .triangles else { continue }
-            let map = submesh.indexBuffer.map()
-            let raw = map.bytes
-            switch submesh.indexType {
-            case .uInt32:
-                let p = raw.assumingMemoryBound(to: UInt32.self)
-                for i in 0..<submesh.indexCount { indices.append(p[i]) }
-            case .uInt16:
-                let p = raw.assumingMemoryBound(to: UInt16.self)
-                for i in 0..<submesh.indexCount { indices.append(UInt32(p[i])) }
-            case .uInt8:
-                let p = raw.assumingMemoryBound(to: UInt8.self)
-                for i in 0..<submesh.indexCount { indices.append(UInt32(p[i])) }
-            default:
-                continue
-            }
+            guard let read = Self.triangleIndices(of: submesh) else { continue }
+            indices += GLTFDocument.triangles(read, vertexCount: count)
+        }
+        if !authoredNormals, !trianglesFit {
+            normals = [Vector3](repeating: .zero, count: count)
+            Mesh.smoothNormals(into: &normals, positions: positions, indices: indices, vertexRange: 0..<count)
         }
 
         let unit = normals.map { $0.lengthSquared > 1e-12 ? $0.normalized : .unitY }
         return MDLMeshData(positions: positions, normals: unit, uvs: uvs,
                            indices: indices, colors: colors, material: material)
+    }
+
+    /// Whether an STL file holds what it says it does. A binary STL is an
+    /// 80-byte header, a triangle count, and fifty bytes for each triangle, and
+    /// Model I/O sets aside room for the count before it reads a triangle, so a
+    /// count the file's bytes cannot hold is refused here rather than answered
+    /// with gigabytes. A text STL (it opens with `solid` and names its facets)
+    /// carries no count and is left to Model I/O.
+    static func stlFits(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd(), (try? handle.seek(toOffset: 0)) != nil,
+              let head = try? handle.read(upToCount: 512) else { return false }
+        if head.starts(with: Data("solid".utf8)), String(decoding: head, as: UTF8.self).contains("facet") {
+            return true
+        }
+        guard head.count >= 84 else { return false }
+        let count = head[80..<84].reversed().reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
+        return 84 + count * 50 <= size
+    }
+
+    /// A triangle submesh's indices as the file gave them, or `nil` for a
+    /// submesh of another kind, an index width this does not read, or a buffer
+    /// shorter than the count it claims.
+    private static func triangleIndices(of submesh: MDLSubmesh) -> [UInt32]? {
+        guard submesh.geometryType == .triangles else { return nil }
+        let width: Int
+        switch submesh.indexType {
+        case .uInt32: width = 4
+        case .uInt16: width = 2
+        case .uInt8: width = 1
+        default: return nil
+        }
+        let count = submesh.indexCount
+        guard count >= 0, submesh.indexBuffer.length >= count * width else { return nil }
+        let raw = submesh.indexBuffer.map().bytes
+        switch width {
+        case 4:
+            let p = raw.assumingMemoryBound(to: UInt32.self)
+            return (0..<count).map { p[$0] }
+        case 2:
+            let p = raw.assumingMemoryBound(to: UInt16.self)
+            return (0..<count).map { UInt32(p[$0]) }
+        default:
+            let p = raw.assumingMemoryBound(to: UInt8.self)
+            return (0..<count).map { UInt32(p[$0]) }
+        }
+    }
+
+    /// Whether every triangle of every submesh names a vertex the mesh has.
+    private static func trianglesFit(_ mdl: MDLMesh) -> Bool {
+        let count = mdl.vertexCount
+        for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
+            guard let read = triangleIndices(of: submesh) else { continue }
+            if read.contains(where: { Int($0) >= count }) { return false }
+        }
+        return true
     }
 
     /// Read an `MDLMaterial`'s base color: a texture (decoded to an `Image`) or a solid

@@ -1,11 +1,12 @@
 import Foundation
+import Synchronization
 import Testing
 import OllinMutation
 
 /// Whether this process runs under Thread Sanitizer, read off the loaded
 /// images: the sanitizer's runtime is a dynamic library inserted at launch.
 /// `Scripts/test.sh tsan` is the run that sets it.
-private var underThreadSanitizer: Bool {
+var underThreadSanitizer: Bool {
     (0..<_dyld_image_count()).contains { index in
         String(cString: _dyld_get_image_name(index)).contains("libclang_rt.tsan")
     }
@@ -157,5 +158,106 @@ private var underThreadSanitizer: Bool {
         #expect(entry.bytes.isEmpty)
         #expect(entry.bytes.count < 5)
         try? FileManager.default.removeItem(at: MutationLog.url(for: "selftest-unsafe"))
+    }
+
+    // MARK: The allocation watch
+
+    /// The watch counts the blocks its own thread asks for and no other
+    /// thread's: two plain threads, one watching while the other allocates
+    /// far more at the same moment.
+    @Test(.enabled(if: AllocationWatch.isAvailable, "the allocator does not report to the watch in this process"))
+    func theWatchSeesItsOwnThreadAndNoOther() async {
+        // Two plain threads (never pool workers) take turns through one
+        // flag: 1 once the watch is on, 2 once the other thread's block is
+        // freed.
+        let step = Atomic<Int>(0)
+        let largest: Int = await withCheckedContinuation { done in
+            Thread.detachNewThread {
+                while step.load(ordering: .acquiring) < 1 { Thread.sleep(forTimeInterval: 0.001) }
+                let block = malloc(64 << 20)
+                memset(block, 1, 4096)
+                free(block)
+                step.store(2, ordering: .releasing)
+            }
+            Thread.detachNewThread {
+                guard let slot = AllocationWatch.begin(naming: "selftest-threads") else { done.resume(returning: -1); return }
+                step.store(1, ordering: .releasing)
+                while step.load(ordering: .acquiring) < 2 { Thread.sleep(forTimeInterval: 0.001) }
+                let own = malloc(3 << 20)
+                free(own)
+                done.resume(returning: AllocationWatch.end(slot))
+            }
+        }
+        #expect(largest >= 3 << 20)
+        #expect(largest < 64 << 20)
+    }
+
+    /// The declared-size case, and the one this watch exists for: a format of
+    /// a three-byte count and that many sixteen-byte entries. The reader that
+    /// checks the count against the bytes that remain before it sets anything
+    /// aside stays inside the bound on every case; its twin, which reserves
+    /// what the count says first, asks for up to 256 MB for a file of a few
+    /// bytes and is named by the cases that did it.
+    @Test(.enabled(if: AllocationWatch.isAvailable, "the allocator does not report to the watch in this process"))
+    func aCountReservedBeforeItIsCheckedGoesRed() throws {
+        func read(_ bytes: [UInt8], checksFirst: Bool) -> Bool {
+            guard bytes.count >= 3 else { return false }
+            let count = Int(bytes[0]) << 16 | Int(bytes[1]) << 8 | Int(bytes[2])
+            var entries: [SIMD4<Float>] = []
+            if checksFirst {
+                guard count <= (bytes.count - 3) / 16 else { return false }
+                entries.reserveCapacity(count)
+            } else {
+                entries.reserveCapacity(count)
+                guard count <= (bytes.count - 3) / 16 else { return false }
+            }
+            for entry in 0..<count {
+                let at = 3 + entry * 16
+                entries.append(SIMD4(Float(bytes[at]), Float(bytes[at + 4]), Float(bytes[at + 8]), Float(bytes[at + 12])))
+            }
+            return entries.count == count
+        }
+        let seed: [UInt8] = [0, 0, 2] + [UInt8](repeating: 7, count: 32)
+        let bound = AllocationBound(perInputByte: 4)
+        let checked = MutationRun.run("selftest-count-checked", seeds: [seed], count: 300, seed: 5, allocations: bound) {
+            read($0, checksFirst: true)
+        }
+        #expect(checked.oversizedCount == 0, "\(checked)")
+        #expect(checked.seedsRefused.isEmpty)
+        #expect(checked.largestAllocation > 0)
+
+        let reserved = MutationRun.run("selftest-count-reserved", seeds: [seed], count: 300, seed: 5, allocations: bound) {
+            read($0, checksFirst: false)
+        }
+        #expect(reserved.oversizedCount > 0, "\(reserved)")
+        let first = try #require(reserved.oversized.first)
+        #expect(first.allocated > first.limit)
+        #expect(first.bytes.count < 64)
+        // The count the case carries is what it reserved for.
+        let declared = Int(first.bytes[0]) << 16 | Int(first.bytes[1]) << 8 | Int(first.bytes[2])
+        #expect(first.allocated >= declared * 16)
+        #expect(reserved.largestAllocation <= AllocationWatch.ceiling)
+    }
+
+    /// A block past the ceiling does not wait to be recorded: the process
+    /// stops before the decoder can fill it, and the log holds the case as it
+    /// would for a trap. The seed decodes; the sweep's all-ones count at the
+    /// head is the first case that asks for two gigabytes.
+    @Test(.enabled(if: AllocationWatch.isAvailable && !underThreadSanitizer, "the watch or the exit test is not available in this process"))
+    func aBlockPastTheCeilingStopsTheProcessAndTheLogNamesTheCase() async throws {
+        try? FileManager.default.removeItem(at: MutationLog.url(for: "selftest-ceiling"))
+        await #expect(processExitsWith: .failure) {
+            _ = MutationRun.run("selftest-ceiling", seeds: [[0, 1, 9, 9]], count: 10, seed: 7,
+                                allocations: AllocationBound(perInputByte: 1)) { bytes in
+                guard let first = bytes.first else { return false }
+                let block = malloc(Int(first) << 23)
+                free(block)
+                return true
+            }
+        }
+        let entry = try #require(MutationLog.lastEntry(for: "selftest-ceiling"))
+        #expect(entry.name == "selftest-ceiling")
+        #expect(Int(entry.bytes[0]) << 23 > AllocationWatch.ceiling)
+        try? FileManager.default.removeItem(at: MutationLog.url(for: "selftest-ceiling"))
     }
 }

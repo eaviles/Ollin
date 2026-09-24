@@ -182,26 +182,19 @@ public struct ImpulseResponse: Sendable, Hashable, Codable {
 
     /// A room read from a file. See `load(_:)` for what it throws.
     public init(contentsOf url: URL) throws {
-        let file = try AVAudioFile(forReading: url)
-        let format = file.processingFormat
-        let rate = format.sampleRate
-        let available = Int(file.length)
-        let limit = Int(ImpulseResponse.maxSeconds * rate)
-        let count = min(available, limit)
-        guard count > 0, rate > 0,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)),
-              (try? file.read(into: buffer, frameCount: AVAudioFrameCount(count))) != nil,
-              let data = buffer.floatChannelData else {
+        // One frame past the limit is read, which is how a response longer
+        // than the limit is told from one exactly as long.
+        let rate = try AVAudioFile(forReading: url).processingFormat.sampleRate
+        let limit = AudioFileFrames.rates.contains(rate) ? Int(ImpulseResponse.maxSeconds * rate) : 0
+        guard limit > 0, let read = try AudioFileFrames.read(url, limit: limit + 1) else {
             throw AudioError.empty(url.lastPathComponent)
         }
-        if available > limit {
+        if read.frameCount > limit {
             audioNoteOnce("the impulse response at \(url.lastPathComponent) is longer than "
                           + "\(Int(ImpulseResponse.maxSeconds)) seconds and was cut there.")
         }
-        let frames = Int(buffer.frameLength)
-        let sides = min(2, Int(format.channelCount))
-        channels = (0..<sides).map { Array(UnsafeBufferPointer(start: data[$0], count: frames)) }
-        sampleRate = rate
+        channels = read.channels.prefix(2).map { Array($0.prefix(limit)) }
+        sampleRate = read.sampleRate
     }
 
     // MARK: Turned around

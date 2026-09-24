@@ -54,6 +54,8 @@ Structure comes from two families of format:
 
 Any other format that `loadMesh` reads (`.obj`, `.stl`, `.ply`, …) has no scene graph for Ollin to preserve. Such a file loads as a **single-node scene**: the merged mesh on one node named after the file, with no cameras or lights. Every loader returns `nil` if the file can't be read or holds nothing.
 
+**A file is read as something a stranger could have made.** A node tree nested more than 64 levels deep keeps its first 64. Every walk of a scene (its bounds, the posing, the draw) goes one call deeper per level. 64 is the depth that fits the stack a background thread or a `Task` gets. No model a person builds comes near it. A node listed under two parents, or under itself, is read once. A triangle that names a vertex its mesh does not have is left out, since every pass over a triangle looks its corners up. A buffer, picture, or material a file names is read only when it is an ordinary file, never a folder or a device. A count the file declares is checked against the bytes the file holds before anything is set aside for it. A small file that claims millions of vertices is refused rather than answered with gigabytes.
+
 A glTF with several scenes loads its default scene. If you export from Blender, the glTF exporter includes cameras and punctual lights only when their export options are ticked. Some versions leave those off by default.
 
 <a id="drawing"></a>

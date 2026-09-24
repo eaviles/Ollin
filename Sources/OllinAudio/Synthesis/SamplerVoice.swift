@@ -54,6 +54,13 @@ struct SamplerVoice {
         // The recording may not be at the rate this is playing at, and both
         // corrections are the same kind of thing, so they multiply.
         step = pow(2, semitones / 12) * (zone.sampleRate / max(1, sampleRate))
+        // A recording whose rate or tuning makes no finite step has nothing
+        // to play; the read head would leave the recording on its first step.
+        guard step.isFinite, step > 0 else {
+            self.instrument = nil
+            finished = true
+            return
+        }
         baseStep = step
 
         // At zero sensitivity a note is as loud as it was recorded, which is
@@ -62,7 +69,7 @@ struct SamplerVoice {
         gain = zone.gain * (1 - spec.velocitySensitivity + spec.velocitySensitivity * struck)
 
         if spec.loops, let start = zone.loopStart, let end = zone.loopEnd,
-           end > start, end < zone.frames.count {
+           start >= 0, end > start, end < zone.frames.count {
             loop = (start, end)
         }
         position = 0

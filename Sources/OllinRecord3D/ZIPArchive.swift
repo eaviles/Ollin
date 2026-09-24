@@ -114,6 +114,10 @@ struct ZIPArchive {
     /// (the entry's known uncompressed size).
     private static func inflate(_ data: Data, capacity: Int) -> Data? {
         guard capacity > 0 else { return Data() }
+        // Deflate turns a byte into at most 1032, so an entry whose directory
+        // promises more than that is refused before its output is set aside:
+        // a small archive can say an entry is four gigabytes.
+        guard capacity <= data.count * 1032 + 64 else { return nil }
         var out = Data(count: capacity)
         let n = out.withUnsafeMutableBytes { dst -> Int in
             guard let dstBase = dst.bindMemory(to: UInt8.self).baseAddress else { return 0 }

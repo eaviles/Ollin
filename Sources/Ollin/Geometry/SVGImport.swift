@@ -453,7 +453,11 @@ func arcCommands(from p1: Vector2, to p2: Vector2, rx rxIn: Double, ry ryIn: Dou
                  rotationDegrees: Double, largeArc: Bool, sweep: Bool) -> [SVGPathCommand] {
     if p1 == p2 { return [] }
     var rx = abs(rxIn), ry = abs(ryIn)
-    if rx == 0 || ry == 0 { return [.line(p2)] }
+    // An arc whose numbers are not all finite has no center to find; the
+    // specification's answer for a degenerate arc, a straight line, is the one
+    // that keeps the path drawable.
+    let finite = [p1.x, p1.y, p2.x, p2.y, rx, ry, rotationDegrees].allSatisfy(\.isFinite)
+    if rx == 0 || ry == 0 || !finite { return [.line(p2)] }
 
     let phi = rotationDegrees * .pi / 180
     let cosPhi = cos(phi), sinPhi = sin(phi)
@@ -493,6 +497,10 @@ func arcCommands(from p1: Vector2, to p2: Vector2, rx rxIn: Double, ry ryIn: Dou
     if sweep, delta < 0 { delta += 2 * .pi }
 
     // Split into segments of at most a quarter turn; each becomes one cubic.
+    // Finite endpoints and radii can still overflow on the way to the center
+    // (a radius near the largest double, squared), so the sweep is checked
+    // before it is counted.
+    guard delta.isFinite, theta1.isFinite else { return [.line(p2)] }
     let segments = max(1, Int((abs(delta) / (.pi / 2)).rounded(.up)))
     let step = delta / Double(segments)
     let alpha = 4.0 / 3.0 * tan(step / 4)

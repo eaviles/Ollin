@@ -175,6 +175,8 @@ try Formula("sin(tine)", variables: ["time"])
 
 `Formula` throws a `FormulaError` that carries a message and the `offset` of the character where reading stopped. An editing surface can use the offset to point at the spot.
 
+A formula is at most 1,024 numbers, names, and signs, and its brackets, calls, signs, and powers nest at most 64 deep. Past either, it throws. A formula is a line or two, and the limits are there for one that arrives in a file. Each level is one call deeper, both when it is read and when it is worked out. A file nested ten thousand deep would run the stack out.
+
 `drive(_:_:)` does not throw. It reports the problem on standard error and leaves the parameter alone. So a typo breaks that one parameter rather than the whole sketch, which is what you want while you edit live. It also reports a formula that names a value nothing supplies. Without that report, the name would read as zero on every frame, and the sketch would draw something almost right. To handle the error yourself, build the formula with `try` and pass it in instead:
 
 ```swift

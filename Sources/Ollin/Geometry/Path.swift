@@ -161,8 +161,12 @@ enum CurveSampling {
     /// Target chord length per flattened segment, in points.
     private static let targetEdge = 8.0
 
+    /// Clamped while it is still a `Double`: a curve of no finite length (a
+    /// point at infinity, read from a file) takes the most segments rather
+    /// than trapping at the narrowing, and one that is not a number the fewest.
     private static func segments(forLength length: Double) -> Int {
-        min(100, max(6, Int((length / targetEdge).rounded(.up))))
+        let wanted = (length / targetEdge).rounded(.up)
+        return wanted.isNaN ? 6 : Int(min(100, max(6, wanted)))
     }
 
     /// A quadratic Bézier flattened to points, **excluding** the start `from`

@@ -13,6 +13,10 @@ final class USDTextParser {
 
     private let bytes: [UInt8]
     private var i = 0
+    /// How many prims, blocks, and values the cursor is inside. Each level is
+    /// a call deeper, so a file nested past `USDStage.maxDepth` is refused
+    /// rather than read until the stack runs out.
+    private var nesting = 0
 
     init(text: String) {
         bytes = Array(text.utf8)
@@ -54,6 +58,9 @@ final class USDTextParser {
     // MARK: - Prims
 
     private func parsePrim() throws -> USDPrim {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         let specifier: USDSpecifier
         if match("def") { specifier = .def }
         else if match("over") { specifier = .over }
@@ -282,6 +289,9 @@ final class USDTextParser {
 
     /// A parenthesized metadata block on the layer, a prim, or a property.
     private func parseMetadataBlock() throws -> [String: USDValue] {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         try expect("(")
         var result: [String: USDValue] = [:]
         skipTrivia()
@@ -326,6 +336,9 @@ final class USDTextParser {
     /// Consume a composition-arc value: a reference (`@asset@</path>` with an
     /// optional layer-offset call), a path, a dictionary, or a list of those.
     private func skipCompositionValue() throws {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         skipTrivia()
         switch peek() {
         case UInt8(ascii: "["):
@@ -475,6 +488,9 @@ final class USDTextParser {
 
     /// A tuple literal `(a, b, …)`; nested tuples (matrix rows) flatten.
     private func parseTupleComponents() throws -> [Double] {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         try expect("(")
         var components: [Double] = []
         skipTrivia()
@@ -495,6 +511,9 @@ final class USDTextParser {
     }
 
     private func parseArray(declaredType: String?) throws -> USDValue {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         try expect("[")
         skipTrivia()
 
@@ -562,10 +581,15 @@ final class USDTextParser {
             switch Self.flavor(of: base) {
             case .float: return .floatArray(numbers.map(Float.init))
             case .double: return .doubleArray(numbers)
-            case .int: return .intArray(numbers.map { Int64($0) })
+            case .int:
+                guard let ints = Self.integers(numbers) else {
+                    throw error("an integer array holds a number no integer can")
+                }
+                return .intArray(ints)
             case .stringLike, .other:
                 // Untyped: integral values stay ints, anything else doubles.
-                return sawFraction ? .doubleArray(numbers) : .intArray(numbers.map { Int64($0) })
+                if !sawFraction, let ints = Self.integers(numbers) { return .intArray(ints) }
+                return .doubleArray(numbers)
             }
         }
     }
@@ -591,6 +615,9 @@ final class USDTextParser {
     }
 
     private func parseDictionary() throws -> [String: USDValue] {
+        nesting += 1
+        defer { nesting -= 1 }
+        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
         try expect("{")
         var result: [String: USDValue] = [:]
         skipTrivia()
@@ -640,15 +667,33 @@ final class USDTextParser {
         switch flavor(of: declaredType.map(baseType)) {
         case .float, .double: return .double(n)
         case .int:
+            // A number past what an integer holds (or not a number at all)
+            // stays the double it was written as, which is a type no reader of
+            // an integer attribute takes; `Int64(_:)` would trap on it.
             if declaredType == "bool" { return .bool(n != 0) }
             if declaredType == "uint" || declaredType == "uint64" {
-                return .uint(UInt64(bitPattern: Int64(n)))
+                if let whole = n.int() { return .uint(UInt64(bitPattern: Int64(whole))) }
+                if n.isFinite, let unsigned = UInt64(exactly: n.rounded(.towardZero)) { return .uint(unsigned) }
+                return .double(n)
             }
-            return .int(Int64(n))
+            guard let whole = n.int() else { return .double(n) }
+            return .int(Int64(whole))
         case .stringLike, .other:
             let isIntegral = n == n.rounded(.towardZero) && abs(n) < 9.007199254740992e15
             return isIntegral ? .int(Int64(n)) : .double(n)
         }
+    }
+
+    /// The numbers of an array as integers, rounded toward zero, or `nil`
+    /// when any one of them is not finite or is past what an integer holds.
+    private static func integers(_ numbers: [Double]) -> [Int64]? {
+        var out: [Int64] = []
+        out.reserveCapacity(numbers.count)
+        for n in numbers {
+            guard let whole = n.int() else { return nil }
+            out.append(Int64(whole))
+        }
+        return out
     }
 
     /// The element type of an array type: `point3f[]` → `point3f`.

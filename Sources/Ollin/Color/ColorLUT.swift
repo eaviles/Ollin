@@ -157,7 +157,8 @@ public struct ColorLUT: Sendable, Equatable {
             return out
         }
 
-        for rawLine in text.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline }) {
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline })
+        for rawLine in lines {
             lineNumber += 1
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             if line.isEmpty || line.hasPrefix("#") { continue }
@@ -199,7 +200,11 @@ public struct ColorLUT: Sendable, Equatable {
                         expected = n * n * n
                     }
                     size = n
-                    samples.reserveCapacity(expected)
+                    // Room for what the size declares, but never more than the
+                    // lines still to come could fill: a short file that claims a
+                    // 256-node cube is refused at the end, not answered with a
+                    // quarter of a gigabyte first.
+                    samples.reserveCapacity(min(expected, lines.count - lineNumber))
                 case "DOMAIN_MIN", "DOMAIN_MAX":
                     let v = try numbers(rest, lineNumber, keyword)
                     guard v.count == 3 else {

@@ -10,6 +10,13 @@ import Foundation
 /// composition, no schema knowledge, no unit handling. Interpretation belongs
 /// to the layers above.
 struct USDStage: Equatable {
+    /// How deep prims and values may nest: the scene depth glTF keeps too
+    /// (`GLTFDocument.maxNodeDepth`). Both readers and every walk of the tree
+    /// recurse once per level, and this is the depth that fits a background
+    /// thread's half megabyte of stack in a debug build; no scene a person
+    /// authors comes near it.
+    static let maxDepth = 64
+
     /// Layer metadata from the header block: `defaultPrim`, `upAxis`,
     /// `metersPerUnit`, `timeCodesPerSecond`, and whatever else was authored.
     var metadata: [String: USDValue] = [:]

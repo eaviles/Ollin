@@ -633,36 +633,45 @@ final class AutomationPlayer {
         var indexOf: [String: Int] = [:]
         for (i, track) in tracks.enumerated() where indexOf[track.name] == nil { indexOf[track.name] = i }
 
+        // What each track reads, as the tracks it has to follow. A built-in name
+        // is never a parameter, so it never orders anything; a part names the
+        // parameter it belongs to, so `center.x` orders the track driving
+        // `center`.
+        let reads: [[Int]] = tracks.map { track in
+            track.readNames.compactMap { name in
+                Automation.readableNames.contains(name) ? nil : indexOf[Automation.baseName(of: name)]
+            }
+        }
+
         var order: [Int] = []
         var rings: Set<String> = []
         var state = [Int](repeating: 0, count: tracks.count)   // 0 unvisited, 1 on the path, 2 done
 
-        func visit(_ i: Int, path: inout [Int]) {
-            if state[i] == 2 { return }
-            if state[i] == 1 {                                  // the path came back here
-                if let start = path.firstIndex(of: i) {
-                    for j in path[start...] { rings.insert(tracks[j].name) }
+        // Depth first with a stack of its own rather than the call stack: a
+        // file can chain a track to the next ten thousand times. The stack is
+        // the path, each entry a track and the next of its reads to follow.
+        for root in tracks.indices where state[root] == 0 {
+            state[root] = 1
+            var path: [(track: Int, next: Int)] = [(root, 0)]
+            while let top = path.last {
+                guard top.next < reads[top.track].count else {
+                    path.removeLast()
+                    state[top.track] = 2
+                    order.append(top.track)
+                    continue
                 }
-                return
+                path[path.count - 1].next += 1
+                let j = reads[top.track][top.next]
+                if state[j] == 2 { continue }
+                if state[j] == 1 {                              // the path came back here
+                    if let start = path.firstIndex(where: { $0.track == j }) {
+                        for entry in path[start...] { rings.insert(tracks[entry.track].name) }
+                    }
+                    continue
+                }
+                state[j] = 1
+                path.append((j, 0))
             }
-            state[i] = 1
-            path.append(i)
-            for name in tracks[i].readNames {
-                // A built-in name is never a parameter, so it never orders anything.
-                guard !Automation.readableNames.contains(name) else { continue }
-                // A part names the parameter it belongs to, so `center.x` orders the
-                // track driving `center`.
-                guard let j = indexOf[Automation.baseName(of: name)] else { continue }
-                visit(j, path: &path)
-            }
-            path.removeLast()
-            state[i] = 2
-            order.append(i)
-        }
-
-        for i in tracks.indices {
-            var path: [Int] = []
-            visit(i, path: &path)
         }
         let playable = order.filter { !rings.contains(tracks[$0].name) }
         return Plan(order: playable,

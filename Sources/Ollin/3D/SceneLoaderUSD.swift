@@ -37,20 +37,19 @@ extension Scene {
     /// animation, and the UsdSkel deforming tier. Returns `nil` when the file
     /// can't be parsed or holds no prims at all.
     static func loadUSDScene(_ url: URL) -> Scene? {
-        guard let data = try? Data(contentsOf: url),
-              let opened = try? USDStage.open(data: data),
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return loadUSDScene(data: data, fileURL: url)
+    }
+
+    /// The scene in the bytes of a USD file, with the assets it names resolved
+    /// beside `fileURL`: the half of `loadUSDScene(_:)` that reads no file.
+    static func loadUSDScene(data: Data, fileURL url: URL) -> Scene? {
+        guard let opened = try? USDStage.open(data: data),
               !opened.stage.prims.isEmpty else { return nil }
         let stage = opened.stage
 
         var build = USDBuild(stage: stage, assets: USDAssetStore(fileURL: url, opened: opened))
-        var roots: [SceneNode] = []
-        for prim in stage.prims {
-            if let node = buildNode(prim, parentPath: "", parent: matrix_identity_double4x4,
-                                    hidden: false, renderSkipped: false, build: &build) {
-                roots.append(node)
-            }
-        }
-        var scene = Scene(nodes: roots)
+        var scene = Scene(nodes: buildNodes(stage.prims, build: &build))
         Scene.normalizeLightSpecs(in: &scene.nodes)
 
         // The stage's one animation: baked xformOp tracks plus the SkelAnimation
@@ -94,21 +93,26 @@ extension Scene {
     /// the map this way still draws, with its geometry normals and a one-time
     /// note at draw).
     private static func attachUSDTangents(in nodes: inout [SceneNode]) {
+        // The recursion holds nothing but the index; the work on one node is
+        // its own call, so its locals are not on the stack of every level.
         for i in nodes.indices {
-            if let mesh = nodes[i].mesh, mesh.tangents.count != mesh.positions.count,
-               !mesh.uvs.isEmpty,
-               mesh.material?.normalTexture != nil || mesh.material?.heightTexture != nil
-                   || nodes[i].meshParts.contains(where: {
-                       $0.material?.normalTexture != nil || $0.material?.heightTexture != nil
-                   }) {
-                let generated = mesh.generatingTangents()
-                let hasAligned = nodes[i].skinIndex != nil || !nodes[i].vertexJoints.isEmpty
-                    || !nodes[i].morphTargets.isEmpty || !nodes[i].meshParts.isEmpty
-                if generated.positions.count == mesh.positions.count || !hasAligned {
-                    nodes[i].mesh = generated
-                }
-            }
+            attachUSDTangents(to: &nodes[i])
             attachUSDTangents(in: &nodes[i].children)
+        }
+    }
+
+    private static func attachUSDTangents(to node: inout SceneNode) {
+        guard let mesh = node.mesh, mesh.tangents.count != mesh.positions.count,
+              !mesh.uvs.isEmpty,
+              mesh.material?.normalTexture != nil || mesh.material?.heightTexture != nil
+                  || node.meshParts.contains(where: {
+                      $0.material?.normalTexture != nil || $0.material?.heightTexture != nil
+                  }) else { return }
+        let generated = mesh.generatingTangents()
+        let hasAligned = node.skinIndex != nil || !node.vertexJoints.isEmpty
+            || !node.morphTargets.isEmpty || !node.meshParts.isEmpty
+        if generated.positions.count == mesh.positions.count || !hasAligned {
+            node.mesh = generated
         }
     }
 
@@ -135,15 +139,52 @@ extension Scene {
         var materials: [String: MeshMaterial?] = [:]
     }
 
-    /// One prim as a `SceneNode`, depth-first: identity assigned in authored
-    /// order, children in authored order, the mesh built when the prim is a
+    /// The prims as `SceneNode`s, depth-first: identity assigned in authored
+    /// order, children in authored order, the mesh built when a prim is a
     /// renderable Mesh. `hidden` carries an ancestor's `visibility =
     /// "invisible"` (nothing under it renders or images); `renderSkipped` adds
     /// the `guide`/`proxy` purpose (meshes and lights skip, cameras still
     /// resolve). Both inherit down the subtree, the schema's pruning rules.
-    private static func buildNode(_ prim: USDPrim, parentPath: String,
-                                  parent: simd_double4x4, hidden: Bool,
-                                  renderSkipped: Bool, build: inout USDBuild) -> SceneNode? {
+    private static func buildNodes(_ prims: [USDPrim], build: inout USDBuild) -> [SceneNode] {
+        // Walked with a stack of its own, in the order a depth-first walk
+        // takes, so every prim keeps the index it has always had; the nodes
+        // are then put together children first. Nothing recurses while
+        // holding a node: a node is a large value, and a recursion that builds
+        // one per level takes about twenty kilobytes of stack a level in a
+        // debug build, so a stage twenty-six deep would fill a background
+        // thread's half megabyte.
+        struct Pending { var node: SceneNode; var children: [Int] = [] }
+        var pending: [Pending] = []
+        var roots: [Int] = []
+        var stack: [(prim: USDPrim, parentPath: String, parent: simd_double4x4,
+                     hidden: Bool, renderSkipped: Bool, owner: Int?)] = prims.reversed().map {
+            ($0, "", matrix_identity_double4x4, false, false, nil)
+        }
+        while let item = stack.popLast() {
+            guard let made = node(for: item.prim, parentPath: item.parentPath, parent: item.parent,
+                                  hidden: item.hidden, renderSkipped: item.renderSkipped,
+                                  build: &build) else { continue }
+            let id = pending.count
+            pending.append(Pending(node: made.node))
+            if let owner = item.owner { pending[owner].children.append(id) } else { roots.append(id) }
+            for child in item.prim.children.reversed() {
+                stack.append((child, made.path, made.world, made.hidden, made.renderSkipped, id))
+            }
+        }
+        // A prim's children always follow it, so walking back from the end
+        // finishes every child before its parent takes it.
+        for id in pending.indices.reversed() where !pending[id].children.isEmpty {
+            pending[id].node.children = pending[id].children.map { pending[$0].node }
+        }
+        return roots.map { pending[$0].node }
+    }
+
+    /// One prim's node, without its children, and what its children inherit:
+    /// its path, its world transform, and whether it is hidden or not drawn.
+    /// `nil` for a prim that is not a node (a class, a material, a shader).
+    private static func node(for prim: USDPrim, parentPath: String, parent: simd_double4x4,
+                             hidden: Bool, renderSkipped: Bool, build: inout USDBuild)
+        -> (node: SceneNode, path: String, world: simd_double4x4, hidden: Bool, renderSkipped: Bool)? {
         guard prim.specifier != .class, !usdNonNodeTypes.contains(prim.typeName) else {
             return nil
         }
@@ -180,14 +221,7 @@ extension Scene {
         build.nextIndex += 1
         build.indexOfPath[path] = index
 
-        var children: [SceneNode] = []
-        for child in prim.children {
-            if let node = buildNode(child, parentPath: path, parent: world, hidden: hidden,
-                                    renderSkipped: renderSkipped, build: &build) {
-                children.append(node)
-            }
-        }
-        var node = SceneNode(name: prim.name, mesh: mesh, children: children,
+        var node = SceneNode(name: prim.name, mesh: mesh, children: [],
                              localTransform: f4x4(local), sourceIndex: index)
         if let mesh, !meshParts.isEmpty {
             node.meshParts = meshParts
@@ -202,7 +236,7 @@ extension Scene {
         if usdLightTypeNames.contains(prim.typeName), !renderSkipped {
             node.lightSpec = usdLightSpec(prim)
         }
-        return node
+        return (node, path, world, hidden, renderSkipped)
     }
 
     /// Mutate the first node carrying `sourceIndex` (depth-first), in place.
@@ -282,7 +316,17 @@ extension Scene {
             points.append(Vector3(pointsFlat[i * 3], pointsFlat[i * 3 + 1], pointsFlat[i * 3 + 2]))
         }
         let leftHanded = prim.attribute("orientation")?.authoredValue?.usdToken == "leftHanded"
-        let cornerCount = counts.reduce(0) { $0 + Int($1) }
+        // A face of fewer than no corners is not a face, and it would walk the
+        // reading back over the faces before it, so a mesh that has one (or
+        // corners past counting) is unreadable. A face of one or two corners is
+        // only skipped below.
+        var cornerCount = 0
+        for count in counts {
+            guard count >= 0 else { return nil }
+            let (sum, overflow) = cornerCount.addingReportingOverflow(Int(count))
+            guard !overflow else { return nil }
+            cornerCount = sum
+        }
         let faceCount = counts.count
 
         // `primvars:normals` wins over `normals` when both are authored (the
@@ -942,7 +986,7 @@ struct USDAssetStore {
             }
             return nil
         }
-        guard let data = try? Data(contentsOf: baseURL.appendingPathComponent(relative))
+        guard let data = NamedFile.data(at: baseURL.appendingPathComponent(relative))
         else { return nil }
         return Image(data: data)
     }

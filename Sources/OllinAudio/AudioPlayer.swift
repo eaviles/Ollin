@@ -64,14 +64,10 @@ public final class AudioPlayer: AudioSource {
 
     /// Loads a file from a URL.
     public init(url: URL, fftSize: Int = 1024, smoothing: Float = 0.8) throws {
-        let file = try AVAudioFile(forReading: url)
-        let format = file.processingFormat
-        guard let buffer = AVAudioPCMBuffer(
-            pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length)
-        ) else {
+        guard let frames = try AudioFileFrames.read(url), let buffer = frames.buffer() else {
             throw AudioError.couldNotDecode(url.lastPathComponent)
         }
-        try file.read(into: buffer)
+        let format = frames.format
         self.buffer = buffer
 
         // Live analysis taps the mixer, so the analyzer runs at the mixer's

@@ -58,7 +58,16 @@ public struct Formula: Sendable, CustomStringConvertible {
     }
 
     private init(_ source: String, variables declared: [String]?) throws {
-        var parser = FormulaParser(tokens: try formulaTokens(source), declared: declared)
+        let tokens = try formulaTokens(source)
+        // The tree is read and evaluated a call deeper per level, so its size
+        // is held to what a formula is: a line or two, not a file's worth. A
+        // sum of a thousand terms is already a tree a thousand deep.
+        guard tokens.count <= FormulaParser.mostTokens else {
+            throw FormulaError(message: "a formula is at most \(FormulaParser.mostTokens) numbers, names, "
+                               + "and signs; this one has \(tokens.count)",
+                               offset: tokens[FormulaParser.mostTokens].offset)
+        }
+        var parser = FormulaParser(tokens: tokens, declared: declared)
         let tree = try parser.parse()
         self.source = source
         self.tree = tree
@@ -408,8 +417,15 @@ let formulaConstants: [String: Double] = [
 /// because the published formalism there says so. The two do not have to
 /// agree, and they do not.)
 struct FormulaParser {
+    /// The most tokens a formula may hold, which bounds how deep its tree is.
+    static let mostTokens = 1024
+    /// How deep brackets, signs, and powers may nest: each level is a call of
+    /// the parser within the last.
+    static let mostNesting = 64
+
     private let tokens: [FormulaToken]
     private var index = 0
+    private var nesting = 0
     /// The names allowed, or `nil` to let any name become a variable.
     private let declared: [String]?
     /// The variables met, in order, when the names are not declared ahead.
@@ -490,10 +506,21 @@ struct FormulaParser {
 
     /// Unary minus sits *above* exponentiation, so `-2^2` reads as `-(2^2)`.
     private mutating func unary() throws -> FormulaNode {
+        try descend()
+        defer { nesting -= 1 }
         if match("-") { return .negate(try unary()) }
         if match("+") { return try unary() }
         if match("!") { return .not(try unary()) }
         return try power()
+    }
+
+    /// One level deeper, refused past `mostNesting`.
+    private mutating func descend() throws {
+        nesting += 1
+        guard nesting <= Self.mostNesting else {
+            throw FormulaError(message: "a formula nests at most \(Self.mostNesting) deep",
+                               offset: index < tokens.count ? tokens[index].offset : tokens.last?.offset ?? 0)
+        }
     }
 
     /// Right-associative, and its right operand may itself be unary, so `2^-1`
