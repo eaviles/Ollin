@@ -124,7 +124,7 @@ Sketch.loopProgress  Ollin
               let phase = loopProgress(over: 8)
 ```
 
-It prints every declaration the name has, spelled the way you call it, with its argument labels and which ones have a default. Under each is the comment written above it in the source, which is where a value's unit, range, and direction are written down, and the file and line it is declared on. Then come the pages that document it, as addresses `ollin docs` opens, and the shortest examples that use it.
+It prints every declaration the name has as its source writes it, so the parameter names and the default values are there too. Under each is the file and line it is declared on, and the comment written above it. That comment is where a value's unit, range, and direction are written down. When two declarations read alike, the line under each says what tells them apart. That is the `where` clause of the extension it sits in, or `requirement` for a protocol's own member. Then come the pages that document it, as addresses `ollin docs` opens, and the shortest examples that use it, for each type the name sits on. A type written mostly through its cases, like `style: .segmented`, is found through them.
 
 The listings under [`API/`](../../API/README.md) are where it reads from. Those are the whole public surface, one line per declaration, so a name that is not there cannot be reached from a sketch at all. `ollin api` answers "is it public?" as well as "what does it take?".
 

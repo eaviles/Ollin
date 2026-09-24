@@ -8,6 +8,12 @@ public struct SourcePlace: Sendable, Equatable {
     /// The `///` lines above it, markers taken off, in order. Empty when it
     /// has none.
     public let comment: [String]
+    /// What the listing leaves out about where it sits: `where Value:
+    /// ParamOption` for an extension with a `where` clause, `requirement` for
+    /// a protocol's own member. Two declarations the listing writes alike (an
+    /// initializer for a menu and one for a named set; a requirement and its
+    /// default) differ only here.
+    public var constraint: String? = nil
 }
 
 /// Finding a listed declaration in `Sources/` to read its doc comment.
@@ -39,10 +45,16 @@ public enum SourceComments {
                 for written in self.declarations(in: text) {
                     for name in Set(written.names + [written.name]) {
                         guard let candidates = waiting[name] else { continue }
-                        for index in candidates where pairs(declarations[index], with: written) {
-                            let place = SourcePlace(file: file, line: written.line, comment: written.comment)
+                        // One listing line to one source declaration: two lines
+                        // the listing writes alike (the same initializer under
+                        // two constraints) take the two declarations in turn,
+                        // rather than both taking the first.
+                        let place = SourcePlace(file: file, line: written.line, comment: written.comment,
+                                                constraint: written.constraint)
+                        for index in candidates where found[index] == nil && pairs(declarations[index], with: written) {
                             if sameTypes(declarations[index], written) {
                                 found[index] = place
+                                break
                             } else if loose[index] == nil {
                                 loose[index] = place
                             }
@@ -69,6 +81,8 @@ public enum SourceComments {
         var isExtension = false
         /// The parameter types, for telling apart overloads with the same labels.
         var types: [String]?
+        /// The `where` clause of the type or extension it sits in.
+        var constraint: String?
     }
 
     static func pairs(_ listed: APIDeclaration, with written: Written) -> Bool {
@@ -152,8 +166,12 @@ public enum SourceComments {
         // One entry per open brace: the type names it opens, or nil for a
         // body that is not a type's.
         var open: [[String]?] = []
-        // A type declared on a line whose brace has not come yet.
+        // The `where` clause of each open type, beside it.
+        var constraints: [String?] = []
+        // A type declared on a line whose brace has not come yet, and its
+        // `where` clause.
         var pending: [String]?
+        var pendingConstraint: String?
         var inString = false
 
         for (index, raw) in lines.enumerated() {
@@ -174,14 +192,22 @@ public enum SourceComments {
                     types = APIListing.parameterTypes(of: signature)
                 case .type:
                     pending = typeName(trimmed)
+                    if isExtension(trimmed) {
+                        pendingConstraint = whereClause(trimmed).map { "where " + $0 }
+                    } else if trimmed.range(of: #"(^|\s)protocol\s"#, options: .regularExpression) != nil {
+                        pendingConstraint = "requirement"
+                    } else {
+                        pendingConstraint = nil
+                    }
                 default: break
                 }
                 let owner = open.compactMap { $0 }.flatMap { $0 }
                 let above = comment(above: index, in: lines)
+                let constraint = Array(zip(open, constraints)).last { $0.0 != nil }.flatMap { $0.1 }
                 found.append(Written(owner: owner, name: name, kind: kind,
                                      names: names, labels: labels, line: index + 1,
                                      comment: above, isExtension: kind == .type && isExtension(trimmed),
-                                     types: types))
+                                     types: types, constraint: constraint))
                 // `enum Kind { case left, right }` declares its cases on the
                 // line that opens it, and they read as the type's.
                 if kind == .type, let body = trimmed.firstIndex(of: "{") {
@@ -199,9 +225,12 @@ public enum SourceComments {
             for character in code {
                 if character == "{" {
                     open.append(pending)
+                    constraints.append(pending == nil ? nil : pendingConstraint)
                     pending = nil
+                    pendingConstraint = nil
                 } else if character == "}", !open.isEmpty {
                     open.removeLast()
+                    constraints.removeLast()
                 }
             }
         }
@@ -311,6 +340,14 @@ public enum SourceComments {
         return APIListing.split(String(line[range.upperBound...])).compactMap {
             APIListing.identifier(at: Substring($0.trimmingCharacters(in: .whitespaces)))
         }
+    }
+
+    /// The `where` clause on a type or extension's opening line, without the
+    /// brace: `Value: ParamOption` from `extension Param where Value: ParamOption {`.
+    static func whereClause(_ line: String) -> String? {
+        guard let range = line.range(of: " where ") else { return nil }
+        let clause = line[range.upperBound...].prefix { $0 != "{" }.trimmingCharacters(in: .whitespaces)
+        return clause.isEmpty ? nil : clause
     }
 
     static func isExtension(_ line: String) -> Bool {

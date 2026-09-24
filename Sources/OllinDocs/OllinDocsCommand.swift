@@ -389,7 +389,8 @@ struct OllinDocsCommand {
                     ?? APIListing.tidy(declaration.text)
                 print("  " + (style.color ? style.code(spelled) : spelled))
                 guard let place = places[index] else { continue }
-                print("      " + style.dim("\(relative(place.file, to: root)):\(place.line)"))
+                let constraint = place.constraint.map { "  " + $0 } ?? ""
+                print("      " + style.dim("\(relative(place.file, to: root)):\(place.line)" + constraint))
                 for line in place.comment.prefix(24) { print("      " + line) }
                 if place.comment.count > 24 {
                     print("      " + style.dim("(\(place.comment.count - 24) more lines in the source)"))
@@ -410,8 +411,20 @@ struct OllinDocsCommand {
             let reach: APIReach = first.kind == .type || first.kind == .initializer ? .type
                 : (first.owner.isEmpty || first.owner == ["Sketch"]) ? .bare : .member
             let owners = first.kind == .type ? [] : Array(first.owner.suffix(1))
-            let pages = APIUsage.pages(naming: spelledName, reach: reach, owners: owners, in: corpus)
-            let examples = APIUsage.examples(using: spelledName, reach: reach, in: corpus)
+            var pages = APIUsage.pages(naming: spelledName, reach: reach, owners: owners, in: corpus)
+            var examples = APIUsage.examples(using: spelledName, reach: reach, in: corpus)
+            // A type mostly written through its cases (`style: .segmented`)
+            // is used wherever a case is written where the type is taken.
+            if first.kind == .type, pages.isEmpty || examples.isEmpty {
+                let spellings = APIUsage.caseSpellings(of: first, in: all)
+                if pages.isEmpty {
+                    pages = APIUsage.pages(naming: spelledName, reach: reach, owners: owners,
+                                           writtenAs: spellings, in: corpus)
+                }
+                if examples.isEmpty {
+                    examples = APIUsage.examples(using: spelledName, reach: reach, writtenAs: spellings, in: corpus)
+                }
+            }
             print("")
             if pages.isEmpty {
                 print("  " + label("documented") + style.dim("no page writes it as code"))

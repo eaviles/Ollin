@@ -203,6 +203,65 @@ struct APILookupTests {
         #expect(APIListing.parameterTypes(of: "func f(_ x: inout Foundation.URL, y: [Int] = [1, 2])") == ["URL", "[Int]"])
     }
 
+    @Test("Two declarations the listing writes alike take their own source lines, each with where it sits")
+    func constrainedTwins() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("ollin-twins-\(UUID().uuidString)")
+        let folder = root.appendingPathComponent("Ollin")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try """
+        public protocol Named {
+            /// What it is called.
+            var label: String { get }
+        }
+        public extension Named {
+            var label: String { "unnamed" }
+        }
+        public final class Knob<Value> {
+            public init(value: Value) {}
+        }
+        public extension Knob where Value: Named {
+            /// For a named value.
+            convenience init(wrappedValue: Value) { self.init(value: wrappedValue) }
+        }
+        public extension Knob where Value: CaseIterable {
+            /// For a value with cases.
+            convenience init(wrappedValue: Value) { self.init(value: wrappedValue) }
+        }
+        """.write(to: folder.appendingPathComponent("Knob.swift"), atomically: true, encoding: .utf8)
+        let listed = APIListing.declarations(in: """
+        protocol Named
+          var label: String { get }
+          var label: String { get }
+        final class Knob<Value>
+          convenience init(wrappedValue: Value)
+          convenience init(wrappedValue: Value)
+        """, module: "Ollin").filter { $0.kind != .type }
+        let places = SourceComments.places(of: listed, inSources: root)
+        #expect(places.count == 4)
+        #expect(Set(places.values.map(\.line)).count == 4, "each listing line takes its own declaration")
+        #expect(Set(places.values.compactMap(\.constraint)) == ["requirement", "where Value: Named", "where Value: CaseIterable"])
+    }
+
+    @Test("A type written through its cases counts where a case follows a label that takes it")
+    func caseSpellings() {
+        let all = APIListing.declarations(in: """
+        enum MenuStyle
+          case menu
+          case segmented
+        struct Group
+          static func folded(_: String) -> Group
+        open class Sketch: Sendable
+          func control(style: MenuStyle, group: Group? = default)
+        """, module: "Ollin")
+        let menu = all.first { $0.name == "MenuStyle" }!
+        let group = all.first { $0.name == "Group" }!
+        #expect(APIUsage.caseSpellings(of: menu, in: all) == ["style: .menu", "style: .segmented"])
+        #expect(APIUsage.caseSpellings(of: group, in: all) == ["group: .folded"])
+        #expect(APIUsage.written(["style: .segmented"], in: "@Param(style: .segmented) var look = Look.a"))
+        #expect(!APIUsage.written(["style: .segmented"], in: "strokeCap(.round)"))
+    }
+
     @Test("A name is used where code writes it the way it is reached, never inside a longer name or as a label")
     func mentions() {
         #expect(APIUsage.mentions("drawCircle", in: "drawCircle(x, y, 4)", reach: .bare))
@@ -251,6 +310,13 @@ struct APILookupTests {
         #expect(!signature.contains("{"))
         let pages = APIUsage.pages(naming: "rotate", reach: .bare, owners: [], in: UsageCorpus(root: root))
         #expect(pages.first?.place == "Drawing/Drawing", "\(pages.map(\.address))")
+    }
+
+    @Test("A type's page is the one that writes it most, not one with a section on binding it")
+    func typePages() throws {
+        let root = try #require(ReferenceCatalogTests.repositoryRoot())
+        let pages = APIUsage.pages(naming: "Param", reach: .type, owners: [], in: UsageCorpus(root: root))
+        #expect(pages.first?.place == "Helpers/Parameters", "\(pages.map(\.address))")
     }
 
     /// The reader is written for the shape this tree is in, not for Swift

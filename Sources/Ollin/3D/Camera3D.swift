@@ -123,9 +123,10 @@ public extension Camera3D {
     }
 
     /// A perspective camera orbiting `target` on a sphere of `radius`, at
-    /// `azimuth` (turn around the up axis, 0 looking down +z) and `elevation`
-    /// (tilt above the horizontal), both in radians. The easy way to spin a
-    /// camera around a scene from a sketch.
+    /// `azimuth` (turn around the up axis: 0 puts the eye on +z looking back
+    /// toward −z, π/2 puts it on +x) and `elevation` (tilt above the
+    /// horizontal, positive looking down), both in radians. The easy way to
+    /// spin a camera around a scene from a sketch.
     static func orbiting(target: Vector3 = .zero, radius: Double,
                          azimuth: Double = 0, elevation: Double = 0,
                          fieldOfView: Double = .pi / 3,

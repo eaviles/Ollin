@@ -65,14 +65,21 @@ public enum APIUsage {
     /// the page naming the type it sits on as well, then the page that writes
     /// it most. `owners` are the types the name was found on, and a member of
     /// `Sketch` is called bare, so `Sketch` is left out of them.
+    ///
+    /// `writtenAs` are other spellings that count as the name: for a type
+    /// that is mostly written through its cases, `style: .segmented`.
     public static func pages(naming name: String,
                              reach: APIReach,
                              owners: [String],
+                             writtenAs: [String] = [],
                              in corpus: UsageCorpus,
                              limit: Int = 3) -> [APIMention] {
         var scored: [(score: Int, mention: APIMention)] = []
         let owners = owners.filter { $0 != "Sketch" && $0 != name }
-        for (page, text) in corpus.pages where text.contains(name) {
+        func uses(_ code: String) -> Bool {
+            mentions(name, in: code, reach: reach) || written(writtenAs, in: code)
+        }
+        for (page, text) in corpus.pages where text.contains(name) || written(writtenAs, in: text) {
             var heading = ""
             var fenced = false
             // A fence of shell commands or printed output shows a call being
@@ -104,14 +111,14 @@ public enum APIUsage {
                     // nothing but the name: "A blown tube" is about sound.
                     code = spans(in: words)
                     if code.isEmpty, !heading.contains(" ") { code = heading }
-                    if level >= 2, titled == nil, mentions(name, in: code, reach: reach) {
+                    if level >= 2, titled == nil, uses(code) {
                         titled = APIMention(place: page.topic, heading: heading, line: number + 1, text: heading)
                     }
                 } else {
                     code = spans(in: line)
                 }
                 if !namesOwner, owners.contains(where: { mentions($0, in: code, reach: .type) }) { namesOwner = true }
-                guard mentions(name, in: code, reach: reach) else { continue }
+                guard uses(code) else { continue }
                 count += 1
                 // A page's contents list names everything once; the section
                 // the list points at is the one to open.
@@ -122,7 +129,13 @@ public enum APIUsage {
             }
             guard let best = titled ?? first else { continue }
             let named = page.name == name || owners.contains(page.name)
-            let score = (titled != nil ? 10000 : 0) + (named ? 5000 : 0) + (namesOwner ? 1000 : 0) + min(count, 999)
+            // A member's page is the one with a heading for it. A type is
+            // written all through the page about it, and a heading naming
+            // it is as likely to be another page's section on binding it
+            // (`Param` on the MIDI page), so for a type the count decides.
+            let score = reach == .type
+                ? (named ? 100_000 : 0) + min(count, 9999) * 10 + (titled != nil ? 5 : 0)
+                : (titled != nil ? 10000 : 0) + (named ? 5000 : 0) + (namesOwner ? 1000 : 0) + min(count, 999)
             scored.append((score, best))
         }
         return scored
@@ -134,18 +147,19 @@ public enum APIUsage {
     /// shortest is the one that shows it with the least around it.
     public static func examples(using name: String,
                                 reach: APIReach,
+                                writtenAs: [String] = [],
                                 in corpus: UsageCorpus,
                                 limit: Int = 3) -> [APIMention] {
         var found: [(length: Int, mention: APIMention)] = []
         let root = corpus.root
-        for (entry, text) in corpus.examples where text.contains(name) {
+        for (entry, text) in corpus.examples where text.contains(name) || written(writtenAs, in: text) {
             let lines = text.components(separatedBy: "\n")
             for (number, line) in lines.enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.hasPrefix("//") else { continue }
                 var inString = false
                 let code = SourceComments.codePart(of: line, inString: &inString)
-                guard mentions(name, in: code, reach: reach) else { continue }
+                guard mentions(name, in: code, reach: reach) || written(writtenAs, in: code) else { continue }
                 found.append((lines.count, APIMention(place: relative(entry.sketch, to: root), heading: "",
                                                       line: number + 1, text: trimmed)))
                 break
@@ -184,6 +198,40 @@ public enum APIUsage {
             searched = code[range.upperBound...]
         }
         return false
+    }
+
+    /// Whether code holds one of the other spellings. They all have the
+    /// shape `label: .member`, so a line without `: .` is passed over first.
+    static func written(_ spellings: [String], in code: String) -> Bool {
+        guard !spellings.isEmpty, code.contains(": .") else { return false }
+        return spellings.contains { code.contains($0) }
+    }
+
+    /// For a type written mostly through its cases, the spellings that are
+    /// uses of it: each argument label a public declaration gives a parameter
+    /// of that type, followed by each of its cases and static members.
+    /// `style: .segmented` is a `ParamMenuStyle` because some call takes
+    /// `style: ParamMenuStyle`.
+    public static func caseSpellings(of type: APIDeclaration, in all: [APIDeclaration], limit: Int = 200) -> [String] {
+        let members = APIListing.members(of: type, in: all).filter { member in
+            member.kind == .enumCase
+                || (member.text.contains("static ") && (member.kind == .function || member.kind == .property))
+        }.map(\.name)
+        guard !members.isEmpty else { return [] }
+        var labels = Set<String>()
+        for declaration in all where declaration.kind == .function || declaration.kind == .initializer {
+            guard let names = declaration.labels,
+                  let types = APIListing.parameterTypes(of: declaration.text),
+                  names.count == types.count else { continue }
+            for (label, kind) in zip(names, types) where label != "_" && (kind == type.name || kind == type.name + "?") {
+                labels.insert(label)
+            }
+        }
+        var spellings: [String] = []
+        for label in labels.sorted() {
+            for member in Set(members).sorted() { spellings.append("\(label): .\(member)") }
+        }
+        return Array(spellings.prefix(limit))
     }
 
     static func isWordCharacter(_ character: Character) -> Bool {
