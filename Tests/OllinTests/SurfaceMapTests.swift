@@ -135,7 +135,7 @@ struct SurfaceMapTests {
         let url = dir.appendingPathComponent("mapped.gltf")
         try json.data(using: .utf8)!.write(to: url)
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         let m = try #require(mesh.material)
         #expect((m.metallicRoughnessTexture?[0, 0].green ?? 0) > 0.7,
                 "the packed map's green channel should read back")
@@ -222,7 +222,7 @@ struct SurfaceMapTests {
         }
         let url = dir.appendingPathComponent("scene.usda")
         try text.data(using: .utf8)!.write(to: url)
-        let scene = try #require(Scene(contentsOf: url))
+        let scene = try Scene(contentsOf: url)
         let mesh = try #require(scene.nodes.first?.mesh ?? scene.nodes.first?.children.first?.mesh)
         return (try #require(mesh.material), mesh)
     }
@@ -325,9 +325,9 @@ struct SurfaceMapTests {
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-surface-maps-\(UUID().uuidString).usdz")
-        #expect(Scene(nodes: [node]).write(to: url))
+        try Scene(nodes: [node]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
-        let back = try #require(Scene(contentsOf: url))
+        let back = try Scene(contentsOf: url)
         func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
             for n in nodes {
                 if let mesh = n.mesh { return mesh }
@@ -373,7 +373,7 @@ struct SurfaceMapTests {
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-surface-maps-\(UUID().uuidString).usdz")
-        #expect(Scene(nodes: [node]).write(to: url))
+        try Scene(nodes: [node]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
         let process = Process()

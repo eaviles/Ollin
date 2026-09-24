@@ -11,8 +11,16 @@ public extension StrokeFont {
     /// glyph per printable ASCII character in order, so the Nth record maps to
     /// character `32 + N` (record 0 is the space).
     ///
-    /// Returns `nil` if no glyphs parse.
-    init?(jhf contents: String) {
+    /// Throws an `unreadable` `FileError` when no glyph parses.
+    init(jhf contents: String) throws {
+        guard let font = StrokeFont(parsingJHF: contents) else {
+            throw FileError.unreadable(nil, "holds no Hershey glyphs")
+        }
+        self = font
+    }
+
+    /// The `.jhf` parser, `nil` when no glyph parses.
+    private init?(parsingJHF contents: String) {
         var glyphs: [Character: StrokeGlyph] = [:]
         let baseline = 9.0   // Hershey's shared coordinate system: baseline at +9.
         let lines = contents.split(separator: "\n", omittingEmptySubsequences: false)
@@ -69,10 +77,14 @@ public extension StrokeFont {
                   lineGapUnits: 8, spaceAdvanceUnits: glyphs[" "]?.advance)
     }
 
-    /// Parse a Hershey `.jhf` font from a file URL. Returns `nil` if the file
-    /// can't be read or parsed.
-    init?(jhfContentsOf url: URL) {
-        guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        self.init(jhf: contents)
+    /// Parse a Hershey `.jhf` font from a file URL. Throws a `FileError`:
+    /// `missing` when no file is there, `unreadable` when it is not a `.jhf` font.
+    init(jhfContentsOf url: URL) throws {
+        let contents = try FileError.text(of: url)
+        do {
+            try self.init(jhf: contents)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 }

@@ -286,7 +286,7 @@ The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor
 A bare point light pours the same brightness in every direction, and a spot is just that pour with a cone cut into it. Real fixtures are choosier. A recessed downlight pools a hot disc with a faint ring of spill around it. A street lamp throws sideways in two wings, so the bright spot isn't the foot of its own pole. A wallwasher climbs the wall and leaves the room alone. Lighting manufacturers measure exactly where each fixture sends its light. They publish the measurement as an **IES file**, a small text file of brightness-by-angle, and a light can wear one:
 
 ```swift
-let ring = IESProfile(string: ringFile)!     // or IESProfile(resource: "downlight", in: .module)!
+let ring = try! IESProfile(string: ringFile)     // or IESProfile(resource: "downlight", in: .module)!
 
 pointLight(Color(hue: 0.09, saturation: 0.35, brightness: 1.0),
            at: Vector3(-2.6, 2.4, 0.4), intensity: 1.4, profile: ring)

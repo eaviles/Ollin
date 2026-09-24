@@ -17,7 +17,7 @@ final class Badge: Sketch {
     var art: SVG?
 
     override func setup() {
-        art = loadSVG("rocket.svg")
+        art = try? loadSVG("rocket.svg")
     }
 
     override func draw() {
@@ -52,16 +52,16 @@ The importer deliberately skips gradients and patterns, CSS `<style>` blocks, `<
 #### Loading
 
 ```swift
-loadSVG(_ path: String) -> SVG?          // Sketch sugar, by file path
-loadSVG(_ url: URL) -> SVG?
+try loadSVG(_ path: String) -> SVG           // Sketch sugar, by file path
+try loadSVG(_ url: URL) -> SVG
 
-SVG(contentsOf: "art/crest.svg")         // the same, as initializers
-SVG(url: fileURL)
-SVG(data: data)                          // raw bytes (an inline string, a download)
-SVG(resource: "crest", in: .module)      // bundled beside the sketch
+try SVG(contentsOf: "art/crest.svg")         // the same, as initializers
+try SVG(url: fileURL)
+try SVG(data: data)                          // raw bytes (an inline string, a download)
+try SVG(resource: "crest", in: .module)      // bundled beside the sketch
 ```
 
-All of these return `nil` when the file cannot be read or holds no importable geometry. The `resource:in:` form follows the font and image loaders, so you pass the caller's bundle explicitly, such as `.module` from inside a package target. Pass it every time, because a default would resolve to Ollin's own bundle rather than yours.
+All of these throw a `FileError` when the file cannot be read (`missing`) or holds no importable geometry (`unreadable`). The `resource:in:` form follows the font and image loaders, so you pass the caller's bundle explicitly, such as `.module` from inside a package target. Pass it every time, because a default would resolve to Ollin's own bundle rather than yours.
 
 <a name="drawing"></a>
 

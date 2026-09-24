@@ -21,7 +21,7 @@ struct Ragdoll3DTests {
         .appendingPathComponent("Examples/3D/Physics/Ragdoll/figure.gltf")
 
     static func figure() throws -> Scene {
-        try #require(Scene(contentsOf: figureURL))
+        try Scene(contentsOf: figureURL)
     }
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {

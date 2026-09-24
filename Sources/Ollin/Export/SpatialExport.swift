@@ -266,8 +266,12 @@ public extension OllinApp {
         let scene = spatialScene(of: sketch, frame: frame, fps: fps)
         let url = URL(fileURLWithPath: path)
         let format = SceneFileFormat(fileExtension: url.pathExtension) ?? .usdz
-        if scene.write(to: url, as: format, metersPerUnit: metersPerUnit) {
+        do {
+            try scene.write(to: url, as: format, metersPerUnit: metersPerUnit)
             print("Ollin: exported frame \(frame) → \(path) (\(format.fileExtension.uppercased()))")
+        } catch {
+            FileHandle.standardError.write(Data("Ollin: \(error)\n".utf8))
+            exit(1)
         }
     }
 }

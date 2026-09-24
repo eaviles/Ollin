@@ -1185,7 +1185,7 @@ VisionSpace.normalizedRectangle(_ canvasRect: Rectangle, in: Rectangle, mirrored
 Every tracker also runs once on an image you loaded, with no camera needed. That is useful for analyzing photos, and it is how the framework tests detection:
 
 ```swift
-let image = loadImage("crowd.jpg")!
+let image = try! loadImage("crowd.jpg")
 let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```

@@ -22,7 +22,7 @@ import UniformTypeIdentifiers
 /// ```swift
 /// final class Photo: Sketch {
 ///     var photo: Image?
-///     override func setup() { photo = loadImage("/path/to/photo.jpg") }
+///     override func setup() { photo = try? loadImage("/path/to/photo.jpg") }
 ///     override func draw() {
 ///         background(.black)
 ///         if let photo { drawImage(photo, 0, 0, width, height) }
@@ -219,33 +219,35 @@ public final class Image {
         self.pixelsModified = true
     }
 
-    /// Decode an image file at `url` (PNG, JPEG, HEIC, TIFF, GIF — anything
-    /// ImageIO reads). Returns `nil` if the file can't be read or decoded.
-    public convenience init?(contentsOf url: URL) {
+    /// Decode an image file at `url` (PNG, JPEG, HEIC, TIFF, GIF: anything
+    /// ImageIO reads). Throws a `FileError`: `missing` when no file is there,
+    /// `unreadable` when its bytes are not a picture.
+    public convenience init(contentsOf url: URL) throws {
+        try FileError.requireFile(url)
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            return nil
+            throw FileError.unreadable(url, "is not a picture ImageIO can decode")
         }
         self.init(cgImage: image)
         self.sourceURL = url
     }
 
-    /// Decode image file `data` (the bytes of a PNG, JPEG, …). Returns `nil` if
-    /// the data isn't a decodable image.
-    public convenience init?(data: Data) {
+    /// Decode image file `data` (the bytes of a PNG, JPEG, and so on). Throws
+    /// an `unreadable` `FileError` when the bytes are not a picture.
+    public convenience init(data: Data) throws {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            return nil
+            throw FileError.unreadable(nil, "these bytes are not a picture ImageIO can decode")
         }
         self.init(cgImage: image)
     }
 
     /// Decode a bundled image resource. `in:` has no default on purpose: a
-    /// default argument would resolve to Ollin's own bundle, never the caller's —
-    /// pass `.module` from the sketch that bundles the asset.
-    public convenience init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
-        self.init(contentsOf: url)
+    /// default argument would resolve to Ollin's own bundle, never the caller's,
+    /// so pass `.module` from the sketch that bundles the asset. Throws a
+    /// `FileError`, `missing` when the bundle holds no such resource.
+    public convenience init(resource name: String, withExtension ext: String?, in bundle: Bundle) throws {
+        try self.init(contentsOf: FileError.resource(name, withExtension: ext, in: bundle))
     }
 
     /// The current pixels as a `CGImage`, reflecting edits made through the
@@ -577,16 +579,17 @@ public final class Image {
 }
 
 extension Sketch {
-    /// Load an image from a file path, for `drawImage`. Returns `nil` if the file
-    /// can't be read or decoded. Call it in `setup()` and keep the result in a
-    /// property — decoding every frame is wasteful. Sugar over `Image(contentsOf:)`.
-    public func loadImage(_ path: String) -> Image? {
-        Image(contentsOf: URL(fileURLWithPath: path))
+    /// Load an image from a file path, for `drawImage`. Throws a `FileError`
+    /// when the file is not there or is not a picture. Call it in `setup()` and
+    /// keep the result in a property, since decoding every frame is wasteful:
+    /// `photo = try! loadImage("photo.jpg")`. Sugar over `Image(contentsOf:)`.
+    public func loadImage(_ path: String) throws -> Image {
+        try Image(contentsOf: URL(fileURLWithPath: path))
     }
 
     /// Load an image from a file `url`. Sugar over `Image(contentsOf:)`.
-    public func loadImage(_ url: URL) -> Image? {
-        Image(contentsOf: url)
+    public func loadImage(_ url: URL) throws -> Image {
+        try Image(contentsOf: url)
     }
 }
 

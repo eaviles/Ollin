@@ -13,7 +13,7 @@ final class Photo: Sketch {
     var photo: Image?
 
     override func setup() {
-        photo = loadImage("/path/to/photo.jpg")
+        photo = try? loadImage("/path/to/photo.jpg")
     }
 
     override func draw() {
@@ -39,14 +39,14 @@ final class Photo: Sketch {
 ### loadImage
 
 ```swift
-loadImage(_ path: String) -> Image?
-loadImage(_ url: URL) -> Image?
+loadImage(_ path: String) throws -> Image
+loadImage(_ url: URL) throws -> Image
 ```
 
-Decode an image file. The call returns `nil` if the file cannot be read or decoded, so unwrap the result (or `guard let` it) before drawing. Call it in `setup()`.
+Decode an image file. The call throws a [`FileError`](../Core/Sketch.md#fileerror) when the file is not there (`missing`) or is not a picture (`unreadable`). Call it in `setup()`: `try!` stops the sketch naming the file and the reason, and `try?` carries on with `nil`.
 
 ```swift
-photo = loadImage("/Users/me/Pictures/leaf.png")
+photo = try? loadImage("/Users/me/Pictures/leaf.png")
 ```
 
 `loadImage` is a shorthand for [`Image(contentsOf:)`](#image). Use the initializer directly when you have a `URL`, raw `Data`, or a bundled resource.
@@ -156,15 +156,15 @@ withState {
 ### Image
 
 ```swift
-Image(contentsOf url: URL)
-Image(data: Data)
-Image(resource name: String, withExtension ext: String?, in bundle: Bundle)
+Image(contentsOf url: URL) throws
+Image(data: Data) throws
+Image(resource name: String, withExtension ext: String?, in bundle: Bundle) throws
 Image(cgImage: CGImage)
 Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
-`Image` is the typed value `drawImage` takes. It is a reference type that owns a GPU texture, so it is identified by the object itself, not by its contents. The failable initializers return `nil` when the bytes are not a decodable image. Every image reports its pixel `width` / `height` as `Int`s, and its `size` as the same pair in a `Vector2`. The `Vector2` form works with the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes the image.
+`Image` is the typed value `drawImage` takes. It is a reference type that owns a GPU texture, so it is identified by the object itself, not by its contents. The three loading initializers throw a `FileError`: `missing` when the file or resource is not there, `unreadable` when the bytes are not a decodable image. Every image reports its pixel `width` / `height` as `Int`s, and its `size` as the same pair in a `Vector2`. The `Vector2` form works with the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes the image.
 
 `Image(width:height:color:)` makes a blank `width`×`height` image filled with `color`, which is transparent by default. You can then [author it from scratch](#pixels) pixel by pixel instead of loading a file.
 
@@ -173,7 +173,7 @@ Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose, because a default argument would resolve to *Ollin's* bundle and never yours. So pass `.module` from the target that bundles the file:
 
 ```swift
-let texture = Image(resource: "paper", withExtension: "png", in: .module)
+let texture = try? Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
 `currentCGImage()` is the pixels as they stand now, edits through the `[x, y]` subscript included, where `cgImage` is always the original decode. It is what interop that must see the live pixels (Vision, Core Image) should ask for. `Image(cgImage:)` goes the other way and wraps a `CGImage` you already have in memory. It can be one you rendered yourself, decoded elsewhere, or built procedurally, so anything that produces a `CGImage` becomes drawable.

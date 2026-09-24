@@ -479,8 +479,8 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// ```swift
     /// override func setup() {
     ///     device.use(.markers)
-    ///     device.look(for: [.picture(resource: "poster", withExtension: "png",
-    ///                                in: .module, printedWidth: 0.3)!])
+    ///     device.look(for: [try! PhoneReference.picture(resource: "poster", withExtension: "png",
+    ///                                                   in: .module, printedWidth: 0.3)])
     ///     device.start()
     /// }
     /// ```

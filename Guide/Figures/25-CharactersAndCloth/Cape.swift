@@ -26,7 +26,7 @@ final class Cape: Sketch {
     static let collar = -length / 2 + 0.02
 
     override func setup() {
-        rest = loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
+        rest = try? loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
         carriedFigure = rest
         pinnedFigure = rest
         world.ground = 0

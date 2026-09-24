@@ -117,7 +117,7 @@ struct ModelFileMutationTests {
         var inconsistent = 0
         let text = MutationRun.run("obj-text", seeds: [cube.bytes], count: 600, numberSweep: true,
                                    allocations: fileBound) { bytes in
-            guard let mesh = Mesh(objSource: String(decoding: bytes, as: UTF8.self)) else { return false }
+            guard let mesh = try? Mesh(objSource: String(decoding: bytes, as: UTF8.self)) else { return false }
             Self.read(mesh, inconsistent: &inconsistent)
             return true
         }
@@ -128,7 +128,7 @@ struct ModelFileMutationTests {
         let mtl = MutationRun.run("obj-material", seeds: [material.bytes], count: 200, numberSweep: true,
                                   allocations: fileBound) { bytes in
             folder.write(bytes, named: "look.mtl")
-            guard let mesh = Mesh(contentsOf: objURL) else { return false }
+            guard let mesh = try? Mesh(contentsOf: objURL) else { return false }
             Self.read(mesh, inconsistent: &inconsistent)
             return mesh.material != nil
         }
@@ -177,7 +177,7 @@ struct ModelFileMutationTests {
         let report = MutationRun.run(name, seeds: [seed], count: 120, sweeps: !numbers, numberSweep: numbers,
                                      allocations: fileBound) { bytes in
             let url = folder.write(bytes, named: "case.\(ext)")
-            guard let mesh = Mesh(contentsOf: url) else { return false }
+            guard let mesh = try? Mesh(contentsOf: url) else { return false }
             Self.read(mesh, inconsistent: &inconsistent)
             return true
         }

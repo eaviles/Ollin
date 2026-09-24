@@ -115,9 +115,7 @@ public extension Mesh {
     }
 
     /// Write this mesh to `url` for fabrication, in the format its extension
-    /// names (`.stl`, `.obj`, `.3mf`) or the one you pass. Returns whether it
-    /// was written; a failure prints what went wrong rather than trapping, like
-    /// the loaders.
+    /// names (`.stl`, `.obj`, `.3mf`) or the one you pass.
     ///
     /// Four things happen to the geometry on the way out, each of which a mesh
     /// coming from a sketch needs:
@@ -142,41 +140,39 @@ public extension Mesh {
     ///
     /// ```swift
     /// let sculpture = blobs.mesh(resolution: 96)
-    /// sculpture.normalized(scale: 60).write(to: "sculpture.3mf")
+    /// try sculpture.normalized(scale: 60).write(to: "sculpture.3mf")
     /// ```
     ///
+    /// Throws an `unwritable` `FileError` for a format the extension does not
+    /// name, a mesh with no triangles, or a file the system would not write.
     /// A mesh a printer will refuse (one with holes, or wound inconsistently)
-    /// is still written, with a note saying so. `printCheck()` is the same
-    /// examination if you would rather ask before writing.
-    @discardableResult
+    /// is still written, with a note on standard error saying so.
+    /// `printCheck()` is the same examination if you would rather ask before
+    /// writing.
     func write(to url: URL, as format: MeshFileFormat? = nil,
-               unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) -> Bool {
+               unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) throws {
         guard let format = format ?? MeshFileFormat(fileExtension: url.pathExtension) else {
-            print("Ollin: don't know what format to write '\(url.lastPathComponent)' as. Use .stl, .obj, or .3mf, or pass one explicitly.")
-            return false
+            throw FileError.unwritable(url, "no mesh format by that extension; use .stl, .obj, or .3mf, or pass one")
         }
         guard let data = data(as: format, unit: unit, upAxis: upAxis) else {
-            print("Ollin: nothing to write to '\(url.lastPathComponent)': the mesh has no triangles.")
-            return false
+            throw FileError.unwritable(url, "the mesh has no triangles to write")
         }
         let check = printCheck(upAxis: upAxis)
         if !check.isPrintable {
-            print("Ollin: writing '\(url.lastPathComponent)', which a printer may refuse: \(check.problems.joined(separator: "; ")).")
+            FileHandle.standardError.write(Data(("Ollin: writing '\(url.lastPathComponent)', which a printer "
+                + "may refuse: \(check.problems.joined(separator: "; ")).\n").utf8))
         }
         do {
             try data.write(to: url)
-            return true
         } catch {
-            print("Ollin: couldn't write '\(url.path)': \(error.localizedDescription)")
-            return false
+            throw FileError.unwritable(url, error.localizedDescription)
         }
     }
 
     /// Write this mesh to a file `path`. Sugar over `write(to:)`.
-    @discardableResult
     func write(to path: String, as format: MeshFileFormat? = nil,
-               unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) -> Bool {
-        write(to: URL(fileURLWithPath: path), as: format, unit: unit, upAxis: upAxis)
+               unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) throws {
+        try write(to: URL(fileURLWithPath: path), as: format, unit: unit, upAxis: upAxis)
     }
 }
 
@@ -187,12 +183,11 @@ public extension Sketch {
     /// counterpart of `loadMesh`.
     ///
     /// ```swift
-    /// saveMesh(sculpture.normalized(scale: 60), to: "sculpture.3mf")
+    /// try saveMesh(sculpture.normalized(scale: 60), to: "sculpture.3mf")
     /// ```
-    @discardableResult
     func saveMesh(_ mesh: Mesh, to path: String, as format: MeshFileFormat? = nil,
-                  unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) -> Bool {
-        mesh.write(to: path, as: format, unit: unit, upAxis: upAxis)
+                  unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) throws {
+        try mesh.write(to: path, as: format, unit: unit, upAxis: upAxis)
     }
 }
 

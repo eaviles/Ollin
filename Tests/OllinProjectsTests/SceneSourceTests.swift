@@ -161,7 +161,7 @@ struct SceneSourceTests {
         let source = ImportedSceneSource.body(scene, className: "Yard")
 
         #expect(source.contains("private static let partNames = [\"shed\", \"shed-2\"]"))
-        #expect(source.contains("Scene(resource: \"yard\", withExtension: \"usdz\", in: .module)"))
+        #expect(source.contains("try Scene(resource: \"yard\", withExtension: \"usdz\", in: .module)"))
         #expect(source.contains("loadParts()"))
         #expect(source.contains("private func drawPart(_ name: String)"))
     }

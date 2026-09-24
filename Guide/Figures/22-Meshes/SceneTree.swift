@@ -45,7 +45,7 @@ final class SceneTree: Sketch {
                   Rectangle(x: 604, y: 66, width: 262, height: 280)]
 
     override func setup() {
-        stage = Scene(contentsOf: sceneURL)
+        stage = try? Scene(contentsOf: sceneURL)
         rows = Self.readTree(sceneURL)
     }
 

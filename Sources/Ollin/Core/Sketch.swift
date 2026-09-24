@@ -192,7 +192,7 @@ open class Sketch {
     /// ```swift
     /// override func draw() {
     ///     for path in droppedFiles() {
-    ///         if let picture = loadImage(path) { pictures.append(picture) }
+    ///         if let picture = try? loadImage(path) { pictures.append(picture) }
     ///     }
     /// }
     /// ```

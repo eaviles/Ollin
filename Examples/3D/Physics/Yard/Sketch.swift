@@ -78,7 +78,7 @@ final class Yard: Sketch {
     let cloth = Color(hex: 0xD8CBB4)
 
     override func setup() {
-        skin = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
+        skin = try? Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         standing = skin
         idle = skin.animations.first
         groundMesh = ground.mesh(width: 40, depth: 34, height: 1.6)

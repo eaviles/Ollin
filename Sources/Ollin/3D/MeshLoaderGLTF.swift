@@ -666,7 +666,7 @@ struct GLTFDocument {
             let textures = gltf.textures ?? []
             guard ti >= 0, ti < textures.count, let src = textures[ti].source,
                   let data = imageData(src) else { return nil }
-            return Image(data: data)
+            return try? Image(data: data)
         }
         // What the maps do outside the uv square. glTF states it per texture,
         // Ollin holds one answer per material, and an exporter gives a

@@ -166,7 +166,7 @@ struct TextureWrapTests {
     /// file that declares no sampler at all describes a tiling texture. Reading
     /// it as clamp is what keeps an authored tiling floor from tiling.
     @Test func aGLTFTextureWithNoSamplerTiles() throws {
-        let mesh = try #require(Mesh(contentsOf: try gltfFile(sampler: nil)))
+        let mesh = try Mesh(contentsOf: try gltfFile(sampler: nil))
         #expect(try #require(mesh.material).wrap == .tile)
     }
 
@@ -174,7 +174,7 @@ struct TextureWrapTests {
     /// 33648 mirrored repeat, 10497 repeat.
     @Test(arguments: [(33071, TextureWrap.clamp), (33648, .mirror), (10497, .tile)])
     func aGLTFSamplerIsReadAsWritten(_ code: Int, _ expected: TextureWrap) throws {
-        let mesh = try #require(Mesh(contentsOf: try gltfFile(sampler: code)))
+        let mesh = try Mesh(contentsOf: try gltfFile(sampler: code))
         #expect(try #require(mesh.material).wrap == expected)
     }
 
@@ -246,7 +246,7 @@ struct TextureWrapTests {
         f 1/1 2/2 3/3
         """.write(to: dir.appendingPathComponent("model.obj"), atomically: true, encoding: .utf8)
 
-        let mesh = try #require(Mesh(contentsOf: dir.appendingPathComponent("model.obj")))
+        let mesh = try Mesh(contentsOf: dir.appendingPathComponent("model.obj"))
         #expect(try #require(mesh.material).wrap == expected)
     }
 
@@ -263,9 +263,9 @@ struct TextureWrapTests {
         node.mesh = floor
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-wrap-\(UUID().uuidString).usdz")
-        #expect(Scene(nodes: [node]).write(to: url))
+        try Scene(nodes: [node]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
-        let read = try #require(Scene(contentsOf: url))
+        let read = try Scene(contentsOf: url)
         func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
             for node in nodes {
                 if let mesh = node.mesh { return mesh }

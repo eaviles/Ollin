@@ -58,7 +58,7 @@ struct MusicAndShapeFileMutationTests {
         let included = "IESNA:LM-63-2002\n[TEST] tilt\nTILT=INCLUDE\n1\n2\n0 90\n1 0.8\n1 -1 1 3 2 1 1 0.1 0.1 0\n1 1 50\n0 45 90\n0 180\n100 80 10 90 60 5\n"
         let report = MutationRun.run("ies-profile", seeds: seeds + [included.bytes], count: 300, sweeps: false,
                                      numberSweep: true, allocations: fileBound) { bytes in
-            guard let profile = IESProfile(data: Data(bytes)) else { return false }
+            guard let profile = try? IESProfile(data: Data(bytes)) else { return false }
             for vertical in stride(from: -0.5, through: 3.7, by: 0.3) {
                 for horizontal in stride(from: -1.0, through: 7.0, by: 0.9) {
                     _ = profile.intensity(vertical: vertical, horizontal: horizontal)
@@ -88,7 +88,7 @@ struct MusicAndShapeFileMutationTests {
         """
         let report = MutationRun.run("svg-drawing", seeds: [drawing.bytes], count: 600,
                                      numberSweep: true, allocations: fileBound) { bytes in
-            guard let svg = SVG(data: Data(bytes)) else { return false }
+            guard let svg = try? SVG(data: Data(bytes)) else { return false }
             let fitted = svg.fitted(in: Rectangle(x: 0, y: 0, width: 400, height: 300))
             for element in fitted.elements {
                 _ = element.shape.triangulatedFill()

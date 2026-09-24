@@ -1063,7 +1063,7 @@ private final class LightShapingProbe: Sketch {
             pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
                        direction: Vector3(0, 0, -1))
         case .ringProfile:
-            let profile = IESProfile(string: LightShapingProbe.ringIES)!
+            let profile = try! IESProfile(string: LightShapingProbe.ringIES)
             pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
                        profile: profile, direction: Vector3(0, 0, -1))
         case .halfCookie, .halfCookieRolled:

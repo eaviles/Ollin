@@ -55,7 +55,7 @@ public struct SamplePhoto: Hashable, Sendable {
     /// Decodes the picture. Decoding happens on every call, so keep the result
     /// in a property rather than calling this from `draw()`.
     public func load() -> Image {
-        guard let image = Image(resource: name, withExtension: "jpg", in: .module) else {
+        guard let image = try? Image(resource: name, withExtension: "jpg", in: .module) else {
             preconditionFailure("OllinSamplePhotos: \(name).jpg is missing from the bundle")
         }
         return image

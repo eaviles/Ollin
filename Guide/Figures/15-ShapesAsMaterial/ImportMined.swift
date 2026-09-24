@@ -33,7 +33,7 @@ final class ImportMined: Sketch {
     override func draw() {
         background(paper)
         textSize(17)
-        guard let art = SVG(data: Data(boat.utf8)) else { return }
+        guard let art = try? SVG(data: Data(boat.utf8)) else { return }
 
         let titles = ["as authored", "as dots", "as hatching"]
         for i in 0 ..< 3 {

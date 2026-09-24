@@ -1065,7 +1065,7 @@ private final class AnimatedSceneScene: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/scene.gltf")
-        orrery = Ollin.Scene(contentsOf: url)
+        orrery = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {
@@ -1093,7 +1093,7 @@ private final class USDSceneScene: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
-        court = Ollin.Scene(contentsOf: url)
+        court = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {
@@ -1120,7 +1120,7 @@ private final class USDAnimatedSceneScene: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/stage.usda")
-        mobile = Ollin.Scene(contentsOf: url)
+        mobile = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {
@@ -1151,7 +1151,7 @@ private final class USDSkinnedSceneScene: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/stage.usda")
-        pond = Ollin.Scene(contentsOf: url)
+        pond = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {
@@ -1181,7 +1181,7 @@ private final class SkinnedSceneScene: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/scene.gltf")
-        tidepool = Ollin.Scene(contentsOf: url)
+        tidepool = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {
@@ -2183,7 +2183,7 @@ private final class VolumetricLightScene: Sketch {
 private final class LightShapingScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
-    static let ring = IESProfile(string: """
+    static let ring = try! IESProfile(string: """
     IESNA:LM-63-2002
     TILT=NONE
     1 1000 1 8 1 1 2 0.1 0.1 0.1
@@ -2191,9 +2191,9 @@ private final class LightShapingScene: Sketch {
     0 10 20 30 40 50 60 90
     0
     1000 700 200 350 600 250 40 0
-    """)!
+    """)
 
-    static let fan = IESProfile(string: """
+    static let fan = try! IESProfile(string: """
     IESNA:LM-63-2002
     TILT=NONE
     1 1000 1 6 4 1 2 0.1 0.1 0.1
@@ -2204,7 +2204,7 @@ private final class LightShapingScene: Sketch {
     400 700 750 450 120 0
     150 250 260 150 40 0
     40 60 60 30 8 0
-    """)!
+    """)
 
     static let gobo: LightCookie = {
         var frame = Image(width: 64, height: 64, color: .black)
@@ -5462,7 +5462,7 @@ private final class SVGImportScene: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14161F))
-        guard let art = SVG(data: Data(source.utf8)) else { return }
+        guard let art = try? SVG(data: Data(source.utf8)) else { return }
 
         // Left: the document as authored (fills, strokes, document order).
         drawSVG(art, in: Rectangle(x: 10, y: 66, width: 116, height: 124))
@@ -9294,7 +9294,7 @@ private final class PlanetScene: Sketch {
             .appendingPathComponent("Examples/3D/Geometry/Planet/\(name)")
     }
     private static func kernel(_ entry: String) -> ComputeKernel? {
-        ComputeKernel(entry: entry, contentsOf: exampleFile("planet.metal"))
+        (try? ComputeKernel(entry: entry, contentsOf: exampleFile("planet.metal")))
     }
 
     private let heightMap = ComputeTexture(width: 512, height: 256)

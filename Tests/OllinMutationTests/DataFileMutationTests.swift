@@ -16,7 +16,7 @@ struct DataFileMutationTests {
         let semicolon = "a;b;c\n1,5;2;3\n\"x\"\"y\";;z\n"
         let report = MutationRun.run("table-file", seeds: [csv.bytes, tsv.bytes, semicolon.bytes], count: 500,
                                      numberSweep: true, allocations: fileBound) { bytes in
-            guard let table = Table(data: Data(bytes)) else { return false }
+            guard let table = try? Table(data: Data(bytes)) else { return false }
             for row in table {
                 for column in table.columns {
                     _ = row[column]
@@ -44,7 +44,7 @@ struct DataFileMutationTests {
         """
         let report = MutationRun.run("json-file", seeds: [document.bytes], count: 600, sweeps: false,
                                      numberSweep: true, allocations: fileBound) { bytes in
-            guard let json = JSON(data: Data(bytes)) else { return false }
+            guard let json = try? JSON(data: Data(bytes)) else { return false }
             func read(_ value: JSON, depth: Int) {
                 _ = value.text
                 _ = value.number

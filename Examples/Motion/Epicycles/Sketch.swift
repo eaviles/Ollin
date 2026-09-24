@@ -19,7 +19,7 @@ final class EpicycleTrace: Sketch {
     var epicycles = Epicycles(points: [])
 
     override func setup() {
-        guard let art = SVG(resource: "whale", in: .module) else { return }
+        guard let art = try? SVG(resource: "whale", in: .module) else { return }
         let fitted = art.fitted(in: bounds.inset(by: .all(140 * scale)))
         guard let outline = fitted.contours.first else { return }
         epicycles = Epicycles(outline, samples: 320)

@@ -140,7 +140,7 @@ public final class Record3DRecording {
         if let cachedFrame, cachedIndex == index { return cachedFrame }
 
         let files = frames[index]
-        guard let jpg = archive.data(named: files.jpg), let color = Image(data: jpg) else {
+        guard let jpg = archive.data(named: files.jpg), let color = try? Image(data: jpg) else {
             throw Record3DError.decodeFailed("color frame \(index)")
         }
         guard let depthBlob = archive.data(named: files.depth),

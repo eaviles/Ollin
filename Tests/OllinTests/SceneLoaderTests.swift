@@ -40,7 +40,7 @@ struct SceneLoaderTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     /// The main fixture: a "rig" root translated (1,0,0) carrying the triangle
@@ -259,7 +259,7 @@ struct SceneLoaderTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
         try usda.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     /// The USD sibling of the glTF stage: a "rig" root translated (1,0,0)
@@ -577,7 +577,7 @@ struct SceneLoaderTests {
 
         // The whole scene read agrees: structure, meshes, and lights all
         // resolve from the one package parse.
-        let scene = try #require(Scene(contentsOf: url))
+        let scene = try Scene(contentsOf: url)
         #expect(scene.lights.count == 7)
         #expect(scene.node("part")?.mesh != nil)
     }
@@ -679,7 +679,7 @@ struct SceneLoaderTests {
         let url = URL(fileURLWithPath:
             "/System/Library/PrivateFrameworks/CoreUSDEdit.framework/Versions/A/Resources/shaderball.usdz")
         guard FileManager.default.fileExists(atPath: url.path) else { return }
-        let loaded = Ollin.Scene(contentsOf: url)
+        let loaded = try? Ollin.Scene(contentsOf: url)
         let scene = try #require(loaded)
         let group = try #require(scene.node("neutral_objects"))
         #expect(group.children.map(\.name) == ["core", "base", "sss_bars"])
@@ -857,7 +857,7 @@ struct SceneLoaderTests {
             .write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let scene = try #require(Scene(contentsOf: url))
+        let scene = try Scene(contentsOf: url)
         let mesh = try #require(scene.node("tile")?.mesh)
         let texture = try #require(mesh.material?.texture)
         #expect(texture.width == 1 && texture.height == 1)
@@ -886,7 +886,7 @@ struct SceneLoaderTests {
         try "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let scene = try #require(Scene(contentsOf: url))
+        let scene = try Scene(contentsOf: url)
         #expect(scene.nodes.count == 1)
         #expect(scene.nodes[0].name.hasPrefix("ollin-fallback-"))
         #expect(scene.nodes[0].mesh?.triangleCount == 1)

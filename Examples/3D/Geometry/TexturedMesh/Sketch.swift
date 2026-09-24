@@ -2,7 +2,7 @@ import Ollin
 
 /// A textured 3D mesh: a sphere wearing an image, mapped through its UVs and lit by
 /// the material model. The texture here is built in code (a colorful UV grid), so the
-/// sketch is self-contained, but any `Image` works: `loadImage(...)` then
+/// sketch is self-contained, but any `Image` works: `(try? loadImage(...))` then
 /// `mesh.textured(image)`.
 ///
 /// `Mesh.textured(_:)` returns a copy carrying the image as its surface; the built-in

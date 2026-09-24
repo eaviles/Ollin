@@ -398,7 +398,7 @@ extension ProjectGenerator {
 
         ## What comes along
 
-        Files beside the sketch in `Sources/\(target)/` that are not Swift are carried into the app as resources: a `.metal` shader, pictures, sounds, a mesh. They are named in `project.yml`, so after dropping a new one in, run `xcodegen generate` again. Inside the app `Bundle.module` is the app itself, so `Image(resource: "photo", withExtension: "jpg", in: .module)` finds on the phone what it finds on the desk.
+        Files beside the sketch in `Sources/\(target)/` that are not Swift are carried into the app as resources: a `.metal` shader, pictures, sounds, a mesh. They are named in `project.yml`, so after dropping a new one in, run `xcodegen generate` again. Inside the app `Bundle.module` is the app itself, so `try Image(resource: "photo", withExtension: "jpg", in: .module)` finds on the phone what it finds on the desk.
 
         A `.metal` file is carried as a file, never compiled by Xcode, because the framework reads a shader's source at run time. That is what its `copyFiles` entry in the spec does: the resources phase would compile it into a library the framework never reads.
 

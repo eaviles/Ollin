@@ -92,37 +92,45 @@ public struct OutlineFont: @unchecked Sendable {
         self.init(ctFont: font)
     }
 
-    /// Load a font from raw `.ttf`/`.otf` data — e.g. bytes you fetched or
-    /// embedded. Returns `nil` if the data isn't a usable font.
-    public init?(data: Data) {
+    /// Load a font from raw `.ttf`/`.otf` data, bytes you fetched or embedded.
+    /// Throws an `unreadable` `FileError` when the data isn't a usable font.
+    public init(data: Data) throws {
         guard let provider = CGDataProvider(data: data as CFData),
-              let cgFont = CGFont(provider) else { return nil }
+              let cgFont = CGFont(provider) else {
+            throw FileError.unreadable(nil, "these bytes are not a font Core Graphics can read")
+        }
         let font = CTFontCreateWithGraphicsFont(cgFont, 1.0, nil, nil)
         self.init(ctFont: font)
     }
 
     /// Load a font from a file path (a `.ttf`/`.otf` on disk).
-    public init?(path: String) {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
-        self.init(data: data)
+    public init(path: String) throws {
+        try self.init(url: URL(fileURLWithPath: path))
     }
 
     /// Load a font from a **file** URL. (A remote `https://` URL would need an
-    /// asynchronous download and can't block the draw thread — load those in
-    /// `setup()` and pass the bytes to `init(data:)`.)
-    public init?(url: URL) {
-        guard url.isFileURL, let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data)
+    /// asynchronous download and can't block the draw thread; load those in
+    /// `setup()` and pass the bytes to `init(data:)`.) Throws a `FileError`:
+    /// `missing` when no file is there, `unreadable` when it is not a font.
+    public init(url: URL) throws {
+        guard url.isFileURL else {
+            throw FileError.unreadable(url, "is not a file; fetch it and pass the bytes to init(data:)")
+        }
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(data: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 
-    /// Load a font bundled as a resource. Mirrors `BitmapFont(resource:in:)` —
+    /// Load a font bundled as a resource. Mirrors `BitmapFont(resource:in:)`:
     /// the bundle can't default to `.module` (that would resolve to Ollin's own
     /// bundle, not the caller's), so pass `in: .module` from your target.
-    public init?(resource: String, in bundle: Bundle) {
+    public init(resource: String, in bundle: Bundle) throws {
         let name = (resource as NSString).deletingPathExtension
         let ext = (resource as NSString).pathExtension
-        guard let url = bundle.url(forResource: name, withExtension: ext.isEmpty ? nil : ext) else { return nil }
-        self.init(url: url)
+        try self.init(url: FileError.resource(name, withExtension: ext.isEmpty ? nil : ext, in: bundle))
     }
 
     // The system faces are `static let` so every user of one shares a single

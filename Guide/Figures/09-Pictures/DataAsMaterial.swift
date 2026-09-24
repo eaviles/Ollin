@@ -31,7 +31,7 @@ final class DataAsMaterial: Sketch {
     var table: Table?
 
     override func setup() {
-        table = Table(text: source)
+        table = try? Table(text: source)
     }
 
     override func draw() {

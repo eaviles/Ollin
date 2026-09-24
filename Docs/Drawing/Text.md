@@ -192,10 +192,10 @@ drawText("outline", width / 2, 480)
 
 ```swift
 OutlineFont(name: "Helvetica Neue")             // an installed family / PostScript name
-OutlineFont(path: "/path/to/Font.otf")          // a file on disk
-OutlineFont(url: fileURL)                        // a file:// URL
-OutlineFont(data: bytes)                          // raw .ttf/.otf data
-OutlineFont(resource: "Font.ttf", in: .module)   // a font bundled beside your sketch
+(try? OutlineFont(path: "/path/to/Font.otf"))          // a file on disk
+(try? OutlineFont(url: fileURL))                        // a file:// URL
+(try? OutlineFont(data: bytes))                          // raw .ttf/.otf data
+(try? OutlineFont(resource: "Font.ttf", in: .module))   // a font bundled beside your sketch
 
 OutlineFont.system        // the system UI font (San Francisco on macOS)
 OutlineFont.systemMedium  // medium weight, the default text font
@@ -280,7 +280,7 @@ The bundled default is **Hershey Sans**, from the public-domain [Hershey vector 
 **Loading more single-line fonts:** Ollin reads the Hershey `.jhf` format. You can drop in any of the many Hershey faces (serif, script, gothic, Cyrillic, Greek):
 
 ```swift
-let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtIn
+let serif = (try? StrokeFont(resource: "rowmans.jhf", in: .module)) ?? .builtIn
 textFont(serif)
 ```
 
@@ -662,7 +662,7 @@ A `BitmapFont` is a value type. It holds a table of `BitmapGlyph`s, each a small
 Load your own pixel font from a **BDF** file, the standard bitmap-font format that the X11 catalog and Cozette ship in:
 
 ```swift
-if let mine = BitmapFont(bdfContentsOf: url) {
+if let mine = try? BitmapFont(bdfContentsOf: url) {
     textFont(mine)
 }
 ```
@@ -687,17 +687,17 @@ drawText("AI", width / 2, height / 2)
 Ollin also reads the **Playdate `.fnt`** format. That is a line-oriented metrics file, holding per-glyph widths, `tracking`, and kerning pairs, paired with a 1-bit glyph strike. The strike is either embedded in the file as base64 or sits beside it as a `<name>-table-<width>-<height>.png`. It is a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
 
 ```swift
-let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtIn
+let font = (try? BitmapFont(resource: "MyFont.fnt", in: .module)) ?? .builtIn
 textFont(font)
 ```
 
-`BitmapFont(resource:in:)` is the short path for a font bundled beside your sketch. Pass the filename, and the loader picks BDF or `.fnt` from the extension. Pass the bundle it lives in too, `.module` for a `swift run` sketch's own resources, or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtIn` falls back to the default font.
+`BitmapFont(resource:in:)` is the short path for a font bundled beside your sketch. Pass the filename, and the loader picks BDF or `.fnt` from the extension. Pass the bundle it lives in too, `.module` for a `swift run` sketch's own resources, or the default `.main` for an app. It throws a `FileError` if the resource is missing or can't be parsed, so `(try? …) ?? .builtIn` falls back to the default font.
 
 Under it, `BitmapFont(fntContentsOf:)` takes a file URL and handles both strike forms. It finds the sibling `-table` PNG when the strike is external. If you already have the text, say from a network fetch, `BitmapFont(fnt:)` parses the self-contained embedded form directly:
 
 ```swift
 let text = try String(contentsOf: someURL, encoding: .utf8)
-if let font = BitmapFont(fnt: text) { textFont(font) }
+if let font = try? BitmapFont(fnt: text) { textFont(font) }
 ```
 
 Ollin bundles only the *loader*, not a library of `.fnt` fonts, so drop your own beside your sketch. The `PlaydateFont` example does exactly this. Free, redistributable pixel fonts are easy to find, and the public-domain set at [playdate-arcade-fonts](https://github.com/idleberg/playdate-arcade-fonts) is one source.

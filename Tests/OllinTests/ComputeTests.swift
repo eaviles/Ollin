@@ -97,11 +97,11 @@ struct ComputeTests {
             .write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let loaded = ComputeKernel(entry: "k", contentsOf: url)
+        let loaded = try? ComputeKernel(entry: "k", contentsOf: url)
         #expect(loaded?.entry == "k")
         #expect(loaded?.source.contains("FILE_MARKER") == true)
 
-        let missing = ComputeKernel(entry: "k",
+        let missing = try? ComputeKernel(entry: "k",
             contentsOf: url.appendingPathExtension("nope"))
         #expect(missing == nil)
     }

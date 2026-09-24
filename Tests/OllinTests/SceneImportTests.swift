@@ -28,7 +28,7 @@ struct SceneImportTests {
     /// order would move a part, and this is what would catch it.
     @Test("Every placement composes back to the node's own transform")
     func placementsComposeBackToTheAuthoredTransform() throws {
-        let opened = Ollin.Scene(contentsOf: Self.sampleScene)
+        let opened = try? Ollin.Scene(contentsOf: Self.sampleScene)
         let scene = try #require(opened)
         let described = SceneImport.read(Self.sampleScene)
         let imported = try #require(described)
@@ -113,7 +113,7 @@ struct SceneImportTests {
     /// walks have to agree or every part would draw as the wrong shape.
     @Test("Part names follow the same walk the generated sketch uses")
     func partNamesFollowTheGeneratedWalk() throws {
-        let opened = Ollin.Scene(contentsOf: Self.sampleScene)
+        let opened = try? Ollin.Scene(contentsOf: Self.sampleScene)
         let scene = try #require(opened)
         let described = SceneImport.read(Self.sampleScene)
         let imported = try #require(described)
@@ -161,7 +161,7 @@ struct SceneImportTests {
 
     @Test("The camera is the one the file authored")
     func theCameraIsTheAuthoredOne() throws {
-        let opened = Ollin.Scene(contentsOf: Self.sampleScene)
+        let opened = try? Ollin.Scene(contentsOf: Self.sampleScene)
         let scene = try #require(opened)
         let authored = try #require(scene.camera)
         let read = SceneImport.read(Self.sampleScene)
@@ -184,7 +184,7 @@ struct SceneImportTests {
     /// worked out from the scene's own size and said so.
     @Test("A file with no camera gets one that frames what it holds")
     func aMissingCameraIsWorkedOut() throws {
-        let opened = Ollin.Scene(contentsOf: Self.sampleScene)
+        let opened = try? Ollin.Scene(contentsOf: Self.sampleScene)
         var scene = try #require(opened)
         scene.cameras = []     // assigning fixes the array, so no node camera resolves
 
@@ -203,7 +203,7 @@ struct SceneImportTests {
 
     @Test("Lights keep their kind, their place and their color")
     func lightsCarryOver() throws {
-        let opened = Ollin.Scene(contentsOf: Self.sampleScene)
+        let opened = try? Ollin.Scene(contentsOf: Self.sampleScene)
         let scene = try #require(opened)
         let described = SceneImport.read(Self.sampleScene)
         let imported = try #require(described)

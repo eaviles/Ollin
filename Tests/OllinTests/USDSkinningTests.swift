@@ -28,7 +28,7 @@ struct USDSkinningTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
         try usda.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     /// A two-joint arm: a 2-unit column of 8 points, the bottom ring bound to
@@ -328,8 +328,8 @@ struct USDSkinningTests {
         convert.waitUntilExit()
         try #require(convert.terminationStatus == 0)
 
-        let fromText = try #require(Scene(contentsOf: textURL))
-        let fromCrate = try #require(Scene(contentsOf: crateURL))
+        let fromText = try Scene(contentsOf: textURL)
+        let fromCrate = try Scene(contentsOf: crateURL)
 
         let textArm = try #require(fromText.node("Arm"))
         let crateArm = try #require(fromCrate.node("Arm"))
@@ -400,7 +400,7 @@ struct USDSkinningTests {
         try arm.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let scene = try #require(Scene(contentsOf: url))
+        let scene = try Scene(contentsOf: url)
         let skin = try #require(scene.skins.first)
 
         let asset = MDLAsset(url: url)
@@ -437,7 +437,7 @@ private final class USDPondWrapProbe: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/stage.usda")
-        pond = Ollin.Scene(contentsOf: url)
+        pond = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {

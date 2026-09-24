@@ -34,8 +34,8 @@ final class ReactionDiffusion_Example: Sketch {
     lazy var display = ComputeTexture(width: Self.gridSize, height: Self.gridSize)
 
     // Loaded from Kernels.metal (bundled as a resource on this example's target).
-    let seedKernel = ComputeKernel(entry: "rd_seed", resource: "Kernels", in: .module)
-    let colorizeKernel = ComputeKernel(entry: "rd_colorize", resource: "Kernels", in: .module)
+    let seedKernel = try? ComputeKernel(entry: "rd_seed", resource: "Kernels", in: .module)
+    let colorizeKernel = try? ComputeKernel(entry: "rd_colorize", resource: "Kernels", in: .module)
     private var seeded = false
 
     override func draw() {

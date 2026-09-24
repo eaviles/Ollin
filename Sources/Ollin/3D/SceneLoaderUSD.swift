@@ -977,18 +977,18 @@ struct USDAssetStore {
         if let archive {
             let joined = layerDirectory.isEmpty ? relative : layerDirectory + "/" + relative
             if let data = archive.data(named: Self.normalize(joined)) {
-                return Image(data: data)
+                return try? Image(data: data)
             }
             let leaf = (relative as NSString).lastPathComponent
             let hits = archive.entryNames.filter { ($0 as NSString).lastPathComponent == leaf }
             if hits.count == 1, let data = archive.data(named: hits[0]) {
-                return Image(data: data)
+                return try? Image(data: data)
             }
             return nil
         }
         guard let data = NamedFile.data(at: baseURL.appendingPathComponent(relative))
         else { return nil }
-        return Image(data: data)
+        return try? Image(data: data)
     }
 
     /// `a/./b/../c` to `a/c`: archive entry names are stored normalized.

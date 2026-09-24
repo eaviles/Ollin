@@ -71,7 +71,7 @@ import OllinWebGate
     final class Loaded: Sketch {
         static var url: URL?
         let picture: Image
-        required init() { picture = Image(contentsOf: Loaded.url!)!; super.init() }
+        required init() { picture = try! Image(contentsOf: Loaded.url!); super.init() }
         override var canvasSize: CanvasSize { .square(160) }
         override func draw() {
             background(.white)

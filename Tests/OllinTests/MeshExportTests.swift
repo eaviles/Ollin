@@ -152,9 +152,9 @@ struct MeshExportTests {
         let sphere = Mesh.icosphere(radius: 8, subdivisions: 2)
         let url = temporaryURL("sphere.stl")
         defer { try? FileManager.default.removeItem(at: url) }
-        #expect(sphere.write(to: url))
+        try sphere.write(to: url)
 
-        let reloaded = try #require(Mesh(contentsOf: url))
+        let reloaded = try Mesh(contentsOf: url)
         #expect(reloaded.triangleCount == sphere.triangleCount)
 
         // Same solid, standing on z.
@@ -181,9 +181,9 @@ struct MeshExportTests {
         let mesh = tetrahedron()
         let url = temporaryURL("tetra.obj")
         defer { try? FileManager.default.removeItem(at: url) }
-        #expect(mesh.write(to: url))
+        try mesh.write(to: url)
 
-        let reloaded = try #require(Mesh(contentsOf: url))
+        let reloaded = try Mesh(contentsOf: url)
         #expect(reloaded.triangleCount == 4)
         #expect(reloaded.positions.count == 4)   // shared vertices survived the trip
         #expect(reloaded.printCheck().isClosed)
@@ -310,19 +310,20 @@ struct MeshExportTests {
         let empty = Mesh(positions: [], indices: [])
         #expect(empty.data(as: .stl) == nil)
         #expect(!empty.printCheck().isPrintable)
-        #expect(!empty.write(to: temporaryURL("empty.stl")))
+        #expect(throws: FileError.self) { try empty.write(to: temporaryURL("empty.stl")) }
     }
 
     @Test func anUnknownExtensionIsRefusedWithoutWriting() {
         let url = temporaryURL("model.gcode")
-        #expect(!tetrahedron().write(to: url))
+        let refused = #expect(throws: FileError.self) { try tetrahedron().write(to: url) }
+        #expect(refused?.kind == .unwritable)
         #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
     @Test func theFormatCanBeNamedForAnyExtension() throws {
         let url = temporaryURL("model.bin")
         defer { try? FileManager.default.removeItem(at: url) }
-        #expect(tetrahedron().write(to: url, as: .stl))
+        try tetrahedron().write(to: url, as: .stl)
         let written = try Data(contentsOf: url)
         #expect(written.count == 84 + 4 * 50)
     }

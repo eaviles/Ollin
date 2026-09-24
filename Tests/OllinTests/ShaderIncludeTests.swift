@@ -233,7 +233,7 @@ struct ShaderIncludeTests {
         }
         """.write(to: kernelURL, atomically: true, encoding: .utf8)
 
-        let kernel = try #require(ComputeKernel(entry: "probe", contentsOf: kernelURL))
+        let kernel = try ComputeKernel(entry: "probe", contentsOf: kernelURL)
         let composed = MetalRenderer.composeComputeSource(kernel.source,
                                                           sourcePath: kernel.sourcePath)
         #expect(composed.contains("float2 tilt(float2 p)"))

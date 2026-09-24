@@ -10,7 +10,7 @@ import Testing
     private func svg(_ body: String, viewBox: String? = "0 0 100 100") -> SVG? {
         let attribute = viewBox.map { " viewBox=\"\($0)\"" } ?? ""
         let text = "<svg xmlns=\"http://www.w3.org/2000/svg\"\(attribute)>\(body)</svg>"
-        return SVG(data: Data(text.utf8))
+        return try? SVG(data: Data(text.utf8))
     }
 
     private func near(_ a: Vector2, _ b: Vector2, tolerance: Double = 1e-6) -> Bool {
@@ -320,8 +320,8 @@ import Testing
     }
 
     @Test func garbageDataReturnsNil() {
-        #expect(SVG(data: Data("not xml at all".utf8)) == nil)
-        #expect(SVG(data: Data("<svg xmlns=\"http://www.w3.org/2000/svg\"/>".utf8)) == nil)
+        #expect((try? SVG(data: Data("not xml at all".utf8))) == nil)
+        #expect((try? SVG(data: Data("<svg xmlns=\"http://www.w3.org/2000/svg\"/>".utf8))) == nil)
     }
 
     @Test func documentOrderIsPreserved() {

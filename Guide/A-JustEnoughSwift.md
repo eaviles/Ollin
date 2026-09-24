@@ -209,7 +209,7 @@ Here are the four tools, in the order the guide meets them:
 let font = OutlineFont(name: "Zapfino") ?? .systemMedium
 
 // if let unwraps for a block
-if let image = loadImage("texture.png") {
+if let image = try? loadImage("texture.png") {
     drawImage(image, 0, 0)
 }
 
@@ -217,7 +217,7 @@ if let image = loadImage("texture.png") {
 guard let source else { return }
 
 // ?. calls through only when the value is there
-let mesh = loadMesh("model.obj")?.normalized(scale: 3)
+let mesh = (try? loadMesh("model.obj"))?.normalized(scale: 3)
 ```
 
 What this really gives you is best measured by what *doesn't* happen. `nil` can't sneak into a non-optional value, so the "crashed on a missing thing four functions later" class of bug mostly isn't a thing.

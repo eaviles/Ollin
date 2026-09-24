@@ -20,7 +20,7 @@ final class Ragdolls: Sketch {
     var heldDoll: Ragdoll3D!
 
     override func setup() {
-        rest = loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
+        rest = try? loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
         limp = rest
         held = rest
         world.ground = 0

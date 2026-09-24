@@ -581,11 +581,11 @@ struct PhonePoseSample: Equatable, Sendable
   var timestamp: Double { get set }
 struct PhoneReference: Equatable, Sendable
   init(name: String, kind: PhoneMarkerKind, printedWidth: Double, contents: Foundation.Data)
-  static func object(path: String, named: String? = default) -> PhoneReference?
-  static func object(resource: String, in: Foundation.Bundle, named: String? = default) -> PhoneReference?
+  static func object(path: String, named: String? = default) throws -> PhoneReference
+  static func object(resource: String, in: Foundation.Bundle, named: String? = default) throws -> PhoneReference
   static func picture(_: Image, printedWidth: Double, named: String) -> PhoneReference?
-  static func picture(path: String, printedWidth: Double, named: String? = default) -> PhoneReference?
-  static func picture(resource: String, withExtension: String, in: Foundation.Bundle, printedWidth: Double, named: String? = default) -> PhoneReference?
+  static func picture(path: String, printedWidth: Double, named: String? = default) throws -> PhoneReference
+  static func picture(resource: String, withExtension: String, in: Foundation.Bundle, printedWidth: Double, named: String? = default) throws -> PhoneReference
   static let maxPictureEdge: Int
   var contents: Foundation.Data { get set }
   var kind: PhoneMarkerKind { get set }

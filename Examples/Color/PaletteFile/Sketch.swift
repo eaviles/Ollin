@@ -21,8 +21,8 @@ final class PaletteFile: Sketch {
 
         // `in:` never defaults to a bundle: a default would find Ollin's, not
         // this sketch's. `.module` is the sketch's own.
-        rows = loadPalettes(resource: "palettes", withExtension: "csv", in: .module)
-        accent = loadPalette(resource: "sunset", withExtension: "hex", in: .module) ?? Palette(.white)
+        rows = (try? loadPalettes(resource: "palettes", withExtension: "csv", in: .module)) ?? []
+        accent = (try? loadPalette(resource: "sunset", withExtension: "hex", in: .module)) ?? Palette(.white)
     }
 
     override func draw() {

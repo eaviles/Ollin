@@ -31,9 +31,9 @@ final class SpatialExport: Sketch {
         let scene = Scene(nodes: arrangement())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-guide-spatial.usdz")
-        guard scene.write(to: url) else { return }
+        do { try scene.write(to: url) } catch { return }
         defer { try? FileManager.default.removeItem(at: url) }
-        reopened = Scene(contentsOf: url)
+        reopened = try? Scene(contentsOf: url)
         meshCount = reopened.map(count) ?? 0
     }
 

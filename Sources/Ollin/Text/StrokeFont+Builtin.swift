@@ -7,7 +7,7 @@ public extension StrokeFont {
     /// empty font (text draws nothing rather than crashing).
     static let builtIn: StrokeFont = {
         if let url = OllinResources.bundle.url(forResource: "futural", withExtension: "jhf"),
-           let font = StrokeFont(jhfContentsOf: url) {
+           let font = (try? StrokeFont(jhfContentsOf: url)) {
             return font
         }
         return StrokeFont(glyphs: [:], unitsPerEm: 28, ascentUnits: 21, descentUnits: 7, lineGapUnits: 8)

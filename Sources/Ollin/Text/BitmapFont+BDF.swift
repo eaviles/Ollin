@@ -5,24 +5,42 @@ import Foundation
 /// Cozette ship). This is how the bundled default font is loaded, and how a user
 /// can drop in their own pixel font.
 public extension BitmapFont {
-    /// Parse a BDF font from its raw file bytes. Returns `nil` if the data isn't
-    /// valid UTF-8 or has no usable glyphs.
-    init?(bdfData data: Data) {
-        guard let text = String(data: data, encoding: .utf8) else { return nil }
-        self.init(bdf: text)
+    /// Parse a BDF font from its raw file bytes. Throws an `unreadable`
+    /// `FileError` when the data isn't UTF-8 or has no usable glyphs.
+    init(bdfData data: Data) throws {
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw FileError.unreadable(nil, "these bytes are not UTF-8 text")
+        }
+        try self.init(bdf: text)
     }
 
-    /// Load and parse a BDF font from a file URL.
-    init?(bdfContentsOf url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(bdfData: data)
+    /// Load and parse a BDF font from a file URL. Throws a `FileError`:
+    /// `missing` when no file is there, `unreadable` when it is not a BDF font.
+    init(bdfContentsOf url: URL) throws {
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(bdfData: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 
     /// Parse a BDF font from its text. Reads the font metrics (`FONT_ASCENT`,
     /// `FONT_DESCENT`, `CAP_HEIGHT`, `PIXEL_SIZE`) and each `STARTCHAR…ENDCHAR`
     /// glyph (`ENCODING`, `DWIDTH`, `BBX`, and the hex `BITMAP` rows), mapping
     /// BDF's baseline-relative bounding box onto `BitmapGlyph`'s top-down cell.
-    init?(bdf text: String) {
+    /// Throws an `unreadable` `FileError` when no glyph parses.
+    init(bdf text: String) throws {
+        guard let font = BitmapFont(parsingBDF: text) else {
+            throw FileError.unreadable(nil, "holds no BDF glyphs")
+        }
+        self = font
+    }
+}
+
+private extension BitmapFont {
+    /// The BDF parser, `nil` when no glyph parses.
+    init?(parsingBDF text: String) {
         var fontAscent = 0, fontDescent = 0, capHeight = 0, pixelSize = 0
         var glyphs: [Character: BitmapGlyph] = [:]
 

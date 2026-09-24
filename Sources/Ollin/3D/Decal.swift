@@ -8,7 +8,7 @@ import Foundation
 /// the surface (it takes the surface's own finish).
 ///
 /// ```swift
-/// let sticker = Decal(loadImage("label.png")!)!
+/// let sticker = Decal(try! loadImage("label.png"))!
 /// decal(sticker, at: Vector3(0, 120, 0), width: 140)
 /// ```
 ///

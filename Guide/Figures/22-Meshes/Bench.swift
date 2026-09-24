@@ -147,7 +147,7 @@ final class Bench: Sketch {
         star = Mesh.extrude(Profile.star(points: 6, outerRadius: 0.46, innerRadius: 0.24), depth: 0.42)
             .subdivided(levels: 2)
 
-        specimen = loadMesh(modelURL.path)?.normalized(scale: 1.15)
+        specimen = (try? loadMesh(modelURL.path))?.normalized(scale: 1.15)
 
         // The bench is stamped where the maker signed it.
         mark = Decal(picture(size: 256) { u, v in

@@ -17,7 +17,7 @@ struct RagdollLimit {
 /// world, and write the simulated pose back onto the scene to draw it.
 ///
 /// ```swift
-/// var figure = loadScene("figure.gltf")!
+/// var figure = try! loadScene("figure.gltf")
 /// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))!
 /// // each frame:
 /// world.advance(by: deltaTime)

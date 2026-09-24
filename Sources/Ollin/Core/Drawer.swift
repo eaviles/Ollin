@@ -1,4 +1,5 @@
 import Foundation
+import os
 import simd
 import COllinShaders
 
@@ -267,6 +268,14 @@ extension GeometryBatch {
 /// State (fill/stroke/weight/background) persists across frames.
 /// Geometry does not: the runner calls `beginFrame()` each frame to clear it.
 final class Drawer {
+    /// A number no other drawer in the process has had, which the renderer's
+    /// same-frame stamp keys on. An object's address is handed out again once
+    /// it is freed, so a contact sheet's next tile, made after the last one's
+    /// sketch is gone and at the same frame, would otherwise pass for it.
+    let serial: UInt64 = Drawer.nextSerial()
+    private static let serials = OSAllocatedUnfairLock(initialState: UInt64(0))
+    private static func nextSerial() -> UInt64 { serials.withLock { $0 += 1; return $0 } }
+
     // MARK: Drawing state (persists across frames)
 
     /// The clear color for the frame. `nil`-fill / `nil`-stroke mean "don't draw".

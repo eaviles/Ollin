@@ -10,7 +10,7 @@ import Foundation
 /// can't draw. Attach one to a point or spot light:
 ///
 /// ```swift
-/// let profile = IESProfile(resource: "downlight", in: .module)!
+/// let profile = try! IESProfile(resource: "downlight", in: .module)
 /// pointLight(.white, at: Vector3(0, 300, 0), profile: profile)
 /// ```
 ///
@@ -61,14 +61,14 @@ public struct IESProfile: Equatable, Sendable {
 
     // MARK: - Parsing
 
-    /// Parse an LM-63 IES file's text. Returns `nil` (never traps) on any
-    /// malformed input, with a one-line reason on stderr.
-    public init?(string: String) {
+    /// Parse an LM-63 IES file's text. Throws an `unreadable` `FileError`
+    /// naming what is wrong (never traps) on any malformed input.
+    public init(string: String) throws {
         // Everything after the TILT= line is one whitespace-separated number
         // soup; real files break the format's line rules freely, so the only
         // robust read is to tokenize the numbers and count.
         guard let tiltRange = IESProfile.tiltLineRange(in: string) else {
-            IESProfile.complain("no TILT= line"); return nil
+            throw FileError.unreadable(nil, "no TILT= line")
         }
         let tiltValue = string[tiltRange].trimmingCharacters(in: .whitespaces)
             .dropFirst("TILT=".count)
@@ -77,7 +77,7 @@ public struct IESProfile: Equatable, Sendable {
             .split(whereSeparator: { $0.isWhitespace || $0 == "," })
             .map { Double($0) }
         guard !numbers.contains(nil) else {
-            IESProfile.complain("non-numeric data after TILT"); return nil
+            throw FileError.unreadable(nil, "non-numeric data after TILT")
         }
         var tokens = numbers.compactMap { $0 }
 
@@ -90,7 +90,7 @@ public struct IESProfile: Equatable, Sendable {
             guard tokens.count >= 2,
                   let pairs = IESProfile.count(tokens[1]),
                   tokens.count >= 2 + 2 * pairs else {
-                IESProfile.complain("truncated TILT block"); return nil
+                throw FileError.unreadable(nil, "truncated TILT block")
             }
             tokens.removeFirst(2 + 2 * pairs)
         }
@@ -100,26 +100,25 @@ public struct IESProfile: Equatable, Sendable {
               let verticalCount = IESProfile.count(tokens[3]),
               let horizontalCount = IESProfile.count(tokens[4]),
               let photometricType = IESProfile.count(tokens[5]) else {
-            IESProfile.complain("truncated or malformed header"); return nil
+            throw FileError.unreadable(nil, "truncated or malformed header")
         }
         tokens.removeFirst(13)
 
         guard photometricType == 1 else {
-            IESProfile.complain("Type \(photometricType == 2 ? "B" : "A") photometry isn't supported (Type C only)")
-            return nil
+            throw FileError.unreadable(nil, "Type \(photometricType == 2 ? "B" : "A") photometry isn't supported (Type C only)")
         }
         guard verticalCount >= 1, horizontalCount >= 1,
               verticalCount * horizontalCount <= 1_000_000 else {
-            IESProfile.complain("bad angle counts"); return nil
+            throw FileError.unreadable(nil, "bad angle counts")
         }
         guard tokens.count >= verticalCount + horizontalCount + verticalCount * horizontalCount else {
-            IESProfile.complain("truncated angle or candela data"); return nil
+            throw FileError.unreadable(nil, "truncated angle or candela data")
         }
 
         let vertical = Array(tokens[0 ..< verticalCount])
         let horizontal = Array(tokens[verticalCount ..< verticalCount + horizontalCount])
         guard IESProfile.isAscending(vertical), IESProfile.isAscending(horizontal) else {
-            IESProfile.complain("angle lists must ascend"); return nil
+            throw FileError.unreadable(nil, "angle lists must ascend")
         }
 
         // Candela values: one block per horizontal angle, vertical varying
@@ -133,7 +132,7 @@ public struct IESProfile: Equatable, Sendable {
         }
 
         guard let peak = grid.flatMap({ $0 }).max(), peak > 0 else {
-            IESProfile.complain("no positive candela values"); return nil
+            throw FileError.unreadable(nil, "no positive candela values")
         }
         let normalized = grid.map { row in row.map { max(0, $0) / peak } }
 
@@ -168,30 +167,30 @@ public struct IESProfile: Equatable, Sendable {
 
     /// Parse IES file bytes (ASCII or UTF-8, with a Latin-1 fallback for the
     /// odd legacy file).
-    public init?(data: Data) {
+    public init(data: Data) throws {
         guard let text = String(data: data, encoding: .utf8)
                 ?? String(data: data, encoding: .isoLatin1) else {
-            IESProfile.complain("undecodable bytes"); return nil
+            throw FileError.unreadable(nil, "these bytes are not text")
         }
-        self.init(string: text)
+        try self.init(string: text)
     }
 
-    /// Parse an IES file at a URL.
-    public init?(contentsOf url: URL) {
-        guard let data = try? Data(contentsOf: url) else {
-            IESProfile.complain("can't read \(url.path)"); return nil
+    /// Parse an IES file at a URL. Throws a `FileError`: `missing` when no
+    /// file is there, `unreadable` naming what is wrong with one that is.
+    public init(contentsOf url: URL) throws {
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(data: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
         }
-        self.init(data: data)
     }
 
     /// Parse a bundled `.ies` resource. `in:` is the bundle that carries the
     /// file; pass `.module` from the sketch that bundles it.
-    public init?(resource: String, in bundle: Bundle) {
+    public init(resource: String, in bundle: Bundle) throws {
         let name = resource.hasSuffix(".ies") ? String(resource.dropLast(4)) : resource
-        guard let url = bundle.url(forResource: name, withExtension: "ies") else {
-            IESProfile.complain("no resource \(resource).ies"); return nil
-        }
-        self.init(contentsOf: url)
+        try self.init(contentsOf: FileError.resource(name, withExtension: "ies", in: bundle))
     }
 
     // MARK: - Sampling
@@ -326,9 +325,5 @@ public struct IESProfile: Equatable, Sendable {
     private static func isAscending(_ list: [Double]) -> Bool {
         for i in 1 ..< max(list.count, 1) where list[i] <= list[i - 1] { return false }
         return true
-    }
-
-    private static func complain(_ reason: String) {
-        FileHandle.standardError.write(Data("Ollin: IESProfile failed to parse: \(reason).\n".utf8))
     }
 }

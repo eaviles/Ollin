@@ -236,7 +236,7 @@ Files dropped on the window from the Finder. `droppedFiles()` returns the paths 
 ```swift
 override func filesDropped() {
     for path in droppedFiles() {
-        if let picture = loadImage(path) { pictures.append((picture, mouse)) }
+        if let picture = try? loadImage(path) { pictures.append((picture, mouse)) }
     }
 }
 ```

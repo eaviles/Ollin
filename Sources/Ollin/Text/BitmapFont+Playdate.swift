@@ -13,42 +13,52 @@ import ImageIO
 ///
 /// ```swift
 /// // Bundled beside a sketch (the usual case — an embedded-strike .fnt is one file):
-/// let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtIn
+/// let font = (try? BitmapFont(resource: "MyFont.fnt", in: .module)) ?? .builtIn
 /// textFont(font)
 /// drawText("hello", x, y)
 ///
 /// // Or load it from anywhere — a string is all the embedded form needs:
 /// let text = try String(contentsOf: someURL, encoding: .utf8)
-/// let font = BitmapFont(fnt: text)!
+/// let font = try BitmapFont(fnt: text)
 /// ```
 public extension BitmapFont {
     /// Parse a Playdate font from its `.fnt` text. Works for the **embedded** form
     /// (the strike base64'd into the file); a font that references an *external*
     /// `-table-W-H.png` has no sibling to find from a bare string, so load those
-    /// with `init?(fntContentsOf:)` instead. Returns `nil` if the text has no
-    /// usable glyphs or its strike can't be decoded.
-    init?(fnt text: String) {
-        self.init(fnt: text, externalStrike: { nil })
+    /// with `init(fntContentsOf:)` instead. Throws an `unreadable` `FileError`
+    /// when the text has no usable glyphs or its strike can't be decoded.
+    init(fnt text: String) throws {
+        guard let font = try? BitmapFont(fnt: text, externalStrike: { nil }) else {
+            throw FileError.unreadable(nil, "holds no Playdate glyphs, or a strike that can't be decoded")
+        }
+        self = font
     }
 
     /// Parse a Playdate font from raw `.fnt` bytes (UTF-8). Embedded-strike form
-    /// only — see `init?(fnt:)`.
-    init?(fntData data: Data) {
-        guard let text = String(data: data, encoding: .utf8) else { return nil }
-        self.init(fnt: text)
+    /// only, see `init(fnt:)`.
+    init(fntData data: Data) throws {
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw FileError.unreadable(nil, "these bytes are not UTF-8 text")
+        }
+        try self.init(fnt: text)
     }
 
     /// Load a Playdate font from a `.fnt` file URL. Handles both forms: an embedded
     /// strike, or an external `<name>-table-<W>-<H>.png` discovered in the same
-    /// directory.
-    init?(fntContentsOf url: URL) {
-        guard let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8) else { return nil }
+    /// directory. Throws a `FileError`: `missing` when no file is there,
+    /// `unreadable` when it is not a Playdate font.
+    init(fntContentsOf url: URL) throws {
+        guard let text = String(data: try FileError.contents(of: url), encoding: .utf8) else {
+            throw FileError.unreadable(url, "is not UTF-8 text")
+        }
         let directory = url.deletingLastPathComponent()
         let base = url.deletingPathExtension().lastPathComponent
-        self.init(fnt: text, externalStrike: {
+        guard let font = try? BitmapFont(fnt: text, externalStrike: {
             BitmapFont.findExternalStrike(base: base, in: directory)
-        })
+        }) else {
+            throw FileError.unreadable(url, "holds no Playdate glyphs, or a strike that can't be decoded")
+        }
+        self = font
     }
 }
 

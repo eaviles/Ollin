@@ -15,7 +15,7 @@ Rebuild any closed outline as a **chain of spinning circles**. The discrete Four
 var epicycles = Epicycles(points: [])
 
 override func setup() {
-    guard let art = loadSVG("whale.svg") else { return }
+    guard let art = try? loadSVG("whale.svg") else { return }
     let outline = art.fitted(in: bounds.inset(by: .all(140))).contours[0]
     epicycles = Epicycles(outline, samples: 320)
 }

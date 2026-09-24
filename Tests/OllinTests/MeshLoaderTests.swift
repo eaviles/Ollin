@@ -43,7 +43,7 @@ struct MeshLoaderTests {
         f 1//5 5//5 6//5 2//5
         f 4//6 3//6 7//6 8//6
         """
-        let mesh = Mesh(objSource: obj)
+        let mesh = try? Mesh(objSource: obj)
         #expect(mesh != nil)
         guard let mesh else { return }
         #expect(mesh.triangleCount == 12)                 // 6 quads × 2
@@ -56,7 +56,7 @@ struct MeshLoaderTests {
     /// plane (CCW) gets the +z face normal.
     @Test func objComputesNormalsWhenAbsent() {
         let obj = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"
-        let mesh = Mesh(objSource: obj)
+        let mesh = try? Mesh(objSource: obj)
         #expect(mesh != nil)
         guard let mesh else { return }
         #expect(mesh.triangleCount == 1)
@@ -79,15 +79,15 @@ struct MeshLoaderTests {
         garbage line that is not valid
         f -3 -2 -1
         """
-        let mesh = Mesh(objSource: obj)
+        let mesh = try? Mesh(objSource: obj)
         #expect(mesh != nil)
         #expect(mesh?.triangleCount == 1)
     }
 
     /// Empty or geometry-free source yields nil, not a trap.
     @Test func objRejectsEmpty() {
-        #expect(Mesh(objSource: "") == nil)
-        #expect(Mesh(objSource: "# just a comment\no nothing\n") == nil)
+        #expect((try? Mesh(objSource: "")) == nil)
+        #expect((try? Mesh(objSource: "# just a comment\no nothing\n")) == nil)
     }
 
     // MARK: glTF
@@ -123,7 +123,7 @@ struct MeshLoaderTests {
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = Mesh(contentsOf: url)
+        let mesh = try? Mesh(contentsOf: url)
         #expect(mesh != nil)
         guard let mesh else { return }
         #expect(mesh.triangleCount == 1)
@@ -176,7 +176,7 @@ struct MeshLoaderTests {
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         // UVs read and aligned with positions.
         #expect(mesh.uvs.count == mesh.positions.count)
         #expect(mesh.uvs.contains { abs($0.x - 1) < 1e-5 })
@@ -227,7 +227,7 @@ struct MeshLoaderTests {
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         #expect(mesh.colors.count == mesh.positions.count)
         // 128/255 = 0.502 linear, which re-encodes to about 0.7366 sRGB.
         #expect(abs(mesh.colors[0].red - 0.7366) < 0.01)
@@ -270,7 +270,7 @@ struct MeshLoaderTests {
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         #expect(mesh.colors.isEmpty)
     }
 
@@ -302,7 +302,7 @@ struct MeshLoaderTests {
         try ply.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         #expect(mesh.colors.count == mesh.positions.count)
         // One saturated vertex per channel, in the file's order.
         let reds = mesh.colors.map(\.red), greens = mesh.colors.map(\.green), blues = mesh.colors.map(\.blue)
@@ -340,7 +340,7 @@ struct MeshLoaderTests {
         let objURL = dir.appendingPathComponent("quad.obj")
         try obj.write(to: objURL, atomically: true, encoding: .utf8)
 
-        let mesh = try #require(Mesh(contentsOf: objURL))
+        let mesh = try Mesh(contentsOf: objURL)
         #expect(mesh.uvs.count == mesh.positions.count)
         #expect(mesh.uvs.contains { abs($0.x - 1) < 1e-5 })
         let mat = try #require(mesh.material)
@@ -404,7 +404,7 @@ struct MeshLoaderTests {
         try usda.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let mesh = try #require(Mesh(contentsOf: url))
+        let mesh = try Mesh(contentsOf: url)
         #expect(mesh.triangleCount == 4)
         let b = mesh.bounds
         #expect(abs(b.min.x) < 1e-5 && abs(b.max.x - 4) < 1e-5)
@@ -429,7 +429,7 @@ struct MeshLoaderTests {
         defer { try? FileManager.default.removeItem(at: url) }
         do { try asset.export(to: url) } catch { return }   // soft-skip on export failure
 
-        let mesh = Mesh(contentsOf: url)
+        let mesh = try? Mesh(contentsOf: url)
         #expect(mesh != nil)
         guard let mesh else { return }
         #expect(mesh.triangleCount == 12)                   // a 1-segment box

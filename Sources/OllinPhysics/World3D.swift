@@ -330,7 +330,7 @@ public final class World3D {
     /// ignore; the scene keeps drawing through `drawScene(_:)`.
     ///
     /// ```swift
-    /// let hall = loadScene("hall.usdz")!
+    /// let hall = try! loadScene("hall.usdz")
     /// world.addStaticBodies(from: hall)
     /// ```
     @discardableResult
@@ -489,7 +489,7 @@ public final class World3D {
     /// the scene with `scene.apply(ragdoll)` and draw it.
     ///
     /// ```swift
-    /// var figure = loadScene("figure.gltf")!
+    /// var figure = try! loadScene("figure.gltf")
     /// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
     /// ```
     ///

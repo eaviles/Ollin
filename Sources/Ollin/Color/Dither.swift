@@ -168,7 +168,7 @@ public extension Image {
     /// picture, then redraw the picture in them.
     ///
     /// ```swift
-    /// let photo = loadImage("photo.jpg")!
+    /// let photo = try! loadImage("photo.jpg")
     /// let colors = Palette(extractedFrom: photo, count: 6)
     /// let poster = photo.dithered(.floydSteinberg, to: colors)
     /// ```

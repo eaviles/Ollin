@@ -15,40 +15,44 @@ extension Mesh {
 
     /// Load a 3D model from a file, dispatching on the extension: `.obj`, glTF, and
     /// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`) are parsed by Ollin's own
-    /// readers; `.stl`, `.ply`, and `.abc` go through Apple's Model I/O. Returns
-    /// `nil` if the file can't be read or holds no triangles. The model keeps its
-    /// own coordinates and scale, call `normalized(scale:)` to fit it. Mirrors
-    /// `Image(contentsOf:)`.
-    public init?(contentsOf url: URL) {
-        switch url.pathExtension.lowercased() {
+    /// readers; `.stl`, `.ply`, and `.abc` go through Apple's Model I/O. Throws a
+    /// `FileError`: `missing` when no file is there, `unreadable` when the
+    /// extension is not one of those or the file holds no triangles. The model
+    /// keeps its own coordinates and scale, call `normalized(scale:)` to fit it.
+    /// Mirrors `Image(contentsOf:)`.
+    public init(contentsOf url: URL) throws {
+        try FileError.requireFile(url)
+        let ext = url.pathExtension.lowercased()
+        let loaded: Mesh?
+        switch ext {
         case "obj":
-            guard let mesh = Mesh.loadOBJ(url) else { return nil }
-            self = mesh
+            loaded = Mesh.loadOBJ(url)
         case "gltf", "glb":
-            guard let mesh = Mesh.loadGLTF(url) else { return nil }
-            self = mesh
+            loaded = Mesh.loadGLTF(url)
         case "usdz", "usdc", "usda", "usd":
-            guard let mesh = Mesh.loadUSD(url) else { return nil }
-            self = mesh
+            loaded = Mesh.loadUSD(url)
         #if canImport(ModelIO)
         case "stl", "ply", "abc":
-            guard let mesh = Mesh.loadViaModelIO(url) else { return nil }
-            self = mesh
+            loaded = Mesh.loadViaModelIO(url)
         #endif
         default:
-            return nil
+            throw FileError.unreadable(url, "a mesh reads .obj, glTF, USD, .stl, .ply, and .abc, "
+                                       + (ext.isEmpty ? "and this file has no extension" : "not .\(ext)"))
         }
+        guard let loaded else {
+            throw FileError.unreadable(url, "holds no triangles the .\(ext) reader could find")
+        }
+        self = loaded
     }
 
     /// Load a model from a file `path`. Sugar over `Mesh(contentsOf:)`.
-    public init?(path: String) { self.init(contentsOf: URL(fileURLWithPath: path)) }
+    public init(path: String) throws { try self.init(contentsOf: URL(fileURLWithPath: path)) }
 
     /// Load a model bundled as a resource. Mirrors `Image(resource:withExtension:in:)`
     /// and the font loaders, `in:` has no default, since a default argument would
     /// resolve to *Ollin's* bundle, not the caller's.
-    public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
-        self.init(contentsOf: url)
+    public init(resource name: String, withExtension ext: String?, in bundle: Bundle) throws {
+        try self.init(contentsOf: FileError.resource(name, withExtension: ext, in: bundle))
     }
 }
 
@@ -64,11 +68,13 @@ extension Mesh {
     /// polygons (fan-triangulated) and may reference vertices/UVs/normals 1-based or
     /// with negative (relative) indices, in any of OBJ's corner forms (`v`, `v/vt`,
     /// `v//vn`, `v/vt/vn`). When the file carries no normals, smooth, area-weighted
-    /// vertex normals are computed. Returns `nil` if no triangles result. Total, a
-    /// malformed line is skipped, never trapped (the file is untrusted input, like
-    /// every other Ollin parser).
-    public init?(objSource source: String) {
-        guard let p = Mesh.parseOBJ(source) else { return nil }
+    /// vertex normals are computed. Throws an `unreadable` `FileError` when no
+    /// triangles result. Total, a malformed line is skipped, never trapped (the
+    /// file is untrusted input, like every other Ollin parser).
+    public init(objSource source: String) throws {
+        guard let p = Mesh.parseOBJ(source) else {
+            throw FileError.unreadable(nil, "this OBJ text holds no triangles")
+        }
         self.init(positions: p.positions, normals: p.normals, indices: p.indices, uvs: p.uvs)
     }
 
@@ -240,7 +246,7 @@ extension Mesh {
         var texture: Image?
         if let file = m.mapKd {
             let path = file.removingPercentEncoding ?? file
-            if let data = NamedFile.data(at: dir.appendingPathComponent(path)) { texture = Image(data: data) }
+            if let data = NamedFile.data(at: dir.appendingPathComponent(path)) { texture = try? Image(data: data) }
         }
         if m.kd == nil, texture == nil { return nil }
         return MeshMaterial(baseColor: m.kd ?? .white, texture: texture,
@@ -588,10 +594,11 @@ extension Mesh {
 extension Sketch {
 
     /// Load a 3D model from a file `path` (`.obj`, `.usdz`, `.stl`, …) for `drawMesh`.
-    /// Returns `nil` if it can't be read. Call it in `setup()` and keep the result in
-    /// a property, parsing every frame is wasteful. Sugar over `Mesh(contentsOf:)`.
-    public func loadMesh(_ path: String) -> Mesh? { Mesh(path: path) }
+    /// Throws a `FileError` when it can't be read. Call it in `setup()` and keep the
+    /// result in a property, parsing every frame is wasteful. Sugar over
+    /// `Mesh(contentsOf:)`.
+    public func loadMesh(_ path: String) throws -> Mesh { try Mesh(path: path) }
 
     /// Load a model from a file `url`. Sugar over `Mesh(contentsOf:)`.
-    public func loadMesh(_ url: URL) -> Mesh? { Mesh(contentsOf: url) }
+    public func loadMesh(_ url: URL) throws -> Mesh { try Mesh(contentsOf: url) }
 }

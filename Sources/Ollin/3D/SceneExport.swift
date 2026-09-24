@@ -74,16 +74,15 @@ public extension Scene {
     }
 
     /// Write this scene to `url` as a spatial model, in the format its
-    /// extension names (`.usda`, `.usdz`) or the one you pass. Returns whether
-    /// it was written; a failure prints what went wrong rather than trapping,
-    /// like the loaders.
+    /// extension names (`.usda`, `.usdz`) or the one you pass. Throws an
+    /// `unwritable` `FileError` saying what went wrong, like the loaders.
     ///
     /// The writing counterpart of `Scene(contentsOf:)`, and the way a 3D sketch
     /// leaves as something spatial instead of a flat frame: a `.usdz` opens in
     /// Quick Look, stands in the room through AR, and can be sent in a message.
     ///
     /// ```swift
-    /// scene.write(to: "piece.usdz", metersPerUnit: 0.01)
+    /// try scene.write(to: "piece.usdz", metersPerUnit: 0.01)
     /// ```
     ///
     /// What travels: the node tree with its transforms, each node's geometry
@@ -92,27 +91,22 @@ public extension Scene {
     /// lights. What does not: animation and skinning (one pose is written, the
     /// one the scene is holding), and the parts of an Ollin finish the format
     /// has no slot for. Anything left behind says so once.
-    @discardableResult
     func write(to url: URL, as format: SceneFileFormat? = nil,
-               metersPerUnit: Double = 1) -> Bool {
+               metersPerUnit: Double = 1) throws {
         guard let format = format ?? SceneFileFormat(fileExtension: url.pathExtension) else {
-            print("Ollin: don't know what format to write '\(url.lastPathComponent)' as. Use .usdz or .usda, or pass one explicitly.")
-            return false
+            throw FileError.unwritable(url, "no scene format by that extension; use .usdz or .usda, or pass one")
         }
         do {
             try data(as: format, metersPerUnit: metersPerUnit).write(to: url)
-            return true
         } catch {
-            print("Ollin: couldn't write '\(url.path)': \(error.localizedDescription)")
-            return false
+            throw FileError.unwritable(url, error.localizedDescription)
         }
     }
 
     /// Write this scene to a file `path`. Sugar over `write(to:)`.
-    @discardableResult
     func write(to path: String, as format: SceneFileFormat? = nil,
-               metersPerUnit: Double = 1) -> Bool {
-        write(to: URL(fileURLWithPath: path), as: format, metersPerUnit: metersPerUnit)
+               metersPerUnit: Double = 1) throws {
+        try write(to: URL(fileURLWithPath: path), as: format, metersPerUnit: metersPerUnit)
     }
 }
 
@@ -123,11 +117,10 @@ public extension Sketch {
     /// counterpart of `loadScene` and the spatial sibling of `saveMesh`.
     ///
     /// ```swift
-    /// saveScene(scene, to: "piece.usdz", metersPerUnit: 0.01)
+    /// try saveScene(scene, to: "piece.usdz", metersPerUnit: 0.01)
     /// ```
-    @discardableResult
     func saveScene(_ scene: Scene, to path: String, as format: SceneFileFormat? = nil,
-                   metersPerUnit: Double = 1) -> Bool {
-        scene.write(to: path, as: format, metersPerUnit: metersPerUnit)
+                   metersPerUnit: Double = 1) throws {
+        try scene.write(to: path, as: format, metersPerUnit: metersPerUnit)
     }
 }

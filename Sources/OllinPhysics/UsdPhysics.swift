@@ -23,7 +23,7 @@ extension World3D {
     /// into a world in one call:
     ///
     /// ```swift
-    /// let scene = loadScene("crates.usdz")!
+    /// let scene = try! loadScene("crates.usdz")
     /// world.addBodies(from: scene)
     /// // …then draw the scene as usual, or drive it from world.bodies
     /// ```

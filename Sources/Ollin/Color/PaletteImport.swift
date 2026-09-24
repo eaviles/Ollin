@@ -22,24 +22,30 @@ public enum PaletteFormat: Sendable {
 // MARK: - Loading
 
 public extension Palette {
-    /// The first palette in a file, or `nil` if it holds none.
+    /// The first palette in a file. Throws a `FileError`: `missing` when no
+    /// file is there, `unreadable` when it holds no palette.
     ///
     /// ```swift
-    /// let p = Palette(contentsOf: "sunset.hex")
+    /// let p = try Palette(contentsOf: "sunset.hex")
     /// ```
-    init?(contentsOf path: String, format: PaletteFormat = .auto) {
-        self.init(url: URL(fileURLWithPath: path), format: format)
+    init(contentsOf path: String, format: PaletteFormat = .auto) throws {
+        try self.init(url: URL(fileURLWithPath: path), format: format)
     }
 
-    /// The first palette at `url`, or `nil` if it holds none.
-    init?(url: URL, format: PaletteFormat = .auto) {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data, format: format)
+    /// The first palette at `url`.
+    init(url: URL, format: PaletteFormat = .auto) throws {
+        guard let first = try Palette.palettes(url: url, format: format).first else {
+            throw FileError.unreadable(url, "holds no palette")
+        }
+        self = first
     }
 
-    /// The first palette in `data`, or `nil` if it holds none.
-    init?(data: Data, format: PaletteFormat = .auto) {
-        guard let first = Palette.palettes(data: data, format: format).first else { return nil }
+    /// The first palette in `data`. Throws an `unreadable` `FileError` when the
+    /// bytes hold none.
+    init(data: Data, format: PaletteFormat = .auto) throws {
+        guard let first = try Palette.palettes(data: data, format: format).first else {
+            throw FileError.unreadable(nil, "these bytes hold no palette")
+        }
         self = first
     }
 
@@ -47,40 +53,49 @@ public extension Palette {
     ///
     /// `in:` has no default on purpose: a default would resolve to Ollin's own
     /// bundle rather than the caller's. Pass `.module` from your sketch.
-    init?(resource: String, withExtension ext: String? = nil, in bundle: Bundle) {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else { return nil }
-        self.init(url: url, format: .auto)
+    init(resource: String, withExtension ext: String? = nil, in bundle: Bundle) throws {
+        try self.init(url: FileError.resource(resource, withExtension: ext, in: bundle), format: .auto)
     }
 
     /// Every palette in a file, in the order the file lists them.
     ///
     /// A file that holds one palette reads as a single-element array, so this
-    /// is the form to reach for when you don't know which you have.
+    /// is the form to reach for when you don't know which you have. Throws a
+    /// `FileError`: `missing` when no file is there, `unreadable` when it holds
+    /// no palette at all.
     ///
     /// ```swift
-    /// let sets = Palette.palettes(contentsOf: "1000.json")
+    /// let sets = try Palette.palettes(contentsOf: "1000.json")
     /// fill(sets[variation % sets.count][0])
     /// ```
-    static func palettes(contentsOf path: String, format: PaletteFormat = .auto) -> [Palette] {
-        palettes(url: URL(fileURLWithPath: path), format: format)
+    static func palettes(contentsOf path: String, format: PaletteFormat = .auto) throws -> [Palette] {
+        try palettes(url: URL(fileURLWithPath: path), format: format)
     }
 
     /// Every palette at `url`, in file order.
-    static func palettes(url: URL, format: PaletteFormat = .auto) -> [Palette] {
-        guard let data = try? Data(contentsOf: url) else { return [] }
-        return palettes(data: data, format: format)
+    static func palettes(url: URL, format: PaletteFormat = .auto) throws -> [Palette] {
+        let data = try FileError.contents(of: url)
+        let found = parse(data, format: format)
+        guard !found.isEmpty else { throw FileError.unreadable(url, "holds no palette") }
+        return found
     }
 
     /// Every palette in a bundled resource, in file order.
     static func palettes(resource: String, withExtension ext: String? = nil,
-                         in bundle: Bundle) -> [Palette] {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else { return [] }
-        return palettes(url: url, format: .auto)
+                         in bundle: Bundle) throws -> [Palette] {
+        try palettes(url: FileError.resource(resource, withExtension: ext, in: bundle), format: .auto)
     }
 
-    /// Every palette in `data`, in file order. Unreadable bytes yield `[]`
-    /// rather than trapping, so a file from the network fails quietly.
-    static func palettes(data: Data, format: PaletteFormat = .auto) -> [Palette] {
+    /// Every palette in `data`, in file order. Bytes that hold no palette throw
+    /// an `unreadable` `FileError`; nothing in them can trap.
+    static func palettes(data: Data, format: PaletteFormat = .auto) throws -> [Palette] {
+        let found = parse(data, format: format)
+        guard !found.isEmpty else { throw FileError.unreadable(nil, "these bytes hold no palette") }
+        return found
+    }
+
+    /// Every palette the bytes hold, in file order; none when they hold none.
+    private static func parse(_ data: Data, format: PaletteFormat) -> [Palette] {
         switch format {
         case .auto:
             // Swatch Exchange announces itself and JSON opens with a bracket.
@@ -367,36 +382,37 @@ private func colorFromCIELAB(lightness l: Double, a: Double, b: Double) -> Color
 // MARK: - Sketch sugar
 
 public extension Sketch {
-    /// The first palette in a file: `loadPalette("sunset.hex")`.
-    func loadPalette(_ path: String, format: PaletteFormat = .auto) -> Palette? {
-        Palette(contentsOf: path, format: format)
+    /// The first palette in a file: `try loadPalette("sunset.hex")`. Throws a
+    /// `FileError` when the file is not there or holds no palette.
+    func loadPalette(_ path: String, format: PaletteFormat = .auto) throws -> Palette {
+        try Palette(contentsOf: path, format: format)
     }
 
     /// The first palette at a URL.
-    func loadPalette(_ url: URL, format: PaletteFormat = .auto) -> Palette? {
-        Palette(url: url, format: format)
+    func loadPalette(_ url: URL, format: PaletteFormat = .auto) throws -> Palette {
+        try Palette(url: url, format: format)
     }
 
-    /// Every palette in a file, in file order: `loadPalettes("100.json")`.
-    func loadPalettes(_ path: String, format: PaletteFormat = .auto) -> [Palette] {
-        Palette.palettes(contentsOf: path, format: format)
+    /// Every palette in a file, in file order: `try loadPalettes("100.json")`.
+    func loadPalettes(_ path: String, format: PaletteFormat = .auto) throws -> [Palette] {
+        try Palette.palettes(contentsOf: path, format: format)
     }
 
     /// Every palette at a URL, in file order.
-    func loadPalettes(_ url: URL, format: PaletteFormat = .auto) -> [Palette] {
-        Palette.palettes(url: url, format: format)
+    func loadPalettes(_ url: URL, format: PaletteFormat = .auto) throws -> [Palette] {
+        try Palette.palettes(url: url, format: format)
     }
 
     /// The first palette in a bundled resource. Pass `.module` for the
     /// sketch's own bundle; a default here would resolve to Ollin's.
     func loadPalette(resource: String, withExtension ext: String? = nil,
-                     in bundle: Bundle) -> Palette? {
-        Palette(resource: resource, withExtension: ext, in: bundle)
+                     in bundle: Bundle) throws -> Palette {
+        try Palette(resource: resource, withExtension: ext, in: bundle)
     }
 
     /// Every palette in a bundled resource, in file order.
     func loadPalettes(resource: String, withExtension ext: String? = nil,
-                      in bundle: Bundle) -> [Palette] {
-        Palette.palettes(resource: resource, withExtension: ext, in: bundle)
+                      in bundle: Bundle) throws -> [Palette] {
+        try Palette.palettes(resource: resource, withExtension: ext, in: bundle)
     }
 }

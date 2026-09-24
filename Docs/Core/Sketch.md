@@ -22,7 +22,7 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `filesDropped`, `reloaded`
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `filesDropped`, `reloaded`, and a file that will not load (`FileError`)
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`, `canvasOnScreen`, `screenFrame`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
@@ -53,6 +53,32 @@ override func setup() {
     noLoop()   // render a single still frame
 }
 ```
+
+<a name="fileerror"></a>
+
+##### A file that will not load
+
+`setup()` is where a sketch loads what it draws, and every loader that reads a file, a bundled resource, or bytes throws a `FileError` when it cannot: `loadImage`, `loadMesh`, `loadScene`, `loadSVG`, `loadPalette`, `loadTable`, `loadJSON`, and the initializers under them, the fonts, IES and ICC profiles, and `ComputeKernel`. The mesh and scene writers throw one too. `setup()` does not throw, so choose one of two answers for each file:
+
+```swift
+final class Poster: Sketch {
+    var photo: Image!
+    var logo: SVG?
+
+    override func setup() {
+        photo = try! loadImage("photo.jpg")   // stop, naming the file and why
+        logo = try? loadSVG("logo.svg")       // carry on without it
+    }
+}
+```
+
+A `FileError` says which file, what kind of trouble, and what was wrong, in a sentence:
+
+- `kind` is `.missing` (no file at that path, or no resource by that name in the bundle), `.unreadable` (the file is there, but its bytes are not what the loader reads), or `.unwritable` (a writer could not write it).
+- `path` is the file's path or the resource's name, and `nil` for bytes handed over in memory.
+- `problem` is the sentence, and `description` puts the two together: `photo.jpg: no such file`.
+
+A loader of your own can throw the same shape: `FileError(.unreadable, path: path, problem: "holds no rows")`.
 
 <a name="draw"></a>
 
@@ -117,7 +143,7 @@ Ollin calls this once each time files are dropped on the window. `droppedFiles()
 
 ```swift
 override func filesDropped() {
-    for path in droppedFiles() { photo = loadImage(path) ?? photo }
+    for path in droppedFiles() { photo = (try? loadImage(path)) ?? photo }
 }
 ```
 

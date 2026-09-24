@@ -33,7 +33,7 @@ struct FrameRingProbes {
                 .deletingLastPathComponent()      // Tests
                 .deletingLastPathComponent()      // repo root
                 .appendingPathComponent("Examples/3D/Geometry/SceneExplorer/scene.gltf")
-            scene = Scene(path: url.path)
+            scene = try? Scene(path: url.path)
         }
 
         override func draw() {

@@ -787,7 +787,7 @@ Spacing is the pen's whole idea of tone. Holes and concavities are respected, be
 There's one more source of material before the finished sketch, which is shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
 
 ```swift
-if let art = loadSVG("boat.svg") {
+if let art = try? loadSVG("boat.svg") {
     drawSVG(art, in: bounds.inset(by: .all(140)))
 }
 ```

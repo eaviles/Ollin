@@ -39,7 +39,7 @@ final class Readings: Sketch {
     private var plotBottom: Double { plot.y + plot.height }
 
     override func setup() {
-        table = loadTable(resource: "readings", withExtension: "csv", in: .module)
+        table = try? loadTable(resource: "readings", withExtension: "csv", in: .module)
 
         // The scale is the file's, not the sketch's: read both columns as
         // series and take the extremes.

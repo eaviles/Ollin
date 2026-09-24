@@ -26,12 +26,12 @@ final class LoadedMesh: Sketch {
 
     override func setup() {
         // An explicit path wins; otherwise a model bundled beside the sketch.
-        if let path = ProcessInfo.processInfo.environment["OLLIN_MESH"], let m = loadMesh(path) {
+        if let path = ProcessInfo.processInfo.environment["OLLIN_MESH"], let m = try? loadMesh(path) {
             adopt(m, named: (path as NSString).lastPathComponent)
         } else {
             for ext in ["usdz", "glb", "gltf", "obj"] {
                 if let url = Bundle.module.url(forResource: "model", withExtension: ext),
-                   let m = Mesh(contentsOf: url) {
+                   let m = (try? Mesh(contentsOf: url)) {
                     adopt(m, named: "model.\(ext)")
                     break
                 }

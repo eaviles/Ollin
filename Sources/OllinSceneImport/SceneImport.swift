@@ -14,7 +14,7 @@ public enum SceneImport {
     /// Reads `url` and describes it. Returns nil when the file will not open,
     /// which is the caller's cue to say so rather than write an empty project.
     public static func read(_ url: URL) -> ImportedScene? {
-        guard let scene = Scene(contentsOf: url) else { return nil }
+        guard let scene = try? Scene(contentsOf: url) else { return nil }
         return describe(scene, from: url)
     }
 

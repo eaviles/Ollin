@@ -19,7 +19,7 @@ final class Photo: Sketch {
     var photo: Image?
 
     override func setup() {
-        photo = loadImage("/Users/you/Pictures/leaf.jpg")
+        photo = try? loadImage("/Users/you/Pictures/leaf.jpg")
     }
 
     override func draw() {
@@ -31,7 +31,7 @@ final class Photo: Sketch {
 }
 ```
 
-`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
+`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends). It throws when the path is wrong or the file isn't a picture, and `try?` turns that into `nil`, which the `if let` in `draw()` skips. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
@@ -67,7 +67,7 @@ A path typed into `loadImage` is fine for a picture you keep. For one you want t
 ```swift
 override func filesDropped() {
     for path in droppedFiles() {
-        if let picture = loadImage(path) { pictures.append((picture, mouse)) }
+        if let picture = try? loadImage(path) { pictures.append((picture, mouse)) }
     }
 }
 ```
@@ -340,7 +340,7 @@ A comma-separated file is the format everything exports: a spreadsheet, a sensor
 var table: Table?
 
 override func setup() {
-    table = loadTable(resource: "visits", withExtension: "csv", in: .module)
+    table = try? loadTable(resource: "visits", withExtension: "csv", in: .module)
 }
 
 override func draw() {
@@ -372,7 +372,7 @@ Two things about the format matter, and the figure above shows both. A cell wrap
 JSON works the same way, for documents with a shape rather than rows:
 
 ```swift
-let doc = loadJSON(resource: "places", withExtension: "json", in: .module)
+let doc = try? loadJSON(resource: "places", withExtension: "json", in: .module)
 
 for point in doc?["points"].array ?? [] {
     fill(point["tint"].color ?? .gray)

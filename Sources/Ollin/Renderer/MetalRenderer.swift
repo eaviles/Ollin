@@ -1590,7 +1590,8 @@ final class MetalRenderer {
     var scatterKernels: [ScatterProfileKey: [SIMD4<Float>]] = [:]
 
     /// The (drawer, frame) whose stateful passes (feedback / sim fields / fluid / SSR
-    /// temporal) have already advanced, so a same-frame re-encode (a settled export
+    /// temporal) have already advanced, the drawer named by its `serial` rather than
+    /// its address, which a later drawer can be handed once this one is freed, so a same-frame re-encode (a settled export
     /// frame, a benchmark loop) reuses their results instead of stepping them again.
     /// Without this, a frame encoded twice steps the sims twice (feedback runs at 2x
     /// speed) and blends the SSR history twice (the second encode one temporal step
@@ -1598,7 +1599,7 @@ final class MetalRenderer {
     /// it once per frame), so headless warmup frames each still advance exactly
     /// once. Note for a future benchmark: re-rendering one frame in a timing loop
     /// skips these passes after the first iteration.
-    var lastStatefulEncode: (drawer: ObjectIdentifier, frame: UInt32)?
+    var lastStatefulEncode: (drawer: UInt64, frame: UInt32)?
     /// Whether the encode in progress is such a same-frame repeat (set at the top of
     /// `encodeEffectTargets`, read by the stateful blocks and `applyCombine`).
     var statefulEncodeIsRepeat = false

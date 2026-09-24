@@ -13,9 +13,9 @@ struct PaletteImportTests {
 
     /// Every line holding exactly one color means the file is one palette,
     /// not a stack of one-color palettes.
-    @Test func hexPerLineIsASinglePalette() {
+    @Test func hexPerLineIsASinglePalette() throws {
         let text = "#69d2e7\n#a7dbd8\n#e0e4cc\n#f38630\n#fa6900\n"
-        let palettes = Palette.palettes(data: Data(text.utf8))
+        let palettes = try Palette.palettes(data: Data(text.utf8))
         #expect(palettes.count == 1)
         #expect(palettes[0].count == 5)
         #expect(palettes[0][0] == Color(hex: 0x69D2E7))
@@ -24,19 +24,19 @@ struct PaletteImportTests {
 
     /// A line with more than one color flips the file into palette-per-line,
     /// with no format argument needed.
-    @Test func commaSeparatedLinesEachBecomeAPalette() {
+    @Test func commaSeparatedLinesEachBecomeAPalette() throws {
         let text = "#69d2e7,#a7dbd8,#e0e4cc\n#fe4365,#fc9d9a\n"
-        let palettes = Palette.palettes(data: Data(text.utf8))
+        let palettes = try Palette.palettes(data: Data(text.utf8))
         #expect(palettes.count == 2)
         #expect(palettes[0].count == 3)
         #expect(palettes[1].count == 2)
         #expect(palettes[1][0] == Color(hex: 0xFE4365))
     }
 
-    @Test func tabSeparatedReadsAsTSV() {
+    @Test func tabSeparatedReadsAsTSV() throws {
         let text = "#69d2e7\t#a7dbd8\n#fe4365\t#fc9d9a\n"
-        let auto = Palette.palettes(data: Data(text.utf8))
-        let forced = Palette.palettes(data: Data(text.utf8), format: .tsv)
+        let auto = try Palette.palettes(data: Data(text.utf8))
+        let forced = try Palette.palettes(data: Data(text.utf8), format: .tsv)
         #expect(auto.count == 2)
         #expect(forced.count == 2)
         #expect(auto[0].colors == forced[0].colors)
@@ -44,26 +44,26 @@ struct PaletteImportTests {
 
     /// Naming the format overrides the sniff: the same bytes read as one
     /// palette of four rather than two palettes of two.
-    @Test func explicitHexLinesOverridesTheSniff() {
+    @Test func explicitHexLinesOverridesTheSniff() throws {
         let text = "#69d2e7,#a7dbd8\n#fe4365,#fc9d9a\n"
-        let palettes = Palette.palettes(data: Data(text.utf8), format: .hexLines)
+        let palettes = try Palette.palettes(data: Data(text.utf8), format: .hexLines)
         #expect(palettes.count == 1)
         #expect(palettes[0].count == 4)
     }
 
     /// A line that parses to no colors is dropped, which is what makes CSV
     /// headers and comment lines a non-issue.
-    @Test func unparsableLinesAreSkipped() {
+    @Test func unparsableLinesAreSkipped() throws {
         let text = "name,swatches\n// a comment\n\n#ff0000,#00ff00\n"
-        let palettes = Palette.palettes(data: Data(text.utf8))
+        let palettes = try Palette.palettes(data: Data(text.utf8))
         #expect(palettes.count == 1)
         #expect(palettes[0].colors == [Color(hex: 0xFF0000), Color(hex: 0x00FF00)])
     }
 
     /// Hex in the wild carries quotes, an `0x` prefix, or three-digit shorthand.
-    @Test func tokensSurviveQuotesPrefixesAndShorthand() {
+    @Test func tokensSurviveQuotesPrefixesAndShorthand() throws {
         let text = "\"#ff0000\",0x00ff00,#00f,0000FF\n"
-        let palettes = Palette.palettes(data: Data(text.utf8))
+        let palettes = try Palette.palettes(data: Data(text.utf8))
         #expect(palettes.count == 1)
         #expect(palettes[0].colors == [Color(hex: 0xFF0000), Color(hex: 0x00FF00),
                                        Color(hex: 0x0000FF), Color(hex: 0x0000FF)])
@@ -72,48 +72,48 @@ struct PaletteImportTests {
     // MARK: - JSON
 
     /// The array-of-arrays shape: many palettes, five colors each.
-    @Test func jsonArrayOfArraysReadsAsManyPalettes() {
+    @Test func jsonArrayOfArraysReadsAsManyPalettes() throws {
         let json = """
         [["#69d2e7","#a7dbd8","#e0e4cc","#f38630","#fa6900"],
          ["#fe4365","#fc9d9a","#f9cdad","#c8c8a9","#83af9b"]]
         """
-        let palettes = Palette.palettes(data: Data(json.utf8))
+        let palettes = try Palette.palettes(data: Data(json.utf8))
         #expect(palettes.count == 2)
         #expect(palettes[0].count == 5)
         #expect(palettes[1][0] == Color(hex: 0xFE4365))
     }
 
     /// A flat array of hex strings is one palette.
-    @Test func jsonArrayOfHexReadsAsOnePalette() {
+    @Test func jsonArrayOfHexReadsAsOnePalette() throws {
         let json = ##"["#69d2e7","#a7dbd8","#e0e4cc"]"##
-        let palettes = Palette.palettes(data: Data(json.utf8))
+        let palettes = try Palette.palettes(data: Data(json.utf8))
         #expect(palettes.count == 1)
         #expect(palettes[0].count == 3)
     }
 
-    @Test func jsonObjectsWithColorsKeyRead() {
+    @Test func jsonObjectsWithColorsKeyRead() throws {
         let json = ##"[{"name":"a","colors":["#ff0000","#00ff00"]},{"colors":["#0000ff"]}]"##
-        let palettes = Palette.palettes(data: Data(json.utf8))
+        let palettes = try Palette.palettes(data: Data(json.utf8))
         #expect(palettes.count == 2)
         #expect(palettes[0].count == 2)
         #expect(palettes[1][0] == Color(hex: 0x0000FF))
     }
 
     /// Leading whitespace must not hide the opening bracket from the sniffer.
-    @Test func jsonIsSniffedThroughLeadingWhitespace() {
+    @Test func jsonIsSniffedThroughLeadingWhitespace() throws {
         let json = "\n\n   [[\"#ff0000\"]]"
-        #expect(Palette.palettes(data: Data(json.utf8)).count == 1)
+        #expect((try Palette.palettes(data: Data(json.utf8))).count == 1)
     }
 
     // MARK: - Adobe Swatch Exchange
 
     /// Groups become palettes, in the order the file lists them.
-    @Test func aseGroupsBecomePalettes() {
+    @Test func aseGroupsBecomePalettes() throws {
         let data = ASEFixture()
             .group("warm", rgb: [(1, 0, 0), (1, 0.5, 0)])
             .group("cool", rgb: [(0, 0, 1)])
             .data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 2)
         #expect(palettes[0].count == 2)
         #expect(palettes[1].count == 1)
@@ -122,20 +122,20 @@ struct PaletteImportTests {
     }
 
     /// Colors sitting outside any group still make a palette.
-    @Test func aseLooseColorsFormOnePalette() {
+    @Test func aseLooseColorsFormOnePalette() throws {
         let data = ASEFixture().loose(rgb: [(1, 0, 0), (0, 1, 0)]).data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 1)
         #expect(palettes[0].count == 2)
     }
 
     /// Loose colors before a group flush in place, so document order holds.
-    @Test func aseKeepsDocumentOrder() {
+    @Test func aseKeepsDocumentOrder() throws {
         let data = ASEFixture()
             .loose(rgb: [(1, 0, 0)])
             .group("g", rgb: [(0, 1, 0)])
             .data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 2)
         #expect(palettes[0][0] == Color(red: 1, green: 0, blue: 0))
         #expect(palettes[1][0] == Color(red: 0, green: 1, blue: 0))
@@ -143,20 +143,20 @@ struct PaletteImportTests {
 
     /// A block type we don't handle must be stepped over by its declared
     /// length, leaving the blocks after it readable.
-    @Test func aseSkipsUnknownBlocksByLength() {
+    @Test func aseSkipsUnknownBlocksByLength() throws {
         let data = ASEFixture()
             .unknownBlock(payload: [0xDE, 0xAD, 0xBE, 0xEF])
             .loose(rgb: [(0, 0, 1)])
             .data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 1)
         #expect(palettes[0][0] == Color(red: 0, green: 0, blue: 1))
     }
 
     /// Gray and CMYK swatches decode to the colors their models imply.
-    @Test func aseReadsGrayAndCMYK() {
+    @Test func aseReadsGrayAndCMYK() throws {
         let data = ASEFixture().grayLoose(0.5).cmykLoose(0, 1, 1, 0).data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 1)
         #expect(palettes[0].count == 2)
         #expect(abs(palettes[0][0].red - 0.5) < 0.001)
@@ -166,9 +166,9 @@ struct PaletteImportTests {
     }
 
     /// LAB lightness arrives as 0...1, so a mid-gray must not come back black.
-    @Test func aseLabLightnessIsNormalized() {
+    @Test func aseLabLightnessIsNormalized() throws {
         let data = ASEFixture().labLoose(l: 0.5, a: 0, b: 0).data()
-        let palettes = Palette.palettes(data: data)
+        let palettes = try Palette.palettes(data: data)
         #expect(palettes.count == 1)
         let gray = palettes[0][0]
         #expect(gray.red > 0.4 && gray.red < 0.65)
@@ -178,28 +178,32 @@ struct PaletteImportTests {
 
     // MARK: - Failure
 
-    /// Garbage never traps. A file with no colors has no first palette.
-    @Test func malformedInputYieldsNothing() {
-        #expect(Palette.palettes(data: Data()).isEmpty)
-        #expect(Palette.palettes(data: Data("not a palette".utf8)).isEmpty)
-        #expect(Palette.palettes(data: Data("{".utf8)).isEmpty)
-        #expect(Palette(data: Data("zzz".utf8)) == nil)
-        #expect(Palette(contentsOf: "/nonexistent/path.hex") == nil)
+    /// Garbage never traps: bytes with no colors hold no palette, and say so
+    /// as unreadable; a path with nothing at it says so as missing.
+    @Test func malformedInputThrowsWhatItIs() throws {
+        for bytes in [Data(), Data("not a palette".utf8), Data("{".utf8)] {
+            let error = #expect(throws: FileError.self) { try Palette.palettes(data: bytes) }
+            #expect(error?.kind == .unreadable)
+        }
+        #expect(throws: FileError.self) { try Palette(data: Data("zzz".utf8)) }
+        let missing = #expect(throws: FileError.self) { try Palette(contentsOf: "/nonexistent/path.hex") }
+        #expect(missing?.kind == .missing)
+        #expect(missing?.path == "/nonexistent/path.hex")
     }
 
     /// A truncated swatch file stops where the bytes stop.
-    @Test func truncatedASEStopsCleanly() {
+    @Test func truncatedASEStopsCleanly() throws {
         let full = ASEFixture().group("g", rgb: [(1, 0, 0), (0, 1, 0)]).data()
         for cut in stride(from: 4, to: full.count, by: 3) {
-            _ = Palette.palettes(data: full.prefix(cut))  // must not trap
+            _ = try? Palette.palettes(data: full.prefix(cut))  // must not trap
         }
-        #expect(Palette.palettes(data: full.prefix(12)).isEmpty)
+        #expect(throws: FileError.self) { try Palette.palettes(data: full.prefix(12)) }
     }
 
     /// The single-palette initializer is the first palette of the file.
-    @Test func singleInitTakesTheFirstPalette() {
+    @Test func singleInitTakesTheFirstPalette() throws {
         let json = ##"[["#ff0000"],["#00ff00"]]"##
-        let palette = Palette(data: Data(json.utf8))
+        let palette = try? Palette(data: Data(json.utf8))
         #expect(palette?.colors == [Color(hex: 0xFF0000)])
     }
 }

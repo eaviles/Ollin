@@ -100,7 +100,7 @@ spray.setQuads([
               light: SIMD3(repeating: 1),
               pictureBounds: Rectangle(x: 0, y: 0, width: 1, height: 1)),   // a picture, defocused
 ])
-spray.picture = loadImage("poster.jpg", in: .module)
+spray.picture = try? loadImage("poster.jpg", in: .module)
 ```
 
 The `Rendering/LineSpray` example draws a whole scene through it, with the camera, the lens, and the print settings as parameters.

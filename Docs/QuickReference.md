@@ -61,6 +61,7 @@ final class Rings: Sketch {
 - **Draw in `draw()`, not in `setup()`.** The frame's geometry is emptied before the first `draw()`, and per-frame state (the camera, lights, shadows) resets each frame.
 - **`draw*` calls emit shapes**; `fill`, `stroke`, and `background` set state; `translate`, `rotate`, and `scale` move the coordinates. `withState { }` keeps a change of state or transform inside its block.
 - **Keep state in properties.** A `Feedback`, an `Accumulator`, a loaded `Image`, or a `Mesh` is made once, in `setup()` or as a stored property, and used every frame.
+- **Loading a file throws.** `loadImage`, `loadMesh`, `loadScene`, `loadSVG`, `loadPalette`, `loadTable`, `loadJSON`, and the initializers under them throw a [`FileError`](./Core/Sketch.md#fileerror) (`missing` or `unreadable`, with the path and a sentence). `setup()` does not throw, so write `try!` to stop with that sentence or `try?` to carry on with `nil`.
 
 [Sketch](./Core/Sketch.md) covers the lifecycle and [Canvas](./Core/Canvas.md) the canvas and window.
 

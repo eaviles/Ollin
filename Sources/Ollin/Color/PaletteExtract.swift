@@ -11,7 +11,7 @@ public extension Palette {
     /// The `count` colors an image is mostly made of, most-used first.
     ///
     /// ```swift
-    /// let photo = loadImage("beach.jpg")!
+    /// let photo = try! loadImage("beach.jpg")
     /// let p = Palette(extractedFrom: photo, count: 5)
     /// ```
     ///

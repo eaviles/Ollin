@@ -65,7 +65,7 @@ final class SceneAsSource: Sketch {
     /// The same walk the generated sketch performs, so the names in the
     /// description reach the same meshes.
     private func loadParts() {
-        guard let described, let scene = Scene(contentsOf: sceneURL) else { return }
+        guard let described, let scene = try? Scene(contentsOf: sceneURL) else { return }
         var found: [Mesh] = []
         func visit(_ nodes: [SceneNode]) {
             for node in nodes {

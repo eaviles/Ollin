@@ -14,7 +14,7 @@ final class SVGImport: Sketch {
     var art: SVG?
 
     override func setup() {
-        art = SVG(resource: "rocket", in: .module)
+        art = try? SVG(resource: "rocket", in: .module)
     }
 
     override func draw() {

@@ -6,7 +6,7 @@
 
 Read a CSV, a TSV, or a JSON file and draw from it. You load both of them once, so call them in `setup()`, keep the result in a property, and read it in `draw()`.
 
-Neither loader throws. A file that can't be read, or that holds nothing usable, comes back `nil`. A missing asset or a bad download then shows up as an empty sketch you can report, not as a crash.
+Both loaders throw a `FileError` when a file can't be read or holds nothing usable: `missing` when nothing is there, `unreadable` when the bytes are not a table or JSON, each with the path and a sentence. Write `try!` to stop the sketch with that sentence, or `try?` to carry on with `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/DataAsMaterial-dark.jpg">
@@ -31,10 +31,10 @@ Neither loader throws. A file that can't be read, or that holds nothing usable, 
 ### loadTable
 
 ```swift
-func loadTable(_ path: String, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
-func loadTable(_ url: URL, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
+func loadTable(_ path: String, format: TableFormat = .auto, hasHeader: Bool? = nil) throws -> Table
+func loadTable(_ url: URL, format: TableFormat = .auto, hasHeader: Bool? = nil) throws -> Table
 func loadTable(resource: String, withExtension ext: String? = "csv", in bundle: Bundle,
-               format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
+               format: TableFormat = .auto, hasHeader: Bool? = nil) throws -> Table
 ```
 
 Read a delimited file. Use the `resource:` form for a file that sits beside the sketch. Pass `.module` for the sketch's own bundle. That parameter has no default, because a default would resolve to Ollin's bundle rather than yours.
@@ -44,7 +44,7 @@ final class Readings: Sketch {
     private var table: Table?
 
     override func setup() {
-        table = loadTable(resource: "readings", withExtension: "csv", in: .module)
+        table = try? loadTable(resource: "readings", withExtension: "csv", in: .module)
     }
 
     override func draw() {
@@ -138,14 +138,14 @@ Two things are guessed when you don't state them, and stating one overrides its 
 **The separator.** `.auto` counts commas, tabs, semicolons, and pipes on the first line, outside quotes, then takes the most frequent one. Name the separator with `format:` when a file is unusual enough for that count to go wrong:
 
 ```swift
-loadTable("odd.txt", format: .tsv)
-loadTable("odd.txt", format: .delimited("|"))
+(try? loadTable("odd.txt", format: .tsv))
+(try? loadTable("odd.txt", format: .delimited("|")))
 ```
 
 **Whether the first row names the columns.** A first row that holds no numbers is a header, and one that holds a number is data. That is the whole rule, and it is what a person reads too. The rule gets a file of names with no header wrong, so say which you have:
 
 ```swift
-loadTable("names.csv", hasHeader: false)   // no header row; read cells by position
+(try? loadTable("names.csv", hasHeader: false))   // no header row; read cells by position
 ```
 
 When a file is read headerless, `columns` is empty and cells come back by position, as in `row[0]`.
@@ -155,16 +155,16 @@ When a file is read headerless, `columns` is empty and cells come back by positi
 ### loadJSON
 
 ```swift
-func loadJSON(_ path: String) -> JSON?
-func loadJSON(_ url: URL) -> JSON?
-func loadJSON(resource: String, withExtension ext: String? = "json", in bundle: Bundle) -> JSON?
+func loadJSON(_ path: String) throws -> JSON
+func loadJSON(_ url: URL) throws -> JSON
+func loadJSON(resource: String, withExtension ext: String? = "json", in bundle: Bundle) throws -> JSON
 ```
 
-Read a JSON document. It has the same shape and the same rules as `loadTable`. Call it in `setup()`, pass `.module` for your own bundle, and expect `nil` when there is nothing to read.
+Read a JSON document. It has the same shape and the same rules as `loadTable`. Call it in `setup()`, pass `.module` for your own bundle, and expect a `FileError` when there is nothing to read or the bytes are not JSON.
 
 ```swift
 override func setup() {
-    document = loadJSON(resource: "places", withExtension: "json", in: .module)
+    document = try? loadJSON(resource: "places", withExtension: "json", in: .module)
 }
 ```
 

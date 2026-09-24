@@ -50,11 +50,11 @@ struct PrintColorTests {
     }
 
     @Test func profilesLoadFromBytesAndRejectRubbish() {
-        let reloaded = ICCProfile(data: ICCProfile.sRGB.data)
+        let reloaded = try? ICCProfile(data: ICCProfile.sRGB.data)
         #expect(reloaded == ICCProfile.sRGB)
         #expect(reloaded?.name == ICCProfile.sRGB.name)
-        #expect(ICCProfile(data: Data(repeating: 7, count: 400)) == nil)
-        #expect(ICCProfile(data: Data()) == nil)
+        #expect((try? ICCProfile(data: Data(repeating: 7, count: 400))) == nil)
+        #expect((try? ICCProfile(data: Data())) == nil)
         // Different profiles are different values, which is what keys the
         // transform cache.
         #expect(ICCProfile.sRGB != ICCProfile.displayP3)

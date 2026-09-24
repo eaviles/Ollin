@@ -174,7 +174,7 @@ struct SceneSkinningTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     private func near(_ a: Vector3, _ b: Vector3, _ tolerance: Double = 1e-5) -> Bool {

@@ -52,7 +52,7 @@ struct TextureFilteringTests {
         let dest = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)!
         CGImageDestinationAddImage(dest, cgChecker(size: size, cell: cell), nil)
         CGImageDestinationFinalize(dest)
-        return Image(data: data as Data)!
+        return try! Image(data: data as Data)
     }
 
     /// A picture drawn into a bitmap: the loader hands back a linear format for

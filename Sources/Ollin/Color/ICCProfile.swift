@@ -65,7 +65,7 @@ public enum RenderingIntent: String, Sendable, CaseIterable {
 /// loads from a URL, from `Data`, or from a sketch's bundled resources:
 ///
 /// ```swift
-/// let press = ICCProfile(contentsOf: printerProfileURL) ?? .genericCMYK
+/// let press = (try? ICCProfile(contentsOf: printerProfileURL)) ?? .genericCMYK
 /// let proof = SoftProof(press)                 // what that press will make of it
 /// drawImage(artwork.softProofed(proof), 0, 0)
 /// ```
@@ -103,12 +103,12 @@ public struct ICCProfile: Sendable, Hashable {
     /// cache without hashing tens of kilobytes on every lookup.
     let fingerprint: UInt64
 
-    /// Load a profile from ICC bytes. `nil` when the bytes are not a profile
-    /// the system can read.
-    public init?(data: Data) {
+    /// Load a profile from ICC bytes. Throws an `unreadable` `FileError` when
+    /// the bytes are not a profile the system can read.
+    public init(data: Data) throws {
         guard data.count >= 128,
               ColorSyncProfileCreate(data as CFData, nil)?.takeRetainedValue() != nil else {
-            return nil
+            throw FileError.unreadable(nil, "these bytes are not an ICC profile ColorSync can read")
         }
         self.data = data
         self.space = Self.space(inHeaderOf: data)
@@ -120,17 +120,22 @@ public struct ICCProfile: Sendable, Hashable {
 
     /// Load a profile from a `.icc` (or `.icm`) file: the file a press, a
     /// paper maker, or a display calibration hands out.
-    public init?(contentsOf url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data)
+    /// Throws a `FileError`: `missing` when no file is there, `unreadable` when
+    /// it is not a profile.
+    public init(contentsOf url: URL) throws {
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(data: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 
     /// Load a profile bundled with the sketch. Pass the sketch's own bundle
     /// (`.module` inside a sketch target); a default would resolve to the
     /// framework's bundle instead of yours.
-    public init?(resource name: String, withExtension ext: String? = "icc", in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
-        self.init(contentsOf: url)
+    public init(resource name: String, withExtension ext: String? = "icc", in bundle: Bundle) throws {
+        try self.init(contentsOf: FileError.resource(name, withExtension: ext, in: bundle))
     }
 
     /// One color's worth of component names, in the profile's own order, for
@@ -189,7 +194,7 @@ public extension ICCProfile {
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
             for case let url as URL in walker {
                 let ext = url.pathExtension.lowercased()
-                guard ext == "icc" || ext == "icm", let profile = ICCProfile(contentsOf: url),
+                guard ext == "icc" || ext == "icm", let profile = try? ICCProfile(contentsOf: url),
                       seen.insert(profile.fingerprint).inserted else { continue }
                 found.append(profile)
             }
@@ -231,7 +236,7 @@ extension ICCProfile {
     /// platform the space is there and the fallback is unreachable.
     init(system name: CFString, fallbackName: String) {
         if let space = CGColorSpace(name: name), let icc = space.copyICCData() as Data?,
-           let profile = ICCProfile(data: icc) {
+           let profile = (try? ICCProfile(data: icc)) {
             self = profile
         } else {
             self.init(empty: fallbackName)

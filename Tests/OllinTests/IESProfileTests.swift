@@ -44,7 +44,7 @@ struct IESProfileTests {
     // MARK: - Parsing
 
     @Test func parsesAndNormalizesAnAxialFile() throws {
-        let p = try #require(IESProfile(string: axial))
+        let p = try IESProfile(string: axial)
         #expect(p.symmetry == .axial)
         #expect(p.verticalAngles == [0, 30, 60, 90])
         // Normalized to peak 1, sampled at the measured angles.
@@ -60,7 +60,7 @@ struct IESProfileTests {
     }
 
     @Test func candelaBlocksArePerHorizontalAngle() throws {
-        let p = try #require(IESProfile(string: ordered))
+        let p = try IESProfile(string: ordered)
         // values[h][v], normalized by the peak 40.
         #expect(close(p.intensity(vertical: 0, horizontal: 0), 0.25))
         #expect(close(p.intensity(vertical: deg(90), horizontal: 0), 0.5))
@@ -82,7 +82,7 @@ struct IESProfileTests {
         0
         500 1000
         """
-        let p = try #require(IESProfile(string: tilted))
+        let p = try IESProfile(string: tilted)
         #expect(close(p.intensity(vertical: 0), 0.5))
         #expect(close(p.intensity(vertical: deg(90)), 1.0))
     }
@@ -101,23 +101,23 @@ struct IESProfileTests {
         1000, 800,
         300, 0
         """
-        let p = try #require(IESProfile(string: loose))
+        let p = try IESProfile(string: loose)
         #expect(close(p.intensity(vertical: deg(30)), 0.8))
     }
 
     @Test func malformedFilesFailWithoutTrapping() {
-        #expect(IESProfile(string: "not an ies file") == nil)          // no TILT
-        #expect(IESProfile(string: axial.replacingOccurrences(of: "1000 800 300 0",
-                                                              with: "1000 800")) == nil)  // truncated
-        #expect(IESProfile(string: axial.replacingOccurrences(of: "4 1 1 2",
-                                                              with: "4 1 2 2")) == nil)   // Type B
-        #expect(IESProfile(string: axial.replacingOccurrences(of: "1000 800 300 0",
-                                                              with: "1000 800 x 0")) == nil)  // non-numeric
-        #expect(IESProfile(string: axial.replacingOccurrences(of: "0 30 60 90",
-                                                              with: "0 60 30 90")) == nil)    // not ascending
-        #expect(IESProfile(string: axial.replacingOccurrences(of: "4 1 1 2",
-                                                              with: "4e20 1 1 2")) == nil)    // absurd count
-        #expect(IESProfile(string: "") == nil)
+        #expect((try? IESProfile(string: "not an ies file")) == nil)          // no TILT
+        #expect((try? IESProfile(string: axial.replacingOccurrences(of: "1000 800 300 0",
+                                                              with: "1000 800"))) == nil)  // truncated
+        #expect((try? IESProfile(string: axial.replacingOccurrences(of: "4 1 1 2",
+                                                              with: "4 1 2 2"))) == nil)   // Type B
+        #expect((try? IESProfile(string: axial.replacingOccurrences(of: "1000 800 300 0",
+                                                              with: "1000 800 x 0"))) == nil)  // non-numeric
+        #expect((try? IESProfile(string: axial.replacingOccurrences(of: "0 30 60 90",
+                                                              with: "0 60 30 90"))) == nil)    // not ascending
+        #expect((try? IESProfile(string: axial.replacingOccurrences(of: "4 1 1 2",
+                                                              with: "4e20 1 1 2"))) == nil)    // absurd count
+        #expect((try? IESProfile(string: "")) == nil)
     }
 
     // MARK: - Symmetry folds
@@ -136,7 +136,7 @@ struct IESProfileTests {
         100 400
         100 800
         """
-        let p = try #require(IESProfile(string: quadrant))
+        let p = try IESProfile(string: quadrant)
         #expect(p.symmetry == .quadrant)
         let v = deg(90)
         let at45 = p.intensity(vertical: v, horizontal: deg(45))
@@ -163,7 +163,7 @@ struct IESProfileTests {
         100 400
         100 800
         """
-        let p = try #require(IESProfile(string: bilateral))
+        let p = try IESProfile(string: bilateral)
         #expect(p.symmetry == .bilateral)
         let v = deg(90)
         // 270° mirrors onto 90°.
@@ -187,7 +187,7 @@ struct IESProfileTests {
         100 400
         100 800
         """
-        let p = try #require(IESProfile(string: lateral))
+        let p = try IESProfile(string: lateral)
         #expect(p.symmetry == .bilateral90)
         let v = deg(90)
         // 0° reflects to 180°, 45° to 135°.
@@ -212,7 +212,7 @@ struct IESProfileTests {
         100 400
         100 600
         """
-        let p = try #require(IESProfile(string: full))
+        let p = try IESProfile(string: full)
         #expect(p.symmetry == .full)
         let v = deg(90)
         // Halfway across the 270 → 0(+360) seam: between 0.75 and 1.0.
@@ -225,7 +225,7 @@ struct IESProfileTests {
     // MARK: - GPU bake
 
     @Test func bakedTableMatchesTheSampler() throws {
-        let p = try #require(IESProfile(string: axial))
+        let p = try IESProfile(string: axial)
         let w = 64, h = 8
         let table = p.bakedTable(width: w, height: h)
         #expect(table.count == w * h)
@@ -254,8 +254,8 @@ struct IESProfileTests {
     }
 
     @Test func profiledLightsShareLayersByContent() throws {
-        let p = try #require(IESProfile(string: axial))
-        let q = try #require(IESProfile(string: ordered))
+        let p = try IESProfile(string: axial)
+        let q = try IESProfile(string: ordered)
         let d = Drawer()
         d.beginFrame()
         d.camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))
@@ -273,7 +273,7 @@ struct IESProfileTests {
     }
 
     @Test func pointAxisAndRollPack() throws {
-        let p = try #require(IESProfile(string: axial))
+        let p = try IESProfile(string: axial)
         let d = Drawer()
         d.beginFrame()
         d.camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))

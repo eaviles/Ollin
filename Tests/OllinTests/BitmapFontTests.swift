@@ -34,7 +34,7 @@ struct BitmapFontTests {
     """
 
     @Test func parsesMetricsAndKerning() throws {
-        let font = try #require(BitmapFont(fnt: Self.fnt))
+        let font = try BitmapFont(fnt: Self.fnt)
         #expect(font.pixelHeight == 7)
         // Advance is the glyph width plus tracking.
         #expect(font.advance(for: "F") == 6)
@@ -45,7 +45,7 @@ struct BitmapFontTests {
     }
 
     @Test func decodesGlyphsRightSideUp() throws {
-        let font = try #require(BitmapFont(fnt: Self.fnt))
+        let font = try BitmapFont(fnt: Self.fnt)
 
         let f = try #require(font.glyph(for: "F"))
         #expect(f.width == 5 && f.height == 7)

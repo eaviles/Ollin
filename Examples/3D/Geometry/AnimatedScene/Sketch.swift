@@ -37,7 +37,7 @@ final class AnimatedScene: Sketch {
 
     override func setup() {
         if let path = ProcessInfo.processInfo.environment["OLLIN_SCENE"],
-           let s = loadScene(path) {
+           let s = (try? loadScene(path)) {
             scene = s
             overridden = true
         } else {
@@ -48,8 +48,8 @@ final class AnimatedScene: Sketch {
     /// Both formats come through the same call: only the file name changes.
     private func loadStage() {
         scene = showingUSD
-            ? Scene(resource: "stage", withExtension: "usda", in: Bundle.module)
-            : Scene(resource: "scene", withExtension: "gltf", in: Bundle.module)
+            ? (try? Scene(resource: "stage", withExtension: "usda", in: Bundle.module))
+            : (try? Scene(resource: "scene", withExtension: "gltf", in: Bundle.module))
     }
 
     override func keyPressed() {

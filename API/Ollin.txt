@@ -7,11 +7,11 @@
   case number(Double)
   case object([String : JSON])
   case string(String)
-  init?(contentsOf: String)
-  init?(data: Foundation.Data)
-  init?(resource: String, withExtension: String? = default, in: Foundation.Bundle)
-  init?(text: String)
-  init?(url: Foundation.URL)
+  init(contentsOf: String) throws
+  init(data: Foundation.Data) throws
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
+  init(text: String) throws
+  init(url: Foundation.URL) throws
   subscript(_: Int) -> JSON { get }
   subscript(_: String) -> JSON { get }
   subscript(dynamicMember: String) -> JSON { get }
@@ -1186,9 +1186,9 @@ final class IKChain
   var solver: IKChain.Solver { get set }
   var tip: Vector2 { get }
 final class Image
-  convenience init?(contentsOf: Foundation.URL)
-  convenience init?(data: Foundation.Data)
-  convenience init?(resource: String, withExtension: String?, in: Foundation.Bundle)
+  convenience init(contentsOf: Foundation.URL) throws
+  convenience init(data: Foundation.Data) throws
+  convenience init(resource: String, withExtension: String?, in: Foundation.Bundle) throws
   func autostereogram(_: Autostereogram = default, pattern: Image? = default, seed: Int = default) -> Image?
   func averageColor(in: Rectangle? = default) -> Color
   func cropped(toAspect: Double) -> Image
@@ -1951,8 +1951,6 @@ open class Sketch: Sendable
   @discardableResult func drawFrame(_: some VideoFeed, in: Rectangle? = default, waiting: String? = default) -> Rectangle?
   @discardableResult func nextCue(over: Double = default) -> Bool
   @discardableResult func previousCue(over: Double = default) -> Bool
-  @discardableResult func saveMesh(_: Mesh, to: String, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) -> Bool
-  @discardableResult func saveScene(_: Scene, to: String, as: SceneFileFormat? = default, metersPerUnit: Double = default) -> Bool
   final static func main()
   final static let defaultSize: CanvasSize
   func add()
@@ -2297,26 +2295,26 @@ open class Sketch: Sendable
   func lineDrawing(of: [Mesh], creaseAngle: Double = default, spacing: Double = default) -> LineDrawing
   func lloyd(_: [Vector2], in: Rectangle? = default, iterations: Int = default) -> [Vector2]
   func loadCues(from: String) throws
-  func loadImage(_: Foundation.URL) -> Image?
-  func loadImage(_: String) -> Image?
-  func loadJSON(_: Foundation.URL) -> JSON?
-  func loadJSON(_: String) -> JSON?
-  func loadJSON(resource: String, withExtension: String? = default, in: Foundation.Bundle) -> JSON?
-  func loadMesh(_: Foundation.URL) -> Mesh?
-  func loadMesh(_: String) -> Mesh?
-  func loadPalette(_: Foundation.URL, format: PaletteFormat = default) -> Palette?
-  func loadPalette(_: String, format: PaletteFormat = default) -> Palette?
-  func loadPalette(resource: String, withExtension: String? = default, in: Foundation.Bundle) -> Palette?
-  func loadPalettes(_: Foundation.URL, format: PaletteFormat = default) -> [Palette]
-  func loadPalettes(_: String, format: PaletteFormat = default) -> [Palette]
-  func loadPalettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) -> [Palette]
-  func loadSVG(_: Foundation.URL) -> SVG?
-  func loadSVG(_: String) -> SVG?
-  func loadScene(_: Foundation.URL) -> Scene?
-  func loadScene(_: String) -> Scene?
-  func loadTable(_: Foundation.URL, format: TableFormat = default, hasHeader: Bool? = default) -> Table?
-  func loadTable(_: String, format: TableFormat = default, hasHeader: Bool? = default) -> Table?
-  func loadTable(resource: String, withExtension: String? = default, in: Foundation.Bundle, format: TableFormat = default, hasHeader: Bool? = default) -> Table?
+  func loadImage(_: Foundation.URL) throws -> Image
+  func loadImage(_: String) throws -> Image
+  func loadJSON(_: Foundation.URL) throws -> JSON
+  func loadJSON(_: String) throws -> JSON
+  func loadJSON(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> JSON
+  func loadMesh(_: Foundation.URL) throws -> Mesh
+  func loadMesh(_: String) throws -> Mesh
+  func loadPalette(_: Foundation.URL, format: PaletteFormat = default) throws -> Palette
+  func loadPalette(_: String, format: PaletteFormat = default) throws -> Palette
+  func loadPalette(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> Palette
+  func loadPalettes(_: Foundation.URL, format: PaletteFormat = default) throws -> [Palette]
+  func loadPalettes(_: String, format: PaletteFormat = default) throws -> [Palette]
+  func loadPalettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> [Palette]
+  func loadSVG(_: Foundation.URL) throws -> SVG
+  func loadSVG(_: String) throws -> SVG
+  func loadScene(_: Foundation.URL) throws -> Scene
+  func loadScene(_: String) throws -> Scene
+  func loadTable(_: Foundation.URL, format: TableFormat = default, hasHeader: Bool? = default) throws -> Table
+  func loadTable(_: String, format: TableFormat = default, hasHeader: Bool? = default) throws -> Table
+  func loadTable(resource: String, withExtension: String? = default, in: Foundation.Bundle, format: TableFormat = default, hasHeader: Bool? = default) throws -> Table
   func loop()
   func loopProgress(over: Double, phase: Double = default) -> Double
   func makeAccumulator(scale: Double = default) -> Accumulator
@@ -2450,6 +2448,8 @@ open class Sketch: Sendable
   func saveCheckpoint()
   func saveCue(_: String)
   func saveCues(to: String) throws
+  func saveMesh(_: Mesh, to: String, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) throws
+  func saveScene(_: Scene, to: String, as: SceneFileFormat? = default, metersPerUnit: Double = default) throws
   func savedProperties() -> [SavedHandle]
   func scale(_: Double)
   func scale(_: Double, _: Double)
@@ -2897,15 +2897,15 @@ struct BitmapFont: Equatable, Sendable
   func glyph(for: Character) -> BitmapGlyph?
   func inkWidth(of: String) -> Int
   func kerning(between: Character, _: Character) -> Int
+  init(bdf: String) throws
+  init(bdfContentsOf: Foundation.URL) throws
+  init(bdfData: Foundation.Data) throws
+  init(fnt: String) throws
+  init(fntContentsOf: Foundation.URL) throws
+  init(fntData: Foundation.Data) throws
   init(glyphs: [Character : BitmapGlyph], pixelHeight: Int, baseline: Int? = default, lineHeight: Int? = default, spaceAdvance: Int? = default, kerning: [GlyphPair : Int] = default)
   init(grid: [Character : [String]], on: Character = default, pixelHeight: Int? = default, baseline: Int? = default, lineHeight: Int? = default)
-  init?(bdf: String)
-  init?(bdfContentsOf: Foundation.URL)
-  init?(bdfData: Foundation.Data)
-  init?(fnt: String)
-  init?(fntContentsOf: Foundation.URL)
-  init?(fntData: Foundation.Data)
-  init?(resource: String, in: Foundation.Bundle = default)
+  init(resource: String, in: Foundation.Bundle = default) throws
   let baseline: Int
   let glyphs: [Character : BitmapGlyph]
   let kerning: [GlyphPair : Int]
@@ -3322,8 +3322,8 @@ struct ComposeLayer
   func streaked(along: ComposeLayer, length: Double = default, field: Combine.FieldEncoding = default) -> ComposeLayer
 struct ComputeKernel: Sendable
   init(entry: String, _: String, file: String = default)
-  init?(entry: String, contentsOf: Foundation.URL)
-  init?(entry: String, resource: String, withExtension: String = default, in: Foundation.Bundle)
+  init(entry: String, contentsOf: Foundation.URL) throws
+  init(entry: String, resource: String, withExtension: String = default, in: Foundation.Bundle) throws
   let entry: String
   let source: String
 struct ComputeParams: Sendable
@@ -3656,6 +3656,17 @@ struct FieldSnapshot: Sendable
   let values: [SIMD4<Float>]
   let width: Int
   subscript(_: Int, _: Int) -> SIMD4<Float> { get }
+struct FileError: LocalizedError, CustomStringConvertible, Equatable, Error, Sendable
+  enum Kind: Equatable, Hashable, Sendable
+    case missing
+    case unreadable
+    case unwritable
+  init(_: FileError.Kind, path: String?, problem: String)
+  let kind: FileError.Kind
+  let path: String?
+  let problem: String
+  var description: String { get }
+  var errorDescription: String? { get }
 struct Filter: Sendable
   enum Dispersion: Equatable, Sendable
     case axial
@@ -4211,9 +4222,9 @@ struct ICCProfile: Equatable, Hashable, Sendable
     case other
     case rgb
   func hash(into: Hasher)
-  init?(contentsOf: Foundation.URL)
-  init?(data: Foundation.Data)
-  init?(resource: String, withExtension: String? = default, in: Foundation.Bundle)
+  init(contentsOf: Foundation.URL) throws
+  init(data: Foundation.Data) throws
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
   let channelCount: Int
   let data: Foundation.Data
   let isOutputDevice: Bool
@@ -4231,10 +4242,10 @@ struct ICCProfile: Equatable, Hashable, Sendable
   var channelNames: [String] { get }
 struct IESProfile: Equatable, Sendable
   func intensity(vertical: Double, horizontal: Double = default) -> Double
-  init?(contentsOf: Foundation.URL)
-  init?(data: Foundation.Data)
-  init?(resource: String, in: Foundation.Bundle)
-  init?(string: String)
+  init(contentsOf: Foundation.URL) throws
+  init(data: Foundation.Data) throws
+  init(resource: String, in: Foundation.Bundle) throws
+  init(string: String) throws
 struct IFS: Sendable
   func points(count: Int, settle: Int = default, using: R) -> [Vector2]
   init(maps: [IFS.Map])
@@ -4762,8 +4773,6 @@ struct MedialAxis: Equatable, Sendable
     var contour: Contour { get }
   var contours: [Contour] { get }
 struct Mesh: Sendable
-  @discardableResult func write(to: Foundation.URL, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) -> Bool
-  @discardableResult func write(to: String, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) -> Bool
   func colored(by: (Vector3, Vector3) -> Color) -> Mesh
   func colored(from: PointCloud) -> Mesh
   func data(as: MeshFileFormat, unit: ModelUnit = default, upAxis: UpAxis = default) -> Foundation.Data?
@@ -4788,11 +4797,13 @@ struct Mesh: Sendable
   func transformed(by: simd.simd_float4x4) -> Mesh
   func triplanarTextured(_: Image, normal: Image? = default, scale: Double = default, normalScale: Double = default, baseColor: Color = default) -> Mesh
   func union(_: Mesh) -> Mesh
+  func write(to: Foundation.URL, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) throws
+  func write(to: String, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) throws
+  init(contentsOf: Foundation.URL) throws
+  init(objSource: String) throws
+  init(path: String) throws
   init(positions: [Vector3], normals: [Vector3] = default, indices: [UInt32], uvs: [Vector2] = default, colors: [Color] = default, material: MeshMaterial? = default, tangents: [MeshTangent] = default)
-  init?(contentsOf: Foundation.URL)
-  init?(objSource: String)
-  init?(path: String)
-  init?(resource: String, withExtension: String?, in: Foundation.Bundle)
+  init(resource: String, withExtension: String?, in: Foundation.Bundle) throws
   static func box(size: Double = default) -> Mesh
   static func box(width: Double, height: Double, depth: Double) -> Mesh
   static func capsule(radius: Double = default, height: Double = default, segments: Int = default, rings: Int = default) -> Mesh
@@ -5078,11 +5089,11 @@ struct OutlineFont: Sendable
   func variation(_: [String : Double]) -> OutlineFont
   func weight(_: Double) -> OutlineFont
   func width(_: Double) -> OutlineFont
-  init?(data: Foundation.Data)
+  init(data: Foundation.Data) throws
+  init(path: String) throws
+  init(resource: String, in: Foundation.Bundle) throws
+  init(url: Foundation.URL) throws
   init?(name: String)
-  init?(path: String)
-  init?(resource: String, in: Foundation.Bundle)
-  init?(url: Foundation.URL)
   let name: String
   static let system: OutlineFont
   static let systemBold: OutlineFont
@@ -5109,19 +5120,19 @@ struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, Rand
   func simulated(_: ColorVision) -> Palette
   init(_: Color...)
   init(_: [Color])
+  init(contentsOf: String, format: PaletteFormat = default) throws
+  init(data: Foundation.Data, format: PaletteFormat = default) throws
   init(extractedFrom: Image, count: Int = default, seed: Int = default)
-  init?(contentsOf: String, format: PaletteFormat = default)
-  init?(data: Foundation.Data, format: PaletteFormat = default)
-  init?(resource: String, withExtension: String? = default, in: Foundation.Bundle)
-  init?(url: Foundation.URL, format: PaletteFormat = default)
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
+  init(url: Foundation.URL, format: PaletteFormat = default) throws
   static func analogous(of: Color, count: Int = default, spread: Double = default) -> Palette
   static func clamped(_: Palette, by: Palette.Constraints) -> Palette
   static func complementary(of: Color) -> Palette
   static func control(for: Param<Palette>) -> ParamControl
-  static func palettes(contentsOf: String, format: PaletteFormat = default) -> [Palette]
-  static func palettes(data: Foundation.Data, format: PaletteFormat = default) -> [Palette]
-  static func palettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) -> [Palette]
-  static func palettes(url: Foundation.URL, format: PaletteFormat = default) -> [Palette]
+  static func palettes(contentsOf: String, format: PaletteFormat = default) throws -> [Palette]
+  static func palettes(data: Foundation.Data, format: PaletteFormat = default) throws -> [Palette]
+  static func palettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> [Palette]
+  static func palettes(url: Foundation.URL, format: PaletteFormat = default) throws -> [Palette]
   static func restored(_: ParamStored) -> Palette?
   static func splitComplementary(of: Color, spread: Double = default) -> Palette
   static func stored(_: Palette) -> ParamStored
@@ -5655,11 +5666,11 @@ struct SDF3D
 struct SVG: Equatable, Sendable
   func element(named: String) -> SVG.Element?
   func fitted(in: Rectangle) -> SVG
+  init(contentsOf: String) throws
+  init(data: Foundation.Data) throws
   init(elements: [SVG.Element], bounds: Rectangle)
-  init?(contentsOf: String)
-  init?(data: Foundation.Data)
-  init?(resource: String, withExtension: String? = default, in: Foundation.Bundle)
-  init?(url: Foundation.URL)
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
+  init(url: Foundation.URL) throws
   struct Element: Equatable, Sendable
     init(shape: Shape, fill: Color? = default, stroke: Color? = default, strokeWidth: Double = default, join: StrokeJoin = default, cap: StrokeCap = default, name: String? = default)
     var cap: StrokeCap { get set }
@@ -5722,15 +5733,15 @@ struct ScanGraph
   var voxelSize: Double { get }
   var world: WorldCloud { get }
 struct Scene: Sendable
-  @discardableResult func write(to: Foundation.URL, as: SceneFileFormat? = default, metersPerUnit: Double = default) -> Bool
-  @discardableResult func write(to: String, as: SceneFileFormat? = default, metersPerUnit: Double = default) -> Bool
   func animation(_: String) -> SceneAnimation?
   func data(as: SceneFileFormat, metersPerUnit: Double = default) -> Foundation.Data
   func node(_: String) -> SceneNode?
+  func write(to: Foundation.URL, as: SceneFileFormat? = default, metersPerUnit: Double = default) throws
+  func write(to: String, as: SceneFileFormat? = default, metersPerUnit: Double = default) throws
+  init(contentsOf: Foundation.URL) throws
   init(nodes: [SceneNode] = default, cameras: [Camera3D] = default, lights: [Light] = default, name: String? = default)
-  init?(contentsOf: Foundation.URL)
-  init?(path: String)
-  init?(resource: String, withExtension: String?, in: Foundation.Bundle)
+  init(path: String) throws
+  init(resource: String, withExtension: String?, in: Foundation.Bundle) throws
   mutating func apply(_: SceneAnimation, at: Double)
   subscript(_: String) -> SceneNode? { get set }
   var animations: [SceneAnimation] { get set }
@@ -6118,9 +6129,9 @@ struct StrokeFont: Equatable, Sendable
   func lineAdvanceUnits(of: S) -> Double
   func width(of: String, size: Double) -> Double
   init(glyphs: [Character : StrokeGlyph], unitsPerEm: Double, ascentUnits: Double, descentUnits: Double, lineGapUnits: Double = default, spaceAdvanceUnits: Double? = default)
-  init?(jhf: String)
-  init?(jhfContentsOf: Foundation.URL)
-  init?(resource: String, in: Foundation.Bundle = default)
+  init(jhf: String) throws
+  init(jhfContentsOf: Foundation.URL) throws
+  init(resource: String, in: Foundation.Bundle = default) throws
   let ascentUnits: Double
   let descentUnits: Double
   let glyphs: [Character : StrokeGlyph]
@@ -6212,11 +6223,11 @@ struct SurfaceSample: Equatable, Sendable
 struct Table: BidirectionalCollection, Collection, RandomAccessCollection, Sendable, Sequence
   func column(_: String) -> [String]
   func numbers(_: String) -> [Double]
-  init?(contentsOfFile: String, format: TableFormat = default, hasHeader: Bool? = default)
-  init?(data: Foundation.Data, format: TableFormat = default, hasHeader: Bool? = default)
-  init?(resource: String, withExtension: String? = default, in: Foundation.Bundle, format: TableFormat = default, hasHeader: Bool? = default)
-  init?(text: String, format: TableFormat = default, hasHeader: Bool? = default)
-  init?(url: Foundation.URL, format: TableFormat = default, hasHeader: Bool? = default)
+  init(contentsOfFile: String, format: TableFormat = default, hasHeader: Bool? = default) throws
+  init(data: Foundation.Data, format: TableFormat = default, hasHeader: Bool? = default) throws
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle, format: TableFormat = default, hasHeader: Bool? = default) throws
+  init(text: String, format: TableFormat = default, hasHeader: Bool? = default) throws
+  init(url: Foundation.URL, format: TableFormat = default, hasHeader: Bool? = default) throws
   let columns: [String]
   let rows: [Table.Row]
   struct Row: Sendable

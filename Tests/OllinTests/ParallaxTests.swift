@@ -131,9 +131,9 @@ struct ParallaxTests {
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-parallax-\(UUID().uuidString).usdz")
-        #expect(Scene(nodes: [node]).write(to: url))
+        try Scene(nodes: [node]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
-        let back = try #require(Scene(contentsOf: url))
+        let back = try Scene(contentsOf: url)
         func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
             for n in nodes {
                 if let mesh = n.mesh { return mesh }
@@ -166,7 +166,7 @@ struct ParallaxTests {
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-parallax-\(UUID().uuidString).usdz")
-        #expect(Scene(nodes: [node]).write(to: url))
+        try Scene(nodes: [node]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
         let process = Process()

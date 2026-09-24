@@ -82,7 +82,7 @@ Nothing is dropped silently. When the format cannot hold something, the exporter
 Ollin reads USD as well as writing it, so a model it wrote opens again:
 
 ```swift
-let scene = loadScene("piece.usdz")
+let scene = try? loadScene("piece.usdz")
 drawScene(scene!)
 ```
 

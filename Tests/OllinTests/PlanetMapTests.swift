@@ -274,7 +274,7 @@ private final class PlanetMaps: Sketch {
             .deletingLastPathComponent()      // Tests
             .deletingLastPathComponent()      // the repository
             .appendingPathComponent("Examples/3D/Geometry/Planet/planet.metal")
-        return ComputeKernel(entry: entry, contentsOf: url)
+        return try? ComputeKernel(entry: entry, contentsOf: url)
     }
 
     override func draw() {

@@ -11,7 +11,7 @@ final class Stage: Sketch {
     var stage: Scene!
 
     override func setup() {
-        stage = loadScene("Stage.gltf")
+        stage = try? loadScene("Stage.gltf")
     }
 
     override func draw() {
@@ -42,9 +42,9 @@ Everything decomposes into the core types you already use. `scene.camera` is a [
 ### Loading
 
 ```swift
-let scene = loadScene("Stage.gltf")                            // path (Sketch sugar)
-let scene = Scene(contentsOf: url)                             // URL
-let scene = Scene(resource: "scene", withExtension: "gltf", in: .module)   // bundled
+let scene = try? loadScene("Stage.gltf")                            // path (Sketch sugar)
+let scene = try? Scene(contentsOf: url)                             // URL
+let scene = try? Scene(resource: "scene", withExtension: "gltf", in: .module)   // bundled
 ```
 
 Structure comes from two families of format:

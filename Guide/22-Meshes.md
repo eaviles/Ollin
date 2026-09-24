@@ -23,7 +23,7 @@ final class Loaded: Sketch {
     var model: Mesh?
 
     override func setup() {
-        model = loadMesh("/Users/you/Downloads/rubber-duck.usdz")?.normalized(scale: 3)
+        model = (try? loadMesh("/Users/you/Downloads/rubber-duck.usdz"))?.normalized(scale: 3)
     }
 
     override func draw() {
@@ -39,12 +39,12 @@ final class Loaded: Sketch {
 
 The one habit that saves confusion is **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers. Normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. Models you build yourself are yours to ship, while downloaded ones carry licenses worth checking before you bundle them.
 
-> **Swift note.** `loadMesh(...)?.normalized(scale: 3)` chains with `?.` because loading can fail: if the file isn't there, `loadMesh` returns `nil`, the chain stops, and `model` stays `nil`. The `if let model` in `draw()` then simply skips drawing, so a missing file never crashes the sketch.
+> **Swift note.** Loading can fail, and `loadMesh` throws when it does. `try?` turns the throw into `nil`, so `(try? loadMesh(...))?.normalized(scale: 3)` stops at the `?.` when the file isn't there, and `model` stays `nil`. The `if let model` in `draw()` then skips drawing, so a missing file never crashes the sketch. Write `try!` instead to stop the sketch with the file's name and what was wrong with it.
 
 `loadMesh` deliberately flattens a file into one mesh you place yourself. Sometimes the file *is* the placement: a whole scene composed in the design tool, with a camera framing it and lights already set. For that there's `loadScene`, which keeps the file's structure instead of merging it:
 
 ```swift
-stage = loadScene("Stage.gltf")!            // in setup()
+stage = try! loadScene("Stage.gltf")            // in setup()
 
 camera(stage.camera ?? .orbiting(radius: 6))   // the file's own framing
 for l in stage.lights { light(l) }             // and its lighting
@@ -398,7 +398,7 @@ A `Decal` works like that. Wrap an image once, then place it each frame as a sma
 var sticker: Decal!
 
 override func setup() {
-    sticker = Decal(loadImage("label.png")!)
+    sticker = Decal(try! loadImage("label.png"))
 }
 
 override func draw() {
@@ -784,7 +784,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
         star = Mesh.extrude(Profile.star(points: 6, outerRadius: 0.46, innerRadius: 0.24), depth: 0.42)
             .subdivided(levels: 2)
 
-        specimen = loadMesh(modelURL.path)?.normalized(scale: 1.15)
+        specimen = (try? loadMesh(modelURL.path))?.normalized(scale: 1.15)
 
         // The bench is stamped where the maker signed it.
         mark = Decal(picture(size: 256) { u, v in

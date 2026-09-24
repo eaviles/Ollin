@@ -453,7 +453,7 @@ So traffic runs the other way too, and this is the only thing that does. The ske
 override func setup() {
     device.use(.markers)
     device.look(for: [
-        .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)!,
+        try! .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3),
     ])
     device.start()
 }

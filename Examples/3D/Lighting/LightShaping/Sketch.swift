@@ -22,9 +22,9 @@ import Ollin
 final class LightShaping: Sketch {
 
     // Parse once and keep: a profile is plain data, like a loaded mesh.
-    private let downlight = IESProfile(resource: "downlight", in: .module)!
-    private let batwing = IESProfile(resource: "batwing", in: .module)!
-    private let wallwash = IESProfile(resource: "wallwash", in: .module)!
+    private let downlight = try! IESProfile(resource: "downlight", in: .module)
+    private let batwing = try! IESProfile(resource: "batwing", in: .module)
+    private let wallwash = try! IESProfile(resource: "wallwash", in: .module)
 
     // The window gobo, drawn in code: 2×2 white panes behind black mullions,
     // wrapped once (the cookie resamples the image at init, so build it once).

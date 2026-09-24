@@ -8,7 +8,7 @@ import simd
 ///
 /// ```swift
 /// var stage: Scene!
-/// override func setup() { stage = loadScene("Orrery.gltf")! }
+/// override func setup() { stage = try! loadScene("Orrery.gltf") }
 /// override func draw() {
 ///     if let spin = stage.animation("spin") {
 ///         stage.apply(spin, at: time.truncatingRemainder(dividingBy: spin.duration))

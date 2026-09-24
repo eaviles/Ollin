@@ -161,7 +161,7 @@ The machine on tracks working a quarry is the [`3D/Physics/Crawler`](../Examples
 Back in "A mesh from a file" a skinned figure moved because a keyframe track told every joint where to be. That's animation, the same pose every time, whatever else is happening. A **ragdoll** is the other answer. Hand `addRagdoll` the same loaded scene and it reads the skeleton. It builds a rigid body for every joint, and hangs each one off its parent on a cone-limited ball joint. Then the world decides where the limbs go.
 
 ```swift
-figure = loadScene("figure.gltf")!
+figure = try! loadScene("figure.gltf")
 ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 ```
 

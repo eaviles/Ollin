@@ -47,7 +47,7 @@ final class Cape: Sketch {
     let capeColor = Color(hex: 0x9E2B3A)
 
     override func setup() {
-        figure = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
+        figure = try? Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         target = figure
         wave = figure.animations.first
         world.ground = 0

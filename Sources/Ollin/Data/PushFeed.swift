@@ -381,7 +381,7 @@ public final class PushFeed: @unchecked Sendable {
                 let text = isText
                     ? String(decoding: bytes, as: UTF8.self)
                     : String(data: bytes, encoding: .utf8)
-                let json = DataFeed.opensLikeJSON(bytes) ? (JSON(data: bytes) ?? .null) : .null
+                let json = DataFeed.opensLikeJSON(bytes) ? ((try? JSON(data: bytes)) ?? .null) : .null
                 let message = Message(bytes: bytes, text: text, json: json, event: name)
                 $0.bytes = bytes
                 $0.json = json

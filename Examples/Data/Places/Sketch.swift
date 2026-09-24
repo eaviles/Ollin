@@ -23,7 +23,7 @@ final class Places: Sketch {
     private var pulse: Double { (sin(time * 0.6) + 1) / 2 }
 
     override func setup() {
-        document = loadJSON(resource: "places", withExtension: "json", in: .module)
+        document = try? loadJSON(resource: "places", withExtension: "json", in: .module)
     }
 
     override func draw() {

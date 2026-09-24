@@ -12,7 +12,7 @@ import simd
 ///
 /// ```swift
 /// var scene: Scene!
-/// override func setup() { scene = loadScene("Stage.gltf")! }
+/// override func setup() { scene = try! loadScene("Stage.gltf") }
 /// override func draw() {
 ///     camera(scene.camera ?? .orbiting(radius: 6))
 ///     for l in scene.lights { light(l) }
@@ -443,32 +443,37 @@ extension Scene {
     /// blend shapes, all read by Ollin's own parser (see `loadUSDScene`). Any
     /// other format
     /// `loadMesh` reads (`.obj`, `.stl`, …) has no scene graph, so it loads as
-    /// one node named after the file, with no cameras or lights. Returns `nil`
-    /// if the file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.
-    public init?(contentsOf url: URL) {
+    /// one node named after the file, with no cameras or lights. Throws a
+    /// `FileError`: `missing` when no file is there, `unreadable` when it holds
+    /// nothing a scene reader can use. Mirrors `Mesh(contentsOf:)`.
+    public init(contentsOf url: URL) throws {
+        try FileError.requireFile(url)
         switch url.pathExtension.lowercased() {
         case "gltf", "glb":
-            guard let scene = Scene.loadGLTFScene(url) else { return nil }
+            guard let scene = Scene.loadGLTFScene(url) else {
+                throw FileError.unreadable(url, "is not a glTF scene this reader can use")
+            }
             self = scene
         case "usdz", "usdc", "usda", "usd":
-            guard let scene = Scene.loadUSDScene(url) else { return nil }
+            guard let scene = Scene.loadUSDScene(url) else {
+                throw FileError.unreadable(url, "is not a USD scene this reader can use")
+            }
             self = scene
         default:
-            guard let mesh = Mesh(contentsOf: url) else { return nil }
+            let mesh = try Mesh(contentsOf: url)
             self = Scene(nodes: [SceneNode(name: url.deletingPathExtension().lastPathComponent,
                                            mesh: mesh)])
         }
     }
 
     /// Load a scene from a file `path`. Sugar over `Scene(contentsOf:)`.
-    public init?(path: String) { self.init(contentsOf: URL(fileURLWithPath: path)) }
+    public init(path: String) throws { try self.init(contentsOf: URL(fileURLWithPath: path)) }
 
     /// Load a scene bundled as a resource. Mirrors `Mesh(resource:withExtension:in:)`;
     /// `in:` has no default, since a default argument would resolve to *Ollin's*
     /// bundle, not the caller's.
-    public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
-        self.init(contentsOf: url)
+    public init(resource name: String, withExtension ext: String?, in bundle: Bundle) throws {
+        try self.init(contentsOf: FileError.resource(name, withExtension: ext, in: bundle))
     }
 
     /// Read a glTF/GLB file's default scene with structure kept: the node tree
@@ -671,11 +676,11 @@ extension Scene {
 extension Sketch {
 
     /// Load a 3D scene from a file `path`, keeping its structure (named nodes,
-    /// cameras, lights). Returns `nil` if it can't be read. Call it in `setup()`
-    /// and keep the result in a property. Sugar over `Scene(contentsOf:)`; the
-    /// merged-geometry complement is `loadMesh`.
-    public func loadScene(_ path: String) -> Scene? { Scene(path: path) }
+    /// cameras, lights). Throws a `FileError` when it can't be read. Call it in
+    /// `setup()` and keep the result in a property. Sugar over `Scene(contentsOf:)`;
+    /// the merged-geometry complement is `loadMesh`.
+    public func loadScene(_ path: String) throws -> Scene { try Scene(path: path) }
 
     /// Load a scene from a file `url`. Sugar over `Scene(contentsOf:)`.
-    public func loadScene(_ url: URL) -> Scene? { Scene(contentsOf: url) }
+    public func loadScene(_ url: URL) throws -> Scene { try Scene(contentsOf: url) }
 }

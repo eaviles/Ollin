@@ -21,7 +21,7 @@ struct UsdPhysicsTests {
         .appendingPathComponent("Examples/3D/Physics/Imported/yard.usda")
 
     static func yard() throws -> Scene {
-        try #require(Scene(contentsOf: Self.yardURL))
+        try Scene(contentsOf: Self.yardURL)
     }
 
     /// A scene written on the spot, so a test can say exactly what it is about
@@ -43,7 +43,7 @@ struct UsdPhysicsTests {
             .appendingPathComponent("ollin-usdphysics-\(UUID().uuidString).usda")
         try text.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return try #require(Scene(contentsOf: url))
+        return try Scene(contentsOf: url)
     }
 
     func body(_ world: World3D, _ name: String) throws -> Body3D {

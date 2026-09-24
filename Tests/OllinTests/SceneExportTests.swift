@@ -41,9 +41,9 @@ struct SceneExportTests {
     private func roundTrip(_ scene: Scene, as format: SceneFileFormat = .usda,
                            metersPerUnit: Double = 1) throws -> Scene {
         let url = temporaryURL("scene.\(format.fileExtension)")
-        #expect(scene.write(to: url, metersPerUnit: metersPerUnit))
+        try scene.write(to: url, metersPerUnit: metersPerUnit)
         defer { try? FileManager.default.removeItem(at: url) }
-        return try #require(Scene(contentsOf: url), "the writer produced a layer its own reader couldn't open")
+        return try Scene(contentsOf: url)
     }
 
     /// Every mesh anywhere in a scene, depth-first. A read-back scene hangs
@@ -586,7 +586,7 @@ struct SceneExportTests {
                                          penumbra: 0.2)])
 
         let url = temporaryURL("checked.usdz")
-        #expect(scene.write(to: url))
+        try scene.write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
         // The profile Apple's own platforms hold a model to.

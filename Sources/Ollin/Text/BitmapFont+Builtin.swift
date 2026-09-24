@@ -12,7 +12,7 @@ public extension BitmapFont {
     /// rather than crashing).
     static let builtIn: BitmapFont = {
         if let url = OllinResources.bundle.url(forResource: "cozette", withExtension: "bdf"),
-           let font = BitmapFont(bdfContentsOf: url) {
+           let font = (try? BitmapFont(bdfContentsOf: url)) {
             return font
         }
         return BitmapFont(glyphs: [:], pixelHeight: 7)

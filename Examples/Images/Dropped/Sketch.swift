@@ -26,7 +26,7 @@ final class Dropped: Sketch {
         // Files come as paths; each is either a picture, placed at the drop,
         // or something else, named so the drop is never silent.
         for path in droppedFiles() {
-            if let picture = loadImage(path) {
+            if let picture = try? loadImage(path) {
                 placed.append(Placed(picture: picture, at: mouse, turn: random(-tilt, tilt),
                                      scale: random(0.85, 1.15)))
             } else {

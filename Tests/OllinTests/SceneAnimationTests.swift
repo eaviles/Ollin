@@ -111,7 +111,7 @@ struct SceneAnimationTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
         try json.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     /// The local x axis of a node's transform, for checking applied rotations.

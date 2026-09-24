@@ -45,13 +45,13 @@ c3c5db53cc82  Guide/09-Pictures.md:168  cannot find 'target' in scope
 678b6b363dab  Guide/09-Pictures.md:294  cannot find 'picture' in scope
 ed123e551581  Guide/09-Pictures.md:304  cannot find 'picture' in scope
 93ceeb97ff4b  Guide/09-Pictures.md:315  cannot find 'picture' in scope
-0533e34b97c1  Guide/09-Pictures.md:339  'module' is inaccessible due to 'internal' protection level
+b414f6435a99  Guide/09-Pictures.md:339  'module' is inaccessible due to 'internal' protection level
 428ac43c50bf  Guide/09-Pictures.md:362  cannot find 'table' in scope
-9ba42f97f571  Guide/09-Pictures.md:374  'module' is inaccessible due to 'internal' protection level
+aec7ca7fcac8  Guide/09-Pictures.md:374  'module' is inaccessible due to 'internal' protection level
 5b3e1eedfb8d  Guide/09-Pictures.md:38  cannot find 'photo' in scope
 4d8c82448b2b  Guide/09-Pictures.md:420  cannot find 'tide' in scope
 f862abae779c  Guide/09-Pictures.md:444  cannot find 'splash' in scope
-11094141044f  Guide/09-Pictures.md:67  cannot find 'pictures' in scope
+23e899676c54  Guide/09-Pictures.md:67  cannot find 'pictures' in scope
 399caa239353  Guide/09-Pictures.md:95  cannot find 'photo' in scope
 d7900de9175f  Guide/10-Vectors.md:158  cannot find 'target' in scope
 7856a82b5957  Guide/10-Vectors.md:94  cannot find 'target' in scope
@@ -104,7 +104,7 @@ d509e1853460  Guide/20-ParticleSimulations.md:149  cannot assign to immutable ex
 de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
 c0c20b9cf154  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
 6ce476230efc  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
-4de6ac607cb1  Guide/21-3DGently.md:288  cannot find 'ringFile' in scope
+e321d2da248d  Guide/21-3DGently.md:288  cannot find 'ringFile' in scope
 d3145c90ad5d  Guide/21-3DGently.md:478  cannot find 'knot' in scope
 3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
 3cd0f225fa98  Guide/22-Meshes.md:198  cannot find 'dents' in scope
@@ -116,14 +116,14 @@ ecdb1d3adf45  Guide/22-Meshes.md:308  cannot find 'growth' in scope
 418686caff14  Guide/22-Meshes.md:351  cannot find 'grown' in scope
 8e060c522991  Guide/22-Meshes.md:361  cannot find 'u' in scope
 78501e6c6306  Guide/22-Meshes.md:378  cannot find 'boulder' in scope
-71f4c725d408  Guide/22-Meshes.md:397  cannot find 'dropPoint' in scope
-e11a80c61786  Guide/22-Meshes.md:46  cannot find 'stage' in scope
+c26e5942d970  Guide/22-Meshes.md:397  cannot find 'dropPoint' in scope
+2f2d39568bbd  Guide/22-Meshes.md:46  cannot find 'stage' in scope
 f0c8b217c2f5  Guide/22-Meshes.md:460  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
 28114b5ebf72  Guide/22-Meshes.md:499  overriding declaration requires an 'override' keyword
 5846f636888f  Guide/22-Meshes.md:518  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 4a4c240b29b7  Guide/22-Meshes.md:640  expected '}' in class
 81a0fe8a8940  Guide/22-Meshes.md:66  cannot find 'stage' in scope
-343ff7006402  Guide/22-Meshes.md:719  cannot find 'picture' in scope
+93a71f71dc31  Guide/22-Meshes.md:719  cannot find 'picture' in scope
 1f8436af0981  Guide/22-Meshes.md:80  cannot find 'teal' in scope
 313649b9e3e6  Guide/22-Meshes.md:803  extraneous '}' at top level
 aca544976321  Guide/22-Meshes.md:92  cannot find 'planks' in scope
@@ -161,7 +161,7 @@ a0a833fd37c1  Guide/24-WorldsWithWeight.md:367  cannot find 'world' in scope
 8ab73098a6ad  Guide/24-WorldsWithWeight.md:401  cannot find 'world' in scope
 ab56176ee878  Guide/24-WorldsWithWeight.md:412  cannot find 'island' in scope
 96f087b1e562  Guide/24-WorldsWithWeight.md:419  cannot find 'world' in scope
-a2328aeea45a  Guide/24-WorldsWithWeight.md:429  cannot find 'world' in scope
+9ec17910d89c  Guide/24-WorldsWithWeight.md:429  cannot find 'world' in scope
 ec7989d78e47  Guide/24-WorldsWithWeight.md:50  cannot find 'world' in scope
 7df97e94d8b3  Guide/24-WorldsWithWeight.md:74  cannot find 'world' in scope
 de01483cf250  Guide/24-WorldsWithWeight.md:87  cannot find 'world' in scope
@@ -170,7 +170,7 @@ de01483cf250  Guide/24-WorldsWithWeight.md:87  cannot find 'world' in scope
 8e46ce6f6598  Guide/25-CharactersAndCloth.md:120  cannot find 'world' in scope
 966c62e5d1c6  Guide/25-CharactersAndCloth.md:137  cannot find 'crawler' in scope
 f7e7df7712cf  Guide/25-CharactersAndCloth.md:146  cannot find 'crawler' in scope
-2995d1747307  Guide/25-CharactersAndCloth.md:163  cannot find 'figure' in scope
+87437ecddbc4  Guide/25-CharactersAndCloth.md:163  cannot find 'figure' in scope
 94fba7b9e938  Guide/25-CharactersAndCloth.md:172  cannot find 'world' in scope
 2f38c4b11af4  Guide/25-CharactersAndCloth.md:182  cannot find 'target' in scope
 4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
@@ -222,7 +222,7 @@ a1f33f74fb89  Guide/27-DepthAndThePhone.md:368  cannot find 'device' in scope
 a775cc47e012  Guide/27-DepthAndThePhone.md:408  cannot find 'device' in scope
 8ec9e9d7507e  Guide/27-DepthAndThePhone.md:431  cannot find 'device' in scope
 d2508b320c31  Guide/27-DepthAndThePhone.md:44  cannot find 'StageCamera' in scope
-4a34a80a047e  Guide/27-DepthAndThePhone.md:452  cannot find 'device' in scope
+e274b976d90a  Guide/27-DepthAndThePhone.md:452  cannot find 'device' in scope
 7c100743af05  Guide/27-DepthAndThePhone.md:481  cannot find 'device' in scope
 f3ae11ef787c  Guide/27-DepthAndThePhone.md:495  cannot find 'device' in scope
 d901f4c6af5b  Guide/27-DepthAndThePhone.md:501  cannot find 'balls' in scope
@@ -363,5 +363,5 @@ ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand
 c670a48d1240  Guide/A-JustEnoughSwift.md:156  cannot find 'trail' in scope
-8e8dab88fb40  Guide/A-JustEnoughSwift.md:207  cannot find 'source' in scope
+79e3f7610d04  Guide/A-JustEnoughSwift.md:207  cannot find 'source' in scope
 fb1301305c01  Guide/A-JustEnoughSwift.md:60  cannot assign to value: 'radius' is a 'let' constant

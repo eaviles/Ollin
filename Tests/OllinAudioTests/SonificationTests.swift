@@ -189,7 +189,7 @@ import Testing
 
     @Test func aTableColumnIsReadInRowOrder() throws {
         let csv = "city,temp\nOaxaca,31\nPuebla,22\nToluca,17\n"
-        let table = try #require(Table(text: csv))
+        let table = try Table(text: csv)
         let reading = Sonification(table, column: "temp", pitches: "C3"..."C6")
         #expect(reading.count == 3)
         #expect(reading.values == [31, 22, 17])

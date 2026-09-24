@@ -172,11 +172,11 @@ The palette shows in the inspector as its colors side by side. Click one and the
 
 Typing hex codes gets tiring, and two calls let you skip it.
 
-The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one, or nothing if the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
+The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one. Both throw when the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
 
 ```swift
-let sets = loadPalettes("1000.json")      // however many the file holds
-let one  = loadPalette("sunset.hex")!     // just the first
+let sets = try! loadPalettes("1000.json")      // however many the file holds
+let one  = try! loadPalette("sunset.hex")     // just the first
 ```
 
 A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in exactly the shape `loadPalettes` expects. You do not need npm to use it: the repository holds the files, so take `100.json` or `1000.json` from it, drop the file next to your sketch, and the call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a great deal of generative art. If you want your work to look like yours, that is a reason to keep reading.
@@ -186,7 +186,7 @@ A good place to get palettes is [nice-color-palettes](https://github.com/Experie
 The second call takes the colors out of a picture. Give it an image and how many colors you want, and it groups the pixels by how similar they look and hands back the center of each group:
 
 ```swift
-let photo = loadImage("beach.jpg")!
+let photo = try! loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])     // the color the photo is mostly made of
 ```
@@ -200,7 +200,7 @@ var photo: Image?
 var palette = Palette([])
 
 override func setup() {
-    photo = loadImage("beach.jpg")
+    photo = try? loadImage("beach.jpg")
     if let photo { palette = Palette(extractedFrom: photo, count: 5) }
 }
 ```

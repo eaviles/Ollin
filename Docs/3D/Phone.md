@@ -318,7 +318,7 @@ Everything above runs one way: the phone broadcasts and the Mac reads. This is t
 override func setup() {
     device.use(.markers)                                    // which mode to run
     device.look(for: [                                      // and what to look for
-        .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)!,
+        try! .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3),
     ])
     device.start()
 }
@@ -329,13 +329,13 @@ Both are *declarations*, not commands fired once. The device remembers them and 
 A reference is a file plus the one measurement no image file carries: how wide you printed it, in meters. Build one from a bundled resource, from a path, or from a picture the sketch already holds:
 
 ```swift
-PhoneReference.picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)
-PhoneReference.picture(path: "~/Pictures/card@50mm.jpg", printedWidth: 0.05)
+try PhoneReference.picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)
+try PhoneReference.picture(path: "~/Pictures/card@50mm.jpg", printedWidth: 0.05)
 PhoneReference.picture(photo, printedWidth: 0.21, named: "blankets")    // an Image you loaded
-PhoneReference.object(resource: "teapot", in: .module)                  // a scan; it knows its own size
+try PhoneReference.object(resource: "teapot", in: .module)              // a scan; it knows its own size
 ```
 
-Each returns `nil` when the file is not there or its pixels will not read, so the compiler makes you decide what to do about a missing picture. Left out, `named:` is the file's own name with any stated size taken off, the same rule the [reference folder](#the-pictures-and-objects-it-knows) uses: `poster@30cm.png` declares the marker `poster` either way.
+The three that read a file throw a `FileError` when it is not there (`missing`) or its pixels will not read (`unreadable`), so the compiler makes you decide what to do about a missing picture; the one handed an `Image` returns `nil` when its pixels will not encode. Left out, `named:` is the file's own name with any stated size taken off, the same rule the [reference folder](#the-pictures-and-objects-it-knows) uses: `poster@30cm.png` declares the marker `poster` either way.
 
 ### What the phone says back
 

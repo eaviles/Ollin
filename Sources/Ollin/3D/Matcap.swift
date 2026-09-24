@@ -15,7 +15,7 @@ import Foundation
 ///
 /// ```swift
 /// matcap(.clay)                                   // a bundled built-in
-/// matcap(loadImage("my-matcap.png"))              // any matcap image
+/// matcap(try! loadImage("my-matcap.png"))        // any matcap image
 /// matcap(Matcap.shaded(baseColor: .teal,          // rolled-your-own, no asset
 ///                      metallic: true))
 /// ```
@@ -118,7 +118,7 @@ public struct Matcap {
     /// generated neutral sphere if it can't be found (so a built-in is never absent).
     @MainActor private static func bundled(_ name: String) -> Image {
         if let url = OllinResources.bundle.url(forResource: name, withExtension: "png", subdirectory: "Matcaps"),
-           let image = Image(contentsOf: url) {
+           let image = (try? Image(contentsOf: url)) {
             return image
         }
         return shaded(baseColor: Color(white: 0.7)).image

@@ -52,25 +52,22 @@ public struct ComputeKernel: Sendable {
     ///
     /// `in:` has no default on purpose: a default argument would resolve to Ollin's
     /// own bundle, never the caller's — pass `.module` from the sketch that bundles
-    /// the `.metal` file (and list it as a `.copy` resource on the target). Returns
-    /// `nil` if the resource isn't found or can't be read. `withExtension` defaults
-    /// to `"metal"`.
-    public init?(entry: String, resource name: String,
-                 withExtension ext: String = "metal", in bundle: Bundle) {
-        guard let url = bundle.url(forResource: name, withExtension: ext),
-              let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        self.entry = entry
-        self.source = source
-        self.sourcePath = url.path
+    /// the `.metal` file (and list it as a `.copy` resource on the target). Throws
+    /// a `FileError`: `missing` when the bundle holds no such resource,
+    /// `unreadable` when it isn't UTF-8 text. `withExtension` defaults to
+    /// `"metal"`. A kernel that does not compile says so where it is compiled.
+    public init(entry: String, resource name: String,
+                withExtension ext: String = "metal", in bundle: Bundle) throws {
+        try self.init(entry: entry, contentsOf: FileError.resource(name, withExtension: ext, in: bundle))
     }
 
     /// Load a kernel's MSL from a `.metal` file at `url`, dispatching `entry`. Like
     /// `init(entry:resource:in:)` but from an arbitrary file path (a kernel a sketch
-    /// writes or fetches at runtime). Returns `nil` if the file can't be read.
-    public init?(entry: String, contentsOf url: URL) {
-        guard let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+    /// writes or fetches at runtime). Throws a `FileError` when the file is not
+    /// there or isn't UTF-8 text.
+    public init(entry: String, contentsOf url: URL) throws {
         self.entry = entry
-        self.source = source
+        self.source = try FileError.text(of: url)
         self.sourcePath = url.path
     }
 }

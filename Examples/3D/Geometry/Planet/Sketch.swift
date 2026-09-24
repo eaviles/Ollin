@@ -41,7 +41,7 @@ private let cloudWidth = 1024, cloudHeight = 512
 
 /// One of the bake kernels, from the `.metal` file beside this one.
 private func kernel(_ entry: String) -> ComputeKernel? {
-    ComputeKernel(entry: entry, resource: "planet", in: .module)
+    (try? ComputeKernel(entry: entry, resource: "planet", in: .module))
 }
 
 @main

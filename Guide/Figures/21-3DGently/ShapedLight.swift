@@ -21,7 +21,7 @@ final class ShapedLight: Sketch {
     0
     1000 950 700 250 150 520 120 0
     """
-    lazy var ring = IESProfile(string: ringFile)!
+    lazy var ring = try! IESProfile(string: ringFile)
 
     // The window cookie, drawn once: white panes behind black mullions.
     let window: LightCookie = {

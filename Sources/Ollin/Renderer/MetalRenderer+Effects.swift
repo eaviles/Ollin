@@ -69,7 +69,7 @@ extension MetalRenderer {
         ssrOccurrenceThisFrame.removeAll(keepingCapacity: true)
         // A second encode of the same sketch frame (the frame-grab / Syphon off-screen
         // re-render) must not advance persistent state twice; see `lastStatefulEncode`.
-        let stamp = (drawer: ObjectIdentifier(drawer), frame: drawer.computeUniforms.frameCount)
+        let stamp = (drawer: drawer.serial, frame: drawer.computeUniforms.frameCount)
         statefulEncodeIsRepeat = lastStatefulEncode?.drawer == stamp.drawer
             && lastStatefulEncode?.frame == stamp.frame
         if !statefulEncodeIsRepeat { lastStatefulEncode = stamp }

@@ -72,7 +72,7 @@ struct WeatherTests {
     // MARK: Reading the answer
 
     @Test func theDocumentReadsIntoAReadingInPlainUnits() throws {
-        let json = try #require(JSON(data: Data(WeatherTests.forecast.utf8)))
+        let json = try JSON(data: Data(WeatherTests.forecast.utf8))
         let reading = try #require(Weather.reading(from: json, at: WeatherTests.mexicoCity, name: nil, timeZone: nil))
 
         #expect(reading.temperature == 17.8)
@@ -98,7 +98,7 @@ struct WeatherTests {
     }
 
     @Test func localTimesBecomeInstantsThroughTheAnswersOffset() throws {
-        let json = try #require(JSON(data: Data(WeatherTests.forecast.utf8)))
+        let json = try JSON(data: Data(WeatherTests.forecast.utf8))
         let reading = try #require(Weather.reading(from: json, at: WeatherTests.mexicoCity, name: nil, timeZone: nil))
 
         // 17:45 at UTC-6 is 23:45 UTC.
@@ -113,7 +113,7 @@ struct WeatherTests {
     }
 
     @Test func aDocumentWithNoConditionsIsNotAReading() throws {
-        let json = try #require(JSON(data: Data(#"{"latitude": 1, "current": {"time": "2026-09-06T17:45"}}"#.utf8)))
+        let json = try JSON(data: Data(#"{"latitude": 1, "current": {"time": "2026-09-06T17:45"}}"#.utf8))
         #expect(Weather.reading(from: json, at: WeatherTests.mexicoCity, name: nil, timeZone: nil) == nil)
         #expect(Weather.date(from: "not a time", offsetSeconds: 0) == nil)
     }

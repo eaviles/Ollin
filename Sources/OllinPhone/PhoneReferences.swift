@@ -28,20 +28,25 @@ public extension PhoneReference {
     /// with any size taken off the end, the same rule the capture app's folder
     /// uses, so `poster@30cm.png` declares the marker `poster` either way.
     ///
-    /// Returns `nil` when the bundle has no such file or the pixels will not read.
+    /// Throws a `FileError`: `missing` when the bundle has no such file,
+    /// `unreadable` when the pixels will not read.
     static func picture(resource: String, withExtension ext: String, in bundle: Bundle,
-                        printedWidth: Double, named name: String? = nil) -> PhoneReference? {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else { return nil }
-        return picture(path: url.path, printedWidth: printedWidth, named: name)
+                        printedWidth: Double, named name: String? = nil) throws -> PhoneReference {
+        let url = try FileError.resource(resource, withExtension: ext, in: bundle)
+        return try picture(path: url.path, printedWidth: printedWidth, named: name)
     }
 
     /// A picture read from a path, given the width it is printed at in meters.
+    /// Throws a `FileError`: `missing` when no file is there, `unreadable` when
+    /// the pixels will not read.
     static func picture(path: String, printedWidth: Double,
-                        named name: String? = nil) -> PhoneReference? {
+                        named name: String? = nil) throws -> PhoneReference {
         let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
-        guard let contents = try? Data(contentsOf: url) else { return nil }
+        let contents = try FileError.contents(of: url)
         let markerName = name ?? PhoneWire.markerName(fromFileName: url.lastPathComponent)
-        guard let fitted = fitPicture(contents) else { return nil }
+        guard let fitted = fitPicture(contents) else {
+            throw FileError.unreadable(url, "is not a picture ImageIO can decode")
+        }
         return PhoneReference(name: markerName, kind: .image,
                               printedWidth: printedWidth, contents: fitted)
     }
@@ -60,20 +65,23 @@ public extension PhoneReference {
     /// A solid object somebody scanned into an `.arobject` file, bundled with the
     /// sketch. An object archive already carries its own size and origin, so there
     /// is no width to state.
+    /// Throws a `FileError` when the bundle has no such file.
     static func object(resource: String, in bundle: Bundle,
-                       named name: String? = nil) -> PhoneReference? {
-        guard let url = bundle.url(forResource: resource,
-                                   withExtension: PhoneWire.markerObjectExtension) else {
-            return nil
-        }
-        return object(path: url.path, named: name)
+                       named name: String? = nil) throws -> PhoneReference {
+        let url = try FileError.resource(resource, withExtension: PhoneWire.markerObjectExtension,
+                                         in: bundle)
+        return try object(path: url.path, named: name)
     }
 
-    /// A scanned object read from a path.
-    static func object(path: String, named name: String? = nil) -> PhoneReference? {
+    /// A scanned object read from a path. Throws a `FileError`: `missing` when
+    /// no file is there, `unreadable` when it is larger than the cable carries.
+    static func object(path: String, named name: String? = nil) throws -> PhoneReference {
         let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
-        guard let contents = try? Data(contentsOf: url),
-              contents.count <= PhoneWire.maxPayloadBytes else { return nil }
+        let contents = try FileError.contents(of: url)
+        guard contents.count <= PhoneWire.maxPayloadBytes else {
+            throw FileError.unreadable(url, "is \(contents.count) bytes, more than the cable carries "
+                                       + "(\(PhoneWire.maxPayloadBytes))")
+        }
         let markerName = name ?? PhoneWire.markerName(fromFileName: url.lastPathComponent)
         return PhoneReference(name: markerName, kind: .object,
                               printedWidth: 0, contents: contents)

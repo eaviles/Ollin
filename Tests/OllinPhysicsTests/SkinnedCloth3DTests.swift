@@ -24,7 +24,7 @@ struct SkinnedCloth3DTests {
     static let sheet = Mesh.plane(width: 0.8, depth: 1.1, segments: 12)
 
     static func figure() throws -> Scene {
-        try #require(Scene(contentsOf: figureURL))
+        try Scene(contentsOf: figureURL)
     }
 
     func chest(of scene: Scene) throws -> Vector3 {

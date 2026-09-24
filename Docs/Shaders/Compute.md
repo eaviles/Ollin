@@ -213,7 +213,7 @@ Inline strings are short, but an editor can't highlight or check them. For anyth
 //                    texture2d<float, access::write> dst [[texture(1)]],
 //                    uint2 gid [[thread_position_in_grid]]) { … }
 
-let blur = ComputeKernel(entry: "blur", resource: "Kernels", in: .module)!
+let blur = try! ComputeKernel(entry: "blur", resource: "Kernels", in: .module)
 ```
 
 The shared types and the [shader library](#prelude) are still spliced in. The file references `OllinComputeUniforms`, `hash22`, `curlNoise`, and the rest without writing any `#include`s. One file can hold any number of kernels, and you load each one by its `entry` name. They share one compile. Pass `in: .module` explicitly, because a default would resolve to *Ollin's* bundle rather than yours. Also list the file as a `.copy` resource on your target. There is also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.

@@ -14,14 +14,14 @@ import Foundation
 /// A vector document read from an SVG file: an ordered list of drawable
 /// elements, each a `Shape` with the fill and stroke it was authored with.
 ///
-/// Load one with `loadSVG("artwork.svg")` (or the `data:`/`resource:in:`
+/// Load one with `try loadSVG("artwork.svg")` (or the `data:`/`resource:in:`
 /// initializers), then either draw it as authored with `drawSVG(_:)` or mine
 /// its geometry: `shapes` and `contours` feed everything the rest of the
 /// framework does with vector geometry (shape booleans, offsets, hatching,
 /// `resampled(spacing:)` dot effects, SVG re-export).
 ///
 /// ```swift
-/// if let art = loadSVG("crest.svg") {
+/// if let art = try? loadSVG("crest.svg") {
 ///     drawSVG(art, in: Rectangle(x: 100, y: 100, width: 400, height: 400))
 ///     for contour in art.contours { drawPolyline(contour.points) }
 /// }
@@ -80,32 +80,38 @@ public struct SVG: Equatable, Sendable {
 
     // MARK: Loading
 
-    /// Read an SVG file at a filesystem path. Returns `nil` when the file
-    /// can't be read or contains no importable geometry.
-    public init?(contentsOf path: String) {
-        self.init(url: URL(fileURLWithPath: path))
+    /// Read an SVG file at a filesystem path. Throws a `FileError`: `missing`
+    /// when no file is there, `unreadable` when it holds no importable geometry.
+    public init(contentsOf path: String) throws {
+        try self.init(url: URL(fileURLWithPath: path))
     }
 
     /// Read an SVG file from a URL.
-    public init?(url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data)
+    public init(url: URL) throws {
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(data: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 
     /// Read an SVG document from raw data (a downloaded file, an inline
-    /// string's UTF-8 bytes).
-    public init?(data: Data) {
+    /// string's UTF-8 bytes). Throws an `unreadable` `FileError` when the bytes
+    /// are not SVG or hold no importable geometry.
+    public init(data: Data) throws {
         let parser = SVGDocumentParser()
-        guard let document = parser.parse(data) else { return nil }
+        guard let document = parser.parse(data) else {
+            throw FileError.unreadable(nil, "is not an SVG document with geometry to import")
+        }
         self = document
     }
 
     /// Read an SVG bundled as a resource. Pass the caller's bundle explicitly
     /// (`.module` from inside a package target); a default would resolve to
     /// the framework's own bundle, not the caller's.
-    public init?(resource: String, withExtension ext: String? = "svg", in bundle: Bundle) {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else { return nil }
-        self.init(url: url)
+    public init(resource: String, withExtension ext: String? = "svg", in bundle: Bundle) throws {
+        try self.init(url: FileError.resource(resource, withExtension: ext, in: bundle))
     }
 
     // MARK: Geometry access
@@ -143,12 +149,12 @@ public struct SVG: Equatable, Sendable {
 // MARK: - Sketch sugar
 
 public extension Sketch {
-    /// Load an SVG file by path (see `SVG`). Returns `nil` when the file can't
-    /// be read or holds no importable geometry.
-    func loadSVG(_ path: String) -> SVG? { SVG(contentsOf: path) }
+    /// Load an SVG file by path (see `SVG`). Throws a `FileError` when the file
+    /// is not there or holds no importable geometry.
+    func loadSVG(_ path: String) throws -> SVG { try SVG(contentsOf: path) }
 
     /// Load an SVG file from a URL.
-    func loadSVG(_ url: URL) -> SVG? { SVG(url: url) }
+    func loadSVG(_ url: URL) throws -> SVG { try SVG(url: url) }
 
     /// Draw an imported document as authored: each element with its own fill,
     /// stroke, and stroke width, in document order, in the document's own

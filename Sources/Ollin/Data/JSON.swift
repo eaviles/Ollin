@@ -7,7 +7,7 @@ import Foundation
 /// followed as far as it goes and answered at the end:
 ///
 /// ```swift
-/// let json = loadJSON(resource: "cities", withExtension: "json", in: .module)!
+/// let json = try! loadJSON(resource: "cities", withExtension: "json", in: .module)
 /// for city in json["cities"].array {
 ///     let x = city["lon"].number ?? 0
 ///     let y = city["lat"].number ?? 0
@@ -129,42 +129,51 @@ public extension JSON {
 // MARK: - Loading
 
 public extension JSON {
-    /// Read JSON from a file.
+    /// Read JSON from a file. Throws a `FileError`: `missing` when no file is
+    /// there, `unreadable` when it is not JSON.
     ///
     /// ```swift
-    /// let json = JSON(contentsOf: "cities.json")
+    /// let json = try JSON(contentsOf: "cities.json")
     /// ```
-    init?(contentsOf path: String) {
-        self.init(url: URL(fileURLWithPath: path))
+    init(contentsOf path: String) throws {
+        try self.init(url: URL(fileURLWithPath: path))
     }
 
     /// Read JSON from a URL. A network URL blocks until it arrives, so call this
     /// in `setup()` rather than `draw()`.
-    init?(url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data)
+    init(url: URL) throws {
+        let data = try FileError.contents(of: url)
+        do {
+            try self.init(data: data)
+        } catch let error as FileError {
+            throw FileError.unreadable(url, error.problem)
+        }
     }
 
-    /// Read JSON from bytes. Anything that isn't JSON yields `nil` rather than
-    /// throwing, so a file from the network fails quietly.
-    init?(data: Data) {
-        guard let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-        else { return nil }
+    /// Read JSON from bytes. Throws an `unreadable` `FileError` naming where
+    /// the bytes stop being JSON.
+    init(data: Data) throws {
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+        } catch {
+            let reason = (error as NSError).userInfo[NSDebugDescriptionErrorKey] as? String
+            throw FileError.unreadable(nil, "is not JSON" + (reason.map { ": \($0)" } ?? ""))
+        }
         self.init(any: object)
     }
 
     /// Read JSON from text already in hand.
-    init?(text: String) {
-        self.init(data: Data(text.utf8))
+    init(text: String) throws {
+        try self.init(data: Data(text.utf8))
     }
 
     /// Read JSON bundled as a resource.
     ///
     /// `in:` has no default on purpose: a default would resolve to Ollin's own
     /// bundle rather than the caller's. Pass `.module` from your sketch.
-    init?(resource: String, withExtension ext: String? = "json", in bundle: Bundle) {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else { return nil }
-        self.init(url: url)
+    init(resource: String, withExtension ext: String? = "json", in bundle: Bundle) throws {
+        try self.init(url: FileError.resource(resource, withExtension: ext, in: bundle))
     }
 
     /// Wrap what the system's JSON reader hands back.
@@ -193,17 +202,17 @@ public extension JSON {
 // MARK: - Sketch sugar
 
 public extension Sketch {
-    /// Read a JSON file by path: `loadJSON("cities.json")`. Returns `nil` when
-    /// the file can't be read or isn't JSON. Call it in `setup()` and keep the
-    /// result in a property.
-    func loadJSON(_ path: String) -> JSON? { JSON(contentsOf: path) }
+    /// Read a JSON file by path: `try loadJSON("cities.json")`. Throws a
+    /// `FileError` when the file is not there or is not JSON. Call it in
+    /// `setup()` and keep the result in a property.
+    func loadJSON(_ path: String) throws -> JSON { try JSON(contentsOf: path) }
 
     /// Read JSON from a URL. A network URL blocks until it arrives.
-    func loadJSON(_ url: URL) -> JSON? { JSON(url: url) }
+    func loadJSON(_ url: URL) throws -> JSON { try JSON(url: url) }
 
     /// Read a JSON file bundled as a resource. Pass `.module` for the sketch's
     /// own bundle; a default here would resolve to Ollin's.
-    func loadJSON(resource: String, withExtension ext: String? = "json", in bundle: Bundle) -> JSON? {
-        JSON(resource: resource, withExtension: ext, in: bundle)
+    func loadJSON(resource: String, withExtension ext: String? = "json", in bundle: Bundle) throws -> JSON {
+        try JSON(resource: resource, withExtension: ext, in: bundle)
     }
 }

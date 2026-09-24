@@ -26,8 +26,8 @@ ICCProfile.displayP3                            // what a `.wide` or `.extended`
 ICCProfile.genericCMYK                          // a generic four-ink press
 ICCProfile.adobeRGB                             // the wider RGB working space
 ICCProfile.genericGray                          // one ink, for a gray proof
-ICCProfile(contentsOf: url)                     // the shop's own profile
-ICCProfile(resource: "press", in: .module)      // one bundled with the sketch
+(try? ICCProfile(contentsOf: url))                     // the shop's own profile
+(try? ICCProfile(resource: "press", in: .module))      // one bundled with the sketch
 ICCProfile.installed()                          // every profile on this machine
 ICCProfile.installed(named: "US Web Coated (SWOP) v2")
 ```

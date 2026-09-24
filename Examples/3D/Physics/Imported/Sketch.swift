@@ -50,7 +50,7 @@ final class Imported: Sketch {
     ]
 
     override func setup() {
-        scene = Scene(resource: "yard", withExtension: "usda", in: Bundle.module)
+        scene = try? Scene(resource: "yard", withExtension: "usda", in: Bundle.module)
         rebuild()
     }
 

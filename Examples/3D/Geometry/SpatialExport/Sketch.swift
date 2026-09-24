@@ -109,7 +109,12 @@ final class SpatialExport: Sketch {
     private func save() {
         let scene = OllinApp.spatialScene(of: SpatialExport(), frame: frameCount)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("piece.usdz")
-        guard scene.write(to: url, metersPerUnit: metersPerUnit) else { return }
+        do {
+            try scene.write(to: url, metersPerUnit: metersPerUnit)
+        } catch {
+            saved = "not saved: \(error)"
+            return
+        }
         saved = "saved to \(url.path)"
         print("Ollin: piece.usdz written to \(url.path)")
     }

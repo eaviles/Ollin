@@ -110,7 +110,7 @@ That host does not reload on save, so a piece on a wall runs the code it was sta
 A file that sits beside the sketch loads the way a packaged example's resources do, and `in: .module` points at the sketch's own folder:
 
 ```swift
-let texture = Image(resource: "paper", withExtension: "png", in: .module)
+let texture = try? Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
 The satellite libraries are all available. `import OllinAudio`, `import OllinMIDI`, `import OllinPhysics`, and the rest work in a loose file exactly as they do in a package target.

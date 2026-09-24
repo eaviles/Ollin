@@ -27,7 +27,7 @@ struct USDAnimationTests {
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
         try usda.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
-        return Scene(contentsOf: url)
+        return try? Scene(contentsOf: url)
     }
 
     // MARK: The timebase
@@ -453,7 +453,7 @@ private final class USDMobileWrapProbe: Sketch {
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
             .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/stage.usda")
-        mobile = Ollin.Scene(contentsOf: url)
+        mobile = try? Ollin.Scene(contentsOf: url)
     }
 
     override func draw() {

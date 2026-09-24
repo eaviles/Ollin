@@ -6,7 +6,7 @@ import Foundation
 /// wrap it once, and hand it to the light.
 ///
 /// ```swift
-/// let gobo = LightCookie(loadImage("blinds.png")!)!
+/// let gobo = LightCookie(try! loadImage("blinds.png"))!
 /// spotLight(.white, at: eye, direction: aim, cookie: gobo)
 /// ```
 ///

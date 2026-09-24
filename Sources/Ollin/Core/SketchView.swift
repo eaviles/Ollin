@@ -2944,12 +2944,16 @@ public enum OllinApp {
                     exit(1)
                 }
 
-                // In accumulation mode (`noClear`) the persistent pile must build every
-                // frame, warmup included, so render into it always; otherwise warmup
-                // frames skip the render entirely.
+                // A picture that carries from frame to frame on the GPU has to be
+                // rendered through the warmup too, or the first written frame starts
+                // from nothing while the sketch's own state is `--skip` seconds on:
+                // the `noClear` pile, and any layer that persists (a feedback, an
+                // accumulator or a line spray's running mean, a simulation field,
+                // reflection history), which is what `usesFeedback` asks. A picture
+                // that is its clock alone skips the render.
                 let accumulates = sketch.drawer.accumulates
                 var rendered: (buffer: MTLBuffer, bytesPerRow: Int)?
-                if accumulates || k >= skipFrames {
+                if accumulates || sketch.drawer.usesFeedback || k >= skipFrames {
                     rendered = accumulates
                         ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
                         : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
@@ -2981,9 +2985,9 @@ public enum OllinApp {
                         }
                     }
                 } else {
-                    // Non-accumulating warmup frame: not captured, but a stateful compute
-                    // sim still needs its steps run on the GPU so the field evolves into
-                    // the first captured frame.
+                    // A warmup frame with no persistent picture: not captured, but a
+                    // stateful compute sim still needs its steps run on the GPU so the
+                    // field evolves into the first captured frame.
                     renderer.stepCompute(sketch.drawer)
                 }
 
@@ -3825,7 +3829,7 @@ public extension OllinApp {
             var profile: ICCProfile?
             if let named = value("--profile") {
                 let expanded = (named as NSString).expandingTildeInPath
-                profile = ICCProfile(contentsOf: URL(fileURLWithPath: expanded))
+                profile = try? ICCProfile(contentsOf: URL(fileURLWithPath: expanded))
                     ?? ICCProfile.installed(named: named)
                 guard profile != nil else {
                     let installed = ICCProfile.installed().filter { $0.space == .cmyk }

@@ -307,7 +307,7 @@ import OllinPhone
     @Test func readsAPictureFromAPath() throws {
         let url = try write(picturePNG(width: 64, height: 40), as: "poster@30cm.png")
         defer { try? FileManager.default.removeItem(at: url) }
-        let reference = try #require(PhoneReference.picture(path: url.path, printedWidth: 0.3))
+        let reference = try PhoneReference.picture(path: url.path, printedWidth: 0.3)
         // The name is the file's own, with the stated size taken off: the same rule
         // the capture app's folder uses, so one picture declares one marker either way.
         #expect(reference.name == "poster")
@@ -321,7 +321,7 @@ import OllinPhone
     @Test func fitsAPictureTooBigForTheCable() throws {
         let url = try write(picturePNG(width: 3000, height: 2000), as: "wall.png")
         defer { try? FileManager.default.removeItem(at: url) }
-        let reference = try #require(PhoneReference.picture(path: url.path, printedWidth: 1.2))
+        let reference = try PhoneReference.picture(path: url.path, printedWidth: 1.2)
         #expect(reference.contents.count <= PhoneWire.maxPayloadBytes)
         let source = try #require(CGImageSourceCreateWithData(reference.contents as CFData, nil))
         let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
@@ -333,20 +333,29 @@ import OllinPhone
     @Test func namesAPictureWhenAskedTo() throws {
         let url = try write(picturePNG(width: 32, height: 32), as: "IMG_4021.png")
         defer { try? FileManager.default.removeItem(at: url) }
-        let reference = try #require(PhoneReference.picture(path: url.path, printedWidth: 0.1,
-                                                            named: "the card"))
+        let reference = try PhoneReference.picture(path: url.path, printedWidth: 0.1,
+                                                            named: "the card")
         #expect(reference.name == "the card")
     }
 
     @Test func refusesAFileThatIsNotThere() {
-        #expect(PhoneReference.picture(path: "/nowhere/at/all.png", printedWidth: 0.2) == nil)
-        #expect(PhoneReference.object(path: "/nowhere/at/all.arobject") == nil)
+        let picture = #expect(throws: FileError.self) {
+            try PhoneReference.picture(path: "/nowhere/at/all.png", printedWidth: 0.2)
+        }
+        #expect(picture?.kind == .missing)
+        let object = #expect(throws: FileError.self) {
+            try PhoneReference.object(path: "/nowhere/at/all.arobject")
+        }
+        #expect(object?.kind == .missing)
     }
 
     @Test func refusesPixelsThatWillNotRead() throws {
         let url = try write(Data("not a picture".utf8), as: "broken.png")
         defer { try? FileManager.default.removeItem(at: url) }
-        #expect(PhoneReference.picture(path: url.path, printedWidth: 0.2) == nil)
+        let error = #expect(throws: FileError.self) {
+            try PhoneReference.picture(path: url.path, printedWidth: 0.2)
+        }
+        #expect(error?.kind == .unreadable)
     }
 
     @Test func readsAScannedObject() throws {
@@ -354,7 +363,7 @@ import OllinPhone
         // carries no width of its own.
         let url = try write(Data([0x50, 0x4B, 0x03, 0x04, 9, 9]), as: "teapot.arobject")
         defer { try? FileManager.default.removeItem(at: url) }
-        let reference = try #require(PhoneReference.object(path: url.path))
+        let reference = try PhoneReference.object(path: url.path)
         #expect(reference.name == "teapot")
         #expect(reference.kind == .object)
         #expect(reference.printedWidth == 0)

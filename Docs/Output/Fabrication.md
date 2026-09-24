@@ -102,12 +102,12 @@ swift run --package-path Examples Example-3D-Geometry-Fabrication
 ### Reference
 
 ```swift
-mesh.write(to: url, as: MeshFileFormat? = nil, unit: ModelUnit = .millimeter, upAxis: UpAxis = .z) -> Bool
-mesh.write(to: path, …)                  // same, taking a file path
-mesh.data(as: .stl, unit:, upAxis:)      // the bytes, for handing on rather than writing
-mesh.printCheck(upAxis: .z)              // what a printer will make of it
+try mesh.write(to: url, as: MeshFileFormat? = nil, unit: ModelUnit = .millimeter, upAxis: UpAxis = .z)
+try mesh.write(to: path, …)                  // same, taking a file path
+mesh.data(as: .stl, unit:, upAxis:)          // the bytes, for handing on rather than writing
+mesh.printCheck(upAxis: .z)                  // what a printer will make of it
 
-saveMesh(sculpture, to: "sculpture.3mf") // the sketch-level sugar, loadMesh's counterpart
+try saveMesh(sculpture, to: "sculpture.3mf") // the sketch-level sugar, loadMesh's counterpart
 ```
 
 `MeshFileFormat` is `.stl`, `.obj`, or `.threeMF`. Each has a `fileExtension`, and `init?(fileExtension:)` goes the other way. `ModelUnit` is `.micron`, `.millimeter`, `.centimeter`, `.inch`, `.foot`, or `.meter`, and each reports its size in `millimeters`. `UpAxis` is `.z` (upright, the default) or `.y` (as authored).

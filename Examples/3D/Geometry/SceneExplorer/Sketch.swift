@@ -95,11 +95,11 @@ final class SceneExplorer: Sketch {
 
     private func reload() {
         if let path = ProcessInfo.processInfo.environment["OLLIN_SCENE"], !ownSceneShown {
-            scene = Scene(path: path)
+            scene = try? Scene(path: path)
             ownSceneShown = true
         } else {
             let r = file.resource
-            scene = Scene(resource: r.name, withExtension: r.ext, in: .module)
+            scene = try? Scene(resource: r.name, withExtension: r.ext, in: .module)
         }
         loadedFile = file
         parts = []

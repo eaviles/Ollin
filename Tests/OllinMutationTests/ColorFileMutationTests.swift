@@ -40,10 +40,10 @@ struct ColorFileMutationTests {
         let report = MutationRun.run("palette-file",
                                      seeds: [hexLines.bytes, csv.bytes, tsv.bytes, json.bytes, Self.aseFile()],
                                      count: 600, numberSweep: true, allocations: fileBound) { bytes in
-            let palettes = Palette.palettes(data: Data(bytes))
+            let palettes = (try? Palette.palettes(data: Data(bytes))) ?? []
             for palette in palettes { Self.read(palette) }
             for format in [PaletteFormat.hexLines, .csv, .tsv, .json, .ase] {
-                for palette in Palette.palettes(data: Data(bytes), format: format) { Self.read(palette) }
+                for palette in (try? Palette.palettes(data: Data(bytes), format: format)) ?? [] { Self.read(palette) }
             }
             return !palettes.isEmpty
         }
@@ -67,7 +67,7 @@ struct ColorFileMutationTests {
             .map { [UInt8]($0) }
         try #require(seeds.count == 2)
         let report = MutationRun.run("icc-profile", seeds: seeds, count: 150, allocations: fileBound) { bytes in
-            guard let profile = ICCProfile(data: Data(bytes)) else { return false }
+            guard let profile = try? ICCProfile(data: Data(bytes)) else { return false }
             _ = profile.name
             _ = profile.channelNames
             _ = SoftProof(profile)

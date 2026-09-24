@@ -434,27 +434,27 @@ public final class DataFeed: @unchecked Sendable {
         case .text:
             return (.null, nil, text)
         case .json:
-            return (JSON(data: bytes) ?? .null, nil, text)
+            return ((try? JSON(data: bytes)) ?? .null, nil, text)
         case .table:
-            return (.null, Table(data: bytes), text)
+            return (.null, try? Table(data: bytes), text)
         case .auto:
             break
         }
 
         let type = (contentType ?? "").lowercased()
         if type.contains("json") || (type.isEmpty && opensLikeJSON(bytes)) {
-            return (JSON(data: bytes) ?? .null, nil, text)
+            return ((try? JSON(data: bytes)) ?? .null, nil, text)
         }
         if type.contains("csv") || type.contains("tab-separated") {
-            return (.null, Table(data: bytes), text)
+            return (.null, try? Table(data: bytes), text)
         }
         // Nothing said what this is. A document that opens like JSON is read as
         // JSON, and anything else is offered as a table, which comes back nil
         // when the bytes are not one.
         if opensLikeJSON(bytes) {
-            return (JSON(data: bytes) ?? .null, nil, text)
+            return ((try? JSON(data: bytes)) ?? .null, nil, text)
         }
-        return (.null, Table(data: bytes), text)
+        return (.null, try? Table(data: bytes), text)
     }
 
     /// Whether the first byte that isn't whitespace opens an object or an array.

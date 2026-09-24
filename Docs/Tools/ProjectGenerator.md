@@ -170,7 +170,7 @@ ollin Sources/MyPiece/Sketch.swift
 Everything the sketch loads lives beside it in `Sources/MyPiece/`. A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit:
 
 ```swift
-let picture = Image(resource: "photo", withExtension: "jpg", in: .module)
+let picture = try? Image(resource: "photo", withExtension: "jpg", in: .module)
 ```
 
 ## Where the framework comes from

@@ -427,7 +427,7 @@ On a yard with a terrain floor in it that is the difference between a hundred ki
 That is one direction, keeping a world you found. The other is picking up one somebody else made. A `.usd` file can say which of its prims are physical, and `world.addBodies(from: scene)` reads the lot. A sketch that loads such a file writes no physics of its own:
 
 ```swift
-let scene = loadScene("yard.usda")!
+let scene = try! loadScene("yard.usda")
 world.addBodies(from: scene)
 ```
 

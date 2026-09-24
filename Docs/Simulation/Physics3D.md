@@ -239,7 +239,7 @@ The field is resampled onto a square power-of-two grid for the solver, so any gr
 For scenery that arrives as a file, one call gives a whole [`Scene`](../3D/Scenes.md) its colliders:
 
 ```swift
-let hall = loadScene("hall.usdz")!
+let hall = try! loadScene("hall.usdz")
 world.addStaticBodies(from: hall)
 ```
 
@@ -892,7 +892,7 @@ var figure: Scene!
 var ragdoll: Ragdoll3D!
 
 override func setup() {
-    figure = loadScene("figure.gltf")!
+    figure = try! loadScene("figure.gltf")
     world.ground = 0
     ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 }
@@ -1368,7 +1368,7 @@ A `.usd` scene can say more than what its prims look like. The `UsdPhysics` sche
 A scene carrying that comes into a world in one call:
 
 ```swift
-let scene = loadScene("yard.usda")!
+let scene = try! loadScene("yard.usda")
 world.addBodies(from: scene)          // every body and joint the file describes
 ```
 

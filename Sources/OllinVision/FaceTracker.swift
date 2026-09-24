@@ -96,7 +96,7 @@ public enum FaceLandmark: Sendable, CaseIterable {
 ///
 /// One-shot, on an image you loaded:
 /// ```swift
-/// let found = try await FaceTracker.detect(in: loadImage("crowd.jpg")!)
+/// let found = try await FaceTracker.detect(in: loadImage("crowd.jpg"))
 /// ```
 public final class FaceTracker: VisionTracking, @unchecked Sendable {
 

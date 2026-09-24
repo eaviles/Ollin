@@ -109,9 +109,13 @@ final class Fabrication: Sketch {
     private func save() {
         let sized = sculpture().normalized(scale: millimeters)
         let folder = FileManager.default.temporaryDirectory
-        for format in MeshFileFormat.allCases {
-            let url = folder.appendingPathComponent("knot.\(format.fileExtension)")
-            sized.write(to: url)
+        do {
+            for format in MeshFileFormat.allCases {
+                try sized.write(to: folder.appendingPathComponent("knot.\(format.fileExtension)"))
+            }
+        } catch {
+            saved = "not saved: \(error)"
+            return
         }
         saved = "saved to \(folder.path)"
         print("Ollin: knot.3mf, knot.stl, and knot.obj written to \(folder.path)")

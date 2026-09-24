@@ -351,8 +351,10 @@ extension OllinApp {
                 let pair = center?.stereoPair(geometry, aspect: aspect)
                 let resolved = center.map { geometry.resolved(for: $0, aspect: aspect) }
 
+                // A persistent picture renders through the warmup, as in the
+                // flat export's loop (`renderFrames`).
                 var frame: StereoFrame?
-                if accumulates || k >= skipFrames {
+                if accumulates || sketch.drawer.usesFeedback || k >= skipFrames {
                     if accumulates {
                         // The pile lives in one persistent surface, and there is only one
                         // of it, so both eyes are handed the same picture and the piece

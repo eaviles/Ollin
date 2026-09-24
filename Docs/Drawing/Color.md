@@ -262,12 +262,12 @@ The `Harmonies` example follows a drifting base color through all four builders.
 Palettes you collect elsewhere load with one call. `loadPalettes` returns every palette in a file, in file order, and `loadPalette` returns the first one. A file that holds a single palette reads as a one-element array. So `loadPalettes` is the form to use when you do not know which kind of file you have.
 
 ```swift
-let sets = loadPalettes("1000.json")     // many
-let one  = loadPalette("sunset.hex")     // the first, or nil
+let sets = try! loadPalettes("1000.json")     // many
+let one  = try? loadPalette("sunset.hex")     // the first, or nil when it will not read
 
 // From the sketch's own bundle. `in:` has no default: a default would
 // resolve to Ollin's bundle rather than yours.
-let bundled = loadPalettes(resource: "palettes", withExtension: "csv", in: .module)
+let bundled = try? loadPalettes(resource: "palettes", withExtension: "csv", in: .module)
 ```
 
 Five layouts are supported, and `.auto` picks between them by looking at the bytes:
@@ -287,9 +287,9 @@ A hex token is still read when extra punctuation surrounds it. That covers surro
 Name a `PaletteFormat` when the automatic guess is wrong:
 
 ```swift
-loadPalettes("swatches.txt", format: .hexLines)   // one palette, even with commas on a line
-loadPalettes("library.ase", format: .ase)        // Adobe's own swatch file
-loadPalettes("grid.csv", format: .csv)
+(try? loadPalettes("swatches.txt", format: .hexLines))   // one palette, even with commas on a line
+(try? loadPalettes("library.ase", format: .ase))        // Adobe's own swatch file
+(try? loadPalettes("grid.csv", format: .csv))
 ```
 
 **ASE** files map each swatch group onto a palette, in document order. Colors outside any group collect into a palette of their own. RGB, Gray, CMYK, and LAB swatches all decode. CMYK goes through the plain conversion. LAB goes through CIELAB on the D50 white point, which is the white point these files are written against. A truncated or malformed file yields an empty array instead of trapping, as every loader on this page does. A swatch whose numbers are not finite is skipped, since no hue can be taken of it.
@@ -307,7 +307,7 @@ The `PaletteFile` example loads a CSV of six palettes and a hex-per-line file, s
 The colors in a picture are usually a better palette than a list someone else curated.
 
 ```swift
-let photo = loadImage("beach.jpg")!
+let photo = try! loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])                                     // the color the photo is mostly made of
 ```
@@ -334,7 +334,7 @@ The `PaletteFromImage` example paints an image from five known colors and then r
 Extraction pulls the colors out of a picture. Dithering rebuilds the picture from those colors.
 
 ```swift
-let photo = loadImage("beach.jpg")!
+let photo = try! loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 6)
 let poster = photo.dithered(.floydSteinberg, to: p)
 

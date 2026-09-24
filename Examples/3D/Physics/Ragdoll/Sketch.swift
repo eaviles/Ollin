@@ -41,7 +41,7 @@ final class Ragdoll: Sketch {
     var appliedLooseness = 0.0
 
     override func setup() {
-        figure = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
+        figure = try? Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         target = figure
         wave = figure.animations.first
         world.ground = 0

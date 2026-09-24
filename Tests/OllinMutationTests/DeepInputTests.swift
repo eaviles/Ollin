@@ -152,8 +152,8 @@ struct DeepInputTests {
             let json = String(repeating: "[", count: depth) + "1" + String(repeating: "]", count: depth)
             let svg = #"<svg xmlns="http://www.w3.org/2000/svg">"# + String(repeating: "<g>", count: depth)
                 + #"<rect width="1" height="1"/>"# + String(repeating: "</g>", count: depth) + "</svg>"
-            _ = JSON(data: Data(json.utf8))
-            _ = SVG(data: Data(svg.utf8))
+            _ = try? JSON(data: Data(json.utf8))
+            _ = try? SVG(data: Data(svg.utf8))
             return "returned"
         }
         #expect(said == "returned")
@@ -176,7 +176,7 @@ struct DeepInputTests {
         #expect(GLTFDocument(data: Data(gltf.utf8), isBinary: false, baseDirectory: folder.url) == nil)
         folder.write(Array("newmtl m\nKd 1 0 0\nmap_Kd \(device)\n".utf8), named: "m.mtl")
         let obj = folder.write(Array("mtllib m.mtl\nusemtl m\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n".utf8), named: "m.obj")
-        #expect(Mesh(contentsOf: obj)?.material?.texture == nil)
+        #expect((try? Mesh(contentsOf: obj))?.material?.texture == nil)
         let result = ShaderIncludes.resolveFromFilesystem("#include \"\(device)\"\n", name: folder.url.appendingPathComponent("s.metal").path)
         #expect(result.problems.contains { $0.contains("cannot find") })
         #expect(NamedFile.data(at: folder.url) == nil, "a folder is not a file")
