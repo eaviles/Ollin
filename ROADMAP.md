@@ -39,6 +39,8 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 - **Three more filters.** A channel mixer weighs each output channel from the input channels. Lens distortion bends a layer into a barrel or a pincushion. A corner pin lays a layer onto four points.
 - **Small sketch conveniences.** `redraw()` draws one frame of a sketch that has stopped looping. A sketch can set the pointer's shape or hide it, and spherical coordinates sit beside `polar`. A file can be picked through the system's open panel, and the frame can be copied to the clipboard.
 - **Putting a parameter back.** A parameter tuned in the inspector goes back to the value its `@Param` line declares, with no need to quit the host. One row resets from its context menu, or from a small mark that only a tuned row shows. *Reset all* puts every tuned value back at once, and each group card does the same for its own rows. The clock, the seed, and the canvas carry on as they were.
+- **The metaball curve on its own.** `Metaballs` sums a smooth bump for each ball, and a sketch that shapes its own blobs (a radius that wobbles round the rim, a ball stretched along a direction) wants that one bump to build from rather than a copy of its polynomial.
+- **Knowing an export from a live run.** A sketch can ask whether it is being exported, so it can spread slow work over live frames and do all of it at once when every frame is written.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 
@@ -147,6 +149,7 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
+- **A traced shape redrawn in a new color.** A shape traced once and drawn every frame is triangulated and stroked again each time. Keeping that work, and letting a replay take a new fill and stroke color, makes a screen of hundreds of kept outlines cost what it costs to draw them.
 - **A shader as paint.** A `Shader` fills or strokes a 2D shape, computed per pixel in the shape's own coordinates. The same shader can be a mesh's surface material. Pictures, patterns, and noise then become fills, with no clipping by hand.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).

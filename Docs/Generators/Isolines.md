@@ -97,7 +97,7 @@ This form needs CPU pixels. Read a video frame through its `snapshot()` first.
 
 - **Cheap enough to re-trace live.** The trace itself is fast, so the field samples are what costs you. A drifting field at the default resolution re-traces comfortably every frame, and the levels form shares one sampling across the whole stack.
 - **Resolution follows the features.** Size the grid so the field's features span many cells, which hides the traced chords inside the curve. On a coarse grid, one pass of `smoothed(iterations:)` rounds the corners.
-- **Metaballs are a field.** Sum `strength / distanceSquared` for each blob and trace a level. The outlines then merge and pinch the way metaballs should.
+- **Metaballs are a field.** For blobs in the plane, put `Metaballs` balls at `z = 0`, trace `field.value(at: Vector3(p.x, p.y, 0))`, and pass `field.level` as the level. The outlines merge and pinch the way the [3D surface](./Isosurface.md#metaballs) does, and a lone ball's outline lands on its `radius` at the default level of 0.5. Each ball reaches twice its radius and no further. A sum of `strength / distanceSquared` has no reach, so every blob pulls on every other however far apart they sit.
 - **The exact level matters less than its neighbors.** For noise in `0...1`, the levels between `0.3` and `0.7` cross the most terrain. A level near the field's extremes traces only a few small islands.
 
 ---
