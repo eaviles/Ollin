@@ -130,8 +130,10 @@ struct GeometryBatch {
     /// its own batch (one texture per draw call), so it never merges with a
     /// neighbor.
     var image: Image?
-    /// SDF atlas for a `.glyphAtlas` batch — `nil` otherwise. One `drawText` call
-    /// is one batch (a paragraph's glyphs all sample the same atlas).
+    /// SDF atlas for a `.glyphAtlas` batch, `nil` otherwise. A run of `drawText`
+    /// calls with nothing drawn between them and the same atlas and pass state is
+    /// one batch (every glyph samples the same atlas, and each quad carries its own
+    /// color and size).
     var atlas: GlyphAtlas?
     /// The GPU particle buffer for a `.particles` batch — `nil` otherwise. Each
     /// `drawParticles` call is its own batch carrying its buffer.
@@ -1545,6 +1547,14 @@ final class Drawer {
     /// `drawText` call opens one batch (all its glyphs sample the same atlas);
     /// resets `currentKind` so a following primitive reopens its own batch.
     func beginGlyphBatch(_ atlas: GlyphAtlas) {
+        // Text set a character at a time shares one draw call: the quads carry
+        // their own color and size, so only the atlas and the pass state split the
+        // run, and a run ends where the next batch starts.
+        if currentKind == .glyphAtlas, let last = batches.last, last.kind == .glyphAtlas,
+           last.atlas === atlas, last.blendMode == currentBlend, last.depth == currentDepth,
+           last.clipLevel == activeClipLevel, last.target === currentTarget {
+            return
+        }
         currentKind = .glyphAtlas
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth

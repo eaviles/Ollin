@@ -263,8 +263,9 @@ import OllinWebGate
         let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
         #expect(decoded.width == atlas.size && decoded.height == atlas.rows)
         #expect(decoded.bitsPerPixel == 8)
-        // Four runs of glyph quads, one per drawText, in call order, sampling
-        // atlas 0; the quads together are the drawer's glyph vertices.
+        // Four drawText calls with one atlas and nothing drawn between them cross
+        // as one run of glyph quads, sampling atlas 0, one quad per character that
+        // is not a space; the quads together are the drawer's glyph vertices.
         let g = recording.frames[2].graph
         var counts: [Int] = []
         for item in g.canvas {
@@ -272,9 +273,10 @@ import OllinWebGate
             #expect(atlasIndex == 0 && blend == 0)
             counts.append(count)
         }
-        #expect(counts.count == 4)
+        #expect(counts.count == 1)
         #expect(counts.reduce(0, +) == sketch.drawer.glyphVertices.count / WebQuad.vertices)
-        #expect(counts[0] == 5)   // "Atlas"
+        let characters = 5 + 17 + 8 + 6   // "Atlas", "body text on the page", "gradient", "turned"
+        #expect(counts.first == characters)
         #expect(g.quadCount == counts.reduce(0, +))
         // Every glyph's uv lies inside the rows the page carries.
         let uvMaxV = stride(from: g.quadOffset, to: g.vertexOffset, by: 8).map { recording.frames[2].vector[$0 + 3] }.max() ?? 0

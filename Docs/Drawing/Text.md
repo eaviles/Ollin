@@ -230,6 +230,8 @@ textMode(.outline); textSize(120); drawText("Title", x, y)
 textMode(.atlas);   textSize(16);  drawText(bodyText, x, y2)
 ```
 
+Setting text one character at a time costs no more than one string. Calls in a row with nothing else drawn between them share one draw call, whatever their color and size, so a grid of characters placed cell by cell is as cheap as the same characters in lines.
+
 There are two things to know. The atlas path is **fill-only** and ignores `stroke`, because the volume case is filled text, so use `.outline` when you want stroked glyphs. The single-channel field also rounds *very* sharp corners at extreme magnification, which you cannot see at the body and display sizes this path is for. `textMode` does nothing for bitmap and stroke fonts, which have no atlas. See the [TextVolume example](../../Examples/Text/TextVolume).
 
 <a name="variable"></a>

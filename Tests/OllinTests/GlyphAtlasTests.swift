@@ -67,6 +67,53 @@ struct GlyphAtlasTests {
         #expect(diff < 6.0, "atlas vs outline mean per-channel difference \(diff)")
     }
 
+    // MARK: Runs
+
+    /// Text set one character at a time is one run, so one draw call: the quads
+    /// carry their own color and size, and only the atlas and the pass state split
+    /// the run. Without it, a sketch that places every character in a cell of its
+    /// own makes a draw call per character, and four sheets of 16,000 cells take
+    /// 125 ms a frame to encode.
+    @Test @MainActor
+    func characterAtATimeTextIsOneRun() {
+        let drawer = Drawer()
+        drawer.beginFrame()
+        drawer.textFont(OutlineFont.systemMono)
+        drawer.textSize(12)
+        drawer.textRenderMode = .atlas
+        for (i, mark) in "HOX#=-".enumerated() {
+            drawer.fill(Color(white: Double(i) / 8))      // a color per character
+            drawer.textSize(10 + Double(i))               // and a size per character
+            drawer.drawText(String(mark), 10 + 12 * Double(i), 20)
+        }
+        #expect(drawer.batches.map(\.kind) == [.glyphAtlas])
+        #expect(drawer.glyphVertices.count == 6 * 6)
+
+        // Anything drawn between two calls, a new blend, or another font's
+        // atlas splits the run, and draw order is kept.
+        drawer.drawCircle(50, 50, 4)
+        drawer.drawText("A", 60, 20)
+        drawer.blendMode(.add)
+        drawer.drawText("B", 70, 20)
+        drawer.textFont(OutlineFont.system)
+        drawer.drawText("C", 80, 20)
+        #expect(drawer.batches.map(\.kind) == [.glyphAtlas, .sdf, .glyphAtlas, .glyphAtlas, .glyphAtlas])
+    }
+
+    /// Merging runs changes nothing on the canvas: the same characters drawn one
+    /// call each and as one string at the same pen positions render identically.
+    @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
+    @MainActor
+    func mergedRunsRenderAsTheyDidOneByOne() throws {
+        let apart = CellText(); apart.oneCallPerCharacter = true
+        let whole = CellText(); whole.oneCallPerCharacter = false
+        guard let a = OllinApp.image(of: apart), let w = OllinApp.image(of: whole) else {
+            Issue.record("off-screen render failed"); return
+        }
+        let diff = try #require(GlyphAtlasTests.meanDifference(a, w))
+        #expect(diff < 0.05, "one call per character vs one string, mean difference \(diff)")
+    }
+
     /// Mean per-channel absolute difference (0…255) between two same-size images.
     private static func meanDifference(_ x: CGImage, _ y: CGImage) -> Double? {
         guard let bx = rgba(x), let by = rgba(y), bx.count == by.count, !bx.isEmpty else { return nil }
@@ -104,5 +151,30 @@ private final class ParityText: Sketch {
         drawText("outline 0123", 16, 58)
         textSize(40)
         drawText("Aa Bb", 16, 104)
+    }
+}
+
+/// A line of monospaced characters, drawn either one call per character at its
+/// own pen position or as one string, for the run-merging parity test.
+private final class CellText: Sketch {
+    var oneCallPerCharacter = false
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        fill(.black)
+        textFont(OutlineFont.systemMono)
+        textMode(.atlas)
+        textAlign(.left, .baseline)
+        textSize(18)
+        let line = "HOX#=-HOX#=-"
+        if oneCallPerCharacter {
+            let advance = textWidth("H")
+            for (i, mark) in line.enumerated() {
+                drawText(String(mark), 16 + Double(i) * advance, 100)
+            }
+        } else {
+            drawText(line, 16, 100)
+        }
     }
 }
