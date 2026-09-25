@@ -350,6 +350,10 @@
     ],
     "Web": [
       "Web/BreathingRing"
+    ],
+    "Recreations/WaldemarCordeiro": [
+      "Recreations/WaldemarCordeiro/Derivadas",
+      "Recreations/WaldemarCordeiro/Gente"
     ]
   },
   "groups": {
@@ -787,6 +791,14 @@
       ],
       "image": "groups/Recreations-VladimirBonacic.jpg?v=03c683fe",
       "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b"
+    },
+    "Recreations/WaldemarCordeiro": {
+      "of": [
+        "Recreations/WaldemarCordeiro/Derivadas",
+        "Recreations/WaldemarCordeiro/Gente"
+      ],
+      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=c8969403",
+      "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3"
     },
     "Rendering": {
       "of": [
@@ -9226,6 +9238,48 @@
       "loopSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/loop-640.mp4?v=496d4208",
       "still": "examples/Recreations/VladimirBonacic/NamaFrieze/still.jpg?v=0515ecbe",
       "stillSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=45dafcd1"
+    },
+    "Recreations/WaldemarCordeiro/Derivadas": {
+      "width": 1080,
+      "height": 1472,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.395,
+      "sound": false,
+      "source": "d31813439ce4b522",
+      "rendered": "2026-09-25",
+      "bytes": {
+        "loop": 3925501,
+        "loopSmall": 1310928,
+        "still": 182897,
+        "stillSmall": 49642
+      },
+      "loop": "examples/Recreations/WaldemarCordeiro/Derivadas/loop.mp4?v=0fa0be22",
+      "loopSmall": "examples/Recreations/WaldemarCordeiro/Derivadas/loop-640.mp4?v=4a26bb96",
+      "still": "examples/Recreations/WaldemarCordeiro/Derivadas/still.jpg?v=bc843603",
+      "stillSmall": "examples/Recreations/WaldemarCordeiro/Derivadas/still-640.jpg?v=f5a0cbe2"
+    },
+    "Recreations/WaldemarCordeiro/Gente": {
+      "width": 1920,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 30,
+      "motion": 67.671,
+      "sound": false,
+      "source": "83b336f88f4b2316",
+      "rendered": "2026-09-25",
+      "bytes": {
+        "loop": 30589680,
+        "loopSmall": 10650723,
+        "still": 175045,
+        "stillSmall": 33900
+      },
+      "loop": "examples/Recreations/WaldemarCordeiro/Gente/loop.mp4?v=c2a16fc5",
+      "loopSmall": "examples/Recreations/WaldemarCordeiro/Gente/loop-640.mp4?v=14097364",
+      "still": "examples/Recreations/WaldemarCordeiro/Gente/still.jpg?v=40f84689",
+      "stillSmall": "examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=c720d5ae"
     },
     "Rendering/Accumulation": {
       "bytes": {

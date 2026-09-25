@@ -957,5 +957,12 @@ let package = Package(
         // flame, after Mohamed Melehi.
         example("Recreations/MohamedMelehi/Waves"),
         example("Recreations/MohamedMelehi/Flamme"),
+        // A photograph read to seven levels and printed as struck characters,
+        // then derived three times, each degree its own sheet, after Waldemar
+        // Cordeiro and Giorgio Moscati.
+        example("Recreations/WaldemarCordeiro/Derivadas", [.samplePhotos]),
+        // A crowd printed on continuous-form paper at four degrees of
+        // contrast, hung side by side, after Waldemar Cordeiro.
+        example("Recreations/WaldemarCordeiro/Gente", [.samplePhotos]),
     ]
 )

@@ -15,8 +15,8 @@
 | [MonirFarmanfarmaian](MonirFarmanfarmaian/) | [NasreenMohamedi](NasreenMohamedi/) | [OsamuSato](OsamuSato/) | [OwenSchuh](OwenSchuh/) |
 | [![RyszardWiniarski](https://media.ollin.art/groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836)](RyszardWiniarski/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) | [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) | [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=215aa774)](VicenteRojo/) |
 | [RyszardWiniarski](RyszardWiniarski/) | [SolLeWitt](SolLeWitt/) | [VeraMolnar](VeraMolnar/) | [VicenteRojo](VicenteRojo/) |
-| [![VladimirBonacic](https://media.ollin.art/groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b)](VladimirBonacic/) |  |  |  |
-| [VladimirBonacic](VladimirBonacic/) |  |  |  |
+| [![VladimirBonacic](https://media.ollin.art/groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b)](VladimirBonacic/) | [![WaldemarCordeiro](https://media.ollin.art/groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3)](WaldemarCordeiro/) |  |  |
+| [VladimirBonacic](VladimirBonacic/) | [WaldemarCordeiro](WaldemarCordeiro/) |  |  |
 
 These sketches **recreate the work of past computer artists**. Each one rebuilds a piece to learn from it, and shows what a modern framework brings to it.
 
@@ -50,4 +50,5 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Vladimir Bonačić**](VladimirBonacic/). A square of lamps lit a pattern at a time by a walk through a finite field, the pattern read and set in binary on its back; and a frieze of eighteen lamp panels across a store front at night, stepping through every state of an 18-bit field and sending them to a real wall.
 - [**Nasreen Mohamedi**](NasreenMohamedi/). A square sheet ruled edge to edge with horizontals whose intervals gather against a heavy line and open away from it, doubled in one quadrant and breathing over a cycle; and a wide sheet left almost empty, with a chevron drawn heavy at the corner and thinning to its tips, a wake of hairlines laid off one arm and a fan leaning toward a point past the edge of the paper.
 - [**Mohamed Melehi**](MohamedMelehi/). The hard-edge wave: a ribbon of flat bands that enters the panel straight and breaks into one wave, every band the same curve as its neighbor moved over by its own width, the colors dealt in a rainbow order by declared shares, the wave traveling because the phase is the clock; and the wave standing up as a flame, a row of pink and navy bands cut flat at heights that step up to a peak and down, breathing, with a straight ribbon crossing behind.
+- [**Waldemar Cordeiro**](WaldemarCordeiro/). A photograph read into seven levels of dark and printed as struck characters, the darkest struck two and three times on one place, then derived three times, each degree a sheet fed out of the line printer; and a crowd printed on continuous-form paper at four degrees of contrast, hung side by side and looked at from across the room and up close.
 
