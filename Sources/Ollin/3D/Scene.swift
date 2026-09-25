@@ -119,7 +119,12 @@ public struct Scene: Sendable {
         var lo = Vector3(.infinity, .infinity, .infinity)
         var hi = Vector3(-.infinity, -.infinity, -.infinity)
         var any = false
-        func visit(_ node: SceneNode, parent: simd_float4x4) {
+        // Nodes wait on a list rather than on the call stack, since a
+        // recursive walk here takes about 6.6 KB of stack a level in a debug
+        // build, which a background thread's half megabyte only just holds
+        // at the depth limit. The order does not change a bounding box.
+        var pending = nodes.map { ($0, matrix_identity_float4x4) }
+        while let (node, parent) = pending.popLast() {
             let world = parent * node.localTransform
             if let mesh = node.mesh, !mesh.isEmpty {
                 let b = mesh.bounds
@@ -135,9 +140,8 @@ public struct Scene: Sendable {
                     any = true
                 }
             }
-            for child in node.children { visit(child, parent: world) }
+            pending.append(contentsOf: node.children.map { ($0, world) })
         }
-        for node in nodes { visit(node, parent: matrix_identity_float4x4) }
         return any ? Box3(min: lo, max: hi) : .zero
     }
 

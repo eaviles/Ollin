@@ -18,13 +18,18 @@
 # has the numbers on its test step), while the runs that wedged were silent
 # for over thirty. A limit under the longest healthy silence would sample a
 # run that was about to finish.
+#
+# A run that fails is followed by what outlives a crashed test process: the
+# system's crash reports written during the run (Scripts/crash-report.py) and
+# any case the mutation harness was trying when its process went down.
 
 cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
 
 limit=${OLLIN_QUIET_LIMIT:-900}
 log=$(mktemp -t ollin-ci-test) || exit 1
-trap 'rm -f "$log"' EXIT
+started=$(mktemp -t ollin-ci-started) || exit 1
+trap 'rm -f "$log" "$started"' EXIT
 
 # `--run` wraps a command of the caller's (Scripts/test.sh ci, which runs
 # OllinTests as shards and the other targets beside them); the sample below
@@ -67,4 +72,18 @@ while kill -0 $pid 2>/dev/null; do
 done
 
 wait $pid
-exit $?
+result=$?
+
+# A test process that dies on a signal takes its buffered output with it, so
+# the log above names no test. Two witnesses outlive it: the report the system
+# writes for the crashed process (its faulting thread's frames), and the
+# mutation harness's log, which holds the case each run was trying when the
+# process went down (a run that completes removes its own).
+if (( result != 0 )); then
+    Scripts/crash-report.py "$started"
+    mutations="${TMPDIR:-$(getconf DARWIN_USER_TEMP_DIR)}/ollin-mutation"
+    for entry in "$mutations"/*.log(N); do
+        print -r -- "ci-test: a mutation run did not finish: $(head -c 1200 "$entry")"
+    done
+fi
+exit $result

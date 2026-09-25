@@ -280,8 +280,9 @@ extension Mesh {
         var allHaveUV = true
         var material: MeshMaterial?
 
-        // The walk holds only the world transform; one node's work is its own
-        // call, so its locals are not on the stack of every level.
+        // One node's work is its own call. The nodes still to visit wait on
+        // a list rather than on the call stack, parents first and children in
+        // order, which is the vertex order of a depth-first walk.
         func add(_ mesh: Mesh, at world: simd_float4x4) {
             guard !mesh.positions.isEmpty, !mesh.indices.isEmpty else { return }
             let normalMatrix = world.normalMatrix
@@ -304,12 +305,12 @@ extension Mesh {
             indices.append(contentsOf: mesh.indices.map { base + $0 })
             if material == nil { material = mesh.material }
         }
-        func visit(_ node: SceneNode, parent: simd_float4x4) {
+        var pending = scene.nodes.reversed().map { ($0, matrix_identity_float4x4) }
+        while let (node, parent) = pending.popLast() {
             let world = parent * node.localTransform
             if let mesh = node.mesh { add(mesh, at: world) }
-            for child in node.children { visit(child, parent: world) }
+            pending.append(contentsOf: node.children.reversed().map { ($0, world) })
         }
-        for node in scene.nodes { visit(node, parent: matrix_identity_float4x4) }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
         var mesh = Mesh(positions: positions, normals: normals, indices: indices,

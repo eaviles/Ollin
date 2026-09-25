@@ -215,8 +215,11 @@ reader that recurses such an input directly, on a thread with a 512 KB stack,
 the size a background thread or a task gets, where the main thread's eight
 megabytes would hide a recursion a background load dies of. The limits are
 measured there: a scene nests at most 64 levels (glTF's
-`GLTFDocument.maxNodeDepth` and USD's `USDStage.maxDepth`), because a walk of a
-scene takes about six and a half kilobytes a level in a debug build; a formula
+`GLTFDocument.maxNodeDepth` and USD's `USDStage.maxDepth`), and a scene at that
+depth reads with half the stack to spare in a debug build, because another
+compiler's frames are larger: with three percent to spare on the desk, the
+runner's compiler overflowed it. A walk the test adds to read a scene keeps its
+pending nodes on a list, or the test measures itself; a formula
 is at most 1,024 tokens nested 64 deep; the include resolver stops at 32. A
 file that names another file (a model's buffer, a material's picture, a
 shader's include) reads it only when it is a regular file, never a device such

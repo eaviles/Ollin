@@ -72,7 +72,12 @@ struct ModelFileMutationTests {
         _ = scene.cameras
         _ = scene.lights
         let worlds = scene.nodeWorldTransforms()
-        func visit(_ node: SceneNode) {
+        // Every node, parents first, from a list rather than by recursion: a
+        // recursive reader here takes about 8 KB of stack a level in a debug
+        // build, so on the half-megabyte stack `DeepInputTests` reads on it
+        // would measure itself rather than the scene's own walks.
+        var pending = Array(scene.nodes.reversed())
+        while let node = pending.popLast() {
             if let mesh = node.mesh {
                 read(mesh, inconsistent: &inconsistent)
                 if mesh.indices.allSatisfy({ Int($0) < mesh.positions.count }) {
@@ -85,9 +90,8 @@ struct ModelFileMutationTests {
                     }
                 }
             }
-            for child in node.children { visit(child) }
+            pending.append(contentsOf: node.children.reversed())
         }
-        for node in scene.nodes { visit(node) }
         for animation in scene.animations {
             for time in [-1, 0, animation.duration / 2, animation.duration, animation.duration * 2 + 1] {
                 scene.apply(animation, at: time)
