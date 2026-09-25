@@ -1690,8 +1690,54 @@ final class OllinMTKView: MTKView {
     /// and hands it to the dragger when a host has installed one.
     private var modifierMonitor: Any?
 
+    /// A canvas made while no display is awake (a window opened with the lid
+    /// closed and the monitor asleep) gets a frame timer that never fires, and
+    /// nothing rebuilds it when the display comes back, so the window stays
+    /// blank for good. Pausing and resuming builds the timer again against the
+    /// screen the window is on now, so the canvas does that whenever the screen
+    /// under it can have changed: the displays waking, the window moving to
+    /// another screen or coming into view, the display setup changing.
+    private var screenObservers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
+
+    /// Rebuild the frame timer, for a canvas that should be drawing. One the
+    /// runner paused (a still sketch, a paused take, a night off) stays paused.
+    func restartFrameTimer() {
+        guard !isPaused else { return }
+        isPaused = true
+        isPaused = false
+        frameTimerRestarts += 1
+    }
+
+    /// How many times the frame timer was rebuilt, for the tests.
+    private(set) var frameTimerRestarts = 0
+
+    private func observeScreens(of window: NSWindow) {
+        guard screenObservers.isEmpty else { return }
+        let restart: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartFrameTimer() }
+        }
+        let workspace = NSWorkspace.shared.notificationCenter
+        let local = NotificationCenter.default
+        screenObservers = [
+            (workspace, workspace.addObserver(forName: NSWorkspace.screensDidWakeNotification,
+                                              object: nil, queue: .main, using: restart)),
+            (local, local.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                      object: nil, queue: .main, using: restart)),
+            (local, local.addObserver(forName: NSWindow.didChangeScreenNotification,
+                                      object: window, queue: .main, using: restart)),
+            (local, local.addObserver(forName: NSWindow.didChangeOcclusionStateNotification,
+                                      object: window, queue: .main, using: restart)),
+        ]
+    }
+
+    private func stopObservingScreens() {
+        for (center, token) in screenObservers { center.removeObserver(token) }
+        screenObservers = []
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if let window { observeScreens(of: window) }
         if pressureMonitor == nil {
             pressureMonitor = NSEvent.addLocalMonitorForEvents(matching: .pressure) { [weak self] event in
                 guard let self, event.window === self.window,
@@ -1739,6 +1785,8 @@ final class OllinMTKView: MTKView {
             NSEvent.removeMonitor(modifierMonitor)
             self.modifierMonitor = nil
         }
+        // A move to another window watches that window's screen instead.
+        stopObservingScreens()
     }
 
     override func keyDown(with event: NSEvent) {
