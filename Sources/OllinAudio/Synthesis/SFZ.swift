@@ -33,14 +33,15 @@ import Foundation
 struct SFZFile {
     var regions: [SFZRegion] = []
 
-    /// Reads a file, or nil if it cannot be read at all.
+    /// Reads a file as UTF-8, or as Latin-1 when its bytes are not UTF-8 (an
+    /// older library's sample names), or nil if it cannot be read at all.
     ///
     /// A malformed line is skipped rather than refused: sample libraries are
     /// written by hand as often as by a tool, and one bad line should cost one
     /// region rather than the instrument.
     init?(contentsOf url: URL) {
-        guard let text = try? String(contentsOf: url, encoding: .utf8)
-                ?? String(contentsOf: url, encoding: .isoLatin1) else { return nil }
+        guard let text = (try? String(contentsOf: url, encoding: .utf8))
+                ?? (try? String(contentsOf: url, encoding: .isoLatin1)) else { return nil }
         self.init(text: text)
     }
 

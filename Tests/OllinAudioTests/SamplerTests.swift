@@ -119,6 +119,24 @@ import Testing
         #expect(file.regions.first?.sample == "samples/piano/c4.wav")
     }
 
+    /// Older libraries were written in Latin-1, so an accented sample name
+    /// arrives as a byte UTF-8 cannot read. Such a map is read as Latin-1
+    /// rather than refused whole, and a UTF-8 map still reads as UTF-8.
+    @Test func aMapWrittenInLatin1IsRead() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sfz-encoding-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let encodings: [(String, [UInt8])] = [("latin1", [0xE9]), ("utf8", [0xC3, 0xA9])]
+        for (name, accent) in encodings {
+            let url = folder.appendingPathComponent("\(name).sfz")
+            try Data(Array("<region> sample=tom".utf8) + accent + Array(".wav key=60".utf8)).write(to: url)
+            let file = try #require(SFZFile(contentsOf: url), "the \(name) map")
+            #expect(file.regions.first?.sample == "tomé.wav", "the \(name) map")
+            #expect(file.regions.first?.rootKey == 60, "the \(name) map")
+        }
+    }
+
     /// An unknown opcode is passed over rather than refused, so a library using
     /// the hundreds of opcodes this does not model still loads and plays.
     @Test func unknownOpcodesAreSkippedRatherThanRefused() {

@@ -484,7 +484,7 @@ let piano = try SampledInstrument(sfz: "Piano.sfz", in: .module)   // bundled wi
 let other = try SampledInstrument(contentsOf: url)                 // anywhere on disk
 ```
 
-The format is **SFZ**, a plain text file listing regions. Each region names an audio file and the notes it answers to, with the audio beside it. That region arrives as a `SampledInstrument.Recording`: the samples, the `rootKey` it was recorded at, and the `lowKey` to `highKey` range it answers over, which defaults to the root note and nothing else. It is the format most freely licensed libraries ship in.
+The format is **SFZ**, a plain text file listing regions. Each region names an audio file and the notes it answers to, with the audio beside it. That region arrives as a `SampledInstrument.Recording`: the samples, the `rootKey` it was recorded at, and the `lowKey` to `highKey` range it answers over, which defaults to the root note and nothing else. It is the format most freely licensed libraries ship in. The map is read as UTF-8, or as Latin-1 when its bytes are not UTF-8, which is how older libraries spell an accented sample name.
 
 Ollin reads the opcodes that decide which file plays and at what pitch. They are `sample`, `lokey` / `hikey` / `key`, `pitch_keycenter`, `lovel` / `hivel`, `tune`, `transpose`, `volume`, and the loop points. SFZ has hundreds of others covering filters, envelopes, round robins and modulation.
 
