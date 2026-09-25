@@ -130,7 +130,7 @@ What it costs, and what to know:
 
 - **More field calls.** Each crossing is refined onto the surface and its normal read there, about a dozen calls per crossing on top of the one per lattice point. The mesh is setup-shaped work either way.
 - **Shading follows the creases.** A cube on a crease carries one vertex per side. A block's faces therefore shade flat right up to its edges, while a sphere still shades smooth. The mesh has more vertices than distinct positions where that happens.
-- **It reads the field between the samples.** The refinement asks the field between lattice points, so a field that only exists at the samples cannot use it. `Metaballs.mesh()` and `reconstructSurface` stay on marching cubes, since a smooth field gains nothing from the corners.
+- **It reads the field between the samples.** The refinement asks the field between lattice points, so a field that only exists at the samples cannot use it. A field that steps between the samples shows its steps. One read from per-plane tables and snapped to the nearest plane is a staircase, and dual contouring draws every tread; a tread facing away from the light shades dark. Marching cubes reads only the samples and never sees the steps. Interpolate between the planes to use dual contouring there. `Metaballs.mesh()` and `reconstructSurface` stay on marching cubes, since a smooth field gains nothing from the corners.
 - **A knife edge shows the grid.** Where two curved surfaces meet at a shallow angle, a cube can hold a sliver of one surface without any of its edges crossing the other. The crease steps by the cell there. Raise `resolution`, or keep such a meeting off the picture.
 - **The default is unchanged.** No `method` reads as marching cubes, vertex for vertex.
 
