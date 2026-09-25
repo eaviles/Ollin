@@ -19,8 +19,32 @@ struct AudioFileFrames {
     /// The format the frames were decoded in (deinterleaved 32-bit floats).
     var format: AVAudioFormat
 
-    /// How many frames a stretch reads.
-    static let stretch: AVAudioFrameCount = 65_536
+    /// How many samples a stretch reads, over all the channels: 65,536
+    /// frames of up to sixteen channels, and fewer frames past that, so the
+    /// buffer a stretch reads into stays at four megabytes whatever the file
+    /// declares.
+    static let stretchSamples = 65_536 * 16
+
+    /// The most channels a file may declare, which is also the most the
+    /// system's reader converts. A WAV keeps its channel count in sixteen bits
+    /// and a CAF in thirty-two, so a few changed bytes can claim tens of
+    /// thousands; the system's buffer for that many is gigabytes a stretch,
+    /// and on macOS 26 making it throws a C++ exception, which ends the
+    /// process rather than answering `nil`.
+    static let maxChannels: AVAudioChannelCount = 1024
+
+    /// Whether frames in `format` are read at all: a rate a sound is played at
+    /// and a channel count a recording carries. Checked before a buffer is
+    /// made for them.
+    static func reads(_ format: AVAudioFormat) -> Bool {
+        format.sampleRate.isFinite && rates.contains(format.sampleRate)
+            && (1...maxChannels).contains(format.channelCount)
+    }
+
+    /// How many frames a stretch reads for a file of `channels` channels.
+    static func stretch(channels: AVAudioChannelCount) -> AVAudioFrameCount {
+        AVAudioFrameCount(max(1, stretchSamples / max(1, Int(channels))))
+    }
 
     /// The rates a file may declare: a hertz up to eight times the highest
     /// rate a studio records at. A rate outside it (or not a number at all,
@@ -28,19 +52,20 @@ struct AudioFileFrames {
     static let rates: ClosedRange<Double> = 1...1_536_000
 
     /// The frames of the file at `url`, at most `limit` of them. Throws what
-    /// opening the file throws; `nil` when the file holds no frames or
-    /// declares a rate no sound is played at.
+    /// opening the file throws; `nil` when the file holds no frames, declares
+    /// a rate no sound is played at, or declares more than `maxChannels`.
     static func read(_ url: URL, limit: Int? = nil) throws -> AudioFileFrames? {
         guard declaresPlausiblePackets(url) else { return nil }
         let file = try AVAudioFile(forReading: url)
         let format = file.processingFormat
-        guard format.sampleRate.isFinite, rates.contains(format.sampleRate), format.channelCount > 0,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: stretch) else { return nil }
+        let frames = stretch(channels: format.channelCount)
+        guard reads(format),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames) else { return nil }
         var channels = [[Float]](repeating: [], count: Int(format.channelCount))
         var total = 0
         let most = limit ?? Int.max
         while total < most {
-            let want = AVAudioFrameCount(min(Int(stretch), most - total))
+            let want = AVAudioFrameCount(min(Int(frames), most - total))
             do { try file.read(into: buffer, frameCount: want) } catch { break }
             let got = Int(buffer.frameLength)
             guard got > 0, let data = buffer.floatChannelData else { break }
@@ -69,7 +94,7 @@ struct AudioFileFrames {
             head[offset..<offset + 4].reduce(UInt32(0)) { $0 << 8 | UInt32($1) }
         }
         let bytesPerPacket = field(36), framesPerPacket = field(40), channels = field(44)
-        return bytesPerPacket <= 1 << 20 && framesPerPacket <= 1 << 20 && channels <= 1024
+        return bytesPerPacket <= 1 << 20 && framesPerPacket <= 1 << 20 && channels <= maxChannels
     }
 
     /// How many frames were read.

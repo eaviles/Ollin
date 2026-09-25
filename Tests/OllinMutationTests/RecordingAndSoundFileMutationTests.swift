@@ -105,6 +105,67 @@ struct RecordingAndSoundFileMutationTests {
         #expect(report.oversizedCount == 0, "\(report)")
     }
 
+    /// A WAV declaring more channels than a recording carries is refused
+    /// before a buffer is made for them, and one with many channels reads a
+    /// stretch of a few megabytes at a time. The mutation run found the first
+    /// as a one-channel seed whose count became 32,768: the system's buffer
+    /// for that many is gigabytes a stretch, and on macOS 26 making it throws
+    /// a C++ exception, which ends the process. A later release answers `nil`
+    /// there instead, so the refusal is read off the rule, not the outcome.
+    @Test func aFileDeclaringManyChannelsIsRefusedOrReadInSmallStretches() throws {
+        let folder = ScratchFolder("sound-channels")
+        let many = folder.write(Self.silentWAV(channels: 32_768, frames: 1), named: "many.wav")
+        let declared = try AVAudioFile(forReading: many).processingFormat
+        #expect(declared.channelCount == 32_768)
+        #expect(!AudioFileFrames.reads(declared))
+        #expect(try AudioFileFrames.read(many) == nil)
+
+        for channels: AVAudioChannelCount in [1, 2, 16, 17, 1024] {
+            let stretch = AudioFileFrames.stretch(channels: channels)
+            #expect(stretch >= 1 && Int(stretch) * Int(channels) * 4 <= 4 << 20, "\(channels) channels")
+        }
+
+        // Wide enough that a stretch is shorter than the file, so the frames
+        // come back whole and in order across the stretches.
+        let length = 2_500
+        var wide = Self.silentWAV(channels: 1024, frames: length)
+        for frame in 0..<length {
+            let sample = Int16(frame - length / 2)
+            let at = 44 + frame * 1024 * 2
+            wide[at] = UInt8(truncatingIfNeeded: sample)
+            wide[at + 1] = UInt8(truncatingIfNeeded: sample >> 8)
+        }
+        let read = try #require(try AudioFileFrames.read(folder.write(wide, named: "wide.wav")))
+        #expect(read.channels.count == 1024)
+        #expect(read.frameCount == length)
+        let expected = (0..<length).map { Float(Int16($0 - length / 2)) / 32_768 }
+        #expect(read.channels[0] == expected)
+        #expect(read.channels[1].allSatisfy { $0 == 0 })
+    }
+
+    /// A 16-bit WAV at 8 kHz holding `frames` frames of silence in each of
+    /// `channels` channels.
+    static func silentWAV(channels: Int, frames: Int) -> [UInt8] {
+        var bytes: [UInt8] = []
+        func u32(_ value: Int) { bytes += (0..<4).map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
+        func u16(_ value: Int) { bytes += (0..<2).map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
+        let data = frames * channels * 2
+        bytes += Array("RIFF".utf8)
+        u32(36 + data)
+        bytes += Array("WAVEfmt ".utf8)
+        u32(16)
+        u16(1)
+        u16(channels)
+        u32(8000)
+        u32(8000 * channels * 2)
+        u16(channels * 2)
+        u16(16)
+        bytes += Array("data".utf8)
+        u32(data)
+        bytes += [UInt8](repeating: 0, count: data)
+        return bytes
+    }
+
     /// A short tone written in the three containers and sample layouts a
     /// recording arrives in: 16-bit WAV, 24-bit AIFF, float CAF in stereo.
     static func soundSeeds(in folder: ScratchFolder) throws -> [(String, [UInt8])] {

@@ -74,7 +74,7 @@ var loops: Bool
 var isPlaying: Bool
 ```
 
-`AudioPlayer` plays an audio file and analyzes it as it sounds. That lets you react to recorded music or a field recording the same way you react to the microphone. It decodes the formats AVFoundation reads (`.m4a`/AAC, `.mp3`, `.wav`, `.aiff`, `.caf`, …). The file is read a stretch at a time until it ends. A header that promises more than the file holds costs only what the file holds. A file whose sample rate is not one sound plays at (under 1 Hz, past 1,536 kHz, or not a number) throws `.couldNotDecode`.
+`AudioPlayer` plays an audio file and analyzes it as it sounds. That lets you react to recorded music or a field recording the same way you react to the microphone. It decodes the formats AVFoundation reads (`.m4a`/AAC, `.mp3`, `.wav`, `.aiff`, `.caf`, …). The file is read a stretch at a time until it ends. A header that promises more than the file holds costs only what the file holds. A file whose sample rate is not one sound plays at (under 1 Hz, past 1,536 kHz, or not a number) throws `.couldNotDecode`, and so does a file that declares more than 1,024 channels.
 
 ```swift
 let song = try AudioPlayer(path: "/path/to/track.m4a")
