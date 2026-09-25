@@ -243,6 +243,54 @@ struct APILookupTests {
         #expect(Set(places.values.compactMap(\.constraint)) == ["requirement", "where Value: Named", "where Value: CaseIterable"])
     }
 
+    @Test("A declaration's global actor comes from its own attributes, never from an actor in its parameters")
+    func isolation() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("ollin-actors-\(UUID().uuidString)")
+        let folder = root.appendingPathComponent("Ollin")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try """
+        /// Drawn on the main thread.
+        @MainActor
+        public final class Stage {
+            public init() {}
+            public nonisolated func measure(_ width: Double) -> Double { width }
+        }
+        public struct Plain {
+            public func run(_ body: @MainActor () -> Void) {}
+        }
+        """.write(to: folder.appendingPathComponent("Stage.swift"), atomically: true, encoding: .utf8)
+        let listed = APIListing.declarations(in: """
+        final class Stage
+          init()
+          func measure(_: Double) -> Double
+        struct Plain
+          func run(_: @MainActor () -> Void)
+        """, module: "Ollin")
+        let places = SourceComments.places(of: listed, inSources: root)
+        func actor(_ name: String) -> String? {
+            guard let i = listed.firstIndex(where: { $0.name == name }), let place = places[i] else { return nil }
+            return SourceComments.globalActor(at: place)
+        }
+        #expect(actor("Stage") == "@MainActor")
+        #expect(actor("Plain") == nil)
+        #expect(actor("run") == nil, "an actor in a parameter's type is not the function's")
+        // A member that may run off the main thread says so.
+        let measure = try #require(listed.firstIndex { $0.name == "measure" })
+        let signature = try #require(places[measure].flatMap { SourceComments.signature(of: listed[measure], at: $0) })
+        #expect(signature.hasPrefix("nonisolated func measure("), "\(signature)")
+    }
+
+    @Test("Sketch in this checkout reads as main-actor isolated")
+    func sketchIsolation() throws {
+        let root = try #require(ReferenceCatalogTests.repositoryRoot())
+        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let sketch = try #require(all.first { $0.kind == .type && $0.qualifiedName == "Sketch" && $0.module == "Ollin" })
+        let places = SourceComments.places(of: [sketch], inSources: root.appendingPathComponent("Sources"))
+        let place = try #require(places[0])
+        #expect(SourceComments.globalActor(at: place) == "@MainActor")
+    }
+
     @Test("A type written through its cases counts where a case follows a label that takes it")
     func caseSpellings() {
         let all = APIListing.declarations(in: """

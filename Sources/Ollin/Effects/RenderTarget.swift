@@ -165,7 +165,8 @@ public final class RenderTarget {
     public var image: Image { Image(renderTarget: self) }
 
     /// This target's per-pixel depth as a sampleable gray layer (0 near … 1 far),
-    /// linearized over the camera's near/far range. Feed it to `.defocus` as the aux
+    /// linear in depth along the camera's view axis between its near and far planes
+    /// (not distance from the eye). Feed it to `.defocus` as the aux
     /// to defocus a real 3D scene by its own depth
     /// (`scene.combined(with: scene.depth, .defocus(...))`), or draw/filter it like
     /// any layer to visualize the scene's depth.

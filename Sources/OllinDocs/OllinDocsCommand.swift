@@ -385,8 +385,13 @@ struct OllinDocsCommand {
                 // its parameter names (`_ radians: Double`) and its real
                 // defaults (`phase: Double = 0`) say what the listing's
                 // `_: Double = default` cannot.
-                let spelled = places[index].flatMap { SourceComments.signature(of: declaration, at: $0) }
+                var spelled = places[index].flatMap { SourceComments.signature(of: declaration, at: $0) }
                     ?? APIListing.tidy(declaration.text)
+                // The listing leaves isolation out; the source says whether a
+                // call has to be made on the main thread.
+                if let actor = places[index].flatMap(SourceComments.globalActor(at:)), !spelled.contains(actor) {
+                    spelled = actor + " " + spelled
+                }
                 print("  " + (style.color ? style.code(spelled) : spelled))
                 guard let place = places[index] else { continue }
                 let constraint = place.constraint.map { "  " + $0 } ?? ""

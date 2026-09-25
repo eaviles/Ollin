@@ -370,7 +370,7 @@ let dof = scene.combined(with: scene.depth, .defocus(focus: 0.4, maxBlur: 30))
 drawImage(dof.image, 0, 0)
 ```
 
-`scene.depth` maps over the camera's `near` and `far`, so **set them to bracket your scene**. Tight planes make the focal plane sweep usefully, and they give the depth buffer its best precision. It is a normal layer otherwise, so draw it with `drawImage(scene.depth.image, 0, 0)` to see the depth, or filter it. Depth capture costs nothing on a 2D target, because no 3D drawn means no depth buffer. The extra normalize pass runs only when you read `.depth`. The `3D/SceneDefocus` example racks focus through a row of orbs by their own depth.
+`scene.depth` maps over the camera's `near` and `far`, so **set them to bracket your scene**. Tight planes make the focal plane sweep usefully, and they give the depth buffer its best precision. The gray is linear, and it measures depth along the camera's view axis rather than distance from the eye. So a world point `p` sits at `((p - eye).dot((target - eye).normalized) - near) / (far - near)`, which is the `focus` that puts the focal plane on it. `depth(at:)` answers in clip space, for placing 2D marks among 3D ones, so it is not that number. It is a normal layer otherwise, so draw it with `drawImage(scene.depth.image, 0, 0)` to see the depth, or filter it. Depth capture costs nothing on a 2D target, because no 3D drawn means no depth buffer. The extra normalize pass runs only when you read `.depth`. The [`SceneDefocus`](../../Examples/3D/Effects/SceneDefocus/Sketch.swift) example racks focus through a row of orbs by their own depth.
 
 <a id="generate"></a>
 ### generate(_:) and Generator

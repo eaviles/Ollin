@@ -100,10 +100,42 @@ public enum SourceComments {
         }
     }
 
+    /// The global actor a declaration is isolated to, as its source writes it
+    /// (`@MainActor`), or nil for one the source leaves unisolated. The listing
+    /// leaves isolation out, and it decides whether a call may run off the main
+    /// thread. Read from the attributes before the declaration's keyword and
+    /// the attribute lines right above it, so an actor named inside a parameter
+    /// list (`_ body: @MainActor () -> Void`) is not taken for the
+    /// declaration's own.
+    public static func globalActor(at place: SourcePlace) -> String? {
+        guard let text = try? String(contentsOf: place.file, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: "\n")
+        guard place.line >= 1, place.line <= lines.count else { return nil }
+        let actor = #"@[A-Z]\w*Actor\b"#
+        let own = lines[place.line - 1]
+        let keyword = own.range(of: #"\b(func|init|subscript|var|let|class|struct|enum|actor|protocol|typealias)\b"#,
+                                options: .regularExpression)
+        let before = keyword.map { String(own[..<$0.lowerBound]) } ?? own
+        if let found = before.range(of: actor, options: .regularExpression) {
+            return String(before[found])
+        }
+        var index = place.line - 2
+        while index >= 0 {
+            let line = lines[index].trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("@") else { break }
+            if let found = line.range(of: "^" + actor, options: .regularExpression) {
+                return String(line[found])
+            }
+            index -= 1
+        }
+        return nil
+    }
+
     /// A function's, initializer's or subscript's declaration as its source
     /// writes it, one line: the parameter names and the default values the
     /// listing leaves out, without the access level, the compiler-filled
-    /// source-location parameters, or the body. Nil for anything else, whose
+    /// source-location parameters, or the body; `nonisolated` stays, since it
+    /// says the call may run off the main thread. Nil for anything else, whose
     /// listing line already says all of it.
     public static func signature(of declaration: APIDeclaration, at place: SourcePlace) -> String? {
         guard [.function, .initializer, .subscriptMember].contains(declaration.kind),
@@ -133,7 +165,7 @@ public enum SourceComments {
         out = out.replacingOccurrences(
             of: #",\s*file: StaticString = #\w+,\s*line: (Int|UInt) = #line,\s*column: (Int|UInt) = #column"#,
             with: "", options: .regularExpression)
-        out = out.replacingOccurrences(of: #"^(?:(?:public|open|package|nonisolated|final)\s+)+"#,
+        out = out.replacingOccurrences(of: #"^(?:(?:public|open|package|final)\s+)+"#,
                                        with: "", options: .regularExpression)
         out = out.replacingOccurrences(of: #"(^|\s)(?:(?:public|open)\s+)"#, with: "$1", options: .regularExpression)
         return out.isEmpty ? nil : out

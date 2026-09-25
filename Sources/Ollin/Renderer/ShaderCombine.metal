@@ -669,7 +669,7 @@ fragment float4 ollin_fx_depth_normalize(PresentOut in [[stage_in]],
     float d = depthTex.sample(samp, in.uv);                 // clip-space depth, near→0 far→1
     float t;
     if (perspective && far > near) {
-        float L = (near * far) / max(1e-6, far - d * (far - near));   // view-space distance
+        float L = (near * far) / max(1e-6, far - d * (far - near));   // depth along the view axis
         t = saturate((L - near) / (far - near));                     // 0 near … 1 far
     } else {
         t = saturate(d);

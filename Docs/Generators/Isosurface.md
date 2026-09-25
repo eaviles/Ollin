@@ -83,6 +83,8 @@ Anything that returns one number per point works, such as a distance function, a
 
 The defaults are chosen so that a modest field rebuilds every frame comfortably. Past about 96, march once in `setup()` and keep the mesh, the way [terrain](Terrain.md) does.
 
+A field that keeps changing at that size can march off the main thread instead. `isosurface` is isolated to no actor, and `Mesh` and `Metaballs` are both `Sendable`. So a background task can march a copy of the field while `draw()` draws the last mesh. It hands the new mesh over behind a lock. A field of millions of samples takes seconds to march, and the window keeps drawing through them.
+
 <a name="inside"></a>
 
 #### Which side is inside
