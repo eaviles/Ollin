@@ -148,7 +148,7 @@ final class NamaFrieze: Sketch {
         drawFrieze()
         drawCaption()
         sendToWall()
-        postProcess(.bloom(threshold: 0.6, amount: 0.7, radius: 0.02))
+        postProcess(.bloom(threshold: 0.6, amount: 0.7, radius: 22))
     }
 
     /// The x of a panel's center: one every two meters, eighteen of them.

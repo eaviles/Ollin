@@ -306,6 +306,8 @@
     ],
     "Recreations/VladimirBonacic": [
       "Recreations/VladimirBonacic/DynamicObject",
+      "Recreations/VladimirBonacic/GFE164",
+      "Recreations/VladimirBonacic/Random63",
       "Recreations/VladimirBonacic/NamaFrieze"
     ],
     "Rendering": [
@@ -392,8 +394,8 @@
         "3D/Effects/LensFlare",
         "3D/Effects/SceneDefocus"
       ],
-      "image": "groups/3D-Effects.jpg?v=1b1ca3d9",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=0e91ab9f"
+      "image": "groups/3D-Effects.jpg?v=905882ec",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=44b6976b"
     },
     "3D/Environments": {
       "of": [
@@ -787,10 +789,12 @@
     "Recreations/VladimirBonacic": {
       "of": [
         "Recreations/VladimirBonacic/DynamicObject",
+        "Recreations/VladimirBonacic/GFE164",
+        "Recreations/VladimirBonacic/Random63",
         "Recreations/VladimirBonacic/NamaFrieze"
       ],
-      "image": "groups/Recreations-VladimirBonacic.jpg?v=03c683fe",
-      "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=4f97a29b"
+      "image": "groups/Recreations-VladimirBonacic.jpg?v=0e28ebd1",
+      "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=450ef9d1"
     },
     "Recreations/WaldemarCordeiro": {
       "of": [
@@ -1273,20 +1277,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 10.549,
+      "motion": 10.669,
       "sound": false,
-      "source": "9184ab775ebda293",
-      "rendered": "2026-09-21",
+      "source": "346923c56f98b472",
+      "rendered": "2026-09-26",
       "bytes": {
-        "loop": 1021909,
-        "loopSmall": 209706,
-        "still": 49494,
-        "stillSmall": 19694
+        "loop": 1007312,
+        "loopSmall": 208710,
+        "still": 49539,
+        "stillSmall": 19595
       },
-      "loop": "examples/3D/Effects/LensFlare/loop.mp4?v=9fcfd35e",
-      "loopSmall": "examples/3D/Effects/LensFlare/loop-640.mp4?v=148c5a8a",
-      "still": "examples/3D/Effects/LensFlare/still.jpg?v=b02fbc8a",
-      "stillSmall": "examples/3D/Effects/LensFlare/still-640.jpg?v=851d7402"
+      "loop": "examples/3D/Effects/LensFlare/loop.mp4?v=2c9f8d5e",
+      "loopSmall": "examples/3D/Effects/LensFlare/loop-640.mp4?v=cc79c652",
+      "still": "examples/3D/Effects/LensFlare/still.jpg?v=216341e8",
+      "stillSmall": "examples/3D/Effects/LensFlare/still-640.jpg?v=16e887f8"
     },
     "3D/Effects/MotionBlur": {
       "bytes": {
@@ -1803,24 +1807,25 @@
       "width": 1080
     },
     "3D/Geometry/SceneExplorer": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.07,
+      "sound": false,
+      "source": "49de2fb52b438eca",
+      "rendered": "2026-09-26",
       "bytes": {
         "loop": 827010,
         "loopSmall": 132994,
         "still": 35317,
         "stillSmall": 13813
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
       "loop": "examples/3D/Geometry/SceneExplorer/loop.mp4?v=e0da8983",
       "loopSmall": "examples/3D/Geometry/SceneExplorer/loop-640.mp4?v=f0245a10",
-      "motion": 2.07,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "547c0437e94c29a5",
       "still": "examples/3D/Geometry/SceneExplorer/still.jpg?v=a0fdf2e0",
-      "stillSmall": "examples/3D/Geometry/SceneExplorer/still-640.jpg?v=aa3cdd0b",
-      "width": 1080
+      "stillSmall": "examples/3D/Geometry/SceneExplorer/still-640.jpg?v=aa3cdd0b"
     },
     "3D/Geometry/ShadowArt": {
       "bytes": {
@@ -9203,20 +9208,41 @@
       "length": "16.0s",
       "seconds": 16.0,
       "frame": 660,
-      "motion": 67.742,
+      "motion": 58.528,
       "sound": false,
-      "source": "b344fb3a402f0212",
-      "rendered": "2026-09-19",
+      "source": "8236b184b7930a05",
+      "rendered": "2026-09-26",
       "bytes": {
-        "loop": 1986726,
-        "loopSmall": 907380,
-        "still": 240975,
-        "stillSmall": 86488
+        "loop": 1955820,
+        "loopSmall": 895078,
+        "still": 249984,
+        "stillSmall": 93563
       },
-      "loop": "examples/Recreations/VladimirBonacic/DynamicObject/loop.mp4?v=2b9553cb",
-      "loopSmall": "examples/Recreations/VladimirBonacic/DynamicObject/loop-640.mp4?v=bff9005c",
-      "still": "examples/Recreations/VladimirBonacic/DynamicObject/still.jpg?v=769fc689",
-      "stillSmall": "examples/Recreations/VladimirBonacic/DynamicObject/still-640.jpg?v=5e47dbad"
+      "loop": "examples/Recreations/VladimirBonacic/DynamicObject/loop.mp4?v=3e3c1c6a",
+      "loopSmall": "examples/Recreations/VladimirBonacic/DynamicObject/loop-640.mp4?v=f3d9ec1d",
+      "still": "examples/Recreations/VladimirBonacic/DynamicObject/still.jpg?v=f3c20bb7",
+      "stillSmall": "examples/Recreations/VladimirBonacic/DynamicObject/still-640.jpg?v=e4a3f8f7"
+    },
+    "Recreations/VladimirBonacic/GFE164": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 21.047,
+      "sound": true,
+      "source": "2fd80c1e6020a031",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "loop": 3491721,
+        "loopSmall": 698485,
+        "still": 196765,
+        "stillSmall": 73008
+      },
+      "loop": "examples/Recreations/VladimirBonacic/GFE164/loop.mp4?v=837a7b8b",
+      "loopSmall": "examples/Recreations/VladimirBonacic/GFE164/loop-640.mp4?v=dd35e4c4",
+      "still": "examples/Recreations/VladimirBonacic/GFE164/still.jpg?v=18376b11",
+      "stillSmall": "examples/Recreations/VladimirBonacic/GFE164/still-640.jpg?v=1b7423d8"
     },
     "Recreations/VladimirBonacic/NamaFrieze": {
       "width": 1920,
@@ -9224,20 +9250,41 @@
       "length": "18.0s",
       "seconds": 18.0,
       "frame": 1023,
-      "motion": 8.844,
+      "motion": 9.504,
       "sound": false,
-      "source": "b6d5e5a7c02bf5a7",
-      "rendered": "2026-09-19",
+      "source": "e7953b7d51921d74",
+      "rendered": "2026-09-26",
       "bytes": {
-        "loop": 840851,
-        "loopSmall": 188576,
-        "still": 39348,
-        "stillSmall": 13602
+        "loop": 845926,
+        "loopSmall": 190072,
+        "still": 40647,
+        "stillSmall": 14162
       },
-      "loop": "examples/Recreations/VladimirBonacic/NamaFrieze/loop.mp4?v=6d937167",
-      "loopSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/loop-640.mp4?v=496d4208",
-      "still": "examples/Recreations/VladimirBonacic/NamaFrieze/still.jpg?v=0515ecbe",
-      "stillSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=45dafcd1"
+      "loop": "examples/Recreations/VladimirBonacic/NamaFrieze/loop.mp4?v=894d86a4",
+      "loopSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/loop-640.mp4?v=4d187d65",
+      "still": "examples/Recreations/VladimirBonacic/NamaFrieze/still.jpg?v=3ebec7e6",
+      "stillSmall": "examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=d959587b"
+    },
+    "Recreations/VladimirBonacic/Random63": {
+      "width": 1920,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.485,
+      "sound": false,
+      "source": "6ef817d7ee657553",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "loop": 637646,
+        "loopSmall": 223890,
+        "still": 80608,
+        "stillSmall": 29621
+      },
+      "loop": "examples/Recreations/VladimirBonacic/Random63/loop.mp4?v=37b92ef7",
+      "loopSmall": "examples/Recreations/VladimirBonacic/Random63/loop-640.mp4?v=4283b208",
+      "still": "examples/Recreations/VladimirBonacic/Random63/still.jpg?v=87151c5e",
+      "stillSmall": "examples/Recreations/VladimirBonacic/Random63/still-640.jpg?v=97d4bb2a"
     },
     "Recreations/WaldemarCordeiro/Derivadas": {
       "width": 1080,

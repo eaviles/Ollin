@@ -129,7 +129,7 @@ final class DynamicObject: Sketch {
         noStroke()
         drawFace()
         drawRearPanel()
-        postProcess(.bloom(threshold: 0.72, amount: 0.55, radius: 0.012))
+        postProcess(.bloom(threshold: 0.72, amount: 0.4, radius: 3))
     }
 
     /// The front: an aluminum lattice of square tubes, a lamp at the back of

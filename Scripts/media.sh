@@ -90,7 +90,7 @@ DEVICE_MODULES=(OllinPhone OllinRecord3D OllinScreen OllinMIDI
 DEVICE_SKETCHES=(Input/Pen Audio/Listening Audio/PlayAlong)
 # The ones that import a device library as an output they leave off unless
 # asked, so they draw everything with nothing plugged in.
-DRAWS_ALONE=(Recreations/VladimirBonacic/NamaFrieze)
+DRAWS_ALONE=(Recreations/VladimirBonacic/NamaFrieze Recreations/VladimirBonacic/Random63)
 
 upload=1
 force=0

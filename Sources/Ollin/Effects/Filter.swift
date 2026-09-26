@@ -422,6 +422,17 @@ public struct Filter: Sendable {
 
     let kind: Kind
 
+    /// The name and pixel radius of a filter that spreads light over a radius,
+    /// `nil` for the rest.
+    var spread: (name: String, radius: Double)? {
+        switch kind {
+        case let .gaussianBlur(radius): return ("gaussianBlur", radius)
+        case let .bloom(_, _, radius): return ("bloom", radius)
+        case let .halation(_, radius, _, _): return ("halation", radius)
+        default: return nil
+        }
+    }
+
     /// A user-supplied `Shader` as a one-input filter: it reads this layer with
     /// `sample(info, uv)` and returns a new color. Use with `filtered(_:)` /
     /// `postProcess(_:)`.
@@ -436,8 +447,8 @@ public struct Filter: Sendable {
     }
 
     /// Bloom (glow). Pixels brighter than `threshold` bleed light into their
-    /// surroundings: the bright parts are extracted, blurred by `radius`, and added
-    /// back at `intensity`. The result is the original image *plus* its glow, ready
+    /// surroundings: the bright parts are extracted, blurred by `radius` pixels, and
+    /// added back at `amount`. The result is the original image *plus* its glow, ready
     /// to composite (often additively). Brightness is the max color channel (so a
     /// vivid full-brightness mark blooms whatever its hue); `threshold` runs 0…1
     /// over the linear-light frame, so values above 1 (HDR highlights) bloom hardest.
@@ -453,7 +464,7 @@ public struct Filter: Sendable {
     /// passes through the emulsion reflects off the base and exposes the layers
     /// again around the point it entered, reddest because the red-sensitive
     /// layer sits deepest. The pixels above `threshold` (the max channel, as
-    /// `.bloom` reads it, over the linear-light frame) are blurred by `radius`,
+    /// `.bloom` reads it, over the linear-light frame) are blurred by `radius` pixels,
     /// colored by `tint`, and added back at `amount`. Unlike a glow, the halo only
     /// lands where the emulsion still has room: each channel takes it in
     /// proportion to how far it sits below white, so a white core stays white and

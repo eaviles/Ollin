@@ -1173,7 +1173,7 @@ final class Drawer {
     /// One-time notes for state a path can't honor (a width profile on an analytic
     /// shape, say), keyed by message so each prints once per drawer rather than
     /// every frame.
-    private var drawerNotes = Set<String>()
+    private(set) var drawerNotes = Set<String>()
     func noteOnce(_ message: String) {
         guard !drawerNotes.contains(message) else { return }
         drawerNotes.insert(message)
@@ -1710,6 +1710,7 @@ final class Drawer {
             }
         default: break
         }
+        noteSubPixelSpread(filter)
         let output = RenderTarget(width: input.width, height: input.height, scale: input.scale,
                                   drawer: self, origin: .filter(input: input, filter: filter))
         filterOps.append(output)
@@ -1741,7 +1742,19 @@ final class Drawer {
     }
 
     /// Queue a whole-frame filter, applied to the finished frame before present.
-    func postProcess(_ filter: Filter) { frameFilters.append(filter) }
+    func postProcess(_ filter: Filter) {
+        noteSubPixelSpread(filter)
+        frameFilters.append(filter)
+    }
+
+    /// A blur or glow radius is in pixels. One between 0 and 1 is nearly always a
+    /// share of the canvas written as if it were a pixel count, and it spreads
+    /// nothing past the mark it comes from, so the glow a sketch asked for never
+    /// appears. Said once, where the sketch's own call is.
+    func noteSubPixelSpread(_ filter: Filter) {
+        guard let spread = filter.spread, spread.radius > 0, spread.radius < 1 else { return }
+        noteOnce("\(spread.name)(radius: \(spread.radius)) spreads less than a pixel, since the radius is in pixels; for a share of the canvas, write radius: width * \(spread.radius).")
+    }
 
     /// Roll the recorded geometry back to `s`, used by `background(_:)` inside a
     /// `withTarget` block to clear just that target's geometry. (Gradient rows are

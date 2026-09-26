@@ -941,12 +941,16 @@ let package = Package(
         example("Recreations/Gego/Tejedura"),
         example("Recreations/Gego/Chorro", [.physics]),
         // A square of lamps lit a pattern at a time by a walk through the
-        // Galois field of 2^32 elements; and a frieze of eighteen lamp panels
+        // Galois field of 2^32 elements; a frieze of eighteen lamp panels
         // across a store front, stepping through all 262,143 nonzero states
-        // of an 18-bit field and sending them to a real wall over DMX, after
-        // Vladimir Bonačić.
+        // of an 18-bit field and sending them to a real wall over DMX; a
+        // relief of colored glass lit and sounded by three field generators;
+        // and a panel of sixty-three bulbs left to chance beside the same
+        // bulbs driven by the field, after Vladimir Bonačić.
         example("Recreations/VladimirBonacic/DynamicObject"),
         example("Recreations/VladimirBonacic/NamaFrieze", [.dmx]),
+        example("Recreations/VladimirBonacic/GFE164", [.audio]),
+        example("Recreations/VladimirBonacic/Random63", [.dmx]),
         // The ruled sheets of the 1970s, registers of horizontals whose
         // intervals gather and open, and the floating chevrons and fans of
         // about 1980, after Nasreen Mohamedi.

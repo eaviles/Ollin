@@ -173,6 +173,6 @@ final class LensFlare: Sketch {
         // A bloom after the flare, so the ghosts glow the way everything else
         // bright in the frame does. The flare composites before the filters for
         // exactly this reason.
-        postProcess(.bloom(threshold: 0.7, amount: 0.8, radius: 0.05))
+        postProcess(.bloom(threshold: 0.7, amount: 0.8, radius: 6))
     }
 }
