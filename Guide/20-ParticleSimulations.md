@@ -90,7 +90,7 @@ stepPhysarum(slime)
 drawImage(slime.image, in: bounds)
 ```
 
-One honest caveat covers all three. The neighbor sort settles ties with a race between GPU threads, and these systems are chaotic, so a run is not reproducible frame for frame. Seed them for a repeatable *starting* layout, but don't expect two exports to match.
+These systems are chaotic, so a difference in the last bit of a number grows into a different picture within seconds. An export puts each cell's particles in a fixed order before the neighbors are summed. So two exports with the same seed match frame for frame on the same machine. A different GPU can still round a step another way and end up somewhere else.
 
 ## A search you can watch: ant colony optimization
 

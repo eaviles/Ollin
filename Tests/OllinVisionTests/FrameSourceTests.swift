@@ -21,6 +21,22 @@ import OllinVideo
         var frameTap: FrameTap?
     }
 
+    /// `--photo` keeps the camera closed even for a sketch that starts one
+    /// itself, where `Camera.orStill` was the only door the flag used to reach:
+    /// `start()` throws before touching the device, so a run with the flag
+    /// never films whoever is at the machine. The flag is put back before the
+    /// test returns, with no suspension in between, so no other test runs
+    /// while it is up.
+    @Test func photoKeepsEveryCameraClosed() {
+        let asked = Camera.photoOnly
+        defer { Camera.photoOnly = asked }
+        Camera.photoOnly = true
+        let camera = Camera()
+        #expect(throws: VisionError.self) { try camera.start() }
+        #expect(!camera.isRunning)
+        #expect(camera.frame == nil)
+    }
+
     /// A white image with a filled black disk, as a `CGImage` frame.
     private func diskFrame(size: Int) -> CGImage {
         let image = Image(width: size, height: size, color: .white)

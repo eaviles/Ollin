@@ -1156,20 +1156,20 @@
       "width": 1080
     },
     "3D/Depth/DepthCloud": {
-      "bytes": {
-        "still": 19171,
-        "stillSmall": 7068
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "9884ab8d3643a17f",
-      "still": "examples/3D/Depth/DepthCloud/still.jpg?v=108dd6c6",
       "stillBecause": "holds still",
-      "stillSmall": "examples/3D/Depth/DepthCloud/still-640.jpg?v=683508e7",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "3c5058c0bc0f481e",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "still": 589581,
+        "stillSmall": 149180
+      },
+      "still": "examples/3D/Depth/DepthCloud/still.jpg?v=46d22759",
+      "stillSmall": "examples/3D/Depth/DepthCloud/still-640.jpg?v=1e4b1d83"
     },
     "3D/Depth/DepthCompositing": {
       "bytes": {
@@ -1509,24 +1509,20 @@
       "width": 1080
     },
     "3D/Environments/LiveEnvironment": {
-      "bytes": {
-        "loop": 1992464,
-        "loopSmall": 155896,
-        "still": 18075,
-        "stillSmall": 6012
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Environments/LiveEnvironment/loop.mp4?v=e9b21ff5",
-      "loopSmall": "examples/3D/Environments/LiveEnvironment/loop-640.mp4?v=694ff599",
-      "motion": 1.084,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "5bb491a94a4c4d78",
-      "still": "examples/3D/Environments/LiveEnvironment/still.jpg?v=85d460fc",
-      "stillSmall": "examples/3D/Environments/LiveEnvironment/still-640.jpg?v=4b42560e",
-      "width": 1080
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.997,
+      "source": "734e26d1a69606bb",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "still": 479568,
+        "stillSmall": 165909
+      },
+      "still": "examples/3D/Environments/LiveEnvironment/still.jpg?v=2b52d75d",
+      "stillSmall": "examples/3D/Environments/LiveEnvironment/still-640.jpg?v=c3c3d30e"
     },
     "3D/Environments/ProceduralSky": {
       "bytes": {
@@ -2546,24 +2542,25 @@
       "stillSmall": "examples/3D/Materials/Inked/still-640.jpg?v=f376a7db"
     },
     "3D/Materials/LiveSurface": {
-      "bytes": {
-        "loop": 1776744,
-        "loopSmall": 200741,
-        "still": 20408,
-        "stillSmall": 7777
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Materials/LiveSurface/loop.mp4?v=b6e85ea6",
-      "loopSmall": "examples/3D/Materials/LiveSurface/loop-640.mp4?v=b36105d1",
-      "motion": 2.367,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "55ac280aed16d6ac",
-      "still": "examples/3D/Materials/LiveSurface/still.jpg?v=7a24c1b1",
-      "stillSmall": "examples/3D/Materials/LiveSurface/still-640.jpg?v=d831912b",
-      "width": 1080
+      "frame": 480,
+      "motion": 7.692,
+      "sound": false,
+      "source": "3145cefe4e913504",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "loop": 2692536,
+        "loopSmall": 557316,
+        "still": 149577,
+        "stillSmall": 51244
+      },
+      "loop": "examples/3D/Materials/LiveSurface/loop.mp4?v=234fbfbe",
+      "loopSmall": "examples/3D/Materials/LiveSurface/loop-640.mp4?v=ec3277fb",
+      "still": "examples/3D/Materials/LiveSurface/still.jpg?v=5b8ce82f",
+      "stillSmall": "examples/3D/Materials/LiveSurface/still-640.jpg?v=784066fa"
     },
     "3D/Materials/Matcap": {
       "bytes": {
@@ -11124,20 +11121,20 @@
       "width": 1080
     },
     "Vision/BarcodeReader": {
-      "bytes": {
-        "still": 74166,
-        "stillSmall": 18769
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.45,
-      "rendered": "2026-09-10",
-      "source": "4138948602ed6684",
-      "still": "examples/Vision/BarcodeReader/still.jpg?v=b0a9b748",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/BarcodeReader/still-640.jpg?v=29377b8f",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "ccd9bdac28825ee5",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "still": 65796,
+        "stillSmall": 28431
+      },
+      "still": "examples/Vision/BarcodeReader/still.jpg?v=5186c77c",
+      "stillSmall": "examples/Vision/BarcodeReader/still-640.jpg?v=ab92f50c"
     },
     "Vision/BodyPose": {
       "bytes": {

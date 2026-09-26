@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// A live 3D point cloud from one plain webcam — the Mac-side preview of the
@@ -9,7 +10,8 @@ import OllinVision
 /// camera with a neural model. Each cell of a sampling grid becomes a 3D point —
 /// placed in z by its depth, colored by the camera image — and the whole cloud
 /// orbits so the estimated depth reads as real space. Setting a `camera` is what
-/// makes the frame 3D; drag left/right to spin the cloud yourself.
+/// makes the frame 3D; drag left/right to spin the cloud yourself. With no camera,
+/// or under `--photo`, it reads the bundled alley, a picture with distance in it.
 ///
 /// The model weights aren't in the repo — run `Scripts/fetch-models.sh` once and
 /// relaunch (the sketch says so on the canvas until then).
@@ -30,10 +32,8 @@ private func modelsPath(_ name: String) -> String {
 final class DepthCloud: Sketch {
     static let modelPath = modelsPath("DepthAnythingV2SmallF16.mlpackage")
 
-    let camera = Camera()
-    lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))
-
-    override func setup() { try? camera.start() }
+    let feed = Camera.orStill(SamplePhoto.alley.load())
+    lazy var depth = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.modelPath))
 
     override func draw() {
         background(Color(white: 0.03))
@@ -42,7 +42,7 @@ final class DepthCloud: Sketch {
             return drawStatus("The depth model isn't downloaded yet.\n" +
                               "Run Scripts/fetch-models.sh, then relaunch.", style: .warning)
         }
-        guard let frame = camera.frame else {
+        guard let frame = feed.frame else {
             return drawStatus("Waiting for camera…")
         }
         if let reason = depth.unavailableReason { return drawStatus(reason, style: .warning) }

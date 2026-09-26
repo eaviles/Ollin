@@ -6,7 +6,7 @@
 
 `import Ollin` gives you two GPU particle-dynamics systems. The first is **`ParticleFluid`**, tens of thousands of particles that pour, splash, and settle like water. The second is **`SoftBodies`**, soft blobs that squash on impact and spring back. Both systems live inside a walled box, both use the [`SpatialHash`](../Shaders/Compute.md#spatialhash) neighbor search, and both respond to a mouse `pull` or `push`. They follow the same pattern as the [artificial-life sims](./ArtificialLife.md), so you build the system in `setup()`, then update and draw it in `draw()`.
 
-The caveat from those sims applies here too. The GPU sums neighbors in a race-dependent order, and both systems are chaotic, so two runs are **not** identical frame for frame. A seed gives you a repeatable starting layout, not a pixel-identical video.
+What holds for those sims holds here too. Both systems are chaotic, so the order the GPU sums neighbors in decides where a run goes. An export, or a take playing back, fixes that order, so the same seed draws the same frames on the same machine. A live window keeps the faster order, and another GPU's arithmetic can take a run somewhere else.
 
 <img src="../../Guide/Images/20-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
 

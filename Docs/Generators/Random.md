@@ -192,7 +192,7 @@ let roll = Int.random(in: 1 ... 6, using: &randomness)
 let coin = Bool.random(using: &randomness)
 ```
 
-Written without `using:`, `points.shuffled()` and `Int.random(in: 1 ... 6)` roll the system's dice instead and differ every run. That is the one quiet way a seeded sketch stops reproducing, because nothing about the call looks wrong.
+Written without `using:`, `points.shuffled()` and `Int.random(in: 1 ... 6)` roll the system's dice instead and differ every run. That is the commonest quiet way a seeded sketch stops reproducing, because nothing about the call looks wrong. The others, a `Date()` read and the order a `Set` walks among them, are listed in [Why a run repeats](../Concepts/Determinism.md#what-breaks-it).
 
 It is one stream, not a second generator beside `random()`, so a draw through either spelling advances the other. It is also what the seedable generators take, which is how the sketch's [`variation`](../Core/Variations.md) reaches them:
 

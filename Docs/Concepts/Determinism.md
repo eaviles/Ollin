@@ -20,12 +20,12 @@ In the window the clock follows real time, so a slow frame makes a longer step a
 
 - **Reading the system clock.** `Date()` and calls like it give a different value every run, so use `time`, `deltaTime`, and `frameCount` instead.
 - **Swift's own random calls.** `Double.random(in:)` and an array's `shuffled()` do not come from the seed. Ollin's `random(...)`, `randomGaussian()`, and `shuffled(_:)` do, so use those.
-- **Live input.** The mouse, a camera, a microphone, a controller and a network feed all give something different each run. None of it repeats. A [take](../Core/Replay.md) records the run's inputs, which lets you play the performance back exactly.
-- **Order that is not fixed.** Iterating a `Set` or a `Dictionary` visits the elements in an order Swift is free to change. Results gathered from concurrent work arrive in the order they finish. Sort before you draw.
+- **Live input.** The mouse, a camera, a microphone, a controller and a network feed all give something different each run. None of it repeats. A [take](../Core/Replay.md) records the run's inputs, which lets you play the performance back exactly. For a camera, `--photo` swaps in the bundled picture and keeps every camera closed, so a still of a live sketch comes back too.
+- **Order that is not fixed.** Iterating a `Set` or a `Dictionary` visits the elements in an order Swift seeds afresh in every process, so the same keys come out in another order next run. Results gathered from concurrent work arrive in the order they finish. Sort before you draw, or before you sum: adding the same numbers in another order rounds differently.
 
 ### What it buys
 
-A sketch that repeats is one you can explore, not one you only make once. Step and roll the seed to find a composition, then proof a range as a contact sheet with `--export-grid`. When you have a keeper, render it at print size with `--seed`. Ollin's own rendering is guarded the same way, by reference images that only match because a frame renders identically twice.
+A sketch that repeats is one you can explore, not one you only make once. Step and roll the seed to find a composition, then proof a range as a contact sheet with `--export-grid`. When you have a keeper, render it at print size with `--seed`. Ollin's own rendering is guarded the same way. Reference images only match because a frame renders identically twice. And every example is drawn twice, in two separate processes under one seed, and the two pictures are compared pixel for pixel.
 
 ### Read next
 

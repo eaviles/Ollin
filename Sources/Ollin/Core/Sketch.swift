@@ -4301,6 +4301,8 @@ open class Sketch {
             for e in extensions { e.setup(self) }
         }
         drawer.beginFrame()
+        drawer.runsOnFixedClock = (OllinApp.isRenderingHeadless && !OllinApp.isBenchmarking)
+            || takePlayer != nil
         // The GPU takes the clock as a 32-bit float, which runs out of precision
         // in a run measured in days, so an installation hands it one that starts
         // over (`shaderClock`); every other run passes `time` through unchanged.

@@ -1,16 +1,17 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// The camera as a surface: the webcam's frame worn by a globe, and lighting it.
 ///
 /// A camera frame is an `Image`, and an `Image` goes wherever an image goes: onto a
 /// mesh through `textured(_:)`, and around the scene as its light through
-/// `environment(.feed(camera))`. A live picture on a surface therefore asks for no
+/// `environment(.feed(feed))`. A live picture on a surface therefore asks for no
 /// API of its own:
 ///
 /// ```swift
-/// environment(.feed(camera))                  // the room as the light
-/// if let frame = camera.frame {
+/// environment(.feed(feed))                    // the room as the light
+/// if let frame = feed.frame {
 ///     drawMesh(globe.textured(frame))         // the room as the surface
 /// }
 /// ```
@@ -21,24 +22,23 @@ import OllinVision
 /// frame and nothing while the frame holds. That is cheap for one surface and adds
 /// up across many, so wear the feed on the thing that matters and let the same feed
 /// light the rest. Walk past the camera and the globe carries you around with it.
+/// With no camera, or under `--photo`, the globe wears the bundled city instead.
 @main
 final class LiveSurface: Sketch {
 
-    let camera = Camera()
+    let feed = Camera.orStill(SamplePhoto.city.load())
     /// Built once; only its material changes, once per new frame.
     let globe = Mesh.sphere(radius: 1.7, segments: 64, rings: 32)
-
-    override func setup() { try? camera.start() }
 
     override func draw() {
         background(Color(hex: 0x0B0C12))
         toneMap(.aces)
 
         // Before the first frame, the standard waiting notice; nothing to wear yet.
-        guard let frame = camera.frame else { drawFrame(camera); return }
+        guard let frame = feed.frame else { drawFrame(feed); return }
 
         // The room as the light: the same frames the globe wears.
-        environment(.feed(camera))
+        environment(.feed(feed))
 
         cameraShowcase(.sway(amplitude: 0.3, period: .tau / 0.08), target: .zero,
                        radius: 7.5, elevation: 0.14, fieldOfView: .pi / 4.6)

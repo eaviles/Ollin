@@ -77,20 +77,9 @@ STILL_FRAME_DEFAULT=480      # eight seconds at sixty
 MOTION_FLOOR=1.0
 RENDER_LIMIT=300             # seconds before a sketch is given up on and drawn as one frame
 
-# A sketch importing one of these needs something plugged in, so its media
-# waits for a person at the desk with the thing in hand.
-# Vision and the camera are not here: a sketch that reads a camera falls back
-# to a bundled photograph or the bundled film, so it draws the real technique
-# on a real picture with nothing plugged in.
-DEVICE_MODULES=(OllinPhone OllinRecord3D OllinScreen OllinMIDI
-                OllinOSC OllinSerial OllinBluetooth OllinDMX OllinLaser OllinSyphon
-                OllinRoom OllinRemote OllinLink OllinHaptics OllinController
-                OllinMQTT)
-# The ones that need a device without importing a library for it.
-DEVICE_SKETCHES=(Input/Pen Audio/Listening Audio/PlayAlong)
-# The ones that import a device library as an output they leave off unless
-# asked, so they draw everything with nothing plugged in.
-DRAWS_ALONE=(Recreations/VladimirBonacic/NamaFrieze Recreations/VladimirBonacic/Random63)
+# Which examples need something plugged in (`held_back`), shared with the
+# other scripts that run every example alone.
+source $ROOT/Scripts/example-devices.zsh
 
 upload=1
 force=0
@@ -130,21 +119,6 @@ cap() { echo "scale=w=${1}:h=${1}:force_original_aspect_ratio=decrease:force_div
 # What the example is made of, so an unchanged one can be left alone.
 digest_of() {
   find $ROOT/Examples/$1 -type f -not -name '.*' | sort | xargs shasum -a 256 | shasum -a 256 | cut -c1-16
-}
-
-# What this example is waiting for before anybody can take its picture.
-held_back() {
-  local sketch=$ROOT/Examples/$1/Sketch.swift
-  for alone in $DRAWS_ALONE; do
-    [[ $1 == $alone ]] && { echo ""; return; }
-  done
-  for module in $DEVICE_MODULES; do
-    grep -q "^import $module\$" $sketch && { echo "needs a device at the desk: imports $module"; return; }
-  done
-  for named in $DEVICE_SKETCHES; do
-    [[ $1 == $named ]] && { echo "needs a device at the desk"; return; }
-  done
-  echo ""
 }
 
 # The largest change between samples a second apart, which is what tells a
@@ -203,11 +177,13 @@ for example in $list; do
   [[ $want_frame == "-" ]] && want_frame=$STILL_FRAME_DEFAULT
 
   # A detector loads on another thread, so the drawing has nothing to show
-  # until it has: settle the still and skip the clip past the wait.
+  # until it has: settle the still and skip the clip past the wait. A held
+  # draw costs milliseconds, and the barcode reader needed more than 120 of
+  # them before its first answer landed.
   settle=()
   skip=()
   if grep -q '^import OllinVision$' $folder/Sketch.swift; then
-    settle=(--settle 120)
+    settle=(--settle 600)
     skip=(--skip 3)
   fi
 

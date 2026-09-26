@@ -20,6 +20,24 @@ final class Pulse: Sketch {
 }
 ```
 
+A read looks like a property's, but it costs more. Each one takes a lock and clamps the value to its range, about 40 nanoseconds on an M2 against under one for a plain property. A few reads a frame never show. A loop that reads parameters for every vertex or every sample pays for each read, though. At 160,000 vertices reading seven parameters apiece, the reads alone cost about 45 ms a frame. Read what the loop needs into locals before it starts:
+
+```swift
+final class Bands: Sketch {
+    @Param(1...12) var turns = 3.0
+    @Param var highlight = Color.white
+    var colors = [Color](repeating: .black, count: 160_000)
+
+    override func draw() {
+        let turns = self.turns, highlight = self.highlight   // two reads, not two per vertex
+        for i in colors.indices {
+            let t = Double(i) / Double(colors.count) * turns
+            colors[i] = t - t.rounded(.down) < 0.1 ? highlight : .black
+        }
+    }
+}
+```
+
 ### Contents
 
 - [The typed family](#family)

@@ -586,6 +586,8 @@ swift run --package-path Examples Example-Randomness-Variations --export-video k
 
 The same seed always renders the same pixels. A sketch that sets its own seed in `setup()` ignores the flag, just as it ignores every other way of setting a seed.
 
+A seed holds still only what comes from the sketch's own generator and clock. A `Date()` read, a system random call, the order a `Set` walks, and live input all reach past it; [Why a run repeats](../Concepts/Determinism.md#what-breaks-it) lists them with the fix for each.
+
 ---
 
 ### Setting a parameter for the run

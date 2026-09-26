@@ -27,8 +27,9 @@ import COllinShaders   // OllinParticle
 /// The look lives in the sensing/movement parameters (`senseAngle`, `turnAngle`,
 /// `senseDistance`, `stepSize`) and the trail's `evaporation`; the defaults are Jones'
 /// (22.5° / 45° / 9 / 1, evaporation 0.1). Deposit races are avoided with an atomic
-/// deposit grid, so the trail is well-defined; the agent motion is still chaotic, so
-/// there's no frame-exact export guarantee.
+/// deposit grid in fixed point, whose sums come out the same in any order, so the
+/// same seed exports the same frames on one machine; the motion is chaotic, so
+/// another GPU's arithmetic can take it somewhere else.
 @MainActor
 public final class Physarum {
     /// Number of agents.

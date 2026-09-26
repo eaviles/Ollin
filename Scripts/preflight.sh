@@ -5,7 +5,8 @@
 #   Scripts/preflight.sh              # gates for the working-tree diff vs HEAD
 #   Scripts/preflight.sh --milestone  # everything, regardless of the diff:
 #                                     # full --no-probe figure render, the whole
-#                                     # test suite, and the Examples build
+#                                     # test suite, the Examples build, and the
+#                                     # same-seed pass over every example
 #
 # The ship checklist names five gate scripts, and the right subset depends on
 # what changed; remembering that subset per commit is a habit, and habits
@@ -77,9 +78,12 @@
 #          signed-bundle builds the everyday run leaves out), Scripts/test.sh
 #          tsan (the handoffs under Thread Sanitizer: a second, instrumented
 #          build of the non-GPU targets, which is why it is not a gate on
-#          every commit), guide-figures --no-probe, site-hero, and swift build
+#          every commit), guide-figures --no-probe, site-hero, swift build
 #          --package-path Examples (the examples anti-rot guard; CI runs on
-#          pull requests only, so nothing else compiles them)
+#          pull requests only, so nothing else compiles them), and
+#          Scripts/check-determinism.sh (every example that runs alone,
+#          drawn twice in two processes under one seed and compared pixel
+#          for pixel; its self-test first; about an hour)
 #
 # The figure gate's worker count follows the machine's memory (see
 # defaultJobs in the runner; OLLIN_FIGURE_JOBS overrides it). Four workers on
@@ -328,6 +332,8 @@ if [[ $milestone -eq 1 ]]; then
     run "test.sh (full suite + bundle builds)" Scripts/test.sh milestone
     run "test.sh tsan (the handoffs under Thread Sanitizer)" Scripts/test.sh tsan
     run "examples build" swift build --package-path Examples
+    run "check-determinism --selftest" Scripts/check-determinism.sh --selftest
+    run "check-determinism (every example twice under one seed)" Scripts/check-determinism.sh
 fi
 
 echo ""

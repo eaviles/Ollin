@@ -45,6 +45,20 @@ struct CausticRenderProbes {
         #expect(pixels(of: with) == pixels(of: without))
     }
 
+    /// An exported caustic is the same pixels every time. The trace used to
+    /// append its photons through an atomic counter, so they reached the
+    /// additive splat in a different order each run and rounded to a level or
+    /// two apart in the half-float layer (85 pixels of the example at the
+    /// eighth second); every trace thread now writes its own slot.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func anExportedCausticRepeats() throws {
+        let first = pixels(of: try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1)))
+        for _ in 0 ..< 3 {
+            let again = pixels(of: try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1)))
+            #expect(again == first, "the caustic drew differently")
+        }
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aLensLandsLightInsideItsOwnShadow() throws {
         // A hovering glass sphere with castShadows() on: direct light cannot reach

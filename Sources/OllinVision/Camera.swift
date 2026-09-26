@@ -99,8 +99,16 @@ public final class Camera: FrameSource, VideoFeed {
     /// the granted path reaches; anything that goes wrong after the prompt has
     /// returned lands in `unavailableReason` instead, since by then there is no
     /// caller left to throw to.
+    ///
+    /// Under `--photo` it throws before touching the device: the flag asks for
+    /// the bundled picture instead of the room, so a run with it never films
+    /// whoever is at the machine, even from a sketch that starts a `Camera`
+    /// itself rather than through `Camera.orStill`.
     public func start() throws {
         guard !isRunning else { return }
+        if Camera.photoOnly {
+            throw VisionError.unavailable("the camera stays closed under --photo")
+        }
         unavailableReason = nil
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -123,6 +131,11 @@ public final class Camera: FrameSource, VideoFeed {
             unavailableReason = "camera access is denied or restricted for this app"
         }
     }
+
+    /// Whether this run asked for the bundled picture instead of the room
+    /// (`--photo` on launch), read once from the arguments. The tests set it,
+    /// since the arguments cannot be.
+    package static var photoOnly = CommandLine.arguments.contains("--photo")
 
     /// Why there are no frames, in a sentence worth drawing, or `nil` while
     /// nothing has gone wrong. `start()` throws for what it can see itself;

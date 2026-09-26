@@ -173,6 +173,8 @@ private final class BallEngine: @unchecked Sendable {
     }
     private var balls: [Ball] = []
     private var frameCount = 0
+    /// The launcher's own dice, seeded, so every run lobs the same balls.
+    private var dice = SplitMix64(seed: 1969)
     private let width = Int(BallFeed.size.x)
     private let height = Int(BallFeed.size.y)
     private let dt = 1.0 / 30.0
@@ -185,8 +187,8 @@ private final class BallEngine: @unchecked Sendable {
             let fromLeft = (frameCount / 70) % 2 == 0
             balls.append(Ball(
                 position: Vector2(fromLeft ? 30 : Double(width) - 30, Double(height) - 24),
-                velocity: Vector2((fromLeft ? 1 : -1) * Double.random(in: 170...290),
-                                  -Double.random(in: 420...520))))
+                velocity: Vector2((fromLeft ? 1 : -1) * Double.random(in: 170...290, using: &dice),
+                                  -Double.random(in: 420...520, using: &dice))))
         }
         frameCount += 1
 

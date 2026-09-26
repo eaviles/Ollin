@@ -236,15 +236,15 @@ kernel void ollin_caustics_quadtree(device uint4 *tree [[buffer(0)]],
     tree[ollin_caustics_level_offset(level) + gid.y * levelEdge + gid.x] = uint4(r, g, b, w);
 }
 
-// Reset the splat pass's indirect-draw arguments (vertexCount 4, instanceCount 0,
-// grown by the trace kernel's photon appends) GPU-side, so no CPU-written buffer
-// needs a per-frame ring.
+// Reset the splat pass's indirect-draw arguments (vertexCount 4, instanceCount 0
+// until the photon count is set after the trace) GPU-side, so no CPU-written
+// buffer needs a per-frame ring.
 kernel void ollin_caustics_reset_args(device uint *args [[buffer(0)]],
                                       device uint *totals [[buffer(2)]],
                                       uint gid [[thread_position_in_grid]]) {
     if (gid > 0) return;
     args[0] = 4;    // vertexCount (a triangle-strip quad)
-    args[1] = 0;    // instanceCount (the photon append cursor)
+    args[1] = 0;    // instanceCount (every photon slot, set after the trace)
     args[2] = 0;    // vertexStart
     args[3] = 0;    // baseInstance
     // The density sum is a per-frame quantity: the leaf-count pass divides the
@@ -254,13 +254,16 @@ kernel void ollin_caustics_reset_args(device uint *args [[buffer(0)]],
     totals[0] = 0; totals[1] = 0; totals[2] = 0; totals[3] = 0;
 }
 
-// Clamp the appended photon count to the buffer's capacity (the trace kernel
-// only *writes* records below capacity, but the cursor itself can run past it).
+// The splat draws every photon slot, one per trace thread, in thread order. An
+// append cursor would be cheaper to draw but hands out slots in whatever order
+// the threads arrive, and the splat's additive blend rounds differently in each
+// order, so the same frame would come out a level or two apart from run to run. A slot
+// the trace left empty carries zero power and the splat culls it.
 kernel void ollin_caustics_clamp_args(device uint *args [[buffer(0)]],
                                       constant OllinCausticsUniforms &cu [[buffer(3)]],
                                       uint gid [[thread_position_in_grid]]) {
     if (gid > 0) return;
-    args[1] = min(args[1], cu.counts2.x);
+    args[1] = cu.counts2.x;
 }
 
 // MARK: - Caustics G-buffer
@@ -356,6 +359,12 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
                                  const device OllinCausticGeo *geoMats [[buffer(9)]],
                                  texture2d<float> prevCaustics [[texture(0)]],
                                  uint tid [[thread_position_in_grid]]) {
+    // Every thread owns photon slot `tid` and empties it first, so a thread that
+    // deposits nothing (no task, a miss, too little flux) leaves a slot the
+    // splat skips rather than last frame's photon.
+    if (tid < cu.counts2.x) {
+        photons[tid].power = float4(0.0);
+    }
     // 1. The task: walk the quadtree to this thread's emission texel.
     uint4 value = tree[0];
     if (tid >= value.w) return;                      // no task for this thread
@@ -603,15 +612,14 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
         }
         float3 flux = cu.lightColor.xyz * spotAtten * firstHitArea * tint * cu.params.x;
         if (max(flux.x, max(flux.y, flux.z)) < cu.params.w * firstHitArea) return;
-        uint idx = atomic_fetch_add_explicit(&args[1], 1u, memory_order_relaxed);
-        if (idx < cu.counts2.x) {
+        if (tid < cu.counts2.x) {
             OllinPhoton ph;
             ph.position = float4(hitP, 0.0);
             ph.power = float4(flux, 0.0);
             ph.incident = float4(D, 0.0);
             ph.dPdu = float4(hitPu, 0.0);
             ph.dPdv = float4(hitPv, 0.0);
-            photons[idx] = ph;
+            photons[tid] = ph;
         }
         // Feedback (light space): the emitting texel learns its photons' screen
         // area and the pattern's temporal variance where they landed.
@@ -653,6 +661,15 @@ vertex CausticSplatOut ollin_caustics_splat_vertex(uint vid [[vertex_id]],
                                                    const device OllinPhoton *photons [[buffer(0)]],
                                                    constant OllinCausticsUniforms &cu [[buffer(1)]]) {
     OllinPhoton ph = photons[iid];
+    // An empty slot (the trace deposited nothing from that thread) draws nothing.
+    if (all(ph.power.xyz == float3(0.0))) {
+        CausticSplatOut cull;
+        cull.position = float4(0.0, 0.0, 2.0, 1.0);   // clipped: no fragments
+        cull.local = float2(2.0);
+        cull.power = float3(0.0); cull.incident = float3(0.0);
+        cull.worldCenter = float3(0.0); cull.invArea = 0.0;
+        return cull;
+    }
     float2 corner = float2((vid & 1u) ? 1.0 : -1.0, (vid & 2u) ? 1.0 : -1.0);
     float3 a = ph.dPdu.xyz;
     float3 b = ph.dPdv.xyz;

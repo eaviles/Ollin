@@ -932,6 +932,13 @@ final class Drawer {
     /// geometry to wipe).
     private(set) var dispatches: [RecordedDispatch] = []
 
+    /// Whether this frame's clock is one a later run can come back to: an
+    /// export's fixed step, or a take playing back its recorded one. Work whose
+    /// only purpose is to make a run repeat (the neighbor search putting each
+    /// cell in index order) is done only then. A live window follows the wall
+    /// clock, where no two runs repeat anyway. Set by the sketch every frame.
+    var runsOnFixedClock = false
+
     /// Standard per-frame constants bound into every dispatch at buffer index 10
     /// (`u.time`/`u.dt`/`u.resolution`/`u.mouse`/`u.frameCount`). `particleCount` is
     /// filled per dispatch by the renderer; `custom` per dispatch by the caller.

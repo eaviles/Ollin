@@ -2513,6 +2513,12 @@ public enum OllinApp {
     /// actor is already doing.
     package nonisolated(unsafe) static var isRenderingHeadless = false
 
+    /// True for the whole of a `--bench` drive, which is headless but stands in
+    /// for a live window: its frames are timed to say what a window would get,
+    /// so work done only to make an export repeat (`Drawer.runsOnFixedClock`)
+    /// stays out of them. Set and cleared on one thread, like the flag above.
+    package nonisolated(unsafe) static var isBenchmarking = false
+
     /// True for the *whole* of a vector-export drive (`recordVectorFrame`),
     /// setup and warmup frames included, not just the recorded frame. Vector
     /// export replaces GPU emission per draw call, so a `Batch` recorded any
@@ -3123,7 +3129,11 @@ public enum OllinApp {
     static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false,
                           quality: RenderQuality = .default) {
         isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        isBenchmarking = true
+        defer {
+            isRenderingHeadless = false
+            isBenchmarking = false
+        }
         let n = max(1, frames)
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))

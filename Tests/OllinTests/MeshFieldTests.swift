@@ -109,14 +109,67 @@ struct MeshFieldRenderTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func cullingChangesNothingInThePicture() throws {
         // The camera deliberately sees only part of the field, so culling has
-        // real work to skip; the picture must not know the difference.
+        // real work to skip; the picture must not know the difference. Not a
+        // pixel of it: an export compacts the visible copies in copy order, the
+        // order the unculled field draws them in, so copies meeting at equal
+        // depth resolve the same way in both.
         let culled = try culledFieldFrame()
         let unculled = try #require(OllinApp.image(of: FieldABSketch(mode: .fieldUnculled)))
         let diff = try #require(fieldImageDifference(culled, unculled))
-        #expect(diff.mean < 0.05,
-                "culling changed the picture: mean \(diff.mean) (max \(diff.max))")
-        #expect(diff.max <= 8,
+        #expect(diff.max == 0,
                 "culling changed the picture: max \(diff.max) (mean \(diff.mean))")
+    }
+
+    /// An export compacts each entry's visible copies in copy order. Read off
+    /// the GPU rather than seen in pixels: order shows in a picture only where
+    /// copies meet at exactly the same depth, and the small fixture above has
+    /// none, while a few thousand copies racing one counter leave the live
+    /// cull's arrival order plain in the buffer.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anExportCompactsEachEntryInCopyOrder() throws {
+        let sketch = FieldOrderProbe()
+        _ = try #require(OllinApp.image(of: sketch))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let gpu = try #require(sketch.field.gpuResources(for: device))
+        // The compacted indices live in private storage, so copy them out.
+        let queue = try #require(device.makeCommandQueue())
+        let readable = try #require(device.makeBuffer(length: gpu.compacted.length,
+                                                      options: .storageModeShared))
+        let commands = try #require(queue.makeCommandBuffer())
+        let blit = try #require(commands.makeBlitCommandEncoder())
+        blit.copy(from: gpu.compacted, sourceOffset: 0, to: readable, destinationOffset: 0,
+                  size: gpu.compacted.length)
+        blit.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
+        let counts = gpu.counts.contents().bindMemory(to: UInt32.self, capacity: gpu.entryCount)
+        let compacted = readable.contents().bindMemory(to: UInt32.self,
+                                                       capacity: gpu.compacted.length / 4)
+        var drawn = 0
+        for (e, entry) in sketch.field.entries.enumerated() {
+            let n = Int(counts[e])
+            drawn += n
+            let slice = (0 ..< n).map { compacted[Int(entry.compactOffset) + $0] }
+            #expect(slice == slice.sorted(), "entry \(e) is out of copy order")
+            #expect(slice.allSatisfy { $0 >= entry.copyStart && $0 < entry.copyStart + entry.copyCount })
+        }
+        // The camera sees part of the field, so the test is of a real cull.
+        #expect(drawn > 1_000 && drawn < sketch.field.copyCount)
+    }
+
+    /// The same field renders the same pixels every time it is exported. The
+    /// live cull appends visible copies in whatever order the GPU's threads
+    /// reach its counter, and copies meeting at equal depth draw the one that
+    /// lands first, so the field example came out three different ways in four
+    /// renders before an export compacted in copy order.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anExportedFieldRepeats() throws {
+        let first = try culledFieldFrame()
+        for _ in 0 ..< 3 {
+            let again = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+            let diff = try #require(fieldImageDifference(first, again))
+            #expect(diff.max == 0, "the field drew differently: max \(diff.max)")
+        }
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -223,6 +276,32 @@ private final class FieldBenchScene: Sketch {
             fill(Color(white: 0.32))
             drawPlane(width: 580, depth: 580)
         }
+        drawMeshField(field)
+    }
+}
+
+/// Thousands of small copies in two entries, the camera seeing about half of
+/// them: enough copies that the live cull's threads reach its counter out of
+/// order.
+@MainActor
+private final class FieldOrderProbe: Sketch {
+    override var canvasSize: CanvasSize { .square(128) }
+    let field = MeshField()
+
+    override func setup() {
+        var cubes: [MeshInstance] = [], balls: [MeshInstance] = []
+        for i in 0 ..< 4_000 {
+            let p = Vector3(Double(i % 80) * 0.5 - 20, 0, Double(i / 80) * 0.5 - 12.5)
+            if i % 2 == 0 { cubes.append(MeshInstance(position: p, scale: 0.2)) }
+            else { balls.append(MeshInstance(position: p, scale: 0.2)) }
+        }
+        field.place(Mesh.box(width: 1, height: 1, depth: 1), at: cubes)
+        field.place(Mesh.sphere(radius: 0.5, segments: 6, rings: 4), at: balls)
+    }
+
+    override func draw() {
+        background(.black)
+        camera(Camera3D(eye: Vector3(0, 30, 0.01), target: .zero))
         drawMeshField(field)
     }
 }

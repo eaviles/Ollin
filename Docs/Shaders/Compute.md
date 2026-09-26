@@ -355,7 +355,7 @@ override func draw() {
 }
 ```
 
-A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, and the `OllinSpatialGrid` at 5, which the hash holds as `gridBuffer` and whose shape it reports as `gridWidth` and `gridHeight`, the cells across and down. Your own buffers follow at 6 and up. `ParticleLife` binds its interaction matrix at 6. The scatter's within-cell order is set by a GPU atomic race. A query that *sums* over neighbors, a force for example, is therefore reproducible only up to float rounding. The neighbor *set*, and any count of it, is order-independent. See `Examples/Compute/NeighborSearch`.
+A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, and the `OllinSpatialGrid` at 5, which the hash holds as `gridBuffer` and whose shape it reports as `gridWidth` and `gridHeight`, the cells across and down. Your own buffers follow at 6 and up. `ParticleLife` binds its interaction matrix at 6. In an export, or while a take plays back, each cell lists its particles in index order. A query that *sums* over neighbors, a force for example, then adds the same numbers in the same order, and the run repeats. A live frame keeps the order the GPU's threads reached the cell in, which saves a pass. A clock that follows the wall never repeats a run anyway. The neighbor *set*, and any count of it, is the same either way. See `Examples/Compute/NeighborSearch`.
 
 <a id="notes"></a>
 ### Notes

@@ -190,7 +190,7 @@ final class Poses: Sketch {
 
 Everything downstream takes either one, because both are a `FrameSource` and a `VideoFeed`, so nothing but that one line knows which it got. The picture is only built when it is needed, so a machine with a camera never decodes it. The [sample photographs](../Drawing/SamplePhotos.md) are what the examples fall back to, but any `Image` works.
 
-**`--photo` on launch takes the picture even where a camera would have worked.** That is how a still is made of a sketch that is normally live: a screenshot, a gallery thumbnail, a figure.
+**`--photo` on launch takes the picture even where a camera would have worked.** That is how a still is made of a sketch that is normally live: a screenshot, a gallery thumbnail, a figure. It also keeps every camera closed. A `Camera` the sketch starts itself throws from `start()` under the flag and never touches the device. So a run with `--photo` never films whoever is at the machine.
 
 `StillFrames` is the feed underneath, and it is public, for the case where the choice is not the camera's to make:
 

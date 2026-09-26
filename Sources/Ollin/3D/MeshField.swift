@@ -205,6 +205,11 @@ public final class MeshField {
         var shadowCounts: MTLBuffer
         var shadowCompacted: MTLBuffer
         var shadowArguments: MTLBuffer
+        /// The in-order compaction's scratch (a frame whose clock can repeat):
+        /// one visible count per SIMD group of copies, scanned in place into
+        /// offsets, and one visible-copy base per entry.
+        var blockOffsets: MTLBuffer
+        var entryBases: MTLBuffer
         var entryCount: Int
     }
 
@@ -240,7 +245,13 @@ public final class MeshField {
               let shadowCompacted = device.makeBuffer(length: max(1, instances.count) * 4,
                                                       options: .storageModePrivate),
               let shadowArguments = device.makeBuffer(length: argsLength,
-                                                      options: .storageModePrivate)
+                                                      options: .storageModePrivate),
+              // One count per SIMD group of copies, 32 wide at the narrowest,
+              // plus the total the scan leaves in the last entry.
+              let blockOffsets = device.makeBuffer(length: (instances.count / 32 + 2) * 4,
+                                                   options: .storageModePrivate),
+              let entryBases = device.makeBuffer(length: max(1, entries.count) * 4,
+                                                 options: .storageModePrivate)
         else { return nil }
         let resources = GPUResources(vertices: vertices, instances: instanceBuffer,
                                      entries: entryBuffer, counts: counts,
@@ -248,6 +259,7 @@ public final class MeshField {
                                      shadowCounts: shadowCounts,
                                      shadowCompacted: shadowCompacted,
                                      shadowArguments: shadowArguments,
+                                     blockOffsets: blockOffsets, entryBases: entryBases,
                                      entryCount: entries.count)
         gpu = resources
         gpuDevice = ObjectIdentifier(device)
@@ -257,11 +269,49 @@ public final class MeshField {
 
     // MARK: The GPU passes
 
-    /// The cull kernel: one thread per copy, a sphere-vs-frustum test in world
-    /// space (the entry's local bounding sphere through the copy's matrix and
-    /// the field's draw-time matrix), appending survivors into the entry's own
-    /// region of the compacted-index buffer.
-    static let cullKernel = ComputeKernel(entry: "ollin_field_cull", """
+    /// The visibility test every cull shares, as source spliced ahead of each
+    /// kernel that needs it: a sphere-vs-frustum test in world space (the
+    /// entry's local bounding sphere through the copy's matrix and the field's
+    /// draw-time matrix). The copy's entry comes from a range walk (entries are
+    /// few; copies are contiguous per entry, so a short scan beats carrying a
+    /// per-copy entry index).
+    static let visibilitySource = """
+    static uint ollin_field_entry(uint tid, const device OllinFieldEntry* entries,
+                                  constant OllinFieldCullParams& p) {
+        for (uint e = 0; e < p.entryCount; e += 1) {
+            if (tid >= entries[e].copyStart && tid < entries[e].copyStart + entries[e].copyCount) {
+                return e;
+            }
+        }
+        return 0;
+    }
+
+    static bool ollin_field_visible(uint tid, uint entry,
+                                    const device OllinMeshInstance* instances,
+                                    const device OllinFieldEntry* entries,
+                                    constant OllinFieldCullParams& p) {
+        if (p.cullEnabled == 0) { return true; }
+        OllinFieldEntry en = entries[entry];
+        float4x4 m = p.fieldModel * instances[tid].model;
+        float4 wc = m * float4(en.center.xyz, 1.0);
+        // Conservative world radius: the local radius times the matrix's
+        // largest column scale.
+        float sx = length(m[0].xyz), sy = length(m[1].xyz), sz = length(m[2].xyz);
+        float wr = en.radius * max(sx, max(sy, sz));
+        for (uint i = 0; i < 6; i += 1) {
+            if (dot(p.planes[i].xyz, wc.xyz) + p.planes[i].w < -wr) { return false; }
+        }
+        return true;
+    }
+    """
+
+    /// The cull kernel: one thread per copy, appending survivors into the
+    /// entry's own region of the compacted-index buffer. The append order is
+    /// whichever order the threads reach the counter, which is the fast form and
+    /// the one a live frame uses; a frame whose clock can repeat compacts in
+    /// copy order instead (the three kernels below), since copies at equal depth
+    /// draw the one that lands first.
+    static let cullKernel = ComputeKernel(entry: "ollin_field_cull", visibilitySource + """
     kernel void ollin_field_cull(const device OllinMeshInstance* instances [[buffer(0)]],
                                  const device OllinFieldEntry* entries [[buffer(1)]],
                                  device atomic_uint* counts [[buffer(2)]],
@@ -269,30 +319,101 @@ public final class MeshField {
                                  constant OllinFieldCullParams& p [[buffer(4)]],
                                  uint tid [[thread_position_in_grid]]) {
         if (tid >= p.copyCount) { return; }
-        // The copy's entry, by range walk (entries are few; copies are contiguous
-        // per entry, so a short scan beats carrying a per-copy entry index).
-        uint entry = 0;
-        for (uint e = 0; e < p.entryCount; e += 1) {
-            if (tid >= entries[e].copyStart && tid < entries[e].copyStart + entries[e].copyCount) {
-                entry = e; break;
-            }
-        }
+        uint entry = ollin_field_entry(tid, entries, p);
+        if (!ollin_field_visible(tid, entry, instances, entries, p)) { return; }
         OllinFieldEntry en = entries[entry];
-        if (p.cullEnabled != 0) {
-            float4x4 m = p.fieldModel * instances[tid].model;
-            float4 wc = m * float4(en.center.xyz, 1.0);
-            // Conservative world radius: the local radius times the matrix's
-            // largest column scale.
-            float sx = length(m[0].xyz), sy = length(m[1].xyz), sz = length(m[2].xyz);
-            float wr = en.radius * max(sx, max(sy, sz));
-            for (uint i = 0; i < 6; i += 1) {
-                if (dot(p.planes[i].xyz, wc.xyz) + p.planes[i].w < -wr) { return; }
-            }
-        }
         uint slot = atomic_fetch_add_explicit(&counts[entry], 1, memory_order_relaxed);
         compacted[en.compactOffset + slot] = tid;
     }
     """)
+
+    /// The in-order compaction, for a frame whose clock can repeat, in three
+    /// kernels sharing one source (so they compile together):
+    ///
+    /// - `ollin_field_count`, one thread per copy: each SIMD group writes how
+    ///   many of its copies are visible. The groups are the dispatch's
+    ///   threadgroups (one execution width wide), so copy `tid` is in group
+    ///   `tid / width` in every pass.
+    /// - `ollin_field_scan`, one thread: scans the group counts into offsets
+    ///   (the last entry the total), then gives every entry its base (the
+    ///   visible copies before its first) and its count. A base falls inside a
+    ///   group, so the copies before it in that group are tested again there.
+    /// - `ollin_field_place`, one thread per copy: a visible copy writes itself
+    ///   at its place among the visible copies of its entry.
+    static let orderedSource = visibilitySource + """
+    kernel void ollin_field_count(const device OllinMeshInstance* instances [[buffer(0)]],
+                                  const device OllinFieldEntry* entries [[buffer(1)]],
+                                  device uint* blocks [[buffer(5)]],
+                                  constant OllinFieldCullParams& p [[buffer(4)]],
+                                  uint tid [[thread_position_in_grid]],
+                                  uint lane [[thread_index_in_simdgroup]],
+                                  uint width [[threads_per_simdgroup]]) {
+        bool visible = tid < p.copyCount
+            && ollin_field_visible(tid, ollin_field_entry(tid, entries, p), instances, entries, p);
+        uint total = simd_sum(visible ? 1u : 0u);
+        if (lane == 0 && tid < p.copyCount) { blocks[tid / width] = total; }
+    }
+
+    static uint ollin_field_visible_before(uint copy, uint width, const device uint* blocks,
+                                           const device OllinMeshInstance* instances,
+                                           const device OllinFieldEntry* entries,
+                                           constant OllinFieldCullParams& p) {
+        uint first = (copy / width) * width;
+        uint n = blocks[copy / width];
+        for (uint i = first; i < copy; i += 1) {
+            n += ollin_field_visible(i, ollin_field_entry(i, entries, p), instances, entries, p) ? 1u : 0u;
+        }
+        return n;
+    }
+
+    kernel void ollin_field_scan(const device OllinMeshInstance* instances [[buffer(0)]],
+                                 const device OllinFieldEntry* entries [[buffer(1)]],
+                                 device uint* counts [[buffer(2)]],
+                                 constant OllinFieldCullParams& p [[buffer(4)]],
+                                 device uint* blocks [[buffer(5)]],
+                                 device uint* bases [[buffer(6)]],
+                                 constant uint& width [[buffer(7)]],
+                                 uint tid [[thread_position_in_grid]]) {
+        if (tid != 0) { return; }
+        uint groups = (p.copyCount + width - 1) / width;
+        uint acc = 0;
+        for (uint g = 0; g < groups; g += 1) {
+            uint n = blocks[g];
+            blocks[g] = acc;
+            acc += n;
+        }
+        blocks[groups] = acc;
+        for (uint e = 0; e < p.entryCount; e += 1) {
+            OllinFieldEntry en = entries[e];
+            uint base = ollin_field_visible_before(en.copyStart, width, blocks, instances, entries, p);
+            uint end = ollin_field_visible_before(en.copyStart + en.copyCount, width, blocks,
+                                                  instances, entries, p);
+            bases[e] = base;
+            counts[e] = end - base;
+        }
+    }
+
+    kernel void ollin_field_place(const device OllinMeshInstance* instances [[buffer(0)]],
+                                  const device OllinFieldEntry* entries [[buffer(1)]],
+                                  device uint* compacted [[buffer(3)]],
+                                  constant OllinFieldCullParams& p [[buffer(4)]],
+                                  const device uint* blocks [[buffer(5)]],
+                                  const device uint* bases [[buffer(6)]],
+                                  uint tid [[thread_position_in_grid]],
+                                  uint width [[threads_per_simdgroup]]) {
+        uint entry = tid < p.copyCount ? ollin_field_entry(tid, entries, p) : 0;
+        bool visible = tid < p.copyCount
+            && ollin_field_visible(tid, entry, instances, entries, p);
+        uint before = simd_prefix_exclusive_sum(visible ? 1u : 0u);
+        if (!visible) { return; }
+        uint place = blocks[tid / width] + before - bases[entry];
+        compacted[entries[entry].compactOffset + place] = tid;
+    }
+    """
+
+    static let countKernel = ComputeKernel(entry: "ollin_field_count", orderedSource)
+    static let scanKernel = ComputeKernel(entry: "ollin_field_scan", orderedSource)
+    static let placeKernel = ComputeKernel(entry: "ollin_field_place", orderedSource)
 
     /// The encode kernel: one thread per entry, writing that entry's single
     /// instanced draw as `MTLDrawPrimitivesIndirectArguments` (instanceCount 0

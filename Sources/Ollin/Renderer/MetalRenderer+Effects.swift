@@ -4167,13 +4167,21 @@ extension MetalRenderer {
     /// GPU-write each entry's `MTLDrawPrimitivesIndirectArguments` (one compute
     /// encoder). Runs once per frame per field; the depth-carrying drives all
     /// call it, and the `.meshField` draw arm requires a depth pass, so a field
-    /// can never draw stale arguments.
+    /// can never draw stale arguments. A frame whose clock can repeat
+    /// (`Drawer.runsOnFixedClock`) compacts the camera's set in copy order, so
+    /// copies meeting at equal depth resolve the same way on every run; the
+    /// shadow set keeps the one-pass append, since a depth map keeps the nearest
+    /// depth whatever order the copies arrive in.
     func encodeMeshFieldCulling(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                                 viewport: SIMD2<Float>) {
         let fieldBatches = drawer.batches.filter { $0.kind == .meshField }
         guard !fieldBatches.isEmpty, let camera = drawer.camera3D,
               let cullState = try? computePipeline(for: MeshField.cullKernel),
               let encodeState = try? computePipeline(for: MeshField.encodeKernel) else { return }
+        let ordered = drawer.runsOnFixedClock
+        let countState = ordered ? try? computePipeline(for: MeshField.countKernel) : nil
+        let scanState = ordered ? try? computePipeline(for: MeshField.scanKernel) : nil
+        let placeState = ordered ? try? computePipeline(for: MeshField.placeKernel) : nil
         let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
         // The unjittered view-projection: sub-pixel TAA jitter is far inside the
         // bounding-sphere conservatism, so culling ignores it.
@@ -4216,14 +4224,34 @@ extension MetalRenderer {
             params.entryCount = UInt32(resources.entryCount)
             params.cullEnabled = field.isCullingEnabled ? 1 : 0
             let width = cullState.threadExecutionWidth
-            compute.setComputePipelineState(cullState)
             compute.setBuffer(resources.instances, offset: 0, index: 0)
             compute.setBuffer(resources.entries, offset: 0, index: 1)
             compute.setBuffer(resources.counts, offset: 0, index: 2)
             compute.setBuffer(resources.compacted, offset: 0, index: 3)
             compute.setBytes(&params, length: MemoryLayout<OllinFieldCullParams>.stride, index: 4)
-            compute.dispatchThreads(MTLSize(width: field.copyCount, height: 1, depth: 1),
-                                    threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
+            let copies = MTLSize(width: field.copyCount, height: 1, depth: 1)
+            let group = MTLSize(width: width, height: 1, depth: 1)
+            // Copies at equal depth draw the one that lands first, so a frame
+            // whose clock can repeat compacts in copy order (three passes over
+            // the SIMD groups' counts); a live frame appends in whatever order
+            // the threads arrive, which is one pass.
+            if drawer.runsOnFixedClock, let countState, let scanState, let placeState {
+                compute.setBuffer(resources.blockOffsets, offset: 0, index: 5)
+                compute.setBuffer(resources.entryBases, offset: 0, index: 6)
+                var groupWidth = UInt32(width)
+                compute.setBytes(&groupWidth, length: MemoryLayout<UInt32>.stride, index: 7)
+                compute.setComputePipelineState(countState)
+                compute.dispatchThreads(copies, threadsPerThreadgroup: group)
+                compute.setComputePipelineState(scanState)
+                compute.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
+                                        threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+                compute.setComputePipelineState(placeState)
+                compute.dispatchThreads(copies, threadsPerThreadgroup: group)
+                profile.computeDispatches += 2
+            } else {
+                compute.setComputePipelineState(cullState)
+                compute.dispatchThreads(copies, threadsPerThreadgroup: group)
+            }
             compute.setComputePipelineState(encodeState)
             compute.setBuffer(resources.drawArguments, offset: 0, index: 0)
             compute.dispatchThreads(MTLSize(width: resources.entryCount, height: 1, depth: 1),

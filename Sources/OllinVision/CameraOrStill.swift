@@ -30,7 +30,7 @@ public extension Camera {
     /// never decodes it.
     static func orStill(_ picture: @autoclosure () -> Image,
                         rate: Double = 4) -> any FrameSource & VideoFeed {
-        if !CommandLine.arguments.contains("--photo") {
+        if !photoOnly {
             let camera = Camera()
             if (try? camera.start()) != nil, camera.isRunning { return camera }
         }
