@@ -79,6 +79,18 @@ struct ViewBoxTests {
          patch(image, x0: x0, x1: x1, y0: y0, y1: y1, channel: 2))
     }
 
+    /// The two contained boxes at frame 1, rendered once and read by every test
+    /// below that asks about that frame (the fit is the only thing that changes
+    /// the picture here, and it is always `.contain` for these).
+    private static var containedFrame: CGImage?
+
+    private func contained() throws -> CGImage {
+        if let frame = Self.containedFrame { return frame }
+        let frame = try #require(OllinApp.image(of: Probe.make(.contain), frame: 1))
+        Self.containedFrame = frame
+        return frame
+    }
+
     // MARK: A background belongs to its box
 
     /// The deciding test. Two boxes wipe themselves in turn, and each keeps its
@@ -86,7 +98,7 @@ struct ViewBoxTests {
     /// whichever color went last.
     @Test(.enabled(if: Snapshot.hasMetal))
     func eachBoxKeepsItsOwnBackground() throws {
-        let frame = try #require(OllinApp.image(of: Probe.make(.contain), frame: 1))
+        let frame = try contained()
         // The virtual canvas is square and each box is half as wide as it is
         // tall, so a contained canvas lands as a band across the middle.
         let left = rgb(frame, x0: 0.02, x1: 0.12, y0: 0.30, y1: 0.45)
@@ -99,7 +111,7 @@ struct ViewBoxTests {
     /// the contained canvases are still the frame's own color.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFrameOutsideEveryBoxIsUntouched() throws {
-        let frame = try #require(OllinApp.image(of: Probe.make(.contain), frame: 1))
+        let frame = try contained()
         for band in [(0.02, 0.10), (0.90, 0.98)] {
             let strip = rgb(frame, x0: 0.1, x1: 0.9, y0: band.0, y1: band.1)
             #expect(strip.r > 30 && strip.r < 70, "band \(band) red: \(strip)")
@@ -114,7 +126,7 @@ struct ViewBoxTests {
     /// window, and that is the whole point.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theCanvasCenterLandsAtTheBoxCenter() throws {
-        let frame = try #require(OllinApp.image(of: Probe.make(.contain), frame: 1))
+        let frame = try contained()
         let middle = rgb(frame, x0: 0.20, x1: 0.30, y0: 0.45, y1: 0.55)
         #expect(middle.g > 200 && middle.r < 60, "the left box's center should be green: \(middle)")
         // Half the canvas away, the same box is still its own background.

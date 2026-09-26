@@ -220,13 +220,6 @@ import Testing
         #expect(!sound.contains { abs($0) > 1e-9 })
     }
 
-    @Test func theScanIsSmallAndTheVoiceStaysCopyable() {
-        #expect(_isPOD(WavetableScan.self))
-        #expect(_isPOD(VoiceSource.self))
-        #expect(_isPOD(Voice.self))
-        #expect(_isPOD(SynthEvent.self))
-    }
-
     @Test func theVoiceSaysWhereItReads() throws {
         var voice = Voice(wavetable: WavetableScan(position: 0.3, sweep: 0.5))
         #expect(voice.wavetable?.position == 0.3)

@@ -670,14 +670,17 @@ public extension OllinApp {
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.
     /// The vector counterpart of `export`; the basis for the `--export-svg` flag.
     /// Pass `hatching` to plot solid fills as pen line work (see `svg(of:)`).
+    ///
+    /// Throws `ExportError` when the file cannot be written.
     static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
-                          hatching: Hatching? = nil) {
+                          hatching: Hatching? = nil) throws {
         let document = svg(of: sketch, frame: frame, fps: fps, hatching: hatching)
         do {
             try document.write(toFile: path, atomically: true, encoding: .utf8)
             print("Ollin: exported frame \(frame) → \(path) (SVG)")
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the file could not be written: \(error.localizedDescription)")
         }
     }
 }

@@ -415,8 +415,10 @@ public extension OllinApp {
     /// Render one frame of `sketch` and write it as a DXF file. The
     /// drawing-exchange counterpart of `exportGCode`; the basis for the
     /// `--export-dxf` flag.
+    ///
+    /// Throws `ExportError` when the file cannot be written.
     static func exportDXF(_ sketch: Sketch, to path: String, settings: DXF,
-                          frame: Int = 0, fps: FrameRate = 60, hatching: Hatching? = nil) {
+                          frame: Int = 0, fps: FrameRate = 60, hatching: Hatching? = nil) throws {
         let drawing = drafting(of: sketch, settings: settings, frame: frame, fps: fps,
                                hatching: hatching)
         do {
@@ -427,7 +429,8 @@ public extension OllinApp {
                   + "\(drawing.layers.count) layer\(drawing.layers.count == 1 ? "" : "s"), "
                   + "\(Int(size.width.rounded())) × \(Int(size.height.rounded())) mm)")
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the file could not be written: \(error.localizedDescription)")
         }
     }
 }

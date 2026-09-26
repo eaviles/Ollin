@@ -171,7 +171,9 @@ struct FringeStrokeTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTranslucentTurnLaysDownOneEvenCoat() throws {
         for points in [40, 120, 360] {
-            let (_, _, gray) = grays(of: try #require(OllinApp.image(of: Turn())))
+            let turn = Turn()
+            turn.points = points
+            let (_, _, gray) = grays(of: try #require(OllinApp.image(of: turn)))
             // Mean and darkest at each radius across the 40pt band, sampled all
             // along the arc so an isolated speck at one join is not stepped over.
             var means: [Double] = []

@@ -30,24 +30,10 @@ struct Buoyancy3DTests {
 
     // MARK: What floats
 
-    /// The headline: one number decides it, and it is the density the body was
-    /// built with.
-    @Test func aLightBodyFloatsWhereADenseOneSinks() throws {
-        func settle(density: Double) -> Double {
-            let world = pool(Water(level: 0))
-            let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
-                                     at: Vector3(0, 2, 0), density: density)
-            run(world, steps: 600)
-            return cube.position.y
-        }
-        let cork = settle(density: 0.3)
-        let stone = settle(density: 3)
-        #expect(cork > -0.5, "a body lighter than water should ride the surface")
-        #expect(stone < -9, "a body heavier than water should reach the bottom")
-    }
-
     /// A body only sinks because it is heavy, not because the water is missing:
-    /// the same cork with no water at all goes straight down.
+    /// the same cork with no water at all goes straight down. (The cork in
+    /// water, riding the surface, is the ordinary case of
+    /// `perBodyBuoyancyOverridesWhatDensityAloneWouldDo`.)
     @Test func withoutWaterTheSameBodyJustFalls() throws {
         func settle(_ water: Water?) -> Double {
             let world = pool(water)
@@ -56,16 +42,16 @@ struct Buoyancy3DTests {
             run(world, steps: 600)
             return cork.position.y
         }
-        #expect(settle(Water(level: 0)) > -0.5)
         #expect(settle(nil) < -9)
     }
 
     /// The waterline is not tuned, it is derived: a body of density d floats
     /// with fraction d of itself under. The margin is what sleeping costs,
     /// since the solver freezes the body wherever its last small oscillation
-    /// had reached rather than at the exact equilibrium.
+    /// had reached rather than at the exact equilibrium. (A half-density body
+    /// is held to its waterline by the sleeping and per-body tests below.)
     @Test func theWaterlineSitsWhereTheDisplacedVolumeSays() throws {
-        for density in [0.2, 0.4, 0.6, 0.8] {
+        for density in [0.2, 0.6, 0.8] {
             let world = pool(Water(level: 0))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: density)
@@ -76,7 +62,9 @@ struct Buoyancy3DTests {
         }
     }
 
-    /// Water twice as heavy floats the same body twice as high.
+    /// Water twice as heavy floats the same body twice as high. The same cube
+    /// in ordinary water, 0.6 under, is the 0.6 case of the waterline test
+    /// above.
     @Test func denserWaterFloatsTheSameBodyHigher() throws {
         func settle(waterDensity: Double) -> Double {
             let world = pool(Water(level: 0, density: waterDensity))
@@ -85,7 +73,6 @@ struct Buoyancy3DTests {
             run(world, steps: 2400)
             return submergedFraction(cube)
         }
-        #expect(abs(settle(waterDensity: 1) - 0.6) < 0.08)
         #expect(abs(settle(waterDensity: 2) - 0.3) < 0.08)
     }
 
@@ -208,7 +195,9 @@ struct Buoyancy3DTests {
     }
 
     /// The per-body override, both ways: enough of it floats a stone, none of
-    /// it sinks a cork.
+    /// it sinks a cork. At the ordinary scale this is the headline of the whole
+    /// tier: one number decides it, and it is the density the body was built
+    /// with.
     @Test func perBodyBuoyancyOverridesWhatDensityAloneWouldDo() throws {
         func settle(density: Double, buoyancyScale: Double) -> Double {
             let world = pool(Water(level: 0))
@@ -218,9 +207,11 @@ struct Buoyancy3DTests {
             run(world, steps: 900)
             return cube.position.y
         }
-        #expect(settle(density: 3, buoyancyScale: 1) < -9)
+        #expect(settle(density: 3, buoyancyScale: 1) < -9,
+                "a body heavier than water should reach the bottom")
         #expect(settle(density: 3, buoyancyScale: 6) > -0.5, "6x lift floats a stone")
-        #expect(settle(density: 0.3, buoyancyScale: 1) > -0.5)
+        #expect(settle(density: 0.3, buoyancyScale: 1) > -0.5,
+                "a body lighter than water should ride the surface")
         #expect(settle(density: 0.3, buoyancyScale: 0) < -9, "no lift sinks a cork")
     }
 

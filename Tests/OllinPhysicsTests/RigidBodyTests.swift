@@ -84,20 +84,19 @@ struct RigidBodyTests {
         #expect(body.position.distance(to: Vector2(120, 80)) < 0.5)
     }
 
-    @Test func polygonAndCapsuleBodiesFallAndHaveMass() {
+    /// A capsule body has real mass and falls. (A polygon body's mass and fall,
+    /// from a triangle up to outlines past the solver's eight corners, are in
+    /// PolygonColliderTests.)
+    @Test func aCapsuleBodyFallsAndHasMass() {
         let world = World()
         world.gravity = Vector2(0, 1000)
-        let triangle = world.addBody(.polygon([Vector2(-22, 18), Vector2(22, 18), Vector2(0, -26)]),
-                                     at: Vector2(0, 0))
         let capsule = world.addBody(.capsule(from: Vector2(-30, 0), to: Vector2(30, 0), radius: 14),
                                     at: Vector2(300, 0))
 
-        #expect(triangle.mass > 0)   // the hull gave it real area/mass
         #expect(capsule.mass > 0)
 
         run(world, steps: 30, dt: 1.0 / 60)
-        #expect(triangle.position.y > 50)   // both fell under gravity
-        #expect(capsule.position.y > 50)
+        #expect(capsule.position.y > 50)   // it fell under gravity
     }
 
     @Test func revoluteJointHoldsBodiesAtThePivot() {

@@ -173,7 +173,7 @@ public class SimField {
                                        scale: self.scale, drawer: drawer, precision: precision)
         // Stamp the write layer now that `self` exists, so the renderer can recover
         // this field (and its persistent textures + which sim to step) from the target.
-        self.writeLayer.origin = .simField(self)
+        self.writeLayer.origin = .simField(.init(self))
     }
 
     /// The evolved field this frame, as a drawable `Image`: the raw state, resolved

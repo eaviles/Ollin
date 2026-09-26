@@ -179,16 +179,14 @@ struct PaletteImportTests {
     // MARK: - Failure
 
     /// Garbage never traps: bytes with no colors hold no palette, and say so
-    /// as unreadable; a path with nothing at it says so as missing.
+    /// as unreadable. (A path with nothing at it says so as missing, which
+    /// `FileErrorTests` pins for every loader, this one among them.)
     @Test func malformedInputThrowsWhatItIs() throws {
         for bytes in [Data(), Data("not a palette".utf8), Data("{".utf8)] {
             let error = #expect(throws: FileError.self) { try Palette.palettes(data: bytes) }
             #expect(error?.kind == .unreadable)
         }
         #expect(throws: FileError.self) { try Palette(data: Data("zzz".utf8)) }
-        let missing = #expect(throws: FileError.self) { try Palette(contentsOf: "/nonexistent/path.hex") }
-        #expect(missing?.kind == .missing)
-        #expect(missing?.path == "/nonexistent/path.hex")
     }
 
     /// A truncated swatch file stops where the bytes stop.

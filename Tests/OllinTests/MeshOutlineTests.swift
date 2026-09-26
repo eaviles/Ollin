@@ -93,6 +93,23 @@ struct MeshOutlineTests {
         return probe
     }
 
+    /// What changes the lined sphere's picture: the line's width and the distance.
+    private struct OutlineKey: Hashable {
+        var width: Double?, distance: Double
+    }
+
+    /// The lined-sphere frames already rendered this run, so the 8 px line at the near
+    /// distance, which two probes read, is drawn once.
+    private static var outlinedFrames: [OutlineKey: Frame] = [:]
+
+    private func outlinedFrame(_ width: Double?, distance: Double) throws -> Frame {
+        let key = OutlineKey(width: width, distance: distance)
+        if let known = Self.outlinedFrames[key] { return known }
+        let f = try frame(outlined(width, distance: distance))
+        Self.outlinedFrames[key] = f
+        return f
+    }
+
     private func twoSpheres(nearSphere: Bool) -> Sketch {
         let probe = TwoSpheresProbe()
         probe.nearSphere = nearSphere
@@ -112,7 +129,7 @@ struct MeshOutlineTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theLineRingsTheSilhouetteAndNeverTheFace() throws {
-        let f = try frame(outlined(8, distance: 5))
+        let f = try outlinedFrame(8, distance: 5)
         let runs = f.inkRuns()
         #expect((6 ... 11).contains(runs.left) && (6 ... 11).contains(runs.right),
                 "an 8 px line reads \(runs.left) px on the left and \(runs.right) on the right")
@@ -123,12 +140,12 @@ struct MeshOutlineTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theLineHoldsItsWidthAtTwiceTheDistance() throws {
-        let near = try frame(outlined(8, distance: 5)).inkRuns()
-        let far = try frame(outlined(8, distance: 10)).inkRuns()
+        let near = try outlinedFrame(8, distance: 5).inkRuns()
+        let far = try outlinedFrame(8, distance: 10).inkRuns()
         #expect(abs(near.left - far.left) <= 2 && abs(near.right - far.right) <= 2,
                 "the line reads \(near) px near and \(far) px at twice the distance")
         // And a different width is a different run, so the reading is the line.
-        let thin = try frame(outlined(3, distance: 5)).inkRuns()
+        let thin = try outlinedFrame(3, distance: 5).inkRuns()
         #expect(thin.left < near.left - 2 && thin.right < near.right - 2,
                 "a 3 px line reads \(thin) against the 8 px \(near)")
     }
@@ -148,8 +165,8 @@ struct MeshOutlineTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func noLineIsTheSameFrame() throws {
-        let plain = try frame(outlined(nil, distance: 5))
-        let zero = try frame(outlined(0, distance: 5))
+        let plain = try outlinedFrame(nil, distance: 5)
+        let zero = try outlinedFrame(0, distance: 5)
         #expect(plain.data == zero.data)
         #expect(plain.inkRuns() == (0, 0))
     }

@@ -149,11 +149,20 @@ import Ollin
         return image
     }
 
+    /// The foreground model's reading of `diskImage()`, made once for the
+    /// suite: the still test reads it and the live-wiring test only needs to
+    /// know the model lifts this frame here, so the model runs once. `try?`
+    /// flattens, so `nil` covers both "the model cannot run here" and "the
+    /// model judged nothing salient" (the soft-skip).
+    private static let subject = Task<Segmentation?, Never> {
+        try? await SubjectSegmenter.detect(in: SegmenterTests().diskImage())
+    }
+
     @Test func syntheticDiskLiftsAsASubject() async throws {
         // Lenient soft-skip: `try?` flattens, so nil covers both "model can't run
         // here" and "the model judged nothing salient" — assert only when
         // something lifted.
-        guard let segmentation = try? await SubjectSegmenter.detect(in: diskImage()) else { return }
+        guard let segmentation = await Self.subject.value else { return }
         #expect(segmentation.cutout.width == 320)
         let center = segmentation.matte[segmentation.matte.width / 2, segmentation.matte.height / 2]
         #expect(center.alpha > 0.5)
@@ -164,7 +173,7 @@ import Ollin
         // Gate on the still path: only run the live assertion where the model
         // demonstrably lifts this exact frame (elsewhere this is the soft-skip).
         let image = diskImage()
-        guard (try? await SubjectSegmenter.detect(in: image)) != nil else { return }
+        guard await Self.subject.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue, exactly like the frame-source tests.

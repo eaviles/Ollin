@@ -180,7 +180,9 @@ import Ollin
 
     /// A still image through the real depth model: the map publishes, values
     /// stay in range, and edge queries clamp instead of trapping (the
-    /// optical-flow lesson, re-applied here).
+    /// optical-flow lesson, re-applied here). The full-color `image` surface
+    /// is read off the same observation and must match the map it was
+    /// decoded from.
     @Test func depthModelProducesAQueryableMap() async throws {
         guard Self.depthModelIsFetched else { return }
         let tracker = ModelTracker(modelAt: Self.depthModelURL)
@@ -229,26 +231,21 @@ import Ollin
             }
         }
         #expect(mismatched == 0)
-    }
 
-    /// The full-color surface rides the same observation as the gray one: for
-    /// the depth model, `image` is the map at face value, so the two must
-    /// agree — the picture's pixel values are what the map holds as alpha.
-    @Test func imageMatchesTheMapItWasDecodedFrom() async throws {
-        guard Self.depthModelIsFetched else { return }
-        let tracker = ModelTracker(modelAt: Self.depthModelURL)
-        let output = try await tracker.detect(in: gradientScene(width: 320, height: 240))
-        let map = try #require(output.map)
+        // The full-color surface rides the same observation as the gray one:
+        // for the depth model, `image` is the map at face value, so the two
+        // must agree (the picture's pixel values are what the map holds as
+        // alpha).
         let picture = try #require(output.image)
         #expect(picture.width == map.width && picture.height == map.height)
-        var mismatched = 0
+        var pictureMismatched = 0
         for y in stride(from: 0, to: map.height, by: 7) {
             for x in stride(from: 0, to: map.width, by: 11)
             where abs(picture[x, y].red - map[x, y].alpha) > 2.0 / 255 {
-                mismatched += 1
+                pictureMismatched += 1
             }
         }
-        #expect(mismatched == 0)
+        #expect(pictureMismatched == 0)
     }
 
     /// The `objects` surface over the real detector: YOLOv3-tiny finds the

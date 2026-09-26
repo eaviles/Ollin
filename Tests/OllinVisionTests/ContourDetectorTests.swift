@@ -48,8 +48,8 @@ import Ollin
     }
 
     @Test func blankImageDetectsCleanly() async throws {
+        // The case: a blank input does not throw (or trap); empty or near-empty is fine.
         let image = Image(width: 64, height: 64, color: .white)
-        let found = try await ContourDetector.detect(in: image)
-        #expect(found.count >= 0)   // no trap, empty or near-empty is fine
+        _ = try await ContourDetector.detect(in: image)
     }
 }

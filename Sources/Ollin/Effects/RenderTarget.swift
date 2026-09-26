@@ -85,10 +85,31 @@ public final class RenderTarget {
         case generator(Generator)
         case filter(input: RenderTarget, filter: Filter)
         case combine(base: RenderTarget, aux: RenderTarget, op: Combine)
-        case feedback(Feedback)
-        case simField(SimField)
+        case feedback(Owner<Feedback>)
+        case simField(Owner<SimField>)
         case ocean(OceanRequest)
-        case accumulate(Accumulator)
+        case accumulate(Owner<Accumulator>)
+    }
+
+    /// The layer a `Feedback`, `SimField`, or `Accumulator` target writes for,
+    /// held weakly. The layer owns its write target, so a strong reference back
+    /// would keep both alive for the life of the process, and with them the
+    /// storage the renderer keeps for the layer until its owner is gone. The
+    /// drawer holds each owner it records until the frame is rendered, so a
+    /// layer made and dropped inside `draw()` still draws that frame.
+    struct Owner<Layer: AnyObject> {
+        weak var layer: Layer?
+        init(_ layer: Layer) { self.layer = layer }
+    }
+
+    /// The layer object this target's origin names, while it is alive.
+    var owningLayer: AnyObject? {
+        switch origin {
+        case .feedback(let owner): owner.layer
+        case .simField(let owner): owner.layer
+        case .accumulate(let owner): owner.layer
+        default: nil
+        }
     }
     /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
     /// once `self` exists (the layer is built before the back-reference is known).

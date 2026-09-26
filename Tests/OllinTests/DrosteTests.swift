@@ -34,7 +34,7 @@ struct DrosteTests {
     /// same color. Plain concentric copies first, where the step is a pure scale.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aCopyOutIsTheSamePicture() throws {
-        let render = try #require(OllinApp.image(of: DrosteProbe.make(twist: 0), frame: 1))
+        let render = try probeFrame(twist: 0)
         let pixels = try #require(Probe(render))
         let center = Vector2(120, 120)
         let step = repeatFactor(inner: 0.4, twist: 0)
@@ -55,7 +55,7 @@ struct DrosteTests {
     /// scale *and* a turn. Nothing but the right log-plane rotation satisfies it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aCopyOutIsTheSamePictureThroughTheTwist() throws {
-        let render = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))
+        let render = try probeFrame(twist: 1)
         let pixels = try #require(Probe(render))
         let center = Vector2(120, 120)
         let step = repeatFactor(inner: 0.4, twist: 1)
@@ -77,7 +77,7 @@ struct DrosteTests {
     /// spiral on, lands somewhere else, so the test above is not passing by accident.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theTurnIsWhatMakesTheSpiralMatch() throws {
-        let render = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))
+        let render = try probeFrame(twist: 1)
         let pixels = try #require(Probe(render))
         let center = Vector2(120, 120)
         let step = repeatFactor(inner: 0.4, twist: 1)
@@ -104,11 +104,11 @@ struct DrosteTests {
     /// walked out of its ring.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theHoleInTheMiddleIsNeverRead() throws {
-        let source = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1, showSource: true), frame: 1))
+        let source = try probeFrame(twist: 1, showSource: true)
         let plain = try #require(Probe(source))
         #expect(plain.countsMarker() > 200, "the marker should really be in the source")
 
-        let render = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))
+        let render = try probeFrame(twist: 1)
         let pixels = try #require(Probe(render))
         #expect(pixels.countsMarker() == 0, "the hole must never be sampled")
     }
@@ -119,9 +119,9 @@ struct DrosteTests {
     /// makes an endless fall loop.
     @Test(.enabled(if: Snapshot.hasMetal))
     func oneWholeCopyOfZoomComesBackToWhereItStarted() throws {
-        let still = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1, zoom: 0), frame: 1))
-        let round = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1, zoom: 1), frame: 1))
-        let half = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1, zoom: 0.5), frame: 1))
+        let still = try probeFrame(twist: 1, zoom: 0)
+        let round = try probeFrame(twist: 1, zoom: 1)
+        let half = try probeFrame(twist: 1, zoom: 0.5)
 
         #expect(try meanDifference(still, round) < 1.5, "a whole copy of zoom should return")
         #expect(try meanDifference(still, half) > 8, "half a copy should not")
@@ -130,9 +130,32 @@ struct DrosteTests {
     /// A quarter turn of `rotation` moves the picture, so the parameter is wired.
     @Test(.enabled(if: Snapshot.hasMetal))
     func rotationTurnsIt() throws {
-        let flat = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))
-        let turned = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1, rotation: 0.7), frame: 1))
+        let flat = try probeFrame(twist: 1)
+        let turned = try probeFrame(twist: 1, rotation: 0.7)
         #expect(try meanDifference(flat, turned) > 8)
+    }
+
+    // MARK: - Rendering
+
+    private struct RenderKey: Hashable {
+        var twist: Double
+        var zoom: Double
+        var rotation: Double
+        var showSource: Bool
+    }
+
+    /// Every probe frame this suite has rendered, by everything that changes it:
+    /// most of the laws here read the same spiral, so it is drawn once.
+    private static var renders: [RenderKey: CGImage] = [:]
+
+    private func probeFrame(twist: Double, zoom: Double = 0, rotation: Double = 0,
+                            showSource: Bool = false) throws -> CGImage {
+        let key = RenderKey(twist: twist, zoom: zoom, rotation: rotation, showSource: showSource)
+        if let image = Self.renders[key] { return image }
+        let image = try #require(OllinApp.image(of: DrosteProbe.make(twist: twist, zoom: zoom, rotation: rotation,
+                                                                     showSource: showSource), frame: 1))
+        Self.renders[key] = image
+        return image
     }
 
     // MARK: - Reading pixels

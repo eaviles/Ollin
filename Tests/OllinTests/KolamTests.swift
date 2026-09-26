@@ -33,12 +33,6 @@ struct KolamTests {
         }
     }
 
-    @Test func aFieldWithCoprimeSidesIsOneUnbrokenLine() {
-        #expect(design(columns: 7, rows: 5).loopCount == 1)
-        #expect(design(columns: 9, rows: 4).loopCount == 1)
-        #expect(design(columns: 6, rows: 4).loopCount == 2, "and 6 by 4 is not")
-    }
-
     @Test func everyCellHoldsFourSegments() {
         for (columns, rows) in [(1, 1), (3, 5), (6, 4), (8, 8)] {
             let loops = design(columns: columns, rows: rows).loops

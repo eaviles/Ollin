@@ -83,6 +83,17 @@ struct DetailMapTests {
         return data
     }
 
+    /// The probe frames already rendered this run, by mode (the scene is otherwise
+    /// fixed), so the undetailed control three probes compare against is drawn once.
+    private static var frames: [DetailProbe.Mode: CGImage] = [:]
+
+    private func render(_ mode: DetailProbe.Mode) throws -> CGImage {
+        if let known = Self.frames[mode] { return known }
+        let image = try #require(OllinApp.image(of: DetailProbe.make(mode), frame: 1))
+        Self.frames[mode] = image
+        return image
+    }
+
     /// Count the dark-to-light transitions along the canvas's middle row,
     /// over the quad's pixels only (the near-black background is skipped).
     /// The dark stripes land ~97 and the light ones ~209 after the
@@ -108,7 +119,7 @@ struct DetailMapTests {
         // about twice as many stripe edges as at scale 3, and the undetailed
         // control crosses none. Pins both the tiling and the repeat sampler
         // (a clamping sampler would show one stripe and a smear).
-        let none = try #require(OllinApp.image(of: DetailProbe.make(.plain), frame: 1))
+        let none = try render(.plain)
         let coarse = try #require(OllinApp.image(of: DetailProbe.make(.stripesScale3), frame: 1))
         let fine = try #require(OllinApp.image(of: DetailProbe.make(.stripesScale6), frame: 1))
         let n0 = stripeTransitions(of: none)
@@ -125,7 +136,7 @@ struct DetailMapTests {
         // 1.004, under half an 8-bit step everywhere, so the detailed render
         // sits within the dither's neighborhood of the control.
         let detailed = try #require(OllinApp.image(of: DetailProbe.make(.neutralGray), frame: 1))
-        let control = try #require(OllinApp.image(of: DetailProbe.make(.plain), frame: 1))
+        let control = try render(.plain)
         let a = imageBytes(detailed), b = imageBytes(control)
         var worst = 0
         for i in 0..<min(a.count, b.count) {
@@ -140,7 +151,7 @@ struct DetailMapTests {
         // the frame is byte-identical to the same mesh with no detail maps
         // attached at all (the plain textured pipeline).
         let off = try #require(OllinApp.image(of: DetailProbe.make(.amountZero), frame: 1))
-        let none = try #require(OllinApp.image(of: DetailProbe.make(.plain), frame: 1))
+        let none = try render(.plain)
         #expect(imageBytes(off) == imageBytes(none))
     }
 

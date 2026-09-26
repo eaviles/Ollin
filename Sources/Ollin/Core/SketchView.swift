@@ -59,7 +59,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// reach the *current* sketch after swaps (its own `sketch` deliberately
     /// stays the first mount, which is what keeps the view from remounting).
     package private(set) var sketch: Sketch
-    private let renderer: MetalRenderer
+    /// Internal rather than private so a soak test can read what it holds
+    /// (`MetalRenderer.census`) across a long live run.
+    let renderer: MetalRenderer
     private weak var view: MTKView?
 
     /// Whether the GPU has room for another frame: the question `draw(in:)`
@@ -2769,18 +2771,20 @@ public enum OllinApp {
     /// which is the one that can keep brightness above white: an `extended`
     /// sketch's highlights ride along in an ISO gain map. Everything else writes
     /// a PNG, which stops at white.
+    ///
+    /// Throws `ExportError` when the frame does not draw or the file cannot be
+    /// written.
     public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
-                              quality: RenderQuality = .detail) {
+                              quality: RenderQuality = .detail) throws {
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            fatalError("Ollin: failed to render the frame for export (no Metal device?)")
+            throw ExportError(.unrendered, path: path, frame: 0,
+                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
         }
         let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
         let size = "\(cgImage.width)×\(cgImage.height)"
         switch URL(fileURLWithPath: path).pathExtension.lowercased() {
         case "heic", "heif":
-            guard let still = exportHEIC(cgImage, to: path, recipe: recipe) else {
-                fatalError("Ollin: failed to write \(path)")
-            }
+            let still = try exportHEIC(cgImage, to: path, recipe: recipe)
             // Say whether the highlights made it, since that is the whole reason
             // to choose this format and it depends on what the frame drew.
             let carried = still.keepsHighlights
@@ -2789,7 +2793,7 @@ public enum OllinApp {
             print("Ollin: exported frame \(frame) → \(path) (\(size)\(carried))")
         default:
             guard writePNG(cgImage, to: path, recipe: recipe) else {
-                fatalError("Ollin: failed to write \(path)")
+                throw ExportError(.unwritable, path: path, frame: 0, problem: "the PNG could not be written")
             }
             print("Ollin: exported frame \(frame) → \(path) (\(size))")
         }
@@ -2811,18 +2815,26 @@ public enum OllinApp {
     ///
     /// For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`);
     /// unseeded, it's internally consistent within a run but differs between runs.
+    ///
+    /// Throws `ExportError` when the folder cannot be made, a frame does not
+    /// draw, or a file cannot be written. The frames written before the one
+    /// that failed stay in the folder.
     public static func exportSequence(_ sketch: Sketch, to directory: String,
                                       frames: Int, fps: FrameRate = 60,
                                       startFrame: Int = 1, skipSeconds: Double = 0,
                                       quality: RenderQuality = .detail,
                                       slowMotion: SlowMotion? = nil,
-                                      writesEXR: Bool = false) {
-        guard frames > 0 else { return }
+                                      writesEXR: Bool = false) throws {
+        guard frames > 0 else {
+            throw ExportError(.unsupported, path: directory,
+                              problem: "asks for \(frames) frames, and a sequence needs at least one")
+        }
         let fps = fps.framesPerSecond
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         } catch {
-            fatalError("Ollin: failed to create \(directory): \(error)")
+            throw ExportError(.unwritable, path: directory,
+                              problem: "the folder could not be made: \(error.localizedDescription)")
         }
 
         let size = sketch.canvasSizeForRun()
@@ -2836,9 +2848,9 @@ public enum OllinApp {
         print("Ollin: exporting \(frames) frames\(kind) at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
         if let motion { print(motion.note(written: frames, fps: fps)) }
 
-        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                   quality: quality, slowMotion: motion,
-                                   capturesLinear: writesEXR) { frame, index in
+        let elapsed = try renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                       quality: quality, slowMotion: motion,
+                                       capturesLinear: writesEXR, for: directory) { frame, index in
             // Captured per frame (cheap: the git lookup is cached) so each
             // file's recipe names the sketch-clock frame it shows.
             var meta = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: clock)
@@ -2851,12 +2863,20 @@ public enum OllinApp {
                 // A made frame is built by the interpolator after the present, so
                 // it has no linear canvas behind it; the flag parsing refuses that
                 // pairing, and this is the backstop.
-                guard let linear = frame.linear, writeEXR(linear, to: path, recipe: recipe) != nil else {
-                    fatalError("Ollin: failed to write \(path)")
+                guard let linear = frame.linear else {
+                    throw ExportError(.unrendered, path: path, frame: index,
+                                      problem: "frame \(index) kept no linear canvas to write")
+                }
+                guard writeEXR(linear, to: path, recipe: recipe) != nil else {
+                    throw ExportError(.unwritable, path: path, frame: index, problem: "the EXR could not be written")
                 }
             } else {
-                guard let cgImage = frame.image, writePNG(cgImage, to: path, recipe: recipe) else {
-                    fatalError("Ollin: failed to write \(path)")
+                guard let cgImage = frame.image else {
+                    throw ExportError(.unrendered, path: path, frame: index,
+                                      problem: "frame \(index) did not read back from the GPU")
+                }
+                guard writePNG(cgImage, to: path, recipe: recipe) else {
+                    throw ExportError(.unwritable, path: path, frame: index, problem: "the PNG could not be written")
                 }
             }
         }
@@ -2874,14 +2894,6 @@ public enum OllinApp {
         print("    \(directory)/out.mp4")
     }
 
-    /// Drive `sketch` headlessly at a **fixed timestep** (`time = frame/fps`,
-    /// `deltaTime = 1/fps` — never wall-clock) and hand each rendered frame to
-    /// `write` with its 0-based index. The shared engine behind the
-    /// PNG-sequence, video, and GIF exports: one sketch instance and renderer
-    /// are reused across the run (stateful sketches evolve frame to frame),
-    /// `skipSeconds` runs the sketch that long *before* capturing (the captured
-    /// clock continues from there), and a single rewriting progress line shows
-    /// pct done · render throughput. Returns the elapsed wall-clock seconds.
     /// One frame on its way out of the headless drive.
     ///
     /// Most consumers want `image`: a PNG, a GIF frame, a video frame drawn
@@ -2916,15 +2928,27 @@ public enum OllinApp {
         var linear: MetalRenderer.LinearFrame? { renderer.lastLinearFrame }
     }
 
+    /// Drive `sketch` headlessly at a **fixed timestep** (`time = frame/fps`,
+    /// `deltaTime = 1/fps`, never wall-clock) and hand each rendered frame to
+    /// `write` with its 0-based index. The shared engine behind the
+    /// PNG-sequence, video, and GIF exports: one sketch instance and renderer
+    /// are reused across the run (stateful sketches evolve frame to frame),
+    /// `skipSeconds` runs the sketch that long *before* capturing (the captured
+    /// clock continues from there), and a single rewriting progress line shows
+    /// pct done · render throughput. Returns the elapsed wall-clock seconds.
+    ///
+    /// A frame that cannot be drawn, and anything `write` throws, ends the run
+    /// with the error, `path` naming the file it was for.
     @discardableResult
     static func renderFrames(_ sketch: Sketch, frames: Int, fps: Double,
                              skipSeconds: Double, quality: RenderQuality = .detail,
                              encoding: PresentEncoding? = nil,
                              slowMotion: SlowMotion? = nil,
                              capturesLinear: Bool = false,
-                             write: (RenderedFrame, Int) -> Void) -> Double {
+                             for path: String = "",
+                             write: (RenderedFrame, Int) throws -> Void) throws -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Ollin requires a Metal-capable GPU.")
+            throw ExportError(.unrendered, path: path, problem: "no Metal device to draw with")
         }
         let renderer: MetalRenderer
         do {
@@ -2937,7 +2961,7 @@ public enum OllinApp {
                                          sampleCount: ollinPreferredSampleCount(device),
                                          encoding: encoding ?? sketch.colorOutput.presentEncoding)
         } catch {
-            fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
+            throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(error)")
         }
         renderer.automaticQuality = quality   // the fallback for features the sketch left at .default
         renderer.pathTracing = pathTracedExport
@@ -2975,7 +2999,7 @@ public enum OllinApp {
             // would otherwise empty the pool, so without this a long export grows by
             // every frame's readback and by whatever the sketch itself allocated,
             // until the machine is swapping. `HeadlessDrainTests` pins it.
-            autoreleasepool {
+            try autoreleasepool {
                 sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
                 var drawStart = CACurrentMediaTime()
                 sketch.performDraw()                          // run every frame so state settles
@@ -2986,10 +3010,8 @@ public enum OllinApp {
                 // before a single file has been written.
                 if k == 0, motion?.source == .made,
                    let refusal = renderer.madeFrameRefusal(sketch.drawer) {
-                    fflush(stdout)          // so the refusal reads after the header
-                    FileHandle.standardError.write(Data(
-                        "Ollin: \(refusal).\nDrop --made-frames and every frame is drawn instead, which costs more time and is never worse.\n".utf8))
-                    exit(1)
+                    throw ExportError(.unsupported, path: path, problem:
+                        "\(refusal). Drop the made frames (--made-frames) and every frame is drawn instead, which costs more time and is never worse")
                 }
 
                 // A picture that carries from frame to frame on the GPU has to be
@@ -3046,7 +3068,8 @@ public enum OllinApp {
                 }
 
                 guard let rendered else {
-                    fatalError("Ollin: failed to render frame \(k)")
+                    throw ExportError(.unrendered, path: path, frame: written,
+                                      problem: "frame \(written) did not come back from the GPU")
                 }
                 let done = k - skipFrames + 1                  // 1-based count of drawn frames
                 // The made frame goes first: it belongs between the frame just drawn
@@ -3057,7 +3080,7 @@ public enum OllinApp {
                     if let made = renderer.exportMadeFrame(sketch.drawer, deltaTime: 1 / clock,
                                                            width: width, height: height),
                        written < frames {
-                        write(RenderedFrame(renderer: renderer, buffer: made.buffer,
+                        try write(RenderedFrame(renderer: renderer, buffer: made.buffer,
                                             bytesPerRow: made.bytesPerRow,
                                             width: width, height: height,
                                             transparent: sketch.drawer.hasTransparentBackground), written)
@@ -3065,7 +3088,7 @@ public enum OllinApp {
                     }
                 }
                 if written < frames {
-                    write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
+                    try write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
                                         bytesPerRow: rendered.bytesPerRow,
                                         width: width, height: height,
                                         transparent: sketch.drawer.hasTransparentBackground), written)
@@ -3258,10 +3281,27 @@ public extension OllinApp {
     /// closure that compiles a loose sketch file, which is how any watched
     /// sketch gains the same export surface as a standalone `@main` sketch.
     /// `Sketch.main()` routes every `@main` sketch through here.
+    ///
+    /// An export that fails prints what stopped it (`ExportError`) and exits
+    /// with status 1, so a script running the export sees it fail.
     @MainActor
     @discardableResult
     static func handleCommandLine(_ args: [String] = CommandLine.arguments,
                                   makeSketch: () -> Sketch) -> Bool {
+        do {
+            return try runCommandLine(args, makeSketch: makeSketch)
+        } catch {
+            fflush(stdout)          // so the failure reads after the export's own lines
+            FileHandle.standardError.write(Data("\nOllin: \(error)\n".utf8))
+            exit(1)
+        }
+    }
+
+    /// The flags behind `handleCommandLine`, whose exports throw rather than
+    /// stop the process, so the one place that turns a failure into an exit
+    /// status is the caller above.
+    @MainActor
+    private static func runCommandLine(_ args: [String], makeSketch: () -> Sketch) throws -> Bool {
         // `--capture-source` beside any export flag ties the files to the source
         // that drew them: the commit is recorded in the recipe and added to
         // every written name, and an uncommitted tree is written into the
@@ -3478,7 +3518,7 @@ public extension OllinApp {
                     "--exr cannot use --made-frames: a made frame is built from two presented frames, and a linear frame is what comes before the present\n".utf8))
                 exit(1)
             }
-            OllinApp.exportSequence(make(), to: dir, frames: frames, fps: fps,
+            try OllinApp.exportSequence(make(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip, quality: renderQuality,
                                     slowMotion: slowMotion, writesEXR: writesEXR)
             return true
@@ -3523,7 +3563,7 @@ public extension OllinApp {
             if isGIF {
                 let width = value("--gif-width").flatMap(Int.init)
                 guard let palette = gifPalette(value("--gif-palette")) else { return true }
-                OllinApp.exportGIF(sketch, to: path, frames: frames, fps: loopFPS,
+                try OllinApp.exportGIF(sketch, to: path, frames: frames, fps: loopFPS,
                                    width: width, skipSeconds: skip, renderQuality: renderQuality,
                                    slowMotion: slowMotion, palette: palette)
             } else {
@@ -3538,7 +3578,7 @@ public extension OllinApp {
                 }
                 let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
                 let quality = value("--quality").flatMap(Double.init)
-                OllinApp.exportVideo(sketch, to: path, frames: frames, fps: fps,
+                try OllinApp.exportVideo(sketch, to: path, frames: frames, fps: fps,
                                      codec: codec, bitsPerSecond: bitrate, encodeQuality: quality,
                                      renderQuality: renderQuality, skipSeconds: skip,
                                      slowMotion: slowMotion)
@@ -3578,7 +3618,7 @@ public extension OllinApp {
                     "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1] [--slow-motion N]\n".utf8))
                 return true
             }
-            OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
+            try OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, encodeQuality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip,
                                  slowMotion: slowMotion)
@@ -3625,9 +3665,9 @@ public extension OllinApp {
             // seed, a replayed take, and the automation applied), so a control
             // is measured against the same run. The export runs to completion
             // here, so the factory never outlives the call.
-            withoutActuallyEscaping(makeSketch) { factory in
-                OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form,
-                                   controls: controls, maxBytes: maxBytes, remake: {
+            try withoutActuallyEscaping(makeSketch) { factory in
+                try OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form,
+                                       controls: controls, maxBytes: maxBytes, remake: {
                     let fresh = factory()
                     if let replayTake { replayTake.install(on: fresh) }
                     if let seedOverride { fresh.seed(seedOverride) }
@@ -3659,8 +3699,8 @@ public extension OllinApp {
                 size = .size(parts[0], parts[1])
             }
             let count = value("--frames").flatMap(Int.init)
-            withoutActuallyEscaping(makeSketch) { factory -> Void in
-                OllinApp.exportWidget(to: args[i + 1], size: size, count: count, of: {
+            try withoutActuallyEscaping(makeSketch) { factory -> Void in
+                try OllinApp.exportWidget(to: args[i + 1], size: size, count: count, of: {
                     let fresh = factory()
                     if let seedOverride { fresh.seed(seedOverride) }
                     installAutomation(args, on: fresh)
@@ -3699,7 +3739,7 @@ public extension OllinApp {
                     "usage: --export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S] [--interocular X] [--convergence D] [--meters-per-unit U] [--bitrate MBPS] [--quality 0..1]\n".utf8))
                 return true
             }
-            OllinApp.exportSpatialVideo(make(), to: args[i + 1], frames: frames, fps: fps,
+            try OllinApp.exportSpatialVideo(make(), to: args[i + 1], frames: frames, fps: fps,
                                         stereo: stereo, metersPerUnit: metersPerUnit,
                                         bitsPerSecond: bitrate, quality: quality,
                                         renderQuality: renderQuality, skipSeconds: skip)
@@ -3728,7 +3768,7 @@ public extension OllinApp {
                 return true
             }
             guard let palette = gifPalette(value("--gif-palette")) else { return true }
-            OllinApp.exportGIF(make(), to: args[i + 1], frames: frames, fps: fps,
+            try OllinApp.exportGIF(make(), to: args[i + 1], frames: frames, fps: fps,
                                width: width, skipSeconds: skip, renderQuality: renderQuality,
                                slowMotion: slowMotion, palette: palette)
             return true
@@ -3755,7 +3795,7 @@ public extension OllinApp {
             let tile = value("--tile").flatMap(Int.init) ?? 320
             let frame = value("--frame").flatMap(Int.init) ?? 0
             let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
-            OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
+            try OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
                                         frame: frame, fps: fps, columns: columns,
                                         tileWidth: tile, quality: renderQuality)
             return true
@@ -3805,7 +3845,7 @@ public extension OllinApp {
             let tile = value("--tile").flatMap(Int.init) ?? 320
             let frame = value("--frame").flatMap(Int.init) ?? 0
             let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
-            OllinApp.exportContactSheet(makeSketch, to: args[i + 1],
+            try OllinApp.exportContactSheet(makeSketch, to: args[i + 1],
                                         sweeping: name, values: values,
                                         seed: seedOverride,
                                         frame: frame, fps: fps, columns: columns,
@@ -3856,7 +3896,7 @@ public extension OllinApp {
                     "usage: --export-separations <path.png> [--frame N] [--inks \"a, b\"] [--paper HEX] [--screen dither|halftone] [--pitch PX] [--no-marks]\n".utf8))
                 return true
             }
-            OllinApp.exportSeparations(make(), to: args[i + 1], inks: inks, paper: paper,
+            try OllinApp.exportSeparations(make(), to: args[i + 1], inks: inks, paper: paper,
                                        frame: frame, drawsRegistrationMarks: !args.contains("--no-marks"),
                                        quality: renderQuality, screen: screen)
             return true
@@ -3910,7 +3950,7 @@ public extension OllinApp {
                     "usage: --export-plates <path.png> [--frame N] [--profile PATH] [--intent relative|perceptual|saturation|absolute] [--paper] [--screen dither|halftone] [--pitch PX] [--no-marks]\n".utf8))
                 return true
             }
-            OllinApp.exportPlates(make(), to: args[i + 1], profile: profile, intent: intent,
+            try OllinApp.exportPlates(make(), to: args[i + 1], profile: profile, intent: intent,
                                   simulatesPaper: args.contains("--paper"), frame: frame, fps: fps,
                                   drawsRegistrationMarks: !args.contains("--no-marks"),
                                   quality: renderQuality, screen: screen)
@@ -3922,12 +3962,12 @@ public extension OllinApp {
         // color when the frame was drawn through a 3D camera.
         if let i = args.firstIndex(of: "--export-exr"), i + 1 < args.count {
             let (frame, fps) = stillFlags(args)
-            OllinApp.exportEXR(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
+            try OllinApp.exportEXR(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
             return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
             let (frame, fps) = stillFlags(args)
-            OllinApp.export(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
+            try OllinApp.export(make(), to: args[i + 1], frame: frame, fps: fps, quality: renderQuality)
             return true
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
@@ -3958,11 +3998,11 @@ public extension OllinApp {
             }
             var handled = false
             if let i = svgFlag, i + 1 < args.count {
-                OllinApp.exportSVG(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
+                try OllinApp.exportSVG(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if let i = pdfFlag, i + 1 < args.count {
-                OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
+                try OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
             if let i = gcodeFlag, i + 1 < args.count {
@@ -3985,7 +4025,7 @@ public extension OllinApp {
                     let width = value("--gcode-width").flatMap(Double.init) ?? 150
                     settings = GCode(machine, width: width, margin: margin ?? 0)
                 }
-                OllinApp.exportGCode(make(), to: args[i + 1], settings: settings,
+                try OllinApp.exportGCode(make(), to: args[i + 1], settings: settings,
                                      frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
@@ -3999,7 +4039,7 @@ public extension OllinApp {
                 let spacing = value("--fill-spacing").flatMap(Double.init) ?? 0.4
                 let settings = Embroidery(width: width, margin: margin, stitchLength: stitch,
                                           fillSpacing: spacing > 0 ? spacing : nil)
-                OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings,
+                try OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings,
                                           frame: frame, fps: fps)
                 handled = true
             }
@@ -4020,7 +4060,7 @@ public extension OllinApp {
                     let width = value("--dxf-width").flatMap(Double.init) ?? 150
                     settings = DXF(width: width, margin: margin ?? 0)
                 }
-                OllinApp.exportDXF(make(), to: args[i + 1], settings: settings,
+                try OllinApp.exportDXF(make(), to: args[i + 1], settings: settings,
                                    frame: frame, fps: fps, hatching: hatching)
                 handled = true
             }
@@ -4048,7 +4088,7 @@ public extension OllinApp {
             if let m = args.firstIndex(of: "--meters-per-unit"), m + 1 < args.count {
                 metersPerUnit = Double(args[m + 1]) ?? 1
             }
-            OllinApp.exportSpatial(make(), to: args[i + 1], frame: frame,
+            try OllinApp.exportSpatial(make(), to: args[i + 1], frame: frame,
                                    metersPerUnit: metersPerUnit)
             return true
         }

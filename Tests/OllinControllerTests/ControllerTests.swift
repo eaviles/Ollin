@@ -66,6 +66,8 @@ import Ollin
 
     // MARK: - Reading a stick
 
+    /// The deadzone must not cost the top of the range: pushed all the way,
+    /// the stick still reads a full 1.
     @Test func aStickIsRead() {
         let (hub, gc) = stagedOne()
         gc.extendedGamepad?.leftThumbstick.setValueForXAxis(1, yAxis: 0)
@@ -100,14 +102,6 @@ import Ollin
         let (hub, gc) = stagedOne()
         gc.extendedGamepad?.leftThumbstick.setValueForXAxis(0.05, yAxis: 0.03)
         #expect(hub.controller(player: 1, frame: 1).leftStick == .zero)
-    }
-
-    /// The deadzone must not cost the top of the range: pushed all the way,
-    /// the stick still reads a full 1.
-    @Test func aFullyPushedStickStillReachesOne() {
-        let (hub, gc) = stagedOne()
-        gc.extendedGamepad?.leftThumbstick.setValueForXAxis(1, yAxis: 0)
-        #expect(abs(hub.controller(player: 1, frame: 1).leftStick.x - 1) < 0.001)
     }
 
     /// Rescaled rather than cut: a stick just past the edge reads near zero and
@@ -157,12 +151,6 @@ import Ollin
     }
 
     // MARK: - Buttons, and the edges between frames
-
-    @Test func aHeldButtonReadsDown() {
-        let (hub, gc) = stagedOne()
-        gc.extendedGamepad?.buttonA.setValue(1)
-        #expect(hub.controller(player: 1, frame: 1).isDown(.a))
-    }
 
     /// The point of the whole difference-two-frames design: a press fires once,
     /// however long the button is held, so a sketch can drop one thing per

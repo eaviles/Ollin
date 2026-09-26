@@ -96,12 +96,24 @@ struct ScatteringRenderProbes {
              channel: channel, x: 0.30...0.42, y: 0.42...0.58)
     }
 
+    /// The probe frames already rendered this run, by kind (the scene is otherwise
+    /// fixed), so the scattering sphere and its bare twin several probes read are each
+    /// rendered once.
+    private static var frames: [ScatterProbe.Kind: CGImage] = [:]
+
+    private func render(_ kind: ScatterProbe.Kind) throws -> CGImage {
+        if let known = Self.frames[kind] { return known }
+        let image = try #require(OllinApp.image(of: ScatterProbe.make(kind: kind), frame: 1))
+        Self.frames[kind] = image
+        return image
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func scatteringCarriesLightPastTheTerminator() throws {
         // The diffusion's signature: energy from the lit side re-emerging in the
         // shadow just past the terminator, where the bare twin stays near black.
-        let skin = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
-        let bare = try #require(OllinApp.image(of: ScatterProbe.make(kind: .bare), frame: 1))
+        let skin = try render(.skin)
+        let bare = try render(.bare)
         let a = shadowBand(skin, channel: 0), b = shadowBand(bare, channel: 0)
         #expect(a - b > 4, "expected shadow-side glow: scattering \(a), bare \(b)")
     }
@@ -110,8 +122,8 @@ struct ScatteringRenderProbes {
     func redOutrunsBlueAcrossTheTerminator() throws {
         // The default falloff runs red widest, so the shadow band's gain must be
         // red-dominant relative to the bare twin: the warm halo, not a gray blur.
-        let skin = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
-        let bare = try #require(OllinApp.image(of: ScatterProbe.make(kind: .bare), frame: 1))
+        let skin = try render(.skin)
+        let bare = try render(.bare)
         let redGain = shadowBand(skin, channel: 0) - shadowBand(bare, channel: 0)
         let blueGain = shadowBand(skin, channel: 2) - shadowBand(bare, channel: 2)
         #expect(redGain > blueGain * 1.5,
@@ -121,8 +133,8 @@ struct ScatteringRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLargerRadiusSpreadsFarther() throws {
         // Doubling the radius must push more light deeper into the shadow side.
-        let near = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
-        let wide = try #require(OllinApp.image(of: ScatterProbe.make(kind: .wideRadius), frame: 1))
+        let near = try render(.skin)
+        let wide = try render(.wideRadius)
         let a = shadowBand(wide, channel: 0), b = shadowBand(near, channel: 0)
         #expect(a - b > 2, "expected a wider spread: radius x2 \(a), x1 \(b)")
     }
@@ -143,8 +155,8 @@ struct ScatteringRenderProbes {
         // Within a scattering frame, everything that is not a marked surface (the
         // background and the bare twin) must be byte-identical to the render with
         // the scattering off: the per-pixel early-out, not a tolerance.
-        let skin = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
-        let bare = try #require(OllinApp.image(of: ScatterProbe.make(kind: .bare), frame: 1))
+        let skin = try render(.skin)
+        let bare = try render(.bare)
         let a = pixels(of: skin), b = pixels(of: bare)
         let w = skin.width, h = skin.height
         // The sphere sits in the middle; the left and right eighths are background.
@@ -165,7 +177,8 @@ struct ScatteringRenderProbes {
     func aScatteringRenderReproduces() throws {
         // The kernel, the mask, and the blur are pure functions of the frame, so
         // two renders of the same sketch are byte-identical (the export promise).
-        let a = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
+        // The second is drawn fresh here, never taken from the frames kept above.
+        let a = try render(.skin)
         let b = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
         #expect(pixels(of: a) == pixels(of: b))
     }
@@ -211,14 +224,9 @@ struct TransmittanceRenderProbes {
         let a = face(thin), b = face(thick)
         #expect(a - b > 15, "expected a transmitted glow: thin \(a), thick \(b)")
         #expect(b < 10, "the thick body's face must stay dark, got \(b)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func transmittedLightIsRedDominant() throws {
-        // The default falloff runs red widest, so at a body a radius-and-a-half
-        // thick only red survives the crossing: the blood-red of a backlit hand,
-        // not a gray glow.
-        let thin = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1))
+        // And the glow is red-dominant. The default falloff runs red widest, so at a
+        // body a radius-and-a-half thick only red survives the crossing: the blood-red
+        // of a backlit hand, not a gray glow.
         let red = face(thin, channel: 0), blue = face(thin, channel: 2)
         #expect(red > blue * 2 + 8, "expected red through the body: red \(red), blue \(blue)")
     }

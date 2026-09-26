@@ -102,7 +102,7 @@ Each tile is a fresh instance of the sketch, seeded before `setup()` runs, so st
 You can do the same from code when you drive the render yourself:
 
 ```swift
-OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
+try OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
 
 // Or keep the image and composite it yourself:
 let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92])

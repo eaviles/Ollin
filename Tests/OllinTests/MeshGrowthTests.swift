@@ -261,33 +261,24 @@ struct MeshGrowthTests {
     // MARK: Reproducibility
 
     /// The same seed grows the same form. Everything downstream (a snapshot, an
-    /// export recipe, a figure) rests on this.
+    /// export recipe, a figure) rests on this. And different seeds grow different
+    /// forms, so the seed is really steering the symmetry break rather than being
+    /// ignored.
     @Test
     func aSeededGrowthReproduces() {
-        func run() -> [Vector3] {
-            let growth = MeshGrowth(mesh: .icosphere(subdivisions: 2), driver: .curvature, seed: 9)
-            growth.maxVertices = 1500
-            growth.step(25)
-            return growth.mesh.positions
-        }
-        let a = run(), b = run()
-        #expect(a.count == b.count)
-        for i in a.indices where i < b.count {
-            #expect(a[i].distance(to: b[i]) < 1e-12, "vertex \(i) drifted")
-        }
-    }
-
-    /// Different seeds grow different forms, so the seed is really steering the
-    /// symmetry break rather than being ignored.
-    @Test
-    func differentSeedsDiverge() {
         func run(_ seed: Int) -> [Vector3] {
             let growth = MeshGrowth(mesh: .icosphere(subdivisions: 2), driver: .curvature, seed: seed)
             growth.maxVertices = 1500
             growth.step(25)
             return growth.mesh.positions
         }
-        let a = run(1), b = run(2)
+        let a = run(1), again = run(1)
+        #expect(a.count == again.count)
+        for i in a.indices where i < again.count {
+            #expect(a[i].distance(to: again[i]) < 1e-12, "vertex \(i) drifted")
+        }
+
+        let b = run(2)
         let shared = Swift.min(a.count, b.count)
         var moved = 0
         for i in 0 ..< shared where a[i].distance(to: b[i]) > 1e-6 { moved += 1 }
@@ -345,36 +336,31 @@ struct MeshGrowthTests {
     /// that shaped the feature: chemistry settled on the *coarse seed cage*
     /// dies at exactly zero (the patch is a vertex or two wide there), which is
     /// why the settle refines the surface to the target edge length first.
-    @Test
-    func settleHandsTheChemicalDriverAFormedPattern() {
-        func chemistryMeanAfterOneStep(settle: Int) -> Double {
-            let growth = MeshGrowth(mesh: .icosphere(radius: 0.75, subdivisions: 3),
-                                    driver: .chemical(.coral), edgeLength: 0.085, seed: 5)
-            growth.settleSteps = settle
-            growth.step(1)
-            let chem = growth.chemistry
-            return chem.reduce(0, +) / Double(chem.count)
-        }
-        let fresh = chemistryMeanAfterOneStep(settle: 0)
-        let settled = chemistryMeanAfterOneStep(settle: 120)
-        #expect(settled > 0, "settled chemistry died, the coarse-cage failure")
-        #expect(settled > fresh * 2,
-                "settling did not develop the pattern: \(fresh) to \(settled)")
-    }
-
+    ///
     /// Settling refines and reacts but never grows: after the first step a
     /// heavily settled surface still has essentially the seed's area. It may
     /// sit slightly *under* it (refining a coarse sphere inscribes it, and
     /// relaxation shrinks a touch), but a settle must never add area.
     @Test
-    func settleLeavesTheSurfaceUngrown() {
+    func settleHandsTheChemicalDriverAFormedPattern() {
         let seedMesh = Mesh.icosphere(radius: 0.75, subdivisions: 3)
-        let growth = MeshGrowth(mesh: seedMesh, driver: .chemical(.coral),
-                                edgeLength: 0.085, seed: 5)
-        growth.settleSteps = 120
-        growth.step(1)
+        func afterOneStep(settle: Int) -> (chemistryMean: Double, area: Double) {
+            let growth = MeshGrowth(mesh: seedMesh, driver: .chemical(.coral),
+                                    edgeLength: 0.085, seed: 5)
+            growth.settleSteps = settle
+            growth.step(1)
+            let chem = growth.chemistry
+            return (chem.reduce(0, +) / Double(chem.count), surfaceArea(growth.mesh))
+        }
+        let fresh = afterOneStep(settle: 0).chemistryMean
+        let settledRun = afterOneStep(settle: 120)
+        let settled = settledRun.chemistryMean
+        #expect(settled > 0, "settled chemistry died, the coarse-cage failure")
+        #expect(settled > fresh * 2,
+                "settling did not develop the pattern: \(fresh) to \(settled)")
+
         let before = surfaceArea(seedMesh)
-        let after = surfaceArea(growth.mesh)
+        let after = settledRun.area
         #expect(after < before * 1.02,
                 "settling grew the surface: \(before) to \(after)")
         #expect(after > before * 0.85,

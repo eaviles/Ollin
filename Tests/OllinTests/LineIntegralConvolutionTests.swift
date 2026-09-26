@@ -40,6 +40,17 @@ struct LineIntegralConvolutionTests {
         return worst
     }
 
+    /// The base with no convolution in the way, rendered once: the two identity
+    /// checks below both measure against it.
+    private static var plainFrame: CGImage?
+
+    private func plainBase() throws -> CGImage {
+        if let image = Self.plainFrame { return image }
+        let image = try #require(OllinApp.image(of: StreakProbe.make(.plain), frame: 0))
+        Self.plainFrame = image
+        return image
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFieldAcrossAStripeSmearsItSideways() throws {
         // A vector field pointing right, over a vertical stripe: the stripe leaks
@@ -63,7 +74,7 @@ struct LineIntegralConvolutionTests {
         // column, where the base is one value throughout, so the average is that
         // value and the stripe keeps its edges.
         let streaked = try #require(OllinApp.image(of: StreakProbe.make(.alongTheStripe), frame: 0))
-        let plain = try #require(OllinApp.image(of: StreakProbe.make(.plain), frame: 0))
+        let plain = try plainBase()
         let w = worst(streaked, plain)
         #expect(w <= 1, "a field along the stripe moved it by \(w)/255")
     }
@@ -73,7 +84,7 @@ struct LineIntegralConvolutionTests {
         // The contour reading of a flat field has no gradient anywhere, so the
         // walk stops at once and the pixel is its own only sample.
         let streaked = try #require(OllinApp.image(of: StreakProbe.make(.still), frame: 0))
-        let plain = try #require(OllinApp.image(of: StreakProbe.make(.plain), frame: 0))
+        let plain = try plainBase()
         let w = worst(streaked, plain)
         #expect(w <= 1, "a still field changed the base by \(w)/255")
     }

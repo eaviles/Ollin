@@ -98,7 +98,7 @@ struct SwarmChemistryTests {
         #expect(unheardOf.isEmpty,
                 "\(unheardOf.count) recipes exist that no opening recipe could have been copied into")
         // And with it on, recipes appear that were never opened with.
-        let mutated = try run { $0.mutationRate = 0.5 }
+        let mutated = try mutatedAtHalf()
         let openingMutated = Set(mutated.opening.map(Self.key))
         #expect(mutated.recipes.contains { !openingMutated.contains(Self.key($0)) },
                 "mutation was on and yet nothing new appeared")
@@ -109,7 +109,7 @@ struct SwarmChemistryTests {
         // A mutant belongs to the line it came from, which is what makes the tally a
         // contest rather than a count of how many mutations have happened. So the number
         // of lines still alive can only fall.
-        let mutated = try run { $0.mutationRate = 0.5 }
+        let mutated = try mutatedAtHalf()
         #expect(mutated.tally.reduce(0, +) == 800, "every particle must belong to some line")
         #expect(mutated.tally.filter { $0 > 0 }.count <= 4)
     }
@@ -155,6 +155,17 @@ struct SwarmChemistryTests {
         var tally: [Int]
         var recipes: [SwarmChemistry.Recipe]
         var opening: [SwarmChemistry.Recipe]
+    }
+
+    /// The world run with a mutation rate of one half and nothing else changed. Two
+    /// tests read this same run, so it is run once for the suite.
+    private static var mutatedHalf: Outcome?
+
+    private func mutatedAtHalf() throws -> Outcome {
+        if let outcome = Self.mutatedHalf { return outcome }
+        let outcome = try run { $0.mutationRate = 0.5 }
+        Self.mutatedHalf = outcome
+        return outcome
     }
 
     private func run(_ configure: @escaping (SwarmChemistry) -> Void) throws -> Outcome {

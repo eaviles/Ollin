@@ -10,9 +10,25 @@ import Testing
     /// for a GPU rather than for a page.
     static let surfaces: [SamplePhoto] = [.talavera, .stone]
 
+    /// Every photograph's decoded size, by name, read once for the suite: the
+    /// size and shape rules below all ask about the same pictures, and
+    /// `load()` decodes on every call.
+    static let sizes: [String: (width: Int, height: Int)] = Dictionary(
+        SamplePhoto.all.map { photo -> (String, (width: Int, height: Int)) in
+            let image = photo.load()
+            return (photo.name, (width: image.width, height: image.height))
+        },
+        uniquingKeysWith: { first, _ in first })   // `theNamesAreDistinct` is the check
+
+    /// A photograph's decoded size; zero by zero for one that never decoded,
+    /// which fails every rule below by name.
+    static func size(of photo: SamplePhoto) -> (width: Int, height: Int) {
+        sizes[photo.name] ?? (width: 0, height: 0)
+    }
+
     @Test func everyPhotographDecodesAt1600OnItsLongSide() {
         for photo in SamplePhoto.all where !SamplePhotoTests.surfaces.contains(photo) {
-            let image = photo.load()
+            let image = Self.size(of: photo)
             #expect(max(image.width, image.height) == 1600, "\(photo.name)")
             #expect(min(image.width, image.height) >= 1000, "\(photo.name)")
         }
@@ -24,7 +40,7 @@ import Testing
     /// artifacts a magnified surface would show.
     @Test func theSurfacesAreSquarePowersOfTwo() {
         for photo in SamplePhotoTests.surfaces {
-            let image = photo.load()
+            let image = Self.size(of: photo)
             #expect(image.width == image.height, "\(photo.name)")
             #expect(image.width == 1024, "\(photo.name)")
         }
@@ -35,7 +51,7 @@ import Testing
     /// body, upright where a raised arm and a foot would not fit a square.
     @Test func theFacesAreSquare() {
         for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds] {
-            let image = photo.load()
+            let image = Self.size(of: photo)
             #expect(image.width == image.height, "\(photo.name)")
         }
     }
@@ -45,7 +61,7 @@ import Testing
     /// frame held rather than trimmed on all four sides.
     @Test func theTablesAndStreetsAreSquare() {
         for photo in [SamplePhoto.breakfast, .desk, .alley, .street, .textiles, .city] {
-            let image = photo.load()
+            let image = Self.size(of: photo)
             #expect(image.width == image.height, "\(photo.name)")
         }
     }
@@ -66,7 +82,7 @@ import Testing
     /// to match cost eleven percent of its height, all of it dark foreground.
     @Test func theLandscapesShareOneWideShape() {
         let shapes = [SamplePhoto.headland, .boats].map { photo -> (Int, Int) in
-            let image = photo.load()
+            let image = Self.size(of: photo)
             return (image.width, image.height)
         }
         #expect(shapes.allSatisfy { $0 == shapes[0] })

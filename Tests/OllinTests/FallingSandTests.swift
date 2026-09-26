@@ -37,11 +37,12 @@ struct FallingSandTests {
         // sinks, the water it displaces rises to the surface, and the heap slumps
         // on the floor. Every frame must match the CPU walk exactly, mid-fall and
         // settled alike.
+        var settled: [[Int]] = []
         for frame in [2, 6, 12, 30] {
             let gpu = try materials(probe(.basin), frame: frame)
             #expect(gpu == stepped(seed(.basin), passes: passes(at: frame)), "frame \(frame)")
+            settled = gpu                 // the last pass of the loop is the settled pile
         }
-        let settled = try materials(probe(.basin), frame: 30)
         let sand = cells(of: .sand, in: settled), water = cells(of: .water, in: settled)
         #expect(sand.count == 9)
         #expect(water.count == 64 * 8)
@@ -55,11 +56,12 @@ struct FallingSandTests {
     func wallsHoldAndNeverMove() throws {
         // A wall shelf under a falling block: grains land on it and slump off its
         // ends to the floor, and the shelf itself is exactly where it was drawn.
+        var settled: [[Int]] = []
         for frame in [4, 30] {
             let gpu = try materials(probe(.shelf), frame: frame)
             #expect(gpu == stepped(seed(.shelf), passes: passes(at: frame)), "frame \(frame)")
+            settled = gpu                 // the last pass of the loop is the settled pile
         }
-        let settled = try materials(probe(.shelf), frame: 30)
         #expect(cells(of: .wall, in: settled) == cells(of: .wall, in: seed(.shelf)))
         let sand = cells(of: .sand, in: settled)
         #expect(sand.count == 9)

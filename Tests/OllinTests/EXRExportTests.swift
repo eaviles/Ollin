@@ -170,11 +170,11 @@ struct EXRExportTests {
     @Test func theHeaderNamesWhatTheFrameCarries() throws {
         let url = scratch("header")
         defer { try? FileManager.default.removeItem(at: url) }
-        OllinApp.exportEXR(Flat(), to: url.path)
+        try OllinApp.exportEXR(Flat(), to: url.path)
 
         let file = try parse(url)
         #expect(file.version == 2)
-        #expect(file.channels.map(\.name) == ["A", "B", "G", "R"])
+        #expect(file.channels.map(\.name) == ["A", "B", "G", "R"])   // a flat frame writes no depth
         #expect(file.channels.allSatisfy { $0.type == 1 })       // half
         #expect(file.compression == 0)                           // none
         #expect(file.width == 64 && file.height == 64)
@@ -185,7 +185,7 @@ struct EXRExportTests {
     @Test func theSystemsOwnReaderOpensIt() throws {
         let url = scratch("system")
         defer { try? FileManager.default.removeItem(at: url) }
-        OllinApp.exportEXR(Flat(), to: url.path)
+        try OllinApp.exportEXR(Flat(), to: url.path)
 
         let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
         let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
@@ -197,7 +197,7 @@ struct EXRExportTests {
     @Test func theRecipeTravelsInTheComments() throws {
         let url = scratch("recipe")
         defer { try? FileManager.default.removeItem(at: url) }
-        OllinApp.exportEXR(Flat(), to: url.path, frame: 3)
+        try OllinApp.exportEXR(Flat(), to: url.path, frame: 3)
 
         let file = try parse(url)
         let comments = try #require(file.text("comments"))
@@ -215,8 +215,8 @@ struct EXRExportTests {
             try? FileManager.default.removeItem(at: png)
         }
         let ground = Color(white: 0.5)
-        OllinApp.exportEXR(Flat(), to: url.path)
-        OllinApp.export(Flat(), to: png.path)
+        try OllinApp.exportEXR(Flat(), to: url.path)
+        try OllinApp.export(Flat(), to: png.path)
 
         // The same pixel, two files: the EXR carries the light, the PNG the byte
         // a screen wants. 0.5 encoded is 0.2140 of the light.
@@ -244,11 +244,11 @@ struct EXRExportTests {
         let bright = Flat()
         bright.ground = .black
         bright.sums = true
-        OllinApp.exportEXR(bright, to: url.path)
+        try OllinApp.exportEXR(bright, to: url.path)
         let again = Flat()
         again.ground = .black
         again.sums = true
-        OllinApp.export(again, to: png.path)
+        try OllinApp.export(again, to: png.path)
 
         // Where the two disks overlap, two whites were summed.
         let file = try parse(url)
@@ -278,7 +278,7 @@ struct EXRExportTests {
         let cut = Flat()
         cut.ground = .clear
         cut.translucent = true
-        OllinApp.exportEXR(cut, to: url.path)
+        try OllinApp.exportEXR(cut, to: url.path)
 
         let file = try parse(url)
         #expect(file.at("A", x: 1, y: 1) == 0, "the bare canvas should be empty")
@@ -294,18 +294,11 @@ struct EXRExportTests {
 
     // MARK: Depth
 
-    @Test func aFlatFrameWritesNoDepthChannel() throws {
-        let url = scratch("flat")
-        defer { try? FileManager.default.removeItem(at: url) }
-        OllinApp.exportEXR(Flat(), to: url.path)
-        #expect(try parse(url).channels.map(\.name) == ["A", "B", "G", "R"])
-    }
-
     @Test func theDepthChannelIsDistanceFromTheEye() throws {
         let url = scratch("depth")
         defer { try? FileManager.default.removeItem(at: url) }
         let scene = Boxed()
-        OllinApp.exportEXR(scene, to: url.path)
+        try OllinApp.exportEXR(scene, to: url.path)
 
         let file = try parse(url)
         #expect(file.channels.map(\.name) == ["A", "B", "G", "R", "Z"])
@@ -328,7 +321,7 @@ struct EXRExportTests {
         let previous = OllinApp.exportRenderScale
         OllinApp.exportRenderScale = 2
         defer { OllinApp.exportRenderScale = previous }
-        OllinApp.exportEXR(Boxed(), to: url.path)
+        try OllinApp.exportEXR(Boxed(), to: url.path)
 
         let file = try parse(url)
         #expect(file.width == 64 && file.height == 64)
@@ -345,7 +338,7 @@ struct EXRExportTests {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-exr-sequence-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
-        OllinApp.exportSequence(Flat(), to: directory.path, frames: 2, fps: 30, writesEXR: true)
+        try OllinApp.exportSequence(Flat(), to: directory.path, frames: 2, fps: 30, writesEXR: true)
 
         let written = try FileManager.default.contentsOfDirectory(atPath: directory.path).sorted()
         #expect(written == ["frame-00001.exr", "frame-00002.exr"])

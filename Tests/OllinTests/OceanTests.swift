@@ -58,14 +58,14 @@ struct OceanTests {
     /// their asked-for height.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theWindMovesTheEnergyNotTheHeight() throws {
-        let light = Ocean(waveHeight: 3, windSpeed: 7, seed: 9)
-        let strong = Ocean(waveHeight: 3, windSpeed: 22, seed: 9)
-        let lightCrossings = try crossings(of: light)
-        let strongCrossings = try crossings(of: strong)
+        let light = try heightField(of: Ocean(waveHeight: 3, windSpeed: 7, seed: 9))
+        let strong = try heightField(of: Ocean(waveHeight: 3, windSpeed: 22, seed: 9))
+        let lightCrossings = crossings(in: light)
+        let strongCrossings = crossings(in: strong)
         #expect(lightCrossings > strongCrossings * 1.4,
                 "a light wind should raise shorter waves (\(lightCrossings) crossings against \(strongCrossings))")
-        let lightHeight = try significantHeight(of: light)
-        let strongHeight = try significantHeight(of: strong)
+        let lightHeight = significantHeight(in: light)
+        let strongHeight = significantHeight(in: strong)
         #expect(abs(lightHeight - strongHeight) / strongHeight < 0.3,
                 "both were asked for 3 units and stand \(lightHeight) and \(strongHeight)")
     }
@@ -155,16 +155,31 @@ struct OceanTests {
 
     // MARK: Helpers
 
-    /// Four times the standard deviation of the field's height channel, read back
-    /// through the probe's own mapping.
-    private func significantHeight(of ocean: Ocean, resolution: Int = 128) throws -> Double {
+    /// One sea's height channel as the probe draws it, with the mapping into gray the
+    /// readings undo. Both readings below take the same field, so a sea read two ways
+    /// is rendered once.
+    private struct HeightField {
+        var bytes: [UInt8], width: Int, height: Int, scale: Double
+    }
+
+    private func heightField(of ocean: Ocean, resolution: Int = 128) throws -> HeightField {
         let scale = 0.4 / max(0.001, ocean.waveHeight)
         let image = try #require(OllinApp.image(
             of: SeaProbe.make(ocean, channel: 1, scale: scale, resolution: resolution), frame: 1))
         let px = pixels(of: image)
+        return HeightField(bytes: px.bytes, width: px.width, height: px.height, scale: scale)
+    }
+
+    /// Four times the standard deviation of the field's height channel, read back
+    /// through the probe's own mapping.
+    private func significantHeight(of ocean: Ocean, resolution: Int = 128) throws -> Double {
+        significantHeight(in: try heightField(of: ocean, resolution: resolution))
+    }
+
+    private func significantHeight(in px: HeightField) -> Double {
         var sum = 0.0, count = 0.0
         for i in stride(from: 0, to: px.bytes.count, by: 4) {
-            let h = (Double(px.bytes[i + 1]) / 255 - 0.5) / scale
+            let h = (Double(px.bytes[i + 1]) / 255 - 0.5) / px.scale
             sum += h * h
             count += 1
         }
@@ -173,11 +188,7 @@ struct OceanTests {
 
     /// How often the middle row of the field crosses the still line: a plain
     /// reading of how short the waves are.
-    private func crossings(of ocean: Ocean) throws -> Double {
-        let scale = 0.4 / max(0.001, ocean.waveHeight)
-        let image = try #require(OllinApp.image(
-            of: SeaProbe.make(ocean, channel: 1, scale: scale), frame: 1))
-        let px = pixels(of: image)
+    private func crossings(in px: HeightField) -> Double {
         var total = 0.0
         for row in stride(from: 8, to: px.height, by: 8) {
             var previous = 0.0

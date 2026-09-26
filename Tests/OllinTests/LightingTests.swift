@@ -597,7 +597,12 @@ struct LightingTests {
 @MainActor
 struct AreaLightRenderProbes {
 
+    /// The center reading of each mode already rendered, so a mode two probes read is
+    /// drawn once (the scenes are fixed, so a mode is the whole of what changes the picture).
+    private static var centers: [AreaLightProbe.Mode: Int] = [:]
+
     private func centerPixel(_ mode: AreaLightProbe.Mode) throws -> Int {
+        if let known = Self.centers[mode] { return known }
         let image = try #require(OllinApp.image(of: AreaLightProbe.make(mode), frame: 1))
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
@@ -606,7 +611,9 @@ struct AreaLightRenderProbes {
                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
         let i = (h / 2 * w + w / 2) * 4
-        return Int(data[i])   // the quad is white-lit, so red suffices
+        let center = Int(data[i])   // the quad is white-lit, so red suffices
+        Self.centers[mode] = center
+        return center
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -1247,21 +1254,23 @@ struct MultipleCasterRenderProbes {
         return data
     }
 
-    /// Red-channel darkening against the unshadowed render (the scene is grayscale).
-    private func darkening(_ mode: TwoCasterProbe.Mode, fillIsSpot: Bool = false) throws -> [Int] {
+    /// Red-channel darkening of each casting mode against the unshadowed render (the scene
+    /// is grayscale). The unshadowed render is drawn once and read against all three.
+    private func darkenings(fillIsSpot: Bool)
+        throws -> (key: [Int], fill: [Int], both: [Int]) {
         let lit = try pixels(TwoCasterProbe.make(.none, fillIsSpot: fillIsSpot))
-        let shadowed = try pixels(TwoCasterProbe.make(mode, fillIsSpot: fillIsSpot))
-        return stride(from: 0, to: lit.count, by: 4).map { Int(lit[$0]) - Int(shadowed[$0]) }
+        func darkening(_ mode: TwoCasterProbe.Mode) throws -> [Int] {
+            let shadowed = try pixels(TwoCasterProbe.make(mode, fillIsSpot: fillIsSpot))
+            return stride(from: 0, to: lit.count, by: 4).map { Int(lit[$0]) - Int(shadowed[$0]) }
+        }
+        return try (darkening(.keyOnly), darkening(.fillOnly), darkening(.both))
     }
 
-    /// How much of the second caster's own shadow (the part the first caster does not
-    /// darken) survives into the render where both cast.
-    private func secondShadowSurvival(fillIsSpot: Bool) throws -> (region: Int, kept: Int) {
-        let onlyKey = try darkening(.keyOnly, fillIsSpot: fillIsSpot)
-        let onlyFill = try darkening(.fillOnly, fillIsSpot: fillIsSpot)
-        let both = try darkening(.both, fillIsSpot: fillIsSpot)
+    /// How much of one caster's own shadow (the part `other` does not darken) survives
+    /// into the render where both cast.
+    private func survival(own: [Int], other: [Int], both: [Int]) -> (region: Int, kept: Int) {
         var region = 0, kept = 0
-        for i in 0..<both.count where onlyFill[i] > 20 && onlyKey[i] < 5 {
+        for i in 0..<both.count where own[i] > 20 && other[i] < 5 {
             region += 1
             if both[i] > 20 { kept += 1 }
         }
@@ -1270,35 +1279,26 @@ struct MultipleCasterRenderProbes {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSecondCasterThrowsItsOwnShadow() throws {
+        let d = try darkenings(fillIsSpot: false)
         // The fill light's own shadow: darkened when it alone casts, untouched by the
         // key light's shadow, so this region belongs to the second caster only.
-        let (region, kept) = try secondShadowSurvival(fillIsSpot: false)
+        let (region, kept) = survival(own: d.fill, other: d.key, both: d.both)
         #expect(region > 200, "expected a clear second shadow, got \(region) pixels")
         #expect(kept > region * 9 / 10,
                 "the second caster's shadow must survive with both casting: kept \(kept) of \(region)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func bothShadowsLandTogether() throws {
-        // The mirror of the check above: the key light's own region survives too, so
-        // neither caster overwrites the other's map.
-        let onlyKey = try darkening(.keyOnly)
-        let onlyFill = try darkening(.fillOnly)
-        let both = try darkening(.both)
-        var region = 0, kept = 0
-        for i in 0..<both.count where onlyKey[i] > 20 && onlyFill[i] < 5 {
-            region += 1
-            if both[i] > 20 { kept += 1 }
-        }
-        #expect(region > 200, "expected a clear first shadow, got \(region) pixels")
-        #expect(kept > region * 9 / 10, "kept \(kept) of \(region)")
+        // The mirror of the check above, read off the same renders: the key light's own
+        // region survives too, so neither caster overwrites the other's map.
+        let first = survival(own: d.key, other: d.fill, both: d.both)
+        #expect(first.region > 200, "expected a clear first shadow, got \(first.region) pixels")
+        #expect(first.kept > first.region * 9 / 10, "kept \(first.kept) of \(first.region)")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSpotCastsBesideADirectional() throws {
         // The pair a sketch actually reaches for: a key light plus a stage light. The
         // spot is the second caster, so its map is a layer of its own.
-        let (region, kept) = try secondShadowSurvival(fillIsSpot: true)
+        let d = try darkenings(fillIsSpot: true)
+        let (region, kept) = survival(own: d.fill, other: d.key, both: d.both)
         #expect(region > 200, "expected the spot's own shadow, got \(region) pixels")
         #expect(kept > region * 9 / 10, "kept \(kept) of \(region)")
     }

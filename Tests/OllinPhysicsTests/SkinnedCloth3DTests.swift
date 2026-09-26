@@ -157,7 +157,7 @@ struct SkinnedCloth3DTests {
     // MARK: The leash
 
     @Test func swayIsADistanceInWorldUnits() throws {
-        for leash in [0.02, 0.05, 0.1] {
+        for leash in [0.02, 0.1] {
             let figure = try Self.figure()
             let world = World3D()
             world.ground = 0
@@ -190,44 +190,50 @@ struct SkinnedCloth3DTests {
     }
 
     /// Cutting the skin loose leaves only the clasp following, so the same cape
-    /// on the same walk leaves the skin far further behind.
+    /// on the same walk leaves the skin far further behind. And one number,
+    /// `swayScale`, lets the whole surface out without rebuilding it: the same
+    /// held cape scaled by four reaches more than twice as far. Both are
+    /// measured against the one held run.
     @Test func cuttingTheSkinLooseLetsTheClothGo() throws {
         let figure = try Self.figure()
         let world = World3D()
         world.ground = 0
         let cape = try cape(in: world, on: figure, sway: 0.03)
         let held = stride(cape, on: figure, in: world)
+
+        let scaledWorld = World3D()
+        scaledWorld.ground = 0
+        let scaledCape = try self.cape(in: scaledWorld, on: figure, sway: 0.03)
+        scaledCape.swayScale = 4
+        let scaled = stride(scaledCape, on: figure, in: scaledWorld)
+
         cape.followsSkin = false
         let loose = stride(cape, on: figure, in: world)
         #expect(held <= 0.035, "a held cape reached \(held)")
         #expect(loose > held * 5,
                 "cutting the skin loose changed the reach from \(held) to \(loose)")
-    }
-
-    /// One number lets the whole surface out without rebuilding it.
-    @Test func swayScaleLoosensTheWholeSurfaceAtOnce() throws {
-        var reach: [Double] = []
-        for scale in [1.0, 4.0] {
-            let figure = try Self.figure()
-            let world = World3D()
-            world.ground = 0
-            let cape = try cape(in: world, on: figure, sway: 0.03)
-            cape.swayScale = scale
-            reach.append(stride(cape, on: figure, in: world))
-        }
-        #expect(reach[1] > reach[0] * 2,
-                "scaling the sway by 4 changed the reach from \(reach[0]) to \(reach[1])")
+        #expect(scaled > held * 2,
+                "scaling the sway by 4 changed the reach from \(held) to \(scaled)")
     }
 
     // MARK: The back stop
 
-    @Test func theBackStopHoldsTheClothOffTheFigure() throws {
+    /// The back stop holds the cloth off the figure it hangs on, where the same
+    /// cape with no back stop is blown well into it. And the solver reads a
+    /// skinned vertex's normal from the winding, and the back stop sits behind
+    /// that normal, so the same cape built from the sheet wound the other way
+    /// must be held off the figure just the same: behind is toward what
+    /// carries it, not whichever side the mesh faces.
+    @Test func theBackStopHoldsWhicheverWayTheSheetIsWound() throws {
         var pushed: [Double] = []
-        for stop in [nil, 0.04] as [Double?] {
+        let runs: [(stop: Double?, sheet: Mesh)] = [
+            (nil, Self.sheet), (0.04, Self.sheet), (0.04, Self.sheetWoundTheOtherWay),
+        ]
+        for setup in runs {
             let figure = try Self.figure()
             let world = World3D()
             world.ground = 0
-            let cape = try cape(in: world, on: figure, backStop: stop)
+            let cape = try cape(in: world, on: figure, backStop: setup.stop, sheet: setup.sheet)
             let rest = cape.particlePositions
             var deepest = -Double.infinity
             for step in 0 ..< 300 {
@@ -243,37 +249,10 @@ struct SkinnedCloth3DTests {
             pushed.append(deepest)
         }
         #expect(pushed[1] < 0.05,
-                "a back stop of 0.04 let the cloth \(pushed[1]) past the skin")
+                "a back stop of 0.04 let the cloth \(pushed[1]) past the skin (wound one way)")
         #expect(pushed[0] > 0.3,
                 "with no back stop the cloth only reached \(pushed[0]) past the skin")
-    }
-
-    /// The solver reads a skinned vertex's normal from the winding, and the
-    /// back stop sits behind that normal, so the same cape built from the
-    /// sheet wound the other way must be held off the figure just the same:
-    /// behind is toward what carries it, not whichever side the mesh faces.
-    @Test func theBackStopHoldsWhicheverWayTheSheetIsWound() throws {
-        var pushed: [Double] = []
-        for sheet in [Self.sheet, Self.sheetWoundTheOtherWay] {
-            let figure = try Self.figure()
-            let world = World3D()
-            world.ground = 0
-            let cape = try cape(in: world, on: figure, backStop: 0.04, sheet: sheet)
-            let rest = cape.particlePositions
-            var deepest = -Double.infinity
-            for step in 0 ..< 300 {
-                cape.applyForce(Vector3(0, 0, 8))
-                cape.follow(figure)
-                world.advance(by: 1.0 / 60)
-                guard step > 120 else { continue }
-                for (index, point) in cape.particlePositions.enumerated() {
-                    deepest = max(deepest, point.z - rest[index].z)
-                }
-            }
-            pushed.append(deepest)
-        }
-        #expect(pushed[0] < 0.05, "wound one way, the cloth got \(pushed[0]) past the skin")
-        #expect(pushed[1] < 0.05, "wound the other way, the cloth got \(pushed[1]) past the skin")
+        #expect(pushed[2] < 0.05, "wound the other way, the cloth got \(pushed[2]) past the skin")
     }
 
     // MARK: Long range attachments

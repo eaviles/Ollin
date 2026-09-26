@@ -279,7 +279,7 @@ struct EmbroideryExportTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let path = dir.appendingPathComponent("Rings.dst").path
-        OllinApp.exportEmbroidery(sketch, to: path, settings: mm)
+        try OllinApp.exportEmbroidery(sketch, to: path, settings: mm)
         let file = DST(try Data(contentsOf: URL(fileURLWithPath: path)))
         #expect(file.label == "RINGS")
         #expect(file.moves.filter { $0.kind == .stitch }.count > 60)

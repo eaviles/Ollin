@@ -147,6 +147,8 @@ struct WeatherTests {
         let weather = Weather(at: Place(latitude: 19.4326, longitude: -99.1332))
         let url = weather.forecastURL(for: weather.place!)
         #expect(url.hasPrefix("https://api.open-meteo.com/v1/forecast?"))
+        // The stub keys on path alone, so the coordinates a forecast is asked at
+        // are checked here, through the address the weather builds.
         #expect(url.contains("latitude=19.4326"))
         #expect(url.contains("longitude=-99.1332"))
         #expect(url.contains("wind_speed_unit=ms"))
@@ -214,15 +216,6 @@ struct WeatherTests {
         #expect(reading.name == "Oaxaca City, Oaxaca, Mexico")
         #expect(reading.timeZone?.identifier == "America/Mexico_City")
         #expect(weather.problem == nil)
-    }
-
-    @Test func theForecastGoesToTheLookedUpCoordinates() async throws {
-        // The stub keys on path alone, so the coordinates are checked through
-        // the address the weather builds rather than the stub's record.
-        let (weather, _, _) = makeWeather(at: nil, in: "Oaxaca")
-        let url = weather.forecastURL(for: Place(latitude: 17.06025, longitude: -96.72544))
-        #expect(url.contains("latitude=17.060"))
-        #expect(url.contains("longitude=-96.725"))
     }
 
     @Test func aNameNothingMatchesSaysSo() async throws {

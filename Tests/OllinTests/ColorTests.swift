@@ -119,7 +119,10 @@ struct ColorTests {
         #expect(close(Color(kelvin: 99999), Color(kelvin: 40000)))
     }
 
-    @Test(arguments: Array(stride(from: 1000.0, through: 40000, by: 500)))
+    /// One temperature on each piece of the approximation (blue held at zero up
+    /// to 1900K, the warm curves, the 6600K seam, the cool curves), with both ends
+    /// of the clamp among them.
+    @Test(arguments: [1000.0, 1900, 3000, 6600, 40000])
     func kelvinComponentsStayInRange(_ k: Double) {
         let c = Color(kelvin: k)
         #expect(c.red >= 0 && c.red <= 1)

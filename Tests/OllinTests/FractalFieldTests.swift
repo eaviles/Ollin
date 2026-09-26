@@ -43,6 +43,32 @@ struct FractalFieldTests {
         return (0..<(w * h)).map { data[$0 * 4 + 1] > 128 }
     }
 
+    /// The leaves more than one test renders, named by every parameter that changes
+    /// the picture, so each is rendered once for the suite and read by every test that
+    /// asks for it.
+    private enum Leaf: Hashable {
+        case sponge(iterations: Int, size: Double)
+        case bulb(power: Double, iterations: Int, radius: Double)
+
+        var field: SDF3D {
+            switch self {
+            case let .sponge(iterations, size):
+                return .mengerSponge(iterations: iterations, size: size)
+            case let .bulb(power, iterations, radius):
+                return .mandelbulb(power: power, iterations: iterations, radius: radius)
+            }
+        }
+    }
+
+    private static var leafMasks: [Leaf: [Bool]] = [:]
+
+    private func mask(of leaf: Leaf) throws -> [Bool] {
+        if let seen = Self.leafMasks[leaf] { return seen }
+        let fresh = try mask(of: leaf.field)
+        Self.leafMasks[leaf] = fresh
+        return fresh
+    }
+
     private func coveredFraction(_ m: [Bool], insideSquareOfSide units: Double) -> Double {
         let half = units / 2 * Self.pixelsPerUnit
         let c = Double(Self.side) / 2
@@ -80,7 +106,7 @@ struct FractalFieldTests {
         // its square. Level 0 is the plain cube. The levels are ~0.1 apart, so a tolerance of
         // 0.03 tells them apart while forgiving the anti-aliased hole edges.
         for k in 0...3 {
-            let m = try mask(of: .mengerSponge(iterations: k, size: 2))
+            let m = try mask(of: Leaf.sponge(iterations: k, size: 2))
             let expected = pow(8.0 / 9.0, Double(k))
             let got = coveredFraction(m, insideSquareOfSide: 2)
             #expect(abs(got - expected) < 0.03, "level \(k): covered \(got), carpet says \(expected)")
@@ -89,7 +115,7 @@ struct FractalFieldTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSpongeSeesThroughItsCenterAndKeepsItsCorners() throws {
-        let m = try mask(of: .mengerSponge(iterations: 2, size: 2))
+        let m = try mask(of: Leaf.sponge(iterations: 2, size: 2))
         let c = Self.side / 2
         #expect(!m[c * Self.side + c], "the middle bar runs straight through")
         // A corner sub-cube survives every level: a pixel just inside the corner is covered.
@@ -101,8 +127,8 @@ struct FractalFieldTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aDeeperSpongeOnlyRemovesMaterial() throws {
         // Level k+1 is level k with more bored out, so its silhouette is a subset.
-        let shallow = try mask(of: .mengerSponge(iterations: 2, size: 2))
-        let deep = try mask(of: .mengerSponge(iterations: 3, size: 2))
+        let shallow = try mask(of: Leaf.sponge(iterations: 2, size: 2))
+        let deep = try mask(of: Leaf.sponge(iterations: 3, size: 2))
         var gained = 0, covered = 0
         for i in deep.indices { if deep[i] { covered += 1; if !shallow[i] { gained += 1 } } }
         #expect(Double(gained) / Double(covered) < 0.003, "\(gained) pixels appeared at the deeper level")
@@ -116,7 +142,7 @@ struct FractalFieldTests {
         // plane), so the power-8 silhouette from above repeats every seventh of a turn. The
         // same test against a power-5 bulb (four-fold) must fail, or it is not reading the
         // power at all.
-        let eight = try mask(of: .mandelbulb(power: 8, iterations: 8, radius: 1.2))
+        let eight = try mask(of: Leaf.bulb(power: 8, iterations: 8, radius: 1.2))
         let five = try mask(of: .mandelbulb(power: 5, iterations: 8, radius: 1.2))
         let step = 2 * Double.pi / 7
         var worstEight = 0.0, worstFive = 0.0
@@ -135,7 +161,7 @@ struct FractalFieldTests {
         // (its lobes sit near the ball's edge) and the drawn skin, fattened a little by the
         // finite iteration count, stays within a few percent of it. Its bounding box is
         // padded past that, so this also pins that the box never clips the rim.
-        let m = try mask(of: .mandelbulb(power: 8, iterations: 8, radius: 1.2))
+        let m = try mask(of: Leaf.bulb(power: 8, iterations: 8, radius: 1.2))
         var farthest = 0.0
         for i in 0..<128 { farthest = max(farthest, silhouetteRadius(m, angle: Double(i) / 128 * 2 * .pi)) }
         let bound = 1.2 * Self.pixelsPerUnit

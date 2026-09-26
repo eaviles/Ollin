@@ -18,6 +18,17 @@ import Testing
 @MainActor
 struct AntialiasFilterTests {
 
+    /// The default staircase with no pass over it, rendered once: the identity check
+    /// and the headline both measure against it.
+    private static var unfilteredStaircaseFrame: CGImage?
+
+    private func unfilteredStaircase() throws -> CGImage {
+        if let image = Self.unfilteredStaircaseFrame { return image }
+        let image = try #require(OllinApp.image(of: StaircaseProbe.make(nil), frame: 1))
+        Self.unfilteredStaircaseFrame = image
+        return image
+    }
+
     // MARK: The parameter is honest
 
     /// Zero amount hands the layer back byte for byte, so an A/B costs nothing. It has
@@ -25,7 +36,7 @@ struct AntialiasFilterTests {
     /// no edge in it, and the pixel that walks an edge and then blends by zero.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroAmountIsIdentity() throws {
-        let plain = try #require(OllinApp.image(of: StaircaseProbe.make(nil), frame: 1))
+        let plain = try unfilteredStaircase()
         let zero = try #require(OllinApp.image(
             of: StaircaseProbe.make(.antialias(amount: 0)), frame: 1))
         #expect(maxDifference(plain, zero) == 0)
@@ -51,7 +62,7 @@ struct AntialiasFilterTests {
     /// land within a hundredth of the same figure.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aStairSteppedEdgeBecomesARamp() throws {
-        let plain = try #require(OllinApp.image(of: StaircaseProbe.make(nil), frame: 1))
+        let plain = try unfilteredStaircase()
         let smoothed = try #require(OllinApp.image(
             of: StaircaseProbe.make(.antialias()), frame: 1))
         let before = edgeWander(plain), after = edgeWander(smoothed)

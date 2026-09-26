@@ -292,7 +292,7 @@ An embroidery machine is a plotter that sews. It moves a hoop under a needle, an
 </picture>
 
 ```swift
-OllinApp.exportEmbroidery(sketch, to: "leaf.dst", settings: Embroidery(width: 100))
+try OllinApp.exportEmbroidery(sketch, to: "leaf.dst", settings: Embroidery(width: 100))
 ```
 
 ```sh
@@ -312,7 +312,7 @@ swift run OllinLive MySketches/Panel.swift --export-dxf panel.dxf
 ```
 
 ```swift
-OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
+try OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
 ```
 
 <picture>

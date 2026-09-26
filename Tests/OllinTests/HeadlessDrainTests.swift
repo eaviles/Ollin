@@ -30,7 +30,7 @@ struct HeadlessDrainTests {
         let directory = ollinTempPath("ollin-drain-sequence")
         defer { try? FileManager.default.removeItem(atPath: directory) }
         PoolCount.start()
-        OllinApp.exportSequence(WitnessSketch(), to: directory, frames: 6, fps: 30)
+        try OllinApp.exportSequence(WitnessSketch(), to: directory, frames: 6, fps: 30)
         #expect(PoolCount.drawn == 6)
         #expect(PoolCount.deepest == 1)
     }
@@ -42,7 +42,7 @@ struct HeadlessDrainTests {
         let directory = ollinTempPath("ollin-drain-warmup")
         defer { try? FileManager.default.removeItem(atPath: directory) }
         PoolCount.start()
-        OllinApp.exportSequence(WitnessSketch(), to: directory, frames: 2, fps: 30,
+        try OllinApp.exportSequence(WitnessSketch(), to: directory, frames: 2, fps: 30,
                                 skipSeconds: 6.0 / 30)
         #expect(PoolCount.drawn == 8)          // six warmed up, two written
         #expect(PoolCount.deepest == 1)

@@ -15,9 +15,8 @@ import Ollin
     }
 
     @Test func detectReturnsCleanlyOnTinyImage() async throws {
-        // Degenerate input shouldn't trap; an empty result is fine.
+        // The case: a degenerate 8×8 input does not throw (or trap); any result is fine.
         let image = Image(width: 8, height: 8, color: .black)
-        let faces = try await FaceTracker.detect(in: image)
-        #expect(faces.count >= 0)
+        _ = try await FaceTracker.detect(in: image)
     }
 }

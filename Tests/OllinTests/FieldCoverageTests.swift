@@ -1,5 +1,4 @@
 import Testing
-import Metal
 import simd
 import COllinShaders
 @testable import Ollin
@@ -11,12 +10,6 @@ import COllinShaders
 /// bound can't be trusted (an unbounded plane, a camera inside or behind the box).
 @MainActor
 struct FieldCoverageTests {
-
-    private func makeRenderer() throws -> MetalRenderer? {
-        guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-        return try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
-                                 sampleCount: ollinPreferredSampleCount(device))
-    }
 
     private func viewProjection(eyeZ: Double) -> simd_float4x4 {
         let camera = Camera3D(eye: Vector3(0, 0, eyeZ), target: .zero)
@@ -31,9 +24,7 @@ struct FieldCoverageTests {
         return g
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func coverageShrinksAsTheCameraDolliesOut() throws {
-        guard let renderer = try makeRenderer() else { return }
+    @Test func coverageShrinksAsTheCameraDolliesOut() {
         let unit = box(min: SIMD3(-1, -1, -1), max: SIMD3(1, 1, 1))
         let near = MetalRenderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 4))
         let far = MetalRenderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 20))
@@ -42,9 +33,7 @@ struct FieldCoverageTests {
         #expect(far < 0.05)              // a dollied-out box covers little of the screen
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func untrustedProjectionsCountAsFullCoverage() throws {
-        guard let renderer = try makeRenderer() else { return }
+    @Test func untrustedProjectionsCountAsFullCoverage() {
         // Camera inside the box: a corner lands at/behind the camera plane.
         let room = box(min: SIMD3(-5, -5, -5), max: SIMD3(5, 5, 5))
         #expect(MetalRenderer.fieldScreenCoverage([room], viewProjection: viewProjection(eyeZ: 0.5)) == 1.0)
@@ -54,9 +43,7 @@ struct FieldCoverageTests {
         #expect(MetalRenderer.fieldScreenCoverage([plane], viewProjection: viewProjection(eyeZ: 10)) == 1.0)
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func offscreenFieldsContributeNothingAndSumsCapAtOne() throws {
-        guard let renderer = try makeRenderer() else { return }
+    @Test func offscreenFieldsContributeNothingAndSumsCapAtOne() {
         let vp = viewProjection(eyeZ: 10)
         // Far off to the side, in front of the camera: clipped to zero area.
         let aside = box(min: SIMD3(99, -1, -1), max: SIMD3(101, 1, 1))

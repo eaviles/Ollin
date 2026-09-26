@@ -3492,12 +3492,17 @@ public extension OllinApp {
     static let maxWebPageBytes = 25 * 1024 * 1024
 
     /// Record `sketch` and write the page to `path`; the basis for the
-    /// `--export-web` flag. A refusal is printed and the process exits nonzero,
-    /// so a build step that runs the exporter sees it fail.
+    /// `--export-web` flag.
+    ///
+    /// Throws `ExportError` when the page cannot carry the sketch (a call the
+    /// page has no way to draw, or a page past `maxBytes`, each named in the
+    /// sentence) or cannot be written. From the command line the sentence is
+    /// printed and the process exits nonzero, so a build step that runs the
+    /// exporter sees it fail.
     static func exportWeb(_ sketch: Sketch, to path: String, frames: Int, fps: FrameRate = 30,
                           skipSeconds: Double = 0, form: WebPageForm = .standalone,
                           controls: Bool = true, maxBytes: Int? = OllinApp.maxWebPageBytes,
-                          remake: (() -> Sketch)? = nil) {
+                          remake: (() -> Sketch)? = nil) throws {
         let fps = fps.framesPerSecond
         let recording: WebRecording
         let page: String
@@ -3506,20 +3511,18 @@ public extension OllinApp {
                                             controls: controls, maxBytes: maxBytes, remake: remake)
             page = try webPage(of: recording, form: form, panel: controls, maxBytes: maxBytes)
         } catch let refusal as WebExportRefusal {
-            fflush(stdout)
-            FileHandle.standardError.write(Data("Ollin: --export-web stopped: \(refusal).\n".utf8))
-            exit(1)
+            throw ExportError(.unsupported, path: path, frame: refusal.frame,
+                              problem: "the page cannot carry this sketch: \(refusal)")
         } catch let refusal as WebWeightRefusal {
-            fflush(stdout)
-            FileHandle.standardError.write(Data("Ollin: --export-web stopped: \(refusal).\n".utf8))
-            exit(1)
+            throw ExportError(.unsupported, path: path, problem: "the page would be too heavy: \(refusal)")
         } catch {
-            fatalError("Ollin: --export-web failed: \(error)")
+            throw ExportError(.unrendered, path: path, problem: "the sketch could not be recorded: \(error)")
         }
         do {
             try page.write(toFile: path, atomically: true, encoding: .utf8)
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path,
+                              problem: "the page could not be written: \(error.localizedDescription)")
         }
         let track = WebTrack(recording)
         let kb = Double(page.utf8.count) / 1024

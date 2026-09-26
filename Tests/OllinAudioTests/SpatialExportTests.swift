@@ -80,7 +80,10 @@ import Testing
     // MARK: - The inconsistency this closes
 
     /// The headline. The same note, the same clock, one placed to the left and
-    /// one to the right: the export has to tell them apart.
+    /// one to the right: the export has to tell them apart. A placed instrument
+    /// is a different graph, so this with `anUnplacedInstrumentStaysInTheMiddle`
+    /// (left and right identical there, lopsided here) pins that the two paths
+    /// really are different rather than the placing being ignored.
     @MainActor
     @Test func aPlacedInstrumentIsPlacedInTheExportToo() {
         let toTheLeft = placed(at: Vector3(-6, 0, 0))
@@ -102,6 +105,11 @@ import Testing
     /// count, the way the live path builds it, so its one stream is written
     /// into both channels; handed to the mixer as mono it arrives in the left
     /// channel alone and the right is digital silence.
+    ///
+    /// The instrument here has no effects either, so this is also the check
+    /// that an empty effect chain exports exactly what the instrument did
+    /// before there was a chain at all: centered, since nothing in an empty
+    /// chain can move it.
     @MainActor
     @Test func anUnplacedInstrumentStaysInTheMiddle() {
         let centered = placed(at: nil)
@@ -119,15 +127,6 @@ import Testing
             break
         }
         #expect(identical)
-    }
-
-    /// A placed instrument is a different graph, so this pins that the two
-    /// paths really are different rather than the placing being ignored.
-    @MainActor
-    @Test func placingChangesTheSoundtrackAtAll() {
-        let centered = placed(at: nil)
-        let offToOneSide = placed(at: Vector3(-6, 0, 0))
-        #expect(centered != offToOneSide)
     }
 
     // MARK: - What the listener does

@@ -41,11 +41,15 @@ extension OllinApp {
     /// corner targets and the plate label, identical on every file.
     ///
     /// ```swift
-    /// OllinApp.exportPlates(sketch, to: "poster.png", profile: press)
+    /// try OllinApp.exportPlates(sketch, to: "poster.png", profile: press)
     /// ```
     ///
     /// From the command line: `--export-plates poster.png` (see
     /// `handleCommandLine`).
+    ///
+    /// Throws `ExportError` when neither the call nor the sketch names a
+    /// printing condition, the frame does not draw, or a file cannot be
+    /// written.
     @MainActor
     public static func exportPlates(_ sketch: Sketch, to path: String,
                                     profile: ICCProfile? = nil,
@@ -54,28 +58,25 @@ extension OllinApp {
                                     frame: Int = 0, fps: FrameRate = 60,
                                     drawsRegistrationMarks: Bool = true,
                                     quality: RenderQuality = .detail,
-                                    screen: (ProcessSeparation) -> ProcessSeparation = { $0 }) {
+                                    screen: (ProcessSeparation) -> ProcessSeparation = { $0 }) throws {
         guard let press = profile ?? sketch.printProfile else {
-            FileHandle.standardError.write(Data("""
-                --export-plates splits a sketch into process-color printing plates.
-                Declare the printing condition in the sketch:
-                    override var printProfile: ICCProfile? { .genericCMYK }
-                or name a profile on the command line:
-                    --export-plates out.png --profile "US Web Coated (SWOP) v2"
-                    --export-plates out.png --profile ~/Profiles/press.icc
-
-                """.utf8))
-            return
+            throw ExportError(.unsupported, path: path, problem: """
+                no printing condition to separate for. Declare one in the sketch \
+                (override var printProfile: ICCProfile? { .genericCMYK }) or name a profile \
+                (--profile "US Web Coated (SWOP) v2", or a path to an .icc file, on the command line)
+                """)
         }
         print("Ollin: rendering plates for \(press.name) (\(press.channelCount) channels, \(intent.rawValue))")
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            fatalError("Ollin: failed to render the frame for separation (no Metal device?)")
+            throw ExportError(.unrendered, path: path, frame: 0,
+                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
         }
         var proof = SoftProof(press, from: ICCProfile.canvas(sketch.colorOutput), intent: intent)
         proof.simulatesPaper = simulatesPaper
         let separation = screen(Image(cgImage: cgImage).separated(into: proof))
         guard !separation.plates.isEmpty else {
-            fatalError("Ollin: the separation produced no plates (is \(press.name) readable?)")
+            throw ExportError(.unrendered, path: path, frame: 0,
+                              problem: "the separation produced no plates (is \(press.name) readable?)")
         }
 
         var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
@@ -92,7 +93,7 @@ extension OllinApp {
                         "\(Int((plate.averageInk * 100).rounded()))% ink"
             guard let sheet = separationSheet(plate.master.cgImage, band: band, label: label),
                   writePNG(sheet, to: file, recipe: recipe) else {
-                fatalError("Ollin: failed to write \(file)")
+                throw ExportError(.unwritable, path: file, frame: 0, problem: "the plate could not be written")
             }
             print("  \(label) → \(file)")
         }
@@ -102,7 +103,8 @@ extension OllinApp {
         guard let sheet = separationSheet(separation.preview().cgImage, band: band,
                                           label: previewLabel),
               writePNG(sheet, to: "\(stem)-preview.png", recipe: recipe) else {
-            fatalError("Ollin: failed to write \(stem)-preview.png")
+            throw ExportError(.unwritable, path: "\(stem)-preview.png", frame: 0,
+                              problem: "the proof could not be written")
         }
         print("Ollin: exported \(separation.plates.count) plates + proof → \(stem)-*.png " +
               "(\(separation.width)×\(separation.height)" +

@@ -57,22 +57,14 @@ struct InstallationTests {
     // MARK: The clock a shader reads
 
     /// The defect the restart exists for. A 32-bit float cannot hold a clock in
-    /// seconds for a week: adding one frame at 60 a second to it changes
-    /// nothing at all, so every motion driven inside a shader stops.
-    @Test func aFloatClockStopsMovingAfterAWeek() {
-        let week = 604_800.0, step = 1.0 / 60
-        #expect(Float(week + step) == Float(week))
-        // A day in it still moves, but a frame is already worth less than one
-        // step of what the number can hold, so the motion is uneven.
-        let day = 86_400.0
-        #expect(Float(day + step) != Float(day))
-        #expect(Double(Float(day).ulp) > step / 3)
-        // Restarted on a whole lap, it is exact again: a frame step lands
-        // within a thousandth of where it should.
-        let wrapped = week.truncatingRemainder(dividingBy: 960)
-        #expect(abs(Double(Float(wrapped + step) - Float(wrapped)) - step) < step / 1000)
-    }
-
+    /// seconds for a week: at 604,800 seconds, adding one frame at 60 a second
+    /// changes nothing at all, so every motion driven inside a shader stops. A
+    /// day in it still moves, but a frame is already worth less than three of
+    /// the steps the number can hold at 86,400, so the motion is uneven.
+    /// Restarted on a whole lap under a thousand seconds, it is exact again: a
+    /// frame step lands within a thousandth of where it should. So the period
+    /// is a whole number of laps, small enough to stay exact, and never shorter
+    /// than the loop itself.
     @Test func anAutomaticClockRestartsOnAWholeLap() throws {
         let period = try #require(Installation.on.clockPeriod(loopDuration: 120))
         #expect(period.truncatingRemainder(dividingBy: 120) == 0)   // whole laps

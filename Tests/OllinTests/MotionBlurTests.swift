@@ -32,6 +32,44 @@ struct MotionBlurTests {
         Int(p.data[(y * p.w + x) * 4])
     }
 
+    /// What changes a mover probe's picture: every setting it takes, and the frame.
+    private struct MoverKey: Hashable {
+        var blur: Bool, shutter: Double, velocity: Vector3, mover: Bool, toggle: Bool
+        var frame: Int
+    }
+
+    /// What changes a camera probe's picture: the blur, and the frame.
+    private struct CameraKey: Hashable {
+        var blur: Bool, frame: Int
+    }
+
+    /// The frames already rendered this run, so a frame several claims read (the
+    /// blurred mover and its unblurred twin, the panning camera pair) is drawn once.
+    private static var moverFrames: [MoverKey: (data: [UInt8], w: Int, h: Int)] = [:]
+    private static var cameraFrames: [CameraKey: (data: [UInt8], w: Int, h: Int)] = [:]
+
+    private func moverFrame(blur: Bool, shutter: Double = 0.5,
+                            velocity: Vector3 = Vector3(20, 0, 0),
+                            mover: Bool = true, toggle: Bool = false,
+                            frame: Int) throws -> (data: [UInt8], w: Int, h: Int) {
+        let key = MoverKey(blur: blur, shutter: shutter, velocity: velocity, mover: mover,
+                           toggle: toggle, frame: frame)
+        if let known = Self.moverFrames[key] { return known }
+        let p = pixels(try #require(OllinApp.image(
+            of: MBMoverProbe.make(blur: blur, shutter: shutter, velocity: velocity,
+                                  mover: mover, toggle: toggle), frame: frame)))
+        Self.moverFrames[key] = p
+        return p
+    }
+
+    private func cameraFrame(blur: Bool, frame: Int) throws -> (data: [UInt8], w: Int, h: Int) {
+        let key = CameraKey(blur: blur, frame: frame)
+        if let known = Self.cameraFrames[key] { return known }
+        let p = pixels(try #require(OllinApp.image(of: MBCameraProbe.make(blur: blur), frame: frame)))
+        Self.cameraFrames[key] = p
+        return p
+    }
+
     // MARK: The claims
 
     /// A moving object streaks along its own motion: a pixel a few pixels past
@@ -41,10 +79,8 @@ struct MotionBlurTests {
     /// gather direction, and the on/off gate at once.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aMoverStreaksAlongItsMotion() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false), frame: 2)))
+        let on = try moverFrame(blur: true, shutter: 1, frame: 2)
+        let off = try moverFrame(blur: false, frame: 2)
         // Export frame 2 draws with frameCount 3: the box (24 px square) centers
         // at world (60, 0) = pixel (156, 96), edges at x 144/168, moving +x
         // 20 px per frame; shutter 1 spreads the streak 10 px each way.
@@ -81,10 +117,8 @@ struct MotionBlurTests {
     /// streaks a still box's edge into the background.
     @Test(.enabled(if: Snapshot.hasMetal))
     func cameraMotionBlursTheStaticScene() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBCameraProbe.make(blur: true), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBCameraProbe.make(blur: false), frame: 2)))
+        let on = try cameraFrame(blur: true, frame: 2)
+        let off = try cameraFrame(blur: false, frame: 2)
         // The camera tracks +x at 20 px per frame, so the still box slides -x
         // across the frame; drawn with frameCount 3 its center sits at pixel
         // (36, 96) with edges at x 24/48, and shutter 1 spreads 10 px each way.
@@ -117,10 +151,8 @@ struct MotionBlurTests {
     /// reach, shutter 1 leaves ink where shutter 0.25 leaves black.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theShutterScalesTheStreak() throws {
-        let wide = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2)))
-        let crisp = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 0.25), frame: 2)))
+        let wide = try moverFrame(blur: true, shutter: 1, frame: 2)
+        let crisp = try moverFrame(blur: true, shutter: 0.25, frame: 2)
         // Spread is 10 px at shutter 1, 2.5 px at 0.25; probe 6 px past the
         // leading edge (x 168, the box drawn with frameCount 3).
         let far = ink(wide, 174, 96)
@@ -169,10 +201,8 @@ struct MotionBlurTests {
     /// the per-frame reset and the renderer gate in one equality.
     @Test(.enabled(if: Snapshot.hasMetal))
     func turningItOffIsTheDefaultAgain() throws {
-        let off = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false), frame: 2)))
-        let toggled = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false, toggle: true), frame: 2)))
+        let off = try moverFrame(blur: false, frame: 2)
+        let toggled = try moverFrame(blur: false, toggle: true, frame: 2)
         #expect(off.data == toggled.data,
                 "an on-then-off frame must be byte-identical to never-on")
     }
@@ -183,8 +213,8 @@ struct MotionBlurTests {
     /// video export stands on).
     @Test(.enabled(if: Snapshot.hasMetal))
     func anExportIsAPureFunctionOfTheFrame() throws {
-        let first = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2)))
+        // The second render is drawn fresh here, never taken from the frames kept above.
+        let first = try moverFrame(blur: true, shutter: 1, frame: 2)
         let second = pixels(try #require(OllinApp.image(
             of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2)))
         #expect(first.data == second.data,
@@ -205,10 +235,8 @@ struct MotionBlurTests {
     /// overlays and the environment never smear.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theBackdropHoldsStill() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBCameraProbe.make(blur: true), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBCameraProbe.make(blur: false), frame: 2)))
+        let on = try cameraFrame(blur: true, frame: 2)
+        let off = try cameraFrame(blur: false, frame: 2)
         var same = true
         for y in 4..<24 where same {
             for x in 164..<188 where same {

@@ -65,17 +65,9 @@ import Foundation
         // The points run in travel order, left to right.
         let xs = last.detectedPointsNormalized.map(\.x)
         #expect(xs == xs.sorted())
-    }
 
-    @Test func arcKeepsItsIdentityAcrossFrames() async throws {
-        let count = 40
-        let frames = (0..<count).map { i -> Image in
-            let (x, y) = ballPosition(i, count: count)
-            return frame(x: x, y: y)
-        }
-        let perFrame = try await TrajectoryTracker.detect(across: frames)
-        let ids = Set(perFrame.flatMap { $0.map(\.id) })
         // One ball, one arc: the same trajectory id persists across the frames.
+        let ids = Set(perFrame.flatMap { $0.map(\.id) })
         #expect(ids.count == 1)
     }
 

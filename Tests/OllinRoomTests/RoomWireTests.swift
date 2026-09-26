@@ -77,6 +77,7 @@ import Testing
         #expect(RoomWire.unframe(Data(bytes)) == nil)
     }
 
+    /// Every prefix, down to nothing at all (the last cut leaves no bytes).
     @Test func aTruncatedFrameIsRefused() {
         let frame = RoomWire.encodeValue(key: "k", value: .number(1))
         for cut in 1...frame.count {
@@ -95,10 +96,6 @@ import Testing
         var bytes = [UInt8](RoomWire.encodeValue(key: "k", value: .number(1)))
         bytes[8] = 0xFF; bytes[9] = 0xFF; bytes[10] = 0xFF; bytes[11] = 0x7F
         #expect(RoomWire.unframe(Data(bytes)) == nil)
-    }
-
-    @Test func nothingAtAllIsRefused() {
-        #expect(RoomWire.unframe(Data()) == nil)
     }
 
     @Test func aValuePayloadCutShortIsRefused() {

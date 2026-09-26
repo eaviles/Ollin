@@ -39,8 +39,7 @@ struct VectorProtocolTests {
     }
 
     @Test func centroidTakesEitherElement() {
-        #expect([Vector2]().centroid == nil)
-        #expect([Vector2(0, 0), Vector2(4, 0), Vector2(2, 6)].centroid == Vector2(2, 2))
+        // The Vector2 form is pinned in `Vector2Tests.centroid`.
         // The Vector3 form is new: the collection helper used to be Vector2 only.
         #expect([Vector3]().centroid == nil)
         #expect([Vector3(0, 0, 0), Vector3(4, 0, 2),

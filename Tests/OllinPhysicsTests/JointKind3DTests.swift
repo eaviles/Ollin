@@ -159,24 +159,7 @@ struct JointKind3DTests {
 
     /// One side of a rope rising is the other side falling, and the total
     /// length is what says so: the heavier body wins and hauls the lighter up.
-    @Test func aPulleyTradesOneSideForTheOther() {
-        let world = World3D()
-        world.ground = nil
-        let heavy = world.addBody(.box(width: 1, height: 1, depth: 1),
-                                  at: Vector3(-3, 6, 0), density: 4)
-        let light = world.addBody(.box(width: 1, height: 1, depth: 1),
-                                  at: Vector3(3, 6, 0), density: 1)
-        world.connect(heavy, light,
-                      .pulley(from: Vector3(-3, 6.5, 0), over: Vector3(-3, 12, 0),
-                              and: Vector3(3, 12, 0), to: Vector3(3, 6.5, 0)))
-        run(world, steps: 90)
-        let dropped = 6 - heavy.position.y
-        let rose = light.position.y - 6
-        #expect(dropped > 3, "the heavy side falls")
-        #expect(abs(dropped - rose) < 0.3, "and the light side rises as far")
-    }
-
-    /// The same fall with the light side threaded twice: it moves half as far,
+    /// The same fall with the light side threaded twice moves it half as far,
     /// which is the whole point of a block and tackle.
     @Test func aPulleyRatioIsHowManyFallsHoldTheSecondSide() {
         func rise(ratio: Double) -> (dropped: Double, rose: Double) {
@@ -195,7 +178,8 @@ struct JointKind3DTests {
         }
         let single = rise(ratio: 1)
         let doubled = rise(ratio: 2)
-        #expect(abs(single.dropped - single.rose) < 0.3)
+        #expect(single.dropped > 3, "the heavy side falls")
+        #expect(abs(single.dropped - single.rose) < 0.3, "and the light side rises as far")
         #expect(abs(doubled.dropped / 2 - doubled.rose) < 0.3,
                 "threaded twice, the light side moves half as far")
     }

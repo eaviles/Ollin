@@ -118,14 +118,11 @@ struct TensegrityTests {
             return atan2(node.z, node.x)
         }
         let twist = Tensegrity.prismTwist(struts: n)
-        var expected = 0.0
         for k in 0 ..< levels {
             let delta = turn(ofPolygon: k + 1) - turn(ofPolygon: k)
             let sign: Double = k.isMultiple(of: 2) ? 1 : -1
             #expect(abs(delta - sign * twist) < 1e-9, "level \(k)")
-            expected += sign * twist
         }
-        _ = expected
         #expect(mast.imbalance < 1e-6)
     }
 

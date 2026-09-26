@@ -87,10 +87,17 @@ import Foundation
         return Image(cgImage: ctx.makeImage()!)
     }
 
+    /// The field for the whole-frame (+8, +5) shift, computed once for the
+    /// suite: three tests read it three ways, and the flow itself is the
+    /// costly part, so it is measured one time rather than once per reading.
+    private static let shiftedField = Task<MotionField?, Error> {
+        let suite = FlowTrackerTests()
+        return try await FlowTracker.detect(from: suite.texturedFrame(),
+                                            to: suite.texturedFrame(shiftRight: 8, shiftDown: 5))
+    }
+
     @Test func pairReportsTheShift() async throws {
-        let a = texturedFrame()
-        let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.detect(from: a, to: b))
+        let field = try #require(try await Self.shiftedField.value)
 
         // The flow map comes back at the input's own resolution.
         #expect(field.size.x == 320 && field.size.y == 240)
@@ -111,9 +118,7 @@ import Foundation
     }
 
     @Test func mappingScalesAndMirrors() async throws {
-        let a = texturedFrame()
-        let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.detect(from: a, to: b))
+        let field = try #require(try await Self.shiftedField.value)
 
         // Drawn into a rect twice the size, the same motion is twice as long.
         let doubled = Rectangle(x: 0, y: 0, width: 640, height: 480)
@@ -150,9 +155,7 @@ import Foundation
     /// The frame's far corner — where a drifting particle lands — must answer,
     /// not crash.
     @Test func edgeQueriesAreSafe() async throws {
-        let a = texturedFrame()
-        let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.detect(from: a, to: b))
+        let field = try #require(try await Self.shiftedField.value)
 
         // The coordinates that trap unclamped: exactly 1 and just under it.
         _ = field.flowNormalized(at: Vector2(1, 1))

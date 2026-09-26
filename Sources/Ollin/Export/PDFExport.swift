@@ -272,8 +272,10 @@ public extension OllinApp {
     /// GPU. The print-ready counterpart of `exportSVG`; the basis for the
     /// `--export-pdf` flag. Pass `hatching` to plot solid fills as pen line
     /// work (see `pdf(of:)`).
+    ///
+    /// Throws `ExportError` when the file cannot be written.
     static func exportPDF(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
-                          hatching: Hatching? = nil) {
+                          hatching: Hatching? = nil) throws {
         let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         let document = serializePDF(recording.commands, background: recording.background,
                                     width: recording.width, height: recording.height,
@@ -286,7 +288,8 @@ public extension OllinApp {
             try document.write(to: URL(fileURLWithPath: path), options: .atomic)
             print("Ollin: exported frame \(frame) → \(path) (PDF)")
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the file could not be written: \(error.localizedDescription)")
         }
     }
 }

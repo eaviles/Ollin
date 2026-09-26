@@ -672,13 +672,16 @@ struct SceneLoaderTests {
         #expect(indices.count == 3 && Set(indices).count == 3)
     }
 
+    /// Where the system keeps its shaderball package, when it has one.
+    nonisolated static let shaderballPath =
+        "/System/Library/PrivateFrameworks/CoreUSDEdit.framework/Versions/A/Resources/shaderball.usdz"
+
     /// The system shaderball, the file that demonstrates the alphabetization
     /// the native walk fixes: its neutral_objects group authors core, base,
     /// sss_bars in that order (sorted would lead with base).
-    @Test func systemShaderballKeepsAuthoredChildOrder() throws {
-        let url = URL(fileURLWithPath:
-            "/System/Library/PrivateFrameworks/CoreUSDEdit.framework/Versions/A/Resources/shaderball.usdz")
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: SceneLoaderTests.shaderballPath)))
+    func systemShaderballKeepsAuthoredChildOrder() throws {
+        let url = URL(fileURLWithPath: Self.shaderballPath)
         let loaded = try? Ollin.Scene(contentsOf: url)
         let scene = try #require(loaded)
         let group = try #require(scene.node("neutral_objects"))

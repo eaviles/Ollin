@@ -71,7 +71,18 @@ private struct Frame {
 @MainActor
 struct LightTests {
 
+    /// The frames already worked out this run, by subject (a subject is the whole of what
+    /// changes the picture), so a scene several claims read is lit once.
+    private static var frames: [LightProbe.Subject: Frame] = [:]
+
     private func frame(_ subject: LightProbe.Subject) throws -> Frame {
+        if let known = Self.frames[subject] { return known }
+        let lit = try litFrame(subject)
+        Self.frames[subject] = lit
+        return lit
+    }
+
+    private func litFrame(_ subject: LightProbe.Subject) throws -> Frame {
         let image = try #require(OllinApp.image(of: LightProbe.make(subject), frame: 1))
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
@@ -270,7 +281,7 @@ struct LightTests {
 
 /// A scene, a lamp, and the light between them, drawn at native size.
 private final class LightProbe: Sketch {
-    enum Subject {
+    enum Subject: Hashable {
         /// One small lamp in an empty scene: falloff, rings, reach, and sky.
         case lamp(reach: Double?, sky: Color = .clear, radius: Double = 10,
                   quality: RenderQuality = .performance)

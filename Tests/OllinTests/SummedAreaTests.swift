@@ -56,6 +56,23 @@ struct SummedAreaTests {
         try #require(OllinApp.image(of: SumProbe.make(subject, size: size), frame: 1))
     }
 
+    private struct FlatKey: Hashable {
+        var gray: Double
+        var radius: Double
+    }
+
+    /// How far a flat tone filtered at `radius` on a 1024 square drifts, in sRGB levels,
+    /// kept per tone and radius so a field two tests ask about is rendered once.
+    private static var flatDrifts: [FlatKey: Double] = [:]
+
+    private func flatDrift(gray: Double, radius: Double) throws -> Double {
+        let key = FlatKey(gray: gray, radius: radius)
+        if let drift = Self.flatDrifts[key] { return drift }
+        let drift = driftOffFlat(try render(.flat(gray: gray, radius: radius), size: 1024), gray: gray) * 255
+        Self.flatDrifts[key] = drift
+        return drift
+    }
+
     /// A summed-area table built on the CPU in `Double`, and the box average read off it.
     /// This is the reference the GPU table is measured against: the same algorithm with
     /// no precision question hanging over it.
@@ -128,8 +145,8 @@ struct SummedAreaTests {
     /// sit at the ends instead, where the sums are largest.
     @Test(arguments: [37.0, 240.0], [0.25, 1.0])
     func aFlatFieldStaysFlat(radius: Double, gray: Double) throws {
-        let image = try render(.flat(gray: gray, radius: radius), size: 1024)
-        #expect(driftOffFlat(image, gray: gray) * 255 < 1.5,
+        let drift = try flatDrift(gray: gray, radius: radius)
+        #expect(drift < 1.5,
                 "gray \(gray) at radius \(radius) drifted off flat")
     }
 
@@ -144,10 +161,9 @@ struct SummedAreaTests {
     /// for. This test pins the small end so a change that makes it worse is caught, and it
     /// is also the number quoted in the filter's own documentation.
     @Test func theTableSpendsItsPrecisionOnTheRunningTotal() throws {
-        let tight = driftOffFlat(try render(.flat(gray: 0.25, radius: 1), size: 1024),
-                                 gray: 0.25) * 255
-        let wide = driftOffFlat(try render(.flat(gray: 0.25, radius: 240), size: 1024),
-                                gray: 0.25) * 255
+        let tight = try flatDrift(gray: 0.25, radius: 1)
+        // The same field `aFlatFieldStaysFlat` renders at radius 240, read once.
+        let wide = try flatDrift(gray: 0.25, radius: 240)
         #expect(tight < 10, "a 3x3 window drifted \(tight)/255, past the documented bound")
         #expect(wide < tight, "the error is meant to fall as the window grows")
     }

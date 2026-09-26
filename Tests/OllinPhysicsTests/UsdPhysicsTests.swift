@@ -515,17 +515,17 @@ struct UsdPhysicsTests {
     }
 
     /// Everything read comes in as ordinary bodies, so it is all savable the
-    /// way a hand-built world is.
+    /// way a hand-built world is. (Saved as it was read: settling the yard is
+    /// `theShippedYardComesInAsAuthored`, and an exact restore does not need it.)
     @Test func animportedWorldSnapshotsLikeAnyOther() throws {
         let world = World3D()
         world.addBodies(from: try Self.yard(), usesSceneGravity: true)
-        run(world, steps: 400)
-        let settled = world.bodies.map(\.position)
+        let placed = world.bodies.map(\.position)
 
         let back = World3D()
         try back.restore(world.snapshot())
         #expect(back.bodies.count == world.bodies.count)
-        let error = zip(settled, back.bodies.map(\.position))
+        let error = zip(placed, back.bodies.map(\.position))
             .map { ($0 - $1).length }.max() ?? .infinity
         #expect(error == 0)
         #expect(back.bodies.first?.assetName != nil, "the prim names came with it")

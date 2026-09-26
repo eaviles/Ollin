@@ -1,5 +1,5 @@
 import CoreGraphics
-import Ollin
+@testable import Ollin
 import Testing
 
 /// Behavioral probes for the state automata (`.cyclic`, `.excitable`,
@@ -156,10 +156,10 @@ struct StateAutomataTests {
         // one step, all bare after the next.
         let forest = [[Int]](repeating: [Int](repeating: 1, count: 64), count: 64)
         let stamps = fullStamps(forest, levels: 3)
-        let alight = try grid(probe(.forestFire(growth: 0, lightning: 1), stamps: stamps),
-                              generations: 1, levels: 3)
-        let after = try grid(probe(.forestFire(growth: 0, lightning: 1), stamps: stamps),
-                             generations: 2, levels: 3)
+        let struck = try grids(probe(.forestFire(growth: 0, lightning: 1), stamps: stamps),
+                               generations: [1, 2], levels: 3)
+        let alight = try #require(struck[1])
+        let after = try #require(struck[2])
         #expect(alight.allSatisfy { $0.allSatisfy { $0 == 2 } })
         #expect(after.allSatisfy { $0.allSatisfy { $0 == 0 } })
     }
@@ -168,10 +168,10 @@ struct StateAutomataTests {
     /// starts bare rather than from seeded noise, so this also pins the rest state.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aForestWithNoLightningOnlyGrows() throws {
-        let early = try grid(probe(.forestFire(growth: 0.3, lightning: 0), stamps: []),
-                             generations: 1, levels: 3)
-        let later = try grid(probe(.forestFire(growth: 0.3, lightning: 0), stamps: []),
-                             generations: 30, levels: 3)
+        let run = try grids(probe(.forestFire(growth: 0.3, lightning: 0), stamps: []),
+                            generations: [1, 30], levels: 3)
+        let early = try #require(run[1])
+        let later = try #require(run[30])
         let bare = early.joined().count { $0 == 0 }
         #expect(bare > 2000 && bare < 4096)          // one step in, most of it is still bare
         #expect(!early.joined().contains(2))         // and nothing is burning
@@ -183,16 +183,17 @@ struct StateAutomataTests {
     /// fills up nor burns out. It settles between the two and keeps throwing fires.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theForestSettlesBetweenBareAndFull() throws {
-        let field = try grid(probe(.forestFire(growth: 0.06, lightning: 0.0008), stamps: []),
-                             generations: 200, levels: 3)
+        // One run to generation 200, read at every generation from 150 on.
+        let run = try grids(probe(.forestFire(growth: 0.06, lightning: 0.0008), stamps: []),
+                            generations: Array(150 ... 200), levels: 3)
+        let field = try #require(run[200])
         let trees = Double(field.joined().count { $0 == 1 }) / 4096
         let bare = Double(field.joined().count { $0 == 0 }) / 4096
         #expect(trees > 0.1 && trees < 0.95)
         #expect(bare > 0.02)
         // A run at that ratio is never quiet for long: something is alight.
         let burning = (150 ... 200).contains { generation in
-            (try? grid(probe(.forestFire(growth: 0.06, lightning: 0.0008), stamps: []),
-                       generations: generation, levels: 3))?.joined().contains(2) ?? false
+            run[generation]?.joined().contains(2) ?? false
         }
         #expect(burning)
     }
@@ -275,9 +276,10 @@ struct StateAutomataTests {
                     "#.......#",
                     "#########"]
         let stamps = levelStamps(wired(ring, at: 20, 20), levels: 4)
-        let at10 = try grid(probe(.wireworld(), stamps: stamps), generations: 10, levels: 4)
-        let at20 = try grid(probe(.wireworld(), stamps: stamps), generations: 20, levels: 4)
-        let at30 = try grid(probe(.wireworld(), stamps: stamps), generations: 30, levels: 4)
+        let run = try grids(probe(.wireworld(), stamps: stamps), generations: [10, 20, 30], levels: 4)
+        let at10 = try #require(run[10])
+        let at20 = try #require(run[20])
+        let at30 = try #require(run[30])
         #expect(at10 == at30)
         #expect(at10 != at20)
         #expect(at30.joined().count { $0 == 3 } >= 1)
@@ -471,10 +473,10 @@ struct StateAutomataTests {
     /// prototype reads 0.5 falling to 0.02), the domains having grown.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aQuenchCoarsens() throws {
-        let early = try grid(probe(.ising(temperature: 1, sweeps: 1, seed: 3), stamps: []),
-                             generations: 1, levels: 2)
-        let late = try grid(probe(.ising(temperature: 1, sweeps: 1, seed: 3), stamps: []),
-                            generations: 40, levels: 2)
+        let run = try grids(probe(.ising(temperature: 1, sweeps: 1, seed: 3), stamps: []),
+                            generations: [1, 40], levels: 2)
+        let early = try #require(run[1])
+        let late = try #require(run[40])
         #expect(disagreement(early) > 0.15)
         #expect(disagreement(late) < 0.1)
         #expect(disagreement(late) < disagreement(early))
@@ -569,7 +571,24 @@ struct StateAutomataTests {
     /// per draw, so a probe read at `frame: g - 1` holds exactly `g` generations
     /// past its frame-1 stamp.
     private func grid(_ sketch: Sketch, generations: Int, levels: Int) throws -> [[Int]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: generations - 1))
+        states(in: try #require(OllinApp.image(of: sketch, frame: generations - 1)), levels: levels)
+    }
+
+    /// The same readout after each of several generation counts, from one run to
+    /// the largest rather than a fresh run per count: frame `g - 1` of the run is
+    /// the field `grid(_:generations: g, levels:)` reads, decoded as the run passes it.
+    private func grids(_ sketch: Sketch, generations: [Int], levels: Int) throws -> [Int: [[Int]]] {
+        var out: [Int: [[Int]]] = [:]
+        guard let last = generations.max() else { return out }
+        let wanted = Set(generations.map { $0 - 1 })
+        try OllinApp.renderFrames(sketch, frames: last, fps: 60, skipSeconds: 0) { frame, index in
+            guard wanted.contains(index), let image = frame.image else { return }
+            out[index + 1] = states(in: image, levels: levels)
+        }
+        return out
+    }
+
+    private func states(in image: CGImage, levels: Int) -> [[Int]] {
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

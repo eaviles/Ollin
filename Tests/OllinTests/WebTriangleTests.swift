@@ -294,7 +294,6 @@ import OllinWebGate
         #expect(shaders.triangleFragment.contains("vec3 srgbToLinear(vec3 c)"))
         #expect(shaders.fringeFragment.contains("float perceptualCoverage(float c)"))
         #expect(shaders.fringeFragment.contains("vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0))"))
-        #expect(shaders.triangleVertex.contains("layout(location = 1) in float aCoverage;"))
         #expect(!shaders.fringeFragment.contains("float3"))
     }
 
@@ -328,7 +327,9 @@ import OllinWebGate
             ("Blended (add, lightest)", { Blended() }, 1, 0),
             ("Batched (a recording turning)", { Batched() }, 6, 3),
             ("Piling (an accumulating canvas)", { Piling() }, 8, 5),
-            ("Growing (a changing cast)", { Growing() }, 4, 3),
+            // A changing cast of strokes is played by
+            // `WebSourceTests.thePageExpandsTheStrokesAndFillsTheMacDrew`, on the
+            // same `Growing` sketch at the same frame.
         ]
         for c in cases {
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)

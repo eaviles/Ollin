@@ -38,36 +38,36 @@ extension OllinApp {
     /// targets and the layer label, identical on every file.
     ///
     /// ```swift
-    /// OllinApp.exportSeparations(sketch, to: "poster.png") { $0.dithered() }
+    /// try OllinApp.exportSeparations(sketch, to: "poster.png") { $0.dithered() }
     /// ```
     ///
     /// From the command line: `--export-separations poster.png` (see
     /// `handleCommandLine`).
+    ///
+    /// Throws `ExportError` when neither the call nor the sketch names any
+    /// inks, the frame does not draw, or a file cannot be written.
     @MainActor
     public static func exportSeparations(_ sketch: Sketch, to path: String,
                                          inks: [Ink]? = nil, paper: Color = .white,
                                          frame: Int = 0, fps: FrameRate = 60,
                                          drawsRegistrationMarks: Bool = true,
                                          quality: RenderQuality = .detail,
-                                         screen: (PrintSeparation) -> PrintSeparation = { $0 }) {
+                                         screen: (PrintSeparation) -> PrintSeparation = { $0 }) throws {
         guard let inkSet = inks ?? sketch.printInks, !inkSet.isEmpty else {
-            FileHandle.standardError.write(Data("""
-                --export-separations splits a sketch into per-ink printing masters.
-                Declare the inks in the sketch:
-                    override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }
-                or name them on the command line:
-                    --export-separations out.png --inks "fluorescent pink, blue, yellow"
-
-                """.utf8))
-            return
+            throw ExportError(.unsupported, path: path, problem: """
+                no inks to separate into. Declare them in the sketch \
+                (override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }) \
+                or name them (--inks "fluorescent pink, blue, yellow" on the command line)
+                """)
         }
         print("Ollin: rendering separations into \(inkSet.count) inks (\(inkSet.map(\.name).joined(separator: ", ")))")
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            fatalError("Ollin: failed to render the frame for separation (no Metal device?)")
+            throw ExportError(.unrendered, path: path, frame: 0,
+                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
         }
         let separation = screen(Image(cgImage: cgImage).separated(into: inkSet, paper: paper))
         guard !separation.layers.isEmpty else {
-            fatalError("Ollin: the separation produced no layers")
+            throw ExportError(.unrendered, path: path, frame: 0, problem: "the separation produced no layers")
         }
 
         var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
@@ -83,7 +83,8 @@ extension OllinApp {
             guard let sheet = separationSheet(layer.master.cgImage, band: band, label: label),
                   writePNG(sheet, to: layerPath(stem: stem, index: index, ink: layer.ink),
                            recipe: recipe) else {
-                fatalError("Ollin: failed to write \(layerPath(stem: stem, index: index, ink: layer.ink))")
+                throw ExportError(.unwritable, path: layerPath(stem: stem, index: index, ink: layer.ink),
+                                  frame: 0, problem: "the master could not be written")
             }
             print("  \(label) → \(layerPath(stem: stem, index: index, ink: layer.ink))")
         }
@@ -92,7 +93,8 @@ extension OllinApp {
         guard let sheet = separationSheet(separation.preview().cgImage, band: band,
                                           label: previewLabel),
               writePNG(sheet, to: "\(stem)-preview.png", recipe: recipe) else {
-            fatalError("Ollin: failed to write \(stem)-preview.png")
+            throw ExportError(.unwritable, path: "\(stem)-preview.png", frame: 0,
+                              problem: "the preview could not be written")
         }
         print("Ollin: exported \(separation.layers.count) masters + preview → \(stem)-*.png " +
               "(\(separation.width)×\(separation.height)" +

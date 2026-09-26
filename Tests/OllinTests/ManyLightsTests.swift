@@ -299,7 +299,7 @@ struct ManyLightsTests {
         let camera = Camera3D.perspective(eye: Vector3(0, 30, 30), target: .zero,
                                           fieldOfView: .pi / 4)
         let lists = try tileLists(of: drawer(camera: camera, lights: lamps))
-        guard !lists.isEmpty else { return }
+        try #require(!lists.isEmpty, "the cull left no tile grid to read")
         let average = Double(lists.reduce(0) { $0 + $1.count }) / Double(lists.count)
         #expect(average < 12, "a tile lists \(average) of 64 lamps on average")
         #expect(lists.contains { !$0.isEmpty }, "no tile kept any lamp at all")
@@ -316,29 +316,40 @@ struct ManyLightsTests {
         let camera = Camera3D.perspective(eye: Vector3(0, 30, 30), target: .zero,
                                           fieldOfView: .pi / 4)
         let lists = try tileLists(of: drawer(camera: camera, lights: lamps))
-        guard !lists.isEmpty else { return }
+        try #require(!lists.isEmpty, "the cull left no tile grid to read")
         #expect(lists.allSatisfy { $0.contains(16) })
         #expect(lists.contains { $0.count < 17 }, "every bounded lamp reached every tile")
     }
 
     /// A spot is bounded by the sector it actually throws into, not by a ball around
-    /// its position: one aimed away from the camera's view of the floor lands in far
-    /// fewer tiles than a point light at the same place with the same reach.
+    /// its position: one aimed down at the floor lands in fewer tiles than a point
+    /// light at the same place with the same reach. A spot bounded by the ball would
+    /// land in exactly the point's tiles; on the desk the cone reaches 132 of the 256
+    /// tiles and the ball 240, so three quarters of the ball's count is the line.
+    ///
+    /// The cull runs only for more lights than the shader loops over inline, so the
+    /// light under test (index 0) is joined by small lamps far out of view that land
+    /// in no tile. With the one light alone there is no grid to read, and this test
+    /// passed for a long time without reading one, under a bound of half the ball's
+    /// count that nobody had measured.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSpotIsBoundedByItsCone() throws {
         let camera = Camera3D.perspective(eye: Vector3(0, 30, 30), target: .zero,
                                           fieldOfView: .pi / 4)
         let position = Vector3(0, 14, 0)
+        let faraway = (0 ..< Int(OLLIN_MAX_LIGHTS)).map { i in
+            Light.point(.white, at: Vector3(1000 + Double(i) * 10, 0, 1000), reach: 0.1)
+        }
         let asPoint = try tileLists(of: drawer(camera: camera,
-            lights: [.point(.white, at: position, reach: 20)]))
+            lights: [.point(.white, at: position, reach: 20)] + faraway))
         let asSpot = try tileLists(of: drawer(camera: camera,
             lights: [.spot(.white, at: position, direction: Vector3(0, -1, 0),
-                           coneAngle: .pi / 8, reach: 20)]))
-        guard !asPoint.isEmpty, !asSpot.isEmpty else { return }
-        let pointTiles = asPoint.filter { !$0.isEmpty }.count
-        let spotTiles = asSpot.filter { !$0.isEmpty }.count
+                           coneAngle: .pi / 8, reach: 20)] + faraway))
+        try #require(!asPoint.isEmpty && !asSpot.isEmpty, "the cull left no tile grid to read")
+        let pointTiles = asPoint.filter { $0.contains(0) }.count
+        let spotTiles = asSpot.filter { $0.contains(0) }.count
         #expect(spotTiles > 0)
-        #expect(spotTiles < pointTiles / 2,
+        #expect(spotTiles * 4 < pointTiles * 3,
                 "the cone reached \(spotTiles) tiles, the ball \(pointTiles)")
     }
 
@@ -351,11 +362,21 @@ struct ManyLightsTests {
         let camera = Camera3D.perspective(eye: Vector3(0, 30, 30), target: .zero,
                                           fieldOfView: .pi / 4)
         let lists = try tileLists(of: drawer(camera: camera, lights: lamps), culls: false)
-        guard !lists.isEmpty else { return }
+        try #require(!lists.isEmpty, "the cull left no tile grid to read")
         #expect(lists.allSatisfy { $0.count == 12 })
     }
 
     // MARK: - The reach window
+
+    /// The bounded lamp's frame, rendered once this run: both reach probes read it.
+    private static var boundedLamp: CGImage?
+
+    private func boundedLampFrame() -> CGImage? {
+        if let known = Self.boundedLamp { return known }
+        let image = OllinApp.image(of: OneLampScene())
+        Self.boundedLamp = image
+        return image
+    }
 
     /// The window in the picture: full strength under the lamp, a quarter of that
     /// halfway out, and nothing at all past the reach. Read off a floor seen from
@@ -363,8 +384,7 @@ struct ManyLightsTests {
     /// the lamp.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLampReachesItsOwnNeighborhoodAndNoFurther() throws {
-        let scene = OneLampScene()
-        guard let image = OllinApp.image(of: scene) else {
+        guard let image = boundedLampFrame() else {
             Issue.record("headless render failed"); return
         }
         let data = rgba(of: image)
@@ -391,7 +411,7 @@ struct ManyLightsTests {
     /// further out, all the way to the edge of the pool.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFalloffOnlyEverDims() throws {
-        guard let image = OllinApp.image(of: OneLampScene()) else {
+        guard let image = boundedLampFrame() else {
             Issue.record("headless render failed"); return
         }
         let data = rgba(of: image)

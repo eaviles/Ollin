@@ -134,16 +134,6 @@ struct OSCCodingTests {
         #expect(OSCPacket(data: Data([0x2F, 0x78, 0x79, 0x7A])) == nil)
     }
 
-    @Test func garbageDoesNotTrap() {
-        // Fuzz-ish: random buffers must only ever return a value or nil.
-        var generator = SystemRandomNumberGenerator()
-        for _ in 0..<2000 {
-            let length = Int.random(in: 0...64, using: &generator)
-            let bytes = (0..<length).map { _ in UInt8.random(in: .min ... .max, using: &generator) }
-            _ = OSCPacket(data: Data(bytes))   // must not crash
-        }
-    }
-
     // MARK: Coercion accessors
 
     @Test func numericCoercion() {

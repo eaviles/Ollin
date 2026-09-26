@@ -289,7 +289,7 @@ struct DXFExportTests {
 
     @Test func theExportWritesTheFile() throws {
         let path = NSTemporaryDirectory() + "ollin-dxf-test-\(UUID().uuidString).dxf"
-        OllinApp.exportDXF(Lines(), to: path, settings: DXF(width: 100))
+        try OllinApp.exportDXF(Lines(), to: path, settings: DXF(width: 100))
         let text = try String(contentsOfFile: path, encoding: .utf8)
         #expect(Document(text).sawEOF)
         try? FileManager.default.removeItem(atPath: path)

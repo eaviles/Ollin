@@ -260,13 +260,14 @@ import Ollin
         return request.results?.first is VNPixelBufferObservation
     }()
 
-    @Test(.enabled(if: Self.visionComputesFlow, "Vision has no compute device for optical flow here"),
-          arguments: [VNGenerateOpticalFlowRequest.ComputationAccuracy.medium, .high])
-    func visionsFlowRequestReportsTheMotionOfThePicture(accuracy: VNGenerateOpticalFlowRequest.ComputationAccuracy) throws {
+    @Test(.enabled(if: Self.visionComputesFlow, "Vision has no compute device for optical flow here"))
+    func visionsFlowRequestReportsTheMotionOfThePicture() throws {
         let older = confetti(shiftRight: 0)
         let newer = confetti(shiftRight: 8)
         let request = VNGenerateOpticalFlowRequest(targetedCGImage: newer, options: [:])
-        request.computationAccuracy = accuracy
+        // The accuracy the phone's streamer asks for, which is the one whose
+        // sign the wire depends on.
+        request.computationAccuracy = .medium
         request.outputPixelFormat = kCVPixelFormatType_TwoComponent32Float
         let handler = VNImageRequestHandler(cgImage: older, options: [:])
         try handler.perform([request])

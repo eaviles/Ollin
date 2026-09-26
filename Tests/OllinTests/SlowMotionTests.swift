@@ -69,12 +69,18 @@ struct SlowMotionTests {
 
     /// The written frames land on the finer clock: frame 4k of a 4x export is
     /// the sketch at frame 4k of a 4x clock, pixel for pixel.
+    ///
+    /// The counterfactual gives that its teeth: without the finer clock, frame
+    /// 1 of the slow export would be the sketch at 1/30 s. It is at 1/120 s
+    /// instead, and the dot has visibly not gone as far. And the recipe records
+    /// the rate the *clock* ran at, so a still re-renders from it unchanged,
+    /// plus the factor that says how the file plays.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aDrawnSlowExportRunsTheFinerClock() throws {
         let dir = ollinTempPath("ollin-slowmo-drawn")
         defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingDot(), to: dir, frames: 24, fps: 30,
-                                slowMotion: .drawn(4))
+        try OllinApp.exportSequence(MovingDot(), to: dir, frames: 24, fps: 30,
+                                    slowMotion: .drawn(4))
 
         let files = try FileManager.default.contentsOfDirectory(atPath: dir).sorted()
         #expect(files.count == 24)
@@ -87,63 +93,11 @@ struct SlowMotionTests {
             #expect(maxDifference(written, alone) == 0,
                     "written frame \(k) is not the sketch at frame \(k) of a 120 fps clock")
         }
-    }
 
-    /// The counterfactual that gives the test above its teeth: without the finer
-    /// clock, frame 1 of the slow export would be the sketch at 1/30 s. It is at
-    /// 1/120 s instead, and the dot has visibly not gone as far.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theFramesBetweenAreNotTheOldOnes() throws {
-        let dir = ollinTempPath("ollin-slowmo-between")
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingDot(), to: dir, frames: 8, fps: 30, slowMotion: .drawn(4))
-
-        let written = try image(at: dir, frame: 2)                  // the second frame
+        let second = try image(at: dir, frame: 2)
         let atTheOldRate = try #require(OllinApp.image(of: MovingDot(), frame: 1, fps: 30))
-        #expect(maxDifference(written, atTheOldRate) > 0)
-    }
+        #expect(maxDifference(second, atTheOldRate) > 0)
 
-    /// A factor of 1 is the export that was always there. Nothing about the
-    /// drive changes, so every frame comes back pixel for pixel the same, and
-    /// the recipe still says nothing about slow motion.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func aFactorOfOneChangesNothing() throws {
-        let plain = ollinTempPath("ollin-slowmo-plain")
-        let asked = ollinTempPath("ollin-slowmo-asked")
-        defer {
-            try? FileManager.default.removeItem(atPath: plain)
-            try? FileManager.default.removeItem(atPath: asked)
-        }
-        OllinApp.exportSequence(MovingDot(), to: plain, frames: 4, fps: 30)
-        OllinApp.exportSequence(MovingDot(), to: asked, frames: 4, fps: 30, slowMotion: .drawn(1))
-        for k in 1...4 {
-            #expect(maxDifference(try image(at: plain, frame: k),
-                                  try image(at: asked, frame: k)) == 0)
-        }
-        let recipe = try recipeJSON(at: asked, frame: 1)
-        #expect(recipe["slowMotion"] == nil)
-        #expect(recipe["fps"] as? Int == 30)
-    }
-
-    /// The file plays for the factor's worth longer than the sketch ran.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theVideoTakesLongerToWatch() async throws {
-        let path = ollinTempPath("ollin-slowmo-video.mp4")
-        defer { try? FileManager.default.removeItem(atPath: path) }
-        // 0.2s of sketch time: 6 frames at 30 fps plain, 24 at a 4x clock.
-        OllinApp.exportVideo(MovingDot(), to: path, frames: 24, fps: 30, slowMotion: .drawn(4))
-        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
-        let duration = try await asset.load(.duration)
-        #expect(abs(duration.seconds - 0.8) < 0.01)      // 4x the 0.2s it covers
-    }
-
-    /// The recipe records the rate the *clock* ran at, so a still re-renders
-    /// from it unchanged, plus the factor that says how the file plays.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theRecipeCarriesTheClockAndTheFactor() throws {
-        let dir = ollinTempPath("ollin-slowmo-recipe")
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingDot(), to: dir, frames: 4, fps: 30, slowMotion: .drawn(4))
         let recipe = try recipeJSON(at: dir, frame: 3)
         #expect(recipe["fps"] as? Int == 120)            // the clock, not the file
         #expect(recipe["frame"] as? Int == 2)            // 0-based, on that clock
@@ -152,15 +106,43 @@ struct SlowMotionTests {
         #expect(recipe["madeFrames"] == nil)
     }
 
-    /// An ordinary export says nothing about slow motion at all.
+    /// A factor of 1 is the export that was always there. Nothing about the
+    /// drive changes, so every frame comes back pixel for pixel the same, and
+    /// the recipe still says nothing about slow motion, as an ordinary export's
+    /// does not.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func anOrdinaryExportDeclaresNoSlowMotion() throws {
-        let dir = ollinTempPath("ollin-slowmo-silent")
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingDot(), to: dir, frames: 2, fps: 30)
-        let recipe = try recipeJSON(at: dir, frame: 1)
+    func aFactorOfOneChangesNothing() throws {
+        let plain = ollinTempPath("ollin-slowmo-plain")
+        let asked = ollinTempPath("ollin-slowmo-asked")
+        defer {
+            try? FileManager.default.removeItem(atPath: plain)
+            try? FileManager.default.removeItem(atPath: asked)
+        }
+        try OllinApp.exportSequence(MovingDot(), to: plain, frames: 4, fps: 30)
+        try OllinApp.exportSequence(MovingDot(), to: asked, frames: 4, fps: 30, slowMotion: .drawn(1))
+        for k in 1...4 {
+            #expect(maxDifference(try image(at: plain, frame: k),
+                                  try image(at: asked, frame: k)) == 0)
+        }
+        let recipe = try recipeJSON(at: asked, frame: 1)
         #expect(recipe["slowMotion"] == nil)
         #expect(recipe["fps"] as? Int == 30)
+        // An ordinary export says nothing about slow motion at all.
+        let ordinary = try recipeJSON(at: plain, frame: 1)
+        #expect(ordinary["slowMotion"] == nil)
+        #expect(ordinary["fps"] as? Int == 30)
+    }
+
+    /// The file plays for the factor's worth longer than the sketch ran.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theVideoTakesLongerToWatch() async throws {
+        let path = ollinTempPath("ollin-slowmo-video.mp4")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        // 0.2s of sketch time: 6 frames at 30 fps plain, 24 at a 4x clock.
+        try OllinApp.exportVideo(MovingDot(), to: path, frames: 24, fps: 30, slowMotion: .drawn(4))
+        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+        let duration = try await asset.load(.duration)
+        #expect(abs(duration.seconds - 0.8) < 0.01)      // 4x the 0.2s it covers
     }
 
     /// A warmup is measured in seconds of the sketch's own time, so it settles
@@ -169,7 +151,7 @@ struct SlowMotionTests {
     func theWarmupCountsSketchSeconds() throws {
         let dir = ollinTempPath("ollin-slowmo-warmup")
         defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingDot(), to: dir, frames: 4, fps: 30,
+        try OllinApp.exportSequence(MovingDot(), to: dir, frames: 4, fps: 30,
                                 skipSeconds: 0.5, slowMotion: .drawn(4))
         // Half a second at 120 fps is 60 frames of warmup, so the first written
         // frame is the sketch at frame 60 of that clock.
@@ -214,7 +196,7 @@ struct SlowMotionTests {
         let dir = ollinTempPath("ollin-slowmo-made")
         defer { try? FileManager.default.removeItem(atPath: dir) }
         // 5 drawn frames at a 30 fps clock, with 4 made frames between them.
-        OllinApp.exportSequence(MovingBar(), to: dir, frames: 9, fps: 30, slowMotion: .made(2))
+        try OllinApp.exportSequence(MovingBar(), to: dir, frames: 9, fps: 30, slowMotion: .made(2))
         #expect(try FileManager.default.contentsOfDirectory(atPath: dir).count == 9)
 
         for k in [0, 2, 8] {                       // the drawn ones, 0-based
@@ -245,8 +227,8 @@ struct SlowMotionTests {
         }
         // The same nine moments twice: drawn at a 60 fps clock, and drawn at 30
         // with the gaps filled. Index for index they stand for the same time.
-        OllinApp.exportSequence(MovingBar(), to: truth, frames: 9, fps: 30, slowMotion: .drawn(2))
-        OllinApp.exportSequence(MovingBar(), to: made, frames: 9, fps: 30, slowMotion: .made(2))
+        try OllinApp.exportSequence(MovingBar(), to: truth, frames: 9, fps: 30, slowMotion: .drawn(2))
+        try OllinApp.exportSequence(MovingBar(), to: made, frames: 9, fps: 30, slowMotion: .made(2))
 
         // The first gap is skipped on purpose: see the test below it.
         for k in [3, 5, 7] {                       // the made ones, 0-based
@@ -275,7 +257,7 @@ struct SlowMotionTests {
         guard makesFrames else { return }
         let dir = ollinTempPath("ollin-slowmo-head")
         defer { try? FileManager.default.removeItem(atPath: dir) }
-        OllinApp.exportSequence(MovingBar(), to: dir, frames: 5, fps: 30, slowMotion: .made(2))
+        try OllinApp.exportSequence(MovingBar(), to: dir, frames: 5, fps: 30, slowMotion: .made(2))
         // Written frame 1 is the first made one, and it repeats frame 2.
         #expect(meanDifference(try image(at: dir, frame: 2), try image(at: dir, frame: 3)) < 0.01)
         // Every gap after it is a picture of its own.

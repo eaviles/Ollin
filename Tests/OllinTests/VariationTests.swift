@@ -119,20 +119,6 @@ struct VariationTests {
         }
     }
 
-    /// The sweep applies each value through the same restore path the live
-    /// hosts use, and pins every tile to one seed, so the parameter is the only
-    /// thing changing across the sheet.
-    @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
-    func sweepAppliesEachValueAtOnePinnedSeed() throws {
-        Parameterized.seen = []
-        let sheet = OllinApp.contactSheet(of: { Parameterized() },
-                                          sweeping: "radius", values: [40, 120, 360],
-                                          seed: 55, tileWidth: 64)
-        #expect(sheet != nil)
-        #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
-        #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
-    }
-
     /// A sketch with a whole-number parameter beside the real one.
     final class Ringed: Sketch {
         override var canvasSize: CanvasSize { .square(64) }
@@ -144,21 +130,31 @@ struct VariationTests {
         }
     }
 
+    /// The sweep applies each value through the same restore path the live
+    /// hosts use, and pins every tile to one seed, so the parameter is the only
+    /// thing changing across the sheet.
+    ///
     /// The parameter named by its own handle rather than a string: the key
     /// path reaches the same box the registry lists, so the sweep lands on the
     /// same tiles the named form renders.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func sweepingByKeyPathIsTheNamedSweep() throws {
         Parameterized.seen = []
+        let byName = OllinApp.contactSheet(of: { Parameterized() },
+                                           sweeping: "radius", values: [40, 120, 360],
+                                           seed: 55, tileWidth: 64)
+        #expect(byName != nil)
+        #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
+        #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
+
+        Parameterized.seen = []
         let byPath = try #require(OllinApp.contactSheet(of: { Parameterized() },
                                                         sweeping: \.$radius, values: [40, 120, 360],
                                                         seed: 55, tileWidth: 64))
         #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
         #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
-        let byName = try #require(OllinApp.contactSheet(of: { Parameterized() },
-                                                        sweeping: "radius", values: [40, 120, 360],
-                                                        seed: 55, tileWidth: 64))
-        #expect(byPath.width == byName.width && byPath.height == byName.height)
+        let named = try #require(byName)
+        #expect(byPath.width == named.width && byPath.height == named.height)
 
         Ringed.seen = []
         #expect(OllinApp.contactSheet(of: { Ringed() }, sweeping: \.$rings, values: [2, 5, 8],

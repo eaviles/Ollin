@@ -26,7 +26,7 @@ struct PlanetMapTests {
     /// here as a step; on the sphere there is nothing to step over.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theMapMeetsItselfAroundTheEquator() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let height = try #require(maps.read(maps.heightMap))
 
         // Measured the same way on both sides, as a worst case rather than an
@@ -49,7 +49,7 @@ struct PlanetMapTests {
     /// puts almost everything on one side of the waterline.
     @Test(.enabled(if: Snapshot.hasMetal))
     func thereIsBothLandAndSea() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let height = try #require(maps.read(maps.heightMap))
         let land = height.fraction { $0.r >= Self.sea }
         #expect(land > 0.12 && land < 0.62, "land fraction \(land)")
@@ -62,7 +62,7 @@ struct PlanetMapTests {
     /// reports it: the picture simply lets the background through.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSurfaceIsOpaqueEverywhere() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let surface = try #require(maps.read(maps.surfaceMap))
         let lowest = surface.reduce(1.0) { min($0, $1.a) }
         #expect(lowest > 0.99, "the dimmest alpha in the surface map is \(lowest)")
@@ -72,7 +72,7 @@ struct PlanetMapTests {
     /// equator. Read off the top and bottom rows against the middle band.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theCapsAreIceAndTheEquatorIsNot() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let surface = try #require(maps.read(maps.surfaceMap))
 
         func brightness(row: Int) -> Double {
@@ -102,7 +102,7 @@ struct PlanetMapTests {
     /// costs the greenery, so that is checked too, though it is the weaker signal.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theLandIsNotOneMaterial() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let height = try #require(maps.read(maps.heightMap))
         let surface = try #require(maps.read(maps.surfaceMap))
 
@@ -131,7 +131,7 @@ struct PlanetMapTests {
     /// appears on the sea and nowhere else.
     @Test(.enabled(if: Snapshot.hasMetal))
     func waterIsSmootherThanLand() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let height = try #require(maps.read(maps.heightMap))
         let finish = try #require(maps.read(maps.finishMap))
 
@@ -163,7 +163,7 @@ struct PlanetMapTests {
     /// off are the same coast.
     @Test(.enabled(if: Snapshot.hasMetal))
     func everyLightStandsOnLand() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let height = try #require(maps.read(maps.heightMap))
         let lights = try #require(maps.read(maps.lightMap))
 
@@ -184,7 +184,7 @@ struct PlanetMapTests {
     /// daylight rather than as cities.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theLightsAreScattered() throws {
-        let maps = try #require(PlanetMaps.baked())
+        let maps = try #require(PlanetMaps.sharedDefault())
         let lights = try #require(maps.read(maps.lightMap))
         let lit = lights.fraction { $0.r + $0.g + $0.b > 0.02 }
         #expect(lit < 0.10, "\(lit) of the world is lit")
@@ -322,5 +322,17 @@ private final class PlanetMaps: Sketch {
         sketch.cover = cover
         guard OllinApp.image(of: sketch, frame: 0) != nil else { return nil }
         return sketch
+    }
+
+    /// The default world, baked once for every probe that only reads it. The bake is a
+    /// function of the world and the cover alone, and the probes read its maps without
+    /// writing them, so one bake serves them all.
+    private static var defaultWorld: PlanetMaps?
+
+    static func sharedDefault() -> PlanetMaps? {
+        if let known = defaultWorld { return known }
+        let bake = baked()
+        defaultWorld = bake
+        return bake
     }
 }

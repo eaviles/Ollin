@@ -12,8 +12,8 @@ import CSyphon
 ///
 /// The loopback needs a Metal device, so it's gated to skip on a GPU-less box.
 /// Discovery is asynchronous (Mach/distributed notifications) and not guaranteed
-/// in every sandbox, so it *soft-skips* if the published source never surfaces —
-/// the directory smoke test is the always-on guard. Run on a real Mac it goes
+/// in every sandbox, so it *soft-skips* if the published source never surfaces;
+/// the missing-source test is the always-on guard. Run on a real Mac it goes
 /// end to end.
 @MainActor
 @Suite struct SyphonLoopbackTests {
@@ -28,11 +28,6 @@ import CSyphon
             try? await Task.sleep(nanoseconds: 50_000_000)   // 50 ms
         }
         return nil
-    }
-
-    /// Always-on: querying the directory must be safe and return an array.
-    @Test func availableServersIsSafeToQuery() {
-        _ = SyphonClient.availableServers()
     }
 
     /// A source that is not there is said, not swallowed: the client stands

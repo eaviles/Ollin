@@ -13,7 +13,7 @@ swift run --package-path Examples Example-Export-Embroidery --export-embroidery 
 The same export from code, with the full parameters:
 
 ```swift
-OllinApp.exportEmbroidery(sketch, to: "leaf.dst",
+try OllinApp.exportEmbroidery(sketch, to: "leaf.dst",
                           settings: Embroidery(width: 100))
 ```
 

@@ -56,10 +56,33 @@ private final class PictureProbe: Sketch {
         }
     }
 
-    @Test func renderedFramesSurviveTheCable() throws {
+    /// The probe's frames and the pictures the compressor made of them, with
+    /// keyframes forced at 0 and 12.
+    private struct Run {
+        let frames: [Bytes]
+        let pictures: [PhonePicture]
+    }
+
+    /// Rendered and encoded once for the suite: the offline tests read the one
+    /// run each their own way (the whole stream, a phone joining at the second
+    /// keyframe, the format built across both), and the screen test sends the
+    /// first twelve of its frames.
+    private static var shared: Run?
+
+    private func sharedRun() throws -> Run {
+        if let shared = Self.shared { return shared }
         let device = try #require(MTLCreateSystemDefaultDevice())
         let frames = try renderFrames(24)
         let pictures = try encode(frames, on: device, forcingKeyframesAt: [0, 12])
+        let run = Run(frames: frames, pictures: pictures)
+        Self.shared = run
+        return run
+    }
+
+    @Test func renderedFramesSurviveTheCable() throws {
+        let run = try sharedRun()
+        let frames = run.frames
+        let pictures = run.pictures
         #expect(pictures.count == frames.count)
 
         // The first picture stands alone and carries the three parameter sets a
@@ -88,9 +111,9 @@ private final class PictureProbe: Sketch {
     }
 
     @Test func aPhoneJoiningMidStreamWaitsForAKeyframe() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        let frames = try renderFrames(16)
-        let pictures = try encode(frames, on: device, forcingKeyframesAt: [0, 8])
+        let run = try sharedRun()
+        let frames = run.frames
+        let pictures = run.pictures
 
         // Nothing before a keyframe can be built: there is no format to build on.
         var format: PhonePictureFormat?
@@ -98,20 +121,19 @@ private final class PictureProbe: Sketch {
         #expect(format == nil)
 
         // From the forced keyframe on, the stream decodes and matches.
-        let decoded = try decode(Array(pictures[8...]))
-        #expect(decoded.count == 8)
+        let decoded = try decode(Array(pictures[12...]))
+        #expect(decoded.count == 12)
         for (offset, picture) in decoded.enumerated() {
-            #expect(frames[8 + offset].meanError(against: picture) < 2.5)
+            #expect(frames[12 + offset].meanError(against: picture) < 2.5)
         }
     }
 
     @Test func theFormatIsBuiltOnceWhileTheParameterSetsHold() throws {
-        let device = try #require(MTLCreateSystemDefaultDevice())
-        let pictures = try encode(try renderFrames(10), on: device, forcingKeyframesAt: [0, 5])
+        let pictures = try sharedRun().pictures
         var format: PhonePictureFormat?
         _ = pictures[0].sampleBuffer(reusing: &format)
         let first = try #require(format?.description)
-        _ = pictures[5].sampleBuffer(reusing: &format)
+        _ = pictures[12].sampleBuffer(reusing: &format)
         #expect(format?.description === first)
         let size = CMVideoFormatDescriptionGetDimensions(first)
         #expect(size.width == 640 && size.height == 360)
@@ -119,7 +141,7 @@ private final class PictureProbe: Sketch {
 
     @Test func theScreenCarriesWhatItDrawsDownTheCable() async throws {
         let gpu = try #require(MTLCreateSystemDefaultDevice())
-        let frames = try renderFrames(12)
+        let frames = try Array(sharedRun().frames.prefix(12))
 
         // One end of a socket pair stands in for the tunnel, so the sender's own
         // thread, framing, and keyframe rule run with no phone and no network.

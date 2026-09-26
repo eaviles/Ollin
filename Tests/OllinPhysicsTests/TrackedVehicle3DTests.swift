@@ -119,6 +119,9 @@ struct TrackedVehicle3DTests {
 
     // MARK: Driving
 
+    /// The throttle drives it forward where an idle twin stays put, and both
+    /// bands run together in a straight line, at the speed the machine is
+    /// traveling: what a drawn track is scrolled by.
     @Test func theThrottleDrivesItForward() throws {
         let (drivenWorld, driven) = standing()
         driven.throttle = 1
@@ -130,17 +133,8 @@ struct TrackedVehicle3DTests {
         #expect(driven.body.position.z > 15)
         #expect(driven.speed > 8)
         #expect(abs(idle.body.position.z) < 0.1)
-    }
-
-    /// Both bands run together in a straight line, at the speed the machine is
-    /// traveling: what a drawn track is scrolled by.
-    @Test func bothBandsRunTogetherInAStraightLine() throws {
-        let (world, crawler) = standing()
-        crawler.throttle = 1
-        run(world, steps: 300)
-
-        #expect(abs(crawler.trackSpeed(.left) - crawler.trackSpeed(.right)) < 0.05)
-        #expect(abs(crawler.trackSpeed(.left) - crawler.speed) < 0.5)
+        #expect(abs(driven.trackSpeed(.left) - driven.trackSpeed(.right)) < 0.05)
+        #expect(abs(driven.trackSpeed(.left) - driven.speed) < 0.5)
     }
 
     @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() throws {
@@ -252,40 +246,28 @@ struct TrackedVehicle3DTests {
 
     // MARK: The brake
 
+    /// The brake stops it sooner than coasting. A tracked machine has one
+    /// brake, so the hand brake pulls the same one rather than doing nothing;
+    /// both are measured against the one coasting twin.
     @Test func theBrakeStopsItSoonerThanCoasting() throws {
-        func distanceAfterLettingGo(braking: Bool) -> Double {
+        func distanceAfterLettingGo(braking: Bool = false, handBraking: Bool = false) -> Double {
             let (world, crawler) = standing()
             crawler.throttle = 1
             run(world, steps: 300)
             let from = crawler.body.position.z
             crawler.throttle = 0
             crawler.brake = braking ? 1 : 0
-            run(world, steps: 180)
-            return crawler.body.position.z - from
-        }
-
-        let braked = distanceAfterLettingGo(braking: true)
-        let coasted = distanceAfterLettingGo(braking: false)
-        #expect(braked < coasted)
-        #expect(braked < 0.5 * coasted)
-    }
-
-    /// A tracked machine has one brake, so the hand brake pulls the same one
-    /// rather than doing nothing.
-    @Test func theHandBrakePullsTheSameBrake() throws {
-        func distanceAfterLettingGo(handBraking: Bool) -> Double {
-            let (world, crawler) = standing()
-            crawler.throttle = 1
-            run(world, steps: 300)
-            let from = crawler.body.position.z
-            crawler.throttle = 0
             crawler.handBrake = handBraking ? 1 : 0
             run(world, steps: 180)
             return crawler.body.position.z - from
         }
 
-        #expect(distanceAfterLettingGo(handBraking: true)
-                < 0.5 * distanceAfterLettingGo(handBraking: false))
+        let braked = distanceAfterLettingGo(braking: true)
+        let handBraked = distanceAfterLettingGo(handBraking: true)
+        let coasted = distanceAfterLettingGo()
+        #expect(braked < coasted)
+        #expect(braked < 0.5 * coasted)
+        #expect(handBraked < 0.5 * coasted)
     }
 
     /// The brake belongs to the band rather than to a wheel, so a change to a

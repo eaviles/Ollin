@@ -12,51 +12,27 @@ import Ollin
 
     // MARK: The wire
 
+    /// The scan number tells the Mac one run of the scanner from the next, and
+    /// both bytes that say what a surface is (its facing and its label) ride the
+    /// wire on their own. So the surface carries a value in each that is not its
+    /// type's default: a field the codec dropped would decode as that default,
+    /// and the whole-value compare would then pass with the field gone.
     @Test func roundTripsASurface() {
-        let message = PhoneMessage.plane(square(id: UUID(), transform: moveAndTurn))
-        #expect(roundTrip(message) == message)
+        var sample = square(id: UUID(), transform: moveAndTurn)
+        sample.scan = 0xDEAD_BEEF
+        sample.alignment = .vertical
+        sample.surface = .window
+        let message = PhoneMessage.plane(sample)
+        #expect(roundTrip(message) == message, "the surface did not come back whole")
     }
 
     /// A retirement carries the id and nothing else, which is what makes it cheap
-    /// enough to send the moment ARKit merges one surface into another.
-    @Test func roundTripsARetirement() throws {
-        let id = UUID()
-        let sample = PhonePlaneSample(isTracked: true, timestamp: 9.5, id: id, scan: 7,
+    /// enough to send the moment ARKit merges one surface into another. The scan
+    /// number has to survive a retirement as well as a full surface.
+    @Test func roundTripsARetirement() {
+        let sample = PhonePlaneSample(isTracked: true, timestamp: 9.5, id: UUID(), scan: 7,
                                       isRemoved: true, transform: moveAndTurn)
-        #expect(roundTrip(.plane(sample)) == .plane(sample))
-        guard case .plane(let back)? = roundTrip(.plane(sample)) else {
-            Issue.record("the retirement did not come back")
-            return
-        }
-        #expect(back.id == id)
-        #expect(back.scan == 7)
-        #expect(back.boundary.isEmpty)
-    }
-
-    /// The scan number tells the Mac one run of the scanner from the next, so it has
-    /// to survive a full surface as well as a retirement.
-    @Test func theScanNumberSurvivesTheWire() throws {
-        var sample = square(id: UUID(), transform: matrix_identity_float4x4)
-        sample.scan = 0xDEAD_BEEF
-        guard case .plane(let back)? = roundTrip(.plane(sample)) else {
-            Issue.record("the surface did not come back")
-            return
-        }
-        #expect(back.scan == 0xDEAD_BEEF)
-    }
-
-    /// Both bytes that say what a surface is ride the wire on their own, so they are
-    /// worth reading back by hand rather than trusting the whole-value compare.
-    @Test func theLabelAndTheFacingSurviveTheWire() throws {
-        var sample = square(id: UUID(), transform: matrix_identity_float4x4)
-        sample.alignment = .vertical
-        sample.surface = .window
-        guard case .plane(let back)? = roundTrip(.plane(sample)) else {
-            Issue.record("the surface did not come back")
-            return
-        }
-        #expect(back.alignment == .vertical)
-        #expect(back.surface == .window)
+        #expect(roundTrip(.plane(sample)) == .plane(sample), "the retirement did not come back whole")
     }
 
     /// The wire carries the facing as one byte, so the case order is the contract.
@@ -89,19 +65,14 @@ import Ollin
 
     /// Face mode adds a direction and the 27 coefficients, so the longer payload has
     /// to survive too.
-    @Test func roundTripsALightWithADirection() throws {
+    @Test func roundTripsALightWithADirection() {
         let harmonics = (0..<27).map { Float($0) * 0.125 }
         let sample = PhoneLightSample(timestamp: 8, ambientIntensity: 1200,
                                       colorTemperature: 6900, hasDirection: true,
                                       direction: SIMD3<Float>(0, -1, 0),
                                       directionalIntensity: 1800,
                                       sphericalHarmonics: harmonics)
-        #expect(roundTrip(.light(sample)) == .light(sample))
-        guard case .light(let back)? = roundTrip(.light(sample)) else {
-            Issue.record("the light did not come back")
-            return
-        }
-        #expect(back.sphericalHarmonics.count == 27)
+        #expect(roundTrip(.light(sample)) == .light(sample), "the light did not come back whole")
     }
 
     // MARK: Placing a surface

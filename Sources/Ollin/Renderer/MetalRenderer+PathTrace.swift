@@ -332,7 +332,7 @@ extension MetalRenderer {
     /// texture identity, so a sequence export pays the build once per environment.
     private func envSamplingTables(for equirect: MTLTexture) -> MTLBuffer? {
         let key = ObjectIdentifier(equirect)
-        if let cached = ptEnvTableCache[key] { return cached }
+        if let cached = ptEnvTableCache[key] { return cached.tables }
         let W = Self.envGridW, H = Self.envGridH
         guard let reducePipe = try? libraryComputePipeline("ollin_pt_env_reduce"),
               let lumBuffer = device.makeBuffer(length: W * H * MemoryLayout<Float>.stride,
@@ -385,7 +385,10 @@ extension MetalRenderer {
             device.makeBuffer(bytes: raw.baseAddress!, length: raw.count,
                               options: .storageModeShared)
         }
-        ptEnvTableCache[key] = buffer
+        if let buffer {
+            if ptEnvTableCache.count >= Self.maxEnvironmentTables { ptEnvTableCache.removeAll() }
+            ptEnvTableCache[key] = (texture: equirect, tables: buffer)
+        }
         return buffer
     }
 

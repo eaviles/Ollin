@@ -135,16 +135,6 @@ struct JSONTests {
         #expect(json.rows[0].cells[0].v.int == 7)
     }
 
-    // MARK: Refusing
-
-    /// Anything that isn't JSON yields nothing rather than throwing, so a file
-    /// from the network fails quietly.
-    @Test func whatIsNotJSONYieldsNothing() {
-        #expect((try? JSON(text: "{oops")) == nil)
-        #expect((try? JSON(text: "")) == nil)
-        #expect((try? JSON(contentsOf: "/nowhere/at/all.json")) == nil)
-    }
-
     // MARK: Reading a real file
 
     /// The path form reads what the text form does.

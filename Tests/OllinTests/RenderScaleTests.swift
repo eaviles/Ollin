@@ -49,25 +49,21 @@ struct RenderScaleTests {
 
     // MARK: The claims
 
-    /// The dial is a sampling rate, not a size: the exported picture is the
-    /// canvas at every scale. (A frame that came back at 2x here would mean the
-    /// resolve never ran and every downstream size claim is off.)
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theExportKeepsItsCanvasSize() throws {
-        for scale in [1, 2, 4] {
-            let f = try frame({ RSEdgeProbe() }, scale: scale)
-            #expect(f.w == 256 && f.h == 256, "scale \(scale) exported \(f.w)x\(f.h)")
-        }
-    }
-
     /// A hard tessellated edge converges: measured against the 4x render, the 2x
     /// frame sits closer than the 1x one. This is the whole point of the dial,
     /// and it is the claim a "looks sharper" eye test cannot make.
+    ///
+    /// The same three frames first pin that the dial is a sampling rate, not a size:
+    /// the exported picture is the canvas at every scale. (A frame that came back at
+    /// 2x here would mean the resolve never ran and every downstream size claim is off.)
     @Test(.enabled(if: Snapshot.hasMetal))
     func moreSamplesMoveTheEdgeTowardTheConvergedAnswer() throws {
         let one = try frame({ RSEdgeProbe() }, scale: 1)
         let two = try frame({ RSEdgeProbe() }, scale: 2)
         let four = try frame({ RSEdgeProbe() }, scale: 4)
+        for (scale, f) in [(1, one), (2, two), (4, four)] {
+            #expect(f.w == 256 && f.h == 256, "scale \(scale) exported \(f.w)x\(f.h)")
+        }
         let coarse = meanDifference(one, four)
         let fine = meanDifference(two, four)
         #expect(coarse > 0.05, "1x and 4x must actually disagree somewhere: \(coarse)")

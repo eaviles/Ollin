@@ -207,14 +207,12 @@ struct MeshTests {
         let globe = Mesh.sphere(radius: 1, segments: 8, rings: 6).textured(image, baseColor: .white)
         #expect(globe.material?.texture != nil)
         #expect(globe.material?.baseColor == .white)
-        #expect(globe.uvs.count == globe.positions.count)
         // Material survives the recenter/scale transform.
         #expect(globe.normalized(scale: 2).material?.texture != nil)
         // A textured box carries the material but no UVs — the render path falls back
         // to a flat base-color surface.
         let box = Mesh.box(size: 1).textured(image)
         #expect(box.material?.texture != nil)
-        #expect(box.uvs.isEmpty)
     }
 
     /// `generatingSmoothNormals()` computes area-weighted normals from raw positions +

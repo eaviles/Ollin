@@ -95,7 +95,9 @@ struct IsosurfaceTests {
     // MARK: A sphere, the case with a known answer
 
     /// A linear radial field meshes to a sphere of the right size, with every
-    /// vertex on it and every normal pointing straight out.
+    /// vertex on it and every normal pointing straight out. The enclosed volume
+    /// matches the sphere's, which also pins the winding: a mesh wound inward
+    /// would report the same volume negated.
     @Test func radialFieldMeshesToASphere() {
         let radius = 1.0
         let mesh = isosurface(at: 0, in: box, resolution: 48) { radius - $0.length }
@@ -106,13 +108,7 @@ struct IsosurfaceTests {
             #expect(abs(p.length - radius) < 0.01 * radius)
             #expect(n.dot(p.normalized) > 0.99)
         }
-    }
 
-    /// The enclosed volume matches the sphere's, which also pins the winding:
-    /// a mesh wound inward would report the same volume negated.
-    @Test func sphereVolumeIsRightAndTheWindingIsOutward() {
-        let radius = 1.0
-        let mesh = isosurface(at: 0, in: box, resolution: 48) { radius - $0.length }
         let expected = 4.0 / 3 * .pi * radius * radius * radius
         let volume = signedVolume(mesh)
         #expect(volume > 0)

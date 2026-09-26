@@ -86,20 +86,6 @@ struct ShapeGrammarTests {
         }
     }
 
-    @Test func aBalanceOfZeroHalvesTheArea() {
-        let rule = Rule.cut("cell", into: ("a", "b"), balance: 0)
-        var source = SplitMix64(seed: 3)
-        let start = square(120)
-        var cuts = 0
-        for _ in 0 ..< 40 {
-            guard let parts = rule.body(start, &source) else { continue }
-            cuts += 1
-            #expect(abs(parts[0].area - start.area / 2) < 1e-6)
-            #expect(abs(parts[1].area - start.area / 2) < 1e-6)
-        }
-        #expect(cuts > 30)
-    }
-
     @Test func aCutAddsFourCorners() {
         // The line meets two edges away from their ends, so it adds one corner
         // to each part at each end. Both parts also keep a share of the

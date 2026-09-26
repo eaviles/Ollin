@@ -419,8 +419,10 @@ public extension OllinApp {
     /// Render one frame of `sketch` and write it as a `.dst` embroidery file. The
     /// thread-facing counterpart of `exportGCode`; the basis for the
     /// `--export-embroidery` flag.
+    ///
+    /// Throws `ExportError` when the file cannot be written.
     static func exportEmbroidery(_ sketch: Sketch, to path: String, settings: Embroidery,
-                                 frame: Int = 0, fps: FrameRate = 60) {
+                                 frame: Int = 0, fps: FrameRate = 60) throws {
         let label = String(((path as NSString).lastPathComponent as NSString)
             .deletingPathExtension.uppercased().prefix(16))
         let plan = stitching(of: sketch, settings: settings, frame: frame, fps: fps)
@@ -433,7 +435,8 @@ public extension OllinApp {
                   + "\(plan.threads.count == 1 ? "" : "s"), "
                   + "\(Int(size.width.rounded())) × \(Int(size.height.rounded())) mm)")
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the file could not be written: \(error.localizedDescription)")
         }
     }
 }

@@ -28,15 +28,6 @@ struct Query3DTests {
 
     // MARK: Rays
 
-    /// The headline: a ray reports what it reaches first, and it is the geometry
-    /// that decides, not the order things were added.
-    @Test func aRayReportsTheNearestBody() throws {
-        let (world, boxes) = tower([3, 1])          // far one added first
-        let hit = try #require(world.raycast(from: Vector3(0, 8, 0),
-                                             to: Vector3(0, -8, 0)))
-        #expect(hit.body === boxes[0], "the box at y = 3 is the one in the way")
-    }
-
     /// The same ray with the near body gone reaches the far one: what stopped it
     /// was that body, not the ray's own reach.
     @Test func withTheNearBodyGoneTheRayReachesTheFarOne() throws {
@@ -92,12 +83,14 @@ struct Query3DTests {
         #expect(hits.map(\.distance) == hits.map(\.distance).sorted())
     }
 
-    /// The ignore list is what lets a body cast from inside itself.
+    /// The headline: a ray reports what it reaches first, and it is the geometry
+    /// that decides, not the order things were added. And the ignore list is
+    /// what lets a body cast from inside itself.
     @Test func anIgnoredBodyIsLookedStraightThrough() throws {
         let (world, boxes) = tower([3, 1])
         let plain = try #require(world.raycast(from: Vector3(0, 8, 0),
                                                to: Vector3(0, -8, 0)))
-        #expect(plain.body === boxes[0])
+        #expect(plain.body === boxes[0], "the box at y = 3 is the one in the way")
         let skipping = try #require(world.raycast(from: Vector3(0, 8, 0),
                                                   to: Vector3(0, -8, 0),
                                                   ignoring: [boxes[0]]))
@@ -105,7 +98,8 @@ struct Query3DTests {
     }
 
     /// A sensor is a region to be inside rather than a surface to hit, so a ray
-    /// passes through one unless it is asked for.
+    /// (the one the mouse picks with among them) passes through one unless it
+    /// is asked for.
     @Test func sensorsAreTransparentUntilTheyAreAskedFor() throws {
         let world = World3D()
         let field = world.addBody(.box(width: 4, height: 4, depth: 4),

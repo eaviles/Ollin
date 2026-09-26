@@ -139,19 +139,18 @@ struct Character3DTests {
         return peak - settled
     }
 
+    /// A ledge under the step height is climbed and one past it is a wall. And
+    /// the twin that isolates the parameter: the very same 0.3 ledge is a step
+    /// or a wall depending only on whether stepping is switched on.
     @Test func stepsOntoALedgeUnderItsStepHeight() {
         // Comfortably inside the 0.4 limit: the character ends up on top.
-        #expect(abs(climbStep(blockHeight: 0.3, stepHeight: 0.4) - 0.3) < 0.05)
+        let stepped = climbStep(blockHeight: 0.3, stepHeight: 0.4)
+        #expect(abs(stepped - 0.3) < 0.05)
+        #expect(stepped > 0.25)
         // Comfortably past it: the ledge is a wall.
         #expect(climbStep(blockHeight: 0.8, stepHeight: 0.4) < 0.05)
-    }
-
-    /// The twin that isolates the parameter: the very same 0.3 ledge is a step or a
-    /// wall depending only on whether stepping is switched on.
-    @Test func stepHeightZeroTurnsALedgeIntoAWall() {
-        let stepped = climbStep(blockHeight: 0.3, stepHeight: 0.4)
+        // With stepping switched off, the same 0.3 ledge is a wall too.
         let blocked = climbStep(blockHeight: 0.3, stepHeight: 0)
-        #expect(stepped > 0.25)
         #expect(blocked < 0.05)
     }
 

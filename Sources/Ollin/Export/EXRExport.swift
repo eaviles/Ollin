@@ -210,11 +210,15 @@ extension OllinApp {
     ///
     /// The file is uncompressed, so it is large: a 1080 square frame with depth
     /// is about 14 MB.
+    ///
+    /// Throws `ExportError` when the frame does not draw or the file cannot be
+    /// written.
     public static func exportEXR(_ sketch: Sketch, to path: String, frame: Int = 0,
-                                 fps: FrameRate = 60, quality: RenderQuality = .detail) {
+                                 fps: FrameRate = 60, quality: RenderQuality = .detail) throws {
         guard let device = MTLCreateSystemDefaultDevice(),
               let renderer = headlessRenderer(for: sketch, device: device) else {
-            fatalError("Ollin: failed to render the frame for export (no Metal device?)")
+            throw ExportError(.unrendered, path: path, frame: 0,
+                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
         }
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
@@ -224,11 +228,11 @@ extension OllinApp {
         renderer.capturesLinearFrame = true
         _ = renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
         guard let linear = renderer.lastLinearFrame else {
-            fatalError("Ollin: failed to render the frame for export")
+            throw ExportError(.unrendered, path: path, frame: 0, problem: "the frame kept no linear canvas to write")
         }
         let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
         guard let written = writeEXR(linear, to: path, recipe: recipe) else {
-            fatalError("Ollin: failed to write \(path)")
+            throw ExportError(.unwritable, path: path, frame: 0, problem: "the EXR could not be written")
         }
         print("Ollin: exported frame \(frame) → \(path) "
               + "(\(exrNote(written, width: linear.width, height: linear.height)))")

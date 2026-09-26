@@ -281,10 +281,22 @@ struct APILookupTests {
         #expect(signature.hasPrefix("nonisolated func measure("), "\(signature)")
     }
 
+    /// This checkout's public surface, read once for the suite: every listing
+    /// under `API/`, which several tests below ask about.
+    static let checkout: (root: URL, declarations: [APIDeclaration])? =
+        ReferenceCatalogTests.repositoryRoot().map { root in
+            (root, APIListing.declarations(inAPI: root.appendingPathComponent("API")))
+        }
+
+    /// Every reference page and every example sketch in this checkout, read
+    /// once for the suite rather than once per question asked of them.
+    static let corpus: UsageCorpus? = ReferenceCatalogTests.repositoryRoot().map { UsageCorpus(root: $0) }
+
     @Test("Sketch in this checkout reads as main-actor isolated")
     func sketchIsolation() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let checkout = try #require(Self.checkout)
+        let root = checkout.root
+        let all = checkout.declarations
         let sketch = try #require(all.first { $0.kind == .type && $0.qualifiedName == "Sketch" && $0.module == "Ollin" })
         let places = SourceComments.places(of: [sketch], inSources: root.appendingPathComponent("Sources"))
         let place = try #require(places[0])
@@ -327,15 +339,16 @@ struct APILookupTests {
 
     @Test("drawCircle in this checkout: its three forms, a page that documents it, and an example")
     func drawCircle() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let checkout = try #require(Self.checkout)
+        let root = checkout.root
+        let all = checkout.declarations
         let answer = APIListing.answer("drawCircle", in: all)
         #expect(answer.declarations.count == 3)
         #expect(answer.declarations.allSatisfy { $0.owner == ["Sketch"] && $0.module == "Ollin" })
         let places = SourceComments.places(of: answer.declarations, inSources: root.appendingPathComponent("Sources"))
         #expect(places.count == 3)
         #expect(places.values.allSatisfy { $0.file.lastPathComponent == "Sketch.swift" })
-        let corpus = UsageCorpus(root: root)
+        let corpus = try #require(Self.corpus)
         let pages = APIUsage.pages(naming: "drawCircle", reach: .bare, owners: ["Sketch"], in: corpus)
         #expect(!pages.isEmpty)
         let examples = APIUsage.examples(using: "drawCircle", reach: .bare, in: corpus)
@@ -345,8 +358,9 @@ struct APILookupTests {
 
     @Test("A sketch call shows its source's own parameter names, and is documented where the drawing page names it")
     func rotate() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let checkout = try #require(Self.checkout)
+        let root = checkout.root
+        let all = checkout.declarations
         let onSketch = APIListing.answer("Sketch.rotate", in: all).declarations
             .filter { APIListing.labels(of: $0.text) == ["_"] && $0.text.contains("Double") }
         let declaration = try #require(onSketch.first)
@@ -356,14 +370,15 @@ struct APILookupTests {
         #expect(signature.contains("radians"), "\(signature)")
         #expect(!signature.hasPrefix("public"))
         #expect(!signature.contains("{"))
-        let pages = APIUsage.pages(naming: "rotate", reach: .bare, owners: [], in: UsageCorpus(root: root))
+        let corpus = try #require(Self.corpus)
+        let pages = APIUsage.pages(naming: "rotate", reach: .bare, owners: [], in: corpus)
         #expect(pages.first?.place == "Drawing/Drawing", "\(pages.map(\.address))")
     }
 
     @Test("A type's page is the one that writes it most, not one with a section on binding it")
     func typePages() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let pages = APIUsage.pages(naming: "Param", reach: .type, owners: [], in: UsageCorpus(root: root))
+        let corpus = try #require(Self.corpus)
+        let pages = APIUsage.pages(naming: "Param", reach: .type, owners: [], in: corpus)
         #expect(pages.first?.place == "Helpers/Parameters", "\(pages.map(\.address))")
     }
 
@@ -374,8 +389,9 @@ struct APILookupTests {
     /// quietly missing from the command's output.
     @Test("Nearly every public declaration in this checkout is found in the source")
     func coverage() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let all = APIListing.declarations(inAPI: root.appendingPathComponent("API"))
+        let checkout = try #require(Self.checkout)
+        let root = checkout.root
+        let all = checkout.declarations
             .filter { !$0.isExtension && $0.kind != .other }
         let places = SourceComments.places(of: all, inSources: root.appendingPathComponent("Sources"))
         let share = Double(places.count) / Double(all.count)

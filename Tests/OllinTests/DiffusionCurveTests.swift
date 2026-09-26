@@ -27,9 +27,20 @@ struct DiffusionCurveTests {
         return (Int(data[i]), Int(data[i + 1]), Int(data[i + 2]))
     }
 
+    /// The red and blue marks solved once: the three laws below each read a
+    /// different property of this one frame.
+    private static var twoDotsFrame: CGImage?
+
+    private func twoDots() throws -> CGImage {
+        if let image = Self.twoDotsFrame { return image }
+        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1))
+        Self.twoDotsFrame = image
+        return image
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aMarkKeepsItsOwnColorAndTheSpaceBetweenFillsIn() throws {
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1))
+        let image = try twoDots()
         let data = pixels(of: image)
         let left = rgb(data, image, 48, 128), right = rgb(data, image, 208, 128)
         #expect(left.0 > 200 && left.2 < 60, "the red mark stayed red: \(left)")
@@ -46,7 +57,7 @@ struct DiffusionCurveTests {
         // The rule the solve is defined by. Sampled well away from the marks,
         // where nothing is held, and in the green channel of a red/blue pair so
         // the measurement is not riding on either source.
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1))
+        let image = try twoDots()
         let data = pixels(of: image)
         var worst = 0
         for y in stride(from: 40, to: 216, by: 8) {
@@ -68,7 +79,7 @@ struct DiffusionCurveTests {
     func noColorAppearsThatWasNotPutThere() throws {
         // The maximum principle: the solve can only ever average what it was
         // given, so a red and a blue mark can never make green.
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1))
+        let image = try twoDots()
         let data = pixels(of: image)
         var greenest = 0
         for y in stride(from: 4, to: 252, by: 4) {

@@ -68,19 +68,11 @@ struct DescriptionTests {
         s.describe("the water", as: "a flat band")
         s.describe("the boat", as: "a dark hull")
 
-        s.describe("the sun", as: "")                 // it sets
+        s.describe("the sun", as: "")                 // it sets: empty text drops that part alone
         #expect(s.accessibleDescription.elements.map(\.name) == ["the water", "the boat"])
 
         s.describe("the sun", as: "a deep orange disc")   // and rises again
         #expect(s.accessibleDescription.elements.map(\.name) == ["the sun", "the water", "the boat"])
-    }
-
-    @Test func emptyTextDropsOnePartAndLeavesTheRest() {
-        let s = sketch()
-        s.describe("sun", as: "a yellow disc")
-        s.describe("sea", as: "a gray band")
-        s.describe("sun", as: "")
-        #expect(s.accessibleDescription.elements.map(\.name) == ["sea"])
     }
 
     @Test func noDescriptionClearsEverything() {

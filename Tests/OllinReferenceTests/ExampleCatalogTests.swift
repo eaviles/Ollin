@@ -27,10 +27,14 @@ struct ExampleCatalogTests {
 
     // MARK: - Against the repository
 
+    /// Every example in this checkout, enumerated once for the suite.
+    static let checkoutEntries: [ExampleEntry]? = ReferenceCatalogTests.repositoryRoot().map {
+        ExampleCatalog.entries(inExamples: $0.appendingPathComponent("Examples"))
+    }
+
     @Test("Every example in this checkout is found, named, and described")
     func realExamples() throws {
-        let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let entries = ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples"))
+        let entries = try #require(Self.checkoutEntries)
 
         #expect(entries.count > 100, "found \(entries.count) examples")
 
@@ -56,7 +60,7 @@ struct ExampleCatalogTests {
     @Test("Every example target the catalog names is one the package declares")
     func targetNames() throws {
         let root = try #require(ReferenceCatalogTests.repositoryRoot())
-        let entries = ExampleCatalog.entries(inExamples: root.appendingPathComponent("Examples"))
+        let entries = try #require(Self.checkoutEntries)
         let manifest = try String(contentsOf: root.appendingPathComponent("Examples/Package.swift"),
                                   encoding: .utf8)
         // The manifest names a target by its folder, so the printed run

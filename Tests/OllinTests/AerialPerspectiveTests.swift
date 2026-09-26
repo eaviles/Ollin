@@ -153,6 +153,28 @@ struct AerialRenderProbes {
         Int(p.data[(y * p.width + x) * 4 + c])
     }
 
+    /// What changes a slab probe's picture: its mode, whether the air is on, and the haze.
+    private struct SlabKey: Hashable {
+        var mode: AerialSlabProbe.Mode, aerial: Bool, haziness: Double
+    }
+
+    /// The slab frames already rendered this run, so the far slab and its air-off twin
+    /// (and the near pair) that several probes read are each rendered once.
+    private static var slabs: [SlabKey: (data: [UInt8], width: Int, height: Int)] = [:]
+
+    private func slab(_ mode: AerialSlabProbe.Mode, aerial: Bool = true,
+                      haziness: Double = 0.3) throws -> (data: [UInt8], width: Int, height: Int) {
+        let key = SlabKey(mode: mode, aerial: aerial, haziness: haziness)
+        if let known = Self.slabs[key] { return known }
+        let probe = AerialSlabProbe()
+        probe.mode = mode
+        probe.aerial = aerial
+        probe.haziness = haziness
+        let frame = try pixels(probe)
+        Self.slabs[key] = frame
+        return frame
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func turningItOffRestoresTheFrame() throws {
         // `noAerialPerspective()` leaves the gate untaken: byte-identical to a
@@ -169,9 +191,7 @@ struct AerialRenderProbes {
         // A dark slab across a long air path: the added veil (A-B against the
         // aerial-off render) must gain more blue than red, the molecular
         // signature no gray fog has.
-        let on = AerialSlabProbe(); on.mode = .far
-        let off = AerialSlabProbe(); off.mode = .far; off.aerial = false
-        let a = try pixels(on), b = try pixels(off)
+        let a = try slab(.far), b = try slab(.far, aerial: false)
         let dRed = channel(a, 128, 128, 0) - channel(b, 128, 128, 0)
         let dBlue = channel(a, 128, 128, 2) - channel(b, 128, 128, 2)
         #expect(dBlue > dRed + 10, "the veil should lean blue (dR \(dRed), dB \(dBlue))")
@@ -181,12 +201,8 @@ struct AerialRenderProbes {
     func fartherVeilsMore() throws {
         // The same slab, near then far (each sized to hold the frame center):
         // the far one sits under more air.
-        let near = AerialSlabProbe(); near.mode = .near
-        let nearOff = AerialSlabProbe(); nearOff.mode = .near; nearOff.aerial = false
-        let far = AerialSlabProbe(); far.mode = .far
-        let farOff = AerialSlabProbe(); farOff.mode = .far; farOff.aerial = false
-        let dNear = channel(try pixels(near), 128, 128, 2) - channel(try pixels(nearOff), 128, 128, 2)
-        let dFar = channel(try pixels(far), 128, 128, 2) - channel(try pixels(farOff), 128, 128, 2)
+        let dNear = channel(try slab(.near), 128, 128, 2) - channel(try slab(.near, aerial: false), 128, 128, 2)
+        let dFar = channel(try slab(.far), 128, 128, 2) - channel(try slab(.far, aerial: false), 128, 128, 2)
         #expect(dFar > dNear + 15, "farther should veil more (near \(dNear), far \(dFar))")
     }
 
@@ -206,9 +222,7 @@ struct AerialRenderProbes {
         // Pure molecular air veils blue; a hazy sky veils gray. The veil's
         // blue-over-red ratio must fall as haziness rises.
         func veil(_ haziness: Double) throws -> (r: Int, b: Int) {
-            let on = AerialSlabProbe(); on.mode = .far; on.haziness = haziness
-            let off = AerialSlabProbe(); off.mode = .far; off.aerial = false
-            let a = try pixels(on), b = try pixels(off)
+            let a = try slab(.far, haziness: haziness), b = try slab(.far, aerial: false)
             return (channel(a, 128, 128, 0) - channel(b, 128, 128, 0),
                     channel(a, 128, 128, 2) - channel(b, 128, 128, 2))
         }
@@ -248,10 +262,8 @@ struct AerialRenderProbes {
     func bareAirGlowsWithoutABackdrop() throws {
         // With no environment the air paints the implied horizon glow over the
         // 2D clear, so empty sky brightens.
-        let on = AerialSlabProbe(); on.mode = .near
-        let off = AerialSlabProbe(); off.mode = .near; off.aerial = false
-        let a = channel(try pixels(on), 128, 30, 2)
-        let b = channel(try pixels(off), 128, 30, 2)
+        let a = channel(try slab(.near), 128, 30, 2)
+        let b = channel(try slab(.near, aerial: false), 128, 30, 2)
         #expect(a > b + 20, "empty air should glow (on \(a), off \(b))")
     }
 
@@ -268,9 +280,10 @@ struct AerialRenderProbes {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func twoRendersMatch() throws {
-        let a = AerialSlabProbe(); a.mode = .far
-        let b = AerialSlabProbe(); b.mode = .far
-        #expect(try pixels(a).data == pixels(b).data)
+        // The kept far slab against a fresh render of the same probe: two renders,
+        // never the kept frame compared with itself.
+        let fresh = AerialSlabProbe(); fresh.mode = .far
+        #expect(try slab(.far).data == pixels(fresh).data)
     }
 }
 

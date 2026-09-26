@@ -106,6 +106,11 @@ public extension OllinApp {
     /// `skipSeconds` runs the sketch that long before capture starts, so a
     /// stateful sketch settles into motion first. For a *reproducible* clip,
     /// seed the sketch (`seed(…)` in `setup()`).
+    ///
+    /// Throws `ExportError` when the clip cannot be made: a path or codec the
+    /// writer does not take, a frame that does not draw, or an encoder that
+    /// refuses a frame or cannot finish the file. A file stopped partway is
+    /// removed, so what is left at `path` is always a whole clip.
     static func exportVideo(_ sketch: Sketch, to path: String,
                             frames: Int, fps: FrameRate = 60,
                             codec: VideoCodec = .h264,
@@ -113,8 +118,11 @@ public extension OllinApp {
                             encodeQuality: Double? = nil,
                             renderQuality: RenderQuality = .detail,
                             skipSeconds: Double = 0,
-                            slowMotion: SlowMotion? = nil) {
-        guard frames > 0 else { return }
+                            slowMotion: SlowMotion? = nil) throws {
+        guard frames > 0 else {
+            throw ExportError(.unsupported, path: path,
+                              problem: "asks for \(frames) frames, and a clip needs at least one")
+        }
         let rate = fps
         let fps = rate.framesPerSecond
         // `frames` is what the file holds either way. Under slow motion the
@@ -128,11 +136,13 @@ public extension OllinApp {
         case "mov": fileType = .mov
         case "mp4", "m4v":
             guard !codec.requiresQuickTime else {
-                fatalError("Ollin: \(codec.rawValue) needs a QuickTime container — use a .mov path")
+                throw ExportError(.unsupported, path: path,
+                                  problem: "\(codec.rawValue) needs a QuickTime container; use a .mov path")
             }
             fileType = .mp4
         case let ext:
-            fatalError("Ollin: unsupported video extension '.\(ext)' — use .mp4, .m4v, or .mov")
+            throw ExportError(.unsupported, path: path,
+                              problem: "'.\(ext)' is not a video extension; use .mp4, .m4v, or .mov")
         }
 
         var quality = encodeQuality
@@ -142,7 +152,8 @@ public extension OllinApp {
                 print("Ollin: quality and bitrate are alternative rate controls; using quality")
             }
             #else
-            fatalError("Ollin: constant-quality encoding needs the Apple-silicon video encoder — set a bitrate instead on this Mac")
+            throw ExportError(.unsupported, path: path,
+                              problem: "constant-quality encoding needs the Apple-silicon video encoder; set a bitrate instead on this Mac")
             #endif
         }
         if codec.requiresQuickTime, bitsPerSecond != nil || quality != nil {
@@ -156,7 +167,7 @@ public extension OllinApp {
         do {
             writer = try AVAssetWriter(outputURL: url, fileType: fileType)
         } catch {
-            fatalError("Ollin: failed to create the video writer for \(path): \(error)")
+            throw ExportError(.unwritable, path: path, problem: "the video writer could not be made: \(error.localizedDescription)")
         }
 
         // What the sketch asked to carry out decides how the track is tagged and
@@ -248,10 +259,15 @@ public extension OllinApp {
 
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
         if let motion { print(motion.note(written: frames, fps: fps)) }
-        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+        // Anything that stops the export from here on takes the half-written
+        // file with it, and any sound it had started, so the next export
+        // starts clean and `path` never holds a clip that ends early.
+        var isComplete = false
+        defer { if !isComplete { abandon(writer, at: url) } }
+        let elapsed = try renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                    quality: renderQuality,
                                    encoding: output == .extended ? .pqRec2020 : nil,
-                                   slowMotion: motion) { frame, index in
+                                   slowMotion: motion, for: path) { frame, index in
             if index == 0 {
                 // Writing starts on the first frame, after the sketch has run
                 // `setup()`, so the reproduction recipe can carry the seed it
@@ -270,8 +286,8 @@ public extension OllinApp {
                 // so an instrument made there is found.
                 prepareSoundtrack(for: sketch, writer: writer)
                 guard writer.startWriting() else {
-                    fatalError("Ollin: the video writer refused to start: "
-                               + (writer.error?.localizedDescription ?? "unknown error"))
+                    throw ExportError(.unwritable, path: path, frame: 0, problem: "the video writer would not start: "
+                                      + (writer.error?.localizedDescription ?? "no reason given"))
                 }
                 writer.startSession(atSourceTime: .zero)
             }
@@ -288,17 +304,21 @@ public extension OllinApp {
                 usleep(1000)
                 videoWait += 1
                 guard videoWait < 30_000 else {
-                    fatalError("Ollin: the video writer stopped taking frames at \(index): "
-                               + (writer.error?.localizedDescription ?? "no error reported"))
+                    throw ExportError(.unwritable, path: path, frame: index,
+                                      problem: "the video writer stopped taking frames at frame \(index): "
+                                          + (writer.error?.localizedDescription ?? "no reason given"))
                 }
             }
             guard let pool = adaptor.pixelBufferPool else {
-                fatalError("Ollin: video encoder rejected the settings: \(writer.error?.localizedDescription ?? "unknown error")")
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "the video encoder refused the settings: "
+                                      + (writer.error?.localizedDescription ?? "no reason given"))
             }
             var pixelBuffer: CVPixelBuffer?
             CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
             guard let buffer = pixelBuffer else {
-                fatalError("Ollin: failed to allocate a frame buffer")
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "no buffer could be made for frame \(index)")
             }
             if output == .extended {
                 // Already PQ-encoded Rec. 2020 half-floats: say so on the buffer
@@ -322,7 +342,8 @@ public extension OllinApp {
                 CVPixelBufferUnlockBaseAddress(buffer, [])
             } else {
                 guard let cgImage = frame.image else {
-                    fatalError("Ollin: failed to read frame \(index) back")
+                    throw ExportError(.unrendered, path: path, frame: index,
+                                      problem: "frame \(index) did not read back from the GPU")
                 }
                 if index == 0, frame.transparent, !codec.carriesAlpha {
                     print("Ollin: the canvas is see-through and \(codec.rawValue) keeps no alpha channel; the file shows it over black (--codec hevcWithAlpha or proRes4444 keeps it)")
@@ -348,8 +369,12 @@ public extension OllinApp {
                 if cgImage.carriesAlpha { buffer.markPremultipliedAlpha() }
             }
             let time = CMTime(value: Int64(index) * tick, timescale: timescale)
-            if !adaptor.append(buffer, withPresentationTime: time) {
-                fatalError("Ollin: failed to encode frame \(index): \(writer.error?.localizedDescription ?? "unknown error")")
+            // A planted refusal is not appended at all, which is how a refused
+            // frame looks from here: the writer said no.
+            if index == plantedVideoRefusal || !adaptor.append(buffer, withPresentationTime: time) {
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "the encoder refused frame \(index): "
+                                      + (writer.error?.localizedDescription ?? "no reason given"))
             }
         }
 
@@ -362,8 +387,10 @@ public extension OllinApp {
         writer.finishWriting { finished.signal() }
         finished.wait()
         guard writer.status == .completed else {
-            fatalError("Ollin: failed to finish \(path): \(writer.error?.localizedDescription ?? "unknown error")")
+            throw ExportError(.unwritable, path: path, problem: "the file could not be finished: "
+                              + (writer.error?.localizedDescription ?? "no reason given"))
         }
+        isComplete = true
         print(String(format: "Ollin: exported %d frames in %.1fs → %@ (%.1f MB)",
                      frames, elapsed, path, fileSizeMB(of: path)))
     }
@@ -382,14 +409,20 @@ public extension OllinApp {
     /// the closest achievable rate and the sketch's fixed timestep runs at
     /// *that* rate, so motion plays back at true speed and the clip keeps its
     /// requested duration (the frame count is rescaled to match).
+    ///
+    /// Throws `ExportError` when the file cannot be made or a frame does not
+    /// draw; a file stopped partway is removed.
     static func exportGIF(_ sketch: Sketch, to path: String,
                           frames: Int, fps: FrameRate = 25,
                           width targetWidth: Int? = nil,
                           skipSeconds: Double = 0,
                           renderQuality: RenderQuality = .detail,
                           slowMotion: SlowMotion? = nil,
-                          palette: GIFWriter.Palette = .shared) {
-        guard frames > 0 else { return }
+                          palette: GIFWriter.Palette = .shared) throws {
+        guard frames > 0 else {
+            throw ExportError(.unsupported, path: path,
+                              problem: "asks for \(frames) frames, and a GIF needs at least one")
+        }
         let fps = fps.framesPerSecond
         let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
 
@@ -409,32 +442,46 @@ public extension OllinApp {
         do {
             writer = try GIFWriter(path: path, width: outWidth, height: outHeight, palette: palette)
         } catch {
-            fatalError("Ollin: failed to create the GIF writer for \(path): \(error)")
+            throw ExportError(.unwritable, path: path, problem: "the GIF writer could not be made: \(error)")
         }
+        var isComplete = false
+        defer { if !isComplete { try? FileManager.default.removeItem(atPath: path) } }
 
         print("Ollin: exporting \(effectiveFrames) frames at \(Int(effectiveFPS.rounded())) fps → \(path) (\(outWidth)×\(outHeight), gif)")
         if let motion { print(motion.note(written: effectiveFrames, fps: effectiveFPS)) }
-        let elapsed = renderFrames(sketch, frames: effectiveFrames, fps: effectiveFPS,
-                                   skipSeconds: skipSeconds, quality: renderQuality,
-                                   slowMotion: motion) { rendered, index in
+        let elapsed = try renderFrames(sketch, frames: effectiveFrames, fps: effectiveFPS,
+                                       skipSeconds: skipSeconds, quality: renderQuality,
+                                       slowMotion: motion, for: path) { rendered, index in
             guard let cgImage = rendered.image else {
-                fatalError("Ollin: failed to read frame \(index) back")
+                throw ExportError(.unrendered, path: path, frame: index,
+                                  problem: "frame \(index) did not read back from the GPU")
             }
             // The writer draws the frame into its own size, so `--gif-width`
             // is the same call as the canvas size.
             do {
                 try writer.append(cgImage, delay: delay)
             } catch {
-                fatalError("Ollin: failed to write frame \(index) of \(path): \(error)")
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "frame \(index) could not be written: \(error)")
             }
         }
         do {
             try writer.finish()
         } catch {
-            fatalError("Ollin: failed to finish \(path): \(error)")
+            throw ExportError(.unwritable, path: path, problem: "the file could not be finished: \(error)")
         }
+        isComplete = true
         print(String(format: "Ollin: exported %d frames in %.1fs → %@ (%.1f MB)",
                      effectiveFrames, elapsed, path, fileSizeMB(of: path)))
+    }
+
+    /// Stops a video writer that will not be finished and removes what it
+    /// wrote, with the sound it had started, so a failed export leaves no
+    /// partial clip behind and the next export begins with nothing pending.
+    internal static func abandon(_ writer: AVAssetWriter, at url: URL) {
+        if writer.status == .writing { writer.cancelWriting() }
+        try? FileManager.default.removeItem(at: url)
+        abandonSoundtrack()
     }
 
     private static func fileSizeMB(of path: String) -> Double {
@@ -495,6 +542,13 @@ extension OllinApp {
                                               sources: soundtrackSources)
         guard !samples.isEmpty else { return }
         append(samples, to: input)
+    }
+
+    /// Lets go of a track that will never be finished.
+    static func abandonSoundtrack() {
+        pendingSoundtrack = nil
+        soundtrackSources = []
+        soundtrackWritten = 0
     }
 
     /// Finishes the track once the last frame is in.
@@ -586,6 +640,12 @@ extension OllinApp {
     }
 
     static let soundtrackSampleRate = 44100.0
+
+    /// The written frame the video export treats as refused by the encoder,
+    /// when a test plants one: the failure a hardware encoder can hand an
+    /// export at any frame, made to happen on the frame the test names.
+    /// Nothing is planted in a normal run.
+    package nonisolated(unsafe) static var plantedVideoRefusal: Int?
 
     /// The audio track being filled as the frames go in, what is filling it,
     /// and how far it has got.

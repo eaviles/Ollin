@@ -38,7 +38,12 @@ enum SelfTest {
                                optimization: SketchLoader.Optimization = .speed) -> Bool {
             switch SketchLoader(sketchPath: sketchFile, optimization: optimization).load() {
             case .success(let sketch):
-                OllinApp.export(sketch, to: path)   // off-screen MSAA render, no window
+                do {
+                    try OllinApp.export(sketch, to: path)   // off-screen MSAA render, no window
+                } catch {
+                    print("  \(error)")
+                    return false
+                }
                 return FileManager.default.fileExists(atPath: path)
             case .failure(let error):
                 print("  \(error)")

@@ -17,9 +17,13 @@ import Foundation
 @MainActor
 struct AreaShadowTests {
 
-    enum Setting {
+    enum Setting: Hashable {
         case none, castOnly, samples(Int)
     }
+
+    /// The renders already traced this run, by setting (the set is otherwise fixed), so
+    /// the unshadowed set and the default-count shadow both probes read are traced once.
+    private static var renders: [Setting: [UInt8]] = [:]
 
     private func pixels(of image: CGImage) -> [UInt8] {
         let w = image.width, h = image.height
@@ -36,9 +40,12 @@ struct AreaShadowTests {
     }
 
     private func render(_ setting: Setting) throws -> [UInt8] {
+        if let known = Self.renders[setting] { return known }
         let sketch = SoftboxSet()
         sketch.setting = setting
-        return pixels(of: try #require(OllinApp.image(of: sketch, frame: 1)))
+        let bytes = pixels(of: try #require(OllinApp.image(of: sketch, frame: 1)))
+        Self.renders[setting] = bytes
+        return bytes
     }
 
     /// The pixels a shadowed render darkens against the unshadowed one by a

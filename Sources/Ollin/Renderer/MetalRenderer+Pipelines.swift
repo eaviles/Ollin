@@ -31,8 +31,7 @@ extension MetalRenderer {
         // The cheap key first (see `quickComputePipelines`): a kernel in the
         // sketch's own source is found by that source alone, and only a miss
         // composes the full text.
-        let quick = kernel.sourcePath.isEmpty
-            ? ComputeKey(sourceHash: MetalRenderer.fnv1a(kernel.source), entry: kernel.entry) : nil
+        let quick = kernel.quickHash.map { ComputeKey(sourceHash: $0, entry: kernel.entry) }
         if let quick, let existing = quickComputePipelines[quick] { return existing }
         let composed = MetalRenderer.composeComputeSource(kernel.source,
                                                           sourcePath: kernel.sourcePath)
@@ -708,7 +707,7 @@ extension MetalRenderer {
     /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.
     /// (`Hasher` is per-process-seeded, so it can't key a stable cache; FNV is
     /// stable — the same lesson the model-tracker cache learned.)
-    static func fnv1a(_ string: String) -> UInt64 {
+    nonisolated static func fnv1a(_ string: String) -> UInt64 {
         var hash: UInt64 = 0xcbf29ce484222325
         for byte in string.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
         return hash

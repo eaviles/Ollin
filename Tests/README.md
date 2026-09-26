@@ -24,6 +24,15 @@ Filters and skips are unanchored regexes over the full test ID, so write
 `OllinTests.SnapshotTests` and never a bare `SnapshotTests`, which also matches
 `OllinPhysicsTests.PhysicsSnapshotTests` and silently drops 46 real tests.
 
+Three suites read the machine they run on rather than a device of their own, and
+fail on a desk that is asleep. `ScreenCaptureTests` needs the screen unlocked,
+since ScreenCaptureKit lists no displays behind the lock screen. The tests that
+start the live audio engine (`TransportMuteTests`, `MIDIRecordingTests`) need the
+default output device awake: with the lid closed and a display's speakers as
+the output, the engine starts late or not at all and they fail after about a
+minute. Both pass on the runner and on an awake desk; rerun them there before
+reading anything into a red.
+
 ## The one rule behind the phases
 
 **A suite that measures the outside world against a clock, or that holds a
@@ -220,7 +229,9 @@ depth reads with half the stack to spare in a debug build, because another
 compiler's frames are larger: with three percent to spare on the desk, the
 runner's compiler overflowed it. A walk the test adds to read a scene keeps its
 pending nodes on a list, or the test measures itself; a formula
-is at most 1,024 tokens nested 64 deep; the include resolver stops at 32. A
+is at most 1,024 tokens nested 64 deep. The include resolver stops at 32,
+which `ShaderIncludeTests.aNestTooDeepIsBounded` pins in `OllinTests`, since
+its chain never came near the stack. A
 file that names another file (a model's buffer, a material's picture, a
 shader's include) reads it only when it is a regular file, never a device such
 as `/dev/zero`.
@@ -318,6 +329,56 @@ nonzero; the committed tree reports nothing.
 - **Does it hand something between threads?** Run its target under
   `Scripts/test.sh tsan` once before committing; a report there is a defect,
   whatever the plain run said.
+- **Does it render something another test already renders?** Read both
+  facts off one render: a test that renders once and asserts several things, or
+  a `@MainActor` memo inside the suite keyed on everything that changes the
+  picture. Each `OllinApp.image(of:)` builds a renderer and compiles its
+  pipelines, which is most of what a render test costs. A test whose point is
+  determinism still renders twice.
+- **Does it read several frames of one run?** Drive it once with
+  `OllinApp.renderFrames` and read each frame in the callback, rather than a
+  fresh `image(of:frame:)` per checkpoint, which replays the run from frame 0
+  every time.
+- **Can a precondition fail?** Make it a `#require` (a value the test needs) or
+  an `.enabled(if:)` trait (a device, a model, a system file), never a
+  `guard … else { return }`, which reports a pass that checked nothing.
+- **Is it the same check as another test?** Put the new assertion in that test.
+  A test is worth its own name when it pins a different branch, a boundary, a
+  regression, or the same invariant from the other side.
+
+## What a long run leaves behind
+
+Installation mode, the wallpaper, the screen saver, and the menu-bar piece run
+for days, and a cache that gains an entry a frame is invisible to any ordinary
+test. Two checks read a long run.
+
+`SoakTests` drives twenty thousand frames of one sketch through the live path
+(`SketchRunner`), churning everything the renderer keeps across frames:
+pictures made again, layers made and dropped, feedback and accumulators
+replaced, a batch rebuilt, atlas text that fills the page again and again, and
+a gradient and a sea state that change every frame. It counts what the renderer
+and the drawer hold (`MetalRenderer.census`, `Drawer.census`) every frame of
+two windows and fails when a count in the last half of the run passes the most
+it reached between frames 2,000 and 4,000, with a margin for the caches that
+fill and clear on a cycle. Counts rather than bytes, because the counts belong
+to one renderer and a process's memory is shared with every suite in it. A new
+cache the renderer or the drawer keeps goes into its census. The suite takes
+about 45 seconds; a planted leak of one texture a frame fails it.
+
+The other is `leaks` over a headless export, which sees memory nothing points
+to any more, a reference cycle above all, where the census sees memory something
+still points to:
+
+```sh
+MallocStackLogging=1 leaks --atExit -- .build/debug/OllinRun \
+    Examples/Effects/Feedback/Sketch.swift --export-sequence /tmp/frames --frames 30
+```
+
+Run it over a few representative sketches (strokes, an effect chain with
+feedback, an accumulator, a simulation, lit 3D with shadows, text, and a video
+export) when the renderer's ownership changes. It found the cycle that kept
+every feedback, accumulator, and simulation layer alive for the life of the
+process.
 
 ## Recording snapshot references
 

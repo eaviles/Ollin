@@ -170,19 +170,20 @@ struct NewtonBasinsTests {
         // darker, the second much more; with shading off the root and the
         // outward point match. (The contour per step keeps the shade from
         // being monotonic pointwise, so the test compares far apart.)
-        func brightness(_ shading: Double, at p: Vector2) throws -> Double {
-            let probe = NewtonProbe(roots: Self.cubeRoots, shading: shading)
-            let (_, n, rgb) = try basins(probe)
-            let (x, y) = pixel(p, n: n)
-            let i = (y * n + x) * 4
-            return Double(Int(rgb[i]) + Int(rgb[i + 1]) + Int(rgb[i + 2])) / (3 * 255)
+        // Each shading is rendered once and read at every point it is asked about.
+        let shaded = try basins(NewtonProbe(roots: Self.cubeRoots, shading: 1))
+        let flat = try basins(NewtonProbe(roots: Self.cubeRoots, shading: 0))
+        func brightness(_ read: (map: [Int], n: Int, rgb: [UInt8]), at p: Vector2) -> Double {
+            let (x, y) = pixel(p, n: read.n)
+            let i = (y * read.n + x) * 4
+            return Double(Int(read.rgb[i]) + Int(read.rgb[i + 1]) + Int(read.rgb[i + 2])) / (3 * 255)
         }
-        let atRoot = try brightness(1, at: Vector2(1, 0))
-        let outward = try brightness(1, at: Vector2(1.45, 0))
-        let flung = try brightness(1, at: Vector2(0.05, 0))
+        let atRoot = brightness(shaded, at: Vector2(1, 0))
+        let outward = brightness(shaded, at: Vector2(1.45, 0))
+        let flung = brightness(shaded, at: Vector2(0.05, 0))
         #expect(atRoot > outward + 0.05, "root \(atRoot) against outward \(outward)")
         #expect(atRoot > flung + 0.15, "root \(atRoot) against the flung point \(flung)")
-        #expect(abs(try brightness(0, at: Vector2(1, 0)) - (try brightness(0, at: Vector2(1.45, 0)))) < 0.02)
+        #expect(abs(brightness(flat, at: Vector2(1, 0)) - brightness(flat, at: Vector2(1.45, 0))) < 0.02)
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

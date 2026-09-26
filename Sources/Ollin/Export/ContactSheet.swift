@@ -212,18 +212,25 @@ extension OllinApp {
     /// Render a contact sheet (see `contactSheet(of:seeds:)`) and write it as a
     /// PNG carrying the sheet's reproduction recipe (the seed list, frame, and
     /// fps), so the sheet itself records how to regenerate any tile.
+    ///
+    /// Throws `ExportError` when there are no seeds, a tile does not draw, or
+    /// the file cannot be written.
     public static func exportContactSheet(_ make: () -> Sketch, to path: String, seeds: [Int],
                                           frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
-                                          quality: RenderQuality = .detail) {
+                                          quality: RenderQuality = .detail) throws {
+        guard !seeds.isEmpty else {
+            throw ExportError(.unsupported, path: path, problem: "no seeds to lay out on the sheet")
+        }
         print("Ollin: rendering a contact sheet of \(seeds.count) seeds")
         guard let sheet = contactSheet(of: make, seeds: seeds, frame: frame, fps: fps,
                                        columns: columns, tileWidth: tileWidth, quality: quality) else {
-            fatalError("Ollin: failed to render the contact sheet (no Metal device?)")
+            throw ExportError(.unrendered, path: path,
+                              problem: "the sheet did not draw (no Metal device, or a tile that did not render)")
         }
         let recipe = ExportMetadata.sheetRecipe(seeds: seeds, frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
-            fatalError("Ollin: failed to write \(path)")
+            throw ExportError(.unwritable, path: path, problem: "the PNG could not be written")
         }
         print("Ollin: exported contact sheet of \(seeds.count) seeds → \(path) (\(sheet.width)×\(sheet.height))")
     }
@@ -232,23 +239,37 @@ extension OllinApp {
     /// write it as a PNG carrying the sweep's reproduction recipe (the
     /// parameter name, its values, and the pinned seed), so the sheet itself
     /// records how to regenerate any tile.
+    ///
+    /// Throws `ExportError` when there are no values, the sketch declares no
+    /// parameter by that name, a tile does not draw, or the file cannot be
+    /// written.
     public static func exportContactSheet(_ make: () -> Sketch, to path: String,
                                           sweeping name: String, values: [Double],
                                           seed: Int? = nil,
                                           frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
-                                          quality: RenderQuality = .detail) {
+                                          quality: RenderQuality = .detail) throws {
+        guard !values.isEmpty else {
+            throw ExportError(.unsupported, path: path, problem: "no values to sweep '\(name)' over")
+        }
+        let declared = make().parameters().map(\.name)
+        guard declared.contains(name) else {
+            let available = declared.sorted().joined(separator: ", ")
+            throw ExportError(.unsupported, path: path,
+                              problem: "the sketch has no @Param named '\(name)'; it has: \(available.isEmpty ? "none" : available)")
+        }
         let pinned = seed ?? Int.random(in: 1 ... 99_999)
         print("Ollin: rendering a sweep of '\(name)' over \(values.count) values at seed \(pinned)")
         guard let sheet = contactSheet(of: make, sweeping: name, values: values,
                                        seed: pinned, frame: frame, fps: fps,
                                        columns: columns, tileWidth: tileWidth, quality: quality) else {
-            fatalError("Ollin: failed to render the sweep (unknown parameter, or no Metal device?)")
+            throw ExportError(.unrendered, path: path,
+                              problem: "the sweep did not draw (no Metal device, or a tile that did not render)")
         }
         let recipe = ExportMetadata.sheetRecipe(sweep: name, values: values, seed: pinned,
                                                 frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
-            fatalError("Ollin: failed to write \(path)")
+            throw ExportError(.unwritable, path: path, problem: "the PNG could not be written")
         }
         print("Ollin: exported sweep of '\(name)' over \(values.count) values → \(path) (\(sheet.width)×\(sheet.height))")
     }
@@ -260,11 +281,11 @@ extension OllinApp {
                                                      values: [Double], seed: Int? = nil,
                                                      frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
-                                                     quality: RenderQuality = .detail) {
+                                                     quality: RenderQuality = .detail) throws {
         guard let name = parameterName(of: make, at: parameter) else {
-            fatalError("Ollin: failed to render the sweep (the parameter is not one the sketch declares)")
+            throw ExportError(.unsupported, path: path, problem: "the swept parameter is not one the sketch declares")
         }
-        exportContactSheet({ make() }, to: path, sweeping: name, values: values, seed: seed,
+        try exportContactSheet({ make() }, to: path, sweeping: name, values: values, seed: seed,
                            frame: frame, fps: fps, columns: columns, tileWidth: tileWidth,
                            quality: quality)
     }
@@ -275,11 +296,11 @@ extension OllinApp {
                                                      values: [Int], seed: Int? = nil,
                                                      frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
-                                                     quality: RenderQuality = .detail) {
+                                                     quality: RenderQuality = .detail) throws {
         guard let name = parameterName(of: make, at: parameter) else {
-            fatalError("Ollin: failed to render the sweep (the parameter is not one the sketch declares)")
+            throw ExportError(.unsupported, path: path, problem: "the swept parameter is not one the sketch declares")
         }
-        exportContactSheet({ make() }, to: path, sweeping: name, values: values.map(Double.init),
+        try exportContactSheet({ make() }, to: path, sweeping: name, values: values.map(Double.init),
                            seed: seed, frame: frame, fps: fps, columns: columns,
                            tileWidth: tileWidth, quality: quality)
     }

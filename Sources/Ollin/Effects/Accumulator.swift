@@ -90,7 +90,7 @@ public final class Accumulator {
                                       scale: self.scale, drawer: drawer)
         self.sumLayer = RenderTarget(width: self.width, height: self.height,
                                      scale: self.scale, drawer: drawer, precision: .float32)
-        self.writeLayer.origin = .accumulate(self)
+        self.writeLayer.origin = .accumulate(.init(self))
     }
 
     /// The running mean, as a drawable `Image`: the sum so far over the passes

@@ -168,11 +168,11 @@ struct SpatialVideoTests {
 
     private func exportedClip(_ sketch: Sketch, frames: Int = 4,
                               stereo: StereoGeometry? = nil,
-                              metersPerUnit: Double = 1) -> URL {
+                              metersPerUnit: Double = 1) throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-spatial-\(UUID().uuidString).mov")
-        OllinApp.exportSpatialVideo(sketch, to: url.path, frames: frames, fps: 12,
-                                    stereo: stereo, metersPerUnit: metersPerUnit)
+        try OllinApp.exportSpatialVideo(sketch, to: url.path, frames: frames, fps: 12,
+                                        stereo: stereo, metersPerUnit: metersPerUnit)
         return url
     }
 
@@ -192,7 +192,7 @@ struct SpatialVideoTests {
 
     @Test(.enabled(if: Snapshot.hasMetal && VTIsStereoMVHEVCEncodeSupported()))
     func theSystemReadsTheFileAsSpatialVideo() async throws {
-        let url = exportedClip(Depths())
+        let url = try exportedClip(Depths())
         defer { try? FileManager.default.removeItem(at: url) }
         let options = await playbackOptions(url)
         #expect(options.contains(.spatialVideo))
@@ -203,7 +203,7 @@ struct SpatialVideoTests {
     func theFileCarriesTheShotItWasTakenWith() async throws {
         // A tenth of a unit between the eyes, and a unit is a hundredth of a
         // meter, so the baseline is a millimeter: a thousand micrometers.
-        let url = exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.1, convergence: 10),
+        let url = try exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.1, convergence: 10),
                                metersPerUnit: 0.01)
         defer { try? FileManager.default.removeItem(at: url) }
         let extensions = try await spatialExtensions(url)
@@ -226,8 +226,8 @@ struct SpatialVideoTests {
         // four times as far apart, everything off the convergence plane moves
         // four times as far. A pair that came out identical, or that ignored
         // the spacing, passes neither half.
-        let near = exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.1, convergence: 10))
-        let wide = exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.4, convergence: 10))
+        let near = try exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.1, convergence: 10))
+        let wide = try exportedClip(Depths(), stereo: StereoGeometry(interocular: 0.4, convergence: 10))
         defer {
             try? FileManager.default.removeItem(at: near)
             try? FileManager.default.removeItem(at: wide)

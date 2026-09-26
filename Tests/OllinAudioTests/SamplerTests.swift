@@ -266,15 +266,6 @@ import Testing
         #expect(out.allSatisfy { abs($0) < 1e-9 })
     }
 
-    /// The constraint the whole design is shaped by: recordings are far too
-    /// large to travel inside a note, so what travels is only the settings.
-    @Test func onlyTheSettingsRideTheRing() {
-        #expect(_isPOD(Sampler.self))
-        #expect(_isPOD(VoiceSource.self))
-        #expect(_isPOD(Voice.self))
-        #expect(_isPOD(SynthEvent.self))
-    }
-
     /// An instrument can be built from sound a sketch made itself, which is the
     /// way in for anything Ollin does not know how to read.
     @Test func aninstrumentCanBeBuiltFromRecordingsInHand() {

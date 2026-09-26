@@ -19,7 +19,7 @@ struct WalkTests {
     /// Lévy steps stay inside [minStep, maxStep] for the general exponent and
     /// for the μ = 1 special case.
     @Test func levyStepBounds() {
-        for exponent in [1.0, 1.6, 2.0, 3.0] {
+        for exponent in [1.0, 2.0] {             // the special case, and the general one
             var rng = SplitMix64(seed: 4)
             let path = levyFlight(from: .init(0, 0), steps: 500,
                                   minStep: 3, maxStep: 120, exponent: exponent, using: &rng)

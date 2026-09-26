@@ -200,7 +200,10 @@ import Testing
     }
 
     /// The two sides of the bow have to add up to one period, so the string
-    /// sounds the note it was asked for whatever the bow is doing.
+    /// sounds the note it was asked for whatever the bow is doing. And how
+    /// bright the string is must not be able to move its pitch, the same
+    /// promise the plucked string makes: every damping below is held to the
+    /// same cent.
     @Test func aBowedStringIsInTuneWhereverTheBowIs() {
         let capacity = 4096
         let memory = UnsafeMutablePointer<Double>.allocate(
@@ -222,24 +225,6 @@ import Testing
                 }
             }
         }
-    }
-
-    /// How bright the string is must not be able to move its pitch, the same
-    /// promise the plucked string makes.
-    @Test func dampingCannotMoveTheBowedPitch() {
-        let capacity = 4096
-        let memory = UnsafeMutablePointer<Double>.allocate(
-            capacity: BowVoice.memoryNeeded(capacity: capacity))
-        defer { memory.deallocate() }
-
-        var dark = BowVoice(buffer: memory, capacity: capacity)
-        dark.start(frequency: 220, spec: BowedString(damping: 1), sampleRate: Self.rate)
-        var bright = BowVoice(buffer: memory, capacity: capacity)
-        bright.start(frequency: 220, spec: BowedString(damping: 0), sampleRate: Self.rate)
-
-        let apart = abs(1200 * log2(dark.soundingFrequency(sampleRate: Self.rate)
-                                    / bright.soundingFrequency(sampleRate: Self.rate)))
-        #expect(apart < 1, "damping moved the pitch by \(apart) cents")
     }
 
     // MARK: - The blown tube
@@ -330,13 +315,5 @@ import Testing
             #expect(once == again)
             #expect(once.contains { abs($0) > 0.001 })
         }
-    }
-
-    /// A driven voice still rides the event ring, so it must stay something
-    /// that can be copied a word at a time.
-    @Test func adrivenVoiceIsStillTriviallyCopyable() {
-        #expect(_isPOD(BowedString.self))
-        #expect(_isPOD(BlownTube.self))
-        #expect(_isPOD(SynthEvent.self))
     }
 }

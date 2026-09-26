@@ -106,11 +106,13 @@ struct PhysicsConvenienceTests {
             ("compound", .compound([.part(.sphere(radius: 0.3), at: Vector3(0, 0.5, 0)),
                                     .part(.box(width: 0.5, height: 0.5, depth: 0.5))])),
         ]
+        // A sketch that draws no collider never reads the one it holds, so the
+        // empty frame is the same for every case: render it once.
+        let without = OneCollider(); without.draws = false
+        let empty = bytes(of: try #require(OllinApp.image(of: without)))
         for (name, collider) in exotic {
             let with = OneCollider(); with.collider = collider
-            let without = OneCollider(); without.collider = collider; without.draws = false
             let inked = bytes(of: try #require(OllinApp.image(of: with)))
-            let empty = bytes(of: try #require(OllinApp.image(of: without)))
             #expect(inked != empty, "\(name) must leave some ink on the frame")
         }
     }

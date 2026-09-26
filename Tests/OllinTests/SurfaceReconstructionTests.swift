@@ -217,26 +217,6 @@ struct SurfaceReconstructionTests {
         #expect(checked > 50, "the probe barely sampled the sheets")
     }
 
-    /// Noisy samples still reconstruct one closed surface within the noise
-    /// band: the plane fit averages the jitter away.
-    @Test
-    func noiseIsAveragedNotReproduced() {
-        var rng = SplitMix64(seed: 7)
-        let spacing = (4 * Double.pi / 2400).squareRoot()
-        let points = spherePoints(2400).map { p in
-            p + Vector3(Double.random(in: -1 ... 1, using: &rng),
-                        Double.random(in: -1 ... 1, using: &rng),
-                        Double.random(in: -1 ... 1, using: &rng)) * (spacing * 0.3)
-        }
-        let mesh = reconstructSurface(of: points, resolution: 48, maxGap: .infinity,
-                                      keepingLargestComponent: true)
-        #expect(edgeUse(mesh).values.allSatisfy { $0 == 2 })
-        for v in mesh.positions {
-            #expect(abs(v.length - 1) < spacing * 1.5,
-                    "surface left the noise band at radius \(v.length)")
-        }
-    }
-
     /// Reconstruction reproduces byte-identically, on both orientation paths.
     @Test
     func reconstructionReproduces() {
@@ -271,8 +251,10 @@ struct SurfaceReconstructionTests {
         }
     }
 
-    /// On the same seeded noisy sphere, the robust blend lands at least as
-    /// close to the true surface as the piecewise planes: its whole point.
+    /// Noisy samples still reconstruct one closed surface within the noise
+    /// band: the plane fit averages the jitter away. On the same seeded noisy
+    /// sphere, the robust blend lands at least as close to the true surface as
+    /// the piecewise planes: its whole point.
     @Test
     func robustFittingSmoothsNoiseAtLeastAsWellAsPlanes() {
         var rng = SplitMix64(seed: 7)
@@ -292,22 +274,17 @@ struct SurfaceReconstructionTests {
         }
         let planes = reconstructSurface(of: points, resolution: 48, maxGap: .infinity,
                                         keepingLargestComponent: true)
+        #expect(edgeUse(planes).values.allSatisfy { $0 == 2 })
+        for v in planes.positions {
+            #expect(abs(v.length - 1) < spacing * 1.5,
+                    "surface left the noise band at radius \(v.length)")
+        }
+
         let robust = reconstructSurface(of: points, resolution: 48, maxGap: .infinity,
                                         fitting: .robust, keepingLargestComponent: true)
         #expect(edgeUse(robust).values.allSatisfy { $0 == 2 })
         #expect(rms(robust) <= rms(planes),
                 "robust \(rms(robust)) vs planes \(rms(planes))")
-    }
-
-    /// The default fitting is the plane fit, byte for byte: adding the robust
-    /// path may not move a single vertex of the shipped reconstruction.
-    @Test
-    func planesFittingIsTheDefault() {
-        let points = spherePoints(700)
-        let a = reconstructSurface(of: points, resolution: 32, maxGap: .infinity)
-        let b = reconstructSurface(of: points, resolution: 32, maxGap: .infinity,
-                                   fitting: .planes)
-        #expect(a.positions == b.positions && a.indices == b.indices)
     }
 
     /// The robust fit reproduces byte-identically too.

@@ -18,10 +18,16 @@ import Testing
 @MainActor
 struct ReflectionBounceTests {
 
+    /// The panel readings already traced this run, by bounce count (nil for the call
+    /// never made), so the pair and the three-surface chain several claims read are
+    /// each traced once.
+    private static var panels: [Int?: Double] = [:]
+
     /// Mean brightness of the deep panel: the image, inside the near mirror, of what
     /// the far mirror shows. The pair fills it with the environment's bright sky; a
     /// longer chain fills it with the corridor, which is darker.
     private func panelMean(_ bounces: Int?) throws -> Double {
+        if let known = Self.panels[bounces] { return known }
         let image = try #require(OllinApp.image(of: MirrorTunnelProbe.make(bounces), frame: 1))
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
@@ -36,7 +42,9 @@ struct ReflectionBounceTests {
                 sum += Int(data[i]) + Int(data[i + 1]) + Int(data[i + 2]); count += 3
             }
         }
-        return Double(sum) / Double(count)
+        let mean = Double(sum) / Double(count)
+        Self.panels[bounces] = mean
+        return mean
     }
 
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))

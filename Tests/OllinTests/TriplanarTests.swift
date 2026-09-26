@@ -73,6 +73,18 @@ struct TriplanarTests {
         return (sx / total, sy / total)
     }
 
+    /// The probe frames already rendered this run, by mode (the scene is otherwise
+    /// fixed), so the textured blob and its scale-0 control several probes read are
+    /// each drawn once.
+    private static var frames: [TriplanarProbe.Mode: CGImage] = [:]
+
+    private func render(_ mode: TriplanarProbe.Mode) throws -> CGImage {
+        if let known = Self.frames[mode] { return known }
+        let image = try #require(OllinApp.image(of: TriplanarProbe.make(mode), frame: 1))
+        Self.frames[mode] = image
+        return image
+    }
+
     /// Mean brightness of the block centered at the canvas center.
     private func centerMean(of image: CGImage, half: Int = 24) -> Double {
         let bytes = imageBytes(image)
@@ -93,8 +105,8 @@ struct TriplanarTests {
         // The point of the feature: a marched metaball skin (no uvs, no
         // tangents) shows the texture's colors; the scale-0 control draws the
         // plain solid surface, so it shows neither.
-        let on = try #require(OllinApp.image(of: TriplanarProbe.make(.blob), frame: 1))
-        let off = try #require(OllinApp.image(of: TriplanarProbe.make(.blobScaleZero), frame: 1))
+        let on = try render(.blob)
+        let off = try render(.blobScaleZero)
         #expect(channelCentroid(of: on, channel: 0) != nil, "the red half must arrive")
         #expect(channelCentroid(of: on, channel: 1) != nil, "the green half must arrive")
         #expect(channelCentroid(of: off, channel: 0) == nil, "the control stays plain")
@@ -106,8 +118,8 @@ struct TriplanarTests {
         // triplanarScale 0 means uv mapping as usual; with no uvs either, the
         // mesh draws on the plain solid path, byte-identical to the same mesh
         // with no material at all.
-        let off = try #require(OllinApp.image(of: TriplanarProbe.make(.blobScaleZero), frame: 1))
-        let none = try #require(OllinApp.image(of: TriplanarProbe.make(.blobBare), frame: 1))
+        let off = try render(.blobScaleZero)
+        let none = try render(.blobBare)
         #expect(imageBytes(off) == imageBytes(none))
     }
 
@@ -224,7 +236,9 @@ struct TriplanarTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func twoRendersAreByteIdentical() throws {
-        let a = try #require(OllinApp.image(of: TriplanarProbe.make(.blob), frame: 1))
+        // The kept blob against a fresh render of it: two renders, never the kept
+        // frame compared with itself.
+        let a = try render(.blob)
         let b = try #require(OllinApp.image(of: TriplanarProbe.make(.blob), frame: 1))
         #expect(imageBytes(a) == imageBytes(b))
     }

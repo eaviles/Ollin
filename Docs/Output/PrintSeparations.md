@@ -84,7 +84,7 @@ The same work is available programmatically:
 
 ```swift
 OllinApp.separations(of: sketch, frame: 30)                   // -> PrintSeparation?
-OllinApp.exportSeparations(sketch, to: "poster.png") { $0.dithered() }
+try OllinApp.exportSeparations(sketch, to: "poster.png") { $0.dithered() }
 ```
 
 Check each layer's average coverage before printing. Each layer reports it as `layer.averageInk`, and the export prints it too. A layer much above a third of the sheet is heavy for most presses.

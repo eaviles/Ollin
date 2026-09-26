@@ -132,26 +132,14 @@ struct FrameProfileTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aBatchThatCannotDrawIsNotCounted() throws {
-        guard let renderer = try makeRenderer() else { return }
-        // An image batch whose texture never builds is skipped in the encode
-        // loop, so the count follows the draw rather than the recording. This is
-        // why the counters live beside the draw calls.
-        let drawer = Drawer()
-        drawer.beginFrame()
-        drawer.strokePaint = nil
-        drawer.drawCircle(60, 60, 20)
-        render(drawer, with: renderer)
-        #expect(renderer.profile.imageVertices == 0)
-        #expect(renderer.profile.drawCalls == 1)
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
     func stateChangesShowUpAsBatches() throws {
         guard let renderer = try makeRenderer() else { return }
         // Ten circles in one blend mode are one run; alternating the blend mode
         // breaks a run per shape. Same shapes, same instance count, ten times the
         // draw calls, which is exactly the reading the profile exists to give.
+        // The counts are taken beside the draw calls, not off the recording: an
+        // image batch whose texture never builds is skipped in the encode loop,
+        // so the count follows the draw.
         let plain = Drawer()
         plain.beginFrame()
         plain.strokePaint = nil

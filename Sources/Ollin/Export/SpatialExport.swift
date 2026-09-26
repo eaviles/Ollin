@@ -261,17 +261,21 @@ public extension OllinApp {
     /// `metersPerUnit` says how big one scene unit is (see
     /// `Scene.data(as:metersPerUnit:)`); the default of 1 reads scene units as
     /// meters.
+    ///
+    /// Throws `ExportError` when the model cannot be written.
     static func exportSpatial(_ sketch: Sketch, to path: String, frame: Int = 0,
-                              fps: FrameRate = 60, metersPerUnit: Double = 1) {
+                              fps: FrameRate = 60, metersPerUnit: Double = 1) throws {
         let scene = spatialScene(of: sketch, frame: frame, fps: fps)
         let url = URL(fileURLWithPath: path)
         let format = SceneFileFormat(fileExtension: url.pathExtension) ?? .usdz
         do {
             try scene.write(to: url, as: format, metersPerUnit: metersPerUnit)
             print("Ollin: exported frame \(frame) → \(path) (\(format.fileExtension.uppercased()))")
+        } catch let error as FileError {
+            throw ExportError(.unwritable, path: path, frame: 0, problem: error.problem)
         } catch {
-            FileHandle.standardError.write(Data("Ollin: \(error)\n".utf8))
-            exit(1)
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the model could not be written: \(error.localizedDescription)")
         }
     }
 }

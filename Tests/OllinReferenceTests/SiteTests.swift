@@ -45,10 +45,14 @@ struct SiteTests {
 
     static func repositoryRoot() -> URL? { ReferenceCatalogTests.repositoryRoot() }
 
+    /// The checkout planned once for the suite. A plan reads every page in the
+    /// Guide, the reference, and the examples for its title, and three tests
+    /// read the same one; it is written once and only read afterwards.
+    nonisolated(unsafe) static let checkoutPlan: SiteBuilder.Plan? = repositoryRoot().map { SiteBuilder(root: $0).plan() }
+
     @Test("The plan holds every kind of page, titled")
     func plan() throws {
-        let root = try #require(Self.repositoryRoot())
-        let plan = SiteBuilder(root: root).plan()
+        let plan = try #require(Self.checkoutPlan)
 
         #expect(plan.byRepoPath["README.md"] != nil)
         #expect(plan.byRepoPath["Guide/README.md"] != nil)
@@ -70,7 +74,7 @@ struct SiteTests {
     func resolving() throws {
         let root = try #require(Self.repositoryRoot())
         let builder = SiteBuilder(root: root)
-        let plan = builder.plan()
+        let plan = try #require(Self.checkoutPlan)
         let log = SiteBuilder.LinkLog()
         let color = try #require(plan.byRepoPath["Docs/Drawing/Color.md"])
         let home = try #require(plan.byRepoPath["README.md"])
@@ -98,6 +102,11 @@ struct SiteTests {
         #expect(log.missing.count == before + 1)
     }
 
+    /// One build of the whole checkout serves every check on what the site
+    /// writes: the pages and their links, the logo, the front page, the search,
+    /// the index for an agent with the markdown twins, and the sitemap. A build
+    /// is most of this suite's time, so the checks read one rather than each
+    /// building the site again.
     @Test("The whole checkout renders as a site with no dead link and every picture in place")
     func realSite() throws {
         let root = try #require(Self.repositoryRoot())
@@ -312,6 +321,74 @@ struct SiteTests {
         #expect(entries.contains { ($0["u"] ?? "").hasPrefix("docs/drawing/color.html#") && $0["k"] == "docs" })
         #expect(entries.contains { $0["u"] == "guide/02-color.html" && $0["h"]?.isEmpty == true && $0["k"] == "guide" && !($0["x"] ?? "").isEmpty })
         #expect(!entries.contains { ($0["w"] ?? "").split(separator: " ").contains("the") }, "a stop word reached the index")
+
+        // The site carries an index for an agent, and it points at markdown.
+        let llms = try String(contentsOf: output.appendingPathComponent("llms.txt"), encoding: .utf8)
+        #expect(llms.hasPrefix("# Ollin"), "the convention wants a title first")
+        #expect(llms.contains("\n> "), "and a blockquote saying what this is")
+        // Every link has to reach markdown, or an agent following one falls
+        // back into HTML halfway through.
+        var llmsLinks = 0
+        var llmsRest = Substring(llms)
+        while let open = llmsRest.range(of: "](https://") {
+            guard let close = llmsRest[open.upperBound...].firstIndex(of: ")") else { break }
+            let url = String(llmsRest[open.upperBound ..< close])
+            #expect(url.hasSuffix(".md"), "\(url) is not markdown")
+            llmsLinks += 1
+            llmsRest = llmsRest[close...]
+        }
+        #expect(llmsLinks > 100, "found only \(llmsLinks) links")
+
+        // The page and its twin sit at the same address but for the suffix,
+        // and the page says where its twin is.
+        let colorPage = output.appendingPathComponent("docs/drawing/color.html")
+        let colorTwin = output.appendingPathComponent("docs/drawing/color.md")
+        #expect(FileManager.default.fileExists(atPath: colorTwin.path))
+        let colorHTML = try String(contentsOf: colorPage, encoding: .utf8)
+        #expect(colorHTML.contains("rel=\"alternate\" type=\"text/markdown\" href=\"color.md\""))
+        #expect(colorHTML.contains("rel=\"describedby\""))
+        let colorMarkdown = try String(contentsOf: colorTwin, encoding: .utf8)
+        #expect(!colorMarkdown.contains("<html"), "the twin is markdown, not a page")
+        #expect(colorMarkdown.contains(".md)"), "its own links reach markdown too")
+
+        // The site lists every page for a crawler, at the addresses the pages claim.
+        let base = "https://ollin.example/"
+        let sitemap = try String(contentsOf: output.appendingPathComponent("sitemap.xml"), encoding: .utf8)
+        #expect(sitemap.hasPrefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), "a sitemap opens with the declaration")
+        #expect(sitemap.contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"))
+        #expect(sitemap.hasSuffix("</urlset>\n"))
+
+        var addresses: [String] = []
+        var sitemapRest = Substring(sitemap)
+        while let open = sitemapRest.range(of: "<loc>") {
+            guard let close = sitemapRest[open.upperBound...].range(of: "</loc>") else { break }
+            addresses.append(String(sitemapRest[open.upperBound ..< close.lowerBound]))
+            sitemapRest = sitemapRest[close.upperBound...]
+        }
+        #expect(addresses.count == report.pages + report.examples,
+                "listed \(addresses.count) of \(report.pages + report.examples) pages")
+        #expect(Set(addresses).count == addresses.count, "a page is listed twice")
+        // The twins are the same words at a second address, which is the one
+        // thing a sitemap must not hand a crawler.
+        #expect(!addresses.contains { $0.hasSuffix(".md") }, "a markdown twin is listed")
+        for address in addresses {
+            #expect(address.hasPrefix(base), "\(address) is not absolute under the site")
+            #expect(address == base || address.hasSuffix(".html"), "\(address) is not a page")
+        }
+        #expect(addresses.contains(base), "the front page is missing, or listed as its file")
+
+        // The whole point of the file is that a crawler and the page agree on
+        // where the page lives, so one listed address is read back off the
+        // page's own canonical link.
+        let mark = "<link rel=\"canonical\" href=\""
+        let start = try #require(colorHTML.range(of: mark))
+        let end = try #require(colorHTML[start.upperBound...].firstIndex(of: "\""))
+        let canonical = String(colorHTML[start.upperBound ..< end])
+        #expect(addresses.contains(canonical), "\(canonical) is not in the sitemap")
+
+        let robots = try String(contentsOf: output.appendingPathComponent("robots.txt"), encoding: .utf8)
+        #expect(robots.contains("User-agent: *"))
+        #expect(robots.contains("Sitemap: \(base)sitemap.xml"), "the file exists to name the sitemap")
     }
 
     /// The entries the site's index script carries.
@@ -753,7 +830,9 @@ struct SiteTests {
     @Test("The checkout's llms.txt is what the reference writes, and every link in it is a file here")
     func checkoutIndex() throws {
         let root = try #require(Self.repositoryRoot())
-        let written = SiteBuilder(root: root).checkoutIndex()
+        let plan = try #require(Self.checkoutPlan)
+        // What `checkoutIndex()` writes, over the suite's one plan of the checkout.
+        let written = SiteBuilder(root: root).llmsIndex(plan: plan, inCheckout: true)
         let committed = try String(contentsOf: root.appendingPathComponent("llms.txt"), encoding: .utf8)
         #expect(committed == written, "llms.txt is stale: run Scripts/llms.sh and commit it")
         #expect(written.hasPrefix("# Ollin"))
@@ -772,95 +851,12 @@ struct SiteTests {
         #expect(!written.contains("\u{2014}"))
     }
 
-    @Test("The site carries an index for an agent, and it points at markdown")
-    func llmsIndex() throws {
-        let root = try #require(Self.repositoryRoot())
-        let output = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ollin-llms-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: output) }
-        let builder = SiteBuilder(root: root, domain: "ollin.example")
-        _ = try builder.build(into: output)
-
-        let index = try String(contentsOf: output.appendingPathComponent("llms.txt"), encoding: .utf8)
-        #expect(index.hasPrefix("# Ollin"), "the convention wants a title first")
-        #expect(index.contains("\n> "), "and a blockquote saying what this is")
-        // Every link has to reach markdown, or an agent following one falls
-        // back into HTML halfway through.
-        var links = 0
-        var index2 = Substring(index)
-        while let open = index2.range(of: "](https://") {
-            guard let close = index2[open.upperBound...].firstIndex(of: ")") else { break }
-            let url = String(index2[open.upperBound ..< close])
-            #expect(url.hasSuffix(".md"), "\(url) is not markdown")
-            links += 1
-            index2 = index2[close...]
-        }
-        #expect(links > 100, "found only \(links) links")
-
-        // The page and its twin sit at the same address but for the suffix,
-        // and the page says where its twin is.
-        let page = output.appendingPathComponent("docs/drawing/color.html")
-        let twin = output.appendingPathComponent("docs/drawing/color.md")
-        #expect(FileManager.default.fileExists(atPath: twin.path))
-        let html = try String(contentsOf: page, encoding: .utf8)
-        #expect(html.contains("rel=\"alternate\" type=\"text/markdown\" href=\"color.md\""))
-        #expect(html.contains("rel=\"describedby\""))
-        let markdown = try String(contentsOf: twin, encoding: .utf8)
-        #expect(!markdown.contains("<html"), "the twin is markdown, not a page")
-        #expect(markdown.contains(".md)"), "its own links reach markdown too")
-    }
-
     // MARK: - The example media
 
-    @Test("The site lists every page for a crawler, at the addresses the pages claim")
+    /// The checkout's own sitemap and robots.txt are read in `realSite`, off the
+    /// one build of the checkout every check there shares.
+    @Test("A site that does not know its own address writes no sitemap and no robots.txt, and says so")
     func sitemapAndRobots() throws {
-        let root = try #require(Self.repositoryRoot())
-        let output = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ollin-sitemap-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: output) }
-        let builder = SiteBuilder(root: root, domain: "ollin.example")
-        let report = try builder.build(into: output)
-
-        let base = "https://ollin.example/"
-        let sitemap = try String(contentsOf: output.appendingPathComponent("sitemap.xml"), encoding: .utf8)
-        #expect(sitemap.hasPrefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), "a sitemap opens with the declaration")
-        #expect(sitemap.contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"))
-        #expect(sitemap.hasSuffix("</urlset>\n"))
-
-        var addresses: [String] = []
-        var rest = Substring(sitemap)
-        while let open = rest.range(of: "<loc>") {
-            guard let close = rest[open.upperBound...].range(of: "</loc>") else { break }
-            addresses.append(String(rest[open.upperBound ..< close.lowerBound]))
-            rest = rest[close.upperBound...]
-        }
-        #expect(addresses.count == report.pages + report.examples,
-                "listed \(addresses.count) of \(report.pages + report.examples) pages")
-        #expect(Set(addresses).count == addresses.count, "a page is listed twice")
-        // The twins are the same words at a second address, which is the one
-        // thing a sitemap must not hand a crawler.
-        #expect(!addresses.contains { $0.hasSuffix(".md") }, "a markdown twin is listed")
-        for address in addresses {
-            #expect(address.hasPrefix(base), "\(address) is not absolute under the site")
-            #expect(address == base || address.hasSuffix(".html"), "\(address) is not a page")
-        }
-        #expect(addresses.contains(base), "the front page is missing, or listed as its file")
-
-        // The whole point of the file is that a crawler and the page agree on
-        // where the page lives, so one listed address is read back off the
-        // page's own canonical link.
-        let page = output.appendingPathComponent("docs/drawing/color.html")
-        let html = try String(contentsOf: page, encoding: .utf8)
-        let mark = "<link rel=\"canonical\" href=\""
-        let start = try #require(html.range(of: mark))
-        let end = try #require(html[start.upperBound...].firstIndex(of: "\""))
-        let canonical = String(html[start.upperBound ..< end])
-        #expect(addresses.contains(canonical), "\(canonical) is not in the sitemap")
-
-        let robots = try String(contentsOf: output.appendingPathComponent("robots.txt"), encoding: .utf8)
-        #expect(robots.contains("User-agent: *"))
-        #expect(robots.contains("Sitemap: \(base)sitemap.xml"), "the file exists to name the sitemap")
-
         // Without an address there is nothing absolute to write, and neither
         // file is written rather than written wrong. A checkout of one page is
         // enough to see it, and renders in no time.

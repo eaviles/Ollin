@@ -40,6 +40,31 @@ struct GlobalIlluminationTests {
         return (Double(r) / n, Double(g) / n, Double(b) / n)
     }
 
+    /// What changes a room render: the probe's own settings and the cascade test seam.
+    private struct RoomKey: Hashable {
+        var gi: Bool, redWall: Bool, intensity: Double, toggle: Bool
+        var quality: RenderQuality?
+        var cascades: Bool
+    }
+
+    /// The room renders already traced this run, so a room several claims read (the
+    /// default GI room above all) is traced once rather than once per claim.
+    private static var rooms: [RoomKey: CGImage] = [:]
+
+    private func room(gi: Bool, redWall: Bool = true, intensity: Double = 1,
+                      toggle: Bool = false, quality: RenderQuality? = nil) throws -> CGImage {
+        let key = RoomKey(gi: gi, redWall: redWall, intensity: intensity, toggle: toggle,
+                          quality: quality, cascades: MetalRenderer.giCascadesEnabledForTesting)
+        if let known = Self.rooms[key] { return known }
+        let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: gi, redWall: redWall,
+                                                                      intensity: intensity,
+                                                                      toggle: toggle,
+                                                                      quality: quality),
+                                                frame: 1))
+        Self.rooms[key] = image
+        return image
+    }
+
     // MARK: The claims
 
     /// The headline: a room whose only light is a pool on the floor. Direct light
@@ -48,7 +73,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func bounceLightFillsWhatDirectCannotReach() throws {
         func ceiling(gi: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: gi), frame: 1))
+            let image = try room(gi: gi)
             let m = bandMean(image, x: 0.35...0.65, y: 0.16...0.26)
             return (m.r + m.g + m.b) / 3
         }
@@ -64,8 +89,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aColoredWallDyesItsNeighborhood() throws {
         func floorRedness(redWall: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true, redWall: redWall),
-                                                    frame: 1))
+            let image = try room(gi: true, redWall: redWall)
             let m = bandMean(image, x: 0.10...0.24, y: 0.62...0.74)
             return m.r - m.g
         }
@@ -98,8 +122,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func intensityScalesTheBounce() throws {
         func ceiling(intensity: Double) throws -> Double {
-            let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true, intensity: intensity),
-                                                    frame: 1))
+            let image = try room(gi: true, intensity: intensity)
             let m = bandMean(image, x: 0.35...0.65, y: 0.16...0.26)
             return (m.r + m.g + m.b) / 3
         }
@@ -115,9 +138,8 @@ struct GlobalIlluminationTests {
     /// carriers all in one equality.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func turningItOffIsTheDefaultAgain() throws {
-        let off = try #require(OllinApp.image(of: GIRoomProbe.make(gi: false), frame: 1))
-        let toggled = try #require(OllinApp.image(of: GIRoomProbe.make(gi: false, toggle: true),
-                                                  frame: 1))
+        let off = try room(gi: false)
+        let toggled = try room(gi: false, toggle: true)
         #expect(pixels(off).data == pixels(toggled).data,
                 "an on-then-off frame must be byte-identical to never-on")
     }
@@ -164,9 +186,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func theQualityParameterResolvesTheExportTiers() throws {
         func render(_ quality: RenderQuality?) throws -> [UInt8] {
-            let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true, quality: quality),
-                                                    frame: 1))
-            return pixels(image).data
+            pixels(try room(gi: true, quality: quality)).data
         }
         let automatic = try render(nil)
         let detail = try render(.detail)
@@ -202,14 +222,22 @@ struct GlobalIlluminationTests {
     /// disabling them changes nothing, byte-identically. This is the guard that the
     /// shipped single-volume path (gi-3d and every room GI scene) is untouched by the
     /// whole cascade mechanism.
+    ///
+    /// The two renders are traced independently, so the same equality holds the headless
+    /// determinism too: the export path converges the field within the frame from
+    /// iteration-indexed seeds, so two renders of the same frame are byte-identical (the
+    /// promise every snapshot and video export stands on).
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aRoomScaleSceneStaysSingleVolume() throws {
-        let normal = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
+        let normal = try room(gi: true)
         MetalRenderer.giCascadesEnabledForTesting = false
         defer { MetalRenderer.giCascadesEnabledForTesting = true }
-        let forced = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
+        let forced = try room(gi: true)
         #expect(pixels(normal).data == pixels(forced).data,
-                "a room under the coarseness threshold must not derive cascades")
+                """
+                a room under the coarseness threshold must not derive cascades \
+                (and two renders of one GI frame must be byte-identical)
+                """)
     }
 
     /// A cascaded export stays a pure function of the frame: the headless path refits
@@ -341,17 +369,6 @@ struct GlobalIlluminationTests {
         let targetB = try #require(OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1))
         #expect(pixels(targetA).data == pixels(targetB).data,
                 "two renders of the target frame must be byte-identical")
-    }
-
-    /// Headless determinism: the export path converges the field within the frame from
-    /// iteration-indexed seeds, so two renders of the same frame are byte-identical
-    /// (the promise every snapshot and video export stands on).
-    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
-    func anExportIsAPureFunctionOfTheFrame() throws {
-        let first = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
-        let second = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
-        #expect(pixels(first).data == pixels(second).data,
-                "two renders of one GI frame must be byte-identical")
     }
 }
 

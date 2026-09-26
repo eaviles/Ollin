@@ -575,13 +575,15 @@ final class MetalRenderer {
     var computePipelines: [ComputeKey: MTLComputePipelineState] = [:]
     var computeLibraries: [UInt64: MTLLibrary] = [:]
     /// The same pipelines keyed by the kernel's own source alone, for a kernel
-    /// written in the sketch's source: the library half of its composed text
-    /// never changes within a process, so a hit here skips composing it (the
-    /// shared library read and its includes resolved, then a hash over the
-    /// whole text) on every dispatch of every frame. A runner's sample once
-    /// put two thirds of a GPU simulation test's time in that composition.
-    /// A kernel loaded from a file is not keyed here, since a file it includes
-    /// may have been edited under it and the composed hash is what notices.
+    /// written in the sketch's source (`ComputeKernel.quickHash`): the library
+    /// half of its composed text never changes within a process, so a hit here
+    /// skips composing it (the shared library read and its includes resolved,
+    /// then a hash over the whole text) on every dispatch of every frame, which
+    /// a runner's sample once measured at two thirds of a GPU simulation test's
+    /// time. `anInlineKernelIsFoundWithoutComposingTheLibrary` holds the key to
+    /// matching. A kernel loaded from a file, or one that includes another, is
+    /// not keyed here, since a file under it may have been edited and the
+    /// composed hash is what notices.
     var quickComputePipelines: [ComputeKey: MTLComputePipelineState] = [:]
 
     /// User-supplied shaders (the `Shader` type) compile to their own small library,
@@ -1038,9 +1040,13 @@ final class MetalRenderer {
     }
     /// The environment-sampling tables (luminance CDFs + solid-angle pdf grid) the
     /// path-traced export builds per equirect, cached by texture identity so a
-    /// sequence export builds them once. Export-only and small (a few hundred KB per
-    /// environment), so the cache never needs eviction.
-    var ptEnvTableCache: [ObjectIdentifier: MTLBuffer] = [:]
+    /// sequence export builds them once. Each entry holds its texture as well, so
+    /// the identity cannot be handed to another texture while the tables built
+    /// from this one are kept; and the cache is bounded, because an environment
+    /// that changes every frame (a live feed) makes a new texture every frame.
+    var ptEnvTableCache: [ObjectIdentifier: (texture: MTLTexture, tables: MTLBuffer)] = [:]
+    /// The most environments `ptEnvTableCache` keeps tables for at once.
+    static let maxEnvironmentTables = 4
     lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -3315,6 +3321,67 @@ final class MetalRenderer {
     /// hook `Scripts/benchmark.sh raymarch` sweeps to measure the real per-GPU march cost.
     /// `nil` in normal use. (The shadow budget tracks it at the same 3/8 ratio.)
     var raymarchStepsOverride: Int?
+}
+
+// MARK: - What the renderer holds
+
+extension MetalRenderer {
+    /// Everything the renderer keeps from one frame to the next, counted by
+    /// kind: each cache, texture pool, and slot table a long run could grow,
+    /// and the frames still with the GPU. A run that only repeats itself keeps
+    /// every count inside the range its first minutes reached, which is what
+    /// `SoakTests` reads over twenty thousand frames. Counts rather than bytes,
+    /// because a count belongs to this renderer alone, where the memory of a
+    /// process is shared with everything else running in it.
+    var census: [String: Int] {
+        func pooled<T>(_ pool: [[T]]) -> Int { pool.reduce(0) { $0 + $1.count } }
+        return [
+            "pipelines": pipelines.count,
+            "computePipelines": computePipelines.count,
+            "computeLibraries": computeLibraries.count,
+            "quickComputePipelines": quickComputePipelines.count,
+            "libraryComputePipelines": libComputePipelines.count,
+            "simSamplers": simSamplers.count,
+            "userShaderLibraries": userShaderLibraries.count,
+            "userShaderPipelines": userShaderPipelines.count,
+            "userShaderErrors": userShaderErrors.count,
+            "userShaderSources": userShaderSources.count,
+            "printedShaderErrors": printedShaderErrorHashes.count,
+            "passLog": passLog.count,
+            "lightBuffers": lightBuffers.count,
+            "lightTileBuffers": lightTileBuffers.count,
+            "lightGrids": currentLightGrids.count,
+            "clipDepthStencilStates": clipDepthStencilStates.count,
+            "clipStencilTextures": clipStencilTextures.count,
+            "pointShadowFars": pointShadowFars.count,
+            "copiedAccelerationStructures": rtCopyAccels.count,
+            "referencedAccelerationStructures": rtReferencedAccels.count,
+            "pathTracedCopyBatches": pathTracedCopyBatches.count,
+            "environmentSamplingTables": ptEnvTableCache.count,
+            "targetTextures": pooled(targetTexPool),
+            "filterTextures": pooled(filterTexPool),
+            "fieldTextures": pooled(fieldTexPool),
+            "summedAreaTextures": pooled(satTexPool),
+            "targetDepthTextures": pooled(targetDepthPool),
+            "accumulatorSlots": accumulatorSlots.count,
+            "feedbackSlots": feedbackSlots.count,
+            "fluidSlots": fluidSlots.count,
+            "watercolorSlots": watercolorSlots.count,
+            "selfWarpSlots": selfWarpSlots.count,
+            "reflectionHistorySlots": ssrHistorySlots.count,
+            "proofLUTTextures": proofLUTTextures.count,
+            "colorLUTTextures": colorLUTTextures.count,
+            "flareGrids": flareGridCache.count,
+            "scatterKernels": scatterKernels.count,
+            "environmentLightCaches": iblCache.count,
+            "feedBakes": feedBakeStates.count,
+            "environmentRequests": equirectLastRequest.count,
+            "grabTextures": grabTextures.count,
+            "grabBuffers": grabBuffers.count,
+            "gradientStripRows": gradientStripRows.count,
+            "framesInFlight": framesInFlight.withLock { $0 },
+        ]
+    }
 }
 
 extension Color {

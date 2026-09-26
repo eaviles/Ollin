@@ -147,7 +147,7 @@ ae6ac9017cc8  Docs/Core/Sketch.md:285  consecutive statements on a line must be 
 c4f9e4f56eb7  Docs/Core/Sketch.md:307  'canvasSize' has already been overridden
 4c39e3113d60  Docs/Core/Sketch.md:317  consecutive statements on a line must be separated by ';'
 a44d249678b0  Docs/Core/Sketch.md:331  consecutive statements on a line must be separated by ';'
-262288242e0d  Docs/Core/Variations.md:104  cannot find 'MySketch' in scope
+3f8823878133  Docs/Core/Variations.md:104  cannot find 'MySketch' in scope
 d6fe5a36e7ad  Docs/Core/Variations.md:127  unary operator cannot be separated from its operand
 1c021458eb56  Docs/Drawing/Accumulation.md:72  cannot find 'samples' in scope
 5ff62c226df1  Docs/Drawing/Anamorphosis.md:109  cannot find 'mirror' in scope
@@ -456,27 +456,27 @@ c1c5f081e5b8  Docs/Drawing/Text.md:157  cannot find 'label' in scope
 5c1d10700624  Docs/Drawing/Text.md:193  cannot find 'fileURL' in scope
 acc7857ca102  Docs/Drawing/Text.md:216  cannot find 'paragraph' in scope
 bae2295ab724  Docs/Drawing/Text.md:228  cannot find 'x' in scope
-8704a7e2c3af  Docs/Drawing/Text.md:252  cannot find 'skia' in scope
-545d0d1417de  Docs/Drawing/Text.md:263  expected ',' separator
-d0ee46b0040d  Docs/Drawing/Text.md:282  'module' is inaccessible due to 'internal' protection level
-d0dee6b689d5  Docs/Drawing/Text.md:295  expected ',' separator
-0276a6c9d86e  Docs/Drawing/Text.md:302  cannot find 'palette' in scope
-3fb951fbb444  Docs/Drawing/Text.md:327  cannot find 'g' in scope
-b491260662c8  Docs/Drawing/Text.md:338  expected ',' separator
-e1200c27d052  Docs/Drawing/Text.md:362  expected ',' separator
-63d35a4f2f4b  Docs/Drawing/Text.md:368  cannot find 'paragraph' in scope
-ffd6a06777da  Docs/Drawing/Text.md:385  expected ',' separator
-b858f763f312  Docs/Drawing/Text.md:429  expected ',' separator
-6c05d1ec3b67  Docs/Drawing/Text.md:490  expected ',' separator
+8704a7e2c3af  Docs/Drawing/Text.md:254  cannot find 'skia' in scope
+545d0d1417de  Docs/Drawing/Text.md:265  expected ',' separator
+d0ee46b0040d  Docs/Drawing/Text.md:284  'module' is inaccessible due to 'internal' protection level
+d0dee6b689d5  Docs/Drawing/Text.md:297  expected ',' separator
+0276a6c9d86e  Docs/Drawing/Text.md:304  cannot find 'palette' in scope
+3fb951fbb444  Docs/Drawing/Text.md:329  cannot find 'g' in scope
+b491260662c8  Docs/Drawing/Text.md:340  expected ',' separator
+e1200c27d052  Docs/Drawing/Text.md:364  expected ',' separator
+63d35a4f2f4b  Docs/Drawing/Text.md:370  cannot find 'paragraph' in scope
+ffd6a06777da  Docs/Drawing/Text.md:387  expected ',' separator
+b858f763f312  Docs/Drawing/Text.md:431  expected ',' separator
+6c05d1ec3b67  Docs/Drawing/Text.md:492  expected ',' separator
 55c83658543e  Docs/Drawing/Text.md:51  expected ',' separator
-6b00ee90e657  Docs/Drawing/Text.md:585  expected ',' separator
-5d9a93546218  Docs/Drawing/Text.md:592  cannot find 'paragraph' in scope
-abc1e7e5a4c2  Docs/Drawing/Text.md:609  expected ',' separator
-754b34ff791c  Docs/Drawing/Text.md:616  cannot find 'passage' in scope
-d1809a9614c9  Docs/Drawing/Text.md:640  expected ',' separator
-1b92a9f8ca12  Docs/Drawing/Text.md:664  cannot find 'url' in scope
-f7d425b56c0d  Docs/Drawing/Text.md:689  'module' is inaccessible due to 'internal' protection level
-1619f3d694fa  Docs/Drawing/Text.md:698  cannot find 'someURL' in scope
+6b00ee90e657  Docs/Drawing/Text.md:587  expected ',' separator
+5d9a93546218  Docs/Drawing/Text.md:594  cannot find 'paragraph' in scope
+abc1e7e5a4c2  Docs/Drawing/Text.md:611  expected ',' separator
+754b34ff791c  Docs/Drawing/Text.md:618  cannot find 'passage' in scope
+d1809a9614c9  Docs/Drawing/Text.md:642  expected ',' separator
+1b92a9f8ca12  Docs/Drawing/Text.md:666  cannot find 'url' in scope
+f7d425b56c0d  Docs/Drawing/Text.md:691  'module' is inaccessible due to 'internal' protection level
+1619f3d694fa  Docs/Drawing/Text.md:700  cannot find 'someURL' in scope
 0c40e450fdd4  Docs/Drawing/Text.md:81  expected ',' separator
 943b9c98f82d  Docs/Drawing/Text.md:91  cannot find 'tracker' in scope
 747e14bbf9a7  Docs/Drawing/Tiling.md:120  expected ',' separator
@@ -574,9 +574,9 @@ a42bb468557d  Docs/Generators/Isolines.md:32  expected ',' separator
 cfa396c982fe  Docs/Generators/Isolines.md:65  cannot find 'frame' in scope
 57334afc8b67  Docs/Generators/Isolines.md:77  expected ',' separator
 79e05c7696ff  Docs/Generators/Isolines.md:86  cannot find 'portrait' in scope
-4693d8f4c861  Docs/Generators/Isosurface.md:114  cannot find 'box' in scope
+4693d8f4c861  Docs/Generators/Isosurface.md:116  cannot find 'box' in scope
 09b4fbca2234  Docs/Generators/Isosurface.md:34  cannot convert value of type 'Vector2' to expected argument type 'Vector3'
-b5928739b4ba  Docs/Generators/Isosurface.md:94  cannot find 'box' in scope
+b5928739b4ba  Docs/Generators/Isosurface.md:96  cannot find 'box' in scope
 4861e2f8d5b3  Docs/Generators/LSystem.md:119  cannot convert value of type 'String.Type' to expected argument type 'String'
 6f945fdbe53f  Docs/Generators/LSystem.md:299  cannot infer contextual base in reference to member 'taperedTree'
 f43adb4ee0a9  Docs/Generators/LSystem.md:314  value of type '(UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>) -> Int32') has no member 'modules'
@@ -1016,32 +1016,33 @@ fcdf355102bc  Docs/Integration/TUIO.md:153  cannot find 'OSCReceiver' in scope
 f85d2e3756c9  Docs/Integration/TUIO.md:80  cannot find 'TUIOReceiver' in scope
 07533e7e3531  Docs/Integration/VirtualCamera.md:51  cannot find type 'VirtualCameraServer' in scope
 8ad19168a9c2  Docs/Integration/VirtualCamera.md:64  cannot find 'publishVirtualCamera' in scope
-f6bc36d1218e  Docs/Output/DXF.md:15  cannot find 'sketch' in scope
+3501f503e78a  Docs/Output/DXF.md:15  cannot find 'sketch' in scope
 928afe067ea6  Docs/Output/DXF.md:40  cannot find 'contours' in scope
-da066775fa9e  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
+9a034afa7d35  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
-c71aeda5d128  Docs/Output/Export.md:174  cannot find 'sketch' in scope
-9e462dad8137  Docs/Output/Export.md:214  cannot find 'sketch' in scope
-d6af9cd76d9a  Docs/Output/Export.md:269  cannot find 'images' in scope
-793786ace256  Docs/Output/Export.md:362  cannot find 'sketch' in scope
-2a1e64e9e42f  Docs/Output/Export.md:382  cannot find 'sketch' in scope
-f480df453d20  Docs/Output/Export.md:398  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:418  'canvasSize' has already been overridden
-d7bc2e33fbb1  Docs/Output/Export.md:473  cannot find 'MySketch' in scope
-69e3179f9546  Docs/Output/Export.md:480  cannot find 'someShape' in scope
-00955c273f6b  Docs/Output/Export.md:663  cannot find 'MySketch' in scope
-7b4f2a06de9c  Docs/Output/Export.md:690  cannot find 'MySketch' in scope
+56eab423badd  Docs/Output/Export.md:175  cannot find 'sketch' in scope
+143aa3f7b2a6  Docs/Output/Export.md:215  cannot find 'sketch' in scope
+d6af9cd76d9a  Docs/Output/Export.md:270  cannot find 'images' in scope
+41c51b4217b5  Docs/Output/Export.md:363  cannot find 'sketch' in scope
+5c4ecfe60d45  Docs/Output/Export.md:383  cannot find 'sketch' in scope
+68ebfe5e6c05  Docs/Output/Export.md:399  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:419  'canvasSize' has already been overridden
+9cce5cca05b5  Docs/Output/Export.md:474  cannot find 'MySketch' in scope
+69e3179f9546  Docs/Output/Export.md:481  cannot find 'someShape' in scope
+63d4bbf9aef5  Docs/Output/Export.md:493  cannot find 'sketch' in scope
+5661abd6a536  Docs/Output/Export.md:688  cannot find 'MySketch' in scope
+b050cb53bae3  Docs/Output/Export.md:715  cannot find 'MySketch' in scope
 5d07534919d9  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 408662c0edcc  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope
 35d445a4a864  Docs/Output/Fabrication.md:9  cannot find 'sculpture' in scope
-5445c40f9d09  Docs/Output/GCode.md:15  cannot find 'sketch' in scope
+8c28a748fef4  Docs/Output/GCode.md:15  cannot find 'sketch' in scope
 4489554dc4f1  Docs/Output/GCode.md:68  cannot find 'contours' in scope
 12359ddcd771  Docs/Output/Installation.md:409  cannot find 'worldPoint' in scope
 a40222f7916b  Docs/Output/MenuBar.md:30  '@main' attribute cannot be applied to this declaration
 826ef6fcd6ec  Docs/Output/MenuBar.md:48  cannot find 'Pulse' in scope
-5b5406a3551d  Docs/Output/PathTraced.md:98  cannot find 'sketch' in scope
-86f71d684c64  Docs/Output/PrintColor.md:140  cannot find 'sketch' in scope
+79619800883b  Docs/Output/PathTraced.md:98  cannot find 'sketch' in scope
+3556da3286df  Docs/Output/PrintColor.md:140  cannot find 'sketch' in scope
 ceadd572010a  Docs/Output/PrintColor.md:23  cannot find 'url' in scope
 79f5c5017900  Docs/Output/PrintColor.md:54  cannot find 'artwork' in scope
 dec15e2daf9c  Docs/Output/PrintColor.md:63  cannot find 'artwork' in scope
@@ -1050,11 +1051,11 @@ dec15e2daf9c  Docs/Output/PrintColor.md:63  cannot find 'artwork' in scope
 999b20ae038d  Docs/Output/PrintColor.md:99  cannot find 'plates' in scope
 e770c78cfc8d  Docs/Output/PrintSeparations.md:11  cannot find 'artwork' in scope
 56ebf0d6b1f2  Docs/Output/PrintSeparations.md:41  cannot find 'separation' in scope
-d8a1e29dd319  Docs/Output/PrintSeparations.md:85  cannot find 'sketch' in scope
+04c6f8aad940  Docs/Output/PrintSeparations.md:85  cannot find 'sketch' in scope
 f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 2464e3c8732c  Docs/Output/Spatial.md:153  cannot find 'shot' in scope
 87c880d4f02e  Docs/Output/Spatial.md:182  cannot find 'AVAssetPlaybackAssistant' in scope
-68e6c50995a8  Docs/Output/Spatial.md:24  cannot find 'sketch' in scope
+08483ac7ea33  Docs/Output/Spatial.md:24  cannot find 'sketch' in scope
 2061a81c0661  Docs/Output/Spatial.md:35  cannot find 'sketch' in scope
 690a25f392d7  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
 1f2cfde3b6d6  Docs/Output/Wallpaper.md:30  '@main' attribute cannot be applied to this declaration

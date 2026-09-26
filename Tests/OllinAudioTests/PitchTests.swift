@@ -176,14 +176,11 @@ struct PitchTests {
     }
 
     /// The reading follows the window as chunks arrive the way a live tap
-    /// delivers them: a new note is heard once the window has slid onto it,
-    /// and the reading between chunks is the same value, not a fresh guess.
+    /// delivers them: a new note is heard once the window has slid onto it.
     @Test func theReadingFollowsTheWindow() throws {
         let analyzer = Self.analyzer()
         Self.feed(Self.sine(220), to: analyzer)
         #expect(analyzer.nearestPitch == Pitch(name: "A3"))
-        let held = analyzer.pitch
-        #expect(analyzer.pitch == held)
 
         let chunk = 735
         let next = Self.sine(330, count: chunk * 6)

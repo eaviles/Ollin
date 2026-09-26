@@ -85,9 +85,19 @@ struct MeshFieldTests {
 @MainActor
 struct MeshFieldRenderTests {
 
+    /// The culled field's frame, rendered once this run: both probes compare against it.
+    private static var culledField: CGImage?
+
+    private func culledFieldFrame() throws -> CGImage {
+        if let known = Self.culledField { return known }
+        let image = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+        Self.culledField = image
+        return image
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFieldMatchesTheEquivalentInstancedDraws() throws {
-        let field = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+        let field = try culledFieldFrame()
         let instanced = try #require(OllinApp.image(of: FieldABSketch(mode: .instanced)))
         let diff = try #require(fieldImageDifference(field, instanced))
         #expect(diff.mean < 0.5,
@@ -100,7 +110,7 @@ struct MeshFieldRenderTests {
     func cullingChangesNothingInThePicture() throws {
         // The camera deliberately sees only part of the field, so culling has
         // real work to skip; the picture must not know the difference.
-        let culled = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+        let culled = try culledFieldFrame()
         let unculled = try #require(OllinApp.image(of: FieldABSketch(mode: .fieldUnculled)))
         let diff = try #require(fieldImageDifference(culled, unculled))
         #expect(diff.mean < 0.05,

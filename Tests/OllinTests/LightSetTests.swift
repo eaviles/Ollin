@@ -152,6 +152,9 @@ struct LightSetTests {
         #expect(d.lightSets.count == 1)
         #expect(d.makeLighting(set: 1).enabled == 0)
         #expect(d.makeLighting(set: 0).enabled == 1)
+        // And the scope picks up none of the frame's lamps: a scoped set with no lamps
+        // of its own holds none.
+        #expect(d.makeLighting(set: 1).lightCount == 0)
     }
 
     @Test func aScopedAmbientIsItsOwn() {
@@ -165,16 +168,6 @@ struct LightSetTests {
         let inner = d.makeLighting(set: 1).ambient.x
         let outer = d.makeLighting(set: 0).ambient.x
         #expect(inner > outer + 0.3, "the scope's ambient read \(inner), the frame's \(outer)")
-    }
-
-    @Test func aScopedSetWithNoLampsOfItsOwnPicksUpNoneOfTheFrames() {
-        let d = freshDrawer()
-        d.addLight(lamp(.white, at: 0))
-        d.pushState()
-        d.noLights()
-        d.drawMesh(box)
-        d.popState()
-        #expect(d.makeLighting(set: 1).lightCount == 0)
     }
 
     @Test func aCameraRelativeLampResolvesInsideAScope() {
@@ -357,6 +350,17 @@ struct LightSetRenderProbes {
         return (data, w)
     }
 
+    /// The two-room frames already rendered this run, by mode (the scene is otherwise
+    /// fixed), so the warm box alone, which two probes compare against, is drawn once.
+    private static var rooms: [TwoRooms.Mode: (data: [UInt8], width: Int)] = [:]
+
+    private func twoRooms(_ mode: TwoRooms.Mode) throws -> (data: [UInt8], width: Int) {
+        if let known = Self.rooms[mode] { return known }
+        let frame = try rgba(TwoRooms.make(mode))
+        Self.rooms[mode] = frame
+        return frame
+    }
+
     private func pixel(_ p: (data: [UInt8], width: Int),
                        _ at: (Int, Int)) -> (r: Int, g: Int, b: Int) {
         let i = (at.1 * p.width + at.0) * 4
@@ -365,9 +369,9 @@ struct LightSetRenderProbes {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func eachMeshReadsOnlyItsOwnLamps() throws {
-        let both = try rgba(TwoRooms.make(.both))
-        let left = try rgba(TwoRooms.make(.leftAlone))
-        let right = try rgba(TwoRooms.make(.rightAlone))
+        let both = try twoRooms(.both)
+        let left = try twoRooms(.leftAlone)
+        let right = try twoRooms(.rightAlone)
         // Each box first has to be *lit*, or the test would pass on two black frames.
         let bl = pixel(both, TwoRooms.leftProbe), br = pixel(both, TwoRooms.rightProbe)
         #expect(bl.r > 40, "the warm box read \(bl)")
@@ -388,8 +392,8 @@ struct LightSetRenderProbes {
         // One lamp over one box, scoped and unscoped: the same picture, pixel for
         // pixel. This is what says the scoped path resolves its uniform the same way
         // the frame's own does rather than by some second recipe.
-        let scoped = try rgba(TwoRooms.make(.leftAlone))
-        let framed = try rgba(TwoRooms.make(.leftOnTheFrame))
+        let scoped = try twoRooms(.leftAlone)
+        let framed = try twoRooms(.leftOnTheFrame)
         #expect(scoped.data == framed.data)
     }
 

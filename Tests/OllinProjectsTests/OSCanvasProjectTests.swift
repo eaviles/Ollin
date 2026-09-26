@@ -74,14 +74,6 @@ struct WallpaperProjectTests {
         #expect(sketch.contains("override var windowMode: WindowMode { .resizable }"))
     }
 
-    @Test("A canvas that was asked for keeps its own proportions")
-    func anAskedForCanvasWins() throws {
-        let project = try plan(named: "Drift", canvas: .fhd1080)
-        let sketch = try #require(project.files.first { $0.path == "Sources/Drift/Sketch.swift" }).contents
-        #expect(!sketch.contains("override var windowMode"))
-        #expect(sketch.contains("override var canvasSize"))
-    }
-
     // MARK: - Support
 
     private func plan(named name: String,

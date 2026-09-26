@@ -262,7 +262,7 @@ import Testing
         #expect(Effect.flanger(Flanger()).kind == .flanger)
         #expect(Effect.phaser(Phaser()).kind == .phaser)
         #expect(Effect.tremolo(Tremolo()).kind == .tremolo)
-        #expect(Effect.Kind.allCases.count == 15)   // the four motions and the three levels included
+        #expect(Effect.Kind.allCases.count == 15)   // the four motions, the three levels, and the two in the spectrum
         let chain: [Effect] = [
             .chorus(Chorus(rate: 1.5, depth: 0.3, mix: 0.4)),
             .flanger(Flanger(rate: 0.2, depth: 0.9, feedback: -0.4, mix: 0.6)),

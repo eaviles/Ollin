@@ -564,7 +564,9 @@ final class WebGraphRecorder {
         var previousOf: [ObjectIdentifier: Int] = [:]
         for (i, target) in ordered.enumerated() {
             index[ObjectIdentifier(target)] = i
-            if case let .feedback(fb) = target.origin { previousOf[ObjectIdentifier(fb.previousLayer)] = i }
+            if case let .feedback(owner) = target.origin, let fb = owner.layer {
+                previousOf[ObjectIdentifier(fb.previousLayer)] = i
+            }
         }
 
         // The batches tagged for each surface, in call order.
@@ -968,10 +970,12 @@ final class WebGraphRecorder {
                 } else {
                     throw refuse("the \(Self.caseName(op.kind)) combine")
                 }
-            case .feedback(let fb):
+            case .feedback(let owner):
+                guard let fb = owner.layer else { throw refuse("a feedback layer released before its frame") }
                 layer.key = persistentKey(fb)
                 layer.kind = .feedback(clear: clearOf(target), items: try items(for: target))
-            case .simField(let field):
+            case .simField(let owner):
+                guard let field = owner.layer else { throw refuse("a simulation released before its frame") }
                 let sim = field.sim
                 if sim.fluidConfig != nil || sim.watercolorConfig != nil || sim.selfWarpConfig != nil
                     || sim.turingConfig != nil || sim.stepFragment.isEmpty {

@@ -25,9 +25,17 @@ import Ollin
 
     private var diskRect: Rectangle { Rectangle(x: 0, y: 0, width: 320, height: 240) }
 
+    /// The attention model's reading of `diskImage()`, made once for the
+    /// suite: three tests ask the same still request (two read it, and the
+    /// live-wiring test only needs to know the model runs here), so the model
+    /// runs once. `nil` where the model cannot run (the soft-skip).
+    private static let attention = Task<Saliency?, Never> {
+        try? await SaliencyTracker.detect(in: SaliencyTrackerTests().diskImage())
+    }
+
     @Test func attentionCentersOnTheDisk() async throws {
         // Soft-skip: `try?` flattens, so nil covers "model can't run here".
-        guard let saliency = try? await SaliencyTracker.detect(in: diskImage()) else { return }
+        guard let saliency = await Self.attention.value else { return }
         #expect(saliency.heatMap.width > 0 && saliency.heatMap.height > 0)
         // The eye goes to the disk: more heat under its center than in a corner.
         let center = saliency.salience(at: Vector2(160, 120), in: diskRect)
@@ -80,7 +88,7 @@ import Ollin
     }
 
     @Test func edgeQueriesClampInsteadOfTrapping() async throws {
-        guard let saliency = try? await SaliencyTracker.detect(in: diskImage()) else { return }
+        guard let saliency = await Self.attention.value else { return }
         // The optical-flow regression, re-pinned here: Vision's nearest-neighbor
         // pixel lookup traps when a coordinate rounds past the last pixel, so
         // any of these would crash without the clamp.
@@ -110,7 +118,7 @@ import Ollin
         // Gate on the still path: only run the live assertion where the model
         // demonstrably maps this exact frame (elsewhere this is the soft-skip).
         let image = diskImage()
-        guard (try? await SaliencyTracker.detect(in: image)) != nil else { return }
+        guard await Self.attention.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue, exactly like the frame-source tests.

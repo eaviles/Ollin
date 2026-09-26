@@ -78,6 +78,19 @@ struct DomainColoringTests {
         return net
     }
 
+    /// The phase portrait of f(z) = z, rendered once: every test below that reads
+    /// the plain wheel around the origin reads this one frame.
+    private static var phasePortraitOfZFrame: CGImage?
+
+    private func phasePortraitOfZ() throws -> CGImage {
+        if let image = Self.phasePortraitOfZFrame { return image }
+        let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
+                                                     shading: .phase))
+        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        Self.phasePortraitOfZFrame = image
+        return image
+    }
+
     // MARK: The argument principle
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -119,9 +132,7 @@ struct DomainColoringTests {
         // number. Right of the middle is +1 (the wheel's start, red). Above the
         // middle is +i, a quarter turn on, which lands three quarters of the way
         // from red to green. Miss the flip and it lands near red again.
-        let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
-                                                     shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try phasePortraitOfZ()
         let data = pixels(of: image)
         let half = image.width / 2, quarter = image.width / 4
         let right = rgb(data, image, half + quarter, half)
@@ -134,9 +145,7 @@ struct DomainColoringTests {
     func aPhasePortraitReadsDirectionOnly() throws {
         // Every point of one ray out of the origin has the same direction, so
         // f(z) = z must paint the whole ray one color, however far out it goes.
-        let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
-                                                     shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try phasePortraitOfZ()
         let data = pixels(of: image)
         let half = image.width / 2
         let near = rgb(data, image, half + 20, half - 20)
@@ -154,9 +163,16 @@ struct DomainColoringTests {
         // ray, so the ruling can only darken the one color the wheel gives it,
         // by up to the 0.55 the shader's ramp bottoms out at.
         func brightnessSwing(_ shading: Generator.DomainShading) throws -> Double {
-            let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
-                                                         shading: shading, strength: 1))
-            let image = try #require(OllinApp.image(of: probe, frame: 1))
+            // Under `.phase` the shader never reads the strength, so the plain ray
+            // is the phase portrait of z the tests above already rendered.
+            let image: CGImage
+            if shading == .phase {
+                image = try phasePortraitOfZ()
+            } else {
+                let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
+                                                             shading: shading, strength: 1))
+                image = try #require(OllinApp.image(of: probe, frame: 1))
+            }
             let data = pixels(of: image)
             let half = image.width / 2
             var lowest = 255, highest = 0

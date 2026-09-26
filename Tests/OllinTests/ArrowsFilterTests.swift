@@ -42,10 +42,21 @@ struct ArrowsFilterTests {
         var runsOnCenterRow = 0
     }
 
+    /// The ink each field has been read as, by its vector: the picture is a function of
+    /// the vector alone, so a field two tests ask about is rendered once.
+    private static var inks: [SIMD4<Float>: Ink] = [:]
+
     /// The arrows of a field that is `vector` everywhere, 12 pixels apart at 4 pixels
     /// per unit (short enough that no arrow leaves its own cell), as ink counts about
     /// each cell's center, sides told apart at pixel centers.
     private func ink(vector: SIMD4<Float>) throws -> Ink {
+        if let known = Self.inks[vector] { return known }
+        let found = try measuredInk(vector: vector)
+        Self.inks[vector] = found
+        return found
+    }
+
+    private func measuredInk(vector: SIMD4<Float>) throws -> Ink {
         let sketch = ArrowProbe()
         sketch.vector = vector
         let image = try #require(OllinApp.image(of: sketch, frame: 1))

@@ -11,30 +11,15 @@ import Ollin
 
     // MARK: The wire
 
-    @Test func roundTripsABlock() {
-        let message = PhoneMessage.sceneMesh(block(id: UUID(), transform: moveAndTurn))
-        #expect(roundTrip(message) == message)
-    }
-
     /// The scan number rides along so the Mac can tell one run of the scanner from
-    /// the next. It has to survive both a full block and a retirement.
-    @Test func theScanNumberSurvivesTheWire() throws {
-        var sample = block(id: UUID(), transform: matrix_identity_float4x4)
+    /// the next. It has to survive both a full block and a retirement, so each
+    /// carries one that is not the default: a scan the codec dropped would decode
+    /// as zero, and the whole-value compare would then pass with it gone.
+    @Test func roundTripsABlock() {
+        var sample = block(id: UUID(), transform: moveAndTurn)
         sample.scan = 0xDEAD_BEEF
-        guard case .sceneMesh(let back)? = roundTrip(.sceneMesh(sample)) else {
-            Issue.record("the block did not come back")
-            return
-        }
-        #expect(back.scan == 0xDEAD_BEEF)
-
-        let retired = PhoneSceneMeshSample(isTracked: false, timestamp: 1, id: UUID(),
-                                           scan: 7, isRemoved: true,
-                                           transform: matrix_identity_float4x4)
-        guard case .sceneMesh(let retiredBack)? = roundTrip(.sceneMesh(retired)) else {
-            Issue.record("the retirement did not come back")
-            return
-        }
-        #expect(retiredBack.scan == 7)
+        let message = PhoneMessage.sceneMesh(sample)
+        #expect(roundTrip(message) == message, "the block did not come back whole")
     }
 
     @Test func roundTripsABlockWithNoLabels() {
@@ -44,17 +29,12 @@ import Ollin
     }
 
     /// A retirement carries the id and nothing else, which is what makes it cheap
-    /// enough to send the moment ARKit drops a block.
+    /// enough to send the moment ARKit drops a block. Its scan number is not the
+    /// default, for the reason `roundTripsABlock` gives.
     @Test func roundTripsARetirement() {
-        let id = UUID()
-        let sample = PhoneSceneMeshSample(isTracked: true, timestamp: 9.5, id: id,
-                                          isRemoved: true, transform: moveAndTurn)
-        let back = roundTrip(.sceneMesh(sample))
-        #expect(back == .sceneMesh(sample))
-        guard case .sceneMesh(let decoded)? = back else { return }
-        #expect(decoded.id == id)
-        #expect(decoded.vertices.isEmpty)
-        #expect(decoded.triangleIndices.isEmpty)
+        let sample = PhoneSceneMeshSample(isTracked: true, timestamp: 9.5, id: UUID(),
+                                          scan: 7, isRemoved: true, transform: moveAndTurn)
+        #expect(roundTrip(.sceneMesh(sample)) == .sceneMesh(sample), "the retirement did not come back whole")
     }
 
     /// The wire carries one label byte per triangle, so the case order is the

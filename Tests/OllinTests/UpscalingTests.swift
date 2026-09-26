@@ -151,20 +151,15 @@ struct UpscalingTests {
     func aHeadlessUpscalingFrameIsTheTemporalAASupersample() throws {
         // The headless path never touches the scaler: a sketch asking for
         // upscaling renders as the full-resolution supersampled equivalent,
-        // byte-identical to asking for temporal AA.
+        // byte-identical to asking for temporal AA. The two are independent renders
+        // through that one supersample, so the equality also says an upscaling frame
+        // renders twice identically.
         let upscaled = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .upscaling), frame: 1))
         let taa = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .taa), frame: 1))
         #expect(bytes(upscaled) == bytes(taa))
         // And it genuinely engages: the supersample differs from the plain render.
         let off = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .off), frame: 1))
         #expect(bytes(upscaled) != bytes(off))
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func aHeadlessUpscalingFrameRendersTwiceIdentically() throws {
-        let a = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .upscaling), frame: 1))
-        let b = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .upscaling), frame: 1))
-        #expect(bytes(a) == bytes(b))
     }
 }
 

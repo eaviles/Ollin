@@ -377,7 +377,6 @@ import Testing
         let room = ImpulseResponse.decay(seconds: 0.2, sampleRate: 48000, seed: 1)
         #expect(Effect.reverb(Reverb(.hall)).kind == .reverb)
         #expect(Effect.reverb(Reverb(room)).kind == .convolution)
-        #expect(Effect.Kind.allCases.count == 15)   // the four motions and the three levels included
 
         let synth = Synth(.pluck)
         synth.reverb = Reverb(room, mix: 0.4)
@@ -386,12 +385,8 @@ import Testing
         synth.reverb = Reverb(.plate)
         #expect(synth.effects.map(\.kind) == [.reverb])
         #expect(synth.reverb?.impulse == nil)
-
-        // A chain with a room in it wires like any other, in any position.
-        synth.effects = [.delay(Delay(time: 0.1)), .reverb(Reverb(room)), .custom("nothing") { _ in }]
-        #expect(synth.effects.count == 3)
-        synth.effects = synth.effects.reversed()
-        #expect(synth.effects.map(\.kind) == [.custom, .convolution, .delay])
+        // A chain with a room in it wires like any other, in any position:
+        // EffectChainTests' everyKindWiresWithoutThrowing reverses one.
 
         let chain: [Effect] = [.reverb(Reverb(room, mix: 0.5, preDelay: 0.02))]
         let decoded = try JSONDecoder().decode([Effect].self, from: JSONEncoder().encode(chain))

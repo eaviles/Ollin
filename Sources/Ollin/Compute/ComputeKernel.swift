@@ -33,12 +33,20 @@ public struct ComputeKernel: Sendable {
     /// file's own folder: the `.metal` file for the resource and file forms, and the
     /// `.swift` the string was written in for the inline form.
     let sourcePath: String
+    /// The key the renderer finds this kernel's pipeline by without composing
+    /// the shader library around it: a hash of the kernel's own text, for one
+    /// written inline that includes no file. `nil` for a kernel read from a file,
+    /// or one that includes another, since a file under it may be edited and the
+    /// composed text is what notices. Worked out once here rather than on every
+    /// dispatch of every frame.
+    let quickHash: UInt64?
 
     /// Make a kernel from MSL `source`, dispatching the function named `entry`.
     public init(entry: String, _ source: String, file: String = #filePath) {
         self.entry = entry
         self.source = source
         self.sourcePath = file
+        self.quickHash = source.contains("#include") ? nil : MetalRenderer.fnv1a(source)
     }
 
     /// Load a kernel's MSL from a bundled **`.metal` resource file**, dispatching the
@@ -69,5 +77,6 @@ public struct ComputeKernel: Sendable {
         self.entry = entry
         self.source = try FileError.text(of: url)
         self.sourcePath = url.path
+        self.quickHash = nil
     }
 }

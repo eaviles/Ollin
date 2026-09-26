@@ -234,15 +234,16 @@ struct EvolutionTests {
         // average and not the same population. Nothing here is promised across GPUs, and
         // the seed reaches a run twice over (the opening genomes and the breeding
         // stream), so this pins the whole chain rather than either half of it.
-        let a = try genomes(generations: 6, seed: 4242) { _ in }
-        let b = try genomes(generations: 6, seed: 4242) { _ in }
-        let c = try genomes(generations: 6, seed: 99) { _ in }
-        #expect(a == b, "the same seed gave two different populations")
-        #expect(a != c, "two seeds gave the same population")
-        // And the reports agree, which is what the readout promises.
-        let ra = try #require(try run(generations: 4, seed: 4242) { _ in }.last)
-        let rb = try #require(try run(generations: 4, seed: 4242) { _ in }.last)
-        #expect(ra == rb, "the same seed reported \(ra) and then \(rb)")
+        let a = try genomesAndReports(generations: 6, seed: 4242) { _ in }
+        let b = try genomesAndReports(generations: 6, seed: 4242) { _ in }
+        let c = try genomesAndReports(generations: 6, seed: 99) { _ in }
+        #expect(a.genes == b.genes, "the same seed gave two different populations")
+        #expect(a.genes != c.genes, "two seeds gave the same population")
+        // And the reports agree, which is what the readout promises. They are read
+        // off the same two runs, every generation's report and not only the last.
+        let ra = try #require(a.reports.last)
+        let rb = try #require(b.reports.last)
+        #expect(a.reports == b.reports, "the same seed reported \(ra) and then \(rb)")
     }
 
     // MARK: Measurements
@@ -252,12 +253,20 @@ struct EvolutionTests {
     /// The genomes a run holds after `generations` generations.
     private func genomes(generations: Int, seed: Int = 7,
                          _ configure: @escaping (Evolution) -> Void) throws -> [SIMD2<Float>] {
+        try genomesAndReports(generations: generations, seed: seed, configure).genes
+    }
+
+    /// The genomes a run holds after `generations` generations, and what each of
+    /// those generations reported on the way, from the one run.
+    private func genomesAndReports(generations: Int, seed: Int = 7,
+                                   _ configure: @escaping (Evolution) -> Void) throws
+    -> (genes: [SIMD2<Float>], reports: [Evolution.Report]) {
         let probe = EvolutionProbe()
         probe.generations = generations
         probe.seed = seed
         probe.configure = configure
         _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
-        return try #require(probe.run.currentGenes.snapshot())
+        return (try #require(probe.run.currentGenes.snapshot()), probe.reports)
     }
 
     // MARK: Driving

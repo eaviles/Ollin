@@ -213,13 +213,12 @@ struct ParamWriteTests {
     }
 
     /// The kinds that write a whole call of their own are not wrapped literals:
-    /// a color or a vector default is replaced as it always was.
+    /// a color or a vector default is replaced as it always was (the vector's
+    /// call default is `theGeometryKindsWriteTheirFields`).
     @Test func aKindThatWritesItsOwnCallIsUntouchedByTheRule() {
         #expect(written("@Param var tint = Color(red: 1, green: 0, blue: 0)",
                         ("tint", .color(red: 0, green: 0, blue: 1, alpha: 1)))
                     .text.hasSuffix("= Color(red: 0, green: 0, blue: 1)"))
-        #expect(written("@Param(x: 0...9, y: 0...9) var at = Vector2(1, 2)", ("at", .vector(x: 3, y: 4)))
-                    .text.hasSuffix("= Vector2(3, 4)"))
     }
 
     // MARK: What it refuses, and says
@@ -258,13 +257,11 @@ struct ParamWriteTests {
 
     /// A type reaching for one of its own values is written down, even though
     /// it carries names: `Insets.all(20)` and `.purple` are values, `side` is not.
+    /// The written side is pinned where the text it writes is read back
+    /// (`theGeometryKindsWriteTheirFields` writes over `Insets.all(20)`, and
+    /// `aKindThatWritesItsOwnCallIsUntouchedByTheRule` over a `Color` call);
+    /// what stays here is the other side, a name inside the call.
     @Test func aTypeReachingForItsOwnValueIsWrittenDown() {
-        #expect(written("@Param(0...100) var margins = Insets.all(20)",
-                        ("margins", .insets(top: 0, right: 0, bottom: 0, left: 0)))
-                    .refused.isEmpty)
-        #expect(written("@Param var tint: Color = Color(red: 1, green: 0, blue: 0)",
-                        ("tint", .color(red: 0, green: 1, blue: 0, alpha: 1)))
-                    .refused.isEmpty)
         #expect(written("@Param var tint: Color = Color(red: r, green: 0, blue: 0)",
                         ("tint", .color(red: 0, green: 1, blue: 0, alpha: 1)))
                     .refused.count == 1)

@@ -251,12 +251,8 @@ struct CloudRegistrationTests {
 
         // And the fix that was found is a real one, not the identity.
         #expect(held.fix.shift > 0.01 || held.fix.turn > 0.01)
-    }
 
-    @Test func aDriftingSweepKeepsTheCloudSmaller() {
         // A smear is also more points: a wall in two places fills twice the voxels.
-        let loose = sweep(correcting: false)
-        let held = sweep(correcting: true)
         #expect(held.cloud.count < loose.cloud.count)
     }
 

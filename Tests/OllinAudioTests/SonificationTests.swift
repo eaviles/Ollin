@@ -255,13 +255,12 @@ import Testing
     // MARK: - The tier's own rules
 
     /// Length is in beats, because nothing in this tier knows how fast the
-    /// music is going.
+    /// music is going. What the tempo then makes of it is the note's own
+    /// business, which CompositionTests reads off a note of this length.
     @Test func lengthIsInBeatsAndTheTempoJoinsLater() {
         let reading = Sonification([1, 2], noteLength: 0.5)
         let note = reading[0]!
         #expect(note.length == 0.5)
-        #expect(abs(note.seconds(at: 120) - 0.25) < 1e-9)
-        #expect(abs(note.seconds(at: 60) - 0.5) < 1e-9)
     }
 
     /// Nothing here rolls anything, so the same numbers read the same way

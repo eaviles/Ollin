@@ -280,7 +280,10 @@ struct ShaderCheckTests {
         #expect(!ShaderCheck.check(path: path, using: .domain).ok)
     }
 
-    /// The move must not take the names away from a shader that did not narrow anything.
+    /// The move must not take the names away from a shader that did not narrow
+    /// anything: the two sections that own them still carry them. The whole
+    /// library carrying them is `ShaderErrorTests.theDocumentedVocabularyCompiles`,
+    /// which compiles both under every section.
     @Test(.enabled(if: hasMetal))
     func bothNamesAreStillThereByDefault() throws {
         let dir = try folder(["uses.metal": """
@@ -291,7 +294,6 @@ struct ShaderCheckTests {
         """])
         defer { try? FileManager.default.removeItem(at: dir) }
         let path = dir.appendingPathComponent("uses.metal").path
-        #expect(ShaderCheck.check(path: path).ok)
         #expect(ShaderCheck.check(path: path, using: [.color, .domain]).ok)
     }
 

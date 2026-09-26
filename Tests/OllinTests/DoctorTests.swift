@@ -10,7 +10,14 @@ import Testing
 /// come back as they should.
 struct DoctorTests {
 
-    @Test func everyFindingIsSaidInFull() {
+    /// One report, read three ways, since asking for it runs the compilers and
+    /// compiles a shader.
+    ///
+    /// Every finding is said in full. A problem is only useful with the thing to
+    /// do about it beside it: a note may carry one; an `ok` never needs one. And
+    /// this process has already compiled the shader library to run its own
+    /// snapshots, so both GPU answers are settled before the report is asked.
+    @Test func everyFindingIsSaidInFull() throws {
         let findings = Doctor.report()
         #expect(!findings.isEmpty)
         for finding in findings {
@@ -18,21 +25,12 @@ struct DoctorTests {
             #expect(!finding.detail.isEmpty)
             #expect(finding.notes.allSatisfy { !$0.isEmpty })
         }
-    }
 
-    /// A problem is only useful with the thing to do about it beside it. A note
-    /// may carry one; an `ok` never needs one.
-    @Test func everyProblemCarriesItsFix() {
-        for finding in Doctor.report() where finding.level == .problem {
+        for finding in findings where finding.level == .problem {
             #expect(finding.fix != nil, "\(finding.title) says something is wrong and not what to do")
         }
-    }
 
-    /// This process has already compiled the shader library to run its own
-    /// snapshots, so both GPU answers are settled before the report is asked.
-    @Test func theGPUAnswersAreTheOnesThisProcessAlreadyProved() throws {
         try #require(MTLCreateSystemDefaultDevice() != nil)
-        let findings = Doctor.report()
         let device = try #require(findings.first { $0.title == "The Metal device" })
         #expect(device.level == .ok)
         #expect(!device.detail.isEmpty)

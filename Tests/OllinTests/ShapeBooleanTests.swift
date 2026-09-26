@@ -146,8 +146,7 @@ struct ShapeBooleanTests {
         let result = square(x: 0, y: 0, size: 100).offset(by: 10, join: .round)
         // A rounded grow loses (4 − π)·d² to the four corner arcs.
         let expected = 120.0 * 120.0 - (4.0 - Double.pi) * 100.0
-        #expect(abs(area(result) - expected) < 2)
-        #expect(area(result) < 14400) // strictly inside the mitered grow
+        #expect(abs(area(result) - expected) < 2)   // so strictly inside the mitered grow
     }
 
     @Test func bevelJoinCutsTheCorners() {

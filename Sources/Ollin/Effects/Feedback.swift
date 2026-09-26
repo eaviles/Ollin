@@ -82,7 +82,7 @@ public final class Feedback {
                                           scale: self.scale, drawer: drawer, precision: precision)
         // Stamp the write layer now that `self` exists, so the renderer can recover
         // this `Feedback` (and its persistent textures) from the recorded target.
-        self.writeLayer.origin = .feedback(self)
+        self.writeLayer.origin = .feedback(.init(self))
     }
 
     /// Last frame's content, as a drawable/transformable `Image`. The image you read,

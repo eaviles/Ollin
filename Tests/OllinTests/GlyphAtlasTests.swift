@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 import Foundation
 import Metal
 import Testing
@@ -13,6 +14,29 @@ import Testing
 /// machines and macOS versions (the system font's exact outlines aren't fixed).
 @Suite
 struct GlyphAtlasTests {
+
+    // MARK: A full page
+
+    /// A page that fills while its face is already on it is rebuilt, and the
+    /// glyph that filled it is kept on the new page. The lookup used to hold an
+    /// index into the faces from before the rebuild, which the rebuild had
+    /// emptied: a crash the first time a long run of text filled a page, which
+    /// `SoakTests` found.
+    @Test func aPageThatFillsIsRebuiltUnderTheFaceThatFilledIt() throws {
+        let atlas = GlyphAtlas()
+        let font = CTFontCreateUIFontForLanguage(.system, 1, nil)!
+        let glyphs = CTFontGetGlyphCount(font)
+        var glyph: CGGlyph = 1
+        while atlas.generation == 0, Int(glyph) < glyphs {
+            _ = atlas.slot(for: glyph, font: font)
+            glyph += 1
+        }
+        try #require(atlas.generation == 1, "the system face holds more glyphs than one page")
+        let filler = glyph - 1
+        #expect(atlas.glyphCount == 1, "the rebuilt page holds the glyph that filled the old one")
+        #expect(atlas.slot(for: filler, font: font) != nil)
+        #expect(atlas.glyphCount == 1 && atlas.generation == 1, "and a second ask finds it rather than making it again")
+    }
 
     // MARK: Signed distance field (deterministic, no GPU)
 

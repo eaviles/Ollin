@@ -204,16 +204,20 @@ extension OllinApp {
     /// waiting for it, so this is the way to see the run now: the same
     /// pictures the system would put up, in a folder, named by the moment each
     /// one stands for. Behind `--export-widget <dir>`.
+    ///
+    /// Returns the files written. Throws `ExportError` when the folder cannot
+    /// be made or a picture cannot be written; the pictures written before it
+    /// stay in the folder.
     @discardableResult
     public static func exportWidget(to directory: String, from start: Date = Date(),
                                     size: CanvasSize? = nil, count: Int? = nil,
-                                    of makeSketch: () -> Sketch) -> [String] {
+                                    of makeSketch: () -> Sketch) throws -> [String] {
         let folder = URL(fileURLWithPath: directory, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         } catch {
-            FileHandle.standardError.write(Data("Ollin: could not make \(directory): \(error)\n".utf8))
-            return []
+            throw ExportError(.unwritable, path: directory,
+                              problem: "the folder could not be made: \(error.localizedDescription)")
         }
 
         let formatter = DateFormatter()
@@ -222,8 +226,8 @@ extension OllinApp {
         for frame in widgetFrames(from: start, size: size, count: count, of: makeSketch) {
             let path = folder.appendingPathComponent("widget-\(formatter.string(from: frame.date)).png").path
             guard writePNG(frame.image, to: path, recipe: nil) else {
-                FileHandle.standardError.write(Data("Ollin: could not write \(path)\n".utf8))
-                continue
+                throw ExportError(.unwritable, path: path, frame: written.count,
+                                  problem: "the picture could not be written")
             }
             written.append(path)
         }

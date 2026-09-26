@@ -176,7 +176,7 @@ extension MetalRenderer {
         // ping-pong storage. The block reads the *front* (last frame, exposed as
         // `previous`) while drawing into the *back*; the pair flips after the frame.
         for target in drawer.renderTargets {
-            guard case let .feedback(fb) = target.origin else { continue }
+            guard case let .feedback(owner) = target.origin, let fb = owner.layer else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
             let storage = attachmentStorage(for: drawer, target: target)
             guard let slot = feedbackSlot(for: fb, width: pw, height: ph, format: target.pixelFormat, into: cb),
@@ -221,7 +221,7 @@ extension MetalRenderer {
         // sum instead of adding to it, and the divide uses the pass count the
         // drawer noted when the block was recorded.
         for target in drawer.renderTargets {
-            guard case let .accumulate(acc) = target.origin else { continue }
+            guard case let .accumulate(owner) = target.origin, let acc = owner.layer else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
             guard let slot = accumulatorSlot(for: acc, width: pw, height: ph) else { continue }
             if statefulEncodeIsRepeat {
@@ -262,7 +262,7 @@ extension MetalRenderer {
         // texture, then run the field's `Sim` (inject the seeds onto the front state,
         // step it N times) writing the result into the back buffer.
         for target in drawer.renderTargets {
-            guard case let .simField(sf) = target.origin else { continue }
+            guard case let .simField(owner) = target.origin, let sf = owner.layer else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
             if statefulEncodeIsRepeat {
                 // The sim already stepped (and flipped) for this frame; re-stepping

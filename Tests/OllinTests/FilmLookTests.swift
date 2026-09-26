@@ -184,17 +184,15 @@ struct FilmLookTests {
         #expect(spread(grained) > 20)
     }
 
-    @Test func theSpreadAtMidGrayIsTheAmount() throws {
-        let grained = try render(.flat(0.5), .filmGrain(amount: 0.1, size: 2, seed: 5))
-        let levels = spread(grained)
-        #expect(levels > 22 && levels < 29, "a tenth of the way to white is 25.5 levels; measured \(levels)")
-    }
-
+    /// The spread at mid-gray is the amount, in display levels, and the grain follows
+    /// the tone from there: most at mid-gray, and the same at a dark tone as at the
+    /// light tone the same distance from the ends.
     @Test func theGrainFollowsTheTone() throws {
         func spreadAt(_ gray: Double) throws -> Double {
             spread(try render(.flat(gray), .filmGrain(amount: 0.1, size: 2, seed: 5)))
         }
         let dark = try spreadAt(0.1), mid = try spreadAt(0.5), light = try spreadAt(0.9)
+        #expect(mid > 22 && mid < 29, "a tenth of the way to white is 25.5 levels; measured \(mid)")
         #expect(mid > dark * 1.3 && mid > light * 1.3, "dark \(dark), mid \(mid), light \(light)")
         #expect(abs(dark - light) < 0.25 * mid, "dark \(dark) against light \(light)")
     }
@@ -225,7 +223,6 @@ struct FilmLookTests {
         let patterns = seeds.map { Filter.grainPattern(of: $0) }
         #expect(Set(patterns).count == seeds.count)
         #expect(patterns.allSatisfy { $0 >= 0 && $0 < 4093 })
-        #expect(Filter.grainPattern(of: 42) == Filter.grainPattern(of: 42))
     }
 }
 

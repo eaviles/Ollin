@@ -43,11 +43,13 @@ struct PredatorPreyTests {
         let phasePerStep = atan2(omega * dt, 1 + fu * dt / 2)
         let predicted = 2 * .pi / (phasePerStep * Double(steps))   // in frames
 
+        // One run, read at every frame it passes, rather than a fresh run per frame.
+        let sketch = PredatorPreyProbeSketch()
+        sketch.uniform = (prey: u + 0.02, predators: v)
+        let run = try channels(of: sketch, frames: Set(1 ... 75))
         var means: [Double] = []
         for frame in 1 ... 75 {
-            let sketch = PredatorPreyProbeSketch()
-            sketch.uniform = (prey: u + 0.02, predators: v)
-            let (prey, _) = try channels(of: sketch, frame: frame)
+            let (prey, _) = try #require(run[frame])
             means.append(prey.joined().reduce(0, +) / Double(prey.count * prey[0].count))
         }
         // Upward crossings of the coexistence level, interpolated between frames.
@@ -71,10 +73,13 @@ struct PredatorPreyTests {
     /// the center's prey level goes on swinging instead of settling.
     @Test(.enabled(if: Snapshot.hasMetal))
     func predatorsReleasedOnFullPreySpreadAsAWaveAndLeaveAWake() throws {
+        // One run to the last checkpoint, read at each checkpoint on the way.
+        let wake = Array(stride(from: 30, through: 120, by: 3))
+        let sketch = PredatorPreyProbeSketch()
+        sketch.dropsPredators = true
+        let run = try channels(of: sketch, frames: Set([8, 16, 24] + wake))
         func reach(at frame: Int) throws -> Double {
-            let sketch = PredatorPreyProbeSketch()
-            sketch.dropsPredators = true
-            let (_, predators) = try channels(of: sketch, frame: frame)
+            let (_, predators) = try #require(run[frame])
             var far = 0.0
             for y in 0 ..< predators.count {
                 for x in 0 ..< predators[y].count where predators[y][x] > 0.1 {
@@ -90,10 +95,8 @@ struct PredatorPreyTests {
         #expect(late > middle + 3, "\(early) \(middle) \(late)")
 
         var center: [Double] = []
-        for frame in stride(from: 30, through: 120, by: 3) {
-            let sketch = PredatorPreyProbeSketch()
-            sketch.dropsPredators = true
-            let (prey, _) = try channels(of: sketch, frame: frame)
+        for frame in wake {
+            let (prey, _) = try #require(run[frame])
             center.append(prey[48][48])
         }
         let mean = center.reduce(0, +) / Double(center.count)
@@ -106,7 +109,25 @@ struct PredatorPreyTests {
     /// The rendered field decoded back to linear prey (red) and predator (green)
     /// levels, one per texel.
     private func channels(of sketch: Sketch, frame: Int) throws -> (prey: [[Double]], predators: [[Double]]) {
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        channels(in: try #require(OllinApp.image(of: sketch, frame: frame)))
+    }
+
+    /// The same readout at several frames of one headless run. The run goes once
+    /// to the last frame asked for and decodes each wanted frame as it passes, so
+    /// no checkpoint re-simulates the frames before it. Frame `k` here is the
+    /// picture `channels(of:frame: k)` would read.
+    private func channels(of sketch: Sketch, frames wanted: Set<Int>) throws
+    -> [Int: (prey: [[Double]], predators: [[Double]])] {
+        var out: [Int: (prey: [[Double]], predators: [[Double]])] = [:]
+        guard let last = wanted.max() else { return out }
+        try OllinApp.renderFrames(sketch, frames: last + 1, fps: 60, skipSeconds: 0) { frame, index in
+            guard wanted.contains(index), let image = frame.image else { return }
+            out[index] = channels(in: image)
+        }
+        return out
+    }
+
+    private func channels(in image: CGImage) -> (prey: [[Double]], predators: [[Double]]) {
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

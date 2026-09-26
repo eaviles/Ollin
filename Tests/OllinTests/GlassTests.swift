@@ -34,6 +34,17 @@ struct GlassRenderProbes {
         return Double(sum) / Double(max(count, 1))
     }
 
+    /// The probe frames already traced this run, by kind (the scene is otherwise fixed),
+    /// so the glass mesh and the glass field two probes compare are each traced once.
+    private static var frames: [GlassProbe.Kind: CGImage] = [:]
+
+    private func render(_ kind: GlassProbe.Kind) throws -> CGImage {
+        if let known = Self.frames[kind] { return known }
+        let image = try #require(OllinApp.image(of: GlassProbe.make(kind: kind), frame: 1))
+        Self.frames[kind] = image
+        return image
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func withoutAnEnvironmentGlassIsAPlainDielectric() throws {
         // No environment means nothing to transmit: the glass sphere must render
@@ -87,9 +98,9 @@ struct GlassRenderProbes {
         // absorbs over the run to it, which reads far darker than the mesh and moves
         // when the slab does. Two things are pinned: the two shapes agree, and the
         // field's tint doesn't follow the slab.
-        let meshImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingMesh), frame: 1))
-        let fieldImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingField), frame: 1))
-        let farImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingFieldFarSlab), frame: 1))
+        let meshImg = try render(.absorbingMesh)
+        let fieldImg = try render(.absorbingField)
+        let farImg = try render(.absorbingFieldFarSlab)
         func center(_ img: CGImage, _ channel: Int) -> Double {
             mean(pixels(of: img), width: img.width, height: img.height, channel: channel,
                  x: 0.45...0.55, y: 0.47...0.53)
@@ -129,8 +140,8 @@ struct GlassRenderProbes {
         // thin; only a scanline can, which is how it survived the snapshot suite
         // and was found by eye. Each row aligns on its own first covered pixel, so
         // a sub-pixel silhouette offset between the two bodies doesn't register.
-        let meshImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingMesh), frame: 1))
-        let fieldImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingField), frame: 1))
+        let meshImg = try render(.absorbingMesh)
+        let fieldImg = try render(.absorbingField)
         let dm = pixels(of: meshImg), df = pixels(of: fieldImg)
         let w = meshImg.width
         func edge(_ data: [UInt8], row: Int) -> Int? {

@@ -1,5 +1,5 @@
 import CoreGraphics
-import Ollin
+@testable import Ollin
 import Testing
 
 /// Behavioral probes for the `.ripples` wave-equation sim, run headless on a
@@ -24,9 +24,14 @@ struct RipplesTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func dropBecomesAnExpandingRing() throws {
-        let sketch = RipplesProbeSketch()
-        let early = ringRadius(of: try #require(OllinApp.image(of: sketch, frame: 10)))
-        let late = ringRadius(of: try #require(OllinApp.image(of: RipplesProbeSketch(), frame: 26)))
+        // One run to frame 26, read at frames 10 and 26 on the way.
+        var radii: [Int: Double] = [:]
+        try OllinApp.renderFrames(RipplesProbeSketch(), frames: 27, fps: 60, skipSeconds: 0) { frame, index in
+            guard index == 10 || index == 26, let image = frame.image else { return }
+            radii[index] = ringRadius(of: image)
+        }
+        let early = try #require(radii[10])
+        let late = try #require(radii[26])
         #expect(early > 0)
         #expect(late > early + 4)   // the front moved outward, meaningfully
     }
@@ -36,8 +41,14 @@ struct RipplesTests {
         // Just after the drop the surface is strongly disturbed; long after,
         // both channels must have died far down (the parked attempt's blobs
         // stayed saturated and *grew* over frames).
-        let fresh = channelStats(of: try #require(OllinApp.image(of: RipplesProbeSketch(), frame: 6)))
-        let settled = channelStats(of: try #require(OllinApp.image(of: RipplesProbeSketch(), frame: 220)))
+        // One run to frame 220, read at frames 6 and 220 on the way.
+        var stats: [Int: Stats] = [:]
+        try OllinApp.renderFrames(RipplesProbeSketch(), frames: 221, fps: 60, skipSeconds: 0) { frame, index in
+            guard index == 6 || index == 220, let image = frame.image else { return }
+            stats[index] = channelStats(of: image)
+        }
+        let fresh = try #require(stats[6])
+        let settled = try #require(stats[220])
         #expect(fresh.peakRed > 0.15)
         #expect(settled.peakRed < fresh.peakRed * 0.5)
         #expect(settled.peakGreen < 0.1)

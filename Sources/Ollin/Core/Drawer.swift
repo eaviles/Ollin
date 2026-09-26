@@ -969,6 +969,11 @@ final class Drawer {
     /// Geometry targets drawn into this frame, in first-use order; the renderer
     /// fills each before the main pass that samples it.
     private(set) var renderTargets: [RenderTarget] = []
+    /// The feedback, simulation, and accumulator layers this frame's targets
+    /// write for, held until the frame is rendered: a target only names its
+    /// layer weakly (see `RenderTarget.Owner`), and a layer made and dropped
+    /// inside `draw()` still has a frame to draw.
+    private var layerOwners: [AnyObject] = []
     /// Filter outputs recorded this frame (`target.filtered(...)`), in record order;
     /// the renderer runs each after the geometry targets it reads are filled.
     private(set) var filterOps: [RenderTarget] = []
@@ -977,7 +982,10 @@ final class Drawer {
     private(set) var frameFilters: [Filter] = []
     /// The amplitude each sea state needs to stand the height it was asked for,
     /// kept because working it out sums the spectrum over the whole grid (65k
-    /// terms at the default resolution) and a sea state rarely changes.
+    /// terms at the default resolution) and a sea state rarely changes. Bounded
+    /// all the same: a sea state that does change every frame (a wind driven by
+    /// the clock) would otherwise add an entry a frame for as long as the piece
+    /// runs. `SoakTests` holds it to the bound.
     private var oceanAmplitudes: [OceanAmplitudeKey: Double] = [:]
 
     /// A `withTarget` block's start state, so `background(_:)` inside it truncates
@@ -1591,7 +1599,10 @@ final class Drawer {
             noteBatchRecording("withTarget/withFeedback/withField inside makeBatch { } is not recorded (the block is skipped); draw into layers where the batch is drawn instead.")
             return
         }
-        if !renderTargets.contains(where: { $0 === target }) { renderTargets.append(target) }
+        if !renderTargets.contains(where: { $0 === target }) {
+            renderTargets.append(target)
+            if let owner = target.owningLayer { layerOwners.append(owner) }
+        }
         targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
         currentKind = nil    // force the first draw inside the target into a fresh batch
         recomputeClipLevel() // clipping is per surface: the layer starts unclipped
@@ -1659,6 +1670,7 @@ final class Drawer {
         guard !isRecordingBatch, !renderTargets.contains(where: { $0 === field.writeLayer }) else { return }
         field.writeLayer.clearColor = .clear
         renderTargets.append(field.writeLayer)
+        layerOwners.append(field)
     }
 
     /// Whether this frame holds cross-frame state the renderer keeps in ping-pong textures:
@@ -3917,6 +3929,7 @@ final class Drawer {
             amplitude = cached
         } else {
             amplitude = ocean.amplitude(resolution: n)
+            if oceanAmplitudes.count >= 256 { oceanAmplitudes.removeAll(keepingCapacity: true) }
             oceanAmplitudes[key] = amplitude
         }
         let request = OceanRequest(ocean: ocean, time: time, amplitude: amplitude, resolution: n)
@@ -4222,6 +4235,7 @@ final class Drawer {
         // recorded geometry/filters reset here with everything else.
         targetStack.removeAll(keepingCapacity: true)
         renderTargets.removeAll(keepingCapacity: true)
+        layerOwners.removeAll(keepingCapacity: true)
         filterOps.removeAll(keepingCapacity: true)
         frameFilters.removeAll(keepingCapacity: true)
         // Clip regions are per-frame (close any block left open by an early exit);
@@ -4547,5 +4561,25 @@ extension Vector2 {
     /// `Color.simd4`; the renderer's vertices are `SIMD2<Float>` positions.
     var simd2: SIMD2<Float> {
         SIMD2<Float>(Float(x), Float(y))
+    }
+}
+
+// MARK: - What the drawer holds
+
+extension Drawer {
+    /// What the drawer keeps from one frame to the next, counted by kind, the
+    /// drawer's half of `MetalRenderer.census`: the caches a long run could
+    /// grow, and the stacks a frame should leave empty.
+    var census: [String: Int] {
+        [
+            "bakedGradients": bakedGradients.count,
+            "oceanAmplitudes": oceanAmplitudes.count,
+            "moverHistory": moverHistory.count,
+            "drawerNotes": drawerNotes.count,
+            "batchRecordingNotes": batchRecordingNotes.count,
+            "stateStack": stateStack.count,
+            "targetStack": targetStack.count,
+            "clipStack": clipStack.count,
+        ]
     }
 }

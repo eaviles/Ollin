@@ -35,6 +35,10 @@ public extension OllinApp {
     /// The container should be `.mov`, which is what every spatial video on Apple
     /// platforms is; `.mp4` also carries it. Sound the sketch makes rides along,
     /// exactly as it does in an ordinary video export.
+    ///
+    /// Throws `ExportError` when the clip cannot be made, as `exportVideo`
+    /// does, and when this Mac's encoder cannot write stereo video at all. A
+    /// file stopped partway is removed.
     static func exportSpatialVideo(_ sketch: Sketch, to path: String,
                                    frames: Int, fps: FrameRate = 30,
                                    stereo: StereoGeometry? = nil,
@@ -42,12 +46,16 @@ public extension OllinApp {
                                    bitsPerSecond: Int? = nil,
                                    quality: Double? = nil,
                                    renderQuality: RenderQuality = .detail,
-                                   skipSeconds: Double = 0) {
-        guard frames > 0 else { return }
+                                   skipSeconds: Double = 0) throws {
+        guard frames > 0 else {
+            throw ExportError(.unsupported, path: path,
+                              problem: "asks for \(frames) frames, and a clip needs at least one")
+        }
         let rate = fps
         let fps = rate.framesPerSecond
         guard VTIsStereoMVHEVCEncodeSupported() else {
-            fatalError("Ollin: this Mac's video encoder cannot write spatial video (stereo MV-HEVC)")
+            throw ExportError(.unsupported, path: path,
+                              problem: "this Mac's video encoder cannot write spatial video (stereo MV-HEVC)")
         }
 
         let fileType: AVFileType
@@ -55,11 +63,13 @@ public extension OllinApp {
         case "mov": fileType = .mov
         case "mp4", "m4v": fileType = .mp4
         case let ext:
-            fatalError("Ollin: unsupported spatial-video extension '.\(ext)'; use .mov")
+            throw ExportError(.unsupported, path: path,
+                              problem: "'.\(ext)' is not a spatial-video extension; use .mov")
         }
         #if !arch(arm64)
         if quality != nil {
-            fatalError("Ollin: constant-quality encoding needs the Apple-silicon video encoder; set a bitrate instead on this Mac")
+            throw ExportError(.unsupported, path: path,
+                              problem: "constant-quality encoding needs the Apple-silicon video encoder; set a bitrate instead on this Mac")
         }
         #endif
 
@@ -69,7 +79,8 @@ public extension OllinApp {
         do {
             writer = try AVAssetWriter(outputURL: url, fileType: fileType)
         } catch {
-            fatalError("Ollin: failed to create the spatial-video writer for \(path): \(error)")
+            throw ExportError(.unwritable, path: path,
+                              problem: "the spatial-video writer could not be made: \(error.localizedDescription)")
         }
 
         let size = sketch.canvasSizeForRun()
@@ -90,8 +101,11 @@ public extension OllinApp {
         print("Ollin: exporting \(frames) spatial frames at \(Int(fps)) fps → \(path) "
               + "(\(size.width)×\(size.height), stereo hevc)")
 
-        let elapsed = renderStereoFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                         geometry: geometry, quality: renderQuality) { pair, index in
+        var isComplete = false
+        defer { if !isComplete { abandon(writer, at: url) } }
+        let elapsed = try renderStereoFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                             geometry: geometry, quality: renderQuality,
+                                             for: path) { pair, index in
             if index == 0 {
                 // Everything about the shot is known only once the sketch has drawn
                 // its first frame, because the camera is set in `draw()`: how wide
@@ -139,8 +153,9 @@ public extension OllinApp {
                 writer.metadata = [description, software]
                 prepareSoundtrack(for: sketch, writer: writer)
                 guard writer.startWriting() else {
-                    fatalError("Ollin: the spatial-video writer refused to start: "
-                               + (writer.error?.localizedDescription ?? "unknown error"))
+                    throw ExportError(.unwritable, path: path, frame: 0,
+                                      problem: "the spatial-video writer would not start: "
+                                          + (writer.error?.localizedDescription ?? "no reason given"))
                 }
                 writer.startSession(atSourceTime: .zero)
             }
@@ -157,32 +172,38 @@ public extension OllinApp {
                 usleep(1000)
                 waited += 1
                 guard waited < 30_000 else {
-                    fatalError("Ollin: the spatial-video writer stopped taking frames at \(index): "
-                               + (writer.error?.localizedDescription ?? "no error reported"))
+                    throw ExportError(.unwritable, path: path, frame: index,
+                                      problem: "the spatial-video writer stopped taking frames at frame \(index): "
+                                          + (writer.error?.localizedDescription ?? "no reason given"))
                 }
             }
 
             guard let pool = receiver.pixelBufferPool else {
-                fatalError("Ollin: the spatial-video encoder rejected the settings: "
-                           + (writer.error?.localizedDescription ?? "unknown error"))
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "the spatial-video encoder refused the settings: "
+                                      + (writer.error?.localizedDescription ?? "no reason given"))
             }
             // Layer 0 is the left eye and layer 1 the right, in that order,
             // because that is what the settings above declared; the encoder
             // checks the two against each other and refuses a mismatch.
             let eyes = [(image: pair.left, tag: CMTag.stereoView(.leftEye)),
                         (image: pair.right, tag: CMTag.stereoView(.rightEye))]
-            let buffers = eyes.enumerated().map { layer, eye in
+            let buffers = try eyes.enumerated().map { layer, eye in
                 CMTaggedDynamicBuffer(tags: [.videoLayerID(Int64(layer)), eye.tag],
-                                      content: readOnlyBuffer(of: eye.image, from: pool, size: size))
+                                      content: try readOnlyBuffer(of: eye.image, from: pool, size: size, path: path))
             }
             let time = CMTime(value: Int64(index) * tick, timescale: timescale)
             do {
                 guard try receiver.appendImmediately(buffers, with: time) else {
-                    fatalError("Ollin: failed to encode spatial frame \(index): "
-                               + (writer.error?.localizedDescription ?? "unknown error"))
+                    throw ExportError(.unwritable, path: path, frame: index,
+                                      problem: "the encoder refused spatial frame \(index): "
+                                          + (writer.error?.localizedDescription ?? "no reason given"))
                 }
+            } catch let error as ExportError {
+                throw error
             } catch {
-                fatalError("Ollin: failed to encode spatial frame \(index): \(error)")
+                throw ExportError(.unwritable, path: path, frame: index,
+                                  problem: "the encoder refused spatial frame \(index): \(error.localizedDescription)")
             }
         }
 
@@ -193,8 +214,10 @@ public extension OllinApp {
         writer.finishWriting { finished.signal() }
         finished.wait()
         guard writer.status == .completed else {
-            fatalError("Ollin: failed to finish \(path): \(writer.error?.localizedDescription ?? "unknown error")")
+            throw ExportError(.unwritable, path: path, problem: "the file could not be finished: "
+                              + (writer.error?.localizedDescription ?? "no reason given"))
         }
+        isComplete = true
         let megabytes = Double((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int ?? 0) / 1_000_000
         print(String(format: "Ollin: exported %d spatial frames in %.1fs → %@ (%.1f MB)",
                      frames, elapsed, path, megabytes))
@@ -202,9 +225,9 @@ public extension OllinApp {
 
     /// One rendered eye copied into a surface-backed buffer the encoder can read.
     private static func readOnlyBuffer(of image: CGImage, from pool: CVMutablePixelBuffer.Pool,
-                                       size: CanvasSize) -> CVReadOnlyPixelBuffer {
+                                       size: CanvasSize, path: String) throws -> CVReadOnlyPixelBuffer {
         guard let buffer = try? pool.makeMutablePixelBuffer() else {
-            fatalError("Ollin: failed to allocate a spatial frame buffer")
+            throw ExportError(.unwritable, path: path, problem: "no buffer could be made for a spatial frame")
         }
         buffer.withUnsafeBuffer { raw in
             CVPixelBufferLockBaseAddress(raw, [])
@@ -308,16 +331,17 @@ extension OllinApp {
     static func renderStereoFrames(_ sketch: Sketch, frames: Int, fps: Double,
                                    skipSeconds: Double, geometry: StereoGeometry,
                                    quality: RenderQuality = .detail,
-                                   write: (StereoFrame, Int) -> Void) -> Double {
+                                   for path: String = "",
+                                   write: (StereoFrame, Int) throws -> Void) throws -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Ollin requires a Metal-capable GPU.")
+            throw ExportError(.unrendered, path: path, problem: "no Metal device to draw with")
         }
         let renderer: MetalRenderer
         do {
             renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
                                          sampleCount: ollinPreferredSampleCount(device))
         } catch {
-            fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
+            throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(error)")
         }
         renderer.automaticQuality = quality
         renderer.renderScale = OllinApp.exportRenderScale
@@ -342,9 +366,11 @@ extension OllinApp {
             // Both eyes' readbacks, and everything the frame drew, are done with at
             // the end of the iteration; this drive never reaches a run loop that
             // would drain them, so a long clip would otherwise hold every frame.
-            autoreleasepool {
+            try autoreleasepool {
                 sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
                 sketch.performDraw()
+                let unrendered = ExportError(.unrendered, path: path, frame: max(0, k - skipFrames),
+                                             problem: "frame \(max(0, k - skipFrames)) did not come back from the GPU")
 
                 let accumulates = sketch.drawer.accumulates
                 let center = sketch.drawer.camera3D
@@ -364,7 +390,7 @@ extension OllinApp {
                             + "shows the same picture to both eyes and will read flat")
                         guard let image = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
                                                                     width: width, height: height) else {
-                            fatalError("Ollin: failed to render frame \(k)")
+                            throw unrendered
                         }
                         let convergence = resolved?.convergence ?? 1
                         frame = StereoFrame(left: image, right: image, interocular: 0,
@@ -374,12 +400,12 @@ extension OllinApp {
                         sketch.drawer.aimStereoEye(pair.left, previous: previous?.left)
                         guard let left = renderer.image(of: sketch.drawer, viewport: viewport,
                                                         width: width, height: height) else {
-                            fatalError("Ollin: failed to render frame \(k)")
+                            throw unrendered
                         }
                         sketch.drawer.aimStereoEye(pair.right, previous: previous?.right)
                         guard let right = renderer.image(of: sketch.drawer, viewport: viewport,
                                                          width: width, height: height) else {
-                            fatalError("Ollin: failed to render frame \(k)")
+                            throw unrendered
                         }
                         frame = StereoFrame(left: left, right: right,
                                             interocular: resolved.interocular,
@@ -391,7 +417,7 @@ extension OllinApp {
                             + "picture to both eyes and will read flat")
                         guard let image = renderer.image(of: sketch.drawer, viewport: viewport,
                                                          width: width, height: height) else {
-                            fatalError("Ollin: failed to render frame \(k)")
+                            throw unrendered
                         }
                         frame = StereoFrame(left: image, right: image, interocular: 0, fieldOfView: .pi / 3)
                     }
@@ -407,9 +433,9 @@ extension OllinApp {
                         String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
                     return                            // the pool is the iteration, so leaving it is `continue`
                 }
-                guard let frame else { fatalError("Ollin: failed to render frame \(k)") }
+                guard let frame else { throw unrendered }
                 let done = k - skipFrames + 1
-                write(frame, done - 1)
+                try write(frame, done - 1)
 
                 let elapsed = CACurrentMediaTime() - wallStart
                 let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0

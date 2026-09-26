@@ -22,7 +22,7 @@ struct DispersionTests {
     /// blur at a zero radius.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroIsIdentityInEveryMode() throws {
-        let plain = try #require(OllinApp.image(of: DiscProbe.make(nil), frame: 1))
+        let plain = try plainDiscFrame()
         let modes: [Filter.Dispersion] = [
             .magnify, .lens(), .lens(radius: 0, falloff: 1), .offset(angle: 0.7), .edges, .axial,
         ]
@@ -113,7 +113,7 @@ struct DispersionTests {
     /// as a lens rather than as a filter over the picture.
     @Test(.enabled(if: Snapshot.hasMetal))
     func edgesLeaveFlatRegionsAlone() throws {
-        let plain = try #require(OllinApp.image(of: DiscProbe.make(nil), frame: 1))
+        let plain = try plainDiscFrame()
         let fringed = try #require(OllinApp.image(
             of: DiscProbe.make(.chromaticAberration(amount: 0.03, mode: .edges)), frame: 1))
         // Deep inside the disc, and deep in the background: both untouched.
@@ -165,7 +165,7 @@ struct DispersionTests {
     /// half the aux leaves black is the base again, texel for texel.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theDriveLayerDecidesWhereTheSplitHappens() throws {
-        let plain = try #require(OllinApp.image(of: DrivenProbe.make(driven: false), frame: 1))
+        let plain = try undrivenLinesFrame()
         let driven = try #require(OllinApp.image(of: DrivenProbe.make(driven: true), frame: 1))
         // Left half: the aux is black, so nothing may move.
         for y in stride(from: 20, to: 240, by: 20) {
@@ -180,7 +180,7 @@ struct DispersionTests {
     /// the white half comes apart.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theComposeModifierResolvesToTheSameOp() throws {
-        let plain = try #require(OllinApp.image(of: DrivenProbe.make(driven: false), frame: 1))
+        let plain = try undrivenLinesFrame()
         let composed = try #require(OllinApp.image(of: ComposedDriveProbe(), frame: 1))
         for y in stride(from: 20, to: 240, by: 20) {
             #expect(differenceAt(plain, composed, x: 40, y: y) == 0)
@@ -189,6 +189,25 @@ struct DispersionTests {
     }
 
     // MARK: Readback helpers
+
+    /// The unfiltered controls, rendered once each this run: the plain disc and the
+    /// undriven lines, which two probes apiece compare against.
+    private static var plainDisc: CGImage?
+    private static var undrivenLines: CGImage?
+
+    private func plainDiscFrame() throws -> CGImage {
+        if let known = Self.plainDisc { return known }
+        let image = try #require(OllinApp.image(of: DiscProbe.make(nil), frame: 1))
+        Self.plainDisc = image
+        return image
+    }
+
+    private func undrivenLinesFrame() throws -> CGImage {
+        if let known = Self.undrivenLines { return known }
+        let image = try #require(OllinApp.image(of: DrivenProbe.make(driven: false), frame: 1))
+        Self.undrivenLines = image
+        return image
+    }
 
     private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
         let w = image.width, h = image.height

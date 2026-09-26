@@ -327,40 +327,11 @@ struct Rope3DTests {
 
     // MARK: Putting one back
 
-    @Test func aSavedRopeComesBackWhereItWas() throws {
-        let world = World3D()
-        world.ground = nil
-        let rope = try world.addRope(through: Rope3DTests.sideways(12),
-                                       at: Vector3(0, 2, 0), radius: 0.03,
-                                       bend: 0.3, damping: 0.6,
-                                       pinned: { $0.x < 0.05 })
-        run(world, steps: 900)
-        let saved = rope.particlePositions
-        let snapshot = world.snapshot()
-
-        let back = World3D()
-        back.ground = nil
-        try back.restore(snapshot)
-        guard let restored = back.softBodies.first as? Rope3D else {
-            Issue.record("the rope did not come back")
-            return
-        }
-        // A rope carries its own rest shape, so it needs no resolver at all.
-        #expect(snapshot.assetNames.isEmpty)
-        #expect(restored.particleCount == 12)
-        #expect(restored.isPinned(0))
-        #expect(abs(restored.restLength - rope.restLength) < 1e-9)
-        var worst = 0.0
-        for (a, b) in zip(saved, restored.particlePositions) {
-            worst = max(worst, (a - b).length)
-        }
-        #expect(worst < 1e-6)
-    }
-
-    /// The rods' own orientations have to travel with the shape. Without them
+    /// A saved rope comes back where it was, from the snapshot alone. And the
+    /// rods' own orientations have to travel with the shape. Without them
     /// every rod opens in the frame the rest polyline gives and the solver
     /// hauls it round to the shape the rope is actually in, which reads as a
-    /// spring on the first frame.
+    /// spring on the first frame. Both are read off the one settled rope.
     @Test func aRestoredRopeDoesNotSpring() throws {
         func settle() -> (World3D, Rope3D) {
             let world = World3D()
@@ -376,6 +347,26 @@ struct Rope3DTests {
         let saved = rope.particlePositions
         let velocities = rope.particleVelocities
         let frames = rope.rodOrientations()
+
+        // The saved rope comes back where it was.
+        let snapshot = world.snapshot()
+        let reloaded = World3D()
+        reloaded.ground = nil
+        try reloaded.restore(snapshot)
+        if let restored = reloaded.softBodies.first as? Rope3D {
+            // A rope carries its own rest shape, so it needs no resolver at all.
+            #expect(snapshot.assetNames.isEmpty)
+            #expect(restored.particleCount == 12)
+            #expect(restored.isPinned(0))
+            #expect(abs(restored.restLength - rope.restLength) < 1e-9)
+            var worst = 0.0
+            for (a, b) in zip(saved, restored.particlePositions) {
+                worst = max(worst, (a - b).length)
+            }
+            #expect(worst < 1e-6)
+        } else {
+            Issue.record("the rope did not come back")
+        }
 
         func drift(carryingFrames: Bool) -> Double {
             let back = World3D()

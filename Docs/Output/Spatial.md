@@ -23,7 +23,7 @@ You can export one frame of a sketch or a whole scene, and both go through the s
 
 ```swift
 // One frame of a sketch, recorded as it draws.
-OllinApp.exportSpatial(sketch, to: "piece.usdz", frame: 120)
+try OllinApp.exportSpatial(sketch, to: "piece.usdz", frame: 120)
 
 // Any Scene: one you loaded, one you built, one you recorded.
 scene.write(to: "piece.usdz")

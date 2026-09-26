@@ -179,12 +179,13 @@ struct StrokeProfileTests {
 
     /// A uniform stroke at a normal weight draws exactly what it drew before width
     /// profiles existed: the sub-pixel ink scaling is 1 at a full pixel and above,
-    /// so nothing at or over 1px moves.
+    /// so nothing at or over 1px moves. That a uniform stroke never enters the
+    /// profile path is pinned on the CPU by
+    /// `uniformStrokesSkipTheProfilePathEntirely`; the render here checks the
+    /// ink scaling does not dim it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aUniformStrokeIsUnchangedByTheProfilePath() throws {
         let a = try #require(OllinApp.image(of: UniformStrokeProbe()))
-        let b = try #require(OllinApp.image(of: UniformStrokeProbe()))
-        #expect(pixels(of: a).bytes == pixels(of: b).bytes)
         // A 6px stroke covers its full width: the center is solid ink.
         #expect(pixels(of: a).gray(128, 64) <= 12)
     }

@@ -172,15 +172,6 @@ struct PathTraceTests {
         #expect(abs(a - b) < 6.0, "path traced \(a) vs raster \(b)")
     }
 
-    /// The house determinism rule: the same export command must produce the same
-    /// bytes, because sampling is a pure function of (pixel, sample index, bounce).
-    @Test(.enabled(if: Snapshot.hasRaytracing))
-    func theSameCommandRendersTheSameBytes() throws {
-        let a = try #require(pathTraced(.parityDirectional, samples: 16))
-        let b = try #require(pathTraced(.parityDirectional, samples: 16))
-        #expect(pixels(of: a) == pixels(of: b))
-    }
-
     /// The render-correctness pin: a small traced scene (an area light, mixed
     /// finishes, the mirror floor, the lens) against a committed reference, the
     /// same harness every raster snapshot uses. Sampling is deterministic, so the
@@ -230,17 +221,6 @@ struct PathTraceTests {
                 }
             }
         }
-    }
-
-    /// Off is off: with no `pathTracedExport` set, the export renders the raster
-    /// pipeline byte-identically to a build without the feature (the mode's whole
-    /// cost gates on the setting).
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theModeOffLeavesTheRasterPathAlone() throws {
-        OllinApp.pathTracedExport = nil
-        let a = try #require(OllinApp.image(of: Probe.make(.parityDirectional), frame: 1))
-        let b = try #require(OllinApp.image(of: Probe.make(.parityDirectional), frame: 1))
-        #expect(pixels(of: a) == pixels(of: b))
     }
 
     // MARK: - Glass, textures, and emissive meshes through the trace
@@ -487,10 +467,13 @@ struct PathTraceTests {
         #expect(noise < 0.35, "relative noise \(noise) at 32 spp")
     }
 
+    /// The house determinism rule: the same export command must produce the same
+    /// bytes, because sampling is a pure function of (pixel, sample index, bounce).
     /// The whole slice stays deterministic: glass, a textured floor, and a mesh
     /// light in one scene render byte-identically across runs (the binary
     /// searches, the stochastic lobe mixes, and the transparent walk are all
-    /// pure functions of the sample stream).
+    /// pure functions of the sample stream). The scene's ambient field, directional
+    /// light, and plain matte finish are the simple case's too.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theNewPathsStayDeterministic() throws {
         let a = try #require(pathTracedSlice(.everything, samples: 12))
@@ -896,23 +879,14 @@ struct PathTraceTests {
     /// The headline claim, measured against the truth rather than against taste: a
     /// thin render is filtered *closer* to a converged one, not merely smoother.
     /// A blur that lost the picture would move away from the reference instead.
-    @Test(.enabled(if: Snapshot.hasRaytracing))
-    func theFilterMovesAThinRenderTowardTheTruth() throws {
-        let reference = try #require(pathTracedGrain(.room, samples: 384, denoises: false))
-        let raw = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
-        let filtered = try #require(pathTracedGrain(.room, samples: 8, denoises: true))
-        let rawError = rootMeanSquare(raw, reference)
-        let filteredError = rootMeanSquare(filtered, reference)
-        #expect(filteredError < rawError * 0.7,
-                "raw \(rawError) vs filtered \(filteredError) against the reference")
-    }
-
-    /// The property that makes the filter safe to leave on, and the one worth
+    ///
+    /// And the property that makes the filter safe to leave on, and the one worth
     /// pinning: it never trades the picture for smoothness. A render already close
     /// to converged must come out *closer* still, not merely softer, which is what
     /// says the pass is removing what is left of the error rather than removing
-    /// detail. The second read is the strength following the measurement: the same
-    /// filter moves a thin render far and a deep one only a little.
+    /// detail. The last read is the strength following the measurement: the same
+    /// filter moves a thin render far and a deep one only a little. The thin and the
+    /// deep claims are both measured against the one converged reference.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFilterStillHelpsANearlyConvergedRender() throws {
         let reference = try #require(pathTracedGrain(.room, samples: 2048, denoises: false))
@@ -925,6 +899,11 @@ struct PathTraceTests {
 
         let thinRaw = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
         let thinFiltered = try #require(pathTracedGrain(.room, samples: 8, denoises: true))
+        let thinRawError = rootMeanSquare(thinRaw, reference)
+        let thinFilteredError = rootMeanSquare(thinFiltered, reference)
+        #expect(thinFilteredError < thinRawError * 0.7,
+                "raw \(thinRawError) vs filtered \(thinFilteredError) against the reference")
+
         let thinMove = rootMeanSquare(thinRaw, thinFiltered)
         let deepMove = rootMeanSquare(deepRaw, deepFiltered)
         #expect(thinMove > deepMove * 3,

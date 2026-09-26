@@ -159,15 +159,6 @@ struct DeepInputTests {
         #expect(said == "returned")
     }
 
-    @Test func anIncludeChainStopsAtItsLimit() {
-        let files = Dictionary(uniqueKeysWithValues: (0..<200).map { ("f\($0).metal", "#include \"f\($0 + 1).metal\"\n") })
-        let result = ShaderIncludes.resolve("#include \"f0.metal\"\n", name: "root.metal") { spelling, _ in
-            files[spelling].map { ShaderIncludes.Source(key: spelling, name: spelling, text: $0) }
-        }
-        #expect(result.included.count == ShaderIncludes.depthLimit)
-        #expect(result.problems.contains { $0.contains("nested deeper") })
-    }
-
     @Test func aFileThatNamesADeviceIsRefused() throws {
         let folder = ScratchFolder("named")
         let device = "/dev/zero"

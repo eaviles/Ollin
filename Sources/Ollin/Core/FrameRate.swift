@@ -10,8 +10,8 @@ import Foundation
 /// 29.97), so a video's frame timestamps land on the grid a player expects.
 ///
 /// ```swift
-/// OllinApp.exportVideo(sketch, to: "clip.mp4", frames: 300, fps: 24)
-/// OllinApp.exportVideo(sketch, to: "clip.mp4", frames: 300, fps: .ntsc)
+/// try OllinApp.exportVideo(sketch, to: "clip.mp4", frames: 300, fps: 24)
+/// try OllinApp.exportVideo(sketch, to: "clip.mp4", frames: 300, fps: .ntsc)
 ///
 /// let rate: FrameRate = .film
 /// rate.framesPerSecond     // 24

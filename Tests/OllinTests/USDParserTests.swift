@@ -26,11 +26,21 @@ struct USDParserTests {
         repoRoot.appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
     }
 
-    private static let shaderballURL = URL(fileURLWithPath:
+    static let shaderballURL = URL(fileURLWithPath:
         "/System/Library/PrivateFrameworks/CoreUSDEdit.framework/Versions/A/Resources/shaderball.usdz")
 
-    private static let pencilKitResources = URL(fileURLWithPath:
+    static let pencilKitResources = URL(fileURLWithPath:
         "/System/iOSSupport/System/Library/Frameworks/PencilKit.framework/Versions/A/Resources")
+
+    /// Whether this system's Model I/O writes both USD encodings, which the
+    /// cross-parser check needs to make its fixtures.
+    static var modelIOExportsUSD: Bool {
+        #if canImport(ModelIO)
+        return MDLAsset.canExportFileExtension("usdc") && MDLAsset.canExportFileExtension("usda")
+        #else
+        return false
+        #endif
+    }
 
     // MARK: - usda text
 
@@ -38,7 +48,8 @@ struct USDParserTests {
     /// the prim tree in authored order, mesh attributes, transforms, and
     /// material-binding relationships.
     @Test func usdaParsesTheExampleStage() throws {
-        guard FileManager.default.fileExists(atPath: exampleStageURL.path) else { return }
+        try #require(FileManager.default.fileExists(atPath: exampleStageURL.path),
+                     "the example stage is missing")
         let stage = try USDStage.load(contentsOf: exampleStageURL)
 
         #expect(stage.metadata["defaultPrim"] == .string("Court"))
@@ -204,11 +215,11 @@ struct USDParserTests {
     /// independent parser paths must yield the same tree (structure exactly,
     /// float payloads to text precision), and both must agree with what
     /// Model I/O itself reads back from the crate file.
-    @Test func crateAndTextParsersAgreeOnModelIOExport() throws {
+    @Test(.enabled(if: USDParserTests.modelIOExportsUSD))
+    func crateAndTextParsersAgreeOnModelIOExport() throws {
         #if canImport(ModelIO)
-        guard FileManager.default.fileExists(atPath: exampleStageURL.path),
-              MDLAsset.canExportFileExtension("usdc"),
-              MDLAsset.canExportFileExtension("usda") else { return }
+        try #require(FileManager.default.fileExists(atPath: exampleStageURL.path),
+                     "the example stage is missing")
         let asset = MDLAsset(url: exampleStageURL)
         let tmp = FileManager.default.temporaryDirectory
         // One shared stem: Model I/O names the exported root prim after the
@@ -220,10 +231,8 @@ struct USDParserTests {
             try? FileManager.default.removeItem(at: usdaURL)
             try? FileManager.default.removeItem(at: usdcURL)
         }
-        do {
-            try asset.export(to: usdaURL)
-            try asset.export(to: usdcURL)
-        } catch { return }  // soft-skip if this OS can't export
+        try asset.export(to: usdaURL)
+        try asset.export(to: usdcURL)
 
         let textStage = try USDStage.load(contentsOf: usdaURL)
         let crateStage = try USDStage.load(contentsOf: usdcURL)
@@ -288,8 +297,8 @@ struct USDParserTests {
     /// The system shaderball (a crate 0.9 flattened layer in a stored zip)
     /// opens and yields real geometry, and every mesh's vertex count matches
     /// Model I/O's read of the same package.
-    @Test func usdzReadsTheSystemShaderball() throws {
-        guard FileManager.default.fileExists(atPath: Self.shaderballURL.path) else { return }
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: USDParserTests.shaderballURL.path)))
+    func usdzReadsTheSystemShaderball() throws {
         let stage = try USDStage.load(contentsOf: Self.shaderballURL)
         #expect(!stage.prims.isEmpty)
         let meshes = collectPrims(stage.prims) { prim in
@@ -336,11 +345,12 @@ struct USDParserTests {
     }
 
     /// Every PencilKit tool usdz (crate 0.8 packages) opens with prims.
-    @Test func usdzReadsThePencilKitPens() throws {
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: Self.pencilKitResources, includingPropertiesForKeys: nil))?
-            .filter { $0.pathExtension == "usdz" } ?? []
-        guard !files.isEmpty else { return }
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: USDParserTests.pencilKitResources.path)))
+    func usdzReadsThePencilKitPens() throws {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: Self.pencilKitResources, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "usdz" }
+        try #require(!files.isEmpty, "no usdz files among the PencilKit resources")
         for file in files {
             let stage = try USDStage.load(contentsOf: file)
             #expect(!stage.prims.isEmpty, "no prims in \(file.lastPathComponent)")

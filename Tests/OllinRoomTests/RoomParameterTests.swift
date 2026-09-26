@@ -32,18 +32,6 @@ private final class RoomProbeSketch: Sketch {
 
     // MARK: Shared parameters
 
-    @Test func aSharedParameterDrivesTheSameParameterOnTheOtherMachine() throws {
-        let (a, b, sketchA, sketchB) = pair()
-        let left = try #require(sketchA as? RoomProbeSketch)
-        let right = try #require(sketchB as? RoomProbeSketch)
-        a.share("speed")
-
-        left.speed = 3.0
-        a.beforeDraw(sketchA)      // the value goes out here
-        b.beforeDraw(sketchB)      // and lands here, between frames
-        #expect(right.speed == 3.0)
-    }
-
     @Test func everyKindOfParameterTravels() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
@@ -65,6 +53,8 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.accent.green == 0.9)
     }
 
+    /// A shared parameter drives the same parameter on the other machine, and
+    /// one nobody shares stays where it was.
     @Test func aParameterNobodySharesStaysHome() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
@@ -73,8 +63,8 @@ private final class RoomProbeSketch: Sketch {
 
         left.speed = 2.0
         left.layers = 12
-        a.beforeDraw(sketchA)
-        b.beforeDraw(sketchB)
+        a.beforeDraw(sketchA)      // the value goes out here
+        b.beforeDraw(sketchB)      // and lands here, between frames
         #expect(right.speed == 2.0)
         #expect(right.layers == 6)
     }

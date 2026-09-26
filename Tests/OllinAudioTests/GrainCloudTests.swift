@@ -437,13 +437,6 @@ import Testing
         #expect(!none.contains { abs($0) > 1e-9 })
     }
 
-    @Test func theCloudIsSmallAndTheVoiceStaysCopyable() {
-        #expect(_isPOD(GrainCloud.self))
-        #expect(_isPOD(VoiceSource.self))
-        #expect(_isPOD(Voice.self))
-        #expect(_isPOD(SynthEvent.self))
-    }
-
     @Test func theVoiceSaysHowItCuts() throws {
         var voice = Voice(granular: GrainCloud(size: 0.03, density: 12, speed: 0))
         #expect(voice.granular?.density == 12)

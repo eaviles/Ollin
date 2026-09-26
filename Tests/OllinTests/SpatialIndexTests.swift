@@ -289,13 +289,18 @@ struct SpatialIndexTests {
         for i in points.indices {
             index.forEachNeighbor(of: i, within: 20) { j, _ in near[i].insert(j) }
         }
+        // Counted rather than checked pair by pair, so over a hundred thousand pairs
+        // cost one expectation, and a failure still names a pair.
         var pairs = 0
+        var oneSided: [(i: Int, j: Int)] = []
         for i in points.indices {
             for j in near[i] {
-                #expect(near[j].contains(i), "\(i) sees \(j) but not the other way")
+                if !near[j].contains(i) { oneSided.append((i, j)) }
                 pairs += 1
             }
         }
+        let first = oneSided.first.map { "\($0.i) sees \($0.j) but not the other way" } ?? ""
+        #expect(oneSided.isEmpty, "\(oneSided.count) pairs are near one way only: \(first)")
         #expect(pairs > 100_000, "the probe radius found almost nothing to check")
     }
 }

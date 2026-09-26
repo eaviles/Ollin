@@ -57,10 +57,10 @@ public extension OllinApp {
     /// brighter, a gain map beside it records by how much, and a display with
     /// headroom puts it back.
     ///
-    /// Returns `nil` if the file could not be written.
+    /// Throws `ExportError` if the file could not be written.
     @discardableResult
-    static func exportHEIC(_ image: CGImage, to path: String) -> StillExport? {
-        exportHEIC(image, to: path, recipe: nil)
+    static func exportHEIC(_ image: CGImage, to path: String) throws -> StillExport {
+        try exportHEIC(image, to: path, recipe: nil)
     }
 }
 
@@ -69,7 +69,7 @@ extension OllinApp {
     /// The write behind the public one, plus the reproduction recipe every
     /// export carries (the `Software` and user-comment fields here, matching
     /// what the PNG puts in its text chunks).
-    static func exportHEIC(_ image: CGImage, to path: String, recipe: String?) -> StillExport? {
+    static func exportHEIC(_ image: CGImage, to path: String, recipe: String?) throws -> StillExport {
         let context = GainMap.makeContext()
         // Only a float frame can hold anything above white. An 8-bit one goes
         // into the file as it stands, which is the whole story for an ordinary
@@ -81,7 +81,9 @@ extension OllinApp {
 
         let url = URL(fileURLWithPath: path)
         guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.heic.identifier as CFString, 1, nil) else { return nil }
+            url as CFURL, UTType.heic.identifier as CFString, 1, nil) else {
+            throw ExportError(.unwritable, path: path, frame: 0, problem: "a HEIC file could not be made there")
+        }
 
         var exif: [CFString: Any] = [:]
         if let recipe { exif[kCGImagePropertyExifUserComment] = recipe }
@@ -98,7 +100,9 @@ extension OllinApp {
             CGImageDestinationAddAuxiliaryDataInfo(
                 destination, kCGImageAuxiliaryDataTypeISOGainMap, info as CFDictionary)
         }
-        guard CGImageDestinationFinalize(destination) else { return nil }
+        guard CGImageDestinationFinalize(destination) else {
+            throw ExportError(.unwritable, path: path, frame: 0, problem: "the HEIC could not be written")
+        }
         return StillExport(peak: Double(peak), keepsHighlights: built?.auxiliaryInfo != nil)
     }
 }

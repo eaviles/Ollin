@@ -48,9 +48,9 @@ struct PersistentLayerExportTests {
         }
     }
 
-    private func frames(_ sketch: Sketch, count: Int, skip: Int) -> [CGImage] {
+    private func frames(_ sketch: Sketch, count: Int, skip: Int) throws -> [CGImage] {
         var out: [CGImage] = []
-        OllinApp.renderFrames(sketch, frames: count, fps: 30, skipSeconds: Double(skip) / 30) { frame, _ in
+        try OllinApp.renderFrames(sketch, frames: count, fps: 30, skipSeconds: Double(skip) / 30) { frame, _ in
             if let image = frame.image { out.append(image) }
         }
         return out
@@ -58,9 +58,9 @@ struct PersistentLayerExportTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFirstFrameAfterASkipIsTheFrameItSkippedTo() throws {
-        let fresh = try #require(frames(Pile(), count: 1, skip: 0).first)
-        let skipped = try #require(frames(Pile(), count: 1, skip: 10).first)
-        let straight = try #require(frames(Pile(), count: 11, skip: 0).last)
+        let fresh = try #require(try frames(Pile(), count: 1, skip: 0).first)
+        let skipped = try #require(try frames(Pile(), count: 1, skip: 10).first)
+        let straight = try #require(try frames(Pile(), count: 11, skip: 0).last)
         let (f, s, t) = (Self.meanRed(fresh), Self.meanRed(skipped), Self.meanRed(straight))
         // The pile built through the skipped frames, to where a run from zero
         // stands at the same moment.

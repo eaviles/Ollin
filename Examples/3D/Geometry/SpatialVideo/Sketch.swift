@@ -148,7 +148,11 @@ final class SpatialVideo: Sketch {
         clip.depth = depth
         clip.stage = stage
         clip.colonnade = colonnade
-        OllinApp.exportSpatialVideo(clip, to: url.path, frames: 60, fps: 30)
-        saved = "saved to \(url.path)"
+        do {
+            try OllinApp.exportSpatialVideo(clip, to: url.path, frames: 60, fps: 30)
+            saved = "saved to \(url.path)"
+        } catch {
+            saved = "not saved: \(error)"
+        }
     }
 }

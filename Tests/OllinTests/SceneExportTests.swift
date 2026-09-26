@@ -542,19 +542,19 @@ struct SceneExportTests {
 
     // MARK: The fabrication writer is not disturbed
 
-    @Test func aFabricationPackageStaysCompressedAndUnaligned() {
+    @Test func aFabricationPackageStaysCompressedAndUnaligned() throws {
         // 3MF and usdz share one ZIP writer but want opposite things, so this
         // pins that adding the package rules left the older caller alone.
-        guard let data = Mesh.icosphere(radius: 10, subdivisions: 3)
-            .data(as: .threeMF) else { return }
+        let data = try #require(Mesh.icosphere(radius: 10, subdivisions: 3)
+            .data(as: .threeMF))
         #expect(data.readU16(at: 8) == 8, "a 3MF entry stopped being deflated")
     }
 
     // MARK: The system's own validator
 
-    @Test func thePackagePassesTheSystemValidator() throws {
+    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: "/usr/bin/usdchecker")))
+    func thePackagePassesTheSystemValidator() throws {
         let checker = URL(fileURLWithPath: "/usr/bin/usdchecker")
-        guard FileManager.default.isExecutableFile(atPath: checker.path) else { return }
 
         var mesh = Mesh.icosphere(radius: 1, subdivisions: 2)
         mesh.material = MeshMaterial(baseColor: Color(red: 0.4, green: 0.6, blue: 0.9),

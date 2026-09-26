@@ -4,15 +4,14 @@ import Metal
 import OllinProjects
 @testable import Ollin
 
-/// The translated shader has to survive the one test that matters: the Metal
-/// compiler. A rewrite that merely looks right is worth nothing, so every shape
-/// the importer claims to handle is compiled here through the same path a sketch
-/// would take, and the two shapes that carry a real semantic difference are also
-/// run and read back.
 /// Whether this machine has a GPU to compile against. It sits outside the suite
 /// because a test trait is read before the suite's actor is entered.
 private let hasMetal = MTLCreateSystemDefaultDevice() != nil
 
+/// The translated shader has to survive the one test that matters: the Metal
+/// compiler. A rewrite that merely looks right is worth nothing, so every shape
+/// the importer claims to handle is compiled here through the same path a sketch
+/// would take.
 @MainActor
 struct ShaderImportRenderTests {
 
@@ -187,40 +186,14 @@ struct ShaderImportRenderTests {
 
     // MARK: What the translation actually changed
 
-    /// The one rule that silently changes a picture rather than failing to build.
-    /// A tiling shader reaching left of the origin is the ordinary case, so the
-    /// two spellings are rendered against each other and must disagree.
-    @Test(.enabled(if: hasMetal))
-    func theModuloRuleSurvivesNegativeInput() throws {
-        let translated = ShaderImport.translate(glsl: """
-        void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-            float x = (fragCoord.x / iResolution.x) * 2.0 - 1.5;
-            fragColor = vec4(vec3(mod(x, 1.0)), 1.0);
-        }
-        """)
-        // The floor form is what came out, not the built-in that truncates.
-        #expect(translated.metalSource.contains("ollin_glsl_mod"))
-        #expect(!translated.metalSource.contains("fmod"))
-
-        // And the two really do differ over the range the shader covers.
-        let floorForm = { (x: Float) in x - 1.0 * floor(x / 1.0) }
-        let truncForm = { (x: Float) in fmod(x, 1.0) }
-        let negative: Float = -0.25
-        #expect(floorForm(negative) != truncForm(negative))
-        #expect(abs(floorForm(negative) - 0.75) < 1e-6)
-    }
-
-    /// A generator must not carry the layer helper, and a filter must.
+    /// A generator must not carry the layer helper. That a filter does, and
+    /// reads through it, is `ShaderImportTests.aLayerReadTurnsTheCoordinateOver`;
+    /// the modulo rule, the one that silently changes a picture, is
+    /// `ShaderImportTests.moduloBecomesTheFlooringForm`.
     @Test func onlyALayerReadingShaderCarriesTheFlip() {
         let generator = ShaderImport.translate(glsl: """
         void mainImage(out vec4 c, in vec2 f) { c = vec4(1.0); }
         """)
         #expect(!generator.metalSource.contains("ollin_channel_uv"))
-
-        let filter = ShaderImport.translate(glsl: """
-        void mainImage(out vec4 c, in vec2 f) { c = texture(iChannel0, f / iResolution.xy); }
-        """)
-        #expect(filter.metalSource.contains("ollin_channel_uv"))
-        #expect(filter.metalSource.contains("sample(info,"))
     }
 }

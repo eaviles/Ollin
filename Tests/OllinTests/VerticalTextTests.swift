@@ -263,8 +263,9 @@ struct VerticalTextTests {
     }
 
     /// A box wraps against the room the text actually has: its height down a
-    /// column, where a line wraps against the width. Set the same box and the same
-    /// text both ways and the two disagree, which is the point.
+    /// column, where a line wraps against the width. Set down a column, the text
+    /// breaks into more than one column, no column runs longer than the extent it
+    /// was given, and the columns join back into the text.
     @Test func aBoxWrapsAgainstTheAxisTheTextTravels() {
         let drawer = Drawer()
         drawer.textFont(font)

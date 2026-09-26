@@ -154,10 +154,21 @@ import OllinWebGate
         recording.leftOut.first { $0.name == name }?.reason
     }
 
+    /// The dial's whole lap (20 frames at 10 fps) with its parameters probed,
+    /// recorded once for the tests that read that same recording.
+    private static var dialLapRecording: WebRecording?
+
+    static func dialLap() throws -> WebRecording {
+        if let recording = dialLapRecording { return recording }
+        let recording = try OllinApp.recordWebFrames(of: Dial(), frames: 20, fps: 10)
+        dialLapRecording = recording
+        return recording
+    }
+
     // MARK: The probe
 
     @Test func aLinearParameterIsWiredWithItsSlope() throws {
-        let recording = try OllinApp.recordWebFrames(of: Dial(), frames: 20, fps: 10)
+        let recording = try Self.dialLap()
         #expect(recording.leftOut.isEmpty, "\(recording.leftOut)")
         let radius = try #require(Self.control(recording, "radius"))
         #expect(radius.kind == .number)
@@ -276,7 +287,7 @@ import OllinWebGate
     @Test func theTrackPacksTheAxesAndLeavesADrivenColumnToItsFormula() throws {
         // A lap: the moving circle's center slopes fit to one sine each, the
         // constant slopes travel as one number.
-        let dial = try OllinApp.recordWebFrames(of: Dial(), frames: 20, fps: 10)
+        let dial = try Self.dialLap()
         let track = WebTrack(dial)
         let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
         let controls = try #require(meta["controls"] as? [[String: Any]])
@@ -377,10 +388,8 @@ import OllinWebGate
             ("Dial, radius and ink", { Dial() }, 20, 7,
              "player.set('radius', 140); player.set('ink', '#cc2200');",
              ["radius": "140", "ink": "#CC2200"]),
-            ("Dial, paper", { Dial() }, 20, 13, "player.set('paper', [0.1, 0.2, 0.6]);", ["paper": "0.1,0.2,0.6"]),
-            ("Dial, fade", { Dial() }, 20, 13, "player.set('fade', 0.9);", ["fade": "0.9"]),
-            ("Dial, switch", { Dial() }, 20, 13, "player.set('filled', true);", ["filled": "true"]),
-            ("Dial, anchor", { Dial() }, 20, 13, "player.set('anchor', {x: 90, y: 150});", ["anchor": "90,150"]),
+            // The paper, the fade, the switch, and the point, moved together: a
+            // wrong axis for any one of them moves this frame off the Mac's.
             ("Dial, paper, fade, switch, and anchor", { Dial() }, 20, 13,
              "player.set('paper', [0.1, 0.2, 0.6]); player.set('fade', 0.9); player.set('filled', true); player.set('anchor', {x: 90, y: 150});",
              ["paper": "0.1,0.2,0.6", "fade": "0.9", "filled": "true", "anchor": "90,150"]),

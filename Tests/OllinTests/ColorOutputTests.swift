@@ -162,9 +162,9 @@ struct ColorOutputTests {
         #expect(dataA == dataB)
     }
 
+    /// The standard frame's bytes are pinned by `standardIsUntouched`.
     @Test("the wide frame comes back as float, the standard one as bytes")
     func readBackFormats() throws {
-        #expect(try render(.standard).bitsPerComponent == 8)
         #expect(try render(.wide).bitsPerComponent == 16)
         #expect(try render(.extended).bitsPerComponent == 16)
     }
@@ -206,7 +206,7 @@ struct ColorOutputTests {
             let sketch = Swatches()
             sketch.output = output
             let path = directory.appendingPathComponent("\(output.rawValue).mov").path
-            OllinApp.exportVideo(sketch, to: path, frames: 4, fps: 30, codec: .hevc)
+            try OllinApp.exportVideo(sketch, to: path, frames: 4, fps: 30, codec: .hevc)
             let asset = AVURLAsset(url: URL(fileURLWithPath: path))
             let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
             let desc = try #require(try await track.load(.formatDescriptions).first)

@@ -118,25 +118,6 @@ import OllinWebGate
         }
     }
 
-    final class Graded: Sketch {
-        override var canvasSize: CanvasSize { .square(120) }
-        override func draw() {
-            background(.white)
-            fill(Gradient.linear(from: Vector2(0, 0), to: Vector2(120, 0), [.red, .blue]))
-            drawRect(0, 0, 120, 120)
-        }
-    }
-
-    final class Written: Sketch {
-        override var canvasSize: CanvasSize { .square(120) }
-        override func draw() {
-            background(.white)
-            fill(.black)
-            textMode(.atlas)
-            drawText("hi", 20, 60)
-        }
-    }
-
     // MARK: Support
 
     /// The page's pixels at `frame`, read back through the browser: the inline
@@ -271,7 +252,9 @@ import OllinWebGate
     }
 
     @Test func theTransformAgreesWithTheDirectSum() {
-        for n in [60, 61, 64, 90, 1800 / 30] {
+        // A length with several factors (the mixed-radix recursion), a prime
+        // (the direct sum), and a power of two.
+        for n in [60, 61, 64] {
             var seed: UInt64 = 12345
             func next() -> Double {
                 seed = seed &* 6364136223846793005 &+ 1442695040888963407
@@ -399,11 +382,8 @@ import OllinWebGate
         #expect(clipped.call == "withClip")
         #expect(clipped.frame == 1)
         #expect(clipped.description.contains("--export-video"))
-        // A gradient on a shape and text through the glyph atlas cross
-        // (`WebAssetTests`); a picture that is a live texture does not.
-        #expect(refusal(Graded()) == nil)
-        #expect(refusal(Written()) == nil)
-        #expect(refusal(Hello()) == nil)
+        // A gradient on a shape and text through the glyph atlas cross, which
+        // `WebAssetTests` records; a picture that is a live texture does not.
         if let device = MTLCreateSystemDefaultDevice() {
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 4, height: 4, mipmapped: false)
             if let texture = device.makeTexture(descriptor: descriptor) {

@@ -139,7 +139,7 @@ The same work is available from code:
 
 ```swift
 OllinApp.plates(of: sketch, profile: press, frame: 30)        // -> ProcessSeparation?
-OllinApp.exportPlates(sketch, to: "poster.png") { $0.halftoned(pitch: 8) }
+try OllinApp.exportPlates(sketch, to: "poster.png") { $0.halftoned(pitch: 8) }
 ```
 
 ### Which separation

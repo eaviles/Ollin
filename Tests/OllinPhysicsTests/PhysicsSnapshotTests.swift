@@ -56,27 +56,22 @@ struct PhysicsSnapshotTests {
         #expect(error == 0, "a restored pile stands exactly where it was saved")
     }
 
-    /// Restoring is idempotent down to the byte: capture, put it back, capture
-    /// again, and the two files are the same. Nothing is quietly re-derived on
-    /// the way through.
-    @Test func restoringAndCapturingAgainGivesTheSameBytes() throws {
-        let world = World3D()
-        pile(in: world)
-        let first = world.snapshot()
-        try world.restore(first)
-        #expect(world.snapshot() == first)
-    }
-
     /// A settled pile is asleep, and it comes back asleep, so it holds its
     /// shape exactly rather than shuddering back into place. The twin is the
     /// same poses handed to `addBody` the ordinary way, which arrive awake.
+    ///
+    /// And restoring is idempotent down to the byte: capture, put it back,
+    /// capture again, and the two files are the same. Nothing is quietly
+    /// re-derived on the way through.
     @Test func aRestoredPileIsAsSettledAsTheOneItCameFrom() throws {
         let world = World3D()
         pile(in: world)
         #expect(world.bodies.allSatisfy { !$0.isAwake }, "the pile has settled")
         let settled = world.bodies.map(\.position)
 
-        try world.restore(world.snapshot())
+        let first = world.snapshot()
+        try world.restore(first)
+        #expect(world.snapshot() == first)
         #expect(world.bodies.allSatisfy { !$0.isAwake },
                 "a restored pile is asleep, not woken")
         run(world, steps: 60)
@@ -482,8 +477,9 @@ struct PhysicsSnapshotTests {
             try PhysicsSnapshot(resource: "there-is-no-such-snapshot", in: .main)
         }
 
+        // The refusal is about bytes, not poses, so the pile need not settle.
         let world = World3D()
-        pile(in: world, count: 4, settle: 300)
+        pile(in: world, count: 4, settle: 0)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -508,8 +504,9 @@ struct PhysicsSnapshotTests {
     /// into *some* world. The twin is the same snapshot undamaged, which
     /// restores the pile it came from.
     @Test func aDamagedSnapshotIsRefusedRatherThanHalfRead() throws {
+        // The checksum is what refuses the damage, so the pile need not settle.
         let world = World3D()
-        pile(in: world, count: 5, settle: 300)
+        pile(in: world, count: 5, settle: 0)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -939,6 +936,11 @@ struct SnapshotTierTests {
     /// same shapes, and the scene it was fitted from still takes the pose. The
     /// twin is a figure built fresh from the same scene, which stands in the
     /// rest pose rather than in a heap.
+    ///
+    /// A figure does not need its scene to come back: the restore is handed no
+    /// scene at all. The fitting is what the solver was built from, so a world
+    /// restored in a process that never loaded the file still has the figure
+    /// in it, every limb a body with weight.
     @Test func aFallenFigureComesBackWhereItLay() throws {
         let world = World3D()
         world.ground = 0
@@ -954,6 +956,8 @@ struct SnapshotTierTests {
         #expect(back.limbs.count == doll.limbs.count)
         #expect(back.limbs.map { $0.name } == doll.limbs.map { $0.name },
                 "the joints came back named")
+        #expect(back.limbs.count == 16)
+        #expect(back.bodies.allSatisfy { $0.mass > 0 })
         let error = zip(fallen, back.limbs.map(\.body.position))
             .map { ($0 - $1).length }.max() ?? .infinity
         #expect(error < 1e-6, "and lying where they fell (\(error))")
@@ -1041,51 +1045,7 @@ struct SnapshotTierTests {
                 "a restored figure holds the limits it was given: \(stiff) against \(loose)")
     }
 
-    /// A figure does not need its scene to come back. The fitting is what the
-    /// solver was built from, so a world restored in a process that never
-    /// loaded the file still has the figure in it.
-    @Test func aFigureComesBackWithoutItsScene() throws {
-        let saved: PhysicsSnapshot
-        do {
-            let world = World3D()
-            world.ground = 0
-            _ = try! world.addRagdoll(from: try Ragdoll3DTests.figure(),
-                                              at: Vector3(0, 2, 0))
-            run(world, steps: 120)
-            saved = world.snapshot()
-        }
-        // Nothing here has seen the file.
-        let fresh = World3D()
-        fresh.ground = 0
-        try fresh.restore(saved)
-        let back = try #require(fresh.ragdolls.first)
-        #expect(back.limbs.count == 16)
-        #expect(back.bodies.allSatisfy { $0.mass > 0 })
-    }
-
     // MARK: Files
-
-    /// The tiers survive a file the way the rigid tier does.
-    @Test func theTiersSurviveAFileRoundTrip() throws {
-        let world = World3D()
-        let car = try #require(machine(in: world))
-        car.throttle = 1
-        world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
-            .walk(at: Vector3(0, 0, 1))
-        run(world, steps: 120)
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-tiers-\(UUID().uuidString).physics")
-        defer { try? FileManager.default.removeItem(at: url) }
-        try world.save(to: url)
-
-        let fresh = World3D()
-        try fresh.load(contentsOf: url)
-        #expect(fresh.vehicles.count == 1)
-        #expect(fresh.characters.count == 1)
-        let back = try #require(fresh.vehicles.first)
-        #expect((back.body.position - car.body.position).length == 0)
-    }
 
     /// A world of every tier, restored and captured again, gives the same
     /// bytes: nothing is re-derived on the way through.
@@ -1129,9 +1089,10 @@ struct SnapshotAssetTests {
     static let knot = Mesh.torusKnot(radius: 2, tube: 0.5, segments: 120, sides: 18)
 
     /// A world with scenery in it: a terrain collider, a mesh collider, and a
-    /// heap of crates settled on top.
+    /// heap of crates settled on top. A test that only counts what comes back
+    /// passes `settle: 0`, since the heap's poses change nothing it reads.
     @discardableResult
-    func scenery(in world: World3D, named: Bool) -> World3D {
+    func scenery(in world: World3D, named: Bool, settle: Int = 400) -> World3D {
         world.ground = 0
         // Standing on the floor rather than sunk into it, so anything landing
         // on the terrain is above where the bare floor would have caught it.
@@ -1149,7 +1110,7 @@ struct SnapshotAssetTests {
                           at: Vector3(Double(i % 5) * 0.5 - 1,
                                       9 + Double(i / 5) * 0.5, 0))
         }
-        run(world, steps: 400)
+        run(world, steps: settle)
         return world
     }
 
@@ -1213,28 +1174,18 @@ struct SnapshotAssetTests {
     }
 
     /// A name the resolver does not know costs that one body, not the restore.
-    /// The twin is the resolver that knows both names.
+    /// And handing back the wrong kind of geometry for a name is refused rather
+    /// than forced into a collider it cannot be. The twin for both is the
+    /// resolver that knows both names and answers each with the right kind.
     @Test func anUnknownNameCostsOneBodyRatherThanTheWholeWorld() throws {
         let world = World3D()
-        scenery(in: world, named: true)
+        scenery(in: world, named: true, settle: 0)
         let saved = world.snapshot()
         let crates = world.bodies.count - 2
 
         let partial = World3D()
         try partial.restore(saved) { $0 == "island" ? .heightfield(Self.terrain) : nil }
         #expect(partial.bodies.count == crates + 1, "the knot is the only one lost")
-
-        let full = World3D()
-        try full.restore(saved, resolving: resolver)
-        #expect(full.bodies.count == crates + 2, "where a resolver that knows both keeps both")
-    }
-
-    /// Handing back the wrong kind of geometry for a name is refused rather
-    /// than forced into a collider it cannot be. The twin is the right kind.
-    @Test func theWrongKindOfGeometryIsRefused() throws {
-        let world = World3D()
-        scenery(in: world, named: true)
-        let saved = world.snapshot()
 
         let muddled = World3D()
         try muddled.restore(saved) { name in
@@ -1244,9 +1195,10 @@ struct SnapshotAssetTests {
         #expect(muddled.bodies.count == world.bodies.count - 2,
                 "neither could be used")
 
-        let right = World3D()
-        try right.restore(saved, resolving: resolver)
-        #expect(right.bodies.count == world.bodies.count)
+        let full = World3D()
+        try full.restore(saved, resolving: resolver)
+        #expect(full.bodies.count == crates + 2, "where a resolver that knows both keeps both")
+        #expect(full.bodies.count == world.bodies.count)
     }
 
     /// A name that now resolves to different geometry is still restored, since

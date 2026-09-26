@@ -96,6 +96,9 @@ import Ollin
     /// the same staged scene answers two different clicks with two different
     /// things, each mask sitting where its target is. A flipped axis, a
     /// wrong scale, or a swapped point order all fail this.
+    ///
+    /// The disc's pick also carries the cutout: the frame's own pixels under
+    /// the mask and transparency elsewhere, at frame resolution.
     @Test func aClickPicksTheThingUnderIt() async throws {
         guard Self.modelsAreFetched else { return }
         let scene = Self.scene()
@@ -115,27 +118,20 @@ import Ollin
         #expect(Self.matteAlpha(disc.matte, atFraction: Self.squareCenter.x / 512,
                                 Self.squareCenter.y / 512) < 0.1)
 
-        let square = try #require(try await segmenter.detect(in: scene, at: [Self.squareCenter]))
-        let squareBounds = square.bounds(in: pixels)
-        #expect(abs(squareBounds.x - 370) < 20)
-        #expect(abs(squareBounds.y - 370) < 20)
-        #expect(Self.matteAlpha(square.matte, atFraction: Self.discCenter.x / 512,
-                                Self.discCenter.y / 512) < 0.1)
-    }
-
-    /// The cutout carries the frame's own pixels under the mask and
-    /// transparency elsewhere, at frame resolution.
-    @Test func theCutoutIsTheFramesPixelsWhereTheMaskIs() async throws {
-        guard Self.modelsAreFetched else { return }
-        let scene = Self.scene()
-        let segmenter = Self.segmenter()
-        let disc = try #require(try await segmenter.detect(in: scene, at: [Self.discCenter]))
+        // The cutout is the frame's pixels where the mask is, clear elsewhere.
         #expect(disc.cutout.width == 512 && disc.cutout.height == 512)
         let center = disc.cutout[Int(Self.discCenter.x), Int(Self.discCenter.y)]
         #expect(center.alpha > 0.9)
         #expect(center.red > 0.8)   // the disc is white
         let elsewhere = disc.cutout[Int(Self.squareCenter.x), Int(Self.squareCenter.y)]
         #expect(elsewhere.alpha < 0.1)
+
+        let square = try #require(try await segmenter.detect(in: scene, at: [Self.squareCenter]))
+        let squareBounds = square.bounds(in: pixels)
+        #expect(abs(squareBounds.x - 370) < 20)
+        #expect(abs(squareBounds.y - 370) < 20)
+        #expect(Self.matteAlpha(square.matte, atFraction: Self.discCenter.x / 512,
+                                Self.discCenter.y / 512) < 0.1)
     }
 
     /// The label plumbing: a background point rides along without turning

@@ -228,23 +228,16 @@ struct ThinFilmRenderProbes {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theSurfaceUnderTheFilmIsPartOfTheColor() throws {
-        // The second face of the film is where it meets the surface under it, so a
-        // film over a conductor and the same film over a dielectric must not agree.
-        let onMetal = try #require(OllinApp.image(of: FilmProbe.make(.film(480)), frame: 1))
-        let onGlass = try #require(OllinApp.image(of: FilmProbe.make(.filmOnDielectric(480)),
-                                                 frame: 1))
-        #expect(order(mean(onMetal, radius: 0.12)) != order(mean(onGlass, radius: 0.12))
-                || pixels(of: onMetal) != pixels(of: onGlass))
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
     func theShaderPicksTheColorTheModelAsks() throws {
         // The fidelity check. Straight on, with the light along the eye, what the plate
         // sends back is the film's reflectance times a factor that treats the three
         // channels alike. So every difference between two channels comes straight from
         // the model, and an independent reading of it (`FilmReference`) must agree on
         // the direction of each one, at every thickness across the useful range.
+        //
+        // The second face of the film is where it meets the surface under it, so the
+        // surface is part of the color: the reference is handed the plate's own base
+        // reflectance.
         //
         // Only differences the model itself calls real are checked: past about 700 nm
         // the bands crowd together and the film genuinely washes toward neutral, where

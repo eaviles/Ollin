@@ -63,48 +63,33 @@ struct GIFMemoryTests {
                        intent: .defaultIntent)!
     }
 
-    /// The writer's buffers are sized once: the same bytes after one frame
-    /// and after two hundred, at a size where holding them would be plain.
-    @Test func theWriterHoldsNoFrame() throws {
+    /// No frame handed to the writer survives the call that took it, and the
+    /// writer's own buffers are sized once. Holding frames is what would have
+    /// moved the peak with the frame count, and this reads it off the frames
+    /// and the writer rather than off a number the whole process shares.
+    ///
+    /// One run answers both: the tally sees any frame kept past its call, and
+    /// the writer holds the same bytes after the last frame as after the
+    /// first, at a size where holding them would be plain. Forty frames are
+    /// plenty, since a hold shows as the count falling behind on the second
+    /// frame and as `heldBytes` growing past its first-frame value; the length
+    /// was only ever needed by the process-footprint reading this replaced.
+    @Test func theWriterKeepsNoFrameItWasHanded() throws {
         let path = NSTemporaryDirectory() + "ollin-gif-held-\(UUID().uuidString).gif"
         defer { try? FileManager.default.removeItem(atPath: path) }
         let tally = GIFFrameTally()
-        let side = 480, frames = 200
-        let writer = try GIFWriter(path: path, width: side, height: side)
-
-        try autoreleasepool { try writer.append(Self.frame(side: side, 0, tally: tally), delay: 0.04) }
-        let afterOne = writer.heldBytes
-        for k in 1..<frames {
-            try autoreleasepool { try writer.append(Self.frame(side: side, k, tally: tally), delay: 0.04) }
-        }
-        try writer.finish()
-
-        #expect(writer.heldBytes == afterOne,
-                "the writer holds the same bytes after \(frames) frames as after one")
-        // Under twenty bytes a pixel, against the ten a frame the old writer
-        // kept for every frame of the run.
-        #expect(afterOne < side * side * 20 + 8 * 1024 * 1024)
-        withExtendedLifetime(tally) {}
-    }
-
-    /// No frame handed to the writer survives the call that took it. Holding
-    /// them is what would have moved the peak with the frame count, and this
-    /// reads it off the frames rather than off a number the whole process
-    /// shares.
-    @Test func theWriterKeepsNoFrameItWasHanded() throws {
-        let path = NSTemporaryDirectory() + "ollin-gif-flat-\(UUID().uuidString).gif"
-        defer { try? FileManager.default.removeItem(atPath: path) }
-        let tally = GIFFrameTally()
-        let side = 480, frames = 200
+        let side = 480, frames = 40
         let writer = try GIFWriter(path: path, width: side, height: side)
 
         var everBehind = 0
+        var afterOne = 0
         for k in 0..<frames {
             try autoreleasepool { try writer.append(Self.frame(side: side, k, tally: tally), delay: 0.04) }
+            if k == 0 { afterOne = writer.heldBytes }
             // Every frame appended so far has been let go by now, so the
             // count never falls behind the run. Measured as a high-water mark
             // rather than expected each time round, so a failure reports the
-            // worst of the run instead of two hundred times.
+            // worst of the run instead of once a frame.
             everBehind = max(everBehind, k + 1 - tally.freed.load(ordering: .relaxed))
         }
         #expect(everBehind == 0,
@@ -114,6 +99,12 @@ struct GIFMemoryTests {
         #expect(freed == frames,
                 "all \(frames) frames must be freed before the file is finished, and \(freed) were")
         try writer.finish()
+
+        #expect(writer.heldBytes == afterOne,
+                "the writer holds the same bytes after \(frames) frames as after one")
+        // Under twenty bytes a pixel, against the ten a frame the old writer
+        // kept for every frame of the run.
+        #expect(afterOne < side * side * 20 + 8 * 1024 * 1024)
         withExtendedLifetime(tally) {}
     }
 }

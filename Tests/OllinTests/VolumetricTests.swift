@@ -113,11 +113,21 @@ struct FogRenderProbes {
         Int(p.data[(y * p.width + x) * 4])
     }
 
+    /// The fogged pair of spheres, rendered once this run: two probes read it.
+    private static var distance: (data: [UInt8], width: Int, height: Int)?
+
+    private func distanceFrame() throws -> (data: [UInt8], width: Int, height: Int) {
+        if let known = Self.distance { return known }
+        let frame = try pixels(FogDistanceProbe())
+        Self.distance = frame
+        return frame
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func fartherSurfacesFogMore() throws {
         // Two identical dark spheres, one near, one far, under bright uniform fog:
         // the far one must read closer to the fog color (brighter here).
-        let p = try pixels(FogDistanceProbe())
+        let p = try distanceFrame()
         let near = red(p, 128, 128)          // center: the near sphere
         let far = red(p, 200, 116)           // right: the far sphere
         #expect(far > near + 25, "far sphere should sit deeper in bright fog (near \(near), far \(far))")
@@ -137,7 +147,7 @@ struct FogRenderProbes {
     func airBackdropWashesEmptySky() throws {
         // No geometry covers the upper half, so only the fullscreen air draw can
         // wash it toward the fog color over the near-black clear.
-        let p = try pixels(FogDistanceProbe())
+        let p = try distanceFrame()
         let sky = red(p, 30, 30)
         #expect(sky > 60, "empty air should wash toward the bright fog color (read \(sky))")
     }
@@ -171,11 +181,21 @@ struct VolumetricLightRenderProbes {
         Int(p.data[(y * p.width + x) * 4])
     }
 
+    /// The open beam (no blocker), rendered once this run: two probes read it.
+    private static var openBeam: (data: [UInt8], width: Int, height: Int)?
+
+    private func openBeamFrame() throws -> (data: [UInt8], width: Int, height: Int) {
+        if let known = Self.openBeam { return known }
+        let frame = try pixels(BeamProbe())
+        Self.openBeam = frame
+        return frame
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func beamGlowsInsideItsConeOnly() throws {
         // A spot crossing dark empty air: pixels inside the beam's crossing glow,
         // pixels well outside stay black.
-        let p = try pixels(BeamProbe())
+        let p = try openBeamFrame()
         let inBeam = red(p, 128, 128)
         let outside = red(p, 30, 100)
         #expect(inBeam > outside + 30, "the beam should glow only inside the cone (in \(inBeam), out \(outside))")
@@ -189,7 +209,7 @@ struct VolumetricLightRenderProbes {
         let blocked = BeamProbe()
         blocked.blocker = true
         let with = try pixels(blocked)
-        let without = try pixels(BeamProbe())
+        let without = try openBeamFrame()
         let shadowed = red(with, 128, 128)
         let open = red(without, 128, 128)
         #expect(open > shadowed + 15, "the panel should carve a dark shaft (open \(open), blocked \(shadowed))")

@@ -13,7 +13,7 @@ swift run --package-path Examples Example-Export-Toolpath --export-gcode plot.gc
 The same export from code, with the full parameters:
 
 ```swift
-OllinApp.exportGCode(sketch, to: "plot.gcode",
+try OllinApp.exportGCode(sketch, to: "plot.gcode",
                      settings: GCode(.plotter(), width: 150))
 ```
 

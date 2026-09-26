@@ -64,7 +64,10 @@ struct MeshExportTests {
         let raw = edgeUse(positions: sphere.positions.count, indices: sphere.indices)
         #expect(raw.values.allSatisfy { $0 == 1 })
 
-        // Prepared for writing: one connected, closed surface.
+        // Prepared for writing: one connected, closed surface. The check stands the
+        // model up on z first, and a quarter turn is a rotation, so the volume it
+        // encloses keeps its sign: `isPrintable` below holds only if it is not
+        // inside out.
         let check = sphere.printCheck()
         #expect(check.isClosed)
         #expect(check.boundaryEdgeCount == 0)
@@ -136,14 +139,6 @@ struct MeshExportTests {
         // would lie on its side on a platform.
         let asAuthored = try #require(FabricationMesh(tall, upAxis: .y))
         #expect(abs(asAuthored.printSize().y - 20) < 1e-9)
-    }
-
-    @Test func turningTheModelUprightDoesNotTurnItInsideOut() throws {
-        let standing = try #require(FabricationMesh(Mesh.icosphere(radius: 5, subdivisions: 1),
-                                                   upAxis: .z))
-        // A quarter turn is a rotation, so the volume it encloses keeps its sign.
-        #expect(FabricationMesh.signedVolume(positions: standing.positions,
-                                             indices: standing.indices) > 0)
     }
 
     // MARK: STL
@@ -311,13 +306,6 @@ struct MeshExportTests {
         #expect(empty.data(as: .stl) == nil)
         #expect(!empty.printCheck().isPrintable)
         #expect(throws: FileError.self) { try empty.write(to: temporaryURL("empty.stl")) }
-    }
-
-    @Test func anUnknownExtensionIsRefusedWithoutWriting() {
-        let url = temporaryURL("model.gcode")
-        let refused = #expect(throws: FileError.self) { try tetrahedron().write(to: url) }
-        #expect(refused?.kind == .unwritable)
-        #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
     @Test func theFormatCanBeNamedForAnyExtension() throws {

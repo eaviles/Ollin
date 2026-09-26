@@ -126,6 +126,8 @@ struct ShaderIncludeTests {
         #expect(!result.ok)
         #expect(result.problems.count == 1)
         #expect(result.problems[0].contains("nested deeper"))
+        // The chain is read down to the limit and stops there.
+        #expect(result.included.count == ShaderIncludes.depthLimit)
     }
 
     // MARK: What is left alone
@@ -251,9 +253,10 @@ struct ShaderIncludeTests {
     func theBuiltInSegmentsCompileInAnyOrder() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let rayTracing = MetalRenderer.rayTracingAvailable(on: device)
+        // The list is already alphabetical, so its reverse is also its descending
+        // sort; one full compile covers both.
         var orders: [[String]] = [MetalRenderer.shaderSourceNames,
-                                  MetalRenderer.shaderSourceNames.reversed(),
-                                  MetalRenderer.shaderSourceNames.sorted(by: >)]
+                                  MetalRenderer.shaderSourceNames.reversed()]
         // A few fixed shuffles, seeded so a failure repeats rather than haunts.
         for seed in [7, 19, 41] as [UInt64] {
             var rng = SeededRandom(seed: seed)

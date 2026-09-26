@@ -87,15 +87,22 @@ struct DualContouringTests {
 
     // MARK: The corners, the reason the method exists
 
-    /// Every corner of the block has a vertex on it, to within a millionth of
-    /// a cell: the crossings on a face are exact for a plane, the normals are
-    /// the face normals, and three planes meet at one point.
-    @Test func aBlockKeepsItsCorners() {
-        let resolution = 20
-        let mesh = isosurface(at: 0, in: box, resolution: resolution, method: .dualContouring, field: block)
-        let spacing = box.longestSide / Double(resolution)
+    /// Every corner of the block has a vertex on it: the crossings on a face are
+    /// exact for a plane, the normals are the face normals, and three planes meet
+    /// at one point. Each corner cell carries three vertices at that point, one
+    /// per face, which is what lets the faces shade flat right up to the corner.
+    /// Finding them within a billionth of a unit is also the proof the corner is
+    /// kept at all; `marchingCubesRoundsThoseCornersOff` below is its
+    /// counterfactual.
+    @Test func aCornerCarriesOneVertexPerFace() {
+        let mesh = isosurface(at: 0, in: box, resolution: 20, method: .dualContouring, field: block)
         for corner in corners() {
-            #expect(nearestDistance(from: corner, in: mesh) < spacing * 1e-6)
+            let there = mesh.positions.indices.filter { (mesh.positions[$0] - corner).length < 1e-9 }
+            let distinct = Set(there.map { i -> String in
+                let n = mesh.normals[i]
+                return "\(Int(n.x.rounded())),\(Int(n.y.rounded())),\(Int(n.z.rounded()))"
+            })
+            #expect(distinct.count == 3)
         }
     }
 
@@ -118,20 +125,6 @@ struct DualContouringTests {
         #expect(!mesh.normals.isEmpty)
         for n in mesh.normals {
             #expect(max(abs(n.x), abs(n.y), abs(n.z)) > 0.9999)
-        }
-    }
-
-    /// Each corner cell carries three vertices at one point, one per face,
-    /// which is what lets the faces shade flat right up to the corner.
-    @Test func aCornerCarriesOneVertexPerFace() {
-        let mesh = isosurface(at: 0, in: box, resolution: 20, method: .dualContouring, field: block)
-        for corner in corners() {
-            let there = mesh.positions.indices.filter { (mesh.positions[$0] - corner).length < 1e-9 }
-            let distinct = Set(there.map { i -> String in
-                let n = mesh.normals[i]
-                return "\(Int(n.x.rounded())),\(Int(n.y.rounded())),\(Int(n.z.rounded()))"
-            })
-            #expect(distinct.count == 3)
         }
     }
 
@@ -223,16 +216,6 @@ struct DualContouringTests {
     }
 
     // MARK: The contract
-
-    /// The default path is untouched: no `method` reads as marching cubes.
-    @Test func theDefaultIsMarchingCubes() {
-        let plain = isosurface(at: 0, in: box, resolution: 18, field: block)
-        let marched = isosurface(at: 0, in: box, resolution: 18, method: .marchingCubes, field: block)
-        let dual = isosurface(at: 0, in: box, resolution: 18, method: .dualContouring, field: block)
-        #expect(plain.positions == marched.positions)
-        #expect(plain.indices == marched.indices)
-        #expect(plain.positions != dual.positions)
-    }
 
     @Test func dualContouringIsDeterministic() {
         let a = isosurface(at: 0, in: box, resolution: 22, method: .dualContouring, field: cylinder)

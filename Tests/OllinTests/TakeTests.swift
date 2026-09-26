@@ -123,13 +123,10 @@ struct TakeTests {
         // Moved before the k == 40 advance, so it applies ahead of that frame.
         #expect(change?.frame == 40)
         #expect(change?.value == .number(4.2))
-
-        // At frame 40 the replay still reads the starting value; one frame on,
-        // the recorded move has landed.
-        let before = replayPerformance(take, frames: 40)
-        #expect(before.gain == 1.0)
-        let after = replayPerformance(take, frames: 41)
-        #expect(after.gain == 4.2)
+        // That the replay lands it there (the starting value through frame 40,
+        // the recorded move one frame on) is `aRecordedRunReplaysExactly`: the
+        // trace writes down `gain` on every frame, so it matches only if the move
+        // lands on the frame it was recorded on.
     }
 
     @Test func liveInputIsGatedDuringReplay() {
@@ -325,27 +322,6 @@ struct TakeTests {
         return (runner, view)
     }
 
-    @Test func aRewindFromPastTheEndReplaysTheWholeRun() throws {
-        let take = transportTake(sketchType: "TransportProbe")
-        let probe = TransportProbe()
-        let (runner, view) = try makeRunner(probe)
-        take.install(on: probe)
-
-        for _ in 0..<take.frameCount { runner.draw(in: view) }
-        let firstPass = probe.marks
-        #expect(!firstPass.isEmpty, "the take's held button should have marked frames")
-
-        // Space with the run past its end starts over; the second pass must
-        // walk the same path. The current probe is cleared first, so a stale
-        // instance surviving the rewind cannot pass on its first-run marks.
-        runner.handleTransportKey(character: " ", code: nil, shift: false)
-        let second = try #require(runner.sketch as? TransportProbe)
-        second.marks.removeAll()
-        for _ in 0..<take.frameCount { runner.draw(in: view) }
-        #expect(second.marks == firstPass,
-                "a rewound replay should re-fire the same marks at the same frames")
-    }
-
     @Test func endThenSpaceRestartsCleanly() throws {
         let take = transportTake(sketchType: "TransportProbe")
         let probe = TransportProbe()
@@ -367,6 +343,8 @@ struct TakeTests {
                 "after End then space, the second pass should play its events again")
     }
 
+    /// A rewind from past the end replays the whole run, and keeps doing so
+    /// each time the end is reached.
     @Test func theRunSurvivesReachingItsEndTwice() throws {
         let take = transportTake(sketchType: "TransportProbe")
         let probe = TransportProbe()
@@ -375,14 +353,20 @@ struct TakeTests {
 
         for _ in 0..<take.frameCount { runner.draw(in: view) }
         let firstPass = probe.marks
+        #expect(!firstPass.isEmpty, "the take's held button should have marked frames")
 
-        for _ in 0..<2 {
+        // Space with the run past its end starts over; every pass after it must
+        // walk the same path. The current probe is cleared first, so a stale
+        // instance surviving the rewind cannot pass on its first-run marks.
+        for pass in 0..<2 {
             runner.handleTransportKey(character: " ", code: nil, shift: false)
             let current = try #require(runner.sketch as? TransportProbe)
             current.marks.removeAll()
             for _ in 0..<take.frameCount { runner.draw(in: view) }
-            #expect(current.marks == firstPass,
-                    "every pass after a rewind should walk the recorded path")
+            let why = pass == 0
+                ? "a rewound replay should re-fire the same marks at the same frames"
+                : "every pass after a rewind should walk the recorded path"
+            #expect(current.marks == firstPass, Comment(rawValue: why))
         }
     }
 

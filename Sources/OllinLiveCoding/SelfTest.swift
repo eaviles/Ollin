@@ -46,7 +46,12 @@ enum SelfTest {
             case .success(let dylibPath):
                 switch loader.instantiate(dylibPath: dylibPath) {
                 case .success(let sketch):
-                    OllinApp.export(sketch, to: path)   // off-screen render, no window
+                    do {
+                        try OllinApp.export(sketch, to: path)   // off-screen render, no window
+                    } catch {
+                        print("  \(error)")
+                        return false
+                    }
                     return FileManager.default.fileExists(atPath: path)
                 case .failure(let error):
                     print("  \(error)")

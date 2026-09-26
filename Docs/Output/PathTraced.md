@@ -97,7 +97,7 @@ Sampling is a pure function of the pixel, the sample index, and the bounce. The 
 
 ```swift
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoises: true)  // the flag's `--denoise`
-OllinApp.export(sketch, to: "out.png", frame: 120)
+try OllinApp.export(sketch, to: "out.png", frame: 120)
 OllinApp.pathTracedExport = nil
 ```
 

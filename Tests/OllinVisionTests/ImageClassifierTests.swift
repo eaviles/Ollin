@@ -22,6 +22,14 @@ import Ollin
         return image
     }
 
+    /// The whole vocabulary scored over `diskImage()`, made once for the
+    /// suite: the still test reads it and the live-wiring test only needs to
+    /// know the model runs here, so the model runs once. `nil` where the model
+    /// cannot run (the soft-skip).
+    private static let wholeVocabulary = Task<[Classification]?, Never> {
+        try? await ImageClassifier.detect(in: ImageClassifierTests().diskImage(), minConfidence: 0)
+    }
+
     @Test func nameOpensUnderscores() {
         let found = Classification(label: "blue_sky", confidence: 0.9)
         #expect(found.name == "blue sky")
@@ -38,8 +46,7 @@ import Ollin
     @Test func stillDetectScoresTheWholeVocabularySorted() async throws {
         // Soft-skip: the model needs a compute device some test environments
         // lack; a throw there isn't a code failure.
-        guard let all = try? await ImageClassifier.detect(in: diskImage(),
-                                                          minConfidence: 0) else { return }
+        guard let all = await Self.wholeVocabulary.value else { return }
         // The request scores the entire vocabulary, strongest first.
         #expect(all.count > 1000)
         #expect(zip(all, all.dropFirst()).allSatisfy { $0.confidence >= $1.confidence })
@@ -59,7 +66,7 @@ import Ollin
         // Gate on the still path: only run the live assertion where the model
         // demonstrably runs (elsewhere this is the soft-skip).
         let image = diskImage()
-        guard (try? await ImageClassifier.detect(in: image, minConfidence: 0)) != nil else { return }
+        guard await Self.wholeVocabulary.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue. Floor 0 so publishing doesn't depend on what the model

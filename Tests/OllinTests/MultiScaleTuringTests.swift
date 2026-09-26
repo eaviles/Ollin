@@ -1,5 +1,5 @@
 import CoreGraphics
-import Ollin
+@testable import Ollin
 import Testing
 
 /// Behavioral probes for the `.multiScaleTuring` sim, run headless on a small field
@@ -26,8 +26,8 @@ struct MultiScaleTuringTests {
     func fieldOrganizesFromNoiseRatherThanStayingFlat() throws {
         // Frame 1 is the seeded noise: full range, no structure. By frame 120 the rule
         // has built structure, and the field still spans its range (normalization).
-        let early = try grid(probe(), frame: 1)
-        let later = try grid(probe(), frame: 120)
+        let early = try defaultGrid(frame: 1)
+        let later = try defaultGrid(frame: 120)
         #expect(spread(early) > 0.25)      // the noise seed actually filled the field
         #expect(spread(later) > 0.5)       // and every step renormalizes to the range
         // Structure means neighbors agree far more than random noise does.
@@ -44,7 +44,7 @@ struct MultiScaleTuringTests {
         // the shipped disc gather two rungs finer scores 0.11. The threshold sits between
         // them with room on both sides, and the counterfactual was run to confirm this
         // test actually fails on the defect rather than merely passing on the fix.
-        #expect(axisPreference(try grid(probe(), frame: 200)) < 0.3)
+        #expect(axisPreference(try defaultGrid(frame: 200)) < 0.3)
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -54,7 +54,7 @@ struct MultiScaleTuringTests {
         // structure, and least disagreement wins), so the picture is all fine grain.
         // Averaging it over each scale's own neighborhood is what lets coarse regions
         // form, which shows up as markedly less high-frequency energy.
-        let averaged = highFrequencyEnergy(try grid(probe(), frame: 200))
+        let averaged = highFrequencyEnergy(try defaultGrid(frame: 200))
         let pointwise = highFrequencyEnergy(try grid(probe(variationRadius: 0), frame: 200))
         #expect(pointwise > averaged * 1.5)
     }
@@ -65,7 +65,7 @@ struct MultiScaleTuringTests {
         // against the same field's own quarter-turn, and against an unfolded field as
         // the control, so the test measures the fold rather than the sim's smoothness.
         let folded = try grid(probe(scales: .rosette(4)), frame: 200)
-        let free = try grid(probe(), frame: 200)
+        let free = try defaultGrid(frame: 200)
         #expect(quarterTurnError(folded) < quarterTurnError(free) * 0.5)
     }
 
@@ -89,6 +89,19 @@ struct MultiScaleTuringTests {
 
     // MARK: Readback helpers
 
+    /// The default probe (`probe()`: seed 7, the ladder, no variation-radius
+    /// override) read at frames 1, 120, and 200. Four tests read this one field, so
+    /// it is run once for the suite, to frame 200, and decoded at each of those
+    /// frames on the way, rather than run again from frame 0 for every reading.
+    private static var defaultProbeGrids: [Int: [[Double]]] = [:]
+
+    private func defaultGrid(frame: Int) throws -> [[Double]] {
+        if Self.defaultProbeGrids.isEmpty {
+            Self.defaultProbeGrids = try grids(probe(), frames: [1, 120, 200])
+        }
+        return try #require(Self.defaultProbeGrids[frame])
+    }
+
     /// A configured probe. `Sketch`'s init is `required`, so settings ride stored
     /// properties rather than an initializer.
     private func probe(scales: [TuringScale] = TuringScale.ladder, seed: Double = 7,
@@ -107,7 +120,22 @@ struct MultiScaleTuringTests {
 
     /// The rendered field as a 0…1 luminance grid.
     private func grid(_ sketch: Sketch, frame: Int) throws -> [[Double]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        luminance(in: try #require(OllinApp.image(of: sketch, frame: frame)))
+    }
+
+    /// The same grid at several frames of one run to the last of them: frame `k`
+    /// here is the picture `grid(_:frame: k)` reads, decoded as the run passes it.
+    private func grids(_ sketch: Sketch, frames wanted: Set<Int>) throws -> [Int: [[Double]]] {
+        var out: [Int: [[Double]]] = [:]
+        guard let last = wanted.max() else { return out }
+        try OllinApp.renderFrames(sketch, frames: last + 1, fps: 60, skipSeconds: 0) { frame, index in
+            guard wanted.contains(index), let image = frame.image else { return }
+            out[index] = luminance(in: image)
+        }
+        return out
+    }
+
+    private func luminance(in image: CGImage) -> [[Double]] {
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

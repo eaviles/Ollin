@@ -135,7 +135,8 @@ struct SeamCarveTests {
     /// The picture closes over each seam before the next one is looked for, so
     /// carving three seams at once is carving one seam three times. Leave the
     /// picture open between seams and the second seam is only the first one
-    /// found again.
+    /// found again. The pixel-for-pixel match also rests on the carve being
+    /// deterministic: ties break on position, so nothing here is left to chance.
     @Test func seamsAreTakenOneAfterTheOther() {
         let picture = texturedPicture(width: 20, height: 12)
         var oneAtATime = picture
@@ -293,17 +294,6 @@ struct SeamCarveTests {
     }
 
     // MARK: - Housekeeping
-
-    /// The same picture carved twice comes out the same, pixel for pixel: ties
-    /// break on position, so nothing here is left to chance.
-    @Test func carvingIsDeterministic() {
-        let picture = texturedPicture(width: 22, height: 14)
-        let first = picture.seamCarved(toWidth: 15)
-        let second = picture.seamCarved(toWidth: 15)
-        for y in 0 ..< first.height {
-            for x in 0 ..< first.width { #expect(first[x, y] == second[x, y]) }
-        }
-    }
 
     /// Asking for the size it already is hands the picture straight back.
     @Test func askingForNothingChangesNothing() {

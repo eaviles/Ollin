@@ -20,7 +20,7 @@ struct VideoExportTests {
     func h264ExportWritesPlayableMP4() async throws {
         let path = ollinTempPath("ollin-video-test.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30)
+        try OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30)
 
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))
         let duration = try await asset.load(.duration)
@@ -36,7 +36,7 @@ struct VideoExportTests {
     func aBroadcastRateLandsEveryFrameOnItsFraction() async throws {
         let path = ollinTempPath("ollin-video-ntsc.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportVideo(MovingDot(), to: path, frames: 30, fps: .ntsc)
+        try OllinApp.exportVideo(MovingDot(), to: path, frames: 30, fps: .ntsc)
 
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))
         let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
@@ -53,7 +53,7 @@ struct VideoExportTests {
     func hevcExportAtABitrateWritesQuickTime() async throws {
         let path = ollinTempPath("ollin-video-test.mov")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30,
+        try OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30,
                              codec: .hevc, bitsPerSecond: 2_000_000)
 
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))
@@ -68,7 +68,7 @@ struct VideoExportTests {
         defer { try? FileManager.default.removeItem(atPath: path) }
         // 25 fps is a whole-centisecond rate (4/100s), so the frame count is
         // used exactly as requested.
-        OllinApp.exportGIF(MovingDot(), to: path, frames: 10, fps: 25, width: 80)
+        try OllinApp.exportGIF(MovingDot(), to: path, frames: 10, fps: 25, width: 80)
 
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         #expect(CGImageSourceGetCount(source) == 10)
@@ -88,8 +88,8 @@ struct VideoExportTests {
     func aGIFExportKeepsNoFramePastItsOwn() throws {
         let path = ollinTempPath("ollin-gif-frames-alive.gif")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        exportKeepsNoFramePastItsOwn(frames: 120) {
-            OllinApp.exportGIF(Wander(), to: path, frames: 120, fps: 25)
+        try exportKeepsNoFramePastItsOwn(frames: 120) {
+            try OllinApp.exportGIF(Wander(), to: path, frames: 120, fps: 25)
         }
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         #expect(CGImageSourceGetCount(source) == 120)
@@ -102,8 +102,8 @@ struct VideoExportTests {
     func aVideoExportKeepsNoFramePastItsOwn() throws {
         let path = ollinTempPath("ollin-video-frames-alive.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        exportKeepsNoFramePastItsOwn(frames: 60) {
-            OllinApp.exportVideo(Wander(), to: path, frames: 60, fps: 30)
+        try exportKeepsNoFramePastItsOwn(frames: 60) {
+            try OllinApp.exportVideo(Wander(), to: path, frames: 60, fps: 30)
         }
     }
 
@@ -124,14 +124,18 @@ struct VideoExportTests {
     /// changes nothing, which is the point of it. The count of pieces handed
     /// out is checked too, so a drive that stopped asking the ledger for its
     /// memory could not pass by never being counted.
-    private func exportKeepsNoFramePastItsOwn(frames: Int, _ export: () -> Void) {
+    private func exportKeepsNoFramePastItsOwn(frames: Int, _ export: () throws -> Void) throws {
         let ledger = FrameLedger()
         let hog = Hog(bytes: 200 * 1024 * 1024)
         hog.start()
         OllinApp.frameMemory = ledger
-        export()
-        OllinApp.frameMemory = nil
-        hog.stop()
+        do {
+            defer {
+                OllinApp.frameMemory = nil
+                hog.stop()
+            }
+            try export()
+        }
         // The last buffer comes home when Metal lets it go, which can be a
         // beat after the drive returns.
         var waited = 0

@@ -13,7 +13,7 @@ swift run --package-path Examples Example-Export-Drafting --export-dxf panel.dxf
 The same export from code, with the full parameters:
 
 ```swift
-OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
+try OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
 ```
 
 `DXF` takes a physical width in millimeters. The width is a required argument on purpose, the way [`GCode`](./GCode.md) asks for one. A drawing opened in a shop program has real millimeters, and a default would size the part silently. `DXF(paper: .a3)` sizes the drawing for a sheet or a board instead, with 10 mm clear on every side unless `margin:` says otherwise. It holds the drawing's height to the sheet as well as its width, exactly as the [G-code sheet](./GCode.md#a-named-sheet) does.

@@ -202,30 +202,26 @@ struct CrowdTests {
         return (crowd, walls)
     }
 
+    /// One jammed doorway, run once and read two ways: the walls hold even while
+    /// agents are jammed against each other, and the jam itself overlaps agents by
+    /// only a small part of a radius.
     @Test func wallsHoldEvenInAJam() {
         let (crowd, walls) = doorway(width: 48, count: 100)
         var deepest = -Double.infinity
         var jammedSteps = 0
-        for _ in 0 ..< 20 * 60 {
-            crowd.advance()
-            if crowd.agents.contains(where: \.isJammed) { jammedSteps += 1 }
-            for agent in crowd.agents {
-                for wall in walls { deepest = max(deepest, intrusion(of: agent.position, radius: agent.radius, into: wall)) }
-            }
-        }
-        #expect(jammedSteps > 60)
-        #expect(deepest <= 1e-6)
-    }
-
-    @Test func aJamOverlapsByASmallPartOfARadius() {
-        let (crowd, _) = doorway(width: 48, count: 100)
         var closest = Double.infinity
         var jammed = 0
         for _ in 0 ..< 20 * 60 {
             crowd.advance()
+            if crowd.agents.contains(where: \.isJammed) { jammedSteps += 1 }
             jammed += crowd.agents.filter(\.isJammed).count
+            for agent in crowd.agents {
+                for wall in walls { deepest = max(deepest, intrusion(of: agent.position, radius: agent.radius, into: wall)) }
+            }
             closest = min(closest, smallestGap(crowd))
         }
+        #expect(jammedSteps > 60)
+        #expect(deepest <= 1e-6)
         #expect(jammed > 0)
         #expect(closest > -0.25 * 8)
     }

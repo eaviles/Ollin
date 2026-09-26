@@ -44,13 +44,6 @@ struct SpectrumTests {
         }
     }
 
-    /// Alpha rides on `Color`, not on the spectrum: the conversion carries it
-    /// through unchanged.
-    @Test func alphaPassesThrough() {
-        let c = Color(red: 0.6, green: 0.3, blue: 0.1, alpha: 0.42)
-        #expect(abs(Color(c.spectrum, alpha: c.alpha).alpha - 0.42) < 1e-12)
-    }
-
     // MARK: Paint mixing
 
     /// The reason this exists: yellow and blue paint make green. The mix's

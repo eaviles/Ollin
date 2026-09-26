@@ -84,29 +84,27 @@ struct SpecularAntialiasRenderTests {
     /// of the artifact at strength 1. A third rather than all of it is honest for a
     /// screen-space estimate: the derivative that measures the spread is itself sampled
     /// once per pixel.
+    ///
+    /// More strength buys more calm, which is what makes it a parameter rather than a switch.
+    /// Strength 2 is the conservative kernel of the published work, and it reads quieter
+    /// again: 0.087 against 0.112 at strength 1 and 0.148 unfiltered. (One test reads all
+    /// four runs, so the unfiltered and strength-1 sequences are rendered once.)
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSurfaceFinerThanItsPixelsCrawlsLess() throws {
         let truth = crawl(try frames(strength: nil, converged: true))
         let off = crawl(try frames(strength: nil))
         let on = crawl(try frames(strength: 1))
+        let more = crawl(try frames(strength: 2))
         #expect(off > truth * 2,
                 "the unfiltered sheet should crawl well past the truth (\(off) vs \(truth))")
-        #expect(on < off, "the filtered sheet still crawls \(on) against \(off) unfiltered")
+        #expect(on < off, """
+                the filtered sheet still crawls \(on) against \(off) unfiltered \
+                (strength 1 (\(on)) should be quieter than off (\(off)))
+                """)
         let removed = (off - on) / (off - truth)
         #expect(removed > 0.2,
                 "only \(removed) of the excess crawl went (truth \(truth), off \(off), on \(on))")
-    }
-
-    /// More strength buys more calm, which is what makes it a parameter rather than a switch.
-    /// Strength 2 is the conservative kernel of the published work, and it reads quieter
-    /// again: 0.087 against 0.112 at strength 1 and 0.148 unfiltered.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theParameterKeepsBuying() throws {
-        let off = crawl(try frames(strength: nil))
-        let some = crawl(try frames(strength: 1))
-        let more = crawl(try frames(strength: 2))
-        #expect(some < off, "strength 1 (\(some)) should be quieter than off (\(off))")
-        #expect(more < some, "strength 2 (\(more)) should be quieter than 1 (\(some))")
+        #expect(more < on, "strength 2 (\(more)) should be quieter than 1 (\(on))")
     }
 
     // MARK: What it must not touch

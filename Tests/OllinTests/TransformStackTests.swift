@@ -30,12 +30,6 @@ struct TransformStackTests {
         return d
     }
 
-    @Test func identityLeavesPointUntouched() {
-        let d = freshDrawer()
-        let p = baked(d, at: Vector3(1, 2, 3))
-        #expect(close(p.x, 1) && close(p.y, 2) && close(p.z, 3))
-    }
-
     @Test func translateMovesTheOrigin() {
         let d = freshDrawer()
         d.translate(2, 3, -1)
@@ -122,6 +116,8 @@ struct TransformStackTests {
         #expect(close(p.x, 1) && close(p.y, 0) && close(p.z, 0))
     }
 
+    /// A new frame clears the model matrix, so the point comes back untouched,
+    /// the same identity a fresh drawer starts with.
     @Test func modelMatrixResetsEachFrame() {
         let d = freshDrawer()
         d.translate(9, 9, 9)

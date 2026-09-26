@@ -301,7 +301,21 @@ struct TextureFilteringTests {
             let s = Floor(); s.texture = Self.loaded()
             return pixels(of: try #require(OllinApp.image(of: s, frame: 1)))
         }
-        #expect(try render() == render())
+        // The kept floor against a fresh render of it: two renders, never the kept
+        // frame compared with itself.
+        #expect(try pixels(of: loadedFloorFrame()) == render())
+    }
+
+    /// The receding floor wearing the decoded checker, rendered once this run: two
+    /// probes read it.
+    private static var loadedFloor: CGImage?
+
+    private func loadedFloorFrame() throws -> CGImage {
+        if let known = Self.loadedFloor { return known }
+        let s = Floor(); s.texture = Self.loaded()
+        let image = try #require(OllinApp.image(of: s, frame: 1))
+        Self.loadedFloor = image
+        return image
     }
 
     /// The long thin footprint, answered. A pixel on a receding floor covers many
@@ -316,8 +330,7 @@ struct TextureFilteringTests {
     /// and it holds at 187.3.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aRecedingFloorKeepsItsRowsApart() throws {
-        let s = Floor(); s.texture = Self.loaded()
-        let band = spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+        let band = spread(try loadedFloorFrame(), y0: 0.52, y1: 0.62)
         #expect(band.sd > 4, "the far floor has gone flat: \(band)")
         #expect(abs(band.mean - 188) < 3, "and it must still be the checker's tone: \(band)")
     }

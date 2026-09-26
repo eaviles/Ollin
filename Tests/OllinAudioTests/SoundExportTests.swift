@@ -53,7 +53,6 @@ import Testing
     @MainActor
     @Test func aSketchThatPlayedNothingExportsNothing() {
         let synth = Synth(.pluck)
-        #expect(!synth.hasExportAudio)
         // A track was never asked for, so nothing renders and the file stays
         // the file it would have been.
         #expect(!synth.hasExportAudio)

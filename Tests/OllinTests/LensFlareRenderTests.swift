@@ -21,6 +21,21 @@ struct LensFlareRenderProbes {
         return data
     }
 
+    /// The frame drawn with no flare, per occluder, as bytes. With the flare off, nothing
+    /// a probe hands the flare (the lens, the stop, the star, the source size, the amount)
+    /// reaches the picture, so every probe's frame without a flare over one occluder is the
+    /// same frame, and it is drawn once.
+    private static var withoutFlare: [FlareProbe.Occluder: [UInt8]] = [:]
+
+    private func unflared(_ occluder: FlareProbe.Occluder) throws -> [UInt8] {
+        if let known = Self.withoutFlare[occluder] { return known }
+        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: false),
+                                              frame: 1))
+        let bytes = pixels(of: off)
+        Self.withoutFlare[occluder] = bytes
+        return bytes
+    }
+
     /// How much light the flare adds, as the mean rise over the same frame drawn
     /// without one. Reading the *difference* is what makes the occluder cases
     /// comparable: whatever the occluder does to the scene cancels, and what is
@@ -28,14 +43,20 @@ struct LensFlareRenderProbes {
     private func flareAdded(_ occluder: FlareProbe.Occluder,
                             fStop: Double = 4.5, star: Double = 0,
                             near: Bool = false) throws -> Double {
+        let rises = try flareRises(occluder, fStop: fStop, star: star)
+        return near ? rises.near : rises.whole
+    }
+
+    /// The same rise read two ways off one pair of frames: over the whole picture, and
+    /// over only the patch the source sits in.
+    private func flareRises(_ occluder: FlareProbe.Occluder,
+                            fStop: Double = 4.5, star: Double = 0) throws -> (whole: Double, near: Double) {
         let on = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: true,
                                                                 fStop: fStop, star: star),
                                              frame: 1))
-        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: false,
-                                                                 fStop: fStop, star: star),
-                                              frame: 1))
-        return rise(pixels(of: on), over: pixels(of: off),
-                    width: on.width, height: on.height, near: near)
+        let a = pixels(of: on), b = try unflared(occluder)
+        return (rise(a, over: b, width: on.width, height: on.height, near: false),
+                rise(a, over: b, width: on.width, height: on.height, near: true))
     }
 
     /// The mean rise of one frame over another, either over the whole picture or
@@ -72,9 +93,7 @@ struct LensFlareRenderProbes {
         let on = try #require(OllinApp.image(of: FlareProbe.make(
             occluder: .none, flare: true, sourceSize: sourceSize, amount: 0.12,
             lens: stopped), frame: 1))
-        let off = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: .none, flare: false, sourceSize: sourceSize, lens: stopped), frame: 1))
-        let a = pixels(of: on), b = pixels(of: off)
+        let a = pixels(of: on), b = try unflared(.none)
         func linear(_ byte: UInt8) -> Double {
             let v = Double(byte) / 255
             return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
@@ -187,9 +206,7 @@ struct LensFlareRenderProbes {
     private func ghostSpread(_ lens: Lens) throws -> (across: Double, up: Double) {
         let on = try #require(OllinApp.image(of: FlareProbe.make(
             occluder: .none, flare: true, sourceSize: 0.004, amount: 0.12, lens: lens), frame: 1))
-        let off = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: .none, flare: false, sourceSize: 0.004, lens: lens), frame: 1))
-        let a = pixels(of: on), b = pixels(of: off)
+        let a = pixels(of: on), b = try unflared(.none)
         var total = 0.0, sumX = 0.0, sumY = 0.0, sumXX = 0.0, sumYY = 0.0
         for y in 0..<on.height {
             for x in 0..<on.width {
@@ -327,9 +344,7 @@ struct LensFlareRenderProbes {
                      Lens.heliar.multicoated()] {
             let on = try #require(OllinApp.image(of: FlareProbe.make(
                 occluder: .none, flare: true, sourceSize: 0.02, amount: 2, lens: lens), frame: 1))
-            let off = try #require(OllinApp.image(of: FlareProbe.make(
-                occluder: .none, flare: false, sourceSize: 0.02, lens: lens), frame: 1))
-            let a = pixels(of: on), b = pixels(of: off)
+            let a = pixels(of: on), b = try unflared(.none)
             for i in stride(from: 0, to: a.count, by: 4) {
                 // Two levels of room for the present pass's dither.
                 var drop = 0
@@ -343,12 +358,6 @@ struct LensFlareRenderProbes {
         #expect(darkened == 0, "\(darkened) pixels are darker with the flare on, by up to \(worst) levels")
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theFlareAddsLightToTheFrame() throws {
-        let added = try flareAdded(.none)
-        #expect(added > 4, "the flare should be plainly there: \(added)")
-    }
-
     /// The design rule that separates a flare from a sticker: its strength
     /// follows the source's *visible* area, so an occluder fades it rather than
     /// switching it off. Half a source gives roughly half a flare.
@@ -357,7 +366,7 @@ struct LensFlareRenderProbes {
         let clear = try flareAdded(.none)
         let half = try flareAdded(.half)
         let hidden = try flareAdded(.full)
-        #expect(clear > 4, "nothing to fade: \(clear)")
+        #expect(clear > 4, "nothing to fade, the flare should be plainly there: \(clear)")
         #expect(half < clear * 0.85, "a covered source should dim the flare: \(half) of \(clear)")
         #expect(half > clear * 0.15, "it should fade, not switch off: \(half) of \(clear)")
         #expect(hidden < clear * 0.1, "a hidden source should leave almost none: \(hidden)")
@@ -370,12 +379,14 @@ struct LensFlareRenderProbes {
     /// the ghosts deliberately do not.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theStarLandsOnTheSourceItself() throws {
-        let without = try flareAdded(.none, star: 0, near: true)
+        let starless = try flareRises(.none, star: 0)
+        let without = starless.near
         let with = try flareAdded(.none, star: 1, near: true)
         #expect(with > without + 3,
                 "the star should light the source's own patch: \(without) without, \(with) with")
-        // And it is separable: turning it off leaves the chain across the frame.
-        let chain = try flareAdded(.none, star: 0)
+        // And it is separable: turning it off leaves the chain across the frame (read
+        // off the same starless pair, over the whole picture).
+        let chain = starless.whole
         #expect(chain > 4, "the ghosts should still be there without a star: \(chain)")
     }
 
@@ -409,12 +420,11 @@ struct LensFlareRenderProbes {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func askingForNoFlareLeavesTheFrameUntouched() throws {
-        let never = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none, flare: false),
-                                                frame: 1))
+        let never = try unflared(.none)
         let cancelled = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none,
                                                                        flare: true, cancel: true),
                                                     frame: 1))
-        #expect(pixels(of: never) == pixels(of: cancelled))
+        #expect(never == pixels(of: cancelled))
     }
 }
 

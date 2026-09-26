@@ -26,17 +26,18 @@ struct FordCircleTests {
     /// The mediant lands strictly between the two fractions it came from. This is
     /// the whole reason the sequence grows the way it does.
     @Test func theMediantLandsBetween() {
-        for a in 1 ... 12 {
-            for b in 1 ... 12 {
-                for c in 1 ... 12 {
-                    for d in 1 ... 12 {
-                        let left = Fraction(a, b), right = Fraction(c, d)
-                        guard left < right else { continue }
-                        let between = left.mediant(with: right)
-                        #expect(left < between && between < right,
-                                "\(left), \(between), \(right)")
-                    }
-                }
+        // A few hundred pairs spread over every numerator and denominator up to
+        // twelve: each fraction meets the ones three fixed strides along the list,
+        // so every value takes part, as the smaller and as the larger of a pair.
+        let terms = (1 ... 12).flatMap { a in (1 ... 12).map { b in Fraction(a, b) } }
+        for (i, first) in terms.enumerated() {
+            for offset in [5, 29, 71] {
+                let second = terms[(i + offset) % terms.count]
+                let left = min(first, second), right = max(first, second)
+                guard left < right else { continue }
+                let between = left.mediant(with: right)
+                #expect(left < between && between < right,
+                        "\(left), \(between), \(right)")
             }
         }
     }

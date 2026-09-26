@@ -125,19 +125,6 @@ struct ColorLUTTests {
 
     // MARK: The read
 
-    @Test func anIdentityCubeReturnsWhatItIsGiven() {
-        let identity = ColorLUT.identity(size: 17)
-        var rng = Coin(seed: 7)
-        for _ in 0 ..< 200 {
-            let c = Color(red: rng.next(), green: rng.next(), blue: rng.next(), alpha: 0.5)
-            let out = identity.color(for: c)
-            #expect(abs(out.red - c.red) < 1e-6)
-            #expect(abs(out.green - c.green) < 1e-6)
-            #expect(abs(out.blue - c.blue) < 1e-6)
-            #expect(out.alpha == 0.5)
-        }
-    }
-
     @Test func theCornersAreExact() {
         func look(_ c: Color) -> Color {
             Color(red: 0.1 + 0.8 * c.green * c.green, green: 0.9 - 0.7 * c.blue, blue: c.red * 0.5 + 0.2 * c.green)
@@ -184,7 +171,10 @@ struct ColorLUTTests {
     }
 
     /// Four corners with weights that sum to one reproduce any affine map
-    /// exactly, everywhere in the cell, not only at the nodes.
+    /// exactly, everywhere in the cell, not only at the nodes. The identity
+    /// (`ColorLUT.identity`, which returns what it is given) is the plainest such
+    /// map and reads through the same table. Alpha rides through the read
+    /// untouched.
     @Test func anAffineTableIsReproducedBetweenTheNodes() {
         func affine(_ c: Color) -> Color {
             Color(red: 0.2 + 0.5 * c.red - 0.1 * c.blue, green: 0.1 + 0.8 * c.green + 0.05 * c.red,
@@ -193,11 +183,12 @@ struct ColorLUTTests {
         let lut = ColorLUT(size: 5, affine)
         var rng = Coin(seed: 11)
         for _ in 0 ..< 200 {
-            let c = Color(red: rng.next(), green: rng.next(), blue: rng.next())
+            let c = Color(red: rng.next(), green: rng.next(), blue: rng.next(), alpha: 0.5)
             let expected = affine(c), got = lut.color(for: c)
             #expect(abs(got.red - expected.red) < 1e-6)
             #expect(abs(got.green - expected.green) < 1e-6)
             #expect(abs(got.blue - expected.blue) < 1e-6)
+            #expect(got.alpha == 0.5)
         }
     }
 

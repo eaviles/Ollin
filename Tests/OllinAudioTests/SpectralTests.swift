@@ -184,29 +184,27 @@ import Testing
         #expect(out.left[0..<latency].allSatisfy { $0 == 0 }, "nothing before the first frame is ready")
     }
 
+    /// A shifted tone lands where the ratio says, and at the level it had: the
+    /// shape of each partial is carried whole to its new place, so the level is
+    /// kept to within the small loss the fraction of a bin costs. Both are read
+    /// off the same renders.
     @Test func aShiftedToneLandsWhereTheRatioSaysItShould() {
         let tone = sine(440, seconds: 1.5)
         let held = Int(rate * 0.5)...
+        let before = decibels(tone[held])
+        func levelSurvives(_ out: (left: [Float], right: [Float]), _ semitones: Double) {
+            let after = decibels(out.left[held])
+            #expect(abs(after - before) < 1.5, "\(semitones) semitones: \(after) dB against \(before)")
+        }
         for semitones in [12.0, -12.0, 7.0, 3.5, -5.0] {
             let expected = 440 * pow(2, semitones / 12)
             let out = run(shift(semitones), left: tone, right: tone)
             let found = peakFrequency(out.left[held])
             #expect(abs(found - expected) < expected * 0.005,
                     "\(semitones) semitones puts 440 at \(found), not \(expected)")
+            if abs(semitones) == 12 { levelSurvives(out, semitones) }
         }
-    }
-
-    @Test func theLevelSurvivesTheShift() {
-        // The shape of each partial is carried whole to its new place, so the
-        // level is kept to within the small loss the fraction of a bin costs.
-        let tone = sine(440, seconds: 1.5)
-        let held = Int(rate * 0.5)...
-        let before = decibels(tone[held])
-        for semitones in [12.0, -12.0, 5.0] {
-            let out = run(shift(semitones), left: tone, right: tone)
-            let after = decibels(out.left[held])
-            #expect(abs(after - before) < 1.5, "\(semitones) semitones: \(after) dB against \(before)")
-        }
+        levelSurvives(run(shift(5), left: tone, right: tone), 5)
     }
 
     @Test func aHarmonizerKeepsTheOriginalUnderneath() {

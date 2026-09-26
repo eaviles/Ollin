@@ -355,23 +355,21 @@ struct ComplexTextRenderProbes {
     /// emoji leaves ink at all (it used to leave none, because it has no outline
     /// to fill), and that ink is not the fill color (it is a picture carrying its
     /// own colors, not a shape taking the current paint).
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func anEmojiDrawsItsOwnColors() throws {
-        let image = try #require(OllinApp.image(of: EmojiProbe.make("👋"), frame: 1))
-        let counts = EmojiProbe.tally(image)
-        #expect(counts.ink > 500, "the emoji left \(counts.ink) marked pixels")
-        #expect(counts.colored > counts.ink / 4,
-                "only \(counts.colored) of \(counts.ink) marked pixels carry their own color")
-    }
-
+    ///
     /// The volume path draws it too. A distance field holds one channel, so a
     /// picture cannot ride the atlas; it goes down the image path beside the atlas
-    /// quads instead, and the two modes have to agree.
+    /// quads instead, and the two modes have to agree. The outline frame is
+    /// rendered once and read for both claims.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theAtlasPathDrawsAnEmojiToo() throws {
+    func anEmojiDrawsItsOwnColors() throws {
         let outline = try #require(OllinApp.image(of: EmojiProbe.make("👋"), frame: 1))
+        let a = EmojiProbe.tally(outline)
+        #expect(a.ink > 500, "the emoji left \(a.ink) marked pixels")
+        #expect(a.colored > a.ink / 4,
+                "only \(a.colored) of \(a.ink) marked pixels carry their own color")
+
         let atlas = try #require(OllinApp.image(of: EmojiProbe.make("👋", mode: .atlas), frame: 1))
-        let a = EmojiProbe.tally(outline), b = EmojiProbe.tally(atlas)
+        let b = EmojiProbe.tally(atlas)
         #expect(b.ink > 500)
         #expect(a.ink == b.ink)
         #expect(a.colored == b.colored)

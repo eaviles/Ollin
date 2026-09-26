@@ -267,8 +267,10 @@ struct SurfaceSamplingTests {
     /// asked for.
     @Test func alignmentPointsTheMeshUpTheNormal() {
         var rng = SplitMix64(seed: 21)
+        // The axes cover the upright and upside-down fold; any other direction
+        // takes the one general branch, so a handful of random ones is enough.
         var normals: [Vector3] = [.unitY, -.unitY, .unitX, -.unitX, .unitZ, -.unitZ]
-        for _ in 0 ..< 200 {
+        for _ in 0 ..< 20 {
             let v = Vector3(Double.random(in: -1 ... 1, using: &rng),
                             Double.random(in: -1 ... 1, using: &rng),
                             Double.random(in: -1 ... 1, using: &rng))

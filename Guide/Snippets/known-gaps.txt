@@ -333,8 +333,8 @@ f51397a62393  Guide/31-SharingAndPerforming.md:1026  cannot find '$radius' in sc
 2c5147e37054  Guide/31-SharingAndPerforming.md:1043  cannot find '$radius' in scope
 f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1062  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
-e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
-ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
+e82d53d3f23f  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
+faad68aa444e  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
 62db79c04335  Guide/31-SharingAndPerforming.md:333  cannot find 'ring' in scope
 2c3bd34c44a7  Guide/31-SharingAndPerforming.md:414  cannot find 'press' in scope
 09209a305964  Guide/31-SharingAndPerforming.md:435  cannot find 'sculpture' in scope

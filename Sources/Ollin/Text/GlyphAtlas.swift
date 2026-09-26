@@ -84,6 +84,14 @@ final class GlyphAtlas: @unchecked Sendable {
     /// it only briefly; the one-time rasterize-and-pack runs under it during warm-up.
     private let lock = OSAllocatedUnfairLock()
 
+    /// How many glyphs the page holds a slot for, across every face on it. The
+    /// page is rebuilt when it fills, so this is bounded by what one page fits
+    /// however much text a long run feeds it (`SoakTests`).
+    var glyphCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return fonts.reduce(0) { $0 + $1.slots.count }
+    }
+
     // MARK: Slots
 
     /// The atlas slot for `glyph` in `font`, built on first use. `nil` for a glyph
@@ -91,14 +99,19 @@ final class GlyphAtlas: @unchecked Sendable {
     /// page is full after a rebuild) — the caller simply draws nothing for it.
     func slot(for glyph: CGGlyph, font: CTFont) -> Slot? {
         lock.lock(); defer { lock.unlock() }
-        for index in fonts.indices where CFEqual(fonts[index].font, font) {
-            if let hit = fonts[index].slots[glyph] { return hit }
-            let made = make(glyph, font)
-            fonts[index].slots[glyph] = made
-            return made
+        if let index = fonts.firstIndex(where: { CFEqual($0.font, font) }),
+           let hit = fonts[index].slots[glyph] {
+            return hit
         }
+        // Making a slot can fill the page and rebuild it, which forgets every
+        // face on it, so the face is found again afterwards: an index taken
+        // before would point past the end of the emptied list.
         let made = make(glyph, font)
-        fonts.append((font: font, slots: [glyph: made]))
+        if let index = fonts.firstIndex(where: { CFEqual($0.font, font) }) {
+            fonts[index].slots[glyph] = made
+        } else {
+            fonts.append((font: font, slots: [glyph: made]))
+        }
         return made
     }
 

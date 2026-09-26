@@ -139,13 +139,17 @@ struct WidgetTimelineTests {
 
     // MARK: The clock
 
-    @Test("The clock a picture is drawn on is the time of day")
+    @Test("The clock a picture is drawn on is the time of day, and each picture gets its own sketch and exactly one draw")
     func theClockIsTheTimeOfDay() {
         ClockProbe.reset()
         let frames = OllinApp.widgetFrames(from: moment(hour: 14, minute: 7)) { ClockProbe() }
 
         #expect(frames.count == 4)
         #expect(ClockProbe.log.count == 4)
+        // Nothing carries from one picture to the next, which is what makes a
+        // moment draw the same whether it opened a pass or closed one.
+        #expect(ClockProbe.setups == 4)
+        #expect(ClockProbe.draws == 4)
         // Seconds since midnight, so `time / 3600` is the hour and the piece
         // reads the same at this moment tomorrow.
         #expect(ClockProbe.log[0].time == 14 * 3600)
@@ -157,31 +161,14 @@ struct WidgetTimelineTests {
         #expect(frames[0].date == moment(hour: 14, minute: 0))
     }
 
-    @Test("Each picture gets its own sketch and exactly one draw")
-    func onePictureIsOneDraw() {
-        ClockProbe.reset()
-        _ = OllinApp.widgetFrames(from: moment(hour: 3, minute: 20)) { ClockProbe() }
-
-        // Nothing carries from one picture to the next, which is what makes a
-        // moment draw the same whether it opened a pass or closed one.
-        #expect(ClockProbe.setups == 4)
-        #expect(ClockProbe.draws == 4)
-    }
-
-    @Test("A caller can ask for fewer pictures than the sketch declared")
-    func theCountCanBeOverridden() {
-        ClockProbe.reset()
-        // The snapshot the system asks for before anything else is one picture.
-        let frames = OllinApp.widgetFrames(from: moment(hour: 8, minute: 0), count: 1) { ClockProbe() }
-        #expect(frames.count == 1)
-        #expect(ClockProbe.draws == 1)
-    }
-
-    @Test("A picture is drawn at the size that was asked for")
+    @Test("A caller can ask for fewer pictures than the sketch declared, drawn at the size that was asked for")
     func theSizeIsTheWidgetSize() {
         ClockProbe.reset()
+        // The snapshot the system asks for before anything else is one picture.
         let frames = OllinApp.widgetFrames(from: moment(hour: 8, minute: 0),
                                            size: .size(120, 80), count: 1) { ClockProbe() }
+        #expect(frames.count == 1)
+        #expect(ClockProbe.draws == 1)
         let image = try! #require(frames.first?.image)
         #expect(image.width == 120)
         #expect(image.height == 80)

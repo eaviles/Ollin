@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Metal
 import Testing
 import simd
 @testable import Ollin
@@ -42,6 +43,32 @@ struct ComputeTests {
         #expect(MetalRenderer.fnv1a("abc") == MetalRenderer.fnv1a("abc"))
         #expect(MetalRenderer.fnv1a("abc") != MetalRenderer.fnv1a("abd"))
         #expect(MetalRenderer.fnv1a("") == 0xcbf29ce484222325)   // the FNV offset basis
+    }
+
+    /// An inline kernel that includes no file is found by its own text, so only
+    /// its first dispatch composes the shader library around it. The test for
+    /// that key used to be the kernel's path, which an inline kernel always has
+    /// (the Swift file it was written in), so no kernel ever matched and every
+    /// dispatch of every frame composed the whole library and hashed it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anInlineKernelIsFoundWithoutComposingTheLibrary() throws {
+        let inline = ComputeKernel(entry: "ollin_quick_probe", """
+            kernel void ollin_quick_probe(uint i [[thread_position_in_grid]]) {}
+            """)
+        let including = ComputeKernel(entry: "ollin_quick_probe", """
+            #include "neighbor.metal"
+            kernel void ollin_quick_probe(uint i [[thread_position_in_grid]]) {}
+            """)
+        #expect(inline.quickHash != nil)
+        #expect(including.quickHash == nil, "an included file can change under the kernel")
+
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device))
+        let first = try renderer.computePipeline(for: inline)
+        #expect(renderer.quickComputePipelines.count == 1)
+        let again = try renderer.computePipeline(for: inline)
+        #expect(first === again)
     }
 
     @Test func pingPongSwaps() {
@@ -90,7 +117,8 @@ struct ComputeTests {
 
     @Test func kernelLoadsFromFile() throws {
         // A kernel can live in a .metal file (editor highlighting / checking) and load
-        // by path; a missing file fails gracefully (nil, never a trap).
+        // by path. A missing file throws a `FileError` naming it, which
+        // `FileErrorTests.aMissingFileIsMissingAndNamesItsPath` pins.
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-test-\(UInt64(abs(42))).metal")
         try "kernel void k(uint i [[thread_position_in_grid]]) { /* FILE_MARKER */ }"
@@ -100,10 +128,6 @@ struct ComputeTests {
         let loaded = try? ComputeKernel(entry: "k", contentsOf: url)
         #expect(loaded?.entry == "k")
         #expect(loaded?.source.contains("FILE_MARKER") == true)
-
-        let missing = try? ComputeKernel(entry: "k",
-            contentsOf: url.appendingPathExtension("nope"))
-        #expect(missing == nil)
     }
 
     // MARK: Metal-gated — the real kernel compiles, dispatches, and renders
@@ -120,15 +144,6 @@ struct ComputeTests {
             return
         }
         #expect(maxLuma(of: image) > 0.2)   // the scattered dots lit the canvas
-    }
-
-    /// A no-op sketch (no compute, no particles) still renders — the compute path
-    /// adds nothing to a frame that records no dispatches (the empty fast path).
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func emptyFrameStillRenders() throws {
-        let sketch = ComputeProbeSketch()
-        sketch.drawDots = false
-        #expect(OllinApp.image(of: sketch, frame: 1) != nil)
     }
 
     /// A compute kernel writes a `ComputeTexture` (one value per texel from `gid`);
@@ -206,11 +221,11 @@ struct ComputeTests {
 }
 
 /// A minimal sketch driving the compute path: a kernel scatters white dots, drawn
-/// as particles. Set `drawDots = false` to skip the particle work (the empty-frame
-/// case).
+/// as particles. The canvas is small because the dots scatter over whatever
+/// resolution it has and the test reads only the brightest pixel.
 @MainActor
 private final class ComputeProbeSketch: Sketch {
-    var drawDots = true
+    override var canvasSize: CanvasSize { .square(64) }
     private lazy var dots = Particles(count: 10_000, step: """
         position = float2(hash12(float2(float(id), 1.0)),
                           hash12(float2(float(id), 2.0))) * u.resolution;
@@ -221,7 +236,6 @@ private final class ComputeProbeSketch: Sketch {
 
     override func draw() {
         background(.black)
-        guard drawDots else { return }
         stepParticles(dots)
         drawParticles(dots)
     }
@@ -231,6 +245,8 @@ private final class ComputeProbeSketch: Sketch {
 /// 8×8 single-channel float texture, which `textureKernelWrites` reads back.
 @MainActor
 private final class TextureProbeSketch: Sketch {
+    // The dispatch covers the texture, not the canvas, so the canvas stays small.
+    override var canvasSize: CanvasSize { .square(64) }
     let field = ComputeTexture(width: 8, height: 8, format: .r32Float)
     private let seed = ComputeKernel(entry: "probe_seed", """
         kernel void probe_seed(texture2d<float, access::write> dst [[texture(0)]],
@@ -251,6 +267,8 @@ private final class TextureProbeSketch: Sketch {
 /// reads back.
 @MainActor
 private final class SimProbeSketch: Sketch {
+    // The steps cover the field, not the canvas, so the canvas stays small.
+    override var canvasSize: CanvasSize { .square(64) }
     let sim = Simulation(width: 4, height: 4, step: "result = value + float4(1.0);")
     override func draw() {
         background(.black)

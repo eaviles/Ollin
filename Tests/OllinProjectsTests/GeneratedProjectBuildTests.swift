@@ -40,13 +40,69 @@ private let xcodegenInstalled: Bool = {
 @Suite("Generated projects build", .serialized, .timeLimit(.minutes(15)))
 struct GeneratedProjectBuildTests {
 
-    @Test("Every template compiles against the framework as it stands")
-    func everyTemplateCompiles() throws {
+    /// Every sketch the generator writes has to compile against the framework as
+    /// it stands, whichever path wrote it: the templates, the three shapes of an
+    /// imported-shader sketch, a sketch written from a scene, and the 3D
+    /// combinations the rules allow. The four families share one package and one
+    /// build, so the framework is resolved and planned once rather than once per
+    /// family; each family writes targets of its own names, and a failure is
+    /// reported against the family whose file the compiler named.
+    ///
+    /// An imported shader comes in three shapes: one draws the shader straight,
+    /// one draws a layer for it to read, one draws a pair. Only the first was
+    /// ever checked by hand.
+    ///
+    /// A sketch written from a scene calls into the 3D surface by name: a camera
+    /// initializer, six light factories, the transform stack, and the scene
+    /// loader. Every one of those labels has to be the one the framework takes,
+    /// and only a compiler can say so. Three of them were wrong the first time.
+    @Test("Every template, imported-shader shape, scene sketch, and allowed 3D combination compiles against the framework as it stands")
+    func everyGeneratedSketchCompiles() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let root = try Self.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
 
+        let groups = try [
+            Self.stageTemplates(in: root, repository: repository),
+            Self.stageImportedShaders(in: root, repository: repository),
+            Self.stageScenes(in: root, repository: repository),
+            Self.stageThreeDRecipes(in: root, repository: repository),
+        ]
+        let resources = groups.reduce(into: [String: [String]]()) { all, group in
+            all.merge(group.resources) { first, _ in first }
+        }
+        try Self.writeManifest(named: "SketchCheck", targets: groups.flatMap(\.targets), at: root,
+                               repository: repository, resources: resources)
+        let result = try Self.swiftBuild(in: root)
+
+        // One build, so what says which family broke is the error lines: each
+        // names the file it is in, and every file sits in its own target's
+        // folder. Only a failed build is read this way, since a warning names
+        // its file too.
+        let errorLines: [Substring] = result.succeeded
+            ? [] : result.output.split(separator: "\n").filter { $0.contains("error") }
+        func broke(_ group: SketchGroup) -> Bool {
+            group.targets.contains { target in errorLines.contains { $0.contains("Sources/\(target)/") } }
+        }
+        for group in groups {
+            #expect(!broke(group), "\(group.failure):\n\(result.output)")
+        }
+        #expect(result.succeeded || groups.contains(where: broke),
+                "the sketch package did not build, and no error names a file in \(groups.map(\.name).joined(separator: ", ")):\n\(result.output)")
+    }
+
+    /// One family of sketches staged into the shared package: what it is called,
+    /// what its failure says, the targets it wrote, and the resources they declare.
+    struct SketchGroup {
+        let name: String
+        let failure: String
         var targets: [String] = []
+        var resources: [String: [String]] = [:]
+    }
+
+    /// Every template, one target each.
+    static func stageTemplates(in root: URL, repository: URL) throws -> SketchGroup {
+        var group = SketchGroup(name: "the templates", failure: "a template stopped compiling")
         for (index, template) in ProjectTemplate.all.enumerated() {
             let target = "Template\(index)"
             let request = ProjectRequest(
@@ -60,23 +116,14 @@ struct GeneratedProjectBuildTests {
             try ProjectGenerator.sketchSource(request)
                 .write(to: directory.appendingPathComponent("Sketch.swift"),
                        atomically: true, encoding: .utf8)
-            targets.append(target)
+            group.targets.append(target)
         }
-
-        try Self.writeManifest(named: "TemplateCheck", targets: targets, at: root, repository: repository)
-        let result = try Self.swiftBuild(in: root)
-        #expect(result.succeeded, "a template stopped compiling:\n\(result.output)")
+        return group
     }
 
-    /// A sketch written around an imported shader has to compile too, and the
-    /// three shapes differ: one draws the shader straight, one draws a layer for
-    /// it to read, one draws a pair. Only the first was ever checked by hand.
-    @Test("Every shape of imported-shader sketch compiles")
-    func everyImportedShaderSketchCompiles() throws {
-        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
-        let root = try Self.temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-
+    /// The three shapes of an imported-shader sketch, each with its shader file.
+    static func stageImportedShaders(in root: URL, repository: URL) throws -> SketchGroup {
+        var group = SketchGroup(name: "the imported shaders", failure: "an imported-shader sketch stopped compiling")
         let shaders = [
             "Generated": "void mainImage(out vec4 c, in vec2 f) { c = vec4(f / iResolution.xy, 0.0, 1.0); }",
             "Filtered": "void mainImage(out vec4 c, in vec2 f) { c = texture(iChannel0, f / iResolution.xy); }",
@@ -88,8 +135,6 @@ struct GeneratedProjectBuildTests {
             """,
         ]
 
-        var targets: [String] = []
-        var resources: [String: [String]] = [:]
         for target in shaders.keys.sorted() {
             let translated = ShaderImport.translate(glsl: shaders[target]!)
             let request = ProjectRequest(
@@ -109,26 +154,16 @@ struct GeneratedProjectBuildTests {
             try translated.metalSource
                 .write(to: directory.appendingPathComponent(shaderFile),
                        atomically: true, encoding: .utf8)
-            resources[target] = [shaderFile]
-            targets.append(target)
+            group.resources[target] = [shaderFile]
+            group.targets.append(target)
         }
-
-        try Self.writeManifest(named: "ShaderImportCheck", targets: targets, at: root,
-                               repository: repository, resources: resources)
-        let result = try Self.swiftBuild(in: root)
-        #expect(result.succeeded, "an imported-shader sketch stopped compiling:\n\(result.output)")
+        return group
     }
 
-    /// A sketch written from a scene calls into the 3D surface by name: a camera
-    /// initializer, six light factories, the transform stack, and the scene
-    /// loader. Every one of those labels has to be the one the framework takes,
-    /// and only a compiler can say so. Three of them were wrong the first time.
-    @Test("A sketch written from a scene compiles, with every light kind in it")
-    func aSceneSketchCompiles() throws {
-        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
-        let root = try Self.temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-
+    /// A scene with every light kind and every move the emitter can print, and a
+    /// scene of lights and a camera alone.
+    static func stageScenes(in root: URL, repository: URL) throws -> SketchGroup {
+        var group = SketchGroup(name: "the scene sketches", failure: "a sketch written from a scene stopped compiling")
         let everyLight: [ImportedLight] = [
             ImportedLight(kind: .directional, colorHex: 0xFFFFFF, intensity: 1,
                           direction: ImportedVector(-0.3, -0.8, -0.5)),
@@ -184,8 +219,6 @@ struct GeneratedProjectBuildTests {
                 lights: [everyLight[0]]),
         ]
 
-        var targets: [String] = []
-        var resources: [String: [String]] = [:]
         for target in cases.keys.sorted() {
             let scene = cases[target]!
             let request = ProjectRequest(name: target, importedScene: scene,
@@ -201,43 +234,46 @@ struct GeneratedProjectBuildTests {
             // file. Its contents never matter to the compiler.
             if let file = scene.resourceFileName {
                 try Data().write(to: directory.appendingPathComponent(file))
-                resources[target] = [file]
+                group.resources[target] = [file]
             }
-            targets.append(target)
+            group.targets.append(target)
         }
-
-        try Self.writeManifest(named: "SceneImportCheck", targets: targets, at: root,
-                               repository: repository, resources: resources)
-        let result = try Self.swiftBuild(in: root)
-        #expect(result.succeeded, "a sketch written from a scene stopped compiling:\n\(result.output)")
+        return group
     }
 
-    @Test("Every 3D combination the rules allow compiles")
-    func everyValidThreeDRecipeCompiles() throws {
-        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
-        let root = try Self.temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
+    /// The 3D combinations the rules allow, chosen so every line the recipe
+    /// writer can print is compiled in every place it can land.
+    ///
+    /// The rules say which combinations are offered; this says what they are
+    /// made of is real. A rule that permits something that does not compile is
+    /// the worst kind of wrong here, because the window would offer it.
+    static func stageThreeDRecipes(in root: URL, repository: URL) throws -> SketchGroup {
+        var group = SketchGroup(name: "the 3D combinations", failure: "a 3D combination does not compile")
 
-        // The rules say which combinations are offered; this says they are all
-        // real. A rule that permits something that does not compile is the worst
-        // kind of wrong here, because the window would offer it.
+        // An extra writes the same lines whatever the geometry and the finish
+        // under it, so each extra is compiled on its own once, on the one pair
+        // that takes every extra (a solid mesh, physically based). Then all of
+        // them at once on every pair the rules allow, which is the combination
+        // most likely to interact badly and the one that reaches every finish
+        // and every geometry.
         var recipes: [ThreeDRecipe] = []
         let extras = ThreeDOption.inSlot(.extra).map(\.id)
+        func add(_ geometry: ThreeDOption, _ finish: ThreeDOption, _ subset: Set<String>) {
+            var recipe = ThreeDRecipe(geometry: geometry, finish: finish, extras: subset)
+            guard recipe.objection(to: finish) == nil else { return }
+            recipe.settle()
+            if !recipes.contains(recipe) { recipes.append(recipe) }
+        }
+        for extra in extras {
+            add(.mesh, .physicallyBased, [extra])
+        }
         for geometry in ThreeDOption.inSlot(.geometry) {
             for finish in ThreeDOption.inSlot(.finish) {
-                // Each extra on its own, and then all of them at once, which is
-                // the combination most likely to interact badly.
-                for subset in extras.map({ Set([$0]) }) + [Set(extras)] {
-                    var recipe = ThreeDRecipe(geometry: geometry, finish: finish, extras: subset)
-                    guard recipe.objection(to: finish) == nil else { continue }
-                    recipe.settle()
-                    if !recipes.contains(recipe) { recipes.append(recipe) }
-                }
+                add(geometry, finish, Set(extras))
             }
         }
         #expect(recipes.count > 12, "the sweep collapsed to \(recipes.count) recipes")
 
-        var targets: [String] = []
         for (index, recipe) in recipes.enumerated() {
             let target = "Recipe\(index)"
             let request = ProjectRequest(
@@ -249,12 +285,9 @@ struct GeneratedProjectBuildTests {
             try ProjectGenerator.sketchSource(request)
                 .write(to: directory.appendingPathComponent("Sketch.swift"),
                        atomically: true, encoding: .utf8)
-            targets.append(target)
+            group.targets.append(target)
         }
-
-        try Self.writeManifest(named: "RecipeCheck", targets: targets, at: root, repository: repository)
-        let result = try Self.swiftBuild(in: root)
-        #expect(result.succeeded, "a 3D combination does not compile:\n\(result.output)")
+        return group
     }
 
     /// An extension package is offered on four seams, and each one is a different

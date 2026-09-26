@@ -184,6 +184,11 @@ struct ScanGraphTests {
         return result
     }
 
+    /// The default sweep, run once and read by every test that asks for it unchanged.
+    /// A sweep is deterministic and costs a hundred and ten frames of fitting, so three
+    /// tests running their own copy measured the same thing three times.
+    nonisolated(unsafe) static let defaultSweep = ScanGraphTests.sweep()
+
     // MARK: - Keeping the moments
 
     @Test func aSweepKeepsKeyframesAsTheCameraMoves() {
@@ -197,9 +202,11 @@ struct ScanGraphTests {
         }
     }
 
-    @Test func aKeyframeKeepsWhatItSawInItsOwnSpace() {
-        let run = ScanGraphTests.sweep(frames: 40, laps: 0.35)
-        guard let first = run.scan.keyframes.first else { return }
+    @Test func aKeyframeKeepsWhatItSawInItsOwnSpace() throws {
+        // Only the first keyframe is read, and the opening frame always makes one, so a
+        // few frames stand in for a long sweep.
+        let run = ScanGraphTests.sweep(frames: 4, laps: 0.035)
+        let first = try #require(run.scan.keyframes.first)
         #expect(!first.cloud.isEmpty)
         // Camera space, so what it saw sits in front of the lens, not out in the room.
         let middle = first.cloud.points.reduce(Vector3.zero) { $0 + $1.position }
@@ -219,9 +226,13 @@ struct ScanGraphTests {
         #expect(run.scan.loops.isEmpty)
     }
 
+    /// A full lap is recognized where it began. With the frame-by-frame fit running as
+    /// well, the two corrections together still leave the scan better than either alone.
     @Test func aSweepThatComesBackRecognizesWhereItStarted() {
-        let run = ScanGraphTests.sweep()
+        let run = ScanGraphTests.defaultSweep
         #expect(!run.loops.isEmpty, "walked a full lap and recognized nothing")
+        #expect(run.worstAfter < run.worstBefore,
+                "worst pose error went from \(run.worstBefore) to \(run.worstAfter)")
         guard let first = run.loops.first else { return }
         #expect(first.recognized < first.keyframe)
         #expect(first.overlap >= run.scan.settings.minOverlap)
@@ -277,13 +288,6 @@ struct ScanGraphTests {
         #expect(lost.loops.isEmpty, "believed a match from further away than it can see")
     }
 
-    @Test func aPlaceOutOfReachIsNeverLookedFor() {
-        var short = ScanGraph.Settings()
-        short.searchRadius = 0
-        let run = ScanGraphTests.sweep(settings: short)
-        #expect(run.loops.isEmpty)
-    }
-
     // MARK: - What recognizing it does
 
     /// The frame-by-frame fit is switched off here, so what is measured is the
@@ -300,17 +304,10 @@ struct ScanGraphTests {
                 "worst pose error went from \(run.worstBefore) to \(run.worstAfter)")
     }
 
-    /// With the frame-by-frame fit running as well, the two together still leave the scan
-    /// better than either alone.
-    @Test func theTwoCorrectionsWorkTogether() {
-        let run = ScanGraphTests.sweep()
-        #expect(!run.loops.isEmpty)
-        #expect(run.worstAfter < run.worstBefore,
-                "worst pose error went from \(run.worstBefore) to \(run.worstAfter)")
-    }
-
+    /// The bent sweep is also the check that a place out of reach is never looked for:
+    /// with the search radius at zero, no loop is ever found.
     @Test func aStraightenedScanHasThinnerWalls() {
-        let closing = ScanGraphTests.sweep()
+        let closing = ScanGraphTests.defaultSweep
         var open = ScanGraph.Settings()
         open.searchRadius = 0                              // nothing is ever near enough
         let bent = ScanGraphTests.sweep(settings: open)
@@ -358,7 +355,8 @@ struct ScanGraphTests {
     // MARK: - Housekeeping
 
     @Test func resettingAScanForgetsEverything() {
-        var run = ScanGraphTests.sweep(frames: 60, laps: 0.5)
+        // A reset only needs something to forget, so a few frames will do.
+        var run = ScanGraphTests.sweep(frames: 4, laps: 0.035)
         #expect(!run.scan.isEmpty)
         run.scan.reset()
         #expect(run.scan.isEmpty)

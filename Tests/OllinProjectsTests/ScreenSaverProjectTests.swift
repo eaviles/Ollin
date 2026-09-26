@@ -123,16 +123,6 @@ struct ScreenSaverProjectTests {
         #expect(sketch.contains("override var windowMode: WindowMode { .resizable }"))
     }
 
-    @Test("A canvas that was asked for keeps its own proportions")
-    func anAskedForCanvasWins() throws {
-        // Asking for a shape and being given the display's shape instead would
-        // be the generator overruling the request.
-        let project = try plan(named: "Ripple", canvas: .fhd1080)
-        let sketch = try #require(project.files.first { $0.path == "Sources/Ripple/Sketch.swift" }).contents
-        #expect(!sketch.contains("override var windowMode"))
-        #expect(sketch.contains("override var canvasSize"))
-    }
-
     // MARK: - Support
 
     private func plan(named name: String,

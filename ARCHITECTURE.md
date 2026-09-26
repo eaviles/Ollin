@@ -4795,7 +4795,7 @@ no order**: each `Shader*.metal` opens with an `#include` naming what it needs,
 lands ahead of whatever named it whatever order the roots arrive in.
 `shaderSourceNames` is therefore a plain alphabetical set, and adding a segment
 is a name in that list plus its declarations in the file.
-`theBuiltInSegmentsCompileInAnyOrder` compiles six orders on the device and is
+`theBuiltInSegmentsCompileInAnyOrder` compiles five orders on the device and is
 verified red by sabotage. Writing it found two dependencies nobody had ever
 declared, because the old fixed order happened to satisfy them: `Shader3D` uses
 `ShaderShapes`' `diskCoverage`, and `ShaderPathTrace` uses `ShaderIBL`'s

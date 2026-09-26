@@ -22,8 +22,9 @@ struct DampedSpringTests {
 
     @Test func stepsComposeExactly() {
         // The update is the exact solution, so many small steps equal one big
-        // step: frame rate cannot change where a spring ends up.
-        for bounce in [-0.5, 0.0, 0.35, 0.8] {
+        // step: frame rate cannot change where a spring ends up. One bounce per
+        // branch of the update: over-damped, critical, and under-damped.
+        for bounce in [-0.5, 0.0, 0.8] {
             var fine = DampedSpring(value: 0.0, duration: 0.4, bounce: bounce)
             var coarse = fine
             fine.target = 100; coarse.target = 100

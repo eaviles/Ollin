@@ -186,6 +186,9 @@ struct AudioAnalyzerTests {
     /// detection within a chunk or two of the kick itself, and nothing fires
     /// between kicks. This is the scenario that used to false-fire: steady
     /// tones between the kicks let the old relative-only threshold collapse.
+    ///
+    /// And the same band ten times quieter yields the same beats at the same
+    /// positions: the log-compressed flux makes the threshold gain-invariant.
     @Test func kicksOverSteadyTonesDetectCleanly() {
         let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
         let beats = Self.beatPositions(of: Self.band(seconds: 6), analyzer: analyzer)
@@ -196,6 +199,10 @@ struct AudioAnalyzerTests {
                 .truncatingRemainder(dividingBy: 0.5)
             #expect(sinceKick < 0.06)
         }
+
+        let quiet = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
+        let quietBeats = Self.beatPositions(of: Self.band(seconds: 6, gain: 0.1), analyzer: quiet)
+        #expect(beats == quietBeats)
     }
 
     /// Steady material (held tones, no transients) must not accumulate beats.
@@ -209,17 +216,6 @@ struct AudioAnalyzerTests {
         if let first = beats.first {
             #expect(Double(first) / Self.sampleRate < 0.1)
         }
-    }
-
-    /// The same band ten times quieter yields the same beats at the same
-    /// positions: the log-compressed flux makes the threshold gain-invariant.
-    @Test func beatsAreVolumeInvariant() {
-        let loud = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
-        let quiet = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
-        let loudBeats = Self.beatPositions(of: Self.band(seconds: 6), analyzer: loud)
-        let quietBeats = Self.beatPositions(of: Self.band(seconds: 6, gain: 0.1), analyzer: quiet)
-
-        #expect(loudBeats == quietBeats)
     }
 
     /// `timeSinceBeat` runs on the sample clock: after a beat, feeding k more

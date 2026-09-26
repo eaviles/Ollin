@@ -95,6 +95,8 @@ struct PursuitTests {
         }
     }
 
+    /// Each runner covers the distance the law predicts. The (4, 1) case is the one
+    /// everyone quotes: four dogs on a square each run exactly one side of it.
     @Test func theRunnersCoverTheDistanceTheLawPredicts() {
         let center = Vector2(0, 0)
         for (sides, chasing) in [(3, 1), (4, 1), (5, 1), (6, 1), (8, 3), (10, 1)] {
@@ -108,16 +110,6 @@ struct PursuitTests {
             #expect(abs(made - want) / want < 0.005,
                     "\(sides) sides chasing \(chasing) ran \(made), the law says \(want)")
         }
-    }
-
-    @Test func theSquareIsTheCaseEveryoneQuotes() {
-        // Four dogs on a square each run exactly one side of it.
-        let side = 300.0
-        let chase = Pursuit.ring(sides: 4, center: .zero, radius: side / 2.0.squareRoot(),
-                                 stepSize: 0.02)
-        chase.run()
-        #expect(abs(chase.runners[0].distanceTraveled - side) / side < 0.005,
-                "ran \(chase.runners[0].distanceTraveled) where the side is \(side)")
     }
 
     @Test func aFixedStepStopsShortOfTheCenter() {

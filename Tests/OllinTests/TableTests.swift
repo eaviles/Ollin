@@ -226,18 +226,12 @@ struct TableTests {
     // MARK: Refusing
 
     /// Nothing to read yields nothing, rather than an empty table that looks
-    /// like a file that parsed.
+    /// like a file that parsed. Blank lines alone are nothing to read too. (An
+    /// empty text and a missing file throw the `FileError` that `FileErrorTests`
+    /// pins, and bytes that are not text are among the inputs
+    /// `DataFileMutationTests.tables` reads without a trap.)
     @Test func nothingToReadYieldsNothing() {
-        #expect((try? Table(text: "")) == nil)
         #expect((try? Table(text: "\n\n\n")) == nil)
-        #expect((try? Table(contentsOfFile: "/nowhere/at/all.csv")) == nil)
-    }
-
-    /// Bytes that aren't text fail quietly rather than trapping.
-    @Test func bytesThatAreNotTextFailQuietly() {
-        // A lone continuation byte is not valid UTF-8; the fallback encoding
-        // still reads it as text, so what matters is that neither traps.
-        _ = try? Table(data: Data([0x80, 0x81, 0x82]))
     }
 
     // MARK: Reading a real file

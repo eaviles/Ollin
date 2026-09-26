@@ -45,6 +45,10 @@ struct TimerTests {
 
     /// And each beat lands on its own second, within the one frame it takes to
     /// notice the crossing.
+    ///
+    /// Beat zero included: the clock starts at zero and zero is a multiple of
+    /// everything, so the first frame answers true. A sketch that fills a grid on
+    /// the beat wants its first row without waiting a whole period for it.
     @Test(arguments: [15.0, 60.0, 144.0])
     func eachBeatLandsOnItsSecond(_ fps: Double) {
         let hits = beats(seconds: 10, fps: fps) { $0.every(2) }
@@ -52,14 +56,6 @@ struct TimerTests {
             let due = Double(k) * 2
             #expect(t >= due && t - due < 1 / fps, "beat \(k) at \(t), due \(due)")
         }
-    }
-
-    /// The clock starts at zero and zero is a multiple of everything, so the
-    /// first frame answers true. A sketch that fills a grid on the beat wants
-    /// its first row without waiting a whole period for it.
-    @Test func theFirstFrameIsABeat() {
-        let hits = beats(seconds: 1, fps: 60) { $0.every(5) }
-        #expect(hits == [0])
     }
 
     /// The live window's first frame has no previous frame to measure against,

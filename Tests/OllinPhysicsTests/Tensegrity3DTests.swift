@@ -76,6 +76,9 @@ struct Tensegrity3DTests {
         let ratios = zip(built.cableLengths, built.cableRestLengths).map { $0 / $1 }
         #expect(ratios.allSatisfy { $0 > 0.99 && $0 < 1.05 })
         #expect(!built.isAwake, "and it has settled")
+        // Once settled it is asleep, and waking it wakes it.
+        built.wake()
+        #expect(built.isAwake)
     }
 
     @Test func aTowerTiesItsLevelsWhereTheyMeet() throws {
@@ -259,13 +262,5 @@ struct Tensegrity3DTests {
         #expect(built.cableLengths.count == 9)
         run(world, seconds: 2)
         #expect(built.top > 1)
-    }
-
-    @Test func aTensegrityGoesToSleepOnceItHasSettled() throws {
-        let (world, built) = try standing(Tensegrity.icosahedron(strutLength: 1.6))
-        run(world, seconds: 4)
-        #expect(!built.isAwake)
-        built.wake()
-        #expect(built.isAwake)
     }
 }

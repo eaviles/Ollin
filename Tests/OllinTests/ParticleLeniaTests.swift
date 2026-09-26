@@ -105,7 +105,7 @@ struct ParticleLeniaTests {
         // population: the opening disc is already close to the size these forces settle
         // at, so the outline barely moves in either run and reads almost the same. What
         // changes is how tightly packed it is inside.
-        let held = try measure { _ in }
+        let held = try heldBaseline()
         let inert = try measure { $0.sigmaG = 500 }
         #expect(held.nearest < inert.nearest * 0.88,
                 "nearest neighbor \(held.nearest) with growth against \(inert.nearest) without")
@@ -117,22 +117,10 @@ struct ParticleLeniaTests {
         // opinion at very short range: the kernel is a ring, so two particles in the same
         // place add almost nothing to each other's field and growth is perfectly happy to
         // let them coincide.
-        let held = try measure { _ in }
+        let held = try heldBaseline()
         let heaped = try measure { $0.cRep = 0 }
         #expect(heaped.nearest < held.nearest * 0.6,
                 "nearest neighbor \(heaped.nearest) with no repulsion against \(held.nearest) with it")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func everyPositionStaysFinite() throws {
-        // The step divides by a distance and by two widths, and a single non-finite
-        // position would spread through the next step's field to every neighbor.
-        let probe = LeniaProbe()
-        probe.steps = 90
-        _ = OllinApp.image(of: probe, frame: probe.steps)
-        let final = try #require(probe.finalPositions)
-        #expect(final.count == LeniaProbe.population)
-        #expect(final.allSatisfy { $0.x.isFinite && $0.y.isFinite })
     }
 
     // MARK: Harness
@@ -143,11 +131,27 @@ struct ParticleLeniaTests {
         var nearest: Double
     }
 
+    /// The run with every term working, which both counterfactuals above compare
+    /// against. It is the same run for both, so it is run once for the suite.
+    private static var held: Shape?
+
+    private func heldBaseline() throws -> Shape {
+        if let shape = Self.held { return shape }
+        let shape = try measure { _ in }
+        Self.held = shape
+        return shape
+    }
+
+    /// Every run measured here is also held to staying finite and whole: the step
+    /// divides by a distance and by two widths, and a single non-finite position
+    /// would spread through the next step's field to every neighbor.
     private func measure(_ configure: @escaping (ParticleLenia) -> Void) throws -> Shape {
         let probe = LeniaProbe()
         probe.configure = configure
         _ = OllinApp.image(of: probe, frame: probe.steps)
         let final = try #require(probe.finalPositions)
+        #expect(final.count == LeniaProbe.population)
+        #expect(final.allSatisfy { $0.x.isFinite && $0.y.isFinite })
         var nearest = 0.0
         for i in final.indices {
             var best = Double.infinity

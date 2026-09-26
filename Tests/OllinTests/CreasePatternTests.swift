@@ -402,7 +402,6 @@ struct CreasePatternTests {
             let claimed = sheet(mid).poissonRatio
             #expect(claimed < 0)
             #expect(abs(measured - claimed) < 1e-4 * abs(claimed))
-            #expect(abs(claimed * (1 / claimed) - 1) < 1e-12)
         }
     }
 
@@ -494,10 +493,8 @@ struct CreasePatternTests {
     @Test func openAllTheWayHalfTheSheetIsHole() {
         var lattice = RotatingSquares(columns: 6, rows: 6, side: 1)
         lattice.opening = 1
+        // A spacing of root two against a side of one: each square fills half its cell.
         #expect(abs(lattice.spacing - 2.0.squareRoot()) < 1e-12)
-        let solid = Double(lattice.columns * lattice.rows) * lattice.side * lattice.side
-        let covered = Double(lattice.columns * lattice.rows) * lattice.spacing * lattice.spacing
-        #expect(abs(solid / covered - 0.5) < 1e-12)
     }
 
     /// The cuts are the grid lines with a thread of material left at both ends,

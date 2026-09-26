@@ -125,15 +125,11 @@ struct MQTTWireTests {
         #expect(second.packet == .ping)
     }
 
-    /// Random bytes are refused without trapping: either an error or a request
-    /// for more, never a crash and never a packet claimed out of noise.
+    /// Malformed bytes are refused without trapping: either an error or a
+    /// request for more, never a crash and never a packet claimed out of noise.
+    /// The seeded sweep over every packet kind lives in `MQTTMutationTests`;
+    /// these are the refusals pinned by hand.
     @Test func noiseIsRefusedWithoutTrapping() {
-        var generator = SystemRandomNumberGenerator()
-        for _ in 0..<2000 {
-            let count = Int.random(in: 1...40, using: &generator)
-            let bytes = Data((0..<count).map { _ in UInt8.random(in: 0...255, using: &generator) })
-            _ = try? MQTTPacket.decode(from: bytes)
-        }
         // A body that claims more than it carries is incomplete, and a body that
         // is shorter than its own fields says so.
         #expect(try! MQTTPacket.decode(from: Data([0x30, 0x20, 0x00, 0x01, 0x61])) == nil)

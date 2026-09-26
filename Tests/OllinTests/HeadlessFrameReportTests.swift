@@ -54,11 +54,11 @@ struct HeadlessFrameReportTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aSequenceReportsEveryRenderedFrameWarmupIncluded() throws {
+    func aSequenceReportsItsWrittenFramesAndNotAPlainWarmup() throws {
         let directory = ollinTempPath("ollin-report-sequence")
         defer { try? FileManager.default.removeItem(atPath: directory) }
         let sketch = Dots()
-        OllinApp.exportSequence(sketch, to: directory, frames: 6, fps: 30, skipSeconds: 2.0 / 30)
+        try OllinApp.exportSequence(sketch, to: directory, frames: 6, fps: 30, skipSeconds: 2.0 / 30)
         // A warmup frame of a plain sketch is stepped rather than rendered, so
         // only the six written frames report.
         #expect(sketch.report.infos.count == 6)
@@ -73,7 +73,7 @@ struct HeadlessFrameReportTests {
         let directory = ollinTempPath("ollin-report-pile")
         defer { try? FileManager.default.removeItem(atPath: directory) }
         let sketch = Pile()
-        OllinApp.exportSequence(sketch, to: directory, frames: 3, fps: 30, skipSeconds: 2.0 / 30)
+        try OllinApp.exportSequence(sketch, to: directory, frames: 3, fps: 30, skipSeconds: 2.0 / 30)
         #expect(sketch.report.infos.count == 5)
 
         let still = Pile()

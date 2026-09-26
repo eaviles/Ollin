@@ -19,12 +19,19 @@ import Testing
 @MainActor
 struct InstancedRayTracingTests {
 
+    /// Each reading already taken this run, by the one setting that changes the probe's
+    /// picture, so a control several claims read against (the plain box above all) is
+    /// traced once rather than once per claim.
+    private static var mirrored: [InstancedReflectionProbe.How: Double] = [:]
+    private static var shadowed: [InstancedShadowProbe.How: Double] = [:]
+
     /// Mean red-minus-blue over the band of the mirror floor holding the red box's
     /// reflected image. The box itself sits above that band, so its raster pixels stay
     /// out of the reading. Red minus blue rather than plain brightness: the night
     /// environment the floor otherwise mirrors is cool and near neutral, so the
     /// difference rises only where the red body actually reaches the mirror.
     private func mirroredBoxMean(_ how: InstancedReflectionProbe.How) throws -> Double {
+        if let known = Self.mirrored[how] { return known }
         let scene = InstancedReflectionProbe.make(how)
         let image = try #require(OllinApp.image(of: scene, frame: 1))
         let w = image.width, h = image.height
@@ -40,7 +47,9 @@ struct InstancedRayTracingTests {
                 sum += Int(data[i]) - Int(data[i + 2]); count += 1
             }
         }
-        return Double(sum) / Double(count)
+        let mean = Double(sum) / Double(count)
+        Self.mirrored[how] = mean
+        return mean
     }
 
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
@@ -66,6 +75,7 @@ struct InstancedRayTracingTests {
     /// Mean brightness of the floor patch the box's shadow falls on. The light stands
     /// off to one side, so the patch holds shadow rather than the box itself.
     private func shadowedFloorMean(_ how: InstancedShadowProbe.How) throws -> Double {
+        if let known = Self.shadowed[how] { return known }
         let scene = InstancedShadowProbe.make(how)
         let image = try #require(OllinApp.image(of: scene, frame: 1))
         let w = image.width, h = image.height
@@ -80,7 +90,9 @@ struct InstancedRayTracingTests {
                 sum += Int(data[(y * w + x) * 4]); count += 1
             }
         }
-        return Double(sum) / Double(count)
+        let mean = Double(sum) / Double(count)
+        Self.shadowed[how] = mean
+        return mean
     }
 
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
@@ -508,9 +520,22 @@ private final class InstancedReflectionProbe: Sketch {
 @MainActor
 struct InstancedPathTracedTests {
 
-    /// Red minus blue over the mirror band, rendered through the path-traced export.
-    private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
-                                 samples: Int = 24) throws -> Double {
+    /// What changes a traced probe frame: the arrangement and the sample count (the
+    /// filter is always off here).
+    private struct TraceKey: Hashable {
+        var how: InstancedReflectionProbe.How
+        var samples: Int
+    }
+
+    /// The traced frames already made this run, as RGBA bytes. Every reading here is a
+    /// band of one of them, so a frame read twice (the mirror band and the box's body,
+    /// or a control several claims share) is traced once.
+    private static var traced: [TraceKey: (data: [UInt8], width: Int, height: Int)] = [:]
+
+    private func tracedFrame(_ how: InstancedReflectionProbe.How,
+                             samples: Int) throws -> (data: [UInt8], width: Int, height: Int) {
+        let key = TraceKey(how: how, samples: samples)
+        if let known = Self.traced[key] { return known }
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
@@ -520,6 +545,15 @@ struct InstancedPathTracedTests {
                             bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let frame = (data: data, width: w, height: h)
+        Self.traced[key] = frame
+        return frame
+    }
+
+    /// Red minus blue over the mirror band, rendered through the path-traced export.
+    private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
+                                 samples: Int = 24) throws -> Double {
+        let (data, w, h) = try tracedFrame(how, samples: samples)
         var sum = 0, count = 0
         for y in (h * 58 / 100)..<(h * 74 / 100) {
             for x in (w * 40 / 100)..<(w * 60 / 100) {
@@ -534,15 +568,7 @@ struct InstancedPathTracedTests {
     /// traced layer does not carry has to keep rastering, or it leaves a hole.
     private func boxBodyRed(_ how: InstancedReflectionProbe.How,
                             samples: Int = 24) throws -> Double {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
-        defer { OllinApp.pathTracedExport = nil }
-        let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let (data, w, h) = try tracedFrame(how, samples: samples)
         var sum = 0, count = 0
         for y in (h * 35 / 100)..<(h * 41 / 100) {
             for x in (w * 44 / 100)..<(w * 56 / 100) {
@@ -615,10 +641,29 @@ struct InstancedPathTracedTests {
 @MainActor
 struct InstancedPathTracedMaterialTests {
 
+    /// What changes a traced pair: the arrangement and the sample count.
+    private struct PairKey: Hashable {
+        var how: InstancedMaterialProbe.How
+        var samples: Int
+    }
+
+    /// The readings already traced this run, so the plain pair both tests read against
+    /// is traced once.
+    private static var readings: [PairKey: (glass: Double, opaque: Double)] = [:]
+
     /// Red minus green over one box's body: high where the red wall shows through,
     /// near zero on a white surface.
     private func bodies(_ how: InstancedMaterialProbe.How,
                         samples: Int = 32) throws -> (glass: Double, opaque: Double) {
+        let key = PairKey(how: how, samples: samples)
+        if let known = Self.readings[key] { return known }
+        let reading = try tracedBodies(how, samples: samples)
+        Self.readings[key] = reading
+        return reading
+    }
+
+    private func tracedBodies(_ how: InstancedMaterialProbe.How,
+                              samples: Int) throws -> (glass: Double, opaque: Double) {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: InstancedMaterialProbe.make(how), frame: 1))

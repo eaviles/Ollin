@@ -261,6 +261,11 @@ struct DrainageTests {
         }
         #expect(drawn.count == expected)
         #expect(total > expected)                      // meetings are shared, so drawn twice
+
+        // And at any threshold, low or high, every river drawn carries at least it.
+        for other in [10.0, 60, 150, 400] {
+            for river in water.rivers(minFlow: other, in: frame) { #expect(river.flow >= other) }
+        }
     }
 
     /// Strahler's rule, checked where it is decided: a source is 1, two equal
@@ -300,21 +305,6 @@ struct DrainageTests {
         }
         #expect(meetings > 0)                                   // the rule was exercised
         #expect(increments == meetings)
-    }
-
-    /// Raising the threshold can only take rivers away, never add them, since
-    /// it is a test each cell passes or fails on its own.
-    @Test func aHigherThresholdKeepsFewerCells() {
-        let frame = Rectangle(x: 0, y: 0, width: 100, height: 100)
-        let water = Heightfield.diamondSquare(size: 33, seed: 8).drainage()
-        var previous = Int.max
-        for threshold in [10.0, 25, 60, 150, 400] {
-            let cells = water.flow.filter { $0 >= threshold }.count
-            #expect(cells <= previous)
-            previous = cells
-            let rivers = water.rivers(minFlow: threshold, in: frame)
-            for river in rivers { #expect(river.flow >= threshold) }
-        }
     }
 
     /// The smallest and flattest fields answer sensibly rather than crashing.

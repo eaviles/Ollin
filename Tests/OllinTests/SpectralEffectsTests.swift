@@ -14,6 +14,17 @@ import Testing
 @MainActor
 struct SpectralEffectsTests {
 
+    /// Each paint-mix probe frame, rendered once and read by every test that asks
+    /// for it (the mode is the only thing that changes the picture).
+    private static var paintMixFrames: [PaintMixProbe.Mode: CGImage] = [:]
+
+    private func paintMix(_ mode: PaintMixProbe.Mode) throws -> CGImage {
+        if let image = Self.paintMixFrames[mode] { return image }
+        let image = try #require(OllinApp.image(of: PaintMixProbe.make(mode), frame: 1))
+        Self.paintMixFrames[mode] = image
+        return image
+    }
+
     // MARK: Identities
 
     /// Zero amount is an exact identity for both spectral filters: the parameter is
@@ -32,8 +43,8 @@ struct SpectralEffectsTests {
     /// nothing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theBasePassesThroughOutsideTheAuxCoverage() throws {
-        let plain = try #require(OllinApp.image(of: PaintMixProbe.make(.plainBase), frame: 1))
-        let mixed = try #require(OllinApp.image(of: PaintMixProbe.make(.yellowDisc), frame: 1))
+        let plain = try paintMix(.plainBase)
+        let mixed = try paintMix(.yellowDisc)
         // The disc sits at (128, 128) with radius 60; (30, 30) is well clear of it.
         let before = pixel(plain, x: 30, y: 30)
         let after = pixel(mixed, x: 30, y: 30)
@@ -45,8 +56,8 @@ struct SpectralEffectsTests {
     /// must come back as themselves at any tap count.
     @Test(.enabled(if: Snapshot.hasMetal))
     func equalLayersSurviveAPaintMix() throws {
-        let plain = try #require(OllinApp.image(of: PaintMixProbe.make(.plainBase), frame: 1))
-        let mixed = try #require(OllinApp.image(of: PaintMixProbe.make(.equalAux), frame: 1))
+        let plain = try paintMix(.plainBase)
+        let mixed = try paintMix(.equalAux)
         #expect(maxDifference(plain, mixed) <= 2)
     }
 
@@ -56,7 +67,7 @@ struct SpectralEffectsTests {
     /// where they overlap, matching the CPU's `.paint` mixing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func yellowOverBlueMeetsInGreen() throws {
-        let image = try #require(OllinApp.image(of: PaintMixProbe.make(.yellowDisc), frame: 1))
+        let image = try paintMix(.yellowDisc)
         let (r, g, b) = pixel(image, x: 128, y: 128)
         #expect(g > r, "mix center read (\(r), \(g), \(b))")
         #expect(g > b, "mix center read (\(r), \(g), \(b))")

@@ -284,8 +284,10 @@ import Ollin
         capture.start()
         defer { capture.stop(); capture.frameTap = nil }
 
+        // The probe comes before the clock: a starved task can wake past its
+        // own deadline having never looked once.
         let deadline = Date().addingTimeInterval(6)
-        while Date() < deadline, counter.count == 0 {
+        while counter.count == 0, Date() < deadline {
             try? await Task.sleep(for: .milliseconds(50))
         }
         #expect(counter.count > 0, "the analysis tap received no frames")

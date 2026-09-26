@@ -606,19 +606,24 @@ enum GuideFigures {
                     if echo { print("guide-figures: \(relative)") }
                     switch SketchLoader(sketchPath: sourcePath).load() {
                     case .success(let sketch):
-                        if directive.gif {
-                            let frames = max(1, Int((directive.duration * directive.fps).rounded()))
-                            OllinApp.exportGIF(sketch, to: writePath, frames: frames,
-                                               fps: FrameRate(directive.fps), width: directive.width)
-                        } else if directive.png {
-                            OllinApp.export(sketch, to: writePath, frame: directive.frame)
-                        } else {
-                            exportJPEG(sketch, to: writePath, frame: directive.frame)
+                        var failure: (any Error)?
+                        do {
+                            if directive.gif {
+                                let frames = max(1, Int((directive.duration * directive.fps).rounded()))
+                                try OllinApp.exportGIF(sketch, to: writePath, frames: frames,
+                                                       fps: FrameRate(directive.fps), width: directive.width)
+                            } else if directive.png {
+                                try OllinApp.export(sketch, to: writePath, frame: directive.frame)
+                            } else {
+                                exportJPEG(sketch, to: writePath, frame: directive.frame)
+                            }
+                        } catch {
+                            failure = error
                         }
-                        if FileManager.default.fileExists(atPath: writePath) {
+                        if failure == nil, FileManager.default.fileExists(atPath: writePath) {
                             ok = true
                         } else {
-                            log = "no output written"
+                            log = failure.map { "\($0)" } ?? "no output written"
                         }
                         // The dark pass: flip the figure's own parameter and render the
                         // same instance again, beside the light image.
@@ -634,7 +639,11 @@ enum GuideFigures {
                                     : directory + "/.new-" + darkName
                                 parameter.param.restore(.boolean(true))
                                 if directive.png {
-                                    OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
+                                    do {
+                                        try OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
+                                    } catch {
+                                        warn("\(relative): the dark pass: \(error)")
+                                    }
                                 } else {
                                     exportJPEG(sketch, to: darkWrite, frame: directive.frame)
                                 }

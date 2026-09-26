@@ -173,6 +173,10 @@ struct Vehicle3DTests {
 
     // MARK: Steering
 
+    /// Steering curves the path where the straight twin holds its line. And the
+    /// sign, pinned: a vehicle facing its local +z has its right hand at -x, so
+    /// positive steering takes it that way. (Turning in a circle from the
+    /// origin never brings x back past zero, so the sign holds at any length.)
     @Test func steeringCurvesThePath() throws {
         let (straightWorld, straight) = standing()
         straight.throttle = 1
@@ -187,20 +191,10 @@ struct Vehicle3DTests {
         #expect(abs(turning.body.position.x) > 5)
         // It is pointing somewhere else too, not just sliding sideways.
         #expect(turning.forward.z < 0.9)
-    }
-
-    /// The sign, pinned: a vehicle facing its local +z has its right hand at
-    /// -x, so positive steering takes it that way.
-    @Test func positiveSteeringTurnsToTheVehiclesRight() throws {
-        let (world, car) = standing()
-        car.throttle = 1
-        car.steering = 1
-        run(world, steps: 300)
-
-        #expect(car.body.position.x < -2)
-        #expect(car.wheels[0].steerAngle < 0)   // the solver measures left-positive
-        #expect(!car.wheels[2].steers)
-        #expect(abs(car.wheels[2].steerAngle) < 1e-6)
+        #expect(turning.body.position.x < -2)
+        #expect(turning.wheels[0].steerAngle < 0)   // the solver measures left-positive
+        #expect(!turning.wheels[2].steers)
+        #expect(abs(turning.wheels[2].steerAngle) < 1e-6)
     }
 
     // MARK: Stopping

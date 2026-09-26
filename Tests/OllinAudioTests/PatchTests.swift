@@ -137,9 +137,19 @@ import Testing
         #expect(refused == patch)
     }
 
-    /// The constraint this whole design is shaped by.
+    /// The constraint this whole design is shaped by, held here for every
+    /// source a note can carry: a note rides the lock-free event ring, so it
+    /// must stay something that can be copied a word at a time. A sampler's
+    /// recordings, a wavetable's table, and a cloud's sound are far too large
+    /// to travel inside a note, so what travels is only their settings; a
+    /// driven voice still rides the ring like the rest.
     @Test func apatchStillRidesTheLockFreeRing() {
         #expect(_isPOD(Patch.self))
+        #expect(_isPOD(Sampler.self))
+        #expect(_isPOD(WavetableScan.self))
+        #expect(_isPOD(GrainCloud.self))
+        #expect(_isPOD(BowedString.self))
+        #expect(_isPOD(BlownTube.self))
         #expect(_isPOD(VoiceSource.self))
         #expect(_isPOD(Voice.self))
         #expect(_isPOD(SynthEvent.self))
@@ -204,15 +214,13 @@ import Testing
                 "a whole ratio should sit on the harmonics far more than 3.5 does")
     }
 
+    /// The twin, the same sine with no feedback and no harmonics above it, is
+    /// the plain carrier `modulationPutsHarmonicsIntoASine` measures.
     @Test func feedbackBrightensASine() {
         let f0 = 220.0
-        let plain = Self.harmonics(
-            Self.render(Voice(patch: .tone(.sine), envelope: .organ),
-                        pitch: Self.midi(of: f0), seconds: 0.9), of: f0)
         let buzzing = Self.harmonics(
             Self.render(Voice(patch: Patch.tone(.sine).fedBack(0.6), envelope: .organ),
                         pitch: Self.midi(of: f0), seconds: 0.9), of: f0)
-        #expect(plain.dropFirst().allSatisfy { $0 < 0.02 })
         #expect(buzzing.dropFirst().contains { $0 > 0.15 }, "feedback added nothing: \(buzzing)")
     }
 

@@ -427,7 +427,7 @@ struct MeshLoaderTests {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usdc")
         defer { try? FileManager.default.removeItem(at: url) }
-        do { try asset.export(to: url) } catch { return }   // soft-skip on export failure
+        try asset.export(to: url)
 
         let mesh = try? Mesh(contentsOf: url)
         #expect(mesh != nil)

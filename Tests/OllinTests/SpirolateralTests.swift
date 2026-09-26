@@ -23,7 +23,9 @@ struct SpirolateralTests {
     /// walker through `order` turns of `tau / k`, so the runs close as soon as a
     /// whole number of them makes a whole number of laps, which is `k / gcd`. When
     /// `k` divides `order` the run leaves the walker facing the way it set off, so
-    /// no number of runs ever closes it.
+    /// no number of runs ever closes it. A quarter turn (`k` of 4, the default turn)
+    /// is the classic, and there the rule reads: every order closes except the
+    /// multiples of four.
     @Test func theClosingCountIsTheOneTheTurnDictates() {
         for k in 2 ... 12 {
             for order in 1 ... 24 {
@@ -39,18 +41,6 @@ struct SpirolateralTests {
                 }
             }
         }
-    }
-
-    /// A quarter turn is the classic, and there the rule reads: every order closes
-    /// except the multiples of four.
-    @Test func aQuarterTurnClosesEveryOrderButTheMultiplesOfFour() {
-        for order in 1 ... 20 {
-            let figure = Spirolateral(order: order, step: 5)
-            #expect(figure.closes == (order % 4 != 0), "order \(order)")
-        }
-        #expect(Spirolateral(order: 7, step: 5).repeats == 4)
-        #expect(Spirolateral(order: 6, step: 5).repeats == 2)
-        #expect(Spirolateral(order: 8, step: 5).repeats == 1)
     }
 
     /// A walk that says it comes home has to come home. Measured on the walk

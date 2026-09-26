@@ -59,10 +59,11 @@ struct EasingTests {
         #expect(Easing.easeInQuad(2) == 1)   // clamped to 1, then squared
     }
 
-    @Test(arguments: Array(stride(from: 0.0, through: 1.0, by: 0.1)))
-    func friendlyAliasesMatchCubic(_ t: Double) {
-        #expect(Easing.easeIn(t) == Easing.easeInCubic(t))
-        #expect(Easing.easeOut(t) == Easing.easeOutCubic(t))
-        #expect(Easing.easeInOut(t) == Easing.easeInOutCubic(t))
+    /// The friendly aliases are the cubic curves themselves, the same built-in value
+    /// rather than a copy, so one identity check covers every input.
+    @Test func friendlyAliasesMatchCubic() {
+        #expect(Easing.easeIn == Easing.easeInCubic)
+        #expect(Easing.easeOut == Easing.easeOutCubic)
+        #expect(Easing.easeInOut == Easing.easeInOutCubic)
     }
 }

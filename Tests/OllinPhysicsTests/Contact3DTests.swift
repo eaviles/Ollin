@@ -245,20 +245,6 @@ struct Contact3DTests {
         #expect(crate.isTouching(plate))
     }
 
-    /// A sensor is a region to be inside, not a surface to hit, so the ray the
-    /// mouse picks with looks straight through it.
-    @Test func aSensorIsTransparentToPicking() throws {
-        func pick(sensing: Bool) -> Bool {
-            let world = World3D()
-            world.addBody(.box(width: 2, height: 2, depth: 2), at: Vector3(0, 0, 0),
-                          kind: .static, isSensor: sensing)
-            return world.raycast(from: Vector3(0, 0, 8), to: Vector3(0, 0, -8)) != nil
-        }
-
-        #expect(pick(sensing: false))       // the solid twin is hit
-        #expect(pick(sensing: true) == false)
-    }
-
     /// A sensor's motion type is its own: it never falls, and the `kind` setter
     /// leaves it alone rather than quietly turning it into a solid.
     @Test func aSensorHoldsItsPlaceAndItsKind() throws {

@@ -54,7 +54,7 @@ struct SwarmTests {
         // Both are measured as how far an agent sits from its *nearest* neighbor,
         // which is the thing each behavior is actually about, and which works on a
         // uniformly seeded torus where distance from the center would not move.
-        let coasting = try nearestNeighborDistance { _ in }
+        let coasting = nearestNeighborDistance(of: try coastingSwarm())
         let gathered = try nearestNeighborDistance { $0.cohesion = 2 }
         let spread = try nearestNeighborDistance {
             $0.separation = 2; $0.separationRadius = 60
@@ -70,7 +70,7 @@ struct SwarmTests {
         let target = Vector2(300, 300)
         let seeking = try meanDistanceToTarget(target) { $0.seek = 2 }
         let fleeing = try meanDistanceToTarget(target) { $0.flee = 2 }
-        let coasting = try meanDistanceToTarget(target) { _ in }
+        let coasting = meanDistance(try coastingSwarm(), to: target)
         #expect(seeking < coasting * 0.8, "seek closed to \(seeking) vs \(coasting) coasting")
         #expect(fleeing > coasting, "flee opened to \(fleeing) vs \(coasting) coasting")
     }
@@ -172,10 +172,26 @@ struct SwarmTests {
         meanDistance(try probeSwarm(target: target, configure: configure), to: target)
     }
 
+    /// The swarm with every behavior off, after the default 120 frames. With every
+    /// weight at zero the target is never read (only seek, flee, and arrive read
+    /// it), so this one run is the coasting baseline for every test that compares
+    /// against one, and it is run once for the suite.
+    private static var coasting: [OllinParticle]?
+
+    private func coastingSwarm() throws -> [OllinParticle] {
+        if let run = Self.coasting { return run }
+        let run = try probeSwarm(target: .zero) { _ in }
+        Self.coasting = run
+        return run
+    }
+
     /// Mean distance from an agent to its nearest neighbor: how crowded the swarm
     /// is, which is what cohesion tightens and separation opens.
     private func nearestNeighborDistance(_ configure: @escaping (Swarm) -> Void) throws -> Double {
-        let ps = try probeSwarm(target: .zero, configure: configure)
+        nearestNeighborDistance(of: try probeSwarm(target: .zero, configure: configure))
+    }
+
+    private func nearestNeighborDistance(of ps: [OllinParticle]) -> Double {
         guard ps.count > 1 else { return 0 }
         var total = 0.0
         for (i, p) in ps.enumerated() {

@@ -114,7 +114,7 @@ struct TransparentOutputTests {
         let path = NSTemporaryDirectory() + "ollin-transparent-\(UUID().uuidString).png"
         defer { try? FileManager.default.removeItem(atPath: path) }
         let sketch = Disk()
-        OllinApp.export(sketch, to: path)
+        try OllinApp.export(sketch, to: path)
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         let read = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
         let bytes = try #require(FrameGrabTests.rgba(of: read))
@@ -131,7 +131,7 @@ struct TransparentOutputTests {
     @Test func theGIFKeepsAHardTransparency() throws {
         let path = NSTemporaryDirectory() + "ollin-transparent-\(UUID().uuidString).gif"
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportGIF(Disk(), to: path, frames: 2, fps: 10)
+        try OllinApp.exportGIF(Disk(), to: path, frames: 2, fps: 10)
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         let read = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
         let bytes = try #require(FrameGrabTests.rgba(of: read))
@@ -179,7 +179,7 @@ struct TransparentOutputTests {
     private func clip(codec: VideoCodec, ext: String) throws -> (corner: (r: Int, a: Int), center: (r: Int, a: Int)) {
         let path = NSTemporaryDirectory() + "ollin-transparent-\(UUID().uuidString).\(ext)"
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportVideo(Disk(), to: path, frames: 3, fps: 30, codec: codec)
+        try OllinApp.exportVideo(Disk(), to: path, frames: 3, fps: 30, codec: codec)
         let frame = try firstFrame(of: path)
         let at = { (x: Int, y: Int) -> (r: Int, a: Int) in
             let i = y * frame.bytesPerRow + x * 4

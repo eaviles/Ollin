@@ -266,11 +266,8 @@ struct FirmataTests {
         // sketch is.
         fake.send([0xF0, 0x79, 2, 5, 0xF7])
         _ = try await waitFor { fake.heard([0xF0, 0x7A, 50, 0, 0xF7]) ? true : nil }
-        let again = fake.received()
-        #expect(again.contains(where: { _ in true }))
         for expected in [[0xF4, 4, 0x00], [0xF4, 13, 0x01], [0xC1, 1], [0xD0, 1]] as [[UInt8]] {
             #expect(fake.heard(expected), "\(expected) was not restated")
         }
-        _ = again
     }
 }

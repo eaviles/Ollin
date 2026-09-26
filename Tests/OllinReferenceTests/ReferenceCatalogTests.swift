@@ -53,10 +53,15 @@ struct ReferenceCatalogTests {
 
     // MARK: - Against the repository
 
+    /// Every page under this checkout's `Docs/`, read once for the suite.
+    static let checkoutPages: [ReferencePage]? = repositoryRoot().map {
+        ReferenceLibrary.pages(inDocs: $0.appendingPathComponent("Docs"))
+    }
+
     @Test("Every page in this checkout is found, titled, and filed")
     func realPages() throws {
         let root = try #require(Self.repositoryRoot())
-        let pages = ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs"))
+        let pages = try #require(Self.checkoutPages)
 
         #expect(pages.count > 100, "found \(pages.count) pages")
         #expect(!pages.contains { $0.topic.hasSuffix("README") }, "a folder listing is not a page")
@@ -75,8 +80,7 @@ struct ReferenceCatalogTests {
 
     @Test("Every page in this checkout renders as terminal text")
     func realPagesRender() throws {
-        let root = try #require(Self.repositoryRoot())
-        let pages = ReferenceLibrary.pages(inDocs: root.appendingPathComponent("Docs"))
+        let pages = try #require(Self.checkoutPages)
         let style = TerminalStyle(color: false, width: 92)
 
         for page in pages {

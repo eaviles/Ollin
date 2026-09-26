@@ -184,7 +184,7 @@ struct USDXformTests {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        try #require(FileManager.default.fileExists(atPath: url.path), "the example stage is missing")
 
         let parsed = try USDStage.load(contentsOf: url)
         let court = try #require(parsed.prims.first)

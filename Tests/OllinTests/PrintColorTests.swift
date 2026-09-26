@@ -53,8 +53,9 @@ struct PrintColorTests {
         let reloaded = try? ICCProfile(data: ICCProfile.sRGB.data)
         #expect(reloaded == ICCProfile.sRGB)
         #expect(reloaded?.name == ICCProfile.sRGB.name)
+        // Long enough to be a header, and still not one the color engine reads.
+        // (Bytes too short for a header are `FileErrorTests`' case.)
         #expect((try? ICCProfile(data: Data(repeating: 7, count: 400))) == nil)
-        #expect((try? ICCProfile(data: Data())) == nil)
         // Different profiles are different values, which is what keys the
         // transform cache.
         #expect(ICCProfile.sRGB != ICCProfile.displayP3)

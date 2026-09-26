@@ -46,6 +46,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Vector: PDF](#vector-pdf) - `--export-pdf`, `OllinApp.pdf` / `exportPDF`, paper sizes
 - [What SVG export records](#what-svg-export-records) - the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) - `--hatch`, `Hatching`
+- [When an export fails](#when-an-export-fails) - `ExportError`, what every `OllinApp.export…` call throws
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
 - [Captures that know their source](#captures-that-know-their-source) - `--capture-source`, keeping the exact code a file came from
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
@@ -173,7 +174,7 @@ In code the same control is `OllinApp.exportRenderScale`, set before the export 
 
 ```swift
 OllinApp.exportRenderScale = 2
-OllinApp.export(sketch, to: "poster.png")
+try OllinApp.export(sketch, to: "poster.png")
 ```
 
 ### Video
@@ -212,8 +213,8 @@ Every export that takes `--fps` takes a number, a broadcast name, or a fraction:
 A named rate is the exact fraction, not its decimal. The video writers put every frame on it. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. That is the grid a broadcast timeline expects. `FrameRate(30000, per: 1001)` spells any other fraction. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. `rate.frameDuration` is one frame's length in seconds, and `rate.frames(in: 10)` is the count a ten-second export writes.
 
 ```swift
-OllinApp.exportVideo(sketch, to: "spot.mp4", frames: FrameRate.ntsc.frames(in: 30), fps: .ntsc)
-OllinApp.exportVideo(sketch, to: "reel.mp4", frames: 240, fps: .film)
+try OllinApp.exportVideo(sketch, to: "spot.mp4", frames: FrameRate.ntsc.frames(in: 30), fps: .ntsc)
+try OllinApp.exportVideo(sketch, to: "reel.mp4", frames: 240, fps: .film)
 ```
 
 The rate a live window runs at is the display's, not one of these; `frameRate` on the sketch reads what it measured.
@@ -360,8 +361,8 @@ A **take** cannot be replayed in slow motion. A take carries one frame of record
 In code it is one argument, `slowMotion:`, on `exportSequence`, `exportVideo`, and `exportGIF`:
 
 ```swift
-OllinApp.exportVideo(sketch, to: "slow.mp4", frames: 480, fps: 60, slowMotion: .drawn(4))
-OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 30, slowMotion: .made(2))
+try OllinApp.exportVideo(sketch, to: "slow.mp4", frames: 480, fps: 60, slowMotion: .drawn(4))
+try OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 30, slowMotion: .made(2))
 ```
 
 ### Settled frames
@@ -381,7 +382,7 @@ In code the same control is `OllinApp.exportSettle`, set before the export call:
 
 ```swift
 OllinApp.exportSettle = 40
-OllinApp.exportVideo(sketch, to: "turn.mp4", frames: 300, fps: 30)
+try OllinApp.exportVideo(sketch, to: "turn.mp4", frames: 300, fps: 30)
 ```
 
 ### Vector: SVG
@@ -397,7 +398,7 @@ Unlike raster export, SVG export records the draw calls on the **CPU**. So it ne
 
 ```swift
 let document = OllinApp.svg(of: MySketch(), frame: 0)   // -> String
-OllinApp.exportSVG(MySketch(), to: "/tmp/shapes.svg")   // writes the file
+try OllinApp.exportSVG(MySketch(), to: "/tmp/shapes.svg")   // writes the file
 ```
 
 The output is **standard, general-purpose SVG**. Native `<circle>`, `<ellipse>`, `<rect>`, `<polygon>`, and `<path>` elements keep their fills, opacity, and transforms. So the file opens cleanly in a browser, Inkscape, or Illustrator, and works as scalable vector art in its own right. A **pen plotter** is one common destination for the file, and an AxiDraw plots an SVG through its own tooling. Stroke-based sketches map most naturally to a plotter, because a pen has no fill. The single-line [stroke fonts](../Drawing/Text.md) and stroked geometry are exactly what a plotter draws, though the export is not limited to plotting.
@@ -471,7 +472,7 @@ Darker, more opaque fills hatch **densely**, lighter ones hatch **sparsely**, an
 The same control is available in code as a value:
 
 ```swift
-OllinApp.exportSVG(MySketch(), to: "/tmp/hatched.svg",
+try OllinApp.exportSVG(MySketch(), to: "/tmp/hatched.svg",
                    hatching: Hatching(spacing: 6, angle: .pi / 4, crossHatches: true))
 ```
 
@@ -484,6 +485,30 @@ for line in Hatching(spacing: 8, penWidth: 0.5).lines(filling: someShape) {
 ```
 
 `lines(filling:)` takes a `Shape`, `Rectangle`, or `Circle`. It returns the hatch lines as open polylines in that shape's coordinates. The shape's `winding` rule decides which regions are interior, so holes and concavities are respected. The [Hatching example](../../Examples/Export/Hatching/Sketch.swift) draws these lines live.
+
+### When an export fails
+
+Every export call on `OllinApp` throws an `ExportError` when it cannot finish, so a call in code is written with `try`. The process keeps running, and nothing half-written is left at the path: a video, a GIF, or a spatial video stopped partway is removed. A sequence keeps the frames it wrote before the one that failed.
+
+```swift
+do {
+    try OllinApp.exportVideo(sketch, to: "loop.mp4", frames: 240)
+} catch let error as ExportError {
+    print(error)   // loop.mp4: the encoder refused frame 17: …
+}
+```
+
+The error says three things. `path` is the file the export was writing, or the folder for the calls that write several. `frame` is the written frame it had reached, counted from 0, or `nil` when it stopped before the first frame or after the last. `problem` is what went wrong, in a sentence. Printing the error prints the path and the sentence together.
+
+Its `kind` sorts the failures three ways:
+
+| Kind | What it means |
+|---|---|
+| `unsupported` | The request cannot be met as asked. A file extension no writer takes, a codec the container cannot carry, zero frames, or a parameter the sketch does not declare. |
+| `unrendered` | A frame was not drawn. No Metal device, a renderer that would not start, or a frame that did not come back from the GPU. |
+| `unwritable` | The frame was drawn and the file would not take it. The writer would not start, stopped taking frames, refused one, or could not finish. |
+
+From the command line, an export flag that fails prints the sentence and exits with status 1, so a script running the export sees it fail. A web page that cannot carry the sketch is an `unsupported` failure whose sentence names the call that stopped it. An extension's own export can throw one too, through `ExportError(_:path:frame:problem:)`.
 
 ### Reproducibility metadata
 
@@ -661,7 +686,7 @@ Each tile is a fresh instance of the sketch, seeded before `setup()` runs. So a 
 From code:
 
 ```swift
-OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
+try OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
 let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92], columns: 3)
 ```
 
@@ -688,10 +713,10 @@ The swept parameter is named with `--sweep-param` rather than `--param`, because
 From code:
 
 ```swift
-OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
+try OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
                             sweeping: "radius", values: [40, 120, 360], seed: 7)
 // Or name the parameter by its own handle, which the compiler checks:
-OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
+try OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
                             sweeping: \.$radius, values: [40, 120, 360], seed: 7)
 ```
 

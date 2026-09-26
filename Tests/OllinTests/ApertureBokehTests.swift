@@ -99,8 +99,7 @@ struct ApertureBokehTests {
     /// distance from the edge out to where the blur has run out of reach. Read on the
     /// bright side, from the edge outward, as the first sample that is essentially white.
     private func rampWidth(_ probe: EdgeProbe, y: Int = 300, column: Int? = nil) throws -> Double {
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
-        let px = pixels(of: image)
+        let px = try edgeFrame(probe)
         let edge = Int(probe.edgeAt)
         // Walk away from the edge into the dark side. The blur runs out exactly where
         // the opening stops reaching back over the bright side, so the first sample
@@ -114,6 +113,24 @@ struct ApertureBokehTests {
             return Double(step)
         }
         return 200
+    }
+
+    /// What changes an edge probe's picture: every setting it takes.
+    private struct EdgeKey: Hashable {
+        var blades: Int?, irisAngle: Double, catsEye: Double, edgeAt: Double, horizontal: Bool
+    }
+
+    /// The edge frames already rendered this run, so an opening several probes measure
+    /// (the round one, the hexagon turned to a corner) is rendered once.
+    private static var edges: [EdgeKey: (bytes: [UInt8], width: Int, height: Int)] = [:]
+
+    private func edgeFrame(_ probe: EdgeProbe) throws -> (bytes: [UInt8], width: Int, height: Int) {
+        let key = EdgeKey(blades: probe.blades, irisAngle: probe.irisAngle, catsEye: probe.catsEye,
+                          edgeAt: probe.edgeAt, horizontal: probe.horizontal)
+        if let known = Self.edges[key] { return known }
+        let px = pixels(of: try #require(OllinApp.image(of: probe, frame: 1)))
+        Self.edges[key] = px
+        return px
     }
 
     private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {

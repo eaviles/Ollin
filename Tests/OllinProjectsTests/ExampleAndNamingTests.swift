@@ -265,13 +265,13 @@ struct ThreeDRecipeTests {
 
     @Test("Geometry is never blocked, because everything under it settles to fit")
     func geometryIsAlwaysAvailable() {
+        // A matcap rules out three of the four geometries, so a geometry that
+        // could be blocked by the finish above it would be blocked here.
+        let recipe = ThreeDRecipe(geometry: .mesh, finish: .matcap,
+                                  extras: Set(ThreeDOption.inSlot(.extra).map(\.id)))
         for geometry in ThreeDOption.inSlot(.geometry) {
-            for finish in ThreeDOption.inSlot(.finish) {
-                let recipe = ThreeDRecipe(geometry: .mesh, finish: finish,
-                                          extras: Set(ThreeDOption.inSlot(.extra).map(\.id)))
-                #expect(recipe.objection(to: geometry) == nil,
-                        "\(geometry.id) was blocked while \(finish.id) was chosen")
-            }
+            #expect(recipe.objection(to: geometry) == nil,
+                    "\(geometry.id) was blocked while \(recipe.finish.id) was chosen")
         }
     }
 

@@ -160,6 +160,23 @@ struct ProjectGeneratorTests {
         #expect(sketch.contents.contains("override var canvasSize: CanvasSize { .vertical1080 }"))
     }
 
+    /// Every kind that draws onto whatever it is put on declares `.resizable`
+    /// when nothing was asked for; asked for a canvas, it keeps that canvas's
+    /// proportions instead. Asking for a shape and being given the display's
+    /// shape instead would be the generator overruling the request.
+    @Test("A canvas that was asked for keeps its own proportions",
+          arguments: ProjectKind.available.filter(\.fillsTheDisplay).map(\.id))
+    func anAskedForCanvasWins(kind id: String) throws {
+        var wanted = request(name: "Framed")
+        wanted.kind = try #require(ProjectKind.named(id))
+        wanted.template = .motion
+        wanted.canvas = .fhd1080
+        let project = try ProjectGenerator.plan(wanted)
+        let sketch = try #require(project.files.first { $0.path.hasSuffix("/Sketch.swift") }).contents
+        #expect(!sketch.contains("override var windowMode"), "\(id) drew over the canvas it was asked for")
+        #expect(sketch.contains("override var canvasSize"), "\(id) dropped the canvas it was asked for")
+    }
+
     @Test("@main lands on the class, under whatever the template says about it")
     func mainAttributeSitsOnTheClass() throws {
         let project = try ProjectGenerator.plan(request(name: "Marked"))

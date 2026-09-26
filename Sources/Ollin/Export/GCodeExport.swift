@@ -686,16 +686,19 @@ public extension OllinApp {
     /// Render one frame of `sketch` and write it as a G-code file. The
     /// machine-facing counterpart of `exportSVG`; the basis for the
     /// `--export-gcode` flag.
+    ///
+    /// Throws `ExportError` when the file cannot be written.
     static func exportGCode(_ sketch: Sketch, to path: String, settings: GCode,
                             frame: Int = 0, fps: FrameRate = 60,
-                            hatching: Hatching? = nil) {
+                            hatching: Hatching? = nil) throws {
         let program = gcode(of: sketch, settings: settings, frame: frame,
                             fps: fps, hatching: hatching)
         do {
             try program.write(toFile: path, atomically: true, encoding: .utf8)
             print("Ollin: exported frame \(frame) → \(path) (G-code)")
         } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
+            throw ExportError(.unwritable, path: path, frame: 0,
+                              problem: "the file could not be written: \(error.localizedDescription)")
         }
     }
 }

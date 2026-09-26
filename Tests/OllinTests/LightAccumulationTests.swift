@@ -537,7 +537,7 @@ struct LightAccumulationTests {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-settle-\(UUID().uuidString)").path
         defer { try? FileManager.default.removeItem(atPath: directory) }
-        OllinApp.exportSequence(sequence, to: directory, frames: 2, fps: 60)
+        try OllinApp.exportSequence(sequence, to: directory, frames: 2, fps: 60)
         #expect(sequence.light.passes == 12, "every written frame settles")
         let written = (try? FileManager.default.contentsOfDirectory(atPath: directory))?
             .filter { $0.hasSuffix(".png") }.count
@@ -889,7 +889,9 @@ private final class SpraySketch: Sketch {
 private final class MovingSpraySketch: Sketch {
     var spray: LineSpray!
     var sampling: LineSpray.Sampling = .perLine(200)
-    var aperture: Aperture = .round
+    /// The shape the lens is asked for; `nil` asks for none, which is the lens
+    /// every picture was made with before there was a choice.
+    var aperture: Aperture?
     var shift: (Int) -> Double = { _ in 0 }
     var stretch: (Int) -> Double = { _ in 1 }
     /// The point table as built in `setup()`, read on the first draw.
@@ -914,9 +916,9 @@ private final class MovingSpraySketch: Sketch {
         // The spray takes its per-frame seed from the sketch's own generator,
         // so two renders repeat each other only if that does.
         randomSeed(7)
-        spray = makeLineSpray(lines(frame: 0), sampling: sampling, passesPerFrame: 3,
-                              bokeh: Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02,
-                                           aperture: aperture))
+        let bokeh = aperture.map { Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02, aperture: $0) }
+            ?? Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02)
+        spray = makeLineSpray(lines(frame: 0), sampling: sampling, passesPerFrame: 3, bokeh: bokeh)
     }
 
     override func draw() {

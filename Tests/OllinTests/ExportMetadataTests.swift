@@ -133,7 +133,7 @@ struct ExportMetadataTests {
     func videoCarriesTheRecipe() async throws {
         let path = ollinTempPath("ollin-metadata-test.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
-        OllinApp.exportVideo(Seeded(), to: path, frames: 4, fps: 30)
+        try OllinApp.exportVideo(Seeded(), to: path, frames: 4, fps: 30)
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))
         // The container stores the item under its native key space, so match by
         // common key rather than the identifier the writer was handed.

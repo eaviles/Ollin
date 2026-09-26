@@ -1,6 +1,6 @@
 import CoreGraphics
 import Foundation
-import Ollin
+@testable import Ollin
 import Testing
 
 /// Behavioral probes for `.smoothLife`, run headless on a small field and read
@@ -84,12 +84,13 @@ struct SmoothLifeTests {
     /// a glider is and what a still life, a pulsing ring, or a dying blob is not.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theGliderKeepsItsMassAndTravels() throws {
-        func measure(at generation: Int) throws -> (mass: Double, centroid: Vector2) {
-            let sketch = SmoothLifeGliderSketch()
-            let values = try field(of: sketch, generations: generation)
+        // One run to generation 100, measured at each checkpoint on the way.
+        let generations = [40, 60, 80, 100]
+        let run = try fields(of: SmoothLifeGliderSketch(), generations: generations)
+        let checkpoints = try generations.map { generation -> (mass: Double, centroid: Vector2) in
+            let values = try #require(run[generation])
             return (mass(of: values), centroid(of: values))
         }
-        let checkpoints = [40, 60, 80, 100].map { try! measure(at: $0) }
         let masses = checkpoints.map(\.mass)
         // Alive, and steady: neither dying out nor filling the field, and the
         // spread between checkpoints small against the mass itself.
@@ -113,7 +114,24 @@ struct SmoothLifeTests {
 
     /// The rendered field decoded back to linear values, one per texel.
     private func field(of sketch: Sketch, generations: Int) throws -> [[Double]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: generations - 1))
+        values(in: try #require(OllinApp.image(of: sketch, frame: generations - 1)))
+    }
+
+    /// The same readout after each of several generation counts, from one run to
+    /// the largest: frame `g - 1` of the run is the field `field(of:generations: g)`
+    /// reads, decoded as the run passes it.
+    private func fields(of sketch: Sketch, generations: [Int]) throws -> [Int: [[Double]]] {
+        var out: [Int: [[Double]]] = [:]
+        guard let last = generations.max() else { return out }
+        let wanted = Set(generations.map { $0 - 1 })
+        try OllinApp.renderFrames(sketch, frames: last, fps: 60, skipSeconds: 0) { frame, index in
+            guard wanted.contains(index), let image = frame.image else { return }
+            out[index + 1] = values(in: image)
+        }
+        return out
+    }
+
+    private func values(in image: CGImage) -> [[Double]] {
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

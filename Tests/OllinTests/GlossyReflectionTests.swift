@@ -30,7 +30,24 @@ struct GlossyReflectionTests {
         var redMinusBlue = 0.0, luminance = 0.0, grain = 0.0, sharpness = 0.0
     }
 
+    /// What changes the probe's picture: the lobe switch and the floor's roughness.
+    private struct StripKey: Hashable {
+        var gloss: Bool, roughness: Double
+    }
+
+    /// The readings already traced this run, so the satin floor several claims read
+    /// (with the lobe and without it) is traced once per setting.
+    private static var strips: [StripKey: Reading] = [:]
+
     private func floorStrip(gloss: Bool, roughness: Double) throws -> Reading {
+        let key = StripKey(gloss: gloss, roughness: roughness)
+        if let known = Self.strips[key] { return known }
+        let reading = try tracedStrip(gloss: gloss, roughness: roughness)
+        Self.strips[key] = reading
+        return reading
+    }
+
+    private func tracedStrip(gloss: Bool, roughness: Double) throws -> Reading {
         let scene = GlossyProbe.make(gloss: gloss, roughness: roughness)
         let image = try #require(OllinApp.image(of: scene, frame: 1))
         let w = image.width, h = image.height

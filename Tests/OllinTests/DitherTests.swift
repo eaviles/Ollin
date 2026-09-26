@@ -217,7 +217,9 @@ struct DitherTests {
     /// false contour of the wrong color along the tone where the rules part, and
     /// the arc is too thin to show up in tile-averaged error statistics, so it is
     /// pinned here instead: a lone pixel has no neighbors to diffuse onto, which
-    /// makes the choice rule directly observable in the output.
+    /// makes the choice rule directly observable in the output. It is also the
+    /// edge case every kernel must survive: a 1x1 image has nowhere to push its
+    /// error and must not walk off the edge.
     ///
     /// `.none` carries no error, so it is free to take the perceptual pick, and
     /// should.
@@ -253,15 +255,13 @@ struct DitherTests {
 
         for method in [Dither.floydSteinberg, .atkinson, .ordered(size: 8), .blueNoise] {
             let first = source.dithered(method, to: palette)
-            for _ in 0..<3 {
-                let again = source.dithered(method, to: palette)
-                #expect(pixelsMatch(first, again), "\(method) is not deterministic")
-            }
+            let again = source.dithered(method, to: palette)
+            #expect(pixelsMatch(first, again), "\(method) is not deterministic")
         }
     }
 
-    /// Serpentine scanning changes the result (it reverses every other row), and
-    /// each direction choice is stable on its own.
+    /// Serpentine scanning changes the result (it reverses every other row). That
+    /// the default serpentine scan is stable is `ditheringIsDeterministic`'s claim.
     @Test func serpentineChangesTheScanAndStaysStable() {
         let source = gradient(width: 24, height: 24)
         let palette = Palette(.black, .white)
@@ -269,7 +269,6 @@ struct DitherTests {
         let snake = source.dithered(.floydSteinberg, to: palette, serpentine: true)
         let raster = source.dithered(.floydSteinberg, to: palette, serpentine: false)
         #expect(!pixelsMatch(snake, raster))
-        #expect(pixelsMatch(snake, source.dithered(.floydSteinberg, to: palette, serpentine: true)))
 
         // A threshold map has no scan order to reverse, so the flag is inert.
         #expect(pixelsMatch(source.dithered(.blueNoise, to: palette, serpentine: true),
@@ -347,13 +346,6 @@ struct DitherTests {
         for y in 0..<out.height {
             for x in 0..<out.width { #expect(near(out[x, y], .red)) }
         }
-    }
-
-    /// A 1x1 image has nowhere to push its error and must not walk off the edge.
-    @Test func singlePixelImage() {
-        let image = Image(width: 1, height: 1, color: Color(red: 0.5, green: 0.5, blue: 0.5))
-        let out = image.dithered(.stucki, to: Palette(.black, .white))
-        #expect(out.width == 1 && out.height == 1)
     }
 
     /// Alpha rides through untouched; only the color channels are quantized.

@@ -210,6 +210,12 @@ struct GIFWriterTests {
 
     /// The probe piece through both writers: ours decodes as close to the
     /// source as the system's does, frame for frame, at the same size.
+    ///
+    /// The gradient probe is also the hard case for a table: every pixel its
+    /// own color. There the first frame's tiling is the system's plus five
+    /// percent, at a lower error (2.56 against 2.63 levels), and every frame
+    /// after it is within a few bytes of the system's. Both files are written
+    /// once and read for both claims.
     @Test func theFileDecodesFrameForFrameWithinTheSystemWritersTolerance() throws {
         let n = 12
         let frames = (0..<n).map { Self.gradientAndDot($0, of: n) }
@@ -227,6 +233,15 @@ struct GIFWriterTests {
             let a = Self.meanError(frames[k].rgba, mine.frames[k])
             let b = Self.meanError(frames[k].rgba, system.frames[k])
             #expect(a <= b * 1.25 + 0.25, "frame \(k): ours \(a) against the system's \(b)")
+        }
+
+        // A full-gamut plane is within five percent of the system writer's size.
+        #expect(Double(Self.size(ours)) <= Double(Self.size(theirs)) * 1.05,
+                "ours \(Self.size(ours)) B, the system's \(Self.size(theirs)) B")
+        let walk = try Self.walk(ours), reference = try Self.walk(theirs)
+        for (a, b) in zip(walk.frames.dropFirst(), reference.frames.dropFirst()) {
+            #expect(a.width == b.width && a.height == b.height && a.left == b.left && a.top == b.top)
+            #expect(abs(a.dataBytes - b.dataBytes) <= 24, "\(a.dataBytes) against \(b.dataBytes)")
         }
     }
 
@@ -258,28 +273,6 @@ struct GIFWriterTests {
             let a = Self.meanError(frames[k].rgba, mine.frames[k])
             let b = Self.meanError(frames[k].rgba, system.frames[k])
             #expect(a <= b * 1.25 + 0.25, "frame \(k): ours \(a) against the system's \(b)")
-        }
-    }
-
-    /// The gradient probe is the hard case for a table: every pixel its own
-    /// color. There the first frame's tiling is the system's plus five
-    /// percent, at a lower error (2.56 against 2.63 levels), and every frame
-    /// after it is within a few bytes of the system's.
-    @Test func aFullGamutPlaneIsWithinFivePercentOfTheSystemWriters() throws {
-        let n = 12
-        let frames = (0..<n).map { Self.gradientAndDot($0, of: n) }
-        let ours = Self.temp("ours-plane"), theirs = Self.temp("theirs-plane")
-        defer { try? FileManager.default.removeItem(atPath: ours); try? FileManager.default.removeItem(atPath: theirs) }
-        let writer = try GIFWriter(path: ours, width: Self.side, height: Self.side)
-        for frame in frames { try writer.append(frame.image, delay: 0.04) }
-        try writer.finish()
-        Self.systemGIF(frames.map(\.image), to: theirs)
-        #expect(Double(Self.size(ours)) <= Double(Self.size(theirs)) * 1.05,
-                "ours \(Self.size(ours)) B, the system's \(Self.size(theirs)) B")
-        let walk = try Self.walk(ours), reference = try Self.walk(theirs)
-        for (a, b) in zip(walk.frames.dropFirst(), reference.frames.dropFirst()) {
-            #expect(a.width == b.width && a.height == b.height && a.left == b.left && a.top == b.top)
-            #expect(abs(a.dataBytes - b.dataBytes) <= 24, "\(a.dataBytes) against \(b.dataBytes)")
         }
     }
 

@@ -78,11 +78,8 @@ import Testing
         #expect(Effect.equalizer(Equalizer()).kind == .equalizer)
         #expect(Effect.distortion(Distortion()).kind == .distortion)
         #expect(Effect.custom(CustomEffect("mine") { _ in }).kind == .custom)
-        // A reverb carrying a room of its own runs on its own unit, so it
-        // reads as its own kind; the rest of that story is in ConvolutionTests.
-        let room = ImpulseResponse(seconds: 0.01, sampleRate: 48000) { time, _ in exp(-100 * time) }
-        #expect(Effect.reverb(Reverb(room)).kind == .convolution)
-        #expect(Effect.Kind.allCases.count == 15)   // the four motions, the three levels, and the two in the spectrum
+        // A reverb carrying a room of its own reads as its own kind, which
+        // ConvolutionTests checks; the count of every kind is in ModulationTests.
     }
 
     @MainActor
@@ -203,30 +200,5 @@ import Testing
                                        .delay(Delay(time: 0.2, feedback: 0.6, mix: 0.6))]
         let echoDistorted: [Effect] = distortedEcho.reversed()
         #expect(exported(distortedEcho) != exported(echoDistorted))
-    }
-
-    /// An instrument with no effects has to export exactly what it did before
-    /// there was a chain at all.
-    @MainActor
-    @Test func anEmptyChainIsTheUntouchedSound() {
-        let synth = Synth(.bell)
-        OllinApp.isRenderingHeadless = true
-        var elapsed = 0.0
-        while elapsed < 1.0 {
-            if elapsed == 0 { synth.play(72, velocity: 0.9, for: 0.4) }
-            synth.advance(by: 1.0 / 60)
-            elapsed += 1.0 / 60
-        }
-        OllinApp.isRenderingHeadless = false
-        let samples = synth.renderExportAudio(upTo: 1.0, sampleRate: 44100)
-
-        #expect(samples.contains { abs($0) > 0.005 })
-        // Still centered, since nothing in an empty chain can move it.
-        var identical = true
-        for frame in 0..<(samples.count / 2) where samples[frame * 2] != samples[frame * 2 + 1] {
-            identical = false
-            break
-        }
-        #expect(identical)
     }
 }

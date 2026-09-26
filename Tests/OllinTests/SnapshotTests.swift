@@ -32,6 +32,17 @@ struct SnapshotTests {
         #expect(diff < Snapshot.tolerance,
                 "\(snapshot.name): \(snapshot.note) (mean per-channel difference \(diff))")
     }
+
+    // Mesh-shader cases live in their own parameterized test for the same reason: a GPU
+    // that cannot be driven through a mesh pipeline leaves a strand field undrawn, which
+    // the references aren't recorded against, so these skip there rather than fail.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasMeshShaders), arguments: snapshotMeshShaderCases)
+    func meshShaderSnapshotMatchesReference(_ snapshot: SnapshotCase) throws {
+        let diff = try Snapshot.meanDifference(of: snapshot.make(),
+                                               against: snapshot.name, frame: snapshot.frame)
+        #expect(diff < Snapshot.tolerance,
+                "\(snapshot.name): \(snapshot.note) (mean per-channel difference \(diff))")
+    }
 }
 
 /// One render-correctness snapshot: a deterministic sketch, the committed reference image
@@ -58,7 +69,7 @@ struct SnapshotCase: Sendable, CustomTestStringConvertible {
 /// The plain-Metal snapshot table. Each row is one scene + reference name + capture frame,
 /// with `note` carrying what that snapshot pins.
 private let snapshotMetalCases: [SnapshotCase] = [
-    SnapshotCase("solid-shapes", note: "Solid SDF + tessellated shapes.",
+    SnapshotCase("solid-shapes", note: "Solid SDF fills (two rects and a circle), all on the instanced SDF path.",
                  make: { SolidShapes() }),
     SnapshotCase("mixed-pipelines",
                  note: "The instanced SDF path and the tessellated-triangle path composited front-to-back.",
@@ -780,9 +791,6 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-field",
                  note: "A retained MeshField of three mesh kinds (boxes, spheres, cones) in a ring, drawn by GPU-written indirect draws with per-copy frustum culling ON and the camera framed so part of the ring sits outside the view. Pins the field build (entry table, compact regions), the cull + encode kernels, the per-entry indirect draws, the per-copy tints, and the field casters in the 2D shadow map beside a plain floor. Culling must not change a pixel (a culled copy is off-screen), so this reference also pins that no visible copy is ever lost. No rng and no time, deterministic.",
                  make: { MeshFieldScene() }),
-    SnapshotCase("strands",
-                 note: "A StrandField meadow patch (drawStrands) grown entirely in-draw by the mesh pipeline: 60k hashed blades over a floor with a box casting a shadow the blades receive, framed so part of the patch is off-screen with tile culling ON. Pins the object-stage tile cull + distance grading, the mesh-stage ribbon synthesis (roots, heights, leans, tapers, tints all from hashes), the blades shading through the shared lit fragment, and that culling never eats a visible tile. No time (phase-zero sway) and no rng, deterministic (the render is pinned byte-exact by its own test).",
-                 make: { StrandsScene() }),
     SnapshotCase("planet",
                  note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a sphere wears them under one directional sun, and the night lights are drawn into a second layer and masked by the darkness of the lit one (Combine.mask, inverted), so the terminator decides where a city shows. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written), the layer mask, and the bloom. The kernels are read from the example's own .metal files. t = 0, one world, deterministic.",
                  make: { PlanetScene() }),
@@ -873,6 +881,15 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("gi-3d",
                  note: "A Cornell-style room lit by one spot pool with globalIllumination() on: the ceiling and walls carry only bounce light, the colored walls dye the white statue from either side. Pins the whole probe-field pipeline end to end: the auto-fitted volume, the deterministic in-frame convergence (iteration-indexed seeds, progressive-mean hysteresis), probe relocation walking the embedded slab-row probes out, the cage-capped visibility moments, and the perceptually-encoded sampling in the lit carriers. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { GlobalIlluminationScene() }),
+]
+
+/// The mesh-shader-gated snapshots: a strand field grows its blades in a mesh pipeline,
+/// which a GPU that cannot drive one (a virtual machine's display, usually) leaves
+/// undrawn, so the reference only holds where the blades are drawn.
+private let snapshotMeshShaderCases: [SnapshotCase] = [
+    SnapshotCase("strands",
+                 note: "A StrandField meadow patch (drawStrands) grown entirely in-draw by the mesh pipeline: 60k hashed blades over a floor with a box casting a shadow the blades receive, framed so part of the patch is off-screen with tile culling ON. Pins the object-stage tile cull + distance grading, the mesh-stage ribbon synthesis (roots, heights, leans, tapers, tints all from hashes), the blades shading through the shared lit fragment, and that culling never eats a visible tile. No time (phase-zero sway) and no rng, deterministic (the render is pinned byte-exact by its own test).",
+                 make: { StrandsScene() }),
 ]
 
 // MARK: - Fixtures
@@ -1281,9 +1298,6 @@ private final class SolidPrimitives3DScene: Sketch {
     }
 }
 
-/// Custom lighting on solids: ambient + a directional key + a point light + a spot,
-/// with a specular material — pins the three light kinds, the spot cone, ambient, and
-/// the specular highlight (the parts the auto-lit default doesn't exercise). No `time`.
 /// A 3D scene defocused by its own depth buffer: three spheres at staggered depths
 /// drawn into a depth-capturing render target, then `scene.combined(with: scene.depth,
 /// .defocus(...))` with the focal plane on the middle one. Pins the 3D-in-target depth
@@ -1461,9 +1475,6 @@ private final class GlossyReflectionsScene: Sketch {
     }
 }
 
-/// A Cornell-style room whose only light is a spot pool on the floor, with
-/// `globalIllumination()` on: everything outside the pool is the probes' bounce.
-/// Fixed camera, no time.
 /// A ball lens hovering with its focal point on the floor and a chrome torus arch,
 /// under a steep sun with shadows and caustics on: the glass spot lands inside its
 /// own shadow, the torus folds light at its feet. Fixed camera, no time, and the
@@ -1501,6 +1512,9 @@ private final class CausticsScene: Sketch {
     }
 }
 
+/// A Cornell-style room whose only light is a spot pool on the floor, with
+/// `globalIllumination()` on: everything outside the pool is the probes' bounce.
+/// Fixed camera, no time.
 private final class GlobalIlluminationScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -1530,6 +1544,9 @@ private final class GlobalIlluminationScene: Sketch {
 // Internal rather than private: `ManyLightsTests` renders this same scene against
 // this same committed reference to assert it is byte-for-byte unmoved, which is the
 // proof that the tiled lighting work left the inline path alone.
+/// Custom lighting on solids: ambient + a directional key + a point light + a spot,
+/// with a specular material. Pins the three light kinds, the spot cone, ambient, and
+/// the specular highlight (the parts the auto-lit default doesn't exercise). No `time`.
 final class MeshLightingScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -1620,10 +1637,6 @@ private final class TexturedMesh3DScene: Sketch {
     }()
 }
 
-/// A box and a sphere above a floor, lit by a directional key with `castShadows()` on,
-/// through a fixed camera — pins the shadow pass (the depth render from the light) and
-/// the shadow sample in the lit mesh fragment (the cast shadows on the floor and the
-/// sphere's shadow reaching toward the box). No `time`, so it's deterministic.
 /// Three solids resting flush on a floor, a deliberately wide soft shadow map
 /// (softness 0.8, so the map alone leaves every base loose), and the contact
 /// march closing the seam. Fixed camera, no `time`: deterministic.
@@ -1659,6 +1672,10 @@ private final class ContactShadowsScene: Sketch {
     }
 }
 
+/// A box and a sphere above a floor, lit by a directional key with `castShadows()` on,
+/// through a fixed camera. Pins the shadow pass (the depth render from the light) and
+/// the shadow sample in the lit mesh fragment (the cast shadows on the floor and the
+/// sphere's shadow reaching toward the box). No `time`, so it's deterministic.
 private final class MeshShadowsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -1872,9 +1889,6 @@ private final class MeshMaterialsScene: Sketch {
     }
 }
 
-/// A metal / mixed / dielectric × roughness grid in the physically-based shading model
-/// under a fixed camera and custom lights — pins the metallic/roughness fields and the
-/// Cook-Torrance branch (no IBL: the smooth metals read dark, which is correct). No `time`.
 /// Toon solids with an ink line under a rig that rides the camera: pins the outline
 /// pass and the camera-relative light resolve together. No `time`.
 private final class InkedSolidsScene: Sketch {
@@ -1949,6 +1963,9 @@ private final class AnisotropyScene: Sketch {
     }
 }
 
+/// A metal / mixed / dielectric × roughness grid in the physically-based shading model
+/// under a fixed camera and custom lights. Pins the metallic/roughness fields and the
+/// Cook-Torrance branch (no IBL: the smooth metals read dark, which is correct). No `time`.
 private final class PBRMaterialsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -3534,9 +3551,6 @@ private final class GlyphMosaicScene: Sketch {
     }
 }
 
-/// A painted tonal study screened as vector halftone dots, the classic
-/// reading beside the inverted one, both on a rotated screen. No rng and no
-/// `time`, so it's deterministic.
 private final class ColorVisionScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -3580,6 +3594,9 @@ private final class ColorVisionScene: Sketch {
     }
 }
 
+/// A painted tonal study screened as vector halftone dots, the classic
+/// reading beside the inverted one, both on a rotated screen. No rng and no
+/// `time`, so it's deterministic.
 private final class HalftoneScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -5602,8 +5619,6 @@ private final class MetricDepthSceneScene: Sketch {
     }
 }
 
-/// A few solid SDF fills on white — large flat regions, so anti-aliased edges
-/// are a small fraction of the frame. Pure SDF pipeline.
 /// A user-supplied `Shader` run as a generator: pins the compose + compile path,
 /// the `ShaderInfo` binding, the wrapper's sRGB round-trip, and the `palette`
 /// library helper. Time-independent so the reference is stable at any frame.
@@ -5654,6 +5669,8 @@ private final class VisualChainScene: Sketch {
     }
 }
 
+/// A few solid SDF fills on white: large flat regions, so anti-aliased edges
+/// are a small fraction of the frame. Pure SDF pipeline.
 private final class SolidShapes: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -5999,10 +6016,6 @@ private final class RaymarchedSDF3DStretchScene: Sketch {
     }
 }
 
-/// The raymarched 3D SDF combinators (`drawSDF3D` / `SDF3D`): a fixed metaball of
-/// spheres melting together (the smooth-union color blend) with a sphere carved off
-/// the top, skewered by a rasterized box that pins the depth compositing (the bar and
-/// the marched field occlude each other). Static, so it's deterministic at frame 0.
 /// The 2D joint ops: a plus of two rects stairs-unioned, a chamfer-subtracted bite, and a
 /// chamfer-intersected chip beside it. Pins the chamfer/stairs combine encodings (sel 7-12),
 /// the crisp nearer-side color pick, and the stairs step count riding the OP node's extra.
@@ -6226,6 +6239,10 @@ private final class RaymarchedSDF3DDistortScene: Sketch {
     }
 }
 
+/// The raymarched 3D SDF combinators (`drawSDF3D` / `SDF3D`): a fixed metaball of
+/// spheres melting together (the smooth-union color blend) with a sphere carved off
+/// the top, skewered by a rasterized box that pins the depth compositing (the bar and
+/// the marched field occlude each other). Static, so it's deterministic at frame 0.
 private final class RaymarchedSDF3DScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -6636,15 +6653,6 @@ private final class StrokeJoinsCaps: Sketch {
     }
 }
 
-/// `strokeProfile` across the width-profile family, all at one `strokeWeight` so
-/// only the profile differs: `.uniform` (the control, which must stay identical to
-/// the unprofiled path), `.taper()`, `.ramp`, `.values`, and a `.nib` on an arc
-/// that turns through a wide range of directions. The last row is a closed
-/// triangle, whose profile wraps end to start, and a tapered stroke on a curve
-/// whose corners are joins at varying width. Pins the per-vertex half-width
-/// expansion (trapezoid segments, joins and caps at the local width) and the
-/// area-conserving sub-pixel coverage that lets a taper vanish instead of trailing
-/// a ghost line. Black on white, no rng and no time, so it is deterministic.
 private final class BrushesScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -6740,6 +6748,15 @@ private final class DashedStrokesScene: Sketch {
     }
 }
 
+/// `strokeProfile` across the width-profile family, all at one `strokeWeight` so
+/// only the profile differs: `.uniform` (the control, which must stay identical to
+/// the unprofiled path), `.taper()`, `.ramp`, `.values`, and a `.nib` on an arc
+/// that turns through a wide range of directions. The last row is a closed
+/// triangle, whose profile wraps end to start, and a tapered stroke on a curve
+/// whose corners are joins at varying width. Pins the per-vertex half-width
+/// expansion (trapezoid segments, joins and caps at the local width) and the
+/// area-conserving sub-pixel coverage that lets a taper vanish instead of trailing
+/// a ghost line. Black on white, no rng and no time, so it is deterministic.
 private final class StrokeProfilesScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -8763,10 +8780,6 @@ private final class EffectsCompose: Sketch {
     }
 }
 
-/// Multi-input combine ops over the substrate: four tiles, each combining the same
-/// fixed scene with an aux layer. Deterministic (no time/random), so it pins the
-/// two-input path and each combine shader (mask by luminance, displace by a bump,
-/// mix toward a generator, mask by alpha inverted).
 /// One grainy scene streaked three ways: along a noise layer read as an angle,
 /// along the contours of a radial gradient, and along a blurred bump's normals.
 private final class LineIntegralConvolutionScene: Sketch {
@@ -8820,6 +8833,10 @@ private final class LineIntegralConvolutionScene: Sketch {
     }
 }
 
+/// Multi-input combine ops over the substrate: four tiles, each combining the same
+/// fixed scene with an aux layer. Deterministic (no time/random), so it pins the
+/// two-input path and each combine shader (mask by luminance, displace by a bump,
+/// mix toward a generator, mask by alpha inverted).
 private final class EffectsCombine: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -9246,13 +9263,6 @@ private final class ClipScene: Sketch {
     }
 }
 
-/// One motif recorded into a `Batch` in `setup()` and replayed three ways in
-/// `draw()`: in place (the identity replay), under a rotate+scale+translate stamp
-/// (the flag-gated shader transform), and with a dynamic circle drawn between the
-/// two replays (draw-order compositing around a `.retained` reference batch). The
-/// motif spans the retainable paths: SDF instances (one with a gradient fill, so
-/// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
-/// polyline, a concave tessellated fill, and a smooth-union SDF field.
 /// A StrandField meadow patch grown in-draw, with a shadow-casting box, framed
 /// so part of the patch is off-screen. No time and no rng, deterministic.
 private final class StrandsScene: Sketch {
@@ -9559,6 +9569,13 @@ private final class InstancedMeshScene: Sketch {
     }
 }
 
+/// One motif recorded into a `Batch` in `setup()` and replayed three ways in
+/// `draw()`: in place (the identity replay), under a rotate+scale+translate stamp
+/// (the flag-gated shader transform), and with a dynamic circle drawn between the
+/// two replays (draw-order compositing around a `.retained` reference batch). The
+/// motif spans the retainable paths: SDF instances (one with a gradient fill, so
+/// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
+/// polyline, a concave tessellated fill, and a smooth-union SDF field.
 private final class RetainedBatchScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

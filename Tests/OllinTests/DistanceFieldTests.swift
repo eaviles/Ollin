@@ -69,6 +69,17 @@ struct DistanceFieldTests {
         try #require(OllinApp.image(of: FieldProbe.make(subject), frame: 1))
     }
 
+    /// The soft radius of the shape grown by `offset` with no cap on the flood, kept
+    /// per offset so a field two tests ask about is measured once.
+    private static var grownRadii: [Double: Double] = [:]
+
+    private func grownRadius(_ offset: Double) throws -> Double {
+        if let radius = Self.grownRadii[offset] { return radius }
+        let radius = try softRadius(try render(.grown(by: offset)))
+        Self.grownRadii[offset] = radius
+        return radius
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func theZeroContourIsTheShapesOwnEdge() throws {
         // The field calls a pixel inside when the layer is at least half covered there,
@@ -89,7 +100,7 @@ struct DistanceFieldTests {
         // the zero test above and fail here.
         let base = try softRadius(try render(.grown(by: 0)))
         for offset in [10.0, 40.0, 100.0] {
-            let grown = try softRadius(try render(.grown(by: offset)))
+            let grown = try grownRadius(offset)
             #expect(abs(grown - base - offset) < 0.1,
                     "cut at \(offset) grew the radius by \(grown - base)")
         }
@@ -111,7 +122,8 @@ struct DistanceFieldTests {
     func askingForLessDistanceMeasuresTheSameFieldNearTheEdge() throws {
         // A short `maxDistance` shortens the flood, so this is the one that would catch a
         // ladder whose first rung is too small to carry a seed as far as it promised.
-        let whole = try softRadius(try render(.grown(by: 40)))
+        // The uncapped field is the one `cuttingTheFieldGrowsTheShapeByThatMuch` cuts at 40.
+        let whole = try grownRadius(40)
         let capped = try softRadius(try render(.grown(by: 40, within: 48)))
         #expect(abs(whole - capped) < 0.05, "capped measured \(capped) against \(whole)")
     }

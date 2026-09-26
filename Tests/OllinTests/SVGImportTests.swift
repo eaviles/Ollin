@@ -319,8 +319,9 @@ import Testing
         #expect(near(box.max, Vector2(300, 200)))
     }
 
+    /// A document with nothing drawn in it is no drawing. (Bytes that are not XML
+    /// at all are refused as unreadable, which `FileErrorTests` pins.)
     @Test func garbageDataReturnsNil() {
-        #expect((try? SVG(data: Data("not xml at all".utf8))) == nil)
         #expect((try? SVG(data: Data("<svg xmlns=\"http://www.w3.org/2000/svg\"/>".utf8))) == nil)
     }
 
