@@ -4,9 +4,9 @@
 
 # 17. Marks and media
 
-<!-- Hook image: the marbled heart, from the finished sketch of a brushed monogram over marbling. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the monogram over its marbled heart (Figures/17-MarksAndMedia/Monogram.swift). Waiting on its render on the Mac. -->
 
-A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to speed and pressure, and breaks into the prints of a brush. This chapter gives your strokes that life. A profile shapes a finished path's width, and dynamics read the hand while it paints. A brush stamps a tip along the path, and a dash pattern cuts it. Then come two wet media, marbling and watercolor, made from outlines bent and stacked. It all stays vector geometry, so a painted mark exports as the region it covers.
+A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to speed and pressure, and breaks into the prints of a brush. This chapter gives your strokes that life. A profile shapes a finished path's width, and dynamics read the hand while it paints. A brush stamps a tip along the path, and a dash pattern cuts it. Then come two wet media, marbling and watercolor, made from outlines bent and stacked. It all stays vector geometry, so a painted mark exports as the region it covers. The chapter ends by writing your initials into a marbled heart.
 
 ## Marks and brushes
 
@@ -230,9 +230,138 @@ This is deliberately heavy drawing, since each layer is a full concave fill. Pai
 
 Two more moves open up once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline.
 
-<!-- Putting it together: the finished sketch goes here: a brushed monogram over marbling, built from this chapter's steps, with its full listing. -->
+## Putting it together: the monogram
+
+The monogram writes a pair of initials into the heart of a marbled sheet. The sheet comes first, poured with the bath's own moves. A scatter of stones is dropped and combed down and back up into a feathered ground. A bull's-eye goes over it, with a core of paper color. One `tine` pulled down through the eye bends every ring into a heart. Then the initials are written into that pale core, one pen line at a time. Each line is a `StrokeMark` recorded by a pretend hand and drawn through a broad nib over a spray of gold. A dotted rule frames the sheet. Make `MySketches/Monogram.swift`:
+
+```swift
+import Ollin
+
+final class Monogram: Sketch {
+    @Param var initials = "OL"
+
+    let paper = Color(hex: 0xEFE7D6)
+    let navy = Color(hex: 0x1F2A44)
+    let red = Color(hex: 0xA43B2A)
+    let gold = Color(hex: 0xC8912F)
+    let green = Color(hex: 0x3A6B5C)
+
+    var bath = Marbling()
+    var strokes: [StrokeMark] = []
+    var written = ""
+
+    var sheet: Rectangle { bounds.inset(by: .all(70)) }
+
+    override func setup() {
+        seed(4)
+        bath = Marbling()
+        let inks = [navy, red, gold, green]
+
+        // The ground: stones scattered over the sheet, combed down and back up.
+        for _ in 0 ..< 70 {
+            bath.drop(at: randomVector(in: sheet), radius: random(20, 55),
+                      color: randomChoice(inks))
+        }
+        bath.comb(through: Vector2(0, height / 2), direction: .unitY,
+                  spacing: 90, strength: 200, falloff: 26)
+        bath.comb(through: Vector2(45, height / 2), direction: -.unitY,
+                  spacing: 90, strength: 140, falloff: 20)
+
+        // The bull's-eye, with a core of paper color to write in.
+        let eye = Vector2(540, 420)
+        for ring in 0 ..< 10 {
+            bath.drop(at: eye, radius: 330 - Double(ring) * 17, color: inks[ring % 4])
+        }
+        bath.drop(at: eye, radius: 140, color: paper)
+
+        // One stylus pulled down through the eye makes the heart.
+        bath.tine(through: eye, direction: .unitY, strength: 240, falloff: 160)
+    }
+
+    // A pretend hand: slow into each stroke and out of it, quick through the
+    // middle, so the speed brush swells the ends and thins the run.
+    func handwrite(_ path: Contour) -> StrokeMark {
+        var mark = StrokeMark(.speed(reference: 1200, fast: 0.45), smoothing: 0.4)
+        let points = path.resampled(spacing: 3).points
+        for (i, p) in points.enumerated() {
+            let t = Double(i) / Double(max(1, points.count - 1))
+            let pause = 1 + 3 * (1 - sin(.pi * t))
+            mark.record(p, deltaTime: pause / 400)
+        }
+        return mark
+    }
+
+    // The initials as single pen lines, each line written by the hand.
+    func letter() {
+        textFont(StrokeFont.builtIn)
+        textSize(150)
+        textAlign(.center, .middle)
+        strokes = textToShapes(initials, 540, 620)
+            .flatMap { $0.contours }
+            .map { handwrite($0) }
+        written = initials
+    }
+
+    override func draw() {
+        if written != initials { letter() }
+        background(paper)
+
+        noStroke()
+        withClip(sheet) { drawMarbling(bath) }
+
+        // A dotted rule around the sheet.
+        noFill()
+        stroke(navy)
+        strokeWeight(5)
+        strokeCap(.round)
+        strokeDash(.dots(spacing: 16))
+        drawRect(bounds.inset(by: .all(48)))
+        noStrokeDash()
+
+        // The hand writes for four seconds, rests for four, and starts again.
+        let lap = time.truncatingRemainder(dividingBy: 8)
+        let total = strokes.reduce(0) { $0 + $1.samples.count }
+        var left = Int(min(1, lap / 4) * Double(total))
+        var shown: [StrokeMark] = []
+        for mark in strokes where left > 1 {
+            let part = StrokeMark(samples: Array(mark.samples.prefix(left)))
+            shown.append(part)
+            left -= part.samples.count
+        }
+
+        // Gold dust first, then the ink through a broad nib.
+        stroke(gold.withAlpha(0.6))
+        strokeWeight(34)
+        strokeBrush(.spray(seed: 7))
+        for part in shown { drawMark(part) }
+        noStrokeBrush()
+
+        stroke(navy)
+        strokeWeight(22)
+        strokeProfile(.nib(angle: .pi / 5))
+        for part in shown { drawMark(part) }
+        noStrokeProfile()
+    }
+}
+```
+
+The bath is poured once in `setup()`, because every drop and every comb bends all the ink already floating. The order is the one a marbler follows: the ground, then the eye, then the stylus. The combs run before the eye goes down, so the stones feather while the heart's rings stay clean.
+
+The letters come from the pen font of [Chapter 8](08-Words.md). With `StrokeFont.builtIn` active, `textToShapes` hands back each letter as open pen lines rather than outlines, which are paths a hand could follow. `handwrite` plays the hand. It records the points at an even spacing and changes only how long each step takes. The steps are slow at both ends of a line and quick through the middle. So the speed brush swells a line where a pen would pause and thins it through the run. `initials` is a parameter, so type your own into the inspector. `draw()` compares it with the letters it last wrote and writes new ones when it changes.
+
+The writing is the motion. Each frame, `draw()` works out how many recorded points the hand has reached. It copies that many into a new mark with `StrokeMark(samples:)` and draws only those. The samples keep the widths they were recorded with, so a half-written letter already swells and thins. Both passes draw the same partial marks. The spray goes first, wider and in gold, and then the ink, narrower and through the nib. The nib multiplies the widths the hand recorded, the way a profile does with any mark.
+
+Then make it yours:
+
+- Float the initials instead of writing them. Take them from an outline font, `bath.add` each shape before the `tine`, and the stylus bends the letters along with the rings.
+- Change the tool in the ink pass. `strokeBrush(.chisel())` in place of the nib stamps squares that turn with the path, and the letters read as cut rather than written.
+- Pool a watercolor wash in the core. Build forty layers from a typed `Watercolor` in `setup()` and fill them faintly each frame before the gold. Painting the wash inside `draw()` would roll new layers every frame and make it shimmer.
+
+Keep both halves of it. The writing is what moves, so `swift run OllinLive MySketches/Monogram.swift --export-gif monogram.gif --seconds 8 --gif-width 480 --fps 15` keeps one full lap as a GIF. The sheet is what prints, and `--export-svg monogram.svg --frame 420` writes it as paths once the letters are finished. Every ink is a filled shape, each letter the region its width covered, and each speck of gold its own circle.
 
 ## Where this comes from
+
+Stroke dynamics follow the brush engines of digital painting, which turn how fast a hand moves into how heavy a mark it leaves. Krita and Procreate offer it as a speed setting, and Steve Ruiz's perfect-freehand library estimates pressure from how far apart the points land. The speed a mark measures here is smoothed by the 1€ filter of Géry Casiez, Nicolas Roussel, and Daniel Vogel. The broad nib a stylus leans across is the calligrapher's edged pen, far older than any tablet. The monogram's letters are Hershey Sans, drawn as single pen lines by Allen Hershey at the U.S. National Bureau of Standards.
 
 The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor recipe is Tyler Hobbs', from a generous written guide to simulating paint with generative art. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
@@ -240,11 +369,13 @@ The marbling equations are Aubrey Jaffer's closed-form model of a craft that pre
 
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Dashed strokes](../Docs/Drawing/Drawing.md#strokeDash): the pattern and its phase, dots from zero-length dashes, what the cut does to a profile, a brush, and a gradient, which shapes hand their outline over, and what vector export writes.
-- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing parameters do, building a mark without a pointer, and what survives vector export.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing parameters do, building a mark without a pointer, the brushes, and what survives vector export.
+- [The stylus](../Docs/Helpers/Input.md#stylus): the lean, the barrel turn, the eraser end, and hovering, read beside `pressure`.
+- [Stroke fonts](../Docs/Drawing/Text.md#strokefont): the single-line pen font the monogram is written in, and loading more of them.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation actually runs.
 - The Mohamedi homage [`Diagonals`](../Examples/Recreations/NasreenMohamedi/Diagonals/Sketch.swift): a chevron is one polyline through its corner with a `.values` profile, full width at the corner and a fraction of it at each tip. That is the mark a loaded ruling pen leaves as it runs out. Its `--export-svg` writes each chevron as the filled outline of the stroke rather than a line with one width, so the thinning reaches the paper, and every hairline of its wakes and fans as a plain line.
-- Worked examples: [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
+- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
 
 ---
 
