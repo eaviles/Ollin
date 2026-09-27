@@ -115,7 +115,7 @@ The right panel shows three edits. `simplified(tolerance:)` thins a dense trace,
 
 ## Scatters and territories
 
-Here the material turns from single outlines to populations. Nearly everything in this part starts from `poissonDisk(radius:)`, the even scatter from [Chapter 4](04-Randomness.md#the-well-mannered-scatter).
+Here the material turns from single outlines to populations. Nearly everything in this part starts from `poissonDisk(radius:)`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences).
 
 ### Territories and neighbors
 

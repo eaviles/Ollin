@@ -231,7 +231,7 @@ let veins = SpaceColonization(attractors: poissonDisk(radius: 26),
                               roots: [Vector2(width / 2, height - 70)])
 ```
 
-`poissonDisk` is doing the scattering. It is the blue-noise scatter from [Chapter 4](04-Randomness.md#the-well-mannered-scatter), an even sprinkle of points no two closer than the radius you ask for. The growth itself has no randomness at all. Same attractors, same roots, same veins, every run.
+`poissonDisk` is doing the scattering. It is the blue-noise scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences), an even sprinkle of points no two closer than the radius you ask for. The growth itself has no randomness at all. Same attractors, same roots, same veins, every run.
 
 Three distances shape the result, and they want a particular relationship. `stepLength` is how far a tip grows per step, and `killRadius` is how close counts as reached. Keep `stepLength` smaller than `killRadius`, or a tip can step right over its goal. Keep `killRadius` well under `influenceRadius`, which is how far an attractor's pull reaches. There's one practical gotcha. Growth only *starts* if some attractor's pull can reach a root. A tree whose crown floats high above its root needs an `influenceRadius` at least as long as the trunk-to-crown gap. The garden's tree hit exactly this.
 
@@ -471,7 +471,7 @@ Shape grammars are George Stiny and James Gips's, from their 1971 paper on speci
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
 - [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every parameter, and drawing the oxbows and scars.
 - [Shape grammars](../Docs/Generators/ShapeGrammar.md): all six rules, how a run picks between them, the fallback a weight of zero writes, and the two facts that hold exactly.
-- [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, first met in [Chapter 4](04-Randomness.md#the-well-mannered-scatter).
+- [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, first met in [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences).
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), and [`Examples/Patterns/ShapeGrammar`](../Examples/Patterns/ShapeGrammar/Sketch.swift) (an ice-ray window frame built a sweep at a time).
 

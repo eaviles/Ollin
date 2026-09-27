@@ -147,7 +147,7 @@ let lines = field.streamlines(from: poissonDisk(radius: 24),
                               bounds: bounds, separation: 21)
 ```
 
-The starts come from `poissonDisk`, the even scatter from [Chapter 4](04-Randomness.md#the-well-mannered-scatter), because evenly spaced lines need evenly spread beginnings. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
+The starts come from `poissonDisk`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences), because evenly spaced lines need evenly spread beginnings. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
 
 ## Particles that ride
 

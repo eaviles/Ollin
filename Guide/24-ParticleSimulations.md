@@ -252,7 +252,7 @@ One decision in there is easy to overlook, and it decides whether any of this wo
 
 Mutation is what keeps that going. Each gene, as it is copied into a child, has a small chance of being nudged. And it really is a nudge, a random amount added to what the gene already held rather than a fresh random value. Turn mutation off and a run still improves for a while, on the variety generation 1 happened to contain. Then it stops, because copying can only ever narrow. Selection chooses. It never invents.
 
-Evolution has a second half with no score at all, where a person picks and the picks breed. [Chapter 4](04-Randomness.md#sixteen-things-and-no-opinion-about-them-interactive-evolution) teaches it beside choosing a keeper among seeds.
+Evolution has a second half with no score at all, where a person picks and the picks breed. [Chapter 4](04-Randomness.md#sixteen-things-and-no-opinion-about-them-population) teaches it beside choosing a keeper among seeds.
 
 ## A rule that spreads by winning arguments: swarm chemistry
 

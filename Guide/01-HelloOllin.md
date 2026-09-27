@@ -127,7 +127,7 @@ The work has a shape, and this guide follows it. Each step below names the chapt
 - **Write.** A sketch is a short program: `setup()` runs once and `draw()` runs every frame, and the drawing calls go in `draw()`. This chapter covers that, and [Chapter 2](02-Color.md) and [Chapter 3](03-MotionAndTime.md) give you color and motion to write with.
 - **Run.** Under `swift run OllinLive`, which reloads the sketch on every save, so you look at the result while you edit. You set that up a page ago.
 - **Tune.** Numbers you keep changing become parameters you turn while the sketch runs. This chapter's finished sketch declares four, and most chapters after it use them.
-- **Keep the variation you like.** Once chance enters a sketch, every run is a different picture, and a seed lets you get one of them back. [Chapter 4](04-Randomness.md#finding-a-seed-worth-keeping) teaches that.
+- **Keep the variation you like.** Once chance enters a sketch, every run is a different picture, and a seed lets you get one of them back. [Chapter 4](04-Randomness.md#finding-a-seed-to-keep) teaches that.
 - **Finish.** Pick the version to keep, fix its seed and its parameters, size it for where it will go, and check it. [Chapter 38](38-FinishingASketch.md) opens on that practice.
 - **Export.** A still, a video, a GIF that loops, a file a plotter draws, or a page that plays in a browser. This chapter's sketch leaves as a still, [Chapter 3](03-MotionAndTime.md) exports a looping GIF, and [Chapter 38](38-FinishingASketch.md) covers the rest.
 

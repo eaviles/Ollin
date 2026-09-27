@@ -304,7 +304,7 @@ A variation you like is a seed, and the seed is what each click changed. The one
 swift run OllinLive MySketches/ColorField.swift --export field.png --frame 60
 ```
 
-[Chapter 4](04-Randomness.md#finding-a-seed-worth-keeping) turns that counting into a tool, with the seed printed on the canvas and a key that steps through them.
+[Chapter 4](04-Randomness.md#finding-a-seed-to-keep) turns that counting into a tool, with the seed printed on the canvas and a key that steps through them.
 
 ## Mixing like paint
 

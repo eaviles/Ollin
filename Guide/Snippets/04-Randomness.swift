@@ -5,6 +5,5 @@
 let x = 0.0
 let y = 0.0
 
-// The regions the even scatters are asked to fill.
+// The region the blue-noise scatter is asked to fill.
 let region = Rectangle(x: 0, y: 0, width: 400, height: 300)
-let frame = Rectangle(x: 0, y: 0, width: 400, height: 300)
