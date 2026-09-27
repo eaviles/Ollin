@@ -12,7 +12,7 @@ That machine has one motor in it. A gear link ties its hinge to a second, and ev
 
 ## Things with weight
 
-[Chapter 11](11-ForcesAndPhysics.md) dropped flat shapes into a physics world and let gravity do the animating. The same world exists in 3D, and it fits the scene the last chapter built. Crates stack, balls roll, and chains swing, with real contact response, under the same lights and shadows as everything else. It comes with `import OllinPhysics`, like its 2D sibling, and it keeps the shape you already know. Build a `World3D` once, add bodies, and step it every frame.
+[Chapter 11](11-ForcesAndPhysics.md) dropped flat shapes into a physics world and let gravity do the animating. The same world exists in 3D, and it fits the scenes [Chapter 21](21-3DGently.md) taught you to build. Crates stack, balls roll, and chains swing, with real contact response, under the same lights and shadows as everything else. It comes with `import OllinPhysics`, like its 2D sibling, and it keeps the shape you already know. Build a `World3D` once, add bodies, and step it every frame.
 
 ```swift
 let world = World3D()
@@ -41,7 +41,7 @@ That orientation is one value, a `Rotation3D`, and you can read it, set it, or b
 
 <img src="Images/24-WorldsWithWeight/CrateFall.jpg" alt="A pyramid of colored crates caught mid-collapse on a dark floor, crates tumbling and skidding away to the right, the topmost purple crate still in the air" width="560">
 
-The figure is the whole idea in one frame. A crate pyramid is built in `setup()`, each crate one `addBody` with a `.box` collider. A dense steel ball is thrown at it with an opening `velocity`, and this is frame 92 of the collapse. Nothing in it is animated by hand, and nothing in it is random either. The solver is deterministic, so this exact wreck replays every run.
+The figure is the whole idea in one frame. A crate pyramid is built in `setup()`, each crate one `addBody` with a `.box` collider. A dense steel ball is thrown at it with an opening `velocity`, and this is frame 92 of the collapse. Nothing in it is animated by hand, and nothing in it is random either. The solver is deterministic, so the same steps give the same wreck. An export steps on a fixed clock, so it replays this exact one every run.
 
 Colliders come from a small catalog: `.box`, `.sphere`, `.capsule`, `.cylinder`, their tapered cousins (`.cone`, `.taperedCylinder`, `.taperedCapsule`), a convex `.hull` of your own points, and a static `.mesh` for scenery a body can't be. `connect` links bodies with joints, the 2D kinds plus `.ball`, the free-swiveling socket a hanging chain is made of. And the cursor reaches through the camera. `grabBody(at:in:)` ray-picks the body under the mouse, and `dragGrab(_:to:)` slides it across the view at the depth it was picked; `dragBodies(in: world)` is the whole press-drag-release lifecycle as one polled call. That's how you rummage through a pile in a running sketch. Drawing runs the same way: `drawBody(body)` renders a body as the collider it really is, every case of the catalog included. A world draws as one loop with no switch of its own.
 
@@ -556,17 +556,17 @@ final class Contraption: Sketch {
 }
 ```
 
-Run it, then drag the tooth count. What each piece contributes:
+Run it, then drag the speed. What each piece contributes:
 
 - `ignoreCollisions(between:and:)` is what makes the machine possible at all. Two wheels that mesh have to overlap, and to the solver an overlap is a collision to push apart. Putting the whole frame in one group that ignores itself lets the geometry say "gear" while the joint does the actual work.
 - The two `.revolute` joints are ordinary hinges. `.gear(teeth:and:)` then links the two *joints* rather than the two bodies, which is the part worth noticing: a joint is a thing you can hold and connect, not just a line in `setup`.
 - `crank?.drive(at:strength:)` is a velocity motor. It asks for a rate and applies up to `strength` to get there, so a jammed machine stalls rather than tearing itself apart.
-- The crates are the only bodies here with no joint at all. Everything that happens to them is contact, which is why they tumble differently on every run.
+- The crates are the only bodies here with no joint at all. Everything that happens to them is contact, which is why they tumble differently on every live run, where each step is as long as the frame took.
 - `withBody(body) { ... }` puts the transform stack in that body's pose. The recursive `draw` helper then only has to know about shapes, and a compound draws its parts in their own local frames.
 
 Before moving on, make it yours:
 
-- Change `bigTeeth` and watch the ratio change without the drawn wheels changing at all. Then fix the drawing to match, which is the thing the joint was never going to do for you.
+- Change `bigTeeth`'s default and save, so `setup()` builds the gear again, and watch the ratio change without the drawn wheels changing at all. Then fix the drawing to match, which is the thing the joint was never going to do for you.
 - Take out the `ignoreCollisions` line. The gears jam instantly, and the machine tears itself off the wall.
 - Replace the gear link with `.pulley(from:over:and:to:ratio:taut:)` and hang a weight from each end.
 - Add a `raycast` straight down from the end of the bar and draw where it lands, so the machine can see the shelf it is sweeping.
