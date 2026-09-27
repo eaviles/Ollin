@@ -184,14 +184,14 @@ Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Voronoi.md`, `Docs/Generat
 **16. Curves and figures.**
 Teaches: figures that come from a rule. Hobby's spline through points; the curves you can write down (phyllotaxis, Lissajous, roses, trochoids, superellipse and supershape, guilloche, harmonograph, Chaikin smoothing); spirolaterals and when they close; envelopes, caustics, and Huygens fronts; the clothoid and eased corners; Fourier epicycles; shape morphing; mirror anamorphosis.
 Assumes: Ch 15 (the `Contour` and `Shape` values every figure returns), Ch 3 (sine and cosine).
-Payoff: a guilloche or harmonograph plate (to be drafted).
-Figures: the Hobby fit; the classic curves; the spirolaterals; rays leaning on a curve; the clothoid corner; the epicycle terms; the morph steps; the mirror plate; the finished plate.
+Payoff: the engraving, a plate in two inks. A guilloche rosette with a spirograph turning in its eye, a spirolateral knot in each corner, a frame whose corners ease in along clothoids, and a ribbon threaded by Hobby's spline. Its source is drafted and its render is owed.
+Figures: the Hobby fit; the classic curves; the spirolaterals; rays leaning on a curve; the clothoid corner; the epicycle terms; the morph steps; the mirror plate; the engraving.
 Draws from: `Docs/Drawing/Curves.md`, `Envelopes.md`, `Clothoid.md`, `Epicycles.md`, `Morphing.md`, `Anamorphosis.md`; `Examples/Patterns/`, `Examples/Motion/`.
 
 **17. Marks and media.**
 Teaches: a stroke with a hand in it. `strokeProfile` along a finished path; stroke dynamics from speed, pressure, and a stylus (`StrokeMark`, `record(into:)`, `drawMark`); brushes that stamp a tip; `strokeDash` and its phase; then two wet media made from geometry, marbling (drops and rakes) and watercolor (deformed, layered polygons).
 Assumes: Ch 15 (shapes, and export as SVG), Ch 4 (seeded randomness).
-Payoff: a brushed monogram over marbling, with the marbled heart as its hook (to be drafted).
+Payoff: the monogram. Initials from the pen font, written by a pretend hand through a broad nib over a spray of gold, into the paper-colored heart of a marbled sheet (combed stones, then a bull's-eye pulled into a heart by one stylus), inside a dotted rule. Its source is drafted and its render, which is also the hook, is owed.
 Figures: the mark width; the mark dynamics; the nib and lean; the brush stamps; the dash patterns; the marbling steps; the watercolor layers; the finished sketch.
 Draws from: `Docs/Drawing/Marks.md`, `Docs/Drawing/Drawing.md` (profiles and dashes), `Docs/Generators/Marbling.md`, `Docs/Generators/Watercolor.md`; `Examples/Shapes/Brushwork`, `Examples/Shapes/Brushes`, `Examples/Patterns/Marbling`, `Examples/Shapes/Watercolor`.
 
@@ -214,14 +214,14 @@ Draws from: `Docs/Drawing/Effects.md`, `Docs/Drawing/Accumulation.md`, `Docs/Dra
 **20. Pictures restyled.**
 Teaches: the filters that make a photograph into another kind of picture. The ink line (`xdog`), brushwork, flat regions (`shock`), hatching that follows the picture; a colorist's look from a `.cube` file; the film look (halation and grain); filters that read a layer as height, tone, or a center (relight, dither, the warps); the picture inside itself (`droste`); chromatic aberration's modes; the design filters and `melt`.
 Assumes: Ch 19 (layers and filters).
-Payoff: a photograph made into a graded, grained print, or a hatched still life (to be drafted).
+Payoff: the hand-colored print. A sample photograph drifting under brushwork for the color and hatching multiplied over it for the line, graded by a look, grained, and pressed into paper. Its source is drafted and its render is owed.
 Figures: the ink lines; the brushwork; the flat regions; the hatching; the look; the film look; the special filters; the picture inside itself; the dispersion sheet; the design filters; the melt; the finished sketch.
 Draws from: `Docs/Drawing/Effects.md`, `Docs/Drawing/Looks.md`; `Examples/Effects/`, `Examples/Color/Look`.
 
 **21. Pictures you solve.**
 Teaches: a layer treated as a problem to solve. Diffusion curves; a seamless paste (Poisson editing); the measured distance field and `fieldMap`; the frequency domain, both ways; light in a flat sketch; local averages from a summed-area table.
 Assumes: Ch 19 (layers and combines), Ch 18 (reading a layer in a shader, for `sampleRaw`).
-Payoff: marks diffused into a sky, lit by `.light`, and outlined from the distance field (to be drafted).
+Payoff: the lighthouse. A dusk sky and sea diffused from a few marks, a lamp throwing beams through a turning shutter and a masthead lamp worked out by `.light`, and every silhouette outlined from its distance field. Its source is drafted and its render is owed.
 Figures: the diffusion; the seamless clone; the measured field; the frequency domain; the light field; the local averages; the finished sketch.
 Draws from: `Docs/Drawing/DistanceFields.md`, `Fourier.md`, `Light.md`, `LocalAverages.md`, `Docs/Drawing/Effects.md`; `Examples/Effects/`.
 
