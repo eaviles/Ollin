@@ -415,7 +415,7 @@ Before the first answer arrives, `json` reads as null and `table` and `text` are
 
 When something goes wrong, `problem` says what, in a sentence you can put on the canvas. It never takes away what the feed already had. Keep drawing the last good answer and put the notice over the top, the way the figure shows.
 
-The number to watch is `updates`. It counts the answers that *differed* from the one before, so a poll that brought back the same bytes doesn't move it:
+The number to watch is `updateCount`. It counts the answers that *differed* from the one before, so a poll that brought back the same bytes doesn't move it:
 
 ```swift
 if tide.updateCount != seen {
@@ -444,6 +444,7 @@ The address decides how the connection is made. `ws://` and `wss://` open a web 
 ```swift
 final class Edits: Sketch {
     private let edits = PushFeed("https://stream.wikimedia.org/v2/stream/recentchange")
+    private var titles: [String] = []
 
     override func setup() {
         edits.start()
@@ -452,13 +453,18 @@ final class Edits: Sketch {
     override func draw() {
         background(.black)
         for message in edits.messages() {
-            splash(message.json["title"].text ?? "")
+            titles.append(message.json["title"].text ?? "")
+        }
+        titles = Array(titles.suffix(24))          // the newest two dozen
+        fill(.white)
+        for (i, title) in titles.enumerated() {
+            drawText(title, 40, 60 + Double(i) * 40)
         }
     }
 }
 ```
 
-The read to notice is `messages()`. On a busy stream, dozens of messages land between two frames, and the familiar `json` and `text` reads only show the last of them. `messages()` hands over every message since the last frame, oldest first, so nothing slips between two draws. `updates` counts every message here, not just the changed ones. A poll can bring back what you already had; a push was sent because there was something to say.
+The read to notice is `messages()`. On a busy stream, dozens of messages land between two frames, and the familiar `json` and `text` reads only show the last of them. `messages()` hands over every message since the last frame, oldest first, so nothing slips between two draws. `updateCount` counts every message here, not just the changed ones. A poll can bring back what you already had; a push was sent because there was something to say.
 
 The rest of the work is staying connected, and the feed does all of it, the way the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream that labels its messages with ids is resumed from the last one seen, so a message said into the blink arrives late instead of being lost. And the `greeting:` you give the feed is said at every open, not once. That is what keeps a service that wants a subscribe message subscribed across every redial. Your sketch's whole job is to read `isConnected` and `problem` and say what is happening, while it keeps drawing everything that already arrived.
 
