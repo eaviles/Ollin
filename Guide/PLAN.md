@@ -184,14 +184,14 @@ Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Voronoi.md`, `Docs/Generat
 **16. Curves and figures.**
 Teaches: figures that come from a rule. Hobby's spline through points; the curves you can write down (phyllotaxis, Lissajous, roses, trochoids, superellipse and supershape, guilloche, harmonograph, Chaikin smoothing); spirolaterals and when they close; envelopes, caustics, and Huygens fronts; the clothoid and eased corners; Fourier epicycles; shape morphing; mirror anamorphosis.
 Assumes: Ch 15 (the `Contour` and `Shape` values every figure returns), Ch 3 (sine and cosine).
-Payoff: the engraving, a plate in two inks. A guilloche rosette with a spirograph turning in its eye, a spirolateral knot in each corner, a frame whose corners ease in along clothoids, and a ribbon threaded by Hobby's spline. Its source is drafted and its render is owed.
+Payoff: the engraving, a plate in two inks. A guilloche rosette with a spirograph turning in its eye, a spirolateral knot in each corner, a frame whose corners ease in along clothoids, and a ribbon threaded by Hobby's spline.
 Figures: the Hobby fit; the classic curves; the spirolaterals; rays leaning on a curve; the clothoid corner; the epicycle terms; the morph steps; the mirror plate; the engraving.
 Draws from: `Docs/Drawing/Curves.md`, `Envelopes.md`, `Clothoid.md`, `Epicycles.md`, `Morphing.md`, `Anamorphosis.md`; `Examples/Patterns/`, `Examples/Motion/`.
 
 **17. Marks and media.**
 Teaches: a stroke with a hand in it. `strokeProfile` along a finished path; stroke dynamics from speed, pressure, and a stylus (`StrokeMark`, `record(into:)`, `drawMark`); brushes that stamp a tip; `strokeDash` and its phase; then two wet media made from geometry, marbling (drops and rakes) and watercolor (deformed, layered polygons).
 Assumes: Ch 15 (shapes, and export as SVG), Ch 4 (seeded randomness).
-Payoff: the monogram. Initials from the pen font, written by a pretend hand through a broad nib over a spray of gold, into the paper-colored heart of a marbled sheet (combed stones, then a bull's-eye pulled into a heart by one stylus), inside a dotted rule. Its source is drafted and its render, which is also the hook, is owed.
+Payoff: the monogram. Initials from the pen font, written by a pretend hand through a broad nib over a spray of gold, into the paper-colored heart of a marbled sheet (combed stones, then a bull's-eye pulled into a heart by one stylus), inside a dotted rule.
 Figures: the mark width; the mark dynamics; the nib and lean; the brush stamps; the dash patterns; the marbling steps; the watercolor layers; the finished sketch.
 Draws from: `Docs/Drawing/Marks.md`, `Docs/Drawing/Drawing.md` (profiles and dashes), `Docs/Generators/Marbling.md`, `Docs/Generators/Watercolor.md`; `Examples/Shapes/Brushwork`, `Examples/Shapes/Brushes`, `Examples/Patterns/Marbling`, `Examples/Shapes/Watercolor`.
 
@@ -214,14 +214,14 @@ Draws from: `Docs/Drawing/Effects.md`, `Docs/Drawing/Accumulation.md`, `Docs/Dra
 **20. Pictures restyled.**
 Teaches: the filters that make a photograph into another kind of picture. The ink line (`xdog`), brushwork, flat regions (`shock`), hatching that follows the picture; a colorist's look from a `.cube` file; the film look (halation and grain); filters that read a layer as height, tone, or a center (relight, dither, the warps); the picture inside itself (`droste`); chromatic aberration's modes; the design filters and `melt`.
 Assumes: Ch 19 (layers and filters).
-Payoff: the hand-colored print. A sample photograph drifting under brushwork for the color and hatching multiplied over it for the line, graded by a look, grained, and pressed into paper. Its source is drafted and its render is owed.
+Payoff: the hand-colored print. A sample photograph drifting under brushwork for the color and hatching multiplied over it for the line, graded by a look, grained, and pressed into paper.
 Figures: the ink lines; the brushwork; the flat regions; the hatching; the look; the film look; the special filters; the picture inside itself; the dispersion sheet; the design filters; the melt; the finished sketch.
 Draws from: `Docs/Drawing/Effects.md`, `Docs/Drawing/Looks.md`; `Examples/Effects/`, `Examples/Color/Look`.
 
 **21. Pictures you solve.**
 Teaches: a layer treated as a problem to solve. Diffusion curves; a seamless paste (Poisson editing); the measured distance field and `fieldMap`; the frequency domain, both ways; light in a flat sketch; local averages from a summed-area table.
 Assumes: Ch 19 (layers and combines), Ch 18 (reading a layer in a shader, for `sampleRaw`).
-Payoff: the lighthouse. A dusk sky and sea diffused from a few marks, a lamp throwing beams through a turning shutter and a masthead lamp worked out by `.light`, and every silhouette outlined from its distance field. Its source is drafted and its render is owed.
+Payoff: the lighthouse. A dusk sky and sea diffused from a few marks, a lamp throwing beams through a turning shutter and a masthead lamp worked out by `.light`, and every silhouette outlined from its distance field.
 Figures: the diffusion; the seamless clone; the measured field; the frequency domain; the light field; the local averages; the finished sketch.
 Draws from: `Docs/Drawing/DistanceFields.md`, `Fourier.md`, `Light.md`, `LocalAverages.md`, `Docs/Drawing/Effects.md`; `Examples/Effects/`.
 
@@ -293,7 +293,7 @@ Draws from: `Docs/Drawing/Combinators.md`; `Examples/Shapes/Combinators*`, `Exam
 **31. Traced light.**
 Teaches: light followed past the first surface. Screen-space and ray-traced reflections, glossy floors; global illumination; caustics; the path-traced still and its denoiser; then the frame-level tier: temporal and specular anti-aliasing, motion blur, lens flare and the shape of a blur, temporal upscaling, and frames drawn in between.
 Assumes: Ch 25 (the scene and its depth buffer), Ch 26 (materials and glass), Ch 30 (fields, which take the same light).
-Payoff: the lamplit room. One lamp swinging on its cord over a waxed floor between a terracotta wall and a teal one, its light bounced by `globalIllumination`, shown in the floor by the traced and glossy reflections, and focused by a glass ball into a caustic spot. A red ball rolls around the glass inside `withMotion`, so the edge average and the motion blur follow it, and the lamp flares through a six-bladed iris. Kept as a movie, with a path-traced still as the step further. Its source is drafted and its render is owed.
+Payoff: the lamplit room. One lamp swinging on its cord over a waxed floor between a terracotta wall and a teal one, its light bounced by `globalIllumination`, shown in the floor by the traced and glossy reflections, and focused by a glass ball into a caustic spot. A red ball rolls around the glass inside `withMotion`, so the edge average and the motion blur follow it, and the lamp flares through a six-bladed iris. Kept as a movie, with a path-traced still as the step further.
 Figures: the traced mirror; the corridor and the satin floor; the bounced light; the caustic light; settled edges; held highlights; the motion streak; the ghost chain and star points; the opening; fewer pixels; every other refresh; the traced still; the lamplit room.
 Draws from: `Docs/3D/3D.md` (the traced and temporal tiers), `Docs/3D/Caustics.md`, `Docs/3D/LensFlare.md`, `Docs/Output/PathTraced.md`, `Docs/Drawing/Effects.md#combined`; `Examples/3D/Effects/`, `Examples/3D/Lighting/`.
 
@@ -323,7 +323,7 @@ Draws from: `Docs/Helpers/Audio.md`, `Docs/Helpers/Listening.md`; `Examples/Audi
 **35. Controls and signals.**
 Teaches: everything that steers a sketch from outside the inspector. `@Param` binding; MIDI, the MIDI clock, and timecode; OSC and OSCQuery; the network tempo session (Link); one parameter on three hands; TUIO tables; game controllers; serial sensors and Firmata; Bluetooth; data that arrives on its own (`DataFeed`, `PushFeed`, `Weather`); and the trackpad's knock as an output.
 Assumes: Ch 1 (`@Param`), Ch 34 (levels and moments, as sound gave them).
-Payoff: the weather rose. A rose of petals whose size and bloom are `@Param` values bound to two MIDI knobs and two OSC faders with smoothing and a show-rule, throbbing and turning on a Link beat, moved by a game controller's stick, its trails blown downwind by a `Weather` reading with calm fallbacks, and a trackpad knock on each downbeat. Kept as a live take (Ch 39). It leaves timecode, OSCQuery, TUIO, serial, Bluetooth, and the pushed feed to the variations and the sections themselves. Its source is drafted and its render is owed.
+Payoff: the weather rose. A rose of petals whose size and bloom are `@Param` values bound to two MIDI knobs and two OSC faders with smoothing and a show-rule, throbbing and turning on a Link beat, moved by a game controller's stick, its trails blown downwind by a `Weather` reading with calm fallbacks, and a trackpad knock on each downbeat. Kept as a live take (Ch 39). It leaves timecode, OSCQuery, TUIO, serial, Bluetooth, and the pushed feed to the variations and the sections themselves.
 Figures: the binding flow; musical time; timecode pieces; the published parameters; the shared downbeat; the surface frame; a pad being read; the serial loop; bytes into values; the polled and pushed feeds; the weather outside; the felt pattern; the weather rose.
 Draws from: `Docs/Integration/MIDI.md`, `OSC.md`, `OSCQuery.md`, `Link.md`, `TUIO.md`, `Controller.md`, `Serial.md`, `Bluetooth.md`, `Haptics.md`, `Docs/Helpers/Parameters.md`, `LiveData.md`, `Weather.md`; `Examples/Integration/`, `Examples/Data/`.
 
@@ -332,7 +332,7 @@ Draws from: `Docs/Integration/MIDI.md`, `OSC.md`, `OSCQuery.md`, `Link.md`, `TUI
 **36. Making sound.**
 Teaches: `Synth` and what a note is made of (voices, envelopes, filters); building an instrument by patching operators rather than picking a preset, and the effects chain after it; an instrument that is a set of recordings; the four physical models (plucked string, struck shape, bowed string, blown tube); expression under the finger. Which notes, and when, is Ch 37's.
 Assumes: Ch 34 (an analyzer to read the playing back, and the mic a beat follower listens to).
-Payoff: the workbench, played with the mouse. Three drawn outlines measured as `StruckShape`s, with the `gains` at the pointer drawn as bars under each; six strings plucked where they are clicked; a bowed string whose `pressure` is the speed of the drag; one chain (chorus, delay, a room drawn from a rule, limiter) on both synths, with the room's answer drawn across the top. Kept as a live take with its sound (Ch 39). The music box moved to Ch 37. Its source is drafted and its render is owed.
+Payoff: the workbench, played with the mouse. Three drawn outlines measured as `StruckShape`s, with the `gains` at the pointer drawn as bars under each; six strings plucked where they are clicked; a bowed string whose `pressure` is the speed of the drag; one chain (chorus, delay, a room drawn from a rule, limiter) on both synths, with the room's answer drawn across the top. Kept as a live take with its sound (Ch 39). The music box moved to Ch 37.
 Figures: the envelope set; modulation measured; the plucked string; the struck shapes; the workbench.
 Draws from: `Docs/Helpers/Synthesis.md`; `Examples/Audio/`.
 
@@ -346,7 +346,7 @@ Draws from: `Docs/Helpers/Composition.md`, `Docs/Helpers/Sonification.md`, `Docs
 **38. Finishing a sketch.**
 Teaches: exporting stills, sequences, video, GIF; a web page that plays the sketch back; SVG for plotters (closing Ch 15's loop); print separations and a 3D print; USDZ and spatial video; reproducibility as a sharing feature (seeds, params); describable output. Performing is Ch 39's, and handing the work over is Ch 40's.
 Assumes: everything before it, lightly.
-Payoff: the contour chart. Rings of single lines pushed by one looping noise field, finished as a keeper: the seed fixed after a contact sheet, the tuned parameters written back, the lap declared, every size a fraction of the canvas, and a description built from its own numbers. It leaves as a PDF poster, a one-lap GIF, and an SVG plot, and its recipe is read back from the poster and handed in again with `--param`. The set moved to Ch 39. Its source is drafted and its render is owed.
+Payoff: the contour chart. Rings of single lines pushed by one looping noise field, finished as a keeper: the seed fixed after a contact sheet, the tuned parameters written back, the lap declared, every size a fraction of the canvas, and a description built from its own numbers. It leaves as a PDF poster, a one-lap GIF, and an SVG plot, and its recipe is read back from the poster and handed in again with `--param`. The set moved to Ch 39.
 Figures: the export map; the headless capture; the separations; the fabrication sheet; the spatial pair; describable output; the contour chart.
 Draws from: `Docs/Output/Export.md`, `Docs/Output/Web.md`, `Docs/Output/PrintSeparations.md`, `Docs/Output/Fabrication.md`, `Docs/Output/Spatial.md`; `Examples/Export/`.
 
