@@ -8,7 +8,7 @@
 
 This chapter teaches creatures that want things, and what happens when a few hundred of them watch only each other. You build one creature that can chase a target, stop at it, and roam on its own, with trails that fade instead of being erased. Then you give every creature the same three rules about its neighbors, which is enough to make the flock above, with nobody in charge. After the sketch come three more crowds run by a rule. Chases draw curves, walkers make room for each other, and fireflies fall into step.
 
-One word before we start. The field calls these creatures *autonomous agents*, the name Craig Reynolds gave them in 1986. That was decades before "agent" came to mean software with a chat window. The idea is his either way, and this guide will say creature, boid, and flock.
+Before we start, one word about names. The field calls these creatures *autonomous agents*, a name from decades before "agent" came to mean software with a chat window. It is the name Daniel Shiffman's chapter on them carries. This guide will say creature, boid, and flock. *Boid* is Craig Reynolds' own word, from the flock he first animated in 1986.
 
 ## A creature that steers: `Vehicle`
 
@@ -21,7 +21,7 @@ let steer = (desired - velocity).limited(to: maxForce)
 
 Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing with mass turns instantly. [Chapter 10](10-Vectors.md#steering-the-chase) drew that move as arrows, with the steer running from the tip of the velocity to the tip of the desired.
 
-Steering is wanting, written as arithmetic. Everything a creature does in this chapter is this same move with a different idea of *desired*, and that is how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
+Everything a creature does in this chapter is this same move with a different idea of *desired*, and that is how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
 
 ```swift
 let creature = Vehicle(at: Vector2(540, 540), maxSpeed: 4, maxForce: 0.15, seed: 1)
@@ -30,15 +30,15 @@ creature.applyForce(creature.seek(mouse))   // any behaviors, any weights
 creature.step()                             // then move one step
 ```
 
-Behaviors don't move the creature. They only return forces, and you decide which to apply and how loudly each one counts (`creature.flee(danger) * 2` shouts twice as hard). `step()` adds the sum to the velocity, caps the speed, and moves. It is [Chapter 11](11-ForcesAndPhysics.md)'s force accumulation again, with the forces coming from wants instead of gravity.
+Behaviors don't move the creature. They only return forces, and you decide which to apply and how loudly each one counts (`creature.flee(danger) * 2` counts twice). `step()` adds the sum to the velocity, caps the speed, and moves. It is [Chapter 11](11-ForcesAndPhysics.md)'s force accumulation again, with the forces coming from wants instead of gravity.
 
-Something changed quietly since [Chapter 10](10-Vectors.md). There is no `deltaTime` here. A `Vehicle`, like every simulation in this chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation repeats. The same seed replays the same run, which is how the figures in this guide, and any sketch you export, can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that is almost always fine.
+One thing is different from [Chapter 10](10-Vectors.md). There is no `deltaTime` here. A `Vehicle`, like every simulation in this chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation repeats. The same seed replays the same run, which is how the figures in this guide, and any sketch you export, can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that is almost always fine.
 
-> **Swift note.** `creature` is declared with `let` even though it changes every frame. That works because `Vehicle` is a *class*, so the `let` pins which creature the name points at, not what is inside it. You met the same pattern in [Chapter 11](11-ForcesAndPhysics.md) with `World`. Holding one instance and poking it every frame is the house shape for simulations. The flock later in this chapter holds its `Boids` the same way.
+> **Swift note.** `creature` is declared with `let` even though it changes every frame. That works because `Vehicle` is a *class*, so the `let` pins which creature the name points at, not what is inside it. You met the same pattern in [Chapter 11](11-ForcesAndPhysics.md) with `World`. Holding one instance and poking it every frame is the house shape for simulations.
 
 ## Seek and arrive: aiming at a target and stopping there
 
-`seek` aims at full speed forever, and it has no idea of *enough*. Run it at a fixed target and the creature overshoots, turns around, and shoots through again, forever. `arrive` is the fix. It wants full speed far away but ramps its desired speed down inside a slowing radius, so the creature eases in and parks. Watch both at once. Make `MySketches/ChaseDot.swift`:
+`seek` aims at full speed forever, and it never slows. Run it at a fixed target and the creature overshoots, turns around, and shoots through again, forever. `arrive` is the fix. It wants full speed far away but ramps its desired speed down inside a slowing radius, so the creature eases in and parks. Watch both at once. Make `MySketches/ChaseDot.swift`:
 
 ```swift
 import Ollin
@@ -97,7 +97,7 @@ Both trails here are arrays of positions, appended each frame and drawn with `dr
 
 ## Roaming: `wander`, and trails from `noClear`
 
-A creature that only seeks needs a target. The most lifelike behavior needs no target at all. `wander` gives a creature aimless, believable roaming. Adding random turns each step produces nervous jitter rather than a stroll, so the recipe does something else. Picture a circle floating a fixed distance ahead of the creature. The creature seeks a point on that circle's rim, and each step the point slides a little way around the rim, at random:
+A creature that only seeks needs a target. A behavior that needs no target at all is `wander`, which gives a creature aimless, believable roaming. Adding random turns each step produces nervous jitter rather than a stroll, so the recipe does something else. Picture a circle floating a fixed distance ahead of the creature. The creature seeks a point on that circle's rim, and each step the point slides a little way around the rim, at random:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/WanderCircle-dark.jpg">
@@ -106,7 +106,7 @@ A creature that only seeks needs a target. The most lifelike behavior needs no t
 
 Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality parameter. Small values drift in long, calm arcs, and large values get twitchy.
 
-A wanderer shows its character in its trail, and there is a second way to get one that needs no list of positions. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far, and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it. Anything that moves grows a tail. Three wanderers, with trails made that way, make `MySketches/Wanderer.swift`:
+A wanderer shows its character in its trail, and there is a second way to get one that needs no list of positions. [Chapter 9](09-Pictures.md)'s string art already switched clearing off with `noClear()`, and here is what that is for. Every other sketch so far has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far, and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it. Anything that moves grows a tail. Three wanderers, with trails made that way, make `MySketches/Wanderer.swift`:
 
 ```swift
 import Ollin
@@ -149,7 +149,7 @@ final class Wanderer: Sketch {
 
 Two behaviors are stacked here, and that is the point of forces that compose. `wander` supplies the roaming and `contain` supplies the walls, a push back inside the canvas that only wakes up within `margin` of an edge. Each creature has its own `seed`, because wander is the one behavior that draws random numbers. Two creatures with the same seed roam in lockstep.
 
-The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at three percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a few frames, and lower it to `0.01` and they last for minutes. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
+The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at three percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a fraction of a second. Lower it to `0.01` and they last ten seconds or so. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
 
 The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every parameter.
 
@@ -175,10 +175,10 @@ A wanderer roams alone. In 1986 Reynolds set out to animate a flock of birds and
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleCohesion-dark.jpg">
-  <img src="Images/12-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at their center of the group, and an orange arrow from the boid toward it" width="680">
+  <img src="Images/12-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at the center of the group, and an orange arrow from the boid toward it" width="680">
 </picture>
 
-Every arrow above is the same steering move from the start of the chapter, and only *desired* changes. The center in the cohesion rule is [Chapter 10](10-Vectors.md)'s average, the neighbors' positions added up and divided by their count. And notice what none of the rules mention: the flock. A boid sees a handful of neighbors inside its perception radius and nothing else. No boid knows the flock exists, and the flock happens anyway. That is the pattern this chapter is about, local rules producing global behavior. It is why these three small rules have been studied by biologists and roboticists ever since.
+Every arrow above is the same steering move from the start of the chapter, and only *desired* changes. The center in the cohesion rule is [Chapter 10](10-Vectors.md)'s average, the neighbors' positions added up and divided by their count. And notice that none of the rules mention the flock. A boid sees a handful of neighbors inside its perception radius and nothing else. No boid knows the flock exists, and the flock happens anyway. That is the pattern this chapter is about, local rules producing global behavior.
 
 Here are the rules switched on one at a time, same creatures, same seed:
 
@@ -187,11 +187,11 @@ Here are the rules switched on one at a time, same creatures, same seed:
   <img src="Images/12-FlocksAndSwarms/RuleMix.jpg" alt="Three panels of small dark triangles. Separation only: an even scatter pointing every way. Plus alignment: one loose school all pointing the same way. Plus cohesion: three tight flocks gathered apart from each other" width="680">
 </picture>
 
-Separation alone spaces them evenly, but every heading is private. Add alignment and the headings agree: a school. Add cohesion and the school gathers itself into flocks. Reading the panels left to right is watching order emerge one rule at a time.
+Separation alone spaces them evenly, but every heading is private. Add alignment and the headings agree, which makes a school. Add cohesion and the school gathers itself into flocks. Left to right, the panels add one rule at a time.
 
 ## The flock, assembled: `Boids`
 
-You could build all of that from `Vehicle` and three loops. It would slow to a crawl at a few hundred creatures, because "look at every neighbor" naively means comparing everyone against everyone. Ollin ships the assembled version as `Boids`. It holds the three rules, the perception and personal-space radii, and the edge-turning. Its neighbor search only compares true neighbors, so hundreds of boids stay cheap. It is another stepper you hold:
+You could build all of that from `Vehicle` and three loops. It would become slow at a few hundred creatures, because "look at every neighbor" naively means comparing everyone against everyone. Ollin ships the assembled version as `Boids`. It holds the three rules, the perception and personal-space radii, and the edge-turning. Its neighbor search only compares true neighbors, so hundreds of boids stay cheap. It is another stepper you hold:
 
 ```swift
 var flock: Boids!
@@ -214,7 +214,7 @@ The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`)
 
 ### The trick that keeps it cheap: `SpatialIndex`
 
-That neighbor search is an aside, because it is not about flocks. Ask 300 boids to look at every other boid and you have made 90,000 comparisons this frame. At 3,000 boids it is 9 million, and the window starts to stutter. But nearly all of that work is spent proving that two creatures on opposite sides of the canvas are far apart. So stop asking. Cut the plane into square cells, one perception radius across. Anything closer to you than one radius has to be sitting in your own cell or in one of the eight touching it. Nine cells hold every answer, and the rest of the flock is never measured at all.
+Ask 300 boids to look at every other boid and you have made 90,000 comparisons this frame. At 3,000 boids it is 9 million, and the window starts to stutter. But nearly all of that work is spent proving that two creatures on opposite sides of the canvas are far apart. So the search stops asking most of them, and the trick is not about flocks at all. Cut the plane into square cells, one perception radius across. Anything closer to you than one radius has to be sitting in your own cell or in one of the eight touching it. Nine cells hold every answer, and the rest of the flock is never measured at all.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/NeighborCells-dark.jpg">
@@ -237,7 +237,7 @@ Passing the point's *index* rather than its position leaves the point itself out
 
 ## Putting it together: the living flock
 
-The sketch at the top of the chapter composes three of the steps. The assembled flock runs with the three rules on parameters, and the trails fade the way the wanderers' did. Make `MySketches/Flock.swift`:
+The sketch at the top of the chapter composes three of the steps. The assembled flock runs with its three rule weights on parameters, and the trails fade the way the wanderers' did. Make `MySketches/Flock.swift`:
 
 ```swift
 import Ollin
@@ -252,15 +252,13 @@ final class Flock: Sketch {
     override func setup() {
         background(Color(hex: 0x0D1017))
         noClear()
+        flock = Boids(count: 520, in: bounds, seed: 7,
+                      maxSpeed: 3.6 * scale, maxForce: 0.15 * scale,
+                      perceptionRadius: 60 * scale, separationRadius: 24 * scale,
+                      margin: 90 * scale)
     }
 
     override func draw() {
-        if flock == nil {
-            flock = Boids(count: 520, in: bounds, seed: 7,
-                          maxSpeed: 3.6 * scale, maxForce: 0.15 * scale,
-                          perceptionRadius: 60 * scale, separationRadius: 24 * scale,
-                          margin: 90 * scale)
-        }
         guard let flock else { return }
         flock.separation = separation
         flock.alignment = alignment
@@ -289,17 +287,17 @@ final class Flock: Sketch {
 }
 ```
 
-Each boid is a triangle rotated to its heading with [Chapter 6](06-GridsAndRepetition.md)'s transforms. Its hue comes *from* the heading, so color is information. Boids flying the same way share a color, and every band of color in the image is a sub-flock that has agreed on a direction. The fade is `0.16` here where the wanderers used `0.03`. So the tails are short, and the bands read as motion rather than as a drawing of where the flock has been. The flock is built on the first frame rather than in `setup()`. Its speeds and radii are scaled by `scale`, the canvas-to-window factor [Chapter 1](01-HelloOllin.md) introduced, and that is only known once the window exists. Here is a few seconds of it organizing itself from a random scatter:
+Each boid is a triangle rotated to its heading with [Chapter 6](06-GridsAndRepetition.md)'s transforms. `drawTriangle` takes its three corners, drawn here around the origin so `rotate` turns the whole shape. `.pi` is half a turn, so the hue's sum runs `0...tau` around the wheel. Its hue comes *from* the heading, so color is information. Boids flying the same way share a color, and every band of color in the image is a sub-flock that has agreed on a direction. The fade is `0.16` here where the wanderers used `0.03`. So the tails are short, and the bands read as motion rather than as a drawing of where the flock has been. The flock's speeds and radii are scaled by `scale`, [Chapter 1](01-HelloOllin.md)'s factor, the shorter canvas edge over 1000, so they follow the canvas size. Here is a few seconds of it organizing itself from a random scatter:
 
 <img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="An animated flock of colored triangles starting scattered and gathering into swirling sub-flocks, each group sharing a color that shifts as it turns" width="480">
 
-> **Swift note.** `guard let flock else { return }` is the short form of [Chapter 7](07-Tiles.md)'s `guard let`. It unwraps the optional into a constant of the same name, the way [Chapter 9](09-Pictures.md)'s short `if let` did.
+> **Swift note.** `guard let flock else { return }` is the `guard let` [Chapter 9](09-Pictures.md) used, unwrapping the optional into a constant of the same name. The flock is a `var` rather than a `let` handle because `setup()` fills it in after the sketch is made.
 
 Then make it yours:
 
 - Drag the three parameters while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot. High separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
 - Give the flock somewhere to go. Setting `flock.field = curlField(scale: 0.003)` with a small `flock.fieldStrength` sends the whole society drifting along an invisible current (a preview of [Chapter 14](14-FieldsAndFlow.md)).
-- Add a predator, one `Vehicle` that pursues the flock's first boid, drawn large and pale. All the forces compose.
+- Add a predator, one `Vehicle` that pursues the flock's first boid with `creature.pursue(flock.positions[0], velocity: flock.velocities[0])`, drawn large and pale. All the forces compose.
 - Swap the triangle for a short line along the velocity, and the sketch stops reading as creatures and starts reading as brushstrokes.
 
 A flock is motion, so keep it as a few seconds of video:
@@ -310,11 +308,11 @@ swift run OllinLive MySketches/Flock.swift --export-video flock.mp4 --seconds 8
 
 ## Other crowds by rule: pursuit, avoidance, and synchronization
 
-The flock was a crowd run by three local rules, each creature reading its neighbors. Three more crowds belong to the same idea, and the sketch used none of them. In the first, every runner chases another and the paths come out as exact curves. In the second, walkers look ahead and make room for each other instead of pushing. In the third, the agreement is not about where to go but about when.
+The flock was a crowd run by three local rules, each creature reading its neighbors. Three more crowds belong to the same idea, and the sketch used none of them. In the first, every runner chases another and the paths come out as exact curves. In the second, walkers look ahead and make room for each other instead of pushing. In the third, the agreement is about *when*, where a flock's is about where to go. The second and third run on a clock rather than in steps. So their verb is `advance()`, which moves them one sixtieth of a second by default.
 
 ### Everyone chasing somebody: pursuit curves
 
-A pursuit curve is the path of a runner that always heads straight at where its target is *now*, while the target runs too. It is the oldest chase there is. It is the tool for a picture of a chase, since the curves it draws are exact and can be worked out on paper. Pierre Bouguer studied one ship pursuing another in 1732. The version with four runners is from 1877, when Edouard Lucas asked it and Henri Brocard answered it. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
+A pursuit curve is the path of a runner that always heads straight at where its target is *now*, while the target runs too. It is the classic chase. It is the tool for a picture of a chase, since the curves it draws are exact and can be worked out on paper. Pierre Bouguer studied one ship pursuing another in 1732. The version with four runners is from 1877, when Edouard Lucas asked it and Henri Brocard answered it. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
 
 You can answer it by running it. `Pursuit` is a stepper you hold, like `World` in the last chapter and the flock above. Build it, step it, and read the geometry out:
 
@@ -342,7 +340,7 @@ Both answers are exact. The dogs draw four identical spirals that meet in the mi
 
 One rule holds the figure up, and it is an easy one to get wrong. **Everybody moves at the same moment.** `step()` works out every runner's move from the positions they all held *before* the step. Move them one at a time instead, and each dog runs at a dog that has already left. The square goes lopsided within a few steps and the figure falls apart.
 
-A runner is not a `Vehicle`. It carries no momentum and no turning cap: it faces its target and goes. Setting `maxTurn` puts the cap back, and gives you a runner that swings wide and overshoots, which is the other kind of chase. A runner that follows nobody holds its heading and runs straight. That is how you write the case on the right of the figure, where a fast pursuer chases a quarry crossing in front of it:
+A runner is not a `Vehicle`. It carries no momentum and no turning cap, so it faces its target and goes. Setting `maxTurn` puts the cap back, and gives you a runner that swings wide and overshoots, which is the other kind of chase. A runner that follows nobody holds its heading and runs straight. That is how you write the case on the right of the figure, where a fast pursuer chases a quarry crossing in front of it:
 
 ```swift
 let chase = Pursuit(runners: [.holding(Vector2(0, -1), from: Vector2(400, 800), speed: 0.55),
@@ -355,7 +353,7 @@ That one can be worked out in advance too. A pursuer of speed 1, starting a dist
 
 ### A crowd that makes room: `Crowd`
 
-A `Crowd` is a set of walkers that avoid collisions by looking ahead rather than by pushing. A flock keeps its distance by pushing. Separation only acts once two boids are already too close, so nothing stops a fast boid from sliding into another for a frame. People walking through a crowd look ahead, see a collision coming, and pick a path that misses it. They expect the other person to move a little too. That makes `Crowd` the tool for pedestrians, a room draining through a door, or streams crossing a square. The method is optimal reciprocal collision avoidance, from Jur van den Berg, Stephen Guy, Ming Lin, and Dinesh Manocha's 2011 paper "Reciprocal n-Body Collision Avoidance". Their RVO2 library is its reference implementation.
+A `Crowd` is a set of walkers that avoid collisions by looking ahead rather than by pushing. A flock keeps its distance by pushing, since separation only acts once two boids are already too close. So nothing stops a fast boid from sliding into another for a frame. People walking through a crowd look ahead, see a collision coming, and pick a path that misses it. They expect the other person to move a little too. That makes `Crowd` the tool for pedestrians, a room draining through a door, or streams crossing a square. The method is optimal reciprocal collision avoidance, from Jur van den Berg, Stephen Guy, Ming Lin, and Dinesh Manocha's 2011 paper "Reciprocal n-Body Collision Avoidance". Their RVO2 library is its reference implementation.
 
 Give each walker a place to go and advance the crowd once a frame:
 
@@ -400,6 +398,8 @@ crowd.preferredVelocity = { walker in
 
 `preferredVelocity` replaces every goal with a rule of your own. It is handed each walker, so it can also read `group`, a number you give each walker to use however you like.
 
+> **Swift note.** `crowd.preferredVelocity = { walker in ... }` stores a closure in a property. That is a block of code kept for later, and the crowd runs it once per walker each time it advances. The `return` inside it hands back that walker's answer.
+
 The third panel is the one nobody plans. Feed a corridor from both ends and the two streams sort themselves into lanes. No walker is told to follow anyone. A walker that falls in behind another going its way meets fewer people, and the lanes build up from that. Pedestrians in a busy station do the same thing.
 
 The setting to know is `timeHorizon`. It is how far ahead a walker looks, in seconds, and it starts at one. Look further and walkers turn earlier and more smoothly, until the crowd is dense enough that everyone sees everyone coming at once. Put 96 walkers in that ring and look four seconds ahead, and they stall a third of the way in and never arrive. Look less far and walkers keep straighter and swerve at the last moment. The worked example is [`Examples/Simulation/Crowd`](../Examples/Simulation/Crowd/Sketch.swift), with a door, a corridor, four crossing streams, and the ring.
@@ -408,7 +408,7 @@ The setting to know is `timeHorizon`. It is how far ahead a walker looks, in sec
 
 ### Falling into step: `Kuramoto`
 
-A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* is where most people met it, fireflies and Huygens's clocks included.
+A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* is the book that made it widely known, fireflies and Huygens's clocks included.
 
 ```swift
 let sync = Kuramoto(count: 300, coupling: 2, seed: 7)
@@ -416,6 +416,7 @@ var spots: [Vector2] = []
 
 override func setup() {
     spots = (0 ..< 300).map { _ in Vector2(random(width), random(height)) }
+    noStroke()
 }
 
 override func draw() {
@@ -428,20 +429,20 @@ override func draw() {
 }
 ```
 
-Each firefly is a phase, an angle going round, and it glows when the angle comes past the top. `spread` is how different their natural paces are, and `coupling` is the pull. What to watch is the crowd's *coherence*, the order parameter Kuramoto called r. Put every phase on a circle as a dot, average the dots as points, and r is how far that average sits from the center. Scattered dots average to the middle, and r is near 0. Dots bunched together average near the rim, and r is near 1. `sync.coherence` reads it, and `sync.meanPhase` is the direction of the bunch.
+Each firefly is a phase, an angle going round, and it glows when the angle comes past the top. The spots are rolled with `_ in`, because a spot does not depend on which firefly it is. `spread` is how different their natural paces are, and `coupling` is the pull. What to watch is the crowd's *coherence*, the order parameter Kuramoto called r. Put every phase on a circle as a dot, average the dots as points, and r is how far that average sits from the center. Scattered dots average to the middle, and r is near 0. Dots bunched together average near the rim, and r is near 1. `sync.coherence` reads it, and `sync.meanPhase` is the direction of the bunch.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/Fireflies-dark.jpg">
   <img src="Images/12-FlocksAndSwarms/Fireflies.jpg" alt="Left, three wheels of small dots on a circle at three moments, the dots scattered around the first, gathering on the second, and bunched together on the third, each wheel with an orange arrow from its center growing longer. Right, three curves of coherence over twelve seconds: one staying near the floor, one wandering low, and one climbing to nearly one" width="880">
 </picture>
 
-The left of the figure is one crowd at three moments, with the pull three times what it needs. The dots start everywhere, gather, and end in a bunch, and the arrow from the center grows with them. The right is what made the model famous. Below a critical coupling the crowd never locks, however long it runs, and r wanders near the floor. Above it a locked group forms and grows, and r climbs toward 1. The threshold is sharp, and Kuramoto worked out where it sits. `sync.criticalCoupling` names it for the spread you gave the crowd. A slider taken across it is the whole demonstration. On one side of it nothing happens, and on the other side everything does, from a pull that changed by a few percent.
+The left of the figure is one crowd at three moments, with the pull three times what it needs. The dots start everywhere, gather, and end in a bunch, and the arrow from the center grows with them. The right shows the threshold. Below a critical coupling the crowd never locks, however long it runs, and r wanders near the floor. A little above it a locked group forms and grows, and r climbs toward 1 as the pull rises. Kuramoto worked out where the threshold sits, and `sync.criticalCoupling` names it for the spread you gave the crowd. A slider taken across it is the whole demonstration, because below it the crowd never locks and above it a locked group forms.
 
 The model is cheap in a way a flock is not. Nobody looks at anybody in particular. Each oscillator is pulled toward the crowd's own mean phase. So a frame is one pass over the crowd rather than a neighbor search, and thousands cost nothing you notice. Give it a `range` and each oscillator listens only to its neighbors on a ring instead, which locks locally and can keep a twist. Laid out on a grid, the same agreement gets a geography, which [Chapter 23](23-GridSimulations.md#in-step-with-the-neighbors-oscillators-on-a-lattice) draws. The worked example is [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift), a meadow of fireflies falling into step.
 
 ## Where this comes from
 
-Boids are Craig Reynolds' invention. The 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules. His 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on. His term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants. Daniel Shiffman's *The Nature of Code* is where most creative coders meet this material. Its chapters on agents are the long-form treatment to read next. The family entries name their own sources. Bouguer, Lucas, and Brocard stand behind the chases, van den Berg and his co-authors behind the crowd, and Kuramoto and Strogatz behind the fireflies. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Boids are Craig Reynolds' invention. The 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules. His 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on. His term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants. Daniel Shiffman's *The Nature of Code* is where most creative coders meet this material. Its chapters on agents are the long-form treatment to read next. The entries after the sketch name their own sources. Bouguer, Lucas, and Brocard stand behind the chases, van den Berg and his co-authors behind the crowd, and Kuramoto and Strogatz behind the fireflies. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

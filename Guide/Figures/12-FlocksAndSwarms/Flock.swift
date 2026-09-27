@@ -16,15 +16,13 @@ final class Flock: Sketch {
     override func setup() {
         background(Color(hex: 0x0D1017))
         noClear()
+        flock = Boids(count: 520, in: bounds, seed: 7,
+                      maxSpeed: 3.6 * scale, maxForce: 0.15 * scale,
+                      perceptionRadius: 60 * scale, separationRadius: 24 * scale,
+                      margin: 90 * scale)
     }
 
     override func draw() {
-        if flock == nil {
-            flock = Boids(count: 520, in: bounds, seed: 7,
-                          maxSpeed: 3.6 * scale, maxForce: 0.15 * scale,
-                          perceptionRadius: 60 * scale, separationRadius: 24 * scale,
-                          margin: 90 * scale)
-        }
         guard let flock else { return }
         flock.separation = separation
         flock.alignment = alignment
