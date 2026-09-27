@@ -160,7 +160,7 @@ drawMesh(tree, instances: spots.map {
 
 Each spot is a `SurfaceSample`, and it knows more than where it landed. `normal` is the direction the surface faces there. `alignment` turns that into the angles a placement takes, so a tree stands up out of a slope instead of leaning with the rest. `spin` turns it about that direction, which is what stops a field of copies from reading as clones. `uv` is the texture coordinate, for reading a picture at that spot. `triangle` and `barycentric` are there to blend anything else the mesh carries per vertex.
 
-By default the spots also keep away from each other. That is blue noise again, the even-but-organic spread you met on a flat rectangle in [Chapter 13](13-GrowingThings.md). Here you ask by count rather than by radius: ask for 400 and you get 400, spaced as widely as 400 can be on that much skin. Pass `scatter: .random` when clumping is the look you want, as it is for thrown seed or splatter. Ask by `spacing:` instead of `count:` when the density is what should hold still while the mesh changes size.
+By default the spots also keep away from each other. That is blue noise again, the even-but-organic spread you met on a flat rectangle in [Chapter 15](15-ShapesAsMaterial.md). Here you ask by count rather than by radius: ask for 400 and you get 400, spaced as widely as 400 can be on that much skin. Pass `scatter: .random` when clumping is the look you want, as it is for thrown seed or splatter. Ask by `spacing:` instead of `count:` when the density is what should hold still while the mesh changes size.
 
 And because a sample knows the surface, a scatter can be filtered by what the surface is doing. Trees on the flat ground and nowhere else is one line:
 
@@ -492,7 +492,7 @@ The third part is the frame. It draws the land, then the meadow, then the whole 
                                       rotation: Vector3(gust, seat.phase, gust * 0.6),
                                       scale: Vector3(s, s * 1.2, s),
                                       color: Color.mix(pineDark, pineLight,
-                                                       t: sin(seat.phase * 5) * 0.5 + 0.5)))
+                                                       sin(seat.phase * 5) * 0.5 + 0.5)))
         }
         drawMesh(pine, instances: stand)
     }
