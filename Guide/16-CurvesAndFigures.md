@@ -4,9 +4,9 @@
 
 # 16. Curves and figures
 
-<!-- Hook image: the finished sketch, a guilloche or harmonograph plate. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the engraving (Figures/16-CurvesAndFigures/Engraving.swift). Waiting on its render on the Mac. -->
 
-Some figures come from a rule rather than a hand. Two sine waves at a ratio weave a Lissajous figure, and a wheel rolling inside a ring draws a spirograph. This chapter turns those rules into calls. A spline bends through your points the way a practiced hand would, and the classic curves come from their formulas. A family of lines traces the curve it leans on, and a road engineer's corner eases into its turn. Any outline comes back from spinning circles, one shape turns into another, and a plate reads only in a mirror. Each call hands back a `Contour` or a `Shape` from [Chapter 15](15-ShapesAsMaterial.md), so a figure fills, strokes, and plots like any other outline.
+Some figures come from a rule rather than a hand. Two sine waves at a ratio weave a Lissajous figure, and a wheel rolling inside a ring draws a spirograph. This chapter turns those rules into calls. A spline bends through your points the way a practiced hand would, and the classic curves come from their formulas. A family of lines traces the curve it leans on, and a road engineer's corner eases into its turn. Any outline comes back from spinning circles, one shape turns into another, and a plate reads only in a mirror. Each call hands back a `Contour` or a `Shape` from [Chapter 15](15-ShapesAsMaterial.md), so a figure fills, strokes, and plots like any other outline. The chapter ends by engraving a plate with several of them: a guilloche rosette, corner knots, an eased frame, and a ribbon.
 
 ## A curve that reads as drawn: Hobby's spline
 
@@ -241,34 +241,138 @@ There is a limit, and it is better met before you compose than after. Two tangen
 
 `plate(of:)` takes a point, a `Contour`, or a `Shape`. The map bends straight lines, so a contour is walked at an even spacing first and the bend is carried by the extra points. What comes back is ordinary geometry, so a plate prints. A real mirrored tube standing on a real printed circle is the whole apparatus.
 
-<!-- Putting it together: the finished sketch goes here: a guilloche or harmonograph plate, built from this chapter's steps, with its full listing. -->
+## Putting it together: the engraving
+
+The engraving is a plate in two inks, laid out like a banknote, and every line on it comes from a rule. The rosette at its center is `guilloche` with two cams, and a spirograph from `hypotrochoid` turns in its eye. A spirolateral of order seven holds each corner as a square knot. The frame is a rectangle whose corners `clothoidCorners` eases in, drawn twice. Under the rosette, a ribbon of six lines runs through the same six dots, each line threaded by Hobby's spline. Make `MySketches/Engraving.swift`:
+
+```swift
+import Ollin
+
+final class Engraving: Sketch {
+    let paper = Color(hex: 0xF2ECDD)
+    let green = Color(hex: 0x1F4A3C)
+    let red = Color(hex: 0xA3402B)
+    let middle = Vector2(540, 470)
+
+    var frames: [[Vector2]] = []
+    var knots: [[Vector2]] = []
+    var eye: [Vector2] = []
+
+    override func setup() {
+        // Two frames, their corners eased in the way a road takes a turn.
+        frames = []
+        for (inset, radius) in [(60.0, 70.0), (78.0, 52.0)] {
+            let edge = bounds.inset(by: .all(inset))
+            let corners = [edge.topLeft, edge.topRight, edge.bottomRight, edge.bottomLeft]
+            let route = clothoidCorners(corners, radius: radius, easement: radius * 0.8,
+                                        closed: true)
+            frames.append(route.contour(closed: true).points)
+        }
+
+        // A square knot of seven steps in each corner.
+        let walk = spirolateral(order: 7).points
+        knots = [Vector2(160, 160), Vector2(920, 160),
+                 Vector2(160, 920), Vector2(920, 920)].map { spot in
+            fitted(walk, in: Rectangle(center: spot, width: 116, height: 116))
+        }
+
+        // The spirograph for the rosette's eye, scaled to sit inside it.
+        eye = hypotrochoid(ring: 84, wheel: 33, pen: 26).points.map { $0 * 0.93 }
+    }
+
+    override func draw() {
+        background(paper)
+        noFill()
+
+        stroke(green)
+        strokeWeight(2.4)
+        drawPolyline(frames[0], closed: true)
+        strokeWeight(1.2)
+        drawPolyline(frames[1], closed: true)
+
+        stroke(red)
+        strokeWeight(1.8)
+        for knot in knots { drawPolyline(knot, closed: true) }
+
+        // The rosette: a coarse cam and a fine one, the braid crawling slowly.
+        let rings = guilloche(rings: 40, innerRadius: 105, outerRadius: 300,
+                              rosettes: [Rosette(bumps: 12, amplitude: 16, phase: time * 0.1),
+                                         Rosette(bumps: 48, amplitude: 2.5)],
+                              twist: .pi / 90 + sin(time * 0.2) * 0.01)
+        stroke(green)
+        strokeWeight(1)
+        withState(at: middle) {
+            for ring in rings { drawPolyline(ring.points, closed: true) }
+        }
+
+        stroke(red)
+        strokeWeight(1.2)
+        withState(at: middle, rotation: time * 0.05) {
+            drawPolyline(eye, closed: true)
+        }
+
+        // The ribbon: six lines through the same six dots, spread apart in
+        // the middle and drawn together at the ends.
+        stroke(green)
+        strokeWeight(1.3)
+        let xs: [Double] = [250, 360, 470, 610, 730, 830]
+        let ys: [Double] = [905, 872, 900, 878, 912, 886]
+        for line in 0..<6 {
+            let dots = xs.indices.map { i -> Vector2 in
+                let along = Double(i) / Double(xs.count - 1)
+                let spread = (Double(line) - 2.5) * 7 * (0.35 + 0.65 * sin(.pi * along))
+                let wave = sin(time * 0.8 + Double(i) * 1.1) * 6
+                return Vector2(xs[i], ys[i] + spread + wave)
+            }
+            drawCurve(dots, spline: .hobby)
+        }
+    }
+}
+```
+
+The work splits the way [Chapter 15](15-ShapesAsMaterial.md#putting-it-together-the-plate)'s plate split it. Everything that holds still is built once in `setup()`, which means the two frames, the four knots, and the eye. The rosette is rebuilt every frame, because two of its numbers follow `time`. The coarse cam's `phase` carries its wave around the dial, and the `twist` swells and eases back. So the braid crawls while every ring stays one closed curve. The eye's points never change, so turning it takes only a `rotation:` on `withState`.
+
+The ribbon is where Hobby's spline does its work. Its dots are spaced unevenly and bob on a sine each frame, and the fit bends evenly through them wherever they land. The default spline would swell between the close pairs instead. At six dots a line, refitting every frame costs next to nothing.
+
+Nothing here reads `random` or `noise`, so the sketch needs no seed. The same frame always draws the same plate.
+
+Then make it yours:
+
+- Put a third cam under the other two. `Rosette(bumps: 3, amplitude: 30)` pushes every ring toward a rounded triangle, and the braid follows it around.
+- Hang a harmonograph in the eye in place of the spirograph. Build a `Harmonograph` in `setup()` with near-unison frequencies, and fit its `contour(duration: 60).points` into `Rectangle(center: .zero, width: 150, height: 150)`. It turns just as the spirograph did.
+- Change the knots. An order of 6 comes home in two runs rather than four, so each corner holds a figure with two-fold symmetry.
+
+An engraving is line work, so keep it as line work. `swift run OllinLive MySketches/Engraving.swift --export-svg engraving.svg --frame 600` writes the plate as it stands ten seconds in. Each ink is its own stroke color in the file. A two-pen plot is then the green lines, a pen change, and the red. [Chapter 15](15-ShapesAsMaterial.md#toward-the-pen) covers the plotter's side of that trip.
 
 ## Where this comes from
 
-The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers.
+Hobby's spline is John Hobby's, from a 1986 paper, and it is the curve Donald Knuth's METAFONT draws through its points.
 
-The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model.
+The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The superellipse is Gabriel Lamé's, from 1818, and the designer Piet Hein made it famous in the 1950s. The supershape is Johan Gielis's superformula, from 2003.
 
-Spirolaterals were named and studied by Frank Odds in 1973, and Harold Abelson and Andrea diSessa set them as a turtle-geometry exercise in 1981. The curve a family of lines leans on is classical differential geometry, and the caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached.
+The trochoids are the mathematics behind the Spirograph toy. Guilloche is the work of the rose engine, a lathe whose cams rocked the cutter as the plate turned. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974.
 
-Corner cutting is George Chaikin's, from 1974.
+Spirolaterals were named and studied by Frank Odds in 1973, and Harold Abelson and Andrea diSessa set them as a turtle-geometry exercise in 1981. The curve a family of lines leans on is classical differential geometry. The caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached. The wavefront built from wavelets is Huygens' own, from his 1690 treatise on light.
 
 The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction.
 
-Mirror anamorphosis is older than the mathematics that describes it: Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638.
-
 Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets.
+
+Shape morphing follows the usual practical recipe. Give both outlines the same number of points, turn them the same way round, and start each where the trip is shortest. Noah Veltman's flubber library was studied for it, and pairing holes with holes is Ollin's own.
+
+Mirror anamorphosis is older than the mathematics that describes it. Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638.
 
 Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
+- [Hobby's spline](../Docs/Drawing/Geometry.md#hobby): the typed `HobbySpline`, the Béziers it chooses, and what `tension` and `curl` do. The [`Examples/Shapes/HobbySpline`](../Examples/Shapes/HobbySpline/Sketch.swift) example sets the fit beside the default curve, open and closed.
+- [Classic curves](../Docs/Drawing/Curves.md): every parameter of all nine, including what closes each curve exactly once. The [`Examples/Patterns/Guilloche`](../Examples/Patterns/Guilloche/Sketch.swift) example lets a rosette's braid crawl, and [`Examples/Shapes/Superellipse`](../Examples/Shapes/Superellipse/Sketch.swift) sweeps a wall of plates from a pinched star to a near-rectangle.
+- [Envelopes and caustics](../Docs/Drawing/Envelopes.md): `envelope` and the `Ray2` it works on, reflected and bent rays, and the two caustics of a circle worth recognizing. The [`Examples/Patterns/Wavefront`](../Examples/Patterns/Wavefront/Sketch.swift) example sends a wave off a headland until its front folds to a point.
+- [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance. The [`Examples/Patterns/Clothoid`](../Examples/Patterns/Clothoid/Sketch.swift) example draws a route's bend as a comb along its outside.
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
-- [Classic curves](../Docs/Drawing/Curves.md): every parameter of all nine, including what closes each curve exactly once.
-- [Envelopes and caustics](../Docs/Drawing/Envelopes.md): `envelope` and the `Ray2` it works on, reflected and bent rays, and the two caustics of a circle worth recognizing.
 - [Anamorphosis](../Docs/Drawing/Anamorphosis.md): the setup, the map for points, contours and shapes, what an eye can see of a cylinder, reading a plate back, and standing a real mirror on a printed one. The [`Examples/Patterns/Anamorphosis`](../Examples/Patterns/Anamorphosis/Sketch.swift) example spells a word around one and shows what the eye receives.
-- [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance.
 
 ---
 
