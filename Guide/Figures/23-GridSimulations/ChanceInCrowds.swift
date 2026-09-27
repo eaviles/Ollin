@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 4): percolation across the threshold. One fixed field
+// Guide figure (Chapter 23): percolation across the threshold. One fixed field
 // of per-cell random values read at three probabilities: islands below the
 // critical value, straining near it, and one spanning cluster just past it,
 // lit warm with its traced outline.

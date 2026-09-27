@@ -160,7 +160,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 9](09-Pictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 9](09-Pictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |
 | String art | One continuous thread over rim pins, each chord wound toward the darkness that remains | [Ch 9](09-Pictures.md) | [StringArt](../Docs/Generators/StringArt.md) |
-| Percolation | A grid of coin flips whose clusters snap into one span at the critical probability | [Ch 4](04-Randomness.md) | [Percolation](../Docs/Generators/Percolation.md) |
+| Percolation | A grid of coin flips whose clusters snap into one span at the critical probability | [Ch 23](23-GridSimulations.md#when-chance-acts-as-a-crowd) | [Percolation](../Docs/Generators/Percolation.md) |
 | Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | [Ch 14](14-FieldsAndFlow.md) | [Isolines](../Docs/Generators/Isolines.md) |
 | Isosurfaces and metaballs | The surface where a field over space crosses a level, marched into a `Mesh` (marching cubes): soft spheres that fuse, noise volumes, gyroids | [Ch 30](30-SculptingWithFields.md) | [Isosurfaces](../Docs/Generators/Isosurface.md) |
 | Subdivision surfaces | `mesh.subdivided`: a low-poly control cage refined into a smooth solid (Catmull-Clark or Loop), welding and open edges handled for you | [Ch 26](26-Meshes.md) | [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md) |
