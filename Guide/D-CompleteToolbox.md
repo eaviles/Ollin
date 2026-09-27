@@ -21,7 +21,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 16](16-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
 | What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 32](32-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
 | Why a run repeats | The seed and the fixed export clock, and the four things that break a repeat | [Ch 4](04-Randomness.md) | [Why a run repeats](../Docs/Concepts/Determinism.md) |
-| Light and color | Why the middle of a frame is linear light, and what tone mapping and dithering do at the end of it | [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
+| Light and color | Why the middle of a frame is linear light, and what tone mapping and dithering do at the end of it | [Ch 9](09-Pictures.md), [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
 | Values and bare calls | The typed values under the short calls, and why the value is the half worth keeping | [Ch 10](10-Vectors.md), [Ch 15](15-ShapesAsMaterial.md) | [Values and bare calls](../Docs/Concepts/Values.md) |
 
 ## The sketch and its window
@@ -60,8 +60,8 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Kaleidoscope symmetry | `symmetry(n, mirrored:)`: every draw call folds around a center; one wedge becomes a mandala | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#symmetry) |
 | Clipping | `withClip(shape) { }`: drawing inside the block lands only within the region; nesting intersects | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#clip) |
 | Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 16](16-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
-| Accumulation | `noClear()`: a persistent canvas that piles up across frames; `Accumulator`: a layer that keeps the running mean, so a picture built from faint samples converges | [Ch 16](16-LayersAndEffects.md), [Ch 19](19-GridSimulations.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
-| Depth of field from light | `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens into a running mean until bokeh emerges; the `.light` particle style and the `develop` print underneath | [Ch 20](20-ParticleSimulations.md), [Ch 16](16-LayersAndEffects.md) | [Depth of field from light](../Docs/Drawing/DepthOfField.md) |
+| Accumulation | `noClear()`: a persistent canvas that piles up across frames; `Accumulator`: a layer that keeps the running mean, so a picture built from faint samples converges | [Ch 12](12-FlocksAndSwarms.md), [Ch 16](16-LayersAndEffects.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
+| Depth of field from light | `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens into a running mean until bokeh emerges; the `.light` particle style and the `develop` print underneath | [Ch 20](20-ParticleSimulations.md) | [Depth of field from light](../Docs/Drawing/DepthOfField.md) |
 | Stroke dynamics | `StrokeMark`/`drawMark`: width and opacity driven by how fast and how hard a mark is being made, rather than where you are along it; `pressure` reads a Force Touch trackpad or tablet | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md) |
 | Variable-width strokes | `strokeProfile(_:)`: width shaped along the path, so a line tapers, swells, or carries a profile you wrote | [Ch 15](15-ShapesAsMaterial.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeProfile) |
 | Brushes | `strokeBrush(_:)`: a stamp repeated along the path instead of one continuous ribbon, with its own tip, spacing, jitter, and angle | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md#brushes) |
@@ -88,7 +88,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Drawing text | `drawText` with size, alignment, metrics, wrapping, and on-path layout | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Three font kinds | Outline (any installed font), bitmap, and plotter stroke fonts | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Text as geometry | `textToShapes`: letters become `Shape`s you can warp, resample, and rebuild | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
-| Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
+| Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 9](09-Pictures.md) | [Text](../Docs/Drawing/Text.md) |
 | Every script, and columns | Arabic, Devanagari, Thai, and Japanese shaped by the system; text set in columns either way down the page, justified, with hanging punctuation and vertical Mongolian lines | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md#every-script) |
 | Images | Load PNG/JPEG/HEIC and friends, draw, tint, scale, and crop them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
@@ -146,7 +146,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Smoothing | `@Smoothed` calms jittery inputs (mouse, sensors, knobs) as they arrive | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
 | `Timeline` | Keyframes with per-segment easing, for choreographed sequences | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
 | Random | Seeded `random`, Gaussian, choices (plain and weighted), shuffles | [Ch 4](04-Randomness.md) | [Random](../Docs/Generators/Random.md) |
-| Noise | `noise`, `signedNoise`, seamless `loop:` variants, layered `fbm`, `curlNoise` in the plane and in space, the whole family as a value in `noiseFields` for work off the main thread | [Ch 5](05-Noise.md), [Ch 14](14-FieldsAndFlow.md) | [Noise](../Docs/Generators/Noise.md) |
+| Noise | `noise`, `signedNoise`, seamless `loop:` variants, layered `fbm`, `curlNoise` in the plane and in space and `curlField`, the flow field made from it, the whole family as a value in `noiseFields` for work off the main thread | [Ch 5](05-Noise.md), [Ch 14](14-FieldsAndFlow.md) | [Noise](../Docs/Generators/Noise.md) |
 | The noise family | `simplexNoise`, cellular `worley` (nearest / second / border readings), `ridgedFbm`, `turbulence`, `warpedFbm`, all seeded together | [Ch 5](05-Noise.md) | [Noise](../Docs/Generators/Noise.md) |
 
 ## Generative systems
@@ -301,7 +301,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Frames between the drawn ones | `frameInterpolation()`: `draw()` runs every other refresh and the platform builds the frame in between, for a heavy scene on a fast display | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#frames-between-the-drawn-ones) |
 | Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs, or with no UVs at all through a triplanar projection | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#textures) |
 | Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 27](27-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
-| Camera control and moves | Viewer orbiting, cinematic `CameraMove`s, the self-driving showcase, snap views | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
+| Camera control and moves | Viewer orbiting and the self-driving showcase; the cinematic `CameraMove`s and snap views are in the reference | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Instanced meshes | One mesh drawn thousands of times in one call: `MeshInstance` placements the GPU applies per copy, or a compute-written buffer | [Ch 23](23-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
 | The Hopf fibration | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once, handed back as 3D paths to sweep | [Ch 22](22-Meshes.md) | [The Hopf fibration](../Docs/3D/HopfFibration.md) |
