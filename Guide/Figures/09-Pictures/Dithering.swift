@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 2): what dithering is for. One smooth color field,
+// Guide diagram (Chapter 9): what dithering is for. One smooth color field,
 // then the same field reduced to five colors three ways. Snapping each pixel
 // to its nearest color bands; a threshold map and error diffusion both trade
 // those bands for texture the eye reads back as the tone that was there. The

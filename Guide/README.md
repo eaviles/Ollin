@@ -62,7 +62,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, transforms that move the paper, symmetry and the kaleidoscope fold, clipping, and divisions that aren't square: hex, triangle, and recursive panels.
 7. **[Tiles that cover the plane](07-Tiles.md).** Patterns that cover the plane by rule: Truchet tiles, hitomezashi stitching, the ten-print maze and the perfect maze, kolam and sona, Celtic knotwork, polyominoes, Wave Function Collapse from tiles or from a picture, the tilings that never repeat (Penrose, Wang, girih, and the single-shape spectre), a ring where every window appears once, hyperbolic tiling on the Poincaré disk, and parquet deformations.
 8. **[Words](08-Words.md).** Drawing text, the three kinds of font, per-glyph motion, letters as geometry you can warp and respace, and typesetting in any script: vertical, justified, and with hanging punctuation.
-9. **[Pictures and data](09-Pictures.md).** Reading a picture as data instead of displaying it: fitting it to a box, marks and halftone, mosaics made of pictures, a shape hidden in an autostereogram, stipple and one unbroken line, thread between pins, sorted pixels, and seam carving. Then numbers from CSV and JSON.
+9. **[Pictures and data](09-Pictures.md).** Reading a picture as data instead of displaying it: fitting it to a box, a palette taken out of a photograph and dithering back into it, marks and halftone, mosaics made of pictures, a shape hidden in an autostereogram, stipple and one unbroken line, thread between pins, sorted pixels, and seam carving. Then numbers from CSV and JSON.
 
 ### Part II: Systems that come alive
 

@@ -166,6 +166,62 @@ and that single number is the handle generative artists pull most: size by it, c
 
 You can also write pixels. `Image(width:height:)` makes a blank image and `image[x, y] = color` paints one pixel, so a picture can come out of code as readily as out of a file. A double loop over every pixel, a [Chapter 2](02-Color.md) ramp read by height, and a little [Chapter 5](05-Noise.md) noise is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and everything in this section reads an authored image exactly as it reads a photograph.
 
+## Palettes from a photograph
+
+Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. Give `Palette(extractedFrom:count:)` an image and how many colors you want. It groups the pixels by how similar they look and hands back the center of each group:
+
+```swift
+let photo = try! loadImage("beach.jpg")
+let p = Palette(extractedFrom: photo, count: 5)
+fill(p[0])     // the color the photo is mostly made of
+```
+
+The colors come back most-used first, so `p[0]` is the one you'd name if someone asked what color the photo is. The grouping happens in OKLab for the same reason [mixing](02-Color.md#mixing-you-can-trust) does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
+
+Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from [Chapter 1](01-HelloOllin.md) is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
+
+```swift
+var photo: Image?
+var palette = Palette([])
+
+override func setup() {
+    photo = try? loadImage("beach.jpg")
+    if let photo { palette = Palette(extractedFrom: photo, count: 5) }
+}
+```
+
+A palette pulled from a photograph you took is a palette nobody else has.
+
+## Fewer colors than the picture needs: dithering
+
+Once you have those colors, you can put the picture back together in them:
+
+```swift
+if let photo {
+    let poster = photo.dithered(.floydSteinberg, to: palette)
+    drawImage(poster, in: bounds)
+}
+```
+
+Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".)
+
+`dithered` is the word to understand rather than just call, because it answers a problem you will meet constantly. You have fewer colors than the picture needs.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/Dithering-dark.jpg">
+  <img src="Images/09-Pictures/Dithering.jpg" alt="Four panels: a smooth color gradient, then the same gradient reduced to five colors three ways. The first reduction shows wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, and both of the latter read as the original gradient from a distance" width="680">
+</picture>
+
+The first panel is the picture as it came. Snapping each pixel to the nearest available color is the obvious way to fit it into five, and the second panel shows what that costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
+
+There are two families, and they look different on purpose.
+
+**Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
+
+**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
+
+A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
+
 ## A picture as marks
 
 Reading a pixel and drawing a mark is such a common move that Ollin ships two finished versions of it, and both are worth knowing before you hand-roll your own.

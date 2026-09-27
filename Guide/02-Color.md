@@ -170,72 +170,14 @@ The palette shows in the inspector as its colors side by side. Click one and the
 
 ## Palettes from a file
 
-Typing hex codes gets tiring, and two calls let you skip it.
-
-The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one. Both throw when the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
+Typing hex codes gets tiring, and a file lets you skip it. `loadPalettes` reads palettes someone else already made. It returns every palette in a file, while `loadPalette` returns just the first one. Both throw when the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
 
 ```swift
 let sets = try! loadPalettes("1000.json")      // however many the file holds
 let one  = try! loadPalette("sunset.hex")     // just the first
 ```
 
-A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in exactly the shape `loadPalettes` expects. You do not need npm to use it: the repository holds the files, so take `100.json` or `1000.json` from it, drop the file next to your sketch, and the call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a great deal of generative art. If you want your work to look like yours, that is a reason to keep reading.
-
-## Palettes from a photograph
-
-The second call takes the colors out of a picture. Give it an image and how many colors you want, and it groups the pixels by how similar they look and hands back the center of each group:
-
-```swift
-let photo = try! loadImage("beach.jpg")
-let p = Palette(extractedFrom: photo, count: 5)
-fill(p[0])     // the color the photo is mostly made of
-```
-
-The colors come back most-used first, so `p[0]` is the one you'd name if someone asked what color the photo is. The grouping happens in OKLab for the same reason mixing does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
-
-Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from [Chapter 1](01-HelloOllin.md) is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
-
-```swift
-var photo: Image?
-var palette = Palette([])
-
-override func setup() {
-    photo = try? loadImage("beach.jpg")
-    if let photo { palette = Palette(extractedFrom: photo, count: 5) }
-}
-```
-
-A palette pulled from a photograph you took is a palette nobody else has.
-
-## Fewer colors than the picture needs: dithering
-
-Once you have those colors, you can put the picture back together in them:
-
-```swift
-if let photo {
-    let poster = photo.dithered(.floydSteinberg, to: palette)
-    drawImage(poster, in: bounds)
-}
-```
-
-Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".)
-
-`dithered` is the word to understand rather than just call, because it answers a problem you will meet constantly. You have fewer colors than the picture needs.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/Dithering-dark.jpg">
-  <img src="Images/02-Color/Dithering.jpg" alt="Four panels: a smooth color gradient, then the same gradient reduced to five colors three ways. The first reduction shows wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, and both of the latter read as the original gradient from a distance" width="680">
-</picture>
-
-The first panel is the picture as it came. Snapping each pixel to the nearest available color is the obvious way to fit it into five, and the second panel shows what that costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
-
-There are two families, and they look different on purpose.
-
-**Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
-
-**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
-
-A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
+A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in exactly the shape `loadPalettes` expects. You do not need npm to use it: the repository holds the files, so take `100.json` or `1000.json` from it, drop the file next to your sketch, and the call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a great deal of generative art. If you want your work to look like yours, [Chapter 9](09-Pictures.md#palettes-from-a-photograph) takes a palette out of a photograph you took.
 
 ## Gradients as paint
 

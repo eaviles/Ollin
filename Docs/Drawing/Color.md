@@ -344,8 +344,8 @@ drawImage(poster, in: bounds)
 Snapping each pixel to its nearest palette color, and nothing more, gives flat bands where the picture was smooth. Dithering trades those bands for texture. For each tone it scatters the two palette colors on either side of that tone. At normal viewing distance the eye blurs them together and reads the tone that was there before. The result uses fewer colors and shows the same picture.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/Dithering-dark.jpg">
-  <img src="../../Guide/Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/Dithering-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
 </picture>
 
 The methods come in two families.
