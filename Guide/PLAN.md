@@ -323,8 +323,8 @@ Draws from: `Docs/Helpers/Audio.md`, `Docs/Helpers/Listening.md`; `Examples/Audi
 **35. Controls and signals.**
 Teaches: everything that steers a sketch from outside the inspector. `@Param` binding; MIDI, the MIDI clock, and timecode; OSC and OSCQuery; the network tempo session (Link); one parameter on three hands; TUIO tables; game controllers; serial sensors and Firmata; Bluetooth; data that arrives on its own (`DataFeed`, `PushFeed`, `Weather`); and the trackpad's knock as an output.
 Assumes: Ch 1 (`@Param`), Ch 34 (levels and moments, as sound gave them).
-Payoff: an instrument bound to a controller, an OSC fader, and a data feed (to be drafted).
-Figures: the binding flow; musical time; timecode pieces; the published parameters; the shared downbeat; the surface frame; a pad being read; the serial loop; bytes into values; the polled and pushed feeds; the weather outside; the felt pattern; the finished sketch.
+Payoff: the weather rose. A rose of petals whose size and bloom are `@Param` values bound to two MIDI knobs and two OSC faders with smoothing and a show-rule, throbbing and turning on a Link beat, moved by a game controller's stick, its trails blown downwind by a `Weather` reading with calm fallbacks, and a trackpad knock on each downbeat. Kept as a live take (Ch 39). It leaves timecode, OSCQuery, TUIO, serial, Bluetooth, and the pushed feed to the variations and the sections themselves. Its source is drafted and its render is owed.
+Figures: the binding flow; musical time; timecode pieces; the published parameters; the shared downbeat; the surface frame; a pad being read; the serial loop; bytes into values; the polled and pushed feeds; the weather outside; the felt pattern; the weather rose.
 Draws from: `Docs/Integration/MIDI.md`, `OSC.md`, `OSCQuery.md`, `Link.md`, `TUIO.md`, `Controller.md`, `Serial.md`, `Bluetooth.md`, `Haptics.md`, `Docs/Helpers/Parameters.md`, `LiveData.md`, `Weather.md`; `Examples/Integration/`, `Examples/Data/`.
 
 ### Part VII: Out into the world

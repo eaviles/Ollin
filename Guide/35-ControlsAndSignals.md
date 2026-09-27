@@ -4,9 +4,9 @@
 
 # 35. Controls and signals
 
-<!-- Hook image: the finished sketch, an instrument bound to a controller, an OSC fader, and a data feed. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the weather rose (Figures/35-ControlsAndSignals/WeatherRose.swift). Waiting on its render on the Mac. -->
 
-A sketch you tune only from the inspector is a sketch you play alone at a desk. This chapter hands it to everything else that can steer it. MIDI knobs, a phone fader over OSC, a DAW's clock, and a beat shared across the room come first. Then come a table of tagged pieces, a game controller, and sensors on a wire or over Bluetooth. Data arrives on its own too, from the web and from the weather outside. Knobs and faders bind straight to your `@Param` values, and everything else reads in `draw()` as a level or a moment. The trackpad answers back with a knock.
+A sketch you tune only from the inspector is a sketch you play alone at a desk. This chapter hands it to everything else that can steer it. MIDI knobs, a phone fader over OSC, a DAW's clock, and a beat shared across the room come first. Then come a table of tagged pieces, a game controller, and sensors on a wire or over Bluetooth. Data arrives on its own too, from the web and from the weather outside. Knobs and faders bind straight to your `@Param` values, and everything else reads in `draw()` as a level or a moment. The trackpad answers back with a knock. The chapter ends on an instrument that takes several of these hands at once. It is a rose opened by a knob and a fader, and blown by the weather.
 
 ## Parameters from anywhere
 
@@ -520,11 +520,125 @@ Two habits follow from that. Play at the moment something happens, not every fra
 
 The `Integration/HapticRidges` example is three strips of ridges you drag across. It draws the plan along its bottom edge, so you can see what your pattern really asked the hardware for. On a machine with nothing to feel, and in every export, all of this quietly does nothing and the sketch runs on.
 
-<!-- Putting it together: the finished sketch goes here: an instrument bound to a controller, an OSC fader, and a data feed, built from this chapter's steps, with its full listing. -->
+## Putting it together: the weather rose
+
+The weather rose is an instrument with several hands on it. A rose of petals throbs on the shared beat and turns slowly with it. A knob and a fader open it, a game controller moves it, and the weather outside blows its trails downwind. On every downbeat the trackpad knocks. Make `MySketches/WeatherRose.swift`:
+
+```swift
+import Ollin
+import OllinController
+import OllinHaptics
+import OllinLink
+import OllinMIDI
+import OllinOSC
+
+final class WeatherRose: Sketch {
+    @Param(120...460, smoothing: .smoothed) var radius = 320.0
+    @Param(0...1, smoothing: .eased(0.3)) var bloom = 0.6
+    @Param(3...16) var petals = 7
+    @Param var trails = true
+    @Param(1...8) var trailCount = 5
+
+    let midi = MIDIInput()
+    let osc = OSCReceiver(port: 8000)
+    let link = LinkClock(tempo: 96)
+    let sky = Weather(in: "Oaxaca")
+    var lastBar = -1
+
+    override func setup() {
+        try? midi.start()
+        try? osc.start()
+        link.start()
+        sky.start()
+
+        // Three hands on each of the two parameters that matter most: the
+        // inspector, a knob, and a fader.
+        midi.bind(controlChange: 7, to: $radius)
+        midi.bind(controlChange: 8, to: $bloom)
+        osc.bind("/radius", to: $radius)
+        osc.bind("/bloom", to: $bloom)
+        $trailCount.show(when: $trails) { $0 }
+    }
+
+    override func draw() {
+        // The sky: day or night, and the wind. Until the first reading
+        // arrives, a calm afternoon with a light west wind.
+        let isDay = sky.isDay ?? true
+        let wind = sky.windSpeed ?? 2
+        let bearing = (sky.windDirection ?? 270) * .pi / 180
+        let downwind = Vector2(-sin(bearing), cos(bearing))
+        let ink = isDay ? Color(hex: 0x2B2A33) : Color(hex: 0xF1E6CF)
+        background(isDay ? Color(hex: 0xF3EBDD) : Color(hex: 0x10172B))
+
+        // The beat: a throb on every beat, a slow turn every four bars, and a
+        // knock under your hand on each downbeat.
+        let throb = 1 + 0.1 * link.beat
+        let turn = link.progress(over: 16) * .tau / Double(petals)
+        if link.bar != lastBar {
+            lastBar = link.bar
+            playHaptic(.tap(intensity: 0.8, sharpness: 0.6))
+        }
+
+        // The left stick moves the rose, and the wind blows its trails.
+        let middle = center + controller.leftStick * 180
+        if trails {
+            noFill()
+            strokeWeight(2)
+            for k in stride(from: trailCount, through: 1, by: -1) {
+                let drift = downwind * (Double(k) * (12 + wind * 6))
+                stroke(ink.withAlpha(0.5 / Double(k)))
+                drawPolygon(rose(at: middle + drift, radius: radius * throb,
+                                 turn: turn - Double(k) * 0.05))
+            }
+        }
+        fill(ink.withAlpha(0.12))
+        stroke(ink)
+        strokeWeight(3)
+        drawPolygon(rose(at: middle, radius: radius * throb, turn: turn))
+
+        // A feed that cannot reach its server says so, and keeps its last reading.
+        if let problem = sky.problem {
+            noStroke()
+            fill(ink)
+            textSize(22)
+            drawText(problem, 40, height - 40)
+        }
+    }
+
+    /// A rose with `petals` lobes. `bloom` sets how deep the gaps between them cut.
+    func rose(at middle: Vector2, radius: Double, turn: Double) -> [Vector2] {
+        (0..<360).map { i in
+            let angle = Double(i) / 360 * .tau
+            let reach = 1 - bloom * 0.5 * (1 - cos(Double(petals) * (angle - turn)))
+            return middle + Vector2(cos(angle), sin(angle)) * (radius * reach)
+        }
+    }
+}
+```
+
+The parameters come from [One parameter, three hands](#one-parameter-three-hands). Two of them matter most while you play, so `setup()` binds each one twice. The size goes to knob 7 and to the address `/radius`, and how far the petals open goes to knob 8 and to `/bloom`. With the inspector, that makes three hands on each. The drawing code reads plain `radius` and `bloom` and never knows which hand moved them. The size has `.smoothed` on it, which holds still at rest and opens up under a moving hand. The bloom has a fixed glide of 0.3 seconds. The show-rule hides `trailCount` while `trails` is off, since then it has nothing to count.
+
+The beat comes from [One beat for the whole room](#one-beat-for-the-whole-room). The rose throbs on `link.beat` and turns with `link.progress(over: 16)`, which ramps once every four bars. Dividing that turn by the petal count moves the rose by one petal's width. So when the ramp starts again, the rose is back in the same pose, and the turn never jumps. The bar count changes once a bar, and that change is when the knock from [Touch as an output](#touch-as-an-output-haptics) plays. Comparing it with `lastBar` is how the sketch plays the knock at the moment the bar turns, rather than on every frame.
+
+The stick comes from [Something to hold](#something-to-hold-game-controllers). With no controller connected, `controller.leftStick` reads centered, so the rose sits in the middle of the canvas.
+
+The wind comes from [The weather outside](#the-weather-outside-weather). Every read is `nil` until the first answer arrives, so each one has a fallback. Together the fallbacks are a calm afternoon with a light west wind. The weather gives `windDirection` as where the wind blows from, clockwise from north. So `downwind` points the other way, in canvas terms, with y growing down the page. Each trail is drawn one step further downwind than the last, and a stronger wind makes the steps longer. When the feed cannot reach its server, `problem` says why in a sentence. The sketch writes it along the bottom and keeps drawing the last reading.
+
+Alone at a desk, with nothing plugged in and no network, it is a rose turning on its own beat on a calm afternoon. Each hand you add joins without a change to the code. A knob box, a phone on the same Wi-Fi, a controller, and another app in the same beat session all work that way.
+
+Then make it yours:
+
+- Publish the parameters. Add `extend(OSCQueryServer(receiver: osc))` at the end of `setup()`, and an app that browses for OSCQuery builds a control for every parameter. It uses port 8000, the one the sketch already listens on.
+- Follow a cable instead of the network. Change the clock's line to `lazy var link = TempoClock(from: midi)` and drop `link.start()`. The reads the sketch uses are the same, so the rose now throbs to whatever sends MIDI clock.
+- Add a hand you build yourself. Open a `SerialPort` the way [A wire to the physical world](#a-wire-to-the-physical-world-serial) does. Then `serial.bind(to: $bloom)` puts a potentiometer on the same parameter as the knob and the fader.
+
+This one is played rather than rendered, so keep it as a take. Press ⌘⇧R in the live host to start recording the window while you play, and press it again to finish the file. An export re-renders the sketch on a fixed clock, and nothing you do while it renders reaches it. Chapter 39's [Keeping the take](39-Performing.md#keeping-the-take) has the rest.
 
 ## Where this comes from
 
-MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. The shared network beat is Ableton Link (2016), now the common tongue of tempo across music apps. Ollin speaks its session protocol through an independent implementation, written from published protocol documentation. The print-a-number serial loop is physical computing's lingua franca. Tom Igoe and Dan O'Sullivan's *Physical Computing* taught it. Wiring and then Arduino put a serial-printing board in every art student's hands. OSCQuery follows the proposal Vidvox published, TUIO the 1.1 specification, and Firmata its published protocol. The pushed messages are server-sent events as the WHATWG HTML standard describes them, and the weather comes from Open-Meteo, Patrick Zippenfenig and contributors' open service. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. The shared network beat is Ableton Link (2016), now the common tongue of tempo across music apps. Ollin speaks its session protocol through an independent implementation, written from published protocol documentation. The print-a-number serial loop is physical computing's lingua franca. Tom Igoe and Dan O'Sullivan's *Physical Computing* taught it. Wiring and then Arduino put a serial-printing board in every art student's hands. OSCQuery follows the proposal Vidvox published, TUIO the 1.1 specification, and Firmata its published protocol. The pushed messages are server-sent events as the WHATWG HTML standard describes them. The weather comes from Open-Meteo, the open service of Patrick Zippenfenig and contributors.
+
+The smoothing that holds still at rest is the 1€ filter of Géry Casiez, Nicolas Roussel, and Daniel Vogel, from 2012. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -540,6 +654,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [Live data](../Docs/Helpers/LiveData.md): every parameter on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
 - [Weather](../Docs/Helpers/Weather.md): every read on `Weather` with its unit, the whole `Reading` and how to build one by hand, the condition words and their codes, `Place.sun(at:)`, and where the data comes from.
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
+- [Recording](../Docs/Output/Recording.md): keeping a take of a sketch while you play it, with its sound, from a key, a call, or the host's ⌘⇧R.
 - Worked examples: the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/), [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes), and [`Examples/Data/Outside`](../Examples/Data/Outside/Sketch.swift) (the sky over a city, drawn from a weather).
 - Ahead of you: the Mac's own location, so a weather can follow the machine, and a paired Watch's heart rate are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they join the signals in this chapter.
 
