@@ -94,7 +94,10 @@ Two things before you use it. `strokeCap(.round)` is what makes the corners read
 
 The diagonals read as paths, but not as a maze you could solve. Four that lean together close a box, and whatever is inside it is sealed off. A **perfect maze** makes the opposite promise. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets.
 
-<!-- Figure: PerfectMaze (Figures/07-Tiles/PerfectMaze.swift), two perfect mazes carved over the same grid by .backtracker and .kruskal, each with its longest route traced. Waiting on its render on the Mac. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/PerfectMaze-dark.jpg">
+  <img src="Images/07-Tiles/PerfectMaze.jpg" alt="Two square mazes carved over the same grid, labeled .backtracker and .kruskal, each with its longest route traced in orange between two dots; the backtracker's route winds through most of the maze while Kruskal's takes a shorter, more direct line" width="680">
+</picture>
 
 ```swift
 seed(9)
