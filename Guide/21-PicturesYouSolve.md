@@ -4,9 +4,9 @@
 
 # 21. Pictures you solve
 
-<!-- Hook image: the finished sketch, marks diffused into a sky, lit by .light, outlined from the distance field. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the lighthouse (Figures/21-PicturesYouSolve/Lighthouse.swift). Waiting on its render on the Mac. -->
 
-Most filters look at a picture and change it. The ones in this chapter treat a layer as a problem to solve. A few colored marks spread into a smooth painting, and a pasted patch loses its seam. A drawing becomes a measure of how far every pixel sits from an edge, and a picture becomes the waves that add up to it. A scene and some lamps give back the light that reaches every pixel. Any window's average costs the same, however wide. Each makes a kind of picture no ordinary filter can.
+Most filters look at a picture and change it. The ones in this chapter treat a layer as a problem to solve. A few colored marks spread into a smooth painting, and a pasted patch loses its seam. A drawing becomes a measure of how far every pixel sits from an edge, and a picture becomes the waves that add up to it. A scene and some lamps give back the light that reaches every pixel. Any window's average costs the same, however wide. Each makes a kind of picture no ordinary filter can. The chapter ends on a lighthouse at dusk. Its sky is diffused from a few marks, its beams are worked out by the light, and its outlines are measured.
 
 ## A picture made of a few marks: diffusion
 
@@ -256,19 +256,124 @@ There is one more parameter, `bias`, which is how far below the local average a 
 
 Two costs, and neither one grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the size of your window, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway.
 
-<!-- Putting it together: the finished sketch goes here: marks diffused into a sky, lit by `.light`, and outlined from the distance field, built from this chapter's steps, with its full listing. -->
+## Putting it together: the lighthouse
+
+The lighthouse is a harbor at dusk, and very little of it is painted. A handful of marks diffuse into the whole sky and sea. Two lamps and a scene give back the light, with its beams and soft shadows worked out by `.light`. And every silhouette wears an outline read off its measured distance field. Make `MySketches/Lighthouse.swift`:
+
+```swift
+import Ollin
+
+final class Lighthouse: Sketch {
+    let night = Color(hex: 0x2A2350)
+    let dusk = Color(hex: 0xE86F4A)
+    let sea = Color(hex: 0x16233F)
+    let deep = Color(hex: 0x080D1A)
+    let sun = Color(hex: 0xFFE9B0)
+    let land = Color(hex: 0x0A0D16)
+    let rim = Color(hex: 0xF2C879)
+
+    let lantern = Vector2(235, 272)
+
+    override func draw() {
+        let boat = Vector2(800, 700 + sin(time * 0.9) * 5)
+
+        // The marks: a horizon warm above and deep below, a band of night at the
+        // top, a low sun, and its path on the water. Diffusion fills in the rest.
+        let marks = makeRenderTarget()
+        withTarget(marks) {
+            background(.clear)
+            let horizon = stride(from: -20.0, through: width + 20, by: 12).map { x in
+                Vector2(x, 640 + sin(x / width * 5 + time * 0.4) * 8)
+            }
+            drawDiffusionCurve(horizon, left: dusk, right: sea, width: 4)
+            noStroke()
+            fill(night)
+            drawRect(0, 0, width, 24)
+            fill(deep)
+            drawRect(0, height - 24, width, 24)
+            fill(sun)
+            drawCircle(620, 606, 30)
+            fill(dusk)
+            drawRect(575, 690, 90, 4)
+        }
+
+        // The scene: everything the light meets. The shutter around the lamp
+        // turns, and the gaps between its blades cut the light into beams.
+        let scene = makeRenderTarget()
+        withTarget(scene) {
+            noStroke()
+            fill(land)
+            drawPolygon([Vector2(0, 1080), Vector2(0, 560), Vector2(90, 530),
+                         Vector2(180, 486), Vector2(280, 482), Vector2(340, 540),
+                         Vector2(390, 650), Vector2(440, 800), Vector2(500, 1080)])
+            drawPolygon([Vector2(214, 490), Vector2(256, 490),
+                         Vector2(249, 300), Vector2(221, 300)])
+            for blade in 0 ..< 8 {
+                let angle = time * 0.5 + Double(blade) * .tau / 8
+                withState(at: lantern + Vector2(cos(angle), sin(angle)) * 30, rotation: angle) {
+                    drawRect(center: .zero, width: 8, height: 13)
+                }
+            }
+            drawPolygon([boat + Vector2(-65, -10), boat + Vector2(65, -10),
+                         boat + Vector2(48, 12), boat + Vector2(-50, 12)])
+            drawRect(boat.x - 2, boat.y - 104, 4, 96)
+        }
+
+        // The lamps: the lighthouse lamp, and a small one at the masthead.
+        let lamps = makeRenderTarget()
+        withTarget(lamps) {
+            noStroke()
+            fill(Color(hex: 0xFFF1C8))
+            drawCircle(lantern.x, lantern.y, 12)
+            fill(Color(hex: 0xFF7A50))
+            drawCircle(boat.x, boat.y - 110, 6)
+        }
+
+        // The sky, then the silhouettes, then the light laid over both.
+        drawImage(marks.filtered(.diffuse()).image, 0, 0)
+        drawImage(scene.image, 0, 0)
+        blendMode(.add)
+        drawImage(scene.combined(with: lamps, .light(brightness: 6)).image, 0, 0)
+        blendMode(.normal)
+
+        // An outline a few pixels out from every silhouette, read off the field.
+        let field = scene.filtered(.distanceField(maxDistance: 32))
+        let band = Ramp([rim.withAlpha(0), rim, rim.withAlpha(0)])
+        drawImage(field.filtered(.fieldMap(band, from: 1, to: 5)).image, 0, 0)
+    }
+}
+```
+
+The sketch builds three layers each frame and reads the picture out of them. `marks` holds the diffusion's sources. The horizon is a curve with dusk above and sea below. A band of night runs along the top, and deep water along the bottom. The sun and its path on the water are marks too. `.diffuse()` settles everything between them. The horizon's wave is part of the curve, so the sky and the sea swell with it.
+
+`scene` does two jobs. `.light` reads it as the solid things that stop a ray, and `.distanceField` reads the same layer as shapes to measure. `lamps` holds the two lights. What `.light` hands back is the light alone, so the sketch draws the sky and the silhouettes first and adds the light over them under `.add`. Adding black changes nothing, so wherever no lamp reaches, the sky shows through untouched.
+
+The beams come from the shutter. Its eight blades turn with `time`, and the gaps between them let the lamp's light out in spokes. Nothing in the sketch draws a beam. It is the comb from the room above, bent into a ring.
+
+The outline is a `fieldMap` whose ramp runs from clear to gold and back to clear, over a window from 1 to 5 pixels. That lights a thin band just outside every silhouette, the mast and the shutter blades included. The field is measured again every frame, so the band follows the boat as it rides the swell.
+
+Then make it yours:
+
+- Put the sun on the pointer. Its disc is a mark like any other, so `drawCircle(mouseX, mouseY, 30)` in its place re-solves the whole sky around wherever you point.
+- Chart the water. Measure a second field out to a `maxDistance` of 120, and map it with `repeating: true` over a window of about 18 pixels. It rings the boat and the headland like ripples on a map.
+- Give the land a color. Fill it a dark green instead of near-black, and with the default single bounce the light that lands on the headland comes back green.
+
+This one is about motion, since the beams sweep and the boat rides the swell, so keep it as a movie. `swift run OllinLive MySketches/Lighthouse.swift --export-video lighthouse.mp4 --seconds 16` writes sixteen seconds of it. An export measures the light at its finest quality, so the file takes longer to write than the window takes to draw.
 
 ## Where this comes from
 
-Each of these solves a problem somebody published. Diffusion curves are Alexandrina Orzan, Adrien Bousseau, Holger Winnemöller, Pascal Barla, Joëlle Thollot, and David Salesin's, from 2008. Pasting without a seam is Patrick Pérez, Michel Gangnet, and Andrew Blake's Poisson image editing, from 2003. The measured field floods the layer by Guodong Rong and Tiow-Seng Tan's jump flooding, from 2006. The waves come from James W. Cooley and John W. Tukey's fast Fourier transform, from 1965. The light rebuilds Alexander Sannikov's radiance cascades, from 2024. And the local averages stand on Franklin C. Crow's summed-area table, from 1984. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Each of these solves a problem somebody published. Diffusion curves are Alexandrina Orzan, Adrien Bousseau, Holger Winnemöller, Pascal Barla, Joëlle Thollot, and David Salesin's, from 2008. Pasting without a seam is Patrick Pérez, Michel Gangnet, and Andrew Blake's Poisson image editing, from 2003. The measured field floods the layer by Guodong Rong and Tiow-Seng Tan's jump flooding, from 2006. The waves come from James W. Cooley and John W. Tukey's fast Fourier transform, from 1965. The light rebuilds Alexander Sannikov's radiance cascades, from 2024. And the local averages stand on Franklin C. Crow's summed-area table, from 1984.
+
+The seamless paste settles its correction with the convolution pyramids of Zeev Farbman, Raanan Fattal, and Dani Lischinski, from 2011. The local cut that keeps every mark on the shadowed page is Derek Bradley and Gerhard Roth's adaptive threshold, from 2007. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
+- [Diffusion](../Docs/Drawing/Effects.md#generate) and the [seamless paste](../Docs/Drawing/Effects.md#combined): `.diffuse` and `drawDiffusionCurve` with their parameters, and what `.seamlessClone` keeps and where its rim should sit.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
 - [The frequency domain](../Docs/Drawing/Fourier.md): the transform both ways, filtering by scale, building a field from its spectrum, and what the ladder costs.
 - [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every parameter, what it costs at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
-- Worked examples: [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), and [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift).
+- Worked examples: [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), and [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift).
 
 ---
 
