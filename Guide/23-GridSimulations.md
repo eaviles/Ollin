@@ -262,7 +262,7 @@ That ring with one electron on it is a clock. The electron laps the ring, and ea
 
 ## A neighborhood sorting itself
 
-The last rule in this chapter is not about physics or chemistry. In 1971 the economist Thomas Schelling put coins of two kinds on a board and left some squares empty. Each coin got a mild wish: at least a third of its neighbors should be coins of its own kind. Any coin that was not content moved to the nearest empty square where it would be. He was asking a question about cities. The answer was the board sorting itself into solid blocks, sharply, from a wish nobody would call intolerant. `.schelling` is that board on the GPU:
+The next rule is not about physics or chemistry. In 1971 the economist Thomas Schelling put coins of two kinds on a board and left some squares empty. Each coin got a mild wish: at least a third of its neighbors should be coins of its own kind. Any coin that was not content moved to the nearest empty square where it would be. He was asking a question about cities. The answer was the board sorting itself into solid blocks, sharply, from a wish nobody would call intolerant. `.schelling` is that board on the GPU:
 
 ```swift
 var board: SimField!
