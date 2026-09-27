@@ -2,6 +2,8 @@
 //
 // Guide listing (Chapter 11): a shape thrown up that breaks at the top of its
 // arc into pieces that fall on their own, each piece a rigid body of its own.
+// The headless render feeds a fixed deltaTime, so the break lands on the same
+// frame every render with the listing's own advance(by: deltaTime).
 import Ollin
 import OllinPhysics
 
@@ -26,10 +28,7 @@ final class Break: Sketch {
         world.gravity = Vector2(0, 2200)
         noStroke()
 
-        let outline = (0 ..< 40).map { i -> Vector2 in
-            let a = Double(i) / 40 * .tau
-            return Vector2(cos(a), sin(a)) * 170
-        }
+        let outline = (0 ..< 40).map { Vector2(angle: Double($0) / 40 * .tau, length: 170) }
         let thrown = world.addBody(.circle(radius: 170), at: Vector2(width / 2, height + 220))
         thrown.velocity = Vector2(0, -1750)
         thrown.userData = Look(Shape(outline), Color(hex: 0xF2A93B), whole: true)
@@ -56,9 +55,7 @@ final class Break: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14161C))
-        // A fixed step, so the figure lands on the same frame every render (a
-        // wall-clock step would move the shards a little with each run).
-        world.advance(by: 1.0 / 60)
+        world.advance(by: deltaTime)
 
         // At the top of the arc it is on its way down, and that is when it goes.
         for body in world.bodies {
