@@ -319,7 +319,7 @@ override func draw() {
 }
 ```
 
-`noClear()` keeps every frame's marks on the canvas, so the picture is the accumulation, the same trick the chance games below use. Each `mark` also carries a wash: the open span beside the crack, plus a `gain` that drifts up and down. `CrackGrowth.grains(from:to:gain:)` turns that span into translucent grains crowded against the line, and one ink per `mark.crack` colors each street. The `Patterns/Cracks` example is the full painting.
+`noClear()` keeps every frame's marks on the canvas, so the picture is the accumulation, the same trick behind [Chapter 12](12-FlocksAndSwarms.md)'s trails. Each `mark` also carries a wash: the open span beside the crack, plus a `gain` that drifts up and down. `CrackGrowth.grains(from:to:gain:)` turns that span into translucent grains crowded against the line, and one ink per `mark.crack` colors each street. The `Patterns/Cracks` example is the full painting.
 
 ## Growth by wandering: meander
 
@@ -494,6 +494,8 @@ Then make it yours:
 
 L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes from *The Algorithmic Beauty of Plants* (1990), written with Przemyslaw Prusinkiewicz. It is still free to read online and still beautiful. The parametric form is that book's section 1.10. James Hanan's 1992 dissertation, from the same group, works it out more fully. The tapered trees and the leaves are their published figures.
 
+Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials.
+
 Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group. The paper is "Modeling Trees with a Space Colonization Algorithm" (2007), after their 2005 leaf-venation work.
 
 Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. Generative artists have been growing frost with it ever since.
@@ -520,7 +522,7 @@ Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's
 - [Shape grammars](../Docs/Generators/ShapeGrammar.md): all six rules, how a run picks between them, the fallback a weight of zero writes, and the two facts that hold exactly.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in [Chapter 15](15-ShapesAsMaterial.md).
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/ShapeGrammar`](../Examples/Patterns/ShapeGrammar/Sketch.swift) (an ice-ray window frame built a sweep at a time), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
+- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/ShapeGrammar`](../Examples/Patterns/ShapeGrammar/Sketch.swift) (an ice-ray window frame built a sweep at a time), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), and [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift).
 
 ---
 
