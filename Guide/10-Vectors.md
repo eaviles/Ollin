@@ -6,33 +6,34 @@
 
 <img src="Images/10-Vectors/Swarm.jpg" alt="A school of hundreds of small colored streaks on a dark canvas, wheeling together in mid-turn as they chase a small white dot, warm orange leaders ahead of cool blue stragglers" width="560">
 
-Part II begins here, and so does a new kind of sketch, one where things *remember where they were going*. The tool for that is the vector, which sounds like math class and is actually one friendly idea, an arrow you can add, stretch, and point. By the end of this chapter three of those arrows will make anything move like it's alive, and a few hundred of them become the sketch above: a swarm wheeling after a lure, ready to chase your mouse.
+This chapter teaches vectors: arrows you can add, subtract, scale, and point. Three arrows on one body make a thrown ball arc and bounce. A correction between two of those arrows makes a chaser steer toward a target. A few hundred chasers, each with its own top speed, make the sketch above. The swarm wheels after a wandering lure and comes to your mouse when you press. You have been using vectors since [Chapter 1](01-HelloOllin.md), as the pair of coordinates a call like `drawCircle(center:radius:)` takes. The new part is reading that pair as an arrow.
 
-## An arrow you can draw
+## An arrow you can draw: `Vector2`
 
-You've been using `Vector2` since [Chapter 1](01-HelloOllin.md) without ceremony, as a pair of coordinates carried as one value that calls like `drawCircle(center:radius:)` accept directly. The new idea is that the same pair has *two readings*. Read `(300, 200)` as a **point** and it's a place on the canvas. Read it as a **vector** and it's an arrow: go 300 right and 200 down, from wherever you are. Nothing in the type changes, and what changes is what you do with it.
+A `Vector2` is a pair of coordinates carried as one value, and the same pair has two readings. Read `(300, 200)` as a **point** and it is a place on the canvas. Read it as a **vector** and it is an arrow: go 300 right and 200 down, from wherever you are. The type is the same, and only what you do with it changes.
 
 ```swift
 let place = Vector2(300, 200)          // a point: somewhere on the canvas
 let step = Vector2(4, -1)              // an arrow: a way to move
 ```
 
-Everything in this chapter comes from letting those two readings work together: points tell you where things are, arrows tell you where they're headed, and the arithmetic below moves freely between them.
+Everything in this chapter comes from letting the two readings work together. Points say where things are, arrows say where they are headed, and the arithmetic in the next section moves between them.
 
-Two conveniences fall straight out of the point reading. The cursor is one point, `mouse`, and `previousMouse` remembers where it was a frame ago, so `mouse - previousMouse` is the arrow your hand just drew. And an arrow draws as itself: `drawArrow(from: home, to: home + step)` puts a stroked shaft and a solid head on the canvas, one `stroke(...)` coloring the whole mark. The vector figures in this chapter are drawn with it.
+One thing follows from the two readings before any arithmetic: an arrow can be drawn as itself. `drawArrow(from: place, to: place + step)` puts a stroked shaft and a solid head on the canvas, with the tip of the head at the second point. One `stroke(...)` colors the whole mark. The listing in the next section draws its arrows with it. The cursor is one more point, `mouse`, which the listings in this chapter spell out as `Vector2(mouseX, mouseY)`.
 
-## Arrow arithmetic
+## Arrow arithmetic: adding, subtracting, scaling, and dividing
 
-Vectors add, subtract, and scale, and each operation has a picture worth keeping:
+Arrows add, subtract, and scale, and each of those has a panel in the figure. The fourth panel belongs to the section after this one:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/VectorArithmetic-dark.jpg">
   <img src="Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
 </picture>
 
-- **Adding** is walking: `a + b` means walk `a`, then walk `b` from where you ended up. Order doesn't matter, since you arrive at the same place.
-- **Subtracting** answers the most useful question in this half of the guide: `target - pos` is *the arrow that goes from here to there*. Every chase, spring, and look-at in the chapters ahead starts with this line.
-- **Scaling** multiplies by a plain number: `v * 2` is twice as far in the same direction, `v * 0.5` half, `v * -1` the same road walked backward.
+- **Adding** is walking. `a + b` means walk `a`, then walk `b` from where you ended up. The order does not matter, because you arrive at the same place.
+- **Subtracting** answers the question Part II asks most often. `target - pos` is the arrow that goes from here to there. The chase later in this chapter and [Chapter 11](11-ForcesAndPhysics.md)'s springs both start with this line.
+- **Scaling** multiplies by a plain number. `v * 2` is twice as far in the same direction, `v * 0.5` is half as far, and `v * -1` is the same road walked backward.
+- **Dividing** by a number is scaling the other way. `v / 2` is half of `v`. It matters most for averages. `(a + b) / 2` is the point halfway between two points, and a sum of positions divided by their count is the center of a group. [Chapter 12](12-FlocksAndSwarms.md) finds the center of a boid's neighbors that way.
 
 The pictures above can move. Make `MySketches/ArrowWalk.swift` and push them around:
 
@@ -65,9 +66,9 @@ final class ArrowWalk: Sketch {
         // The trip itself, then the breeze walked from its end.
         strokeWeight(4)
         stroke(Color(hex: 0xE4572E))
-        drawLine(home, home + trip)
+        drawArrow(from: home, to: home + trip)
         stroke(Color(hex: 0x2B2B2B))
-        drawLine(home + trip, home + trip + breeze)
+        drawArrow(from: home + trip, to: home + trip + breeze)
 
         noStroke()
         fill(Color(hex: 0x2B2B2B))
@@ -79,32 +80,42 @@ final class ArrowWalk: Sketch {
 }
 ```
 
-<img src="Images/10-Vectors/ArrowWalk.jpg" alt="A cream canvas with a dark home dot at lower left, an orange line running to a small wandering target, gray stones spaced along and beyond that line, and a dark line continuing from the target to an orange dot up and to the right" width="560">
+<img src="Images/10-Vectors/ArrowWalk.jpg" alt="A cream canvas with a dark home dot at lower left, an orange arrow running to a small wandering target, gray stones spaced along and beyond that arrow, and a dark arrow continuing from the target to an orange dot up and to the right" width="560">
 
-The orange line is the subtraction. It is `trip`, the arrow from `home` to the target, and it stretches and swings as the target wanders on [Chapter 5](05-Noise.md)'s noise. Hold the mouse down and the target is yours. The stones are the scaling, the same trip cut to fractions, one of them negative and walking backward, one overshooting past the target. And the dark line is the addition, `breeze` walked from wherever the trip ended. The orange dot is `home + trip + breeze`, a place named by one sentence of arithmetic.
+The orange arrow is the subtraction. It is `trip`, the arrow from `home` to the target, and it stretches and swings as the target wanders on [Chapter 5](05-Noise.md)'s noise. Hold the mouse down and you have the target. The stones are the scaling, the same trip cut to fractions, one of them negative and walking backward, one overshooting past the target. The dark arrow is the addition, `breeze` walked from wherever the trip ended. The orange dot is `home + trip + breeze`, a place named by one line of arithmetic.
 
-Two spellings make these read like sentences. `pos += step` moves a point by an arrow in place, and `v * deltaTime` is [Chapter 3](03-MotionAndTime.md)'s frame-rate rule wearing vector clothes, so you write speeds per second and scale by the frame's slice of a second.
+Two more spellings make these read like sentences. `pos += step` moves a point by an arrow in place. And `v * deltaTime` is [Chapter 3](03-MotionAndTime.md)'s frame-rate rule applied to an arrow. You write speeds per second and scale by the frame's slice of a second.
 
-## Length and direction
+### A point part of the way: `lerp(to:)`
 
-An arrow is a direction *and* a distance, and you'll constantly want them separately.
+Look at the stones once more, because `Vector2` has one call for them. Each stone sits at `home + trip * s`, a fraction `s` of the way from `home` to the target. That is [Chapter 3](03-MotionAndTime.md)'s `lerp` with points for its two ends, and `Vector2` spells it `home.lerp(to: target, s)`. At `0` you are at `home`, at `1` you are at the target, and `0.5` is the midpoint.
 
-`v.length` is how long the arrow is (Pythagoras, quietly), so `velocity.length` is a thing's speed with the direction stripped away. Going the other way, `v.normalized` keeps the direction and sets the length to exactly 1, and the figure's last panel shows it landing on the circle of radius 1. A length-one arrow is a pure *heading*, and it exists so you can choose the distance yourself:
+```swift
+let quarter = home.lerp(to: target, 0.25)   // the second stone, in one call
+```
+
+Used every frame on a moving point, the same call becomes a soft follow. `pos = pos.lerp(to: mouse, 0.1)` moves `pos` a tenth of the remaining way toward the cursor each frame. So it glides after the mouse and slows as it arrives, with no velocity to keep. It is enough for a label that follows a shape, or a camera that follows a player. A fixed fraction per frame does move faster on a faster screen, since it runs on frames rather than on seconds. [Chapter 3](03-MotionAndTime.md)'s `@Eased` is the same kind of chase wrapped as a property. It runs on a duration you pick once, so it takes the same time on every screen.
+
+## Length and direction: `length`, `normalized`, and `limited(to:)`
+
+The arithmetic so far kept every arrow whole. An arrow is a direction and a distance. The next step is taking those apart, because the chase later in this chapter wants the direction on its own.
+
+`v.length` is how long the arrow is, the straight-line distance from its tail to its head. So `velocity.length` is a thing's speed with the direction stripped away. Going the other way, `v.normalized` keeps the direction and sets the length to 1 (a zero arrow stays zero). The fourth panel of the arithmetic figure shows it landing on the circle of radius 1. A length-one arrow is a pure heading, and it exists so you can choose the distance yourself:
 
 ```swift
 let toTarget = (target - pos).normalized     // just the direction
 pos += toTarget * 3                          // step 3 points that way, near or far
 ```
 
-That pair of lines is the move-toward-anything recipe, and it works at any distance because the normalize threw the distance away.
+That pair of lines moves toward anything, and it works at any distance because the normalize threw the distance away.
 
-Two relatives complete the kit. `a.distance(to: b)` measures between two points (it's `(a - b).length`). And `v.limited(to: max)` caps an arrow's length while keeping its heading, which sounds minor and turns out to be the seatbelt on everything in Part II: speeds that can't blow up, corrections that can't overshoot.
+`distance(to:)` and `limited(to:)` complete the kit. `a.distance(to: b)` measures between two points (it is `(a - b).length`). And `v.limited(to: maxSpeed)` caps an arrow's length while keeping its heading. The chasers in this chapter and the flock in [Chapter 12](12-FlocksAndSwarms.md) run under these caps. A speed cannot grow without bound, and a correction cannot overshoot.
 
-One more is useful for drawing. `v.angle` is the arrow's direction as a single number, ready for [Chapter 6](06-GridsAndRepetition.md)'s `rotate`, so a shape can face where it's going. Its inverse builds an arrow from scratch with `Vector2(angle: a, length: 10)`.
+For drawing, `v.angle` is the arrow's direction as a single number, ready for [Chapter 6](06-GridsAndRepetition.md)'s `rotate`, so a shape can face where it is going. Its inverse builds an arrow from scratch with `Vector2(angle: a, length: 10)`.
 
 ## Position, velocity, acceleration
 
-Now put arrows on a body, three of them, each answering a different question:
+Now put arrows on a body. Three of them, each answering a different question:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/MotionTrio-dark.jpg">
@@ -112,18 +123,19 @@ Now put arrows on a body, three of them, each answering a different question:
 </picture>
 
 - **Position** is where it is, a point, or the arrow from `(0, 0)` if you like.
-- **Velocity** is where it's going, the arrow added to position every second.
+- **Velocity** is where it is going, the arrow added to position every second.
 - **Acceleration** is how the going changes, the arrow added to *velocity* every second.
 
-The chain runs one way: acceleration changes velocity, velocity changes position. That's the whole engine, two lines long, and here it is throwing a ball. Make `MySketches/Thrown.swift`:
+The chain runs one way. Acceleration changes velocity, and velocity changes position. In code that is two lines. Here they are throwing a ball. Make `MySketches/Thrown.swift`:
 
 ```swift
 import Ollin
 
 final class Thrown: Sketch {
-    var position = Vector2(140, 800)
-    var velocity = Vector2(330, -640)
+    var position = Vector2(120, 800)
+    var velocity = Vector2(150, -640)
     let gravity = Vector2(0, 700)
+    var trail: [Vector2] = []
 
     override func draw() {
         background(Color(hex: 0x0E1116))
@@ -134,26 +146,36 @@ final class Thrown: Sketch {
         // The floor: bounce, losing a little each time.
         if position.y > height - 60 {
             position = position.with(y: height - 60)
-            velocity = Vector2(velocity.x, -velocity.y * 0.82)
+            velocity = Vector2(velocity.x * 0.7, -velocity.y * 0.82)
         }
+
+        // Remember where the ball has been, every third frame.
+        if frameCount % 3 == 0 { trail.append(position) }
+        if trail.count > 200 { trail.removeFirst() }
 
         stroke(Color(white: 0.25))
         strokeWeight(2)
-        drawLine(0, height - 48, width, height - 48)
+        drawLine(0, height - 36, width, height - 36)
         noStroke()
+        fill(Color(hex: 0xFFB703, alpha: 0.35))
+        for p in trail { drawCircle(center: p, radius: 4) }
         fill(Color(hex: 0xFFB703))
         drawCircle(center: position, radius: 24)
     }
 }
 ```
 
-Run it and a ball arcs across, bounces, and settles. Notice what's stored and what isn't: `position` and `velocity` are properties, alive between frames, because motion with memory *is* stored state. That's the line Part I never needed to cross. `gravity` never changes, but every frame it bends `velocity` a little, and the bend is what makes the arc. The bounce is two honest lines: put the ball back on the floor, flip the vertical part of its velocity and keep a bit less than all of it (`0.82` is the bounciness). And both `+=` lines scale by `deltaTime`, so the throw is identical at 60 and 120 frames a second.
+<!-- figure: Thrown (Guide/Figures/10-Vectors/Thrown.swift), waiting on a render; embed Images/10-Vectors/Thrown.jpg here at width 560 -->
 
-The other classic edge policy is **wrapping**: leave the right edge, come back on the left, the canvas bent into a loop. You'll see it in the finished sketch, four `if`s with `with(x:)` and `with(y:)`.
+Run it and a ball arcs across, bounces, and settles. Notice what is stored and what is not. `position` and `velocity` are properties, alive between frames, because motion with memory is stored state. It is the first time this guide writes that state by hand. `gravity` never changes, but every frame it bends `velocity` a little, and the bend is what makes the arc. The bounce is two lines. Put the ball back on the floor, then flip the vertical part of the velocity and keep less than all of it. The `0.82` is the bounciness. The floor takes a little of the sideways speed too, the `0.7`. That is friction, and it is why the ball settles instead of rolling off the edge. Both `+=` lines scale by `deltaTime`, so the throw is the same at 60 and 120 frames a second. The trail is 200 of the ball's recent positions, one every third frame, kept in a list and drawn as faint dots. It lets you see the arc after the ball has left it.
+
+> **Swift note.** `trail` is an array, the kind [Chapter 4](04-Randomness.md) grew with `append`. `count` is how many points it holds, and `removeFirst()` drops the oldest, so the list never grows past 200. `frameCount % 3 == 0` is true on every third frame, because `%` is the remainder after dividing, from [Chapter 1](01-HelloOllin.md).
+
+The floor was one edge policy, a bounce. The other classic one is **wrapping**: leave the right edge and come back on the left, the canvas bent into a loop. The finished sketch uses it, as four `if`s with `with(x:)` and `with(y:)`. Those two calls hand back a copy of a vector with one coordinate changed. The bounce above already used `with(y:)` to put the ball back on the floor.
 
 ## Steering: the chase
 
-A thrown ball only obeys. To make something that *wants*, give it a target and let it correct its own course. The recipe, three lines, is worth reading slowly:
+A thrown ball only obeys. To make something that *wants*, give it a target and let it correct its own course. The recipe is three lines:
 
 ```swift
 let desired = (target - position).normalized * maxSpeed
@@ -161,9 +183,16 @@ let steer = (desired - velocity).limited(to: maxForce)
 velocity = (velocity + steer * deltaTime).limited(to: maxSpeed)
 ```
 
-In words, you figure out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you actually have, which gives the correction arrow between them. You cap that correction, because nothing real turns instantly, and finally you apply it like any other acceleration. The two caps are the character parameters. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. High force snaps onto the target like a hunting fly, while low force sails past and swings back in wide, lazy arcs. The misses are where the life is: the chaser overshoots *because* it has momentum, and the correction is visible.
+In words, you work out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you have, which gives the correction arrow between them. You cap that correction, because nothing with mass turns instantly, and you apply it like any other acceleration. Drawn as arrows, the move looks like this:
 
-Watch the two temperaments race. Make `MySketches/Chasers.swift`, two chasers with one number different between them:
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/SteeringMove-dark.jpg">
+  <img src="Images/10-Vectors/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
+</picture>
+
+The two caps are the character parameters. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. A high force snaps onto the target like a fly. A low force sails past and swings back in wide arcs. The misses make the motion. The chaser overshoots because it has momentum, and the correction is visible.
+
+Watch the two race. Make `MySketches/Chasers.swift`, two chasers with one number different between them:
 
 ```swift
 import Ollin
@@ -210,15 +239,15 @@ final class Chasers: Sketch {
 
 <img src="Images/10-Vectors/Chasers.jpg" alt="Two chaser trails on a dark canvas following a lure that hops between spots: the coral trail curls tightly at the old spot, darts straight to the lure and buzzes around it, while the sky-blue trail sweeps wide past both spots and sails beyond the lure into the corner" width="560">
 
-Both share the lure and the top speed, and only `maxForce` differs. The coral chaser corrects hard, so each time the lure hops it turns, darts, and settles into a tight little orbit around the new spot. It never quite stops, because the recipe always asks for full speed toward the target, and the buzzing knot is that honesty drawn. The blue one can barely turn. It sails past the lure, swings back in the wide arcs its momentum writes, and often meets the next hop before it ever settles. Hold the mouse down and both come to you, each in its own way.
+Both share the lure and the top speed, and only `maxForce` differs. The coral chaser corrects hard, so each time the lure hops it turns, darts, and settles into a tight little orbit around the new spot. It never quite stops, because the recipe always asks for full speed toward the target. The small knot at the lure is what that rule looks like. The blue one can barely turn. It sails past the lure, swings back in wide arcs because it keeps its momentum, and often meets the next hop before it ever settles. Hold the mouse down and both come to you, each in its own way.
 
-> **Swift note.** `[Vector2]` is a list that grows: `append` adds to the end, `removeFirst()` and `removeLast(n)` trim either end, `count` is the size, and `positions.indices` counts `0..<count` so one `i` can index parallel lists together. Lists like these are how a sketch keeps state for *many* things, and Part II leans on them everywhere.
+> **Swift note.** `positions.indices` counts `0..<count`, so one `i` reaches into the parallel lists together. Chaser `i`'s position, velocity, force, and tint all live at index `i`. `trails` is a list of lists, one trail per chaser, so `trails[i].append(...)` grows only chaser `i`'s. `Int(time / 4) % spots.count` turns the clock into a spot number that steps every four seconds and wraps back to `0`.
 
-Every line is arithmetic you already have: a subtraction pointing from here to there, a normalize choosing a speed, a limit keeping it honest. [Chapter 12](12-FlocksAndSwarms.md) builds whole flocks from exactly this correction, aimed at neighbors instead of a target.
+Every line of the recipe is arithmetic you already have. A subtraction points from here to there, a normalize and a scale choose the speed, and a limit keeps the turn bounded. [Chapter 12](12-FlocksAndSwarms.md) builds whole flocks from this same correction, aimed at neighbors instead of a target.
 
 ## Putting it together: the swarm
 
-One chaser is a pet; a few hundred are weather. The sketch at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity, so the drawing *is* the motion made visible. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
+One chaser follows a lure. A few hundred, each with a top speed of its own, move like a school of fish. The sketch at the top of the chapter composes three of the steps. The chase recipe runs over parallel lists of positions and velocities. The wrap comes from the ball's section. And each mover is drawn as a streak along its own velocity, which is the first section's arithmetic, so the drawing shows the motion. Every mover gets its own top speed, so the crowd stretches into leaders and stragglers. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
 
 ```swift
 import Ollin
@@ -294,13 +323,14 @@ final class Swarm: Sketch {
 }
 ```
 
-Run it with `swift run OllinLive MySketches/Swarm.swift`, watch the school wheel after the wandering dot, then press and drag, and the swarm is yours. Take it apart:
+Run it with `swift run OllinLive MySketches/Swarm.swift`, watch the school wheel after the wandering dot, then press and drag, and the swarm follows you. Take it apart:
 
-- The state is three parallel lists: mover `i`'s position, velocity, and personality live at index `i` of each. The `while`/`if` block at the top keeps the lists matched to the `Movers` parameter, so you can pour movers in and out live.
-- `quickness` is one seeded roll per mover, and it does more than any other line for the feel, because everyone runs the same rules at a different top speed, so the crowd naturally stretches into warm leaders and cool stragglers. The streak color reads straight from it.
-- The steering block is the chase recipe verbatim, aimed at `lure`. Turn `Chase` down and the school swings in long arcs past the dot; turn it up and the swarm snaps tight around it.
-- Each mover draws as a `drawLine` from a little behind itself (`- velocities[i] * 0.11`) to where it is, giving a streak that grows with speed and points where it's going, with no rotation math needed.
-- The lure is two `noise` calls on far-apart rows of the field, [Chapter 5](05-Noise.md)'s trick for unrelated drifts, and `mouseIsPressed` swaps it for your cursor. In a still export nobody is pressing, which is why the committed figure shows the noise chase.
+- The state is three parallel lists: mover `i`'s position, velocity, and personality live at index `i` of each. The `while` and `if` at the top keep the lists matched to the `Movers` parameter, so you can add and remove movers while it runs. `while` repeats its body as long as its condition holds, so it appends until the count matches. `removeLast(n)` drops the last `n` entries of a list.
+- `quickness` is one seeded roll per mover, and it does more than any other line for the feel. Everyone runs the same rules at a different top speed, so the crowd stretches into warm leaders and cool stragglers. The streak color reads straight from it.
+- The steering block is the chase recipe from *Steering: the chase*, aimed at `lure`. Turn `Chase` down and the school swings in long arcs past the dot. Turn it up and the swarm snaps tight around it.
+- Each mover draws as a `drawLine` from a little behind itself (`- velocities[i] * 0.11`) to where it is. That is a streak that grows with speed and points where it is going, with no rotation math needed.
+- The wrap is the ball's edge policy, four `if`s with `with(x:)` and `with(y:)`. The margin of 20 lets a mover leave the frame before it comes back on the other side.
+- The lure is two `noise` calls on far-apart rows of the field, [Chapter 5](05-Noise.md)'s way of getting two unrelated drifts. `mouseIsPressed` swaps it for your cursor.
 
 Then make it yours:
 
@@ -309,20 +339,27 @@ Then make it yours:
 - Draw dots at each head (`drawCircle(center:radius:)`, radius by `pace`) for plankton, or lengthen the streaks to `* 0.25` for rain.
 - Ease the caps. `Speed` low with `Chase` high moves like gnats, and both low is deep-sea slow.
 
+A swarm is motion, so keep it as a few seconds of video rather than a still:
+
+```sh
+swift run OllinLive MySketches/Swarm.swift --export-video swarm.mp4 --seconds 6
+```
+
 ## Where this comes from
 
-Vectors are the physics notation the 1880s settled on, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside, and position/velocity/acceleration as arrows is Newton's mechanics wearing that notation. The steering recipe, desired minus actual, capped, is Craig Reynolds' *steering behaviors*, published in his 1999 paper "Steering Behaviors for Autonomous Characters" as the ground floor of the boids work you'll meet properly in [Chapter 12](12-FlocksAndSwarms.md). The teaching order of this chapter, arrows first, then the trio, then steering, walks in the footsteps of Daniel Shiffman's *The Nature of Code*, which made this progression the standard on-ramp for a generation of creative coders, this author included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vectors are the physics notation the 1880s settled on, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside. Position, velocity, and acceleration as arrows is Newton's mechanics written in that notation. The steering recipe, desired minus actual and capped, is Craig Reynolds' *steering behaviors*, from his 1999 paper "Steering Behaviors for Autonomous Characters". That paper generalizes the rules of his 1987 boids, which [Chapter 12](12-FlocksAndSwarms.md) builds. The teaching order of this chapter, arrows first, then the trio, then steering, follows Daniel Shiffman's *The Nature of Code*. That book made this progression the usual way into the subject. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Geometry](../Docs/Drawing/Geometry.md#vector): the full vector tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `lerp(to:)` (the smooth follow), `rotated(by:around:)`, and `projected(onto:)`. Most of it is the shared `Vector` surface, so it reads the same for `Vector3`.
+- [Geometry](../Docs/Drawing/Geometry.md#vector): the full vector tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `rotated(by:around:)`, and `projected(onto:)`. `dot` and `projected(onto:)` are the shared `Vector` surface and read the same for `Vector3`; `cross` and `rotated` are `Vector2`'s own.
+- [Drawing](../Docs/Drawing/Drawing.md#arrow): `drawArrow` and its head measurements, beside the other primitives.
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `dist`, and the scalar kit the vector calls sit beside.
 - [Complex numbers](../Docs/Helpers/Complex.md): a `Vector2` that knows how to multiply. Adding is the same as here; multiplying turns, which [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) iterates and paints.
 - [Values and bare calls](../Docs/Concepts/Values.md): one screen on why every call takes both bare numbers and a typed value, and what the value gives you that the numbers cannot.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (dots racing to a click), and `Smoothing` (a chased value with a filter instead of physics); plus [`Examples/Shapes/Arrows`](../Examples/Shapes/Arrows/Sketch.swift), a field of `drawArrow` marks leaning toward the cursor with the head geometry swept around a ring.
+- Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (four dots racing the same flip on four curves), and `Smoothing` (a chased value with a filter instead of physics); plus [`Examples/Shapes/Arrows`](../Examples/Shapes/Arrows/Sketch.swift), a field of `drawArrow` marks leaning toward the cursor with the head geometry swept around a ring.
 - A look ahead: [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) runs this chapter's correction three ways at once, and [Chapter 12](12-FlocksAndSwarms.md) takes it apart.
-- The Gego homage [`DrawingWithoutPaper`](../Examples/Recreations/Gego/DrawingWithoutPaper/Sketch.swift): a projection worked out in two lines of vector arithmetic. Each bit of wire hangs a known distance off the wall, and where the ray from the lamp through it meets the wall is its shadow, which is the whole of the picture.
+- The Gego homage [`DrawingWithoutPaper`](../Examples/Recreations/Gego/DrawingWithoutPaper/Sketch.swift): a projection worked out in two lines of vector arithmetic. Each bit of wire hangs a known distance off the wall. Where the ray from the lamp through it meets the wall is its shadow, and the shadows are the whole of the picture.
 
 ---
 

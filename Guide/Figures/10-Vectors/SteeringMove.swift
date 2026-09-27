@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 12): the steering move. Left, a creature with a
+// Guide diagram (Chapter 10): the steering move. Left, a creature with a
 // velocity and a target it wants. Right, the same two arrows drawn from one
 // point: the correction is the arrow between where you're going and where
 // you wish you were going, capped so nothing turns instantly.

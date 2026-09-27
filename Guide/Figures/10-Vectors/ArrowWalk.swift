@@ -31,9 +31,9 @@ final class ArrowWalk: Sketch {
         // The trip itself, then the breeze walked from its end.
         strokeWeight(4)
         stroke(Color(hex: 0xE4572E))
-        drawLine(home, home + trip)
+        drawArrow(from: home, to: home + trip)
         stroke(Color(hex: 0x2B2B2B))
-        drawLine(home + trip, home + trip + breeze)
+        drawArrow(from: home + trip, to: home + trip + breeze)
 
         noStroke()
         fill(Color(hex: 0x2B2B2B))

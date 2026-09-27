@@ -66,7 +66,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part II: Systems that come alive
 
-10. **[Vectors, gently](10-Vectors.md).** Vectors as arrows, then position, velocity, and acceleration, then steering toward a target.
+10. **[Vectors, gently](10-Vectors.md).** Vectors as arrows you add, subtract, scale, and divide, a point part of the way between two, length and direction taken apart, then position, velocity, and acceleration on one body, steering toward a target, and a swarm of a few hundred chasing a lure.
 11. **[Forces and physics](11-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), chases that trace curves of pursuit, flocking from three local rules and the grid that keeps it cheap, a crowd that makes room, and fireflies falling into step.
 13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars with and without arithmetic, and shape grammars. Then growth by crowding, claiming space, chance, voltage, collision, and wandering: differential growth, space colonization, frost from frozen walkers, dielectric breakdown, cracks, and meanders.

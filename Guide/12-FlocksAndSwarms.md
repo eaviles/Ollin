@@ -19,12 +19,7 @@ let desired = (target - position).normalized * maxSpeed
 let steer = (desired - velocity).limited(to: maxForce)
 ```
 
-Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing real turns instantly. Drawn as arrows, it looks like this:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/SteeringMove-dark.jpg">
-  <img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
-</picture>
+Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing real turns instantly. [Chapter 10](10-Vectors.md#steering-the-chase) drew that move as arrows, with the steer running from the tip of the velocity to the tip of the desired.
 
 Steering is wanting, written as arithmetic. Everything a creature does in this chapter is this same move with a different idea of *desired*, and that's exactly how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
 

@@ -268,8 +268,8 @@ Motion is three vectors in a strict chain. **Acceleration** changes velocity, **
 ### Steering is a correction
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/SteeringMove-dark.jpg">
-  <img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="A dot with a velocity arrow and a desired arrow toward a target; beside it, the steer arrow connecting the velocity's tip to the desired's tip" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/SteeringMove-dark.jpg">
+  <img src="Images/10-Vectors/SteeringMove.jpg" alt="A dot with a velocity arrow and a desired arrow toward a target; beside it, the steer arrow connecting the velocity's tip to the desired's tip" width="680">
 </picture>
 
 A creature that can't teleport steers by comparing wish and state. Compute the velocity it *wants*, toward the target at full speed, then subtract the velocity it *has*. The difference is the correcting force, capped so the turn takes time. `desired - velocity`, nothing more. That one subtraction, re-aimed, becomes seek, flee, arrive, and wander in [Chapter 10](10-Vectors.md) and [Chapter 12](12-FlocksAndSwarms.md).

@@ -43,8 +43,8 @@ creature.steer(toward: direction)   // aim at maxSpeed along direction, minus ve
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/12-FlocksAndSwarms/SteeringMove-dark.jpg">
-  <img src="../../Guide/Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/10-Vectors/SteeringMove-dark.jpg">
+  <img src="../../Guide/Images/10-Vectors/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
 </picture>
 
 `position`, `velocity`, and `heading` are the live state, and you can draw them however you like. `drawVehicle(_:size:)` draws a triangle that points along the heading, using the current `fill`.
