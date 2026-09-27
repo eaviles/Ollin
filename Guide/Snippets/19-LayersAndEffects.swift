@@ -26,4 +26,3 @@ let ink = Color.black
 extension Sketch {
     var outline: Shape { Shape([Vector2(0, 0), Vector2(40, 0), Vector2(20, 40)]) }
 }
-var myShader: Shader!

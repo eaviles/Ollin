@@ -80,7 +80,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part IV: Pixels and light
 
-18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, the design generators and pattern fields Ollin ships, smoothing the stair-stepped edges a shader leaves, and chaining visuals.
 19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
 20. **[Pictures restyled](20-PicturesRestyled.md).** Filters that make a photograph into another kind of picture. Ink lines, brushwork, flat regions, and hatching, a colorist's look and the film look, relighting and dithering, the picture inside itself, chromatic aberration, the design filters, and melt.
 21. **[Pictures you solve](21-PicturesYouSolve.md).** Layers treated as problems to solve. Diffusion curves, a seamless paste, the measured distance field, the frequency domain, light worked out in a flat sketch, and local averages.

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): post-process anti-aliasing. A shape written per
+// Guide diagram (Chapter 18): post-process anti-aliasing. A shape written per
 // pixel by a shader into a small layer, shown beside the same layer through
 // `.antialias`. Both panels are magnified six times by reading the small layer
 // at its own texel centers, so what you see is the real pixels rather than a

@@ -4,3 +4,6 @@
 // The shader text the chapter is writing.
 let source = ""
 let shaderSource = ""
+
+// A shader the reader wrote, standing in for any generated layer.
+var myShader: Shader!

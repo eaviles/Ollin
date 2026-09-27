@@ -41,7 +41,7 @@ final class FirstShader: Sketch {
 
 <img src="Images/18-YourFirstShader/FirstShader.jpg" alt="The first shader's output: a smooth gradient, dark blue at the top left corner, red growing to the right, green growing downward, meeting in pink and yellow" width="560">
 
-The string is the shader, and everything around it is plumbing you already know, since [Chapter 19](19-LayersAndEffects.md)'s `generate` makes a layer and `drawImage` shows it. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
+The string is the shader. `generate` runs it over a whole layer, a second canvas off screen that [Chapter 19](19-LayersAndEffects.md) teaches in full, and `.image` hands that layer to `drawImage` as a picture. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/18-YourFirstShader/UVSpace-dark.jpg">
@@ -121,11 +121,32 @@ Shader(source, using: [.noise, .sdf])   // keep only these sections
 
 Leave it off and you get everything, which is the right default while you're exploring. Reach for it when a sketch has many shaders and compiles start to feel slow. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function and which section it lives in. One section, `.complex`, reads a `float2` as a number you can multiply, and [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) paints with it.
 
+## The design generators
+
+Ollin's own built-in patterns are shaders written with that same library, and `generate` runs them the way it ran yours. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns:
+
+```swift
+drawImage(generate(.godRays()).image, 0, 0)
+```
+
+<!-- Figure: DesignGenerators (Figures/18-YourFirstShader/DesignGenerators.swift), the ten design generators at their defaults, one labeled tile each. Waiting on its render on the Mac. -->
+
+The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters) meets those.
+
+Each of them takes a **`phase`**, and so do the pattern fields in the next section. They have no clock of their own, so nothing moves until you feed one in:
+
+```swift
+generate(.meshGradient(phase: time * 0.4))     // animated
+generate(.meshGradient())                      // a still, and the same still every run
+```
+
+That's deliberate. Because the motion is a number you pass, a frame export is reproducible. You can also drive a pattern from audio, a slider, or a scroll position as easily as from `time`.
+
 ## The pattern fields
 
-You've also been *using* shaders all along, since every [Chapter 19](19-LayersAndEffects.md) filter and generator is one. [Chapter 19](19-LayersAndEffects.md) introduced the design generators, and held one group back for here: the **pattern fields**, because they're the ones this chapter has just taught you to read.
+The design generators keep their arithmetic behind named parameters. A second group, the **pattern fields**, has a more mathematical flavor, and this chapter has taught you enough to read how they work.
 
-What makes them a group is a property, not a style. A pattern field is **closed form**: it has no state, no source picture, and it reads no textures. Every pixel is a small piece of arithmetic on its own coordinates, exactly like the shaders you've been writing. Three consequences follow, and they're the reason to reach for one.
+What makes them a group is a property. A pattern field is **closed form**: it has no state, no source picture, and it reads no textures. Every pixel is a small piece of arithmetic on its own coordinates, exactly like the shaders you've been writing. Three consequences follow, and they're the reason to reach for one.
 
 - It costs the same at any size, so a pattern field fills a 4K poster as happily as a thumbnail, and there's nothing to load.
 - It has no history, so frame 900 doesn't depend on frames 1 through 899. That's what makes them safe to export, scrub, or jump around in.
@@ -177,6 +198,37 @@ Nothing about `z = info.time` is special either. Reading a 3D field at a moving 
 Two conventions apply across the whole design and pattern-field set. Their palettes blend in **sRGB**, the space design tools work in, so mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer doesn't get a squashed crystal.
 
 So: when a built-in is close to what you want, take it and adjust its parameters. When it isn't, you now know what's inside one.
+
+## The edges a shader leaves: post-process anti-aliasing
+
+Every layer in this chapter was written one pixel at a time, and that has a cost wherever the picture has a hard edge.
+
+When you draw a circle, Ollin knows it is a circle. It works out how much of each edge pixel the shape covers, and paints that pixel part-way. That is what keeps the edge smooth instead of built out of little squares.
+
+A generated layer has none of that. A design generator, a pattern field, or a shader you wrote yourself each runs a piece of math per pixel and writes a color. No shape stands behind the answer, so there is no coverage to work out. A hard edge inside one comes out as a staircase.
+
+`.antialias` is the repair, and it works from the finished picture. It is a **filter**, a pass that reads a layer and hands back a new one, and `.filtered(_:)` applies it. [Chapter 19](19-LayersAndEffects.md#filters) meets the rest of the filters.
+
+```swift
+let field = generate(myShader).filtered(.antialias())
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-YourFirstShader/Antialias-dark.jpg">
+  <img src="Images/18-YourFirstShader/Antialias.jpg" alt="Two magnified panels of the same small shader-drawn picture, a yellow disc under a red band: on the left every edge is a hard staircase of whole pixels, on the right the same edges carry in-between tones that read as a smooth slope" width="680">
+</picture>
+
+Both panels are magnified, so you are looking at real pixels rather than a photograph of a screen. On the left, each edge jumps a whole pixel at a time. On the right, the pixels along the edge have taken in-between tones, and the jump reads as a slope.
+
+What the filter does is close to what your own eye does with that picture. It looks at brightness around each pixel. Where it is flat, it moves on, which is most of a frame. Where there is a step, it works out which way the edge runs, across or down. Then it follows that edge in both directions until the edge ends. Finally it reads the layer back a fraction of a pixel, toward the side the step falls away on. A pixel in the middle of a long edge barely moves. One near the end of a step moves half a pixel. That gradient along the run is the ramp.
+
+Three things follow from working on the image alone:
+
+- **It cannot tell a stair-step from real detail.** One pixel of deliberate speckle looks exactly like one pixel of aliasing, and both get softened. That is why it is a filter you place rather than something every layer gets.
+- **Place it right after whatever wrote the layer.** Put it before a warp, which would smear the ramp it just made, and before a blur, which makes it pointless.
+- **It halves the problem rather than removing it.** On a measured shallow edge, the edge strays 0.29 of a pixel from the straight line it should lie on, and 0.14 of a pixel after the filter.
+
+It takes two parameters. `threshold` is the contrast an edge needs before the filter touches it at all, so raising it leaves faint edges alone and lowering it reaches them. `amount` is how much of the result to keep, and `amount: 0` hands the layer back exactly as it came, which makes an A and B comparison free.
 
 ## Chains: patching without typing Metal
 
@@ -356,7 +408,7 @@ Then make it yours:
 
 ## Where this comes from
 
-Shaders come out of computer graphics research and the demoscene, but the reason a creative coder in this century can learn them at all is largely two projects. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught a generation the per-pixel mental model (this chapter's distance-and-smoothstep sentence is its heart, and if you want a deeper, GLSL-flavored second pass, it remains wonderful). And Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture. Quilez's articles are also the source of half the techniques in Ollin's shader library, including the cosine `palette` and the `sd*` distance functions. The fractal noise behind `fbm` descends from Ken Perlin's Oscar-winning noise. The chain idiom of `Visual` is inspired by Olivia Jack's Hydra, the browser live-coding instrument whose patching model made combining visuals feel like playing an instrument. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Shaders come out of computer graphics research and the demoscene, but the reason a creative coder in this century can learn them at all is largely two projects. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught a generation the per-pixel mental model (this chapter's distance-and-smoothstep sentence is its heart, and if you want a deeper, GLSL-flavored second pass, it remains wonderful). And Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture. Quilez's articles are also the source of half the techniques in Ollin's shader library, including the cosine `palette` and the `sd*` distance functions. The fractal noise behind `fbm` descends from Ken Perlin's Oscar-winning noise. The design generators were cross-read against Paper Shaders, the design-shader library from paper.design with shaders by Ksenia Kondrashova. Each was then written from its underlying technique. The mesh gradient, for one, blends colors by Donald Shepard's 1968 inverse-distance weighting over Quilez's domain warping. The anti-aliasing filter is Timothy Lottes's FXAA, from 2009. The chain idiom of `Visual` is inspired by Olivia Jack's Hydra, the browser live-coding instrument whose patching model made combining visuals feel like playing an instrument. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

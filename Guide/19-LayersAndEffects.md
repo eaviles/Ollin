@@ -70,7 +70,7 @@ A few notes for the road. Filters are values you pass around, so a `[Filter]` ar
 
 ## Layers from nowhere
 
-A layer doesn't have to start from your drawing. `generate(_:)` fills one with a procedural pattern, and the result is an ordinary layer you can filter and composite:
+A layer doesn't have to start from your drawing. [Chapter 18](18-YourFirstShader.md) used `generate(_:)` to run a shader over a whole layer, your own or one of the design generators Ollin ships. What comes back is an ordinary layer, so you can filter and composite it like one you drew:
 
 ```swift
 let sky = generate(.meshGradient(colors: [Color(hex: 0xE4572E), Color(hex: 0x2B6C8C),
@@ -82,54 +82,6 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 <img src="Images/19-LayersAndEffects/Generated.jpg" alt="A poster-like wash of terracotta, teal, and amber blobs melting into each other, laid onto textured paper with visible grain and crumple creases" width="560">
 
 Three lines, and the canvas is a printed poster. It is a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all.
-
-## The edges a generated layer has no coverage for
-
-A layer like that one comes with a catch, and it is better met before it bites you.
-
-When you draw a circle, Ollin knows it is a circle. It works out how much of each edge pixel the shape covers, and paints that pixel part-way. That is what keeps the edge smooth instead of built out of little squares.
-
-A generated layer has none of that. A pattern, a raymarched shape, [a shader you wrote yourself](18-YourFirstShader.md) or [borrowed from the web](../Docs/Tools/ShaderImport.md): each one runs a piece of math per pixel and writes a color. No shape stands behind the answer, so there is no coverage to work out. A hard edge inside one comes out as a staircase.
-
-`.antialias` is the repair, and it works from the finished picture:
-
-```swift
-let field = generate(myShader).filtered(.antialias())
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/Antialias-dark.jpg">
-  <img src="Images/19-LayersAndEffects/Antialias.jpg" alt="Two magnified panels of the same small shader-drawn picture, a yellow disc under a red band: on the left every edge is a hard staircase of whole pixels, on the right the same edges carry in-between tones that read as a smooth slope" width="680">
-</picture>
-
-Both panels are magnified, so you are looking at real pixels rather than a photograph of a screen. On the left, each edge jumps a whole pixel at a time. On the right, the pixels along the edge have taken in-between tones, and the jump reads as a slope.
-
-What the filter does is close to what your own eye does with that picture. It looks at brightness around each pixel. Where it is flat, it moves on, which is most of a frame. Where there is a step, it works out which way the edge runs, across or down. Then it follows that edge in both directions until the edge ends. Finally it reads the layer back a fraction of a pixel, toward the side the step falls away on. A pixel in the middle of a long edge barely moves. One near the end of a step moves half a pixel. That gradient along the run is the ramp.
-
-Three things follow from working on the image alone, and all three are worth remembering:
-
-- **It cannot tell a stair-step from real detail.** One pixel of deliberate speckle looks exactly like one pixel of aliasing, and both get softened. That is why it is a filter you place rather than something every layer gets.
-- **Place it right after whatever wrote the layer.** Before a warp, which would smear the ramp it just made, and before a blur, which makes it pointless.
-- **It halves the problem rather than removing it.** On a measured shallow edge, the edge strays 0.29 of a pixel from the straight line it should lie on, and 0.14 of a pixel after the filter. Half rather than none is the honest trade for a pass that never sees the shape.
-
-Two parameters. `threshold` is the contrast an edge needs before the filter touches it at all, so raising it leaves faint edges alone and lowering it reaches them. `amount` is how much of the result to keep, and `amount: 0` hands the layer back exactly as it came, which makes an A and B comparison free.
-
-## The design family
-
-Two lines of that listing came from a set that is best met as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one. The generators are met here, and the filters in [Chapter 20](20-PicturesRestyled.md#the-design-filters).
-
-### The design generators
-
-The generator half is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. There's a third group, the pattern fields, with a more mathematical flavor. [Chapter 18](18-YourFirstShader.md) picks those up, because by then you'll be able to read how they work.
-
-Nearly all of them take a **`phase`**, and that is the one detail to remember. They have no clock of their own, so nothing moves until you feed it one.
-
-```swift
-generate(.gyroid(phase: time * 0.4))     // animated
-generate(.gyroid())                      // a still, and the same still every run
-```
-
-That's deliberate rather than an oversight. Because the motion is a number you pass, a frame export is reproducible. You can also drive a pattern from audio, a slider, or a scroll position as easily as from `time`.
 
 ## How new paint meets old
 
