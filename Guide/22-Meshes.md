@@ -267,7 +267,7 @@ cube.subtracting(ball)    // the cube, with the ball taken out of it
 
 Look at the third one. That is a cube and a ball. It is also a block with every edge and every corner rounded at once, which by hand means modeling twelve fillets. That is the thing to take from this. You are not cutting because you want a hole. You are cutting because a shape that is hard to describe is often easy to *catch* between two shapes that are not.
 
-What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract { }` block [Chapter 26](26-SculptingWithFields.md) carves fields with. The block melts distance fields on the GPU while the frame is drawn, and leaves no geometry behind. Reach for it when you want a blobby form that moves. Reach for these when you want the shape itself.
+What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract` and `carve()` [Chapter 26](26-SculptingWithFields.md) works fields with. Those melt distance fields on the GPU while the frame is drawn, and leave no geometry behind. Reach for them when you want a blobby form that moves. Reach for these when you want the shape itself.
 
 Three things to know before you cut.
 
@@ -386,7 +386,7 @@ drawMesh(boulder
 
 The figure makes both maps out of one bundled photograph of a dry-stone wall. The base is that picture cut down to the resolution a single map covering a whole form would really have, which is why the left sphere is soft. The detail pair is a patch of the same wall seen close, mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
 
-`scale` is how many times the pair repeats across the base, and `strength` fades it out, with zero the honest off switch. A pair tiled dozens of times over is the first thing that would break up in the distance, so those maps read their smaller copies like every other map does. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres, the detail pair on one of them, and the tile count and strength on parameters while the camera sways close.
+`scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the honest off switch. A pair tiled dozens of times over is the first thing that would break up in the distance, so those maps read their smaller copies like every other map does. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres, the detail pair on one of them, and the tile count and amount on parameters while the camera sways close.
 
 ### A picture stamped onto the scene: decals
 
@@ -499,7 +499,7 @@ Every environment so far was somewhere else: a Venice evening, a studio, a synth
 ```swift
 let camera = Camera()          // Chapter 30 introduces it properly; start it in setup()
 
-func draw() {
+override func draw() {
     drawFrame(camera)              // the room as the picture
     environment(.feed(camera))     // the room as the light
     material(.polishedMetal)
@@ -606,7 +606,7 @@ The three metals are the same metal. Only the thickness of the film on them chan
 
 Now look at any one of the filmed balls on its own. One thickness, and yet the color changes from the middle of the ball to its edge. A slanted path through the film is a longer path, so the color walks as the surface turns away from you, and it walks again when you move. That is the whole reason a bubble looks alive rather than painted, and you get it for nothing. The surface *under* the film matters too, since the film's lower face is where the two meet. That is why `.anodized`, over metal, and `.oilOnWater`, over a dark wet dielectric, look nothing alike.
 
-The fourth ball is the bubble itself: `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops, so walk the thickness down over time and yours will do the same. `.nacre` is the last preset, the pearl. And this is a different thing from the stylized `iridescence` sheen of [Chapter 21](21-3DGently.md), which is a rim rainbow you dial by band count. This one is measured, so it holds its color under a moving light the way the real surface does.
+The fourth ball is the bubble itself: `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops, so walk the thickness down over time and yours will do the same. `.nacre` is the last preset, the pearl. And this is a different thing from the stylized `iridescence` under [Chapter 21](21-3DGently.md)'s `.iridescent` finish, which is a rim rainbow you dial by band count. This one is measured, so it holds its color under a moving light the way the real surface does.
 
 ### Skin, wax, and stone: subsurface scattering
 
@@ -622,7 +622,7 @@ drawSphere(radius: 0.72)
 
 Look at each pair at the line where light gives way to shadow. The bare balls cut off the way a painted surface does. The scattering ones carry light a little way past that line, because light that entered on the lit side is re-emerging on the dark one. On the skin ball the carried light is *red*. Red travels farthest through flesh, which is why shadow edges on faces are warm. That per-channel reach is the `scatteringColor`, and its default is the skin ratio. Near-equal channels give the neutral softening of `.marble`, and a green-dominant color makes a jade whose glow is green.
 
-`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges are worth knowing. It applies to solid meshes on the main canvas, so a raymarched field or a mesh inside a render target keeps its plain shading. And it's a different thing from the stylized `subsurface` glow [Chapter 21](21-3DGently.md)'s jade used, which fakes back-light cheaply and can still layer on top for ears and edges.
+`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges are worth knowing. It applies to solid meshes on the main canvas, so a raymarched field or a mesh inside a render target keeps its plain shading. And it's a different thing from the stylized `subsurface` glow under [Chapter 21](21-3DGently.md)'s `.jade`, which fakes back-light cheaply and can still layer on top for ears and edges.
 
 There's a second half, and it asks for one more call. Turn on `castShadows()` and the same material starts *transmitting*. Light that strikes the far side of a thin body comes through it, which is the flashlight-through-fingers trick from the top of this section done for real. It works because the shadow machinery already knows the one thing the material needs. A shadow map records where the light first landed, and the surface being shaded knows where it is. The gap between the two is how far the light traveled inside the body. **The shadow map was a thickness gauge all along.**
 
@@ -714,7 +714,7 @@ final class Bench: Sketch {
 
 ```
 
-The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball wears four maps at once: the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The cushion started life as a six-pointed slab. The crystal comes out of the same example model file the chapter opened with.
+The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball wears four maps at once: the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The silver cushion started life as a six-pointed slab, the `star` in the listing. The crystal is the model the `3D/Geometry/LoadedMesh` example loads, read from its file the way the chapter's first listing read a duck.
 
 ```swift
     // MARK: the parts
@@ -896,7 +896,7 @@ Then make it yours:
 - Set `parallaxMapped`'s `scale` on the tile to `0.2` and look along the slab. The carving deepens and still leaves the tile's outline perfectly straight, which is the trade the height-map section describes.
 - Swap the tile's `parallaxMapped` for `displaced(by:scale:)` on a `Mesh.plane(width:depth:segments: 200)`. Now the edge is carved too, and you paid for it in triangles.
 - Change `.marble(radius:)` on the egg to `.skin(radius:)` and watch the shadow terminator go warm.
-- Give the cushion a `sheenColor` far from its `fill`, deep red under orange, for the two-tone velvet look.
+- Give the felt cushion under the egg a `sheenColor` far from its `fill`, deep red under orange, for the two-tone velvet look.
 - Point `modelURL` at a model of your own. `normalized(scale:)` fits it to the bench whatever units its author saved it in.
 
 ## Where this comes from
