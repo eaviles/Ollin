@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 26): the camera as a surface. The same "camera frame"
+// Guide figure (Chapter 32): the camera as a surface. The same "camera frame"
 // the LiveRoom figure uses, a bundled photograph of an alley under a bright
 // sky, so the figure reproduces; everything after the frame is the real
 // path. The frame is worn by a globe through `textured(_:)` and handed to

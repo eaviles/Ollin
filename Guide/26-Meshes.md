@@ -124,7 +124,7 @@ Both directions are worth having. `loadScene` is for a set that is still being b
 
 ### A shape from four dimensions: the Hopf fibration
 
-One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space, no two of which meet and every two of which are linked. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
+One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space. No two of them meet, and every two of them are linked. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
 
 ## Pictures that change the surface
 
@@ -443,40 +443,6 @@ aerialPerspective()
 <img src="Images/26-Meshes/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
 With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 25's volumetric beams ride it exactly as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
-
-### The room as the light: Environment.feed
-
-Every environment so far was somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
-
-```swift
-let camera = Camera()          // Chapter 32 introduces it properly; start it in setup()
-
-override func draw() {
-    drawFrame(camera)              // the room as the picture
-    environment(.feed(camera))     // the room as the light
-    material(.polishedMetal)
-    drawSphere(radius: 1)
-}
-```
-
-Walk past the camera and the reflections move with you. Hold up something red and the whole scene warms. A webcam only brings a window, and lighting needs a whole sphere of surroundings, so the half the camera can't see is filled with the mirror image of the half it can. That's plausible rather than true, and plausible is exactly what lighting needs.
-
-<img src="Images/26-Meshes/LiveRoom.jpg" alt="Three spheres floating in front of a photograph of a narrow street under a bright cloudy sky. The chrome sphere on the left carries the whole street wrapped around it, buildings and clouds and all, the middle sphere smears the same reflection into a satin sheen, and the white matte sphere on the right just takes the daylight" width="680">
-
-That figure holds one bundled photograph where the webcam would be, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
-
-The frame can be the *surface* too. A camera frame is an `Image`, and you already know where an image goes on a mesh: `textured(_:)`. So the room you are sitting in can be wrapped around a globe, and lit by itself, in two lines:
-
-```swift
-environment(.feed(camera))                  // the room as the light
-if let frame = camera.frame {
-    drawMesh(globe.textured(frame))         // the room as the surface
-}
-```
-
-<img src="Images/26-Meshes/LiveSurface.jpg" alt="A large sphere wearing the same street photograph as the figure above, a pink wall and its window and balcony wrapped around the globe, beside a small chrome ball reflecting the same street. Both are lit by the picture they show" width="680">
-
-Set the material every frame, because each capture arrives as a fresh image, and a fresh image uploads to the GPU the first time it is drawn. That is one upload per new frame, nothing while the frame holds, cheap for one surface and worth counting across many. So wear the feed on the thing that matters and let the same feed light the rest. The `3D/Materials/LiveSurface` example does exactly that, with the webcam.
 
 ### Glass
 
@@ -875,7 +841,7 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 - The Farmanfarmaian homage [`MirrorFamily`](../Examples/Recreations/MonirFarmanfarmaian/MirrorFamily/Sketch.swift): a relief built as two meshes of flat triangles, one wearing a near-mirror metal and one a painted finish under a clear coat. Its reflections are traced against the room the sketch builds around it, which is where a mirror's look comes from.
 - The Felguérez homages in [`Examples/Recreations/ManuelFelguerez/`](../Examples/Recreations/ManuelFelguerez/): `EspacioMultiple` pushes the flat outlines of a painting into slabs with `drawExtrude`, each to its own height. Then it pulls the slabs apart into a standing piece, so one point list is the painting, the relief and the sculpture. `RelieveLacado` raises a composed design in lacquered layers under a key light that circles slowly. With the lights off and the camera straight on it renders its own plan again, pixel for pixel, which is the check that the raising is right.
 - The Bonačić homage [`GFE164`](../Examples/Recreations/VladimirBonacic/GFE164/Sketch.swift): 1,024 tubes of four lengths as two instanced draws, the tubes lit and their glass ends drawn inside `withoutLights`, so each lit glass is its own light. One point light for every block of sixteen tubes carries the color of what is lit there onto the tubes around it. A copy's color multiplies the `fill`, so the fill goes back to white first.
-- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Geometry/LoadedMesh` and `Geometry/LoadedScene`, `Materials/NormalMaps`, `Materials/SurfaceMaps`, `Materials/Parallax`, `Materials/Triplanar`, `Materials/Detail`, `Materials/Decals`, `Materials/BrushedMetal`, `Materials/CoatAndCloth`, `Materials/ThinFilm`, `Materials/SeeThrough`, and `Environments/Cloudscape` and `Environments/LiveEnvironment`.
+- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Geometry/LoadedMesh` and `Geometry/LoadedScene`, `Materials/NormalMaps`, `Materials/SurfaceMaps`, `Materials/Parallax`, `Materials/Triplanar`, `Materials/Detail`, `Materials/Decals`, `Materials/BrushedMetal`, `Materials/CoatAndCloth`, `Materials/ThinFilm`, `Materials/SeeThrough`, and `Environments/Cloudscape`.
 
 ---
 

@@ -49,6 +49,40 @@ Without that line, a Mac with no camera shows the notice on the left for as long
 
 Ollin bundles [twenty pictures and a short film](../Docs/Drawing/SamplePhotos.md) for exactly this. Four faces, four whole figures, two tables from above, four streets, two landscapes, a page, a pair of hands and two surfaces, so a sketch that reads people has people to read. A tracker attaches to the still feed exactly as it attaches to a camera, which is why the vision examples in this chapter run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
 
+### The room as the light: Environment.feed
+
+The frame is an image, so it goes wherever an image goes, and that includes a 3D scene. [Chapter 26](26-Meshes.md#surroundings-as-the-light-environments) lit its scenes with environments from somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
+
+```swift
+let camera = Camera()          // started in setup(), as above
+
+override func draw() {
+    drawFrame(camera)              // the room as the picture
+    environment(.feed(camera))     // the room as the light
+    material(.polishedMetal)
+    drawSphere(radius: 1)
+}
+```
+
+Walk past the camera and the reflections move with you. Hold up something red and the whole scene warms. A webcam only brings a window, and lighting needs a whole sphere of surroundings. So the half the camera can't see is filled with the mirror image of the half it can. That's plausible rather than true, and plausible is what lighting needs.
+
+<img src="Images/32-Seeing/LiveRoom.jpg" alt="Three spheres floating in front of a photograph of a narrow street under a bright cloudy sky. The chrome sphere on the left carries the whole street wrapped around it, buildings and clouds and all, the middle sphere smears the same reflection into a satin sheen, and the white matte sphere on the right just takes the daylight" width="680">
+
+In the figure a bundled street photograph stands in for the webcam, the way `Camera.orStill` lets one. The picture behind the spheres is also the light on them. Show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera). Until the first frame arrives, a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
+
+The frame can be the *surface* too. A camera frame is an `Image`, and Chapter 26 put an image on a mesh with `textured(_:)`. So the room you are sitting in can be wrapped around a globe, and lit by itself, in two lines:
+
+```swift
+environment(.feed(camera))                  // the room as the light
+if let frame = camera.frame {
+    drawMesh(globe.textured(frame))         // the room as the surface
+}
+```
+
+<img src="Images/32-Seeing/LiveSurface.jpg" alt="A large sphere wearing the same street photograph as the figure above, a pink wall and its window and balcony wrapped around the globe, beside a small chrome ball reflecting the same street. Both are lit by the picture they show" width="680">
+
+Set the material every frame, because each capture arrives as a fresh image. A fresh image uploads to the GPU the first time it is drawn. That is one upload per new frame and nothing while the frame holds, which is cheap for one surface and worth counting across many. So wear the feed on the thing that matters and let the same feed light the rest. The `3D/Materials/LiveSurface` example does that, with the webcam.
+
 ## Trackers: attach, then read
 
 Seeing more than pixels is the job of the **trackers**. Each one attaches to a frame source and runs one kind of perception over its frames, publishing typed results your sketch reads every frame:
@@ -552,6 +586,7 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 
 - [Vision](../Docs/Vision/Vision.md): every tracker in detail, coordinate mapping, still images, availability.
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
+- [A live camera environment](../Docs/3D/3D.md#live-environment): `Environment.feed` with any `VideoFeed`, how the unseen half is filled, and the neutral sky before the first frame. The `3D/Environments/LiveEnvironment` and `3D/Materials/LiveSurface` examples run it with the webcam.
 - [Screen capture](../Docs/Integration/ScreenCapture.md): naming a display, app, or window, listing what's there, the permission story in full, and the feedback tunnel.
 - [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps worth trying.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).

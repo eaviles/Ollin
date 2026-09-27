@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 26): a live-feed environment. The "camera frame" is one
+// Guide figure (Chapter 32): a live-feed environment. The "camera frame" is one
 // bundled photograph, an alley with bright sky above and shaded walls below, so
 // the figure reproduces; everything after the frame is the real path. The same
 // image is drawn as the backdrop and handed to `environment(.feed(...))`, so the
