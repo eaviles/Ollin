@@ -205,9 +205,6 @@ Swift bakes "might be missing" into the type system. A `Color?` is either a `Col
 Here are the four tools, in the order the guide meets them:
 
 ```swift
-// ?? provides a fallback
-let font = OutlineFont(name: "Zapfino") ?? .systemMedium
-
 // if let unwraps for a block
 if let image = try? loadImage("texture.png") {
     drawImage(image, 0, 0)
@@ -215,6 +212,9 @@ if let image = try? loadImage("texture.png") {
 
 // guard let unwraps or leaves early, keeping the happy path unindented
 guard let source else { return }
+
+// ?? provides a fallback
+let font = OutlineFont(name: "Zapfino") ?? .systemMedium
 
 // ?. calls through only when the value is there
 let mesh = (try? loadMesh("model.obj"))?.normalized(scale: 3)
@@ -254,7 +254,7 @@ Triple quotes make a multiline string, verbatim, line breaks and all. That matte
 
 ## What the guide never needed
 
-Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, enums with payloads, error handling with `throws`, and concurrency with `async` are all real, and nearly all skippable here. Across thirty-two chapters the guide asks for one of them once: reading a recorded file or a still picture is an `async` call, so [Chapter 28](28-SoundAndControl.md) and [Chapter 30](30-Seeing.md) write `try await` inside the framework's own `waitFor { }`. Otherwise the framework's design keeps all of it off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
+Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, and enums with payloads are real and nearly all skippable here. Two more show up in a light form. A call that can fail is marked `throws`, and the listings mostly call it with `try?`, which turns a failure into the `nil` the tools above handle. And reading a recorded file or a still picture is an `async` call. [Chapter 28](28-SoundAndControl.md) writes its `try await` inside the framework's own `waitFor { }`, and [Chapter 30](30-Seeing.md) names the one that reads a photograph. Otherwise the framework's design keeps all of it off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
 
 If a chapter's Swift ever still feels like the obstacle, that's a bug in this guide, not in you, and the same [issue tracker](https://github.com/eaviles/Ollin/issues) that takes confusing math takes confusing Swift.
 
