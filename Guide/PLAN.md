@@ -72,10 +72,10 @@ Each brief lists what the chapter teaches, what it assumes, the piece it builds 
 ### Part I: Seeing something move
 
 **1. Hello, Ollin.**
-Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` parameters in the inspector; running any repo example.
+Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system, and looking closer with `viewControl`; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` parameters in the inspector; running any repo example.
 Assumes: can program a little, in any language. First Swift callouts: a `class ... : Sketch` is a recipe; `var`/`let`; calling functions with labels.
 Payoff: a small animated composition (drifting circles over a colored ground) the reader tunes live with parameters.
-Figures: the coordinate-system diagram; a first-shapes contact sheet; the finished piece at a fixed frame.
+Figures: the coordinate-system diagram; looking closer; a first-shapes contact sheet; the finished piece at a fixed frame.
 Draws from: `Docs/Core/Sketch.md`, `Docs/Core/Canvas.md`, `Docs/Drawing/Drawing.md`, `Docs/Helpers/Input.md`, `Docs/Helpers/Parameters.md`; `Examples/Basic/`.
 
 **2. Color that works.**
@@ -428,7 +428,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Helpers/Animation.md` (easing, `reversed()`/`mirrored()`, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | Picture fit: `ImageFit`, `drawImage(_:in:fit:)`, `Rectangle(covering:in:)` (`Drawing/Images.md`) | Ch 9 | taught ("The box is never the right shape" with the PictureFit figure: the three modes and what each gives up, the what-would-you-rather-lose framing, a round shape as the tell for a stretch, and cropping costing nothing) |
 | View boxes: `withViewBox(_:fit:_:)` (`Drawing/Drawing.md`) | Ch 6 | taught ("A cell that is a whole canvas" with the ViewBoxSheet figure: a clip that moves the coordinates too, the block still reading the whole canvas, `background` and the mouse remapped, the virtual canvas taking the sketch's shape, and labels belonging outside the block) |
-| 2D view control: `viewControl(center:zoom:in:)`, `viewCenter`/`viewZoom`/`resetView()` (`Drawing/Drawing.md`) | Ch 6 | taught ("Looking closer" with the ViewCloser figure: drag and scroll, vector zoom costing no fidelity, the exact drag and the pointer-anchored zoom, what to draw before and after the call, and the remapped mouse) |
+| 2D view control: `viewControl(center:zoom:in:)`, `viewCenter`/`viewZoom`/`resetView()` (`Drawing/Drawing.md`) | Ch 1 | taught ("Looking closer" under "The canvas is not the window", with the ViewCloser figure: drag and scroll, vector zoom costing no fidelity, the exact drag and the pointer-anchored zoom, what to draw before and after the call, and the remapped mouse) |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
 | Files dropped on the window (`droppedFiles()`, `filesDropped()`; `Helpers/Input.md`) | Ch 9 | taught ("A picture you drop on the window" with the DroppedOnTheWindow diagram, a file leaving the Finder on a dotted trail and landing on the dark window under a crosshair marked mouseX, mouseY, a second path named in the corner: the hook firing once at the drop, the draining read and the poll form in `draw()`, every host taking the drop, a drop as live input a take never records, and the Dropped example) |
 | The stylus beyond its press (`stylus`: tilt, twist, isEraser, isNearby; `Helpers/Input.md#stylus`) | Ch 17 | taught (inside "Painting as it happens: stroke dynamics", with the NibAndLean figure: one path under a broad-edged nib at three leans, thick where it crosses the edge and thin where it runs along it, the chisel angle worked out from the lean, the turn, the eraser end, hovering, the availability that latches once a pen has been seen, and everything reading zero under a mouse, with the Input/Pen example) |

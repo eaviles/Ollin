@@ -143,6 +143,33 @@ Those go inside your class, above `draw()`, like the two functions did. `canvasS
 
 `windowMode` is `.auto` by default, which picks a preview size that fits your screen and then holds it. `.fixed(0.5)` pins the preview to a fraction you choose, and holds that. Neither window can be dragged, and neither changes your drawing. `.resizable` is the one that can: the window is free, and the canvas follows it, so `width` and `height` change as you drag. Exports still come out at the size `canvasSize` declares.
 
+### Looking closer
+
+The window shows the whole canvas, scaled to fit. Sometimes you want to look at part of it up close, and leave the canvas exactly as it is. One call hands that view to you:
+
+```swift
+override func draw() {
+    background(.white)
+    viewControl()
+    // everything you draw, as usual
+}
+```
+
+Drag to pan, scroll to zoom. That is the whole of it, and it is the 2D counterpart of the camera you can take hold of in [Chapter 25](25-3DGently.md). Like that one, it is opt-in: a sketch that never calls it never pays for it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/ViewCloser-dark.jpg">
+  <img src="Images/01-HelloOllin/ViewCloser.jpg" alt="The same generated chart twice: on the left the whole island, where the place names are an illegible smudge, and on the right the view four notches in, where the same names are crisp and readable" width="680">
+</picture>
+
+The figure shows the best reason to zoom. Nothing was re-rendered to get the right-hand panel. The place names are set at four units in both, and the outlines are simply drawn larger, so they arrive crisp. Vector drawing has no resolution to run out of.
+
+Two details make the gestures feel like gestures rather than sliders. A drag moves the content exactly as far as the pointer went, so the drawing sticks to your finger. And a zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose. A 3D orbit is nicer with a little inertia, and a flat plane under a finger is not.
+
+Only what you draw after `viewControl()` moves. Anything drawn *before* the call stays put, so a fixed backdrop goes there. A caption that has to be drawn last needs `withState { }`, which [Chapter 6](06-GridsAndRepetition.md#move-the-paper) introduces. Put the call and the drawing inside it, and draw the caption after it.
+
+The mouse, which arrives [later in this chapter](#the-mouse-joins-in), comes in the coordinates now on screen. So `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom.
+
 ## Placing things without pixels
 
 Once you know the canvas can be any size, there's a habit that saves rewriting layouts later.
@@ -526,7 +553,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Where a point is](../Docs/Concepts/Coordinates.md): one screen on the coordinates above, the difference between a point and a pixel, and the other frames that arrive with a camera, a 3D scene, or a machine.
 - [Sketch](../Docs/Core/Sketch.md): the full lifecycle, `noLoop()` for stills, and running a sketch as its own standalone program with `@main`.
 - [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution (`scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas).
-- [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
+- [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state, and [`viewControl`](../Docs/Drawing/Drawing.md#viewcontrol) with its opening framing, its zoom range, and `resetView()`.
 - [Single-file sketches](../Docs/Tools/SingleFile.md): installing `ollin`, running one loose `.swift` file, the hashbang form, and exporting from the command line.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
