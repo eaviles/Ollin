@@ -56,8 +56,8 @@ Use `--no-installation` while you work on the piece. Everything else about the s
 Two things go wrong with time in a long run, and the framework prevents both for you.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/LongRunClock-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.00 and one counting normally after a restart" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/LongRunClock-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.00 and one counting normally after a restart" width="680">
 </picture>
 
 **A gap in the frames is a pause, not a jump.** The sketch clock adds up its own frame steps. Each step is capped at a quarter of a second. So the piece resumes where it left off after a display sleeps overnight, or after a window is held during a drag. The same is true after any other stall. Without the cap, the first frame back would report the whole gap as `deltaTime`. One eight-hour step would push every integrator in the sketch far past where it should be.
@@ -89,8 +89,8 @@ Pick a restart interval that is a whole multiple of the periods your shaders ani
 A piece that has been growing for three days cannot usefully be rebuilt from its seed. Getting back to the same state would mean running the three days again. So the state itself is saved, and the next launch reads it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/Resuming-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labeled relaunch between them: the left holding fourteen colored tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/Resuming-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labeled relaunch between them: the left holding fourteen colored tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
 </picture>
 
 You declare two things: how often to save, and which properties are worth saving.
@@ -155,8 +155,8 @@ The save runs inside the frame it falls on, so keep the saved state to what the 
 A crash at three in the morning leaves the wall dark until somebody notices, which is usually the next day.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/BackUp-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/BackUp-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
 </picture>
 
 ```swift
@@ -207,8 +207,8 @@ Installation(schedule: .open(from: 10, to: 18))
 Outside those hours the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the piece comes back where it stopped. The clock adds up only the frames it drew, so a night off costs it nothing. The state is saved on the way into the dark, so a piece that checkpoints also survives the night.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/GalleryHours-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/GalleryHours.jpg" alt="A day drawn as a colored bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/GalleryHours-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/GalleryHours.jpg" alt="A day drawn as a colored bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
 </picture>
 
 The other half of a schedule is behaving differently at different times of day. Name the parts of the day, and the sketch reads which one it is in.
@@ -245,8 +245,8 @@ A projector is almost never square to the surface it is aimed at. It hangs from 
 The four dragged corners are a `Projection.Corners`, in fractions of the display, and `Projection.direct` is the projection that warps nothing: square corners, the whole canvas, no fade. `Corners.fit` is the untouched rectangle and `Corners.filling` the one stretched to the display's edges, and `isFit` says which of the two a set of corners still is.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/FittingTheWall-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/FittingTheWall-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
 So the framework places the picture, rather than the window. Press **Command-K** on a running piece, drag the four corners onto the wall, and press **Command-K** again.
@@ -309,8 +309,8 @@ override var installation: Installation {
 That spreads one canvas over every display the machine has, in the arrangement they are in. Two monitors side by side carry half each. Two monitors one above the other carry a horizontal band each. A display twice as wide as the one beside it carries twice as much. You declare no numbers, because the display arrangement already holds all of them.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/ManyDisplays-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/ManyDisplays-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
 </picture>
 
 The gap between two monitors is given a part of the canvas that nobody sees, because that is how the arrangement looks from in front. The alternative is a picture with a piece cut out of the middle.
@@ -402,8 +402,8 @@ A piece is not always one window. If you run the same sketch more than once, eac
 `canvasOnScreen` reports where this canvas sits on the desk, in screen points, measured from the top-left corner of the main screen, downward. Every window describes the same desk in the same numbers, so each one can draw its own part of a single world:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/OneWorldManyWindows-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/OneWorldManyWindows-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
 </picture>
 
 ```swift

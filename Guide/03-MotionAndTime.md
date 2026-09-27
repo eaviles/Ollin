@@ -187,7 +187,7 @@ Because the edges are yours to place, smoothstep does more than reshape a progre
   <img src="Images/03-MotionAndTime/WindowCutter.jpg" alt="Three stacked rows over the same two laps of a wave: the wave with the band from 0.3 to 1.0 tinted over its crests, the smoothstep of it lying flat at 0 and swelling to 1 under each crest, and a row of dots lit by that value, dim and small between the crests and large and warm under them" width="680">
 </picture>
 
-The wave never changes. All the window does is decide how much of each crest counts, and the dots along the bottom are that decision spent as light. Hold on to it, because the piece at the end of this chapter runs on exactly this. This little S-curve is one of the great workhorses of computer graphics. It is waiting in [Chapter 17](17-YourFirstShader.md) too, spelled exactly the same. It does per-pixel what it does per-frame here.
+The wave never changes. All the window does is decide how much of each crest counts, and the dots along the bottom are that decision spent as light. Hold on to it, because the piece at the end of this chapter runs on exactly this. This little S-curve is one of the great workhorses of computer graphics. It is waiting in [Chapter 18](18-YourFirstShader.md) too, spelled exactly the same. It does per-pixel what it does per-frame here.
 
 ## A catalog of curves
 

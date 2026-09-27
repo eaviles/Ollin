@@ -13,8 +13,8 @@ swift run --package-path Examples Example-3D-Geometry-SpatialExport --export-usd
 That one command is the whole export. It opens no window and uses no GPU. The sketch runs headlessly up to the frame you name, and its 3D draw calls are collected into a model.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/SpatialExport-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered gray dust motes, the right has none" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-SharingAndPerforming/SpatialExport-dark.jpg">
+  <img src="../../Guide/Images/38-SharingAndPerforming/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered gray dust motes, the right has none" width="680">
 </picture>
 
 ### The two ways in
@@ -134,8 +134,8 @@ A stereo pair needs exactly two numbers. Both are choices about the piece, not s
 **Convergence** is the distance at which the two eyes agree. Whatever sits at that distance appears on the screen plane. Nearer things come out of the screen, and farther things sit behind it. So the convergence decides what the viewer looks *into* rather than *out at*. When you leave convergence unset, Ollin uses the camera's own target, because you are already pointing the camera at the thing the piece is about.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/StereoPair-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-SharingAndPerforming/StereoPair-dark.jpg">
+  <img src="../../Guide/Images/38-SharingAndPerforming/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
 </picture>
 
 **Interocular** is how far apart the eyes stand, in world units, and it controls how much depth the viewer sees. Half the distance reads flatter. Twice the distance reads deeper and starts to strain the viewer's eyes. When it is unset, the eyes sit **1% of the frame width apart, measured at the convergence plane**. For a camera with a vanishing point, that default is also the classic comfort rule. Eyes 1% of the frame width apart at the convergence plane end up 1% of the frame width apart at infinity. The far background then separates by less than the distance between a viewer's own eyes, so nothing ever asks the eyes to point outward.

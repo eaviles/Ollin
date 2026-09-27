@@ -234,7 +234,7 @@ override func draw() {
 }
 ```
 
-Drag to pan, scroll to zoom. That is the whole of it, and it is the 2D counterpart of the camera you can take hold of in [Chapter 21](21-3DGently.md). Like that one, it is opt-in: a sketch that never calls it never pays for it.
+Drag to pan, scroll to zoom. That is the whole of it, and it is the 2D counterpart of the camera you can take hold of in [Chapter 25](25-3DGently.md). Like that one, it is opt-in: a sketch that never calls it never pays for it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ViewCloser-dark.jpg">

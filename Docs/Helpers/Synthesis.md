@@ -227,8 +227,8 @@ synth.play("E3", for: 3)
 A string is a disturbance running up and down a length of something under tension. It loses a little at each end, and it loses its top faster than its bottom. In code that is a delay line one period long with a filter in the loop. Everything a player recognizes comes out of that loop. It gives the attack, the way a held note darkens, and the difference between plucking near the bridge and over the hole.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/PluckedString-dark.jpg">
-  <img src="../../Guide/Images/29-MakingSound/PluckedString.jpg" alt="A block diagram of a delay line whose output loses its top, is tuned, and is fed back round at slightly lower level, and below it four plucks of the same string at different points, each with the shape it leaves and a bar chart of the modes that pluck excites, showing the missing ones as gaps" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/PluckedString-dark.jpg">
+  <img src="../../Guide/Images/36-MakingSound/PluckedString.jpg" alt="A block diagram of a delay line whose output loses its top, is tuned, and is fed back round at slightly lower level, and below it four plucks of the same string at different points, each with the shape it leaves and a bar chart of the modes that pluck excites, showing the missing ones as gaps" width="680">
 </picture>
 
 ```swift
@@ -302,8 +302,8 @@ Nothing chooses that sound, because the ratios come from the outline itself:
 Only the *ratios* come from the shape. You decide the note when you play it, so one outline is an instrument rather than a single sound.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/StruckShapes-dark.jpg">
-  <img src="../../Guide/Images/29-MakingSound/StruckShapes.jpg" alt="Five outlines, each with the frequencies it rings at drawn on a scale from one to four: a circle, a square, a triangle, an oblong, and an irregular blob, where the symmetric ones show pairs of lines sitting together and the asymmetric ones show single lines" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/StruckShapes-dark.jpg">
+  <img src="../../Guide/Images/36-MakingSound/StruckShapes.jpg" alt="Five outlines, each with the frequencies it rings at drawn on a scale from one to four: a circle, a square, a triangle, an oblong, and an irregular blob, where the symmetric ones show pairs of lines sitting together and the asymmetric ones show single lines" width="680">
 </picture>
 
 | Member | What it does |
@@ -437,8 +437,8 @@ A filter can only take harmonics away, and a sine has none to take. Modulation p
 Whole ratios stay musical, because their tones land on the note's own harmonics. Anything else gives the inharmonic tones that bells and metal are made of, which is why `.bell` uses 3.5.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Modulation-dark.jpg">
-  <img src="../../Guide/Images/29-MakingSound/Modulation.jpg" alt="Four columns, each a wave above the tones it contains: a plain sine with a single bar, the same sine at index 2 and index 6 growing a run of harmonics, and one at ratio 3.5 whose bars land between the harmonics instead of on them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/Modulation-dark.jpg">
+  <img src="../../Guide/Images/36-MakingSound/Modulation.jpg" alt="Four columns, each a wave above the tones it contains: a plain sine with a single bar, the same sine at index 2 and index 6 growing a run of harmonics, and one at ratio 3.5 whose bars land between the harmonics instead of on them" width="680">
 </picture>
 
 #### Why it is a fixed size
@@ -737,8 +737,8 @@ A `sustain` of 0 means the note plays out entirely on its own, and holding the k
 Presets: `.percussive`, `.organ`, `.swell`, `.standard`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Voices-dark.jpg">
-  <img src="../../Guide/Images/29-MakingSound/Voices.jpg" alt="Four envelope curves drawn over three seconds with the key let go at 1.4 seconds: a labeled one showing attack rising, decay falling to a held sustain level, and release falling away, then percussive spiking and vanishing at once, organ holding flat until it is let go, and swell rising and falling slowly" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/Voices-dark.jpg">
+  <img src="../../Guide/Images/36-MakingSound/Voices.jpg" alt="Four envelope curves drawn over three seconds with the key let go at 1.4 seconds: a labeled one showing attack rising, decay falling to a held sustain level, and release falling away, then percussive spiking and vanishing at once, organ holding flat until it is let go, and swell rising and falling slowly" width="680">
 </picture>
 
 A note let go early falls from wherever it had reached, and a voice retriggered while it is still sounding bends into the new note. Both of those exist so that neither clicks.

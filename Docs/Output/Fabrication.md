@@ -55,8 +55,8 @@ OBJ is text, so it stays readable and editable, and it keeps shared vertices. Ol
 A printer has to decide what is inside the surface and what is outside. On screen, an open or inside-out mesh looks exactly as convincing as a closed one. So this is a check that your eyes cannot do for you:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/Fabrication-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/Fabrication.jpg" alt="Two identical-looking gold torus knots side by side; the left is labeled closed and ready to print, the right open at the ends with 36 edges bordering a hole" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-SharingAndPerforming/Fabrication-dark.jpg">
+  <img src="../../Guide/Images/38-SharingAndPerforming/Fabrication.jpg" alt="Two identical-looking gold torus knots side by side; the left is labeled closed and ready to print, the right open at the ends with 36 edges bordering a hole" width="680">
 </picture>
 
 ```swift

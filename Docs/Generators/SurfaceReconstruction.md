@@ -127,7 +127,7 @@ let room = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
                               keepingLargestComponent: true)
 ```
 
-<img src="../../Guide/Images/27-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
+<img src="../../Guide/Images/33-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
 
 The camera path supplies the orientation. The fused cloud carries the colors of the capture, so the room comes back colored. Doorways, windows, and everything else the sweep missed stay open, which is the true shape of a scan.
 

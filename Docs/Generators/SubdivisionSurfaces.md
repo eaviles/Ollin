@@ -15,7 +15,7 @@ drawMesh(star.subdivided(levels: 3))                           // a puffy star
 
 A dozen boxes and extrusions, subdivided, look like sculpture. The cage stays small and easy to edit, because the smoothness is computed rather than modeled.
 
-<img src="../../Guide/Images/22-Meshes/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
+<img src="../../Guide/Images/26-Meshes/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
 
 ### Contents
 

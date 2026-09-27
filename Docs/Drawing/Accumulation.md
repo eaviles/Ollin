@@ -8,7 +8,7 @@ By default Ollin clears the canvas at the start of every frame. That means `draw
 
 A pile only ever grows. Some pictures should *converge* as samples arrive instead, which is the light-accumulation ("sandpainting") look. Those want the running **mean**, the sum divided by the number of passes. `makeAccumulator()` keeps that mean for you. This page covers both.
 
-<img src="../../Guide/Images/16-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
+<img src="../../Guide/Images/19-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
 
 ### Contents
 

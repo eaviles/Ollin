@@ -6,7 +6,7 @@
 
 Drawing one mesh is cheap. Drawing the *same* mesh a thousand times with a loop of `drawMesh` calls is not. Every call expands the mesh's triangles on the CPU again, every frame, once per copy. Instancing removes that loop. `drawMesh(_:instances:)` uploads the mesh once and gives the GPU a list of placements, and the GPU puts every copy in place. So a field of thousands of copies costs one draw call and one small array.
 
-<img src="../../Guide/Images/23-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+<img src="../../Guide/Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
 
 ```swift
 override func draw() {
@@ -77,7 +77,7 @@ override func draw() {
 
 `drawMesh(_:instances:)` records its placement list again every frame, which is what lets a field wave. A *world* is different, because most of it never changes and the camera cannot see most of it. For that, a **`MeshField`** goes further. You place copies of any number of meshes into it once, then draw it with one call for as long as you like. Each frame, a compute pass tests every copy against the camera and writes the surviving draws itself. So copies behind the camera or beyond the far plane cost almost nothing, and the CPU never touches a copy again.
 
-<img src="../../Guide/Images/23-Landscapes/FieldWorld.jpg" alt="A low flying view over a dark foggy plain crowded with low-poly pines, shrubs, boulders, and pale standing stones, the nearest solids crisp and shadowed and the horizon dissolving into darkness" width="640">
+<img src="../../Guide/Images/27-Landscapes/FieldWorld.jpg" alt="A low flying view over a dark foggy plain crowded with low-poly pines, shrubs, boulders, and pale standing stones, the nearest solids crisp and shadowed and the horizon dissolving into darkness" width="640">
 
 ```swift
 let field = MeshField()

@@ -8,7 +8,7 @@ Everything else the renderer draws is the light and the surface. A flare is neit
 
 A lens is meant to bend light toward the sensor. Some of that light bounces off the glass surfaces instead of passing through them. Light that bounces twice ends up travelling the right way again, so it lands on the sensor where it does not belong. That misplaced light is a **ghost**. A lens flare is a chain of ghosts along the line from a bright source through the middle of the frame. Some land beyond the source and some land across the center from it.
 
-<img src="../../Guide/Images/26-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp up and to the left. Coral and lavender hexagons nest on the lamp. A blue-gray hexagon sits down and to the right of it, toward the middle of the frame, lying across a near black slab. Larger, fainter hexagons trail off both ways along the same line" width="640">
+<img src="../../Guide/Images/30-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp up and to the left. Coral and lavender hexagons nest on the lamp. A blue-gray hexagon sits down and to the right of it, toward the middle of the frame, lying across a near black slab. Larger, fainter hexagons trail off both ways along the same line" width="640">
 
 `lensFlare()` renders that chain. You give it a lens rather than a look. Which ghosts appear, where each one sits, how big it is, what shape it is bent into, and what color it comes out all follow from the lens's own glass, because every ghost is worked out by following real rays through it.
 
@@ -66,7 +66,7 @@ The ghosts are one half of a flare. The star is the other half, and it sits on t
 
 The arms of the star are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is the opening's own Fourier transform. So what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star, for the same reason they put six sides on a ghost.
 
-<img src="../../Guide/Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, each a close frayed pair with fine needles between them, around a blown-out core. A pale hexagon sits on the lamp, and up and to the left a small soft disc with a red rim" width="640">
+<img src="../../Guide/Images/30-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, each a close frayed pair with fine needles between them, around a blown-out core. A pale hexagon sits on the lamp, and up and to the left a small soft disc with a red rim" width="640">
 
 ```swift
 lensFlare(LensFlare(amount: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star

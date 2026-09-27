@@ -18,10 +18,10 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 |---|---|---|---|
 | The frame | A drawing call records rather than paints, call order is draw order, and nothing is kept for you | [Ch 1](01-HelloOllin.md) | [The frame](../Docs/Concepts/Frame.md) |
 | Where a point is | The canvas frame and its units, transforms as a change of frame, and every other frame a sketch meets | [Ch 1](01-HelloOllin.md), [Appendix B](B-JustEnoughMath.md) | [Where a point is](../Docs/Concepts/Coordinates.md) |
-| Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 16](16-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
-| What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 32](32-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
+| Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 19](19-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
+| What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 41](41-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
 | Why a run repeats | The seed and the fixed export clock, and the four things that break a repeat | [Ch 4](04-Randomness.md) | [Why a run repeats](../Docs/Concepts/Determinism.md) |
-| Light and color | Why the middle of a frame is linear light, and what tone mapping and dithering do at the end of it | [Ch 9](09-Pictures.md), [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
+| Light and color | Why the middle of a frame is linear light, and what tone mapping and dithering do at the end of it | [Ch 9](09-Pictures.md), [Ch 19](19-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
 | Values and bare calls | The typed values under the short calls, and why the value is the half worth keeping | [Ch 10](10-Vectors.md), [Ch 15](15-ShapesAsMaterial.md) | [Values and bare calls](../Docs/Concepts/Values.md) |
 
 ## The sketch and its window
@@ -35,17 +35,17 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Variations | `variation`: the seed a run grew from, stepped and rolled from the inspector's Variation card | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Mouse | `mouseX`/`mouseY`, the one-point `mouse`/`previousMouse`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
-| `@Param` parameters | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
-| Cues | Every parameter's value under a name, called back at once or over a fade: `saveCue`, `cue(_:over:)`, `nextCue`, the inspector's Cues card, `Sketch.cues.json`, `--cue` | [Ch 31](31-SharingAndPerforming.md) | [Cues](../Docs/Helpers/Cues.md) |
+| `@Param` parameters | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 34](34-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
+| Cues | Every parameter's value under a name, called back at once or over a fade: `saveCue`, `cue(_:over:)`, `nextCue`, the inspector's Cues card, `Sketch.cues.json`, `--cue` | [Ch 38](38-SharingAndPerforming.md) | [Cues](../Docs/Helpers/Cues.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Dragging a shape | Hold Command in the live window and drag a shape: the numbers that placed it change in your file | [Ch 1](01-HelloOllin.md) | [DragToEdit](../Docs/Tools/DragToEdit.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
 | Checking the machine | `ollin doctor`: the toolchain, the GPU, the command, and the permissions, each with the line that fixes it; shell completions; `--list-params` for what a sketch declares | [Ch 1](01-HelloOllin.md) | [Doctor](../Docs/Tools/Doctor.md) |
 | Project generator | `ollin new <Name>` and `ollin generate`: a ready-to-run folder from a template you can watch running first | [Ch 1](01-HelloOllin.md) | [ProjectGenerator](../Docs/Tools/ProjectGenerator.md) |
 | The reference offline | `ollin docs` and `ollin examples`: these pages and every example read in the terminal, with a search across all of them; `ollin site` writes them out as a website with a search of its own | [Ch 1](01-HelloOllin.md) | [Reference](../Docs/Tools/Reference.md) |
-| Bringing a shader over | `ollin new --from-shader`: a GLSL fragment shader translated into Metal, with a project written around it | [Ch 17](17-YourFirstShader.md) | [ShaderImport](../Docs/Tools/ShaderImport.md) |
-| Checking a shader | `ollin check`: compile a `.metal` file on the GPU and see the errors at your own line, what the shader is, and the parameters it reads | [Ch 17](17-YourFirstShader.md) | [ShaderCheck](../Docs/Tools/ShaderCheck.md) |
-| Bringing a scene over | `ollin new --from-scene`: a glTF or USD scene written out as the camera, light and placement calls that draw it | [Ch 22](22-Meshes.md) | [SceneImport](../Docs/Tools/SceneImport.md) |
+| Bringing a shader over | `ollin new --from-shader`: a GLSL fragment shader translated into Metal, with a project written around it | [Ch 18](18-YourFirstShader.md) | [ShaderImport](../Docs/Tools/ShaderImport.md) |
+| Checking a shader | `ollin check`: compile a `.metal` file on the GPU and see the errors at your own line, what the shader is, and the parameters it reads | [Ch 18](18-YourFirstShader.md) | [ShaderCheck](../Docs/Tools/ShaderCheck.md) |
+| Bringing a scene over | `ollin new --from-scene`: a glTF or USD scene written out as the camera, light and placement calls that draw it | [Ch 26](26-Meshes.md) | [SceneImport](../Docs/Tools/SceneImport.md) |
 | The examples gallery | `swift run OllinExamples`: every example browsable in a tree, running, with its parameters beside it | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
 | Swift itself | The language at sketch speed | [Appendix A](A-JustEnoughSwift.md) | [Swift quick reference](../Docs/Swift.md) |
 | Ollin on one page | The lifecycle, the calls by area, units and conventions, the command line, and the mistakes that fail with no error | [Ch 1](01-HelloOllin.md) | [Quick reference](../Docs/QuickReference.md) |
@@ -59,16 +59,16 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Transforms and the state stack | `translate`/`rotate`/`scale`, scoped with `withState { }` | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Kaleidoscope symmetry | `symmetry(n, mirrored:)`: every draw call folds around a center; one wedge becomes a mandala | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#symmetry) |
 | Clipping | `withClip(shape) { }`: drawing inside the block lands only within the region; nesting intersects | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#clip) |
-| Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 16](16-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
-| Accumulation | `noClear()`: a persistent canvas that piles up across frames; `Accumulator`: a layer that keeps the running mean, so a picture built from faint samples converges | [Ch 12](12-FlocksAndSwarms.md), [Ch 16](16-LayersAndEffects.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
-| Depth of field from light | `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens into a running mean until bokeh emerges; the `.light` particle style and the `develop` print underneath | [Ch 20](20-ParticleSimulations.md) | [Depth of field from light](../Docs/Drawing/DepthOfField.md) |
+| Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 19](19-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
+| Accumulation | `noClear()`: a persistent canvas that piles up across frames; `Accumulator`: a layer that keeps the running mean, so a picture built from faint samples converges | [Ch 12](12-FlocksAndSwarms.md), [Ch 19](19-LayersAndEffects.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
+| Depth of field from light | `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens into a running mean until bokeh emerges; the `.light` particle style and the `develop` print underneath | [Ch 24](24-ParticleSimulations.md) | [Depth of field from light](../Docs/Drawing/DepthOfField.md) |
 | Stroke dynamics | `StrokeMark`/`drawMark`: width and opacity driven by how fast and how hard a mark is being made, rather than where you are along it; `pressure` reads a Force Touch trackpad or tablet | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md) |
 | Variable-width strokes | `strokeProfile(_:)`: width shaped along the path, so a line tapers, swells, or carries a profile you wrote | [Ch 15](15-ShapesAsMaterial.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeProfile) |
 | Brushes | `strokeBrush(_:)`: a stamp repeated along the path instead of one continuous ribbon, with its own tip, spacing, jitter, and angle | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md#brushes) |
 | Dashed strokes | `strokeDash(_:)`: a line with gaps, the pattern walked along the path so corners and curves keep their rhythm | [Ch 15](15-ShapesAsMaterial.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeDash) |
 | Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 15](15-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
-| HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 16](16-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
-| Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 16](16-LayersAndEffects.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
+| HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 19](19-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
+| Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 19](19-LayersAndEffects.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 
 ## Color
@@ -93,7 +93,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Images | Load PNG/JPEG/HEIC and friends, draw, tint, scale, and crop them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Sample photographs | Twenty bundled pictures and a short film with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
-| A feed with no camera | `Camera.orStill` and `StillFrames`, so a sketch that reads the world runs with nothing plugged in | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md#nocamera) |
+| A feed with no camera | `Camera.orStill` and `StillFrames`, so a sketch that reads the world runs with nothing plugged in | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md#nocamera) |
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 9](09-Pictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 9](09-Pictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
 | Seam carving | A picture made narrower or wider by taking away or duplicating the paths that carry the least, so what carries texture keeps its shape | [Ch 9](09-Pictures.md) | [SeamCarving](../Docs/Drawing/SeamCarving.md) |
@@ -101,14 +101,14 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Tables and JSON | `loadTable` reads a CSV or TSV with typed reads by column name; `loadJSON` reads a document by name and index | [Ch 9](09-Pictures.md) | [Data](../Docs/Helpers/Data.md) |
 | Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed; `PushFeed` holds a connection open for messages that arrive on their own | [Ch 9](09-Pictures.md) | [LiveData](../Docs/Helpers/LiveData.md) |
 | The weather outside | `Weather` reads the sky over a place or a name in plain units, and `Place.sun(at:)` puts the sun where the clock says | [Ch 9](09-Pictures.md) | [Weather](../Docs/Helpers/Weather.md) |
-| Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Vectors | `Vector2`/`Vector3` with real operators, length, normalize, lerp, rotate | [Ch 10](10-Vectors.md), [Ch 21](21-3DGently.md) | [Geometry](../Docs/Drawing/Geometry.md) |
-| Complex numbers | `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `Complex.exp`/`.log`/`.pow`/`.sqrt` and the trigonometric functions, the `Vector2` bridge; mirrored on the GPU by the shader library's `complex` module | [Ch 17](17-YourFirstShader.md), [Ch 18](18-IteratedForms.md) | [Complex](../Docs/Helpers/Complex.md) |
+| Vectors | `Vector2`/`Vector3` with real operators, length, normalize, lerp, rotate | [Ch 10](10-Vectors.md), [Ch 25](25-3DGently.md) | [Geometry](../Docs/Drawing/Geometry.md) |
+| Complex numbers | `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `Complex.exp`/`.log`/`.pow`/`.sqrt` and the trigonometric functions, the `Vector2` bridge; mirrored on the GPU by the shader library's `complex` module | [Ch 18](18-YourFirstShader.md), [Ch 22](22-IteratedForms.md) | [Complex](../Docs/Helpers/Complex.md) |
 | Rectangles and circles | Typed regions with fitting, insetting, and hit testing | [Ch 10](10-Vectors.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | `Grid` | Rows, columns, padding, and gutters without nested-loop boilerplate | [Ch 6](06-GridsAndRepetition.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Paths, shapes, and contours | Curved outlines you build, hold, edit, and respace with `resampled` | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
@@ -117,7 +117,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 15](15-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 15](15-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
-| Shadow art | The solid carved so that it throws the silhouettes you ask for, and the shadows it really casts | [Ch 26](26-SculptingWithFields.md) | [Shadow art](../Docs/Generators/ShadowArt.md) |
+| Shadow art | The solid carved so that it throws the silhouettes you ask for, and the shadows it really casts | [Ch 30](30-SculptingWithFields.md) | [Shadow art](../Docs/Generators/ShadowArt.md) |
 | Autostereogram | A depth map hidden in a repeating pattern, so a surface nobody drew stands out of the page | [Ch 9](09-Pictures.md) | [Autostereogram](../Docs/Drawing/Autostereogram.md) |
 | Photo mosaic | A picture rebuilt out of many smaller pictures, each cell taking the nearest by average color | [Ch 9](09-Pictures.md) | [Photo mosaic](../Docs/Drawing/PhotoMosaic.md) |
 | Envelopes and caustics | The curve a moving line leans on, the bright curve reflected or bent light crowds along, and where a wavefront gets to next | [Ch 15](15-ShapesAsMaterial.md) | [Envelopes and caustics](../Docs/Drawing/Envelopes.md) |
@@ -155,17 +155,17 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 |---|---|---|---|
 | Blue noise | Poisson-disk scatter: random but even | [Ch 15](15-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
 | Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | [Ch 15](15-ShapesAsMaterial.md) | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
-| Points on a surface | Scatter a mesh's skin by area, not its vertex list, each spot carrying its normal | [Ch 23](23-Landscapes.md) | [SurfaceSampling](../Docs/Generators/SurfaceSampling.md) |
+| Points on a surface | Scatter a mesh's skin by area, not its vertex list, each spot carrying its normal | [Ch 27](27-Landscapes.md) | [SurfaceSampling](../Docs/Generators/SurfaceSampling.md) |
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | [Ch 9](09-Pictures.md) | [Stippling](../Docs/Generators/Stippling.md) |
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 9](09-Pictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 9](09-Pictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |
 | String art | One continuous thread over rim pins, each chord wound toward the darkness that remains | [Ch 9](09-Pictures.md) | [StringArt](../Docs/Generators/StringArt.md) |
 | Percolation | A grid of coin flips whose clusters snap into one span at the critical probability | [Ch 4](04-Randomness.md) | [Percolation](../Docs/Generators/Percolation.md) |
 | Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | [Ch 14](14-FieldsAndFlow.md) | [Isolines](../Docs/Generators/Isolines.md) |
-| Isosurfaces and metaballs | The surface where a field over space crosses a level, marched into a `Mesh` (marching cubes): soft spheres that fuse, noise volumes, gyroids | [Ch 26](26-SculptingWithFields.md) | [Isosurfaces](../Docs/Generators/Isosurface.md) |
-| Subdivision surfaces | `mesh.subdivided`: a low-poly control cage refined into a smooth solid (Catmull-Clark or Loop), welding and open edges handled for you | [Ch 22](22-Meshes.md) | [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md) |
-| Mesh growth | `MeshGrowth`: a surface that grows more area than it has room for and folds, driven evenly, by curvature, by your own field, or by a reaction-diffusion pattern in the surface | [Ch 22](22-Meshes.md) | [Mesh growth](../Docs/Generators/MeshGrowth.md) |
-| Surface reconstruction | `reconstructSurface` / `particleSurface`: a scanned or generated point cloud back to a `Mesh`, data holes kept honest; particle sets skinned as one blended body | [Ch 27](27-DepthAndThePhone.md) | [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md) |
+| Isosurfaces and metaballs | The surface where a field over space crosses a level, marched into a `Mesh` (marching cubes): soft spheres that fuse, noise volumes, gyroids | [Ch 30](30-SculptingWithFields.md) | [Isosurfaces](../Docs/Generators/Isosurface.md) |
+| Subdivision surfaces | `mesh.subdivided`: a low-poly control cage refined into a smooth solid (Catmull-Clark or Loop), welding and open edges handled for you | [Ch 26](26-Meshes.md) | [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md) |
+| Mesh growth | `MeshGrowth`: a surface that grows more area than it has room for and folds, driven evenly, by curvature, by your own field, or by a reaction-diffusion pattern in the surface | [Ch 26](26-Meshes.md) | [Mesh growth](../Docs/Generators/MeshGrowth.md) |
+| Surface reconstruction | `reconstructSurface` / `particleSurface`: a scanned or generated point cloud back to a `Mesh`, data holes kept honest; particle sets skinned as one blended body | [Ch 33](33-DepthAndThePhone.md) | [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md) |
 | Fracture | Breaking a shape or a solid into pieces that fit back together exactly, evenly or crowded around a blow, each piece ready to be a rigid body | [Ch 11](11-ForcesAndPhysics.md) | [Fracture](../Docs/Generators/Fracture.md) |
 | Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | [Ch 15](15-ShapesAsMaterial.md) | [Hulls](../Docs/Generators/Hulls.md) |
 | Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 15](15-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
@@ -187,7 +187,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Aperiodic tilings | Penrose kites/darts and rhombs with matching-rule arcs, Wang edge-matching quilts, girih star patterns over any polygons, and the spectre (the einstein) | [Ch 7](07-Tiles.md) | [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) |
 | Hyperbolic tiling | Any {p,q} tessellation of the Poincaré disk, with a parity checkerboard, depth rings, and a panning viewpoint | [Ch 7](07-Tiles.md) | [Hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md) |
 | Parquet deformations | A tiling whose tile changes shape as you read across it, the geometry carried on the lattice's shared edges so nothing comes apart | [Ch 7](07-Tiles.md) | [Parquet deformations](../Docs/Drawing/ParquetDeformation.md) |
-| Fractals | IFS chaos games, fractal flames, the Buddhabrot density plate, circle-inversion lace, and Kleinian limit-set curves | [Ch 18](18-IteratedForms.md) | [Fractals](../Docs/Generators/Fractals.md) |
+| Fractals | IFS chaos games, fractal flames, the Buddhabrot density plate, circle-inversion lace, and Kleinian limit-set curves | [Ch 22](22-IteratedForms.md) | [Fractals](../Docs/Generators/Fractals.md) |
 | L-systems | Grammar rewriting walked by a turtle: ferns, trees, lichens | [Ch 13](13-GrowingThings.md) | [LSystem](../Docs/Generators/LSystem.md) |
 | Wave Function Collapse | Socketed tiles solved by constraint propagation | [Ch 13](13-GrowingThings.md) | [WaveFunctionCollapse](../Docs/Generators/WaveFunctionCollapse.md) |
 | Shape grammars | Rules over labeled shapes in place: ice-ray lattices, building fronts, nested figures | [Ch 13](13-GrowingThings.md) | [ShapeGrammar](../Docs/Generators/ShapeGrammar.md) |
@@ -201,11 +201,11 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Dielectric breakdown | Lightning grown where the solved field is strongest, eta picking bush or bolt | [Ch 13](13-GrowingThings.md) | [DielectricBreakdown](../Docs/Generators/DielectricBreakdown.md) |
 | Crack growth | Perpendicular cracks subdividing the plane into city blocks, with a watercolor wash | [Ch 13](13-GrowingThings.md) | [CrackGrowth](../Docs/Generators/CrackGrowth.md) |
 | Meander | A river migrating by curvature, cutting off oxbow lakes and leaving scars | [Ch 13](13-GrowingThings.md) | [Meander](../Docs/Generators/Meander.md) |
-| Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw, and as a field a million particles ride | [Ch 18](18-IteratedForms.md), [Ch 23](23-Landscapes.md) | [Attractors](../Docs/Drawing/Attractors.md) |
-| Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 18](18-IteratedForms.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
-| Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 19](19-GridSimulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
-| Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
-| SmoothLife | `.smoothLife`: Life's own rule on a continuous field, a disc for the cell and a ring for its neighbors, with the paper's glider as the default regime | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw, and as a field a million particles ride | [Ch 22](22-IteratedForms.md), [Ch 27](27-Landscapes.md) | [Attractors](../Docs/Drawing/Attractors.md) |
+| Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 22](22-IteratedForms.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
+| Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 23](23-GridSimulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
+| Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| SmoothLife | `.smoothLife`: Life's own rule on a continuous field, a disc for the cell and a ring for its neighbors, with the paper's glider as the default regime | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 
 ## Physics and simulation
 
@@ -214,224 +214,224 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Soft physics | Verlet particles and springs: cloth, blobs, ropes, with disk collisions | [Ch 11](11-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | Rigid physics | Bodies, colliders, and joints in the same `World`: stacks, chains, machines | [Ch 11](11-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | Grabbing | `grab`: pick up any rigid body with the mouse | [Ch 11](11-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
-| 3D physics | `World3D`: rigid bodies that stack, tumble, and swing inside the 3D scene, with joints and camera grabbing | [Ch 24](24-WorldsWithWeight.md), [Ch 25](25-CharactersAndCloth.md) | [Physics3D](../Docs/Simulation/Physics3D.md) |
-| Tensegrity | `Tensegrity` and `addTensegrity`: struts held apart by cables in their balanced forms, standing in the world on a `.cable` joint | [Ch 24](24-WorldsWithWeight.md) | [Tensegrity](../Docs/Generators/Tensegrity.md) |
+| 3D physics | `World3D`: rigid bodies that stack, tumble, and swing inside the 3D scene, with joints and camera grabbing | [Ch 28](28-WorldsWithWeight.md), [Ch 29](29-CharactersAndCloth.md) | [Physics3D](../Docs/Simulation/Physics3D.md) |
+| Tensegrity | `Tensegrity` and `addTensegrity`: struts held apart by cables in their balanced forms, standing in the world on a `.cable` joint | [Ch 28](28-WorldsWithWeight.md) | [Tensegrity](../Docs/Generators/Tensegrity.md) |
 | Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Double pendulum | `DoublePendulum`: the classic chaos machine, deterministic and wildly sensitive | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Crowds | `Crowd`: walkers that avoid each other by each taking half of every swerve, walls that hold even in a jam, and lanes nobody asked for | [Ch 12](12-FlocksAndSwarms.md) | [Crowds](../Docs/Simulation/Crowds.md) |
 | Coupled oscillators | `Kuramoto`: a crowd of oscillators falling into step past a critical coupling, with the order parameter to watch it happen, on the mean field, a ring, a square or hex lattice, or a graph of your own | [Ch 12](12-FlocksAndSwarms.md) | [Coupled oscillators](../Docs/Simulation/Oscillators.md) |
 | Force-directed layout | `ForceLayout`: a graph untangling itself into an even web you can grow, pin, and drag | [Ch 11](11-ForcesAndPhysics.md) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
-| Artificial life | `ParticleLife`, `PPS`, `Physarum`, `ParticleLenia`, `SwarmChemistry` on the public `SpatialHash` neighbor search | [Ch 20](20-ParticleSimulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
-| Ant colony | A pheromone-trail colony condensing a web of possibilities onto a short tour | [Ch 20](20-ParticleSimulations.md) | [AntColony](../Docs/Generators/AntColony.md) |
-| Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 20](20-ParticleSimulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
-| Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 20](20-ParticleSimulations.md) | [Evolution](../Docs/Simulation/Evolution.md) |
-| Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 20](20-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
-| Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 20](20-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
+| Artificial life | `ParticleLife`, `PPS`, `Physarum`, `ParticleLenia`, `SwarmChemistry` on the public `SpatialHash` neighbor search | [Ch 24](24-ParticleSimulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
+| Ant colony | A pheromone-trail colony condensing a web of possibilities onto a short tour | [Ch 24](24-ParticleSimulations.md) | [AntColony](../Docs/Generators/AntColony.md) |
+| Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 24](24-ParticleSimulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
+| Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 24](24-ParticleSimulations.md) | [Evolution](../Docs/Simulation/Evolution.md) |
+| Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 24](24-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
+| Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 24](24-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 
 ## Layers and effects
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Render targets | Off-screen layers: draw into them with `withTarget`, composite back | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| The filter catalog | ~55 GPU filters: blurs, glows, color, stylize, retro, distortion, design | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| A look from a file | `ColorLUT` reads a `.cube` color lookup table, the grade a color tool exports, and `Filter.lut` applies it to a layer or the frame; a cube is read by tetrahedral interpolation, and a look built in code writes out as a `.cube` | [Ch 16](16-LayersAndEffects.md) | [Looks](../Docs/Drawing/Looks.md) |
-| A film look | `Filter.halation` puts the warm fringe film wears around its highlights, landing only where each channel has room, and `Filter.filmGrain` lays a stock's grain that follows the tone, keeps the mean, and draws fresh each frame | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Generator fills | Procedural patterns into a layer: checkers, gradients, noise, cellular | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Design patterns | Composed graphic sources: mesh gradients, god rays, spirals, orbiting dots, grain gradients, pulsing borders | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Design filters | Fluted glass, water, and paper that transform a picture; liquid metal, heatmap, and gem smoke that read a shape's silhouette | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Diffusion curves | A few marks held as color sources and the color let out between them, so a curve can carry a different color on each side | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Measured distance fields | How far every pixel is from the nearest drawn edge and which way it lies, read back as contours, grown or shrunk shapes, outlines, and a Voronoi keyed to the picture | [Ch 16](16-LayersAndEffects.md) | [Measured distance fields](../Docs/Drawing/DistanceFields.md) |
-| Light in a flat sketch | Draw a scene in one layer and the lamps in another, and get back the light that reaches every pixel: soft-with-distance shadows, falloff, beams through a gap, and the color a lit wall gives back | [Ch 16](16-LayersAndEffects.md) | [Light in a flat sketch](../Docs/Drawing/Light.md) |
-| The frequency domain | A picture read as a sum of waves instead of a grid of pixels: filtering by scale is a shape drawn over the spectrum, and a field can be built from a description of its energy (`Filter.fourier`/`.inverseFourier`/`.spectrum`) | [Ch 16](16-LayersAndEffects.md) | [The frequency domain](../Docs/Drawing/Fourier.md) |
-| Local averages | The average of the square around every pixel at a price that does not grow with it: a box blur of any radius, and a threshold that cuts each pixel against its own neighborhood so uneven light stops mattering | [Ch 16](16-LayersAndEffects.md) | [Local averages](../Docs/Drawing/LocalAverages.md) |
-| Pattern fields | Closed-form animated fields: quasicrystal, moire, gyroid, phyllotaxis, hex pulse, Chladni | [Ch 17](17-YourFirstShader.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Escape-time fractals | The Mandelbrot set and Julia sets, colored by how fast each point escapes, zoomable; orbit traps color by the closest pass to a shape instead | [Ch 18](18-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Domain coloring | A complex function painted over its own plane: color for direction, optional rulings for size; placeable zeros and poles, and the named functions with their branch cuts | [Ch 18](18-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
-| The compose DSL | `compose { layer { } … }`: a stack of layers, filters, and blends in one block | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 16](16-LayersAndEffects.md), [Ch 21](21-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Predator-prey field | `.predatorPrey`: prey and predators on one land, an invasion front and the spiral waves in its wake, released by drawing green | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
-| Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
-| Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`, and `.ising`: the classic state automata as fields, from spirals and gliders to a circuit, a neighborhood sorting itself, and a magnet against the heat | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
-| Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 19](19-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
-| Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 17](17-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
+| Render targets | Off-screen layers: draw into them with `withTarget`, composite back | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| The filter catalog | ~55 GPU filters: blurs, glows, color, stylize, retro, distortion, design | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| A look from a file | `ColorLUT` reads a `.cube` color lookup table, the grade a color tool exports, and `Filter.lut` applies it to a layer or the frame; a cube is read by tetrahedral interpolation, and a look built in code writes out as a `.cube` | [Ch 19](19-LayersAndEffects.md) | [Looks](../Docs/Drawing/Looks.md) |
+| A film look | `Filter.halation` puts the warm fringe film wears around its highlights, landing only where each channel has room, and `Filter.filmGrain` lays a stock's grain that follows the tone, keeps the mean, and draws fresh each frame | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Generator fills | Procedural patterns into a layer: checkers, gradients, noise, cellular | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Design patterns | Composed graphic sources: mesh gradients, god rays, spirals, orbiting dots, grain gradients, pulsing borders | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Design filters | Fluted glass, water, and paper that transform a picture; liquid metal, heatmap, and gem smoke that read a shape's silhouette | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Diffusion curves | A few marks held as color sources and the color let out between them, so a curve can carry a different color on each side | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Measured distance fields | How far every pixel is from the nearest drawn edge and which way it lies, read back as contours, grown or shrunk shapes, outlines, and a Voronoi keyed to the picture | [Ch 19](19-LayersAndEffects.md) | [Measured distance fields](../Docs/Drawing/DistanceFields.md) |
+| Light in a flat sketch | Draw a scene in one layer and the lamps in another, and get back the light that reaches every pixel: soft-with-distance shadows, falloff, beams through a gap, and the color a lit wall gives back | [Ch 19](19-LayersAndEffects.md) | [Light in a flat sketch](../Docs/Drawing/Light.md) |
+| The frequency domain | A picture read as a sum of waves instead of a grid of pixels: filtering by scale is a shape drawn over the spectrum, and a field can be built from a description of its energy (`Filter.fourier`/`.inverseFourier`/`.spectrum`) | [Ch 19](19-LayersAndEffects.md) | [The frequency domain](../Docs/Drawing/Fourier.md) |
+| Local averages | The average of the square around every pixel at a price that does not grow with it: a box blur of any radius, and a threshold that cuts each pixel against its own neighborhood so uneven light stops mattering | [Ch 19](19-LayersAndEffects.md) | [Local averages](../Docs/Drawing/LocalAverages.md) |
+| Pattern fields | Closed-form animated fields: quasicrystal, moire, gyroid, phyllotaxis, hex pulse, Chladni | [Ch 18](18-YourFirstShader.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Escape-time fractals | The Mandelbrot set and Julia sets, colored by how fast each point escapes, zoomable; orbit traps color by the closest pass to a shape instead | [Ch 22](22-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Domain coloring | A complex function painted over its own plane: color for direction, optional rulings for size; placeable zeros and poles, and the named functions with their branch cuts | [Ch 22](22-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
+| The compose DSL | `compose { layer { } … }`: a stack of layers, filters, and blends in one block | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 19](19-LayersAndEffects.md), [Ch 25](25-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 19](19-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Predator-prey field | `.predatorPrey`: prey and predators on one land, an invasion front and the spiral waves in its wake, released by drawing green | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`, and `.ising`: the classic state automata as fields, from spirals and gliders to a circuit, a neighborhood sorting itself, and a magnet against the heat | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 23](23-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
+| Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 18](18-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
 
 ## Shaders and compute
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| User shaders | Write `shade(uv, info)`; run it as a generator, filter, or two-input combine, with `#include` pulling in a helper file that several shaders share | [Ch 17](17-YourFirstShader.md) | [Shaders](../Docs/Shaders/Shaders.md) |
-| The shader library | Hashing, noise, SDFs, palettes, OKLab, spliced into every shader and kernel | [Ch 17](17-YourFirstShader.md) | [ShaderLibrary](../Docs/Shaders/ShaderLibrary.md) |
-| Visual chains | Fluent per-pixel composition: oscillators, warps, blends, modulation, one pass | [Ch 17](17-YourFirstShader.md) | [Visuals](../Docs/Shaders/Visuals.md) |
-| Compute kernels | Your own GPU code over buffers and textures, hot-reloadable | [Ch 20](20-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
-| GPU particles | A million particles updated and drawn without touching the CPU | [Ch 20](20-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
-| GPU simulations | Ping-pong texture simulations drawn as images | [Ch 20](20-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
+| User shaders | Write `shade(uv, info)`; run it as a generator, filter, or two-input combine, with `#include` pulling in a helper file that several shaders share | [Ch 18](18-YourFirstShader.md) | [Shaders](../Docs/Shaders/Shaders.md) |
+| The shader library | Hashing, noise, SDFs, palettes, OKLab, spliced into every shader and kernel | [Ch 18](18-YourFirstShader.md) | [ShaderLibrary](../Docs/Shaders/ShaderLibrary.md) |
+| Visual chains | Fluent per-pixel composition: oscillators, warps, blends, modulation, one pass | [Ch 18](18-YourFirstShader.md) | [Visuals](../Docs/Shaders/Visuals.md) |
+| Compute kernels | Your own GPU code over buffers and textures, hot-reloadable | [Ch 24](24-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
+| GPU particles | A million particles updated and drawn without touching the CPU | [Ch 24](24-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
+| GPU simulations | Ping-pong texture simulations drawn as images | [Ch 24](24-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
 
 ## 3D
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| The camera | `camera()`, `perspective`, `ortho`; 2D sketches never pay for it | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Type as a solid | `drawText3D`, over the `Mesh.text` and `Mesh.textGlyphs` builders: a word extruded into a lit solid that throws a shadow, or the same word a letter at a time, each letter knowing where it sits | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#solid-type) |
-| Drainage | Rivers worked out from a `Heightfield` rather than drawn: hollows filled so water always has a way out, flow counted per cell, the network above a threshold as strokable reaches, Strahler ordering, and basins | [Ch 23](23-Landscapes.md) | [Drainage](../Docs/Generators/Drainage.md) |
-| Billiards | `Billiard`: a ball bouncing forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it; the path as strokable geometry, and the two orderly rooms beside the two disorderly ones | [Ch 18](18-IteratedForms.md) | [Billiards](../Docs/Generators/Billiards.md) |
-| Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 23](23-Landscapes.md) | [Terrain](../Docs/Generators/Terrain.md) |
-| Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures; `normalized(scale:)` recenters and fits whatever arrives | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md) |
-| Scenes from file | `loadScene` keeps a glTF's structure: named nodes drawn in place with `drawScene`, the authored camera and lights as ready values, one node reached by name to animate | [Ch 22](22-Meshes.md) | [Scenes](../Docs/3D/Scenes.md) |
-| Lights | Directional, point, spot, ambient, glowing panels, disks, and tubes, plus curated lighting presets | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Light shaping | A real fixture's measured throw on a light (IES files), and an image projected through a spot (a cookie, the stage gobo) | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) |
-| How far a light carries | `reach:` bounds a lamp to its own neighborhood, exactly nothing past it, which is what lets a frame carry up to 256 of them: past eight the lights are culled per screen tile, so a pixel shades against the lamps standing over it | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md#reach) |
-| Atmosphere | Fog that fades surfaces with distance and pools low with a height falloff, aerial perspective that veils far geometry blue toward the sky's own sun, and volumetric light that turns spot cones, cookies, and cast shadows into visible beams and shafts | [Ch 21](21-3DGently.md) | [Atmosphere](../Docs/3D/Atmosphere.md) |
-| Line drawing | A 3D scene written down as 2D line work with what the surfaces hide taken out, the silhouettes, creases and boundaries a draughtsman would draw, so a plotter, a laser, or a vector file can have the scene | [Ch 31](31-SharingAndPerforming.md) | [Line drawing](../Docs/3D/LineDrawing.md) |
-| Caustics | The light glass and polished metal focus, photon-traced: a lens's bright spot inside its own shadow, a chrome ring's folded fan, prism rainbows via dispersion | [Ch 26](26-SculptingWithFields.md) | [Caustics](../Docs/3D/Caustics.md) |
-| Lens flare | The light the camera adds by itself: the ghosts a real lens prescription throws from a bright source, the star on the source itself, both shaped by the iris blades, fading as something covers the source | [Ch 26](26-SculptingWithFields.md) | [Lens flare](../Docs/3D/LensFlare.md) |
-| Materials | Stylized finishes (toon, iridescent, velvet, sparkle), and physically based metal and gloss from just metalness and roughness | [Ch 21](21-3DGently.md), [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md) |
-| The scene through glass | `sceneThroughGlass()` draws the frame once more with the glass taken out, so a bottle standing in your scene carries the scene inside it on any Mac, no ray tracing needed | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#scene-through-glass) |
-| Matcaps | Shading read from a picture of a lit sphere: chrome, clay, car paint, in one call and no lights | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md#matcap-materials) |
-| Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#environment-lighting) |
-| Shadows | Contact-hardening cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md#shadows) |
-| Ray-traced reflections | Metals that reflect the actual scene, off-screen parts included | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
-| Motion blur | `motionBlur(shutter:)`: the streak a real shutter leaves, worked out from how far each surface moved during the frame | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#motion-blur) |
-| Temporal anti-aliasing | `temporalAntialiasing()`: 3D edges refined past MSAA by jittering the projection a sub-pixel each frame and gathering the history | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-anti-aliasing) |
-| Specular anti-aliasing | `specularAntialiasing()`: highlights that hold still instead of crawling and sparkling as a surface turns | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#specular-anti-aliasing) |
-| Temporal upscaling | `temporalUpscaling(_:)`: render fewer pixels and let MetalFX put the frame back at full size | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-upscaling) |
-| Frames between the drawn ones | `frameInterpolation()`: `draw()` runs every other refresh and the platform builds the frame in between, for a heavy scene on a fast display | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#frames-between-the-drawn-ones) |
-| Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs, or with no UVs at all through a triplanar projection | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#textures) |
-| Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 27](27-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
-| Camera control and moves | Viewer orbiting and the self-driving showcase; the cinematic `CameraMove`s and snap views are in the reference | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
-| Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
-| Instanced meshes | One mesh drawn thousands of times in one call: `MeshInstance` placements the GPU applies per copy, or a compute-written buffer | [Ch 23](23-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
-| The Hopf fibration | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once, handed back as 3D paths to sweep | [Ch 22](22-Meshes.md) | [The Hopf fibration](../Docs/3D/HopfFibration.md) |
-| Mesh fields | A retained world of placed meshes drawn by one call, GPU-culled per copy against the camera (`MeshField`/`drawMeshField`) | [Ch 23](23-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
-| Strand fields | Grass grown inside the draw call: bending, swaying blades with no geometry buffers, camera-culled and distance-graded (`StrandField`/`drawStrands`) | [Ch 23](23-Landscapes.md) | [Strands](../Docs/3D/Strands.md) |
-| The ocean | A sea built from its own wave spectrum: one inverse Fourier transform makes the surface, drawn as water with no geometry, its wave height a measurement in world units (`Ocean`/`makeOceanField`/`drawOcean`) | [Ch 23](23-Landscapes.md) | [The ocean](../Docs/3D/Ocean.md) |
-| Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 27](27-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
-| What stacks with what | The compatibility map across the 3D features | [Ch 21](21-3DGently.md), [Ch 26](26-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
+| The camera | `camera()`, `perspective`, `ortho`; 2D sketches never pay for it | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Type as a solid | `drawText3D`, over the `Mesh.text` and `Mesh.textGlyphs` builders: a word extruded into a lit solid that throws a shadow, or the same word a letter at a time, each letter knowing where it sits | [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md#solid-type) |
+| Drainage | Rivers worked out from a `Heightfield` rather than drawn: hollows filled so water always has a way out, flow counted per cell, the network above a threshold as strokable reaches, Strahler ordering, and basins | [Ch 27](27-Landscapes.md) | [Drainage](../Docs/Generators/Drainage.md) |
+| Billiards | `Billiard`: a ball bouncing forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it; the path as strokable geometry, and the two orderly rooms beside the two disorderly ones | [Ch 22](22-IteratedForms.md) | [Billiards](../Docs/Generators/Billiards.md) |
+| Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 27](27-Landscapes.md) | [Terrain](../Docs/Generators/Terrain.md) |
+| Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures; `normalized(scale:)` recenters and fits whatever arrives | [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md) |
+| Scenes from file | `loadScene` keeps a glTF's structure: named nodes drawn in place with `drawScene`, the authored camera and lights as ready values, one node reached by name to animate | [Ch 26](26-Meshes.md) | [Scenes](../Docs/3D/Scenes.md) |
+| Lights | Directional, point, spot, ambient, glowing panels, disks, and tubes, plus curated lighting presets | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Light shaping | A real fixture's measured throw on a light (IES files), and an image projected through a spot (a cookie, the stage gobo) | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) |
+| How far a light carries | `reach:` bounds a lamp to its own neighborhood, exactly nothing past it, which is what lets a frame carry up to 256 of them: past eight the lights are culled per screen tile, so a pixel shades against the lamps standing over it | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md#reach) |
+| Atmosphere | Fog that fades surfaces with distance and pools low with a height falloff, aerial perspective that veils far geometry blue toward the sky's own sun, and volumetric light that turns spot cones, cookies, and cast shadows into visible beams and shafts | [Ch 25](25-3DGently.md) | [Atmosphere](../Docs/3D/Atmosphere.md) |
+| Line drawing | A 3D scene written down as 2D line work with what the surfaces hide taken out, the silhouettes, creases and boundaries a draughtsman would draw, so a plotter, a laser, or a vector file can have the scene | [Ch 38](38-SharingAndPerforming.md) | [Line drawing](../Docs/3D/LineDrawing.md) |
+| Caustics | The light glass and polished metal focus, photon-traced: a lens's bright spot inside its own shadow, a chrome ring's folded fan, prism rainbows via dispersion | [Ch 30](30-SculptingWithFields.md) | [Caustics](../Docs/3D/Caustics.md) |
+| Lens flare | The light the camera adds by itself: the ghosts a real lens prescription throws from a bright source, the star on the source itself, both shaped by the iris blades, fading as something covers the source | [Ch 30](30-SculptingWithFields.md) | [Lens flare](../Docs/3D/LensFlare.md) |
+| Materials | Stylized finishes (toon, iridescent, velvet, sparkle), and physically based metal and gloss from just metalness and roughness | [Ch 25](25-3DGently.md), [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md) |
+| The scene through glass | `sceneThroughGlass()` draws the frame once more with the glass taken out, so a bottle standing in your scene carries the scene inside it on any Mac, no ray tracing needed | [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md#scene-through-glass) |
+| Matcaps | Shading read from a picture of a lit sphere: chrome, clay, car paint, in one call and no lights | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md#matcap-materials) |
+| Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md#environment-lighting) |
+| Shadows | Contact-hardening cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 25](25-3DGently.md) | [3D](../Docs/3D/3D.md#shadows) |
+| Ray-traced reflections | Metals that reflect the actual scene, off-screen parts included | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
+| Motion blur | `motionBlur(shutter:)`: the streak a real shutter leaves, worked out from how far each surface moved during the frame | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#motion-blur) |
+| Temporal anti-aliasing | `temporalAntialiasing()`: 3D edges refined past MSAA by jittering the projection a sub-pixel each frame and gathering the history | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-anti-aliasing) |
+| Specular anti-aliasing | `specularAntialiasing()`: highlights that hold still instead of crawling and sparkling as a surface turns | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#specular-anti-aliasing) |
+| Temporal upscaling | `temporalUpscaling(_:)`: render fewer pixels and let MetalFX put the frame back at full size | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-upscaling) |
+| Frames between the drawn ones | `frameInterpolation()`: `draw()` runs every other refresh and the platform builds the frame in between, for a heavy scene on a fast display | [Ch 30](30-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#frames-between-the-drawn-ones) |
+| Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs, or with no UVs at all through a triplanar projection | [Ch 26](26-Meshes.md) | [3D](../Docs/3D/3D.md#textures) |
+| Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 33](33-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
+| Camera control and moves | Viewer orbiting and the self-driving showcase; the cinematic `CameraMove`s and snap views are in the reference | [Ch 25](25-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
+| Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 25](25-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
+| Instanced meshes | One mesh drawn thousands of times in one call: `MeshInstance` placements the GPU applies per copy, or a compute-written buffer | [Ch 27](27-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
+| The Hopf fibration | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once, handed back as 3D paths to sweep | [Ch 26](26-Meshes.md) | [The Hopf fibration](../Docs/3D/HopfFibration.md) |
+| Mesh fields | A retained world of placed meshes drawn by one call, GPU-culled per copy against the camera (`MeshField`/`drawMeshField`) | [Ch 27](27-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
+| Strand fields | Grass grown inside the draw call: bending, swaying blades with no geometry buffers, camera-culled and distance-graded (`StrandField`/`drawStrands`) | [Ch 27](27-Landscapes.md) | [Strands](../Docs/3D/Strands.md) |
+| The ocean | A sea built from its own wave spectrum: one inverse Fourier transform makes the surface, drawn as water with no geometry, its wave height a measurement in world units (`Ocean`/`makeOceanField`/`drawOcean`) | [Ch 27](27-Landscapes.md) | [The ocean](../Docs/3D/Ocean.md) |
+| Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 33](33-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
+| What stacks with what | The compatibility map across the 3D features | [Ch 25](25-3DGently.md), [Ch 30](30-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 
 ## Sculpting with fields
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| 2D SDF combinators | Shapes as distance fields that merge, melt, morph, and repeat | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
-| The `sculpt { }` block | Add, carve, and blend region shapes with stateful verbs, built for live coding | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
-| Raymarched 3D fields | `SDF3D` sphere-traced through the camera, depth-composited with meshes | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
-| Fractal fields | `mandelbulb`, `mengerSponge`, and `mandelbox` as leaves of a raymarched field, each a distance estimate | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md#fractals) |
+| 2D SDF combinators | Shapes as distance fields that merge, melt, morph, and repeat | [Ch 30](30-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
+| The `sculpt { }` block | Add, carve, and blend region shapes with stateful verbs, built for live coding | [Ch 30](30-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
+| Raymarched 3D fields | `SDF3D` sphere-traced through the camera, depth-composited with meshes | [Ch 30](30-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
+| Fractal fields | `mandelbulb`, `mengerSponge`, and `mandelbox` as leaves of a raymarched field, each a distance estimate | [Ch 30](30-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md#fractals) |
 
 ## Depth and the phone
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| RGBD frames | Color plus depth plus intrinsics; unproject any pixel to a metric point | [Ch 27](27-DepthAndThePhone.md) | [RGBD](../Docs/3D/RGBD.md) |
-| Recorded captures | Open `.r3d` depth recordings as point clouds with true intrinsics | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
-| Live USB depth | A tethered phone's RGBD stream, frame by frame | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
-| The capture app | Ollin's own iPhone app streams body, face, LiDAR depth, segmentation, how its picture is moving, motion, the sounds it hears, named, every finger on its own screen, and the air it is standing in | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
-| World fusion | Sweep the phone; frames fuse into one fixed world cloud by pose, and a place the sweep comes back to is recognized, so the cloud closes rather than drifting | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
+| RGBD frames | Color plus depth plus intrinsics; unproject any pixel to a metric point | [Ch 33](33-DepthAndThePhone.md) | [RGBD](../Docs/3D/RGBD.md) |
+| Recorded captures | Open `.r3d` depth recordings as point clouds with true intrinsics | [Ch 33](33-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
+| Live USB depth | A tethered phone's RGBD stream, frame by frame | [Ch 33](33-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
+| The capture app | Ollin's own iPhone app streams body, face, LiDAR depth, segmentation, how its picture is moving, motion, the sounds it hears, named, every finger on its own screen, and the air it is standing in | [Ch 33](33-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
+| World fusion | Sweep the phone; frames fuse into one fixed world cloud by pose, and a place the sweep comes back to is recognized, so the cloud closes rather than drifting | [Ch 33](33-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
 
 ## Sound and control
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Audio analysis | Amplitude, spectrum, waveform, log-spaced bands ready to draw | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
-| Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
-| Pitch tracking | The note being sung or played as `pitch` (its hertz, confidence, nearest note, and cents) and `note`, and the twelve pitch classes as `chroma` with every octave folded | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md#pitch) |
-| Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
-| Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
-| MIDI | Knobs, notes, and messages from hardware controllers, in and out, and every held note with its own bend, pressure, and slide from a polyphonic-expression surface (MPE) | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
-| Timecode | `TimecodeClock` follows the MIDI Time Code a deck or an editing system sends, so a sketch rides the show's own position rather than its own clock | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md#timecode-timecodeclock) |
-| Link | The network's shared tempo session: one beat and one downbeat for every app in the room | [Ch 28](28-SoundAndControl.md) | [Link](../Docs/Integration/Link.md) |
-| OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
-| OSCQuery | The sketch's parameters published as a tree a control app browses and builds its own controls from, the values coming back over OSC | [Ch 28](28-SoundAndControl.md) | [OSCQuery](../Docs/Integration/OSCQuery.md) |
-| TUIO | Touches, tagged pieces, and shapes from a marker table, a touch wall, or a phone app | [Ch 28](28-SoundAndControl.md) | [TUIO](../Docs/Integration/TUIO.md) |
-| Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a parameter, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 28](28-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
-| Bluetooth | A Bluetooth Low Energy sensor read in `draw()` or bound to a parameter, the room of devices in range, the formats that turn bytes into values, and a connection that waits and returns by itself | [Ch 28](28-SoundAndControl.md) | [Bluetooth](../Docs/Integration/Bluetooth.md) |
-| MQTT | The message bus a building speaks: a house's sensors subscribed to and read in `draw()` or bound to a parameter, lamps and machines published back to, retained values, a last will for when the piece is cut off, and a connection that resubscribes and resends on its own | [Ch 32](32-Installations.md) | [MQTT](../Docs/Integration/MQTT.md) |
-| Remote surface | The sketch's `@Param` parameters served to a phone on the same Wi-Fi as touch controls, live both ways, for tuning an installation from in front of it | [Ch 32](32-Installations.md) | [Remote](../Docs/Integration/Remote.md) |
-| Room | Several machines drawing one piece: they find each other by a name with no server, share values and `@Param` parameters, agree on one clock so motion stays in step, and take a seat each across a wall | [Ch 32](32-Installations.md) | [Room](../Docs/Integration/Room.md) |
-| Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 28](28-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
-| Haptics | A designed pattern of taps and hums played from `draw()`, composed like a phrase, translated for a trackpad's three feelings and one strength | [Ch 31](31-SharingAndPerforming.md) | [Haptics](../Docs/Integration/Haptics.md) |
-| Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
+| Audio analysis | Amplitude, spectrum, waveform, log-spaced bands ready to draw | [Ch 34](34-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
+| Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 34](34-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
+| Pitch tracking | The note being sung or played as `pitch` (its hertz, confidence, nearest note, and cents) and `note`, and the twelve pitch classes as `chroma` with every octave folded | [Ch 34](34-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md#pitch) |
+| Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 34](34-SoundAndControl.md), [Ch 32](32-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
+| Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 34](34-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
+| MIDI | Knobs, notes, and messages from hardware controllers, in and out, and every held note with its own bend, pressure, and slide from a polyphonic-expression surface (MPE) | [Ch 34](34-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
+| Timecode | `TimecodeClock` follows the MIDI Time Code a deck or an editing system sends, so a sketch rides the show's own position rather than its own clock | [Ch 34](34-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md#timecode-timecodeclock) |
+| Link | The network's shared tempo session: one beat and one downbeat for every app in the room | [Ch 34](34-SoundAndControl.md) | [Link](../Docs/Integration/Link.md) |
+| OSC | Network control messages from tablets, DAWs, and other machines | [Ch 34](34-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
+| OSCQuery | The sketch's parameters published as a tree a control app browses and builds its own controls from, the values coming back over OSC | [Ch 34](34-SoundAndControl.md) | [OSCQuery](../Docs/Integration/OSCQuery.md) |
+| TUIO | Touches, tagged pieces, and shapes from a marker table, a touch wall, or a phone app | [Ch 34](34-SoundAndControl.md) | [TUIO](../Docs/Integration/TUIO.md) |
+| Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a parameter, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 34](34-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
+| Bluetooth | A Bluetooth Low Energy sensor read in `draw()` or bound to a parameter, the room of devices in range, the formats that turn bytes into values, and a connection that waits and returns by itself | [Ch 34](34-SoundAndControl.md) | [Bluetooth](../Docs/Integration/Bluetooth.md) |
+| MQTT | The message bus a building speaks: a house's sensors subscribed to and read in `draw()` or bound to a parameter, lamps and machines published back to, retained values, a last will for when the piece is cut off, and a connection that resubscribes and resends on its own | [Ch 41](41-Installations.md) | [MQTT](../Docs/Integration/MQTT.md) |
+| Remote surface | The sketch's `@Param` parameters served to a phone on the same Wi-Fi as touch controls, live both ways, for tuning an installation from in front of it | [Ch 41](41-Installations.md) | [Remote](../Docs/Integration/Remote.md) |
+| Room | Several machines drawing one piece: they find each other by a name with no server, share values and `@Param` parameters, agree on one clock so motion stays in step, and take a seat each across a wall | [Ch 41](41-Installations.md) | [Room](../Docs/Integration/Room.md) |
+| Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 34](34-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
+| Haptics | A designed pattern of taps and hums played from `draw()`, composed like a phrase, translated for a trackpad's three feelings and one strength | [Ch 38](38-SharingAndPerforming.md) | [Haptics](../Docs/Integration/Haptics.md) |
+| Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 34](34-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 
 ## Making sound
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, the four effects that move a sound and the three that hold its level, a room of your own from a recording or a rule (the convolution reverb), a wavetable read by position, a grain cloud cut out of a sound so a moment can be held and dragged through, four physical models (a plucked string, a struck shape, a bowed string, and a blown tube), an effect of your own in the chain, each note bent, pressed, and slid on its own while it sounds (per-note expression), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
-| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number, with a tempo and named note lengths to turn beats into seconds, and a step sequencer with swing, chance, and ratchets and an arpeggiator over held notes that read the beat you hand them | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
-| MIDI files | A piece as a Standard MIDI File: read one into notes a sketch plays or draws, write one back out so a phrase opens in a sequencer, walk its tempo map from beats to seconds and back, and record a take off a live instrument | [Ch 29](29-MakingSound.md) | [MIDI files](../Docs/Helpers/MIDIFiles.md) |
-| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
+| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, the four effects that move a sound and the three that hold its level, a room of your own from a recording or a rule (the convolution reverb), a wavetable read by position, a grain cloud cut out of a sound so a moment can be held and dragged through, four physical models (a plucked string, a struck shape, a bowed string, and a blown tube), an effect of your own in the chain, each note bent, pressed, and slid on its own while it sounds (per-note expression), sound placed in the 3D scene, and a soundtrack in an export | [Ch 36](36-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
+| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number, with a tempo and named note lengths to turn beats into seconds, and a step sequencer with swing, chance, and ratchets and an arpeggiator over held notes that read the beat you hand them | [Ch 36](36-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
+| MIDI files | A piece as a Standard MIDI File: read one into notes a sketch plays or draws, write one back out so a phrase opens in a sequencer, walk its tempo map from beats to seconds and back, and record a take off a live instrument | [Ch 36](36-MakingSound.md) | [MIDI files](../Docs/Helpers/MIDIFiles.md) |
+| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 36](36-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 
 ## Seeing and video
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Camera feeds | The webcam (or any frame source) drawn and analyzed live | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift, point-prompted lift | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 30](30-Seeing.md) | [Video](../Docs/Video/Video.md) |
-| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 30](30-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
+| Camera feeds | The webcam (or any frame source) drawn and analyzed live | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift, point-prompted lift | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 32](32-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 32](32-Seeing.md) | [Video](../Docs/Video/Video.md) |
+| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 32](32-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
 
 ## Sharing and performing
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Transparent output | `background(.clear)` keeps the canvas see-through, and every export carries that coverage as the file's alpha, so the piece lands over another layer | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#transparent-output) |
-| Linear frames for a compositor | `--export-exr` writes the frame before the tone map: light that runs past white, the frame's coverage, and the distance from the eye as a `Z` channel | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 31](31-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
-| Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Frame rates | `--fps` by number or by name (`ntsc`, `film`), a `FrameRate` in code, the broadcast fractions kept exact | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#frame-rates) |
-| Slow motion in an export | `--slow-motion` renders the extra frames a slowed shot needs, so the motion stays smooth rather than stepping | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#slow-motion) |
-| Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 31](31-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
-| Record & replay | `--record-take` writes a run's seed, clock, inputs, and parameters down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 31](31-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
-| Keyframed parameters | `automate($parameter) { }` writes a parameter's values down over time, carried by named or Bezier curves, looped or run at any speed, and rendered exactly by any export | [Ch 31](31-SharingAndPerforming.md) | [Automation](../Docs/Core/Automation.md) |
-| Parameters driven by a formula | `drive($parameter, "190 + sin(time) * 80")` reads a parameter's rule from text rather than from Swift source, so it can arrive from a file or a typed field, and one parameter can be worked out from another | [Ch 31](31-SharingAndPerforming.md) | [Formula](../Docs/Helpers/Formula.md) |
+| Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Transparent output | `background(.clear)` keeps the canvas see-through, and every export carries that coverage as the file's alpha, so the piece lands over another layer | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#transparent-output) |
+| Linear frames for a compositor | `--export-exr` writes the frame before the tone map: light that runs past white, the frame's coverage, and the distance from the eye as a `Z` channel | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 38](38-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
+| Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Frame rates | `--fps` by number or by name (`ntsc`, `film`), a `FrameRate` in code, the broadcast fractions kept exact | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#frame-rates) |
+| Slow motion in an export | `--slow-motion` renders the extra frames a slowed shot needs, so the motion stays smooth rather than stepping | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#slow-motion) |
+| Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 38](38-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
+| Record & replay | `--record-take` writes a run's seed, clock, inputs, and parameters down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 38](38-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
+| Keyframed parameters | `automate($parameter) { }` writes a parameter's values down over time, carried by named or Bezier curves, looped or run at any speed, and rendered exactly by any export | [Ch 38](38-SharingAndPerforming.md) | [Automation](../Docs/Core/Automation.md) |
+| Parameters driven by a formula | `drive($parameter, "190 + sin(time) * 80")` reads a parameter's rule from text rather than from Swift source, so it can arrive from a file or a typed field, and one parameter can be worked out from another | [Ch 38](38-SharingAndPerforming.md) | [Formula](../Docs/Helpers/Formula.md) |
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
-| SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 15](15-ShapesAsMaterial.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| A web page | `--export-web` records what the sketch draws and writes a page that plays it back in a browser with the framework's own shape shader, one file or a fragment for your own page | [Ch 31](31-SharingAndPerforming.md) | [Web page](../Docs/Output/Web.md) |
-| G-code for machines | `--export-gcode` writes the frame's line work as a machine program: pen plotter, laser, or mill, with the pen-up travel planned short | [Ch 31](31-SharingAndPerforming.md) | [G-code](../Docs/Output/GCode.md) |
-| A named sheet | `GCode(.plotter(), paper: .a4)` and `DXF(paper: .a3)` size a drawing for a sheet with a margin clear on every side, holding its height as well as its width; `--gcode-paper`, `--dxf-paper` | [Ch 31](31-SharingAndPerforming.md) | [G-code](../Docs/Output/GCode.md#a-named-sheet) |
-| A drawing for the shop | `--export-dxf` writes the frame as a DXF drawing a CAD program or a laser's software opens: lines, polylines, and true circles in millimeters, each color on its own layer | [Ch 31](31-SharingAndPerforming.md) | [DXF](../Docs/Output/DXF.md) |
-| Embroidery for a machine | `--export-embroidery` writes the frame as the stitches an embroidery machine sews: strokes as running stitch, fills as rows, each color its own thread | [Ch 31](31-SharingAndPerforming.md) | [Embroidery](../Docs/Output/Embroidery.md) |
-| Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 31](31-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
-| Print color | `SoftProof` and `Filter.softProof`: the canvas as a press profile will print it, the colors it cannot reach flagged, and `--export-plates` for the process plates | [Ch 31](31-SharingAndPerforming.md) | [PrintColor](../Docs/Output/PrintColor.md) |
-| 3D printing | `mesh.write(to:)` as STL, OBJ, or 3MF at a real size, with `printCheck()` reporting whether the surface is a solid | [Ch 31](31-SharingAndPerforming.md) | [Fabrication](../Docs/Output/Fabrication.md) |
-| Spatial models | `--export-usdz` writes a 3D frame (or any `Scene`) as USDZ: opens in Quick Look, sends in a message, stands on a table in AR | [Ch 31](31-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md) |
-| Spatial video | `--export-spatial` writes the motion as a stereo pair per frame (MV-HEVC), with `stereoGeometry` naming how far apart the eyes stand and how far away they agree | [Ch 31](31-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md#spatial-video) |
-| Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
+| SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 15](15-ShapesAsMaterial.md), [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| A web page | `--export-web` records what the sketch draws and writes a page that plays it back in a browser with the framework's own shape shader, one file or a fragment for your own page | [Ch 38](38-SharingAndPerforming.md) | [Web page](../Docs/Output/Web.md) |
+| G-code for machines | `--export-gcode` writes the frame's line work as a machine program: pen plotter, laser, or mill, with the pen-up travel planned short | [Ch 38](38-SharingAndPerforming.md) | [G-code](../Docs/Output/GCode.md) |
+| A named sheet | `GCode(.plotter(), paper: .a4)` and `DXF(paper: .a3)` size a drawing for a sheet with a margin clear on every side, holding its height as well as its width; `--gcode-paper`, `--dxf-paper` | [Ch 38](38-SharingAndPerforming.md) | [G-code](../Docs/Output/GCode.md#a-named-sheet) |
+| A drawing for the shop | `--export-dxf` writes the frame as a DXF drawing a CAD program or a laser's software opens: lines, polylines, and true circles in millimeters, each color on its own layer | [Ch 38](38-SharingAndPerforming.md) | [DXF](../Docs/Output/DXF.md) |
+| Embroidery for a machine | `--export-embroidery` writes the frame as the stitches an embroidery machine sews: strokes as running stitch, fills as rows, each color its own thread | [Ch 38](38-SharingAndPerforming.md) | [Embroidery](../Docs/Output/Embroidery.md) |
+| Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 38](38-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
+| Print color | `SoftProof` and `Filter.softProof`: the canvas as a press profile will print it, the colors it cannot reach flagged, and `--export-plates` for the process plates | [Ch 38](38-SharingAndPerforming.md) | [PrintColor](../Docs/Output/PrintColor.md) |
+| 3D printing | `mesh.write(to:)` as STL, OBJ, or 3MF at a real size, with `printCheck()` reporting whether the surface is a solid | [Ch 38](38-SharingAndPerforming.md) | [Fabrication](../Docs/Output/Fabrication.md) |
+| Spatial models | `--export-usdz` writes a 3D frame (or any `Scene`) as USDZ: opens in Quick Look, sends in a message, stands on a table in AR | [Ch 38](38-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md) |
+| Spatial video | `--export-spatial` writes the motion as a stereo pair per frame (MV-HEVC), with `stereoGeometry` naming how far apart the eyes stand and how far away they agree | [Ch 38](38-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md#spatial-video) |
+| Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 38](38-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
-| Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 31](31-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
-| Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 31](31-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
-| Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 30](30-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
-| Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, complete a name at the caret, perform | [Ch 31](31-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
-| Parameter timeline | OllinLive's panel: scrub, adjust a parameter, click its diamond to place a key; lanes, curves shaped by eye, a rule typed in the parameter's own row, and the automation file every export reads | [Ch 31](31-SharingAndPerforming.md) | [Timeline](../Docs/Tools/Timeline.md) |
-| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 31](31-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
-| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 31](31-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
-| Describable output | `describe(_:)` and `describe(_:as:in:)`: the piece says what it shows and what its parts are, so a screen reader has something to read | [Ch 31](31-SharingAndPerforming.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
+| Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 38](38-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
+| Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 38](38-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
+| Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 32](32-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
+| Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, complete a name at the caret, perform | [Ch 38](38-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
+| Parameter timeline | OllinLive's panel: scrub, adjust a parameter, click its diamond to place a key; lanes, curves shaped by eye, a rule typed in the parameter's own row, and the automation file every export reads | [Ch 38](38-SharingAndPerforming.md) | [Timeline](../Docs/Tools/Timeline.md) |
+| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 38](38-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 38](38-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
+| Describable output | `describe(_:)` and `describe(_:as:in:)`: the piece says what it shows and what its parts are, so a screen reader has something to read | [Ch 38](38-SharingAndPerforming.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 | Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 
 ## Installations
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 32](32-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
-| Show lasers | Line work scanned by a projector: the point stream a laser actually draws, spaced, held at corners, blanked between shapes, and gated behind an explicit arm step | [Ch 31](31-SharingAndPerforming.md) | [Laser](../Docs/Integration/Laser.md) |
-| A sketch as the screen saver | `ollin new --kind screen-saver` wraps a sketch as a `.saver` the system loads when the machine goes idle, with one script to build, sign, and install it | [Ch 32](32-Installations.md) | [Screen saver](../Docs/Output/ScreenSaver.md) |
-| A sketch as an app | `ollin new --kind mac-app` wraps a finished sketch as a signed, double-clickable `.app` for a Mac without the toolchain, wearing a frame of itself as its icon | [Ch 32](32-Installations.md) | [A sketch as an app](../Docs/Output/App.md) |
-| The sketch on the phone | `ollin phone` puts a sketch on a paired iPhone or iPad and installs it again on every save, its clock and parameters carried across, with the parameters live on the Mac | [Ch 31](31-SharingAndPerforming.md) | [OnThePhone](../Docs/Tools/OnThePhone.md) |
-| The phone as the sketch's screen | `device.show(self)` keeps the sketch running on the Mac and shows its frames full screen on the capture app, sent down the cable as video, with the first finger on the glass as the sketch's pointer and nothing installed | [Ch 31](31-SharingAndPerforming.md) | [Phone](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) |
-| A sketch as the wallpaper | `ollin new --kind wallpaper` runs a piece as the desktop itself: one window per display at desktop level, behind the icons, quit from its menu-bar mark | [Ch 32](32-Installations.md) | [Wallpaper](../Docs/Output/Wallpaper.md) |
-| A sketch in the menu bar | `ollin new --kind menu-bar` runs a piece as a small live strip among the status items, at a rate an all-day surface can afford | [Ch 32](32-Installations.md) | [Menu bar](../Docs/Output/MenuBar.md) |
-| A sketch as a widget | `ollin new --kind widget` shows a piece on the desktop as a widget: `widgetTimeline` says how far apart the pictures sit, one is drawn per moment on the day's own clock, and `--export-widget` shows the run without waiting for it | [Ch 32](32-Installations.md) | [Widget](../Docs/Output/Widget.md) |
-| Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
-| Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
-| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 32](32-Installations.md) | [Profiling](../Docs/Tools/Profiling.md) |
+| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 41](41-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
+| Show lasers | Line work scanned by a projector: the point stream a laser actually draws, spaced, held at corners, blanked between shapes, and gated behind an explicit arm step | [Ch 38](38-SharingAndPerforming.md) | [Laser](../Docs/Integration/Laser.md) |
+| A sketch as the screen saver | `ollin new --kind screen-saver` wraps a sketch as a `.saver` the system loads when the machine goes idle, with one script to build, sign, and install it | [Ch 41](41-Installations.md) | [Screen saver](../Docs/Output/ScreenSaver.md) |
+| A sketch as an app | `ollin new --kind mac-app` wraps a finished sketch as a signed, double-clickable `.app` for a Mac without the toolchain, wearing a frame of itself as its icon | [Ch 41](41-Installations.md) | [A sketch as an app](../Docs/Output/App.md) |
+| The sketch on the phone | `ollin phone` puts a sketch on a paired iPhone or iPad and installs it again on every save, its clock and parameters carried across, with the parameters live on the Mac | [Ch 38](38-SharingAndPerforming.md) | [OnThePhone](../Docs/Tools/OnThePhone.md) |
+| The phone as the sketch's screen | `device.show(self)` keeps the sketch running on the Mac and shows its frames full screen on the capture app, sent down the cable as video, with the first finger on the glass as the sketch's pointer and nothing installed | [Ch 38](38-SharingAndPerforming.md) | [Phone](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) |
+| A sketch as the wallpaper | `ollin new --kind wallpaper` runs a piece as the desktop itself: one window per display at desktop level, behind the icons, quit from its menu-bar mark | [Ch 41](41-Installations.md) | [Wallpaper](../Docs/Output/Wallpaper.md) |
+| A sketch in the menu bar | `ollin new --kind menu-bar` runs a piece as a small live strip among the status items, at a rate an all-day surface can afford | [Ch 41](41-Installations.md) | [Menu bar](../Docs/Output/MenuBar.md) |
+| A sketch as a widget | `ollin new --kind widget` shows a piece on the desktop as a widget: `widgetTimeline` says how far apart the pictures sit, one is drawn per moment on the day's own clock, and `--export-widget` shows the run without waiting for it | [Ch 41](41-Installations.md) | [Widget](../Docs/Output/Widget.md) |
+| Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 41](41-Installations.md) | [Installation](../Docs/Output/Installation.md) |
+| Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 41](41-Installations.md) | [Installation](../Docs/Output/Installation.md) |
+| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 41](41-Installations.md) | [Profiling](../Docs/Tools/Profiling.md) |
 
 ---
 

@@ -39,8 +39,8 @@ ifsPoints(_ system: IFS, count: Int) -> [Vector2]      // the sketch form, seede
 An iterated function system is a small set of affine contractions, and each one carries a pick `weight`. The chaos game applies a randomly chosen map over and over, so every orbit settles onto the maps' shared attractor. Three classic systems come built in: `.barnsleyFern` (four maps, the famous coefficient table), `.sierpinskiTriangle`, and `.sierpinskiCarpet`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/ChaosGame-dark.jpg">
-  <img src="../../Guide/Images/18-IteratedForms/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/ChaosGame-dark.jpg">
+  <img src="../../Guide/Images/22-IteratedForms/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
 </picture>
 
 ```swift
@@ -99,8 +99,8 @@ The Buddhabrot shows the Mandelbrot set through its escaping orbits. It tests ra
 `iterations` is one cap or three. One cap develops a grayscale plate. Three caps expose red, green, and blue at different orbit lengths. Short orbits then haze the background blue, and the longest orbits draw the figure's red spine. An orbit that runs past every cap counts as inside the set, so it plots nothing. `window` frames the plane in the classic upright reading. In that reading `x` spans the imaginary axis, `y` spans the real one, and the antenna sits at the top. Each orbit is also deposited mirrored about the real axis, which is the set's own symmetry, so one sample exposes both halves.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/BuddhaPlate-dark.jpg">
-  <img src="../../Guide/Images/18-IteratedForms/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/BuddhaPlate-dark.jpg">
+  <img src="../../Guide/Images/22-IteratedForms/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
 </picture>
 
 ```swift
@@ -202,8 +202,8 @@ Keep the discs disjoint. Tangency is allowed, but overlapping circles make the g
 **From traces.** `schottkyCircles(ta:tb:in:)` renders the circle orbit of a group built by the same trace recipe, the group whose boundary [`kleinianLimitSet`](#kleinian) traces as a curve. It takes each generator's isometric circles as its pairing discs. The `KleinianPreset` overload accepts the same named landmarks, so `schottkyCircles(.gasket, in:)` and `kleinianLimitSet(.gasket)` are one group drawn two ways. At the gasket traces `(2, 2)` the orbit is the classic tangent-circle packing of the Apollonian gasket. Nearby traces bend and twist it, which is what the `Patterns/Schottky` example animates. The deep-cusp presets sit at the edge of the region, where the orbit shrinks slowly, so give them a larger `minRadius`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/GasketFamily-dark.jpg">
-  <img src="../../Guide/Images/18-IteratedForms/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/GasketFamily-dark.jpg">
+  <img src="../../Guide/Images/22-IteratedForms/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
 </picture>
 
 <a name="fitted"></a>

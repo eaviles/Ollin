@@ -9,8 +9,8 @@ Draw into **off-screen layers**, run GPU **filters** over them (blur, bloom), an
 Everything stays on the GPU. A layer is a Metal texture you draw into and then sample. A filter reads one texture and writes another. Compositing is an ordinary [`drawImage`](../Drawing/Images.md) with a [`blendMode`](../Drawing/Drawing.md#blendMode). Nothing is ever read back to the CPU between steps. Copying a layer back to combine it is the slow path other tools fall into, and it never happens here.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/Layers-dark.jpg">
-  <img src="../../Guide/Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-LayersAndEffects/Layers-dark.jpg">
+  <img src="../../Guide/Images/19-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
 </picture>
 
 ```swift
@@ -119,7 +119,7 @@ Filters are value descriptors built with static factories. They composite in
 [linear light](../Drawing/HDR.md), so grades and blends are physically correct. Every family below is a segment of the `Effects/FilterCatalog` contact sheet,
 and `Effects/Glitter` shows the iridescence and glitter pair on shapes. The catalog:
 
-<img src="../../Guide/Images/16-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
+<img src="../../Guide/Images/19-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
 #### Blur & glow
 
@@ -276,7 +276,7 @@ blend in sRGB so designer colors read true. Three of them read the layer's
 The others transform the whole layer. `Effects/FilterCatalog`'s design family shows six of
 them, and `Images/LuminanceMelt` shows the melt.
 
-<img src="../../Guide/Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
+<img src="../../Guide/Images/19-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
 - **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
   render the alpha shape as flowing chrome. Reflectance bands compress and wrap
@@ -499,8 +499,8 @@ stepless iteration count through the palette, with `phase` cycling the bands:
   the stalks sweep.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/FractalPair-dark.jpg">
-  <img src="../../Guide/Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/FractalPair-dark.jpg">
+  <img src="../../Guide/Images/22-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
 </picture>
 
 **Newton's basins**: the same plane, asked where an orbit ends up rather than when it
@@ -522,8 +522,8 @@ scale, so the boundaries are dust where all the colors touch:
   `.domainColoring` does, about 3 units across at zoom 1 with y up.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/NewtonBasins-dark.jpg">
-  <img src="../../Guide/Images/18-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/NewtonBasins-dark.jpg">
+  <img src="../../Guide/Images/22-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
 </picture>
 
 See `Examples/Effects/NewtonBasins`, where the roots ride slow orbits and the step's
@@ -658,8 +658,8 @@ This is not the same as the [accumulation surface](../Drawing/Accumulation.md) (
 `makeRenderTarget()` gives you a per-frame handle, but a `Feedback` is **persistent**, so make it once in `setup()` and hold it. Its identity is what ties this frame's write to last frame's read. Make a fresh one each `draw()` and nothing ever builds up.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/FeedbackSteps-dark.jpg">
-  <img src="../../Guide/Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-LayersAndEffects/FeedbackSteps-dark.jpg">
+  <img src="../../Guide/Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 </picture>
 
 ```swift
@@ -699,8 +699,8 @@ Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful 
 A `SimField` is **persistent** like `Feedback`, so make it once in `setup()` and hold it. Each frame the marks you draw in `withField` land on the field's current state. The renderer then steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-GridSimulations/FeedKillMap-dark.jpg">
-  <img src="../../Guide/Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-GridSimulations/FeedKillMap-dark.jpg">
+  <img src="../../Guide/Images/23-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 </picture>
 
 ```swift
@@ -890,8 +890,8 @@ override func draw() {
 It is pure sugar over the substrate. `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](../Drawing/Drawing.md#blendMode). Anything you can do in a block, you can do by hand with those calls, and `compose` only gathers them.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/BlendModes-dark.jpg">
-  <img src="../../Guide/Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-LayersAndEffects/BlendModes-dark.jpg">
+  <img src="../../Guide/Images/19-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
 </picture>
 
 The layer modifiers chain in any order:

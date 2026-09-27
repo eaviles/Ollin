@@ -14,8 +14,8 @@ let radius = wobble.value(["time": time])
 This matters because a string can arrive at runtime, and Swift source cannot. So you can drive a parameter with a rule you typed. A file can carry the rule instead of a list of numbers. In OllinLive, the parameter's own row in the inspector is a field to type one in, and it points at the character a rule went wrong at. That field is covered in [The parameter timeline](../Tools/Timeline.md#writing-a-rule-in-the-row). The arithmetic is the same as what you would write in `draw()`, and you spell it the same way. The difference is that Ollin reads it later, at runtime.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterAsARule-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-SharingAndPerforming/ParameterAsARule-dark.jpg">
+  <img src="../../Guide/Images/38-SharingAndPerforming/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
 </picture>
 
 ### Contents
@@ -79,8 +79,8 @@ final class Card: Sketch {
 **A part with no rule is left alone.** The frame above changes size, but its `x` and `y` stay where you put them. You can still drag them while the size keeps changing. This is why you write a rule for one part rather than for the whole parameter.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterParts-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-SharingAndPerforming/ParameterParts-dark.jpg">
+  <img src="../../Guide/Images/38-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
 **One part of a parameter is also a name**, spelled `parameter.part`. So `"frame.x + frame.width / 2"` reads the rectangle of this frame. The name works whether keys set that part or another rule computes it.

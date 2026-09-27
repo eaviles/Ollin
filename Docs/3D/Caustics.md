@@ -8,7 +8,7 @@ A shadow shows where light cannot reach. A caustic shows where a lens or a mirro
 
 `caustics()` renders that missing light. The renderer traces photons from the caster light through every transmissive surface ([`Material.glass`](./3D.md#materials)) and every mirror-polished metallic surface. It follows each photon through up to eight refractions and reflections. Where the photon lands, the renderer draws a small elliptical spot. The shape of that spot comes from how the path focused. A converging path draws a small, bright spot. A spreading path draws a wide, dim spot with the same total energy. That is why the patterns come out sharp and without noise.
 
-<img src="../../Guide/Images/26-SculptingWithFields/CausticLight.jpg" alt="Two glass spheres and a chrome ring on a sunlit matte table. The clear sphere throws a tight bright spot inside its own shadow, the bottle-green sphere throws a green-tinted one, and the ring, lying almost flat, folds light into a radial fan across its middle" width="680">
+<img src="../../Guide/Images/30-SculptingWithFields/CausticLight.jpg" alt="Two glass spheres and a chrome ring on a sunlit matte table. The clear sphere throws a tight bright spot inside its own shadow, the bottle-green sphere throws a green-tinted one, and the ring, lying almost flat, folds light into a radial fan across its middle" width="680">
 
 ```swift
 override func draw() {

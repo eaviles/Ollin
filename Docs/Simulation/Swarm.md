@@ -8,7 +8,7 @@
 
 Every behavior is a **weight**, and a weight of zero turns that behavior off. The numbers you set decide what the swarm becomes: a flock, a crowd chasing the cursor, or a set of agents roaming with no goal.
 
-<img src="../../Guide/Images/20-ParticleSimulations/Swarm.jpg" alt="Three dark panels of pale blue trails. Left, flocking: dense clusters of curving paths with gaps between them. Middle, a current: broad ribbons of trails winding through the panel and coiling into two vortices. Right, roaming: an even scribble of short independent paths crossing everywhere" width="680">
+<img src="../../Guide/Images/24-ParticleSimulations/Swarm.jpg" alt="Three dark panels of pale blue trails. Left, flocking: dense clusters of curving paths with gaps between them. Middle, a current: broad ribbons of trails winding through the panel and coiling into two vortices. Right, roaming: an even scribble of short independent paths crossing everywhere" width="680">
 
 ### Contents
 

@@ -22,8 +22,8 @@ Both directions are useful, and they end in different places. `loadScene` keeps 
 The split follows one rule: **structure becomes code, geometry stays in the file.**
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-Meshes/SceneAsSource-dark.jpg">
-  <img src="../../Guide/Images/22-Meshes/SceneAsSource.jpg" alt="Left, the generated draw() with its camera call, its lights and its nested withState blocks. Right, the same scene drawn from those placements: a torus on a pedestal beside a lamp and a blue sphere" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-Meshes/SceneAsSource-dark.jpg">
+  <img src="../../Guide/Images/26-Meshes/SceneAsSource.jpg" alt="Left, the generated draw() with its camera call, its lights and its nested withState blocks. Right, the same scene drawn from those placements: a torus on a pedestal beside a lamp and a blue sphere" width="680">
 </picture>
 
 Structure is everything you would otherwise type by hand. The camera comes out as a `Camera3D` with its own numbers, and each light comes out as the factory call that makes it. Each node becomes a `withState` block that holds the moves that put it where the file put it. Those blocks nest the way the file nests them, so a group still turns as one thing.

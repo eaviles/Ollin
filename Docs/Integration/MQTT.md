@@ -219,4 +219,4 @@ Inside the library, `OllinMQTTTests` runs a broker of its own in the test proces
 
 ---
 
-See the **MQTTRoom** example for the bus drawn as a wall of dials, and [Installations](../../Guide/32-Installations.md) in the Guide for the piece that reads a building and answers it.
+See the **MQTTRoom** example for the bus drawn as a wall of dials, and [Installations](../../Guide/41-Installations.md) in the Guide for the piece that reads a building and answers it.

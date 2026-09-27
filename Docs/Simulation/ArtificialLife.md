@@ -8,7 +8,7 @@ Ollin has five classic emergent-behavior systems, and each one runs on the GPU. 
 
 All five are chaotic, so a difference in the last bit of a number grows into a different picture within seconds. An export, or a take playing back, keeps that from happening by chance. It lists the particles in each cell of the neighbor search in index order. So the same seed draws the same frames every time on one machine. Another GPU's arithmetic can still take a run somewhere else. So a pixel-identical video is promised on the machine that made it, not across machines. A live window keeps the faster one-pass order, since a clock that follows the wall never repeats a run anyway.
 
-<img src="../../Guide/Images/20-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
+<img src="../../Guide/Images/24-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
 
 ### Contents
 
@@ -110,7 +110,7 @@ Example: `Examples/Simulation/Physarum`.
 
 Particle Lenia has no force law. It has an energy field instead, and the particles walk downhill on it. Each particle adds up a ring-shaped kernel over its neighbors to get a field value `U`. A growth function scores that crowding, and a repulsion term keeps two particles from standing in the same place. The particle then moves in whichever direction improves the total `E = R − G(U)`. Those three rules produce membranes, cells that hold their shape, rotors, and bodies that split in two.
 
-<img src="../../Guide/Images/20-ParticleSimulations/ParticleLenia.jpg" alt="Three dark panels of colored dots. Left, a cell with a fringed pale-green membrane, a warm red interior, and small vesicles inside it. Middle, a looser coral-like labyrinth of green channels with a blue halo of scattered particles. Right, a solid red body inside one clean smooth green membrane" width="680">
+<img src="../../Guide/Images/24-ParticleSimulations/ParticleLenia.jpg" alt="Three dark panels of colored dots. Left, a cell with a fringed pale-green membrane, a warm red interior, and small vesicles inside it. Middle, a looser coral-like labyrinth of green channels with a blue halo of scattered particles. Right, a solid red body inside one clean smooth green membrane" width="680">
 
 ```swift
 var lenia: ParticleLenia!
@@ -186,7 +186,7 @@ A `SwarmChemistry.Recipe` is those eight, and it reads back field by field: `per
 
 The color of a particle is its recipe. Cohesion, alignment, and separation are drawn as red, green, and blue, which is the published visualization. A takeover therefore looks like one color replacing the others, and a mutation looks like a shift in shade rather than a new color.
 
-<img src="../../Guide/Images/20-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
+<img src="../../Guide/Images/24-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 Read the state back with `snapshotLineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `snapshotLineageCounts()` reports how many particles each opening line still holds, which is the scoreboard the model never keeps for itself. All three wait until the GPU has caught up, so call them a few times a second rather than every frame.
 

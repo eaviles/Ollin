@@ -966,4 +966,4 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 14, Fields and flow](14-FieldsAndFlow.md) · Next: [Chapter 16, Layers and effects](16-LayersAndEffects.md)
+[Contents](README.md#contents) · Previous: [Chapter 14, Fields and flow](14-FieldsAndFlow.md) · Next: [Chapter 19, Layers and effects](19-LayersAndEffects.md)

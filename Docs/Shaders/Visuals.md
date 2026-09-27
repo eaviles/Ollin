@@ -18,8 +18,8 @@ override func draw() {
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-YourFirstShader/ChainGraph-dark.jpg">
-  <img src="../../Guide/Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-YourFirstShader/ChainGraph-dark.jpg">
+  <img src="../../Guide/Images/18-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 </picture>
 
 Everything moves by default, because sources drift with time. Every number can also change per frame without recompiling anything: `.rotated(time * 0.2)`, an amount driven by a beat, or an [`@Param`](../Helpers/Parameters.md) parameter. This works because the chain's *structure* decides the shader, which is compiled once and cached, while its *numbers* travel in a uniform buffer.

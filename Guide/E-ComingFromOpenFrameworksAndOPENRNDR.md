@@ -165,7 +165,7 @@ override func draw() {
 
 Making the layer every frame costs nothing, because Ollin keeps the GPU texture behind it and hands the same one back each time. A new layer starts transparent, so there's no `ofClear` to call.
 
-The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps what you drew, as the classic trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()` and draw into it with `withFeedback`. [Chapter 16](16-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
+The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps what you drew, as the classic trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()` and draw into it with `withFeedback`. [Chapter 19](19-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
 
 ### Shaders: one function, in Metal
 
@@ -200,7 +200,7 @@ override func draw() {
 
 The time, the resolution, and the mouse arrive in `info` without being set, and numbers of your own ride along as `params`. How many layers the function reads decides what it is. With none it's a generator, with one it's a filter, and with two it combines them. Metal's grammar is C's, as GLSL's is, so most lines change only their type names, and `vec2` becomes `float2`.
 
-For a shader you already have, `ollin new --from-shader` translates a fragment shader in the common web form into Metal and writes a project around it. [Chapter 17](17-YourFirstShader.md) teaches the whole contract, and [Bringing a GLSL shader over](../Docs/Tools/ShaderImport.md) lists what the translation carries and what it leaves as a note.
+For a shader you already have, `ollin new --from-shader` translates a fragment shader in the common web form into Metal and writes a project around it. [Chapter 18](18-YourFirstShader.md) teaches the whole contract, and [Bringing a GLSL shader over](../Docs/Tools/ShaderImport.md) lists what the translation carries and what it leaves as a note.
 
 ### 3D: the camera is a call
 
@@ -230,7 +230,7 @@ override func draw() {
 }
 ```
 
-`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, so it covers most of what ofxAssimpModelLoader loads. [Chapter 22](22-Meshes.md) starts there.
+`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, so it covers most of what ofxAssimpModelLoader loads. [Chapter 26](26-Meshes.md) starts there.
 
 ### C++ habits that change
 
@@ -307,7 +307,7 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 31](31-SharingAndPerforming.md) carries the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 38](38-SharingAndPerforming.md) carries the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 
@@ -459,7 +459,7 @@ override func draw() {
 
 Declaring it every frame costs nothing, since the textures underneath are kept and reused. To animate a setting, you pass a new value each frame rather than changing a property on the filter. A layer's blend is a modifier, `.blended(.add)`. A helper layer that feeds another layer's effect is `aside { }`, as in the compositor.
 
-The pieces under `compose` map just as directly. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames is `makeFeedback()`, and `extend(NoClear())` is `noClear()`. [Chapter 16](16-LayersAndEffects.md) teaches the whole stack.
+The pieces under `compose` map just as directly. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames is `makeFeedback()`, and `extend(NoClear())` is `noClear()`. [Chapter 19](19-LayersAndEffects.md) teaches the whole stack.
 
 ### Shade styles
 
@@ -481,7 +481,7 @@ drawCircle(center: center, radius: 200)
 
 The gradient's two ends are canvas points, so you place them where the shape is. `.radial(center:radius:_:)` and `stroke(.alongPath(_:))` are the other two geometries.
 
-Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 17](17-YourFirstShader.md) the shader.
+Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 18](18-YourFirstShader.md) the shader.
 
 ### The orx modules
 
@@ -532,10 +532,10 @@ The other thing that stays behind is years of community work. The `ofx` and `orx
 
 - [Appendix C](C-ComingFromP5.md): the full call-by-call dictionary, written for p5.js, which serves for the everyday calls here too.
 - [Appendix A](A-JustEnoughSwift.md): the Swift you need, including values against references.
-- [Chapter 16, Layers and effects](16-LayersAndEffects.md): layers, filters, feedback, and `compose`.
-- [Chapter 17, Your first shader](17-YourFirstShader.md): the `shade` contract, the shader library, and bringing GLSL over.
-- [Chapter 21, 3D, gently](21-3DGently.md): the camera, lights, and the built-in solids.
-- [Chapter 22, Meshes, maps, and materials](22-Meshes.md): meshes from files and from other meshes, and the maps and finishes that dress them.
+- [Chapter 19, Layers and effects](19-LayersAndEffects.md): layers, filters, feedback, and `compose`.
+- [Chapter 18, Your first shader](18-YourFirstShader.md): the `shade` contract, the shader library, and bringing GLSL over.
+- [Chapter 25, 3D, gently](25-3DGently.md): the camera, lights, and the built-in solids.
+- [Chapter 26, Meshes, maps, and materials](26-Meshes.md): meshes from files and from other meshes, and the maps and finishes that dress them.
 - [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each.
 
 ---

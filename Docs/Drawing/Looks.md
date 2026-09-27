@@ -11,7 +11,7 @@ that file into a `ColorLUT` and applies it with `Filter.lut`, on one layer or on
 whole frame, and a look can also be written in code and saved as a `.cube` for any other
 tool to read.
 
-<img src="../../Guide/Images/16-LayersAndEffects/Look.jpg" alt="Two panels and two strips: a portrait of a young woman in a lace headdress plain on the left and through a warm print look on the right, her skin warmer and the shadows cooler; below them a gray ramp and a sweep of hues, each drawn plain above and through the same look beneath, the ramp's black lifted and its white held short of paper, the hues warmed at the bright end" width="680">
+<img src="../../Guide/Images/19-LayersAndEffects/Look.jpg" alt="Two panels and two strips: a portrait of a young woman in a lace headdress plain on the left and through a warm print look on the right, her skin warmer and the shadows cooler; below them a gray ramp and a sweep of hues, each drawn plain above and through the same look beneath, the ramp's black lifted and its white held short of paper, the hues warmed at the bright end" width="680">
 
 ### Contents
 

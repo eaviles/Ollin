@@ -208,7 +208,7 @@ Save, then hold Command and move the pointer over the window. The shape under it
   <img src="Images/01-HelloOllin/DragToSource.jpg" alt="Two panels: a circle outlined with the label Sketch.swift:12 while Command is held, and the same circle after being dragged, with the two numbers in the code line below changed" width="680">
 </picture>
 
-Your editor may reload the file on its own or ask you first, and the running window has already reloaded itself. Nothing else on the line moves. The radius, your spacing, and the comment you left at the end are all where you put them. The performance host in [Chapter 31](31-SharingAndPerforming.md#performing-the-code-itself) has the same drag. There the numbers change in the code on the stage, and the host evaluates it for you.
+Your editor may reload the file on its own or ask you first, and the running window has already reloaded itself. Nothing else on the line moves. The radius, your spacing, and the comment you left at the end are all where you put them. The performance host in [Chapter 38](38-SharingAndPerforming.md#performing-the-code-itself) has the same drag. There the numbers change in the code on the stage, and the host evaluates it for you.
 
 The shape itself is only the first of three things to take hold of. Small squares sit on its corners, and a knob stands clear above it.
 
@@ -518,7 +518,7 @@ Three directions worth trying:
 
 ## Where this comes from
 
-The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing and p5.js repeat `draw()` while a sketch runs, and Ollin keeps that, at the display's refresh rate, with `noLoop()` as the escape hatch for a still. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 31](31-SharingAndPerforming.md).
+The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing and p5.js repeat `draw()` while a sketch runs, and Ollin keeps that, at the display's refresh rate, with `noLoop()` as the escape hatch for a still. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 38](38-SharingAndPerforming.md).
 
 ## Go deeper
 

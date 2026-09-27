@@ -49,15 +49,15 @@ float4 shade(float2 uv, ShaderInfo info) { ... }
 - **Return** a straight (non-premultiplied) **sRGB** color in `0…1`. Ollin converts it to the premultiplied linear color that a layer composites in, so `float4(0.5, 0.5, 0.5, 1.0)` reads as mid-gray on screen.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-YourFirstShader/UVSpace-dark.jpg">
-  <img src="../../Guide/Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-YourFirstShader/UVSpace-dark.jpg">
+  <img src="../../Guide/Images/18-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
 </picture>
 
 Ollin generates the surrounding Metal fragment for you, along with a fullscreen vertex, and calls `shade` once per pixel.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-YourFirstShader/PixelGrid-dark.jpg">
-  <img src="../../Guide/Images/17-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-YourFirstShader/PixelGrid-dark.jpg">
+  <img src="../../Guide/Images/18-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
 </picture>
 
 ---

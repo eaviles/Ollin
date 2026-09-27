@@ -128,8 +128,8 @@ Two choices are worth knowing about, because both are easy to get wrong and neit
 **Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic. For example, the step from 220 Hz to 440 Hz and the step from 440 Hz to 880 Hz sound like the same distance. In hertz, the second step is twice the size of the first. So a series spread evenly in hertz crushes its whole bottom half into a few notes at the low end.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Sonification-dark.jpg">
-  <img src="../../Guide/Images/29-MakingSound/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the low half bunches against the top two octaves, and again snapped so every mark lands on a line of the scale" width="880">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/Sonification-dark.jpg">
+  <img src="../../Guide/Images/36-MakingSound/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the low half bunches against the top two octaves, and again snapped so every mark lands on a line of the scale" width="880">
 </picture>
 
 **Loudness is spread evenly in decibels**, for the same reason. The span runs between a floor and full level, not between silence and full level.

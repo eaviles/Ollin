@@ -27,8 +27,8 @@ final class Chase: Sketch {
 The usual pattern is to make the sender (or receiver) once, then fill and send a `DMXUniverse` in `draw()`. Send every frame at the display rate. The sender handles the packet timing that the specs ask for, so you do not have to.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/LampsAndBytes-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/LampsAndBytes-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
 </picture>
 
 ### Contents
@@ -120,8 +120,8 @@ override func setup() {
 An `LEDMap` sends regions of the canvas to addressable LEDs. You lay strips and matrices over the picture, register the map as an extension, and draw as usual. Every frame, the map samples the *rendered* pixels under each LED on the GPU. That sampling is a small compute pass over a few hundred points, not a readback of the full frame. The map then sends the sampled pixels as universes through its `DMXSender`, and the sender keeps the packet timing within the specs. The byte sent is the display byte, so the lamp gets the same value you see at that pixel.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/LEDWall-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/LEDWall.jpg" alt="A diagram in two rows: a colorful gradient picture with a wavy strip of small rings and a bracketed grid of rings mapped over it, and below, the same LEDs lit for real: the strip laid out straight in wire order and the panel beside it, each labeled with the universe it occupies" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/LEDWall-dark.jpg">
+  <img src="../../Guide/Images/41-Installations/LEDWall.jpg" alt="A diagram in two rows: a colorful gradient picture with a wavy strip of small rings and a bracketed grid of rings mapped over it, and below, the same LEDs lit for real: the strip laid out straight in wire order and the panel beside it, each labeled with the universe it occupies" width="680">
 </picture>
 
 ```swift

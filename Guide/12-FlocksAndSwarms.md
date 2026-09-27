@@ -394,11 +394,11 @@ override func draw() {
 }
 ```
 
-The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way, so what you draw is what is coupled. [Chapter 19](19-GridSimulations.md)'s grids are neighbors in space. This is neighbors in time, with the same lesson: a local rule, a global result, and a threshold where the result appears.
+The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way, so what you draw is what is coupled. [Chapter 23](23-GridSimulations.md)'s grids are neighbors in space. This is neighbors in time, with the same lesson: a local rule, a global result, and a threshold where the result appears.
 
 ## Putting it together: the living flock
 
-The sketch at the top of the chapter is the flock with its temperament on parameters and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 16](16-LayersAndEffects.md) explores, and this is a first taste.)
+The sketch at the top of the chapter is the flock with its temperament on parameters and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 19](19-LayersAndEffects.md) explores, and this is a first taste.)
 
 Make `MySketches/Flock.swift`:
 
@@ -478,7 +478,7 @@ Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and
 - Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) (a meadow of fireflies falling into step), and [`Examples/Simulation/Crowd`](../Examples/Simulation/Crowd/Sketch.swift) (a door, a corridor, four crossing streams, and the ring).
 - [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).
 - The Reas homages in [`Examples/Recreations/CaseyReas/`](../Examples/Recreations/CaseyReas/): two written instructions that give elements their behaviors and leave the picture to what the elements do to each other. `Touching` never draws its circles at all, only a line between two of them while they touch, kept forever. `Planes` is a flock made of lines that turn toward what they touch and wander on their own, and it carries the lesson this chapter's rules are built on: a behavior that reads every neighbor has to *average* what they ask for, since adding them up makes a crowd pull harder the bigger it gets, and the flocks then gather into three knots and leave the surface bare.
-- [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` really does, ahead of [Chapter 16](16-LayersAndEffects.md).
+- [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` really does, ahead of [Chapter 19](19-LayersAndEffects.md).
 
 ---
 

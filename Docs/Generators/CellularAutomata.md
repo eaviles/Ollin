@@ -7,8 +7,8 @@
 A cellular automaton is a grid of cells that changes by a local rule. Ollin has two families of them. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells one generation at a time. The classic picture stacks the generations as rows. One number picks the rule, and the rule decides whether the picture is ordered, fractal, or chaotic. The second family is the **turmite** family, `Turmite`. A turmite is a small machine that walks a 2D grid and paints the cells it visits, and Langton's ant is the best-known one. Both families run on the CPU and produce geometry. They are deterministic, and they are cheap enough to rebuild live while you change a parameter.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-GridSimulations/WolframAndTurmite-dark.jpg">
-  <img src="../../Guide/Images/19-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-GridSimulations/WolframAndTurmite-dark.jpg">
+  <img src="../../Guide/Images/23-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
 </picture>
 
 The GPU version of the idea is **Lenia**, a continuous form of the Game of Life. It runs as a `Sim` on a persistent field, so it is documented with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.

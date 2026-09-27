@@ -125,7 +125,7 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 
 The constants change these maps completely, so adjust them to explore. The maps look best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)), because repeated visits to a pixel then brighten into filaments. Each map has its own character. Gumowski-Mira moves through a near-conservative field of islands and forms a shape with many petals. `mu` picks which petal shape you get, and the *starting point* picks which structure the orbit moves through. The long transient is the picture, so plot it with no `settle`. For a denser picture, layer several orbits from different seeded starting points. Ikeda folds everything into one swirl, which stays within roughly `[-0.4, 1.7] × [-2.2, 0.9]` at the default `u = 0.9`. Hopalong moves around nested rings that keep widening as the orbit runs. Its reach grows slowly with `count`, to roughly ±4 after a million steps at the defaults.
 
-<img src="../../Guide/Images/18-IteratedForms/Plates.jpg" alt="Four glowing pale-blue density plates on near-black: two Clifford attractors above and two de Jong attractors below, each a folded translucent form like an X-ray of smoke" width="560">
+<img src="../../Guide/Images/22-IteratedForms/Plates.jpg" alt="Four glowing pale-blue density plates on near-black: two Clifford attractors above and two de Jong attractors below, each a folded translucent form like an X-ray of smoke" width="560">
 
 <a name="sugar"></a>
 
@@ -165,7 +165,7 @@ let mine = ChaoticMap(start: .zero) { p in
 
 `StrangeAttractor` integrates **one** orbit and returns the points. `AttractorFlow` runs the same field on the GPU for a million particles at once. Each particle follows its own trajectory, and the flow steps all of them every frame. You see the attractor as a volume of particles rather than as a single curve. It is dense where the orbit moves slowly, thin where the orbit moves fast, and you can see it flowing along itself.
 
-<img src="../../Guide/Images/23-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
+<img src="../../Guide/Images/27-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
 ```swift
 var flow: AttractorFlow!

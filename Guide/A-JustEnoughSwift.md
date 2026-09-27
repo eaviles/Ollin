@@ -250,11 +250,11 @@ The guide uses three, all from Ollin:
 drawText("frame \(frameCount)", 40, 40)
 ```
 
-Triple quotes make a multiline string, verbatim, line breaks and all. That matters in [Chapter 17](17-YourFirstShader.md), where a fragment shader rides inside your Swift file as one `"""` literal.
+Triple quotes make a multiline string, verbatim, line breaks and all. That matters in [Chapter 18](18-YourFirstShader.md), where a fragment shader rides inside your Swift file as one `"""` literal.
 
 ## What the guide never needed
 
-Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, and enums with payloads are real and nearly all skippable here. Two more show up in a light form. A call that can fail is marked `throws`, and the listings mostly call it with `try?`, which turns a failure into the `nil` the tools above handle. And reading a recorded file or a still picture is an `async` call. [Chapter 28](28-SoundAndControl.md) writes its `try await` inside the framework's own `waitFor { }`, and [Chapter 30](30-Seeing.md) names the one that reads a photograph. Otherwise the framework's design keeps all of it off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
+Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, and enums with payloads are real and nearly all skippable here. Two more show up in a light form. A call that can fail is marked `throws`, and the listings mostly call it with `try?`, which turns a failure into the `nil` the tools above handle. And reading a recorded file or a still picture is an `async` call. [Chapter 34](34-SoundAndControl.md) writes its `try await` inside the framework's own `waitFor { }`, and [Chapter 32](32-Seeing.md) names the one that reads a photograph. Otherwise the framework's design keeps all of it off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
 
 If a chapter's Swift ever still feels like the obstacle, that's a bug in this guide, not in you, and the same [issue tracker](https://github.com/eaviles/Ollin/issues) that takes confusing math takes confusing Swift.
 
@@ -267,4 +267,4 @@ If a chapter's Swift ever still feels like the obstacle, that's a bug in this gu
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 32, Installations](32-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)
+[Contents](README.md#contents) · Previous: [Chapter 41, Installations](41-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

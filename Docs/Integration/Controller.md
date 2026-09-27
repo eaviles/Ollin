@@ -33,7 +33,7 @@ The drawing core then stays free of one more framework.
 a live object, in the same way that `mouseX` is a number rather than something
 that keeps changing under you. Read it inside `draw()`.
 
-<img src="../../Guide/Images/28-SoundAndControl/ReadingAPad.jpg" alt="A schematic game controller with the left stick held up and to the right, the right trigger half pulled, and the bottom face button lit, beside a list of five reads and the value each returns for that pose" width="820">
+<img src="../../Guide/Images/34-SoundAndControl/ReadingAPad.jpg" alt="A schematic game controller with the left stick held up and to the right, the right trigger half pulled, and the bottom face button lit, beside a list of five reads and the value each returns for that pose" width="820">
 
 | Read | What it is |
 | --- | --- |

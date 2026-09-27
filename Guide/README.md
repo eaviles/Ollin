@@ -38,11 +38,11 @@ Read the chapters in order the first time, because each one builds only on the o
 
 - **Part I, chapters 1 to 9.** Around 130 pages. It is the base everything else stands on, so it is the one part you cannot skip.
 - **Part II, chapters 10 to 15.** Around 90 pages, the shortest part. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
-- **Part III, chapters 16 to 20.** Around 100 pages. Chapter 17 is its gate, because chapters 19 and 20 write shader code of their own.
-- **Part IV, chapters 21 to 26.** Around 140 pages. Chapter 21 is its gate, and chapter 24 also wants the physics from chapter 11.
+- **Part III, chapters 16 to 20.** Around 100 pages. Chapter 18 is its gate, because chapters 19 and 20 write shader code of their own.
+- **Part IV, chapters 21 to 26.** Around 140 pages. Chapter 25 is its gate, and chapter 24 also wants the physics from chapter 11.
 - **Part V, chapters 27 to 32.** Around 180 pages, the longest part, and the loosest. Its chapters barely depend on each other, so read the ones you need in any order.
 
-Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 27](27-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 28](28-SoundAndControl.md) a microphone and later a MIDI controller. For [Chapter 30](30-Seeing.md) you want a webcam, and for [Chapter 32](32-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
+Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 33](33-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 34](34-SoundAndControl.md) a microphone and later a MIDI controller. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
 Work along in the live-reload host, `swift run OllinLive path/to/YourSketch.swift`. It recompiles your sketch on save, so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
@@ -73,29 +73,29 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part III: Pixels and light
 
-16. **[Layers and effects](16-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
-17. **[Your first shader](17-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
-18. **[Iterated forms](18-IteratedForms.md).** Pictures made by applying one rule over and over: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, a ball bouncing in a room, escape-time fractals, Newton's basins, and domain coloring.
-19. **[Simulations on a grid](19-GridSimulations.md).** Fields that carry their own state on the GPU: cellular automata, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, and watercolor.
-20. **[Simulations made of particles](20-ParticleSimulations.md).** A buffer of individuals updated by one small program: a million grains, slime mold, ant colonies, Particle Life, crowds at scale, SPH fluid and jellies, and evolution.
+19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+22. **[Iterated forms](22-IteratedForms.md).** Pictures made by applying one rule over and over: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, a ball bouncing in a room, escape-time fractals, Newton's basins, and domain coloring.
+23. **[Simulations on a grid](23-GridSimulations.md).** Fields that carry their own state on the GPU: cellular automata, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, and watercolor.
+24. **[Simulations made of particles](24-ParticleSimulations.md).** A buffer of individuals updated by one small program: a million grains, slime mold, ant colonies, Particle Life, crowds at scale, SPH fluid and jellies, and evolution.
 
 ### Part IV: The third dimension
 
-21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and the shadows they throw, air you can see, materials and matcaps, and the depth buffer's own effects.
-22. **[Meshes, maps, and materials](22-Meshes.md).** Meshes loaded from a file and built from other meshes, pictures that set what a surface is, texel by texel, and finishes you set with numbers: metal and dielectric, environments as the light source, glass, coated paint, cloth, and skin.
-23. **[Landscapes and multitudes](23-Landscapes.md).** Ground grown from noise and weathered by rain, and the rivers read off it. Then ways to draw more copies of something than you could place by hand: a field of particles, instanced meshes, copies scattered over a surface, a world cut down to what the camera sees, and grass that is drawn without ever being built. Last, a sea made from its waves.
-24. **[Worlds with weight](24-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
-25. **[Characters, vehicles, and cloth](25-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
-26. **[Sculpting with fields](26-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals. Then the traced light they deserve: mirrors that see off screen, bounce, caustics, and the flare a lens leaves. Last, the work done across frames: temporal anti-aliasing, highlights that hold still, motion blur, upscaling, and frames drawn in between.
+25. **[3D, gently](25-3DGently.md).** A camera, solids, lights and the shadows they throw, air you can see, materials and matcaps, and the depth buffer's own effects.
+26. **[Meshes, maps, and materials](26-Meshes.md).** Meshes loaded from a file and built from other meshes, pictures that set what a surface is, texel by texel, and finishes you set with numbers: metal and dielectric, environments as the light source, glass, coated paint, cloth, and skin.
+27. **[Landscapes and multitudes](27-Landscapes.md).** Ground grown from noise and weathered by rain, and the rivers read off it. Then ways to draw more copies of something than you could place by hand: a field of particles, instanced meshes, copies scattered over a surface, a world cut down to what the camera sees, and grass that is drawn without ever being built. Last, a sea made from its waves.
+28. **[Worlds with weight](28-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
+29. **[Characters, vehicles, and cloth](29-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
+30. **[Sculpting with fields](30-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals. Then the traced light they deserve: mirrors that see off screen, bounce, caustics, and the flare a lens leaves. Last, the work done across frames: temporal anti-aliasing, highlights that hold still, motion blur, upscaling, and frames drawn in between.
 
 ### Part V: Out into the world
 
-27. **[Depth and the iPhone as a sensor](27-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
-28. **[Sound and control](28-SoundAndControl.md).** Hearing loudness, spectrum, beats, pitch, speech and sound events. Then the controls in your hands: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, and serial and Bluetooth wires to the physical world.
-29. **[Making sound](29-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, instruments built by patching or from recordings, physical models of a string, a struck shape, a bow and a tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
-30. **[Seeing](30-Seeing.md).** The webcam as input, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
-31. **[Sharing and performing](31-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
-32. **[Installations](32-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
+33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+34. **[Sound and control](34-SoundAndControl.md).** Hearing loudness, spectrum, beats, pitch, speech and sound events. Then the controls in your hands: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, and serial and Bluetooth wires to the physical world.
+36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, instruments built by patching or from recordings, physical models of a string, a struck shape, a bow and a tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
+32. **[Seeing](32-Seeing.md).** The webcam as input, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
+38. **[Sharing and performing](38-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
+41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 
 ### Appendices
 

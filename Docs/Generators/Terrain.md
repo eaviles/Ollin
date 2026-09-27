@@ -14,8 +14,8 @@ drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-Landscapes/Erosion-dark.jpg">
-  <img src="../../Guide/Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/27-Landscapes/Erosion-dark.jpg">
+  <img src="../../Guide/Images/27-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
 </picture>
 
 ### Contents
@@ -97,7 +97,7 @@ drawMesh(mesh.textured(colorTexture))                     // e.g. a height ramp
 let map = land.image()                                    // grayscale heightmap
 ```
 
-<img src="../../Guide/Images/23-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
+<img src="../../Guide/Images/27-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
 
 `mesh(...)` emits a solid terrain. It is a `width × depth` grid centered on the origin in the ground plane, with heights lifted to `height · value` on +y, smooth normals, and `0…1` UVs. The UVs map the sheet in plan view. A texture built by running each sample's height through a [`Ramp`](../Drawing/Color.md) therefore paints altitude bands, and each step of that is a single call. `image(_ ramp:in:)` paints each sample through the ramp, and its optional `range` maps a height span onto the ramp. `coloredMesh(width:depth:height:_:in:)` hands back the mesh already wearing that texture. Build the mesh when the field changes, not once per frame. The `3D/Geometry/Terrain` example uses exactly this. `image()` gives you the heightmap as pixels, ready to inspect, [dither](../Drawing/Color.md#dithering), or feed to the image form of [`isolines`](Isolines.md). The field form draws a contour map directly:
 

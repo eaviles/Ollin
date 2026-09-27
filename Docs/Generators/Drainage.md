@@ -20,8 +20,8 @@ for river in water.rivers(minFlow: 140, in: mapFrame) {
 What comes back is ordinary geometry. The points sit in the frame you asked for, so you can stroke them, hatch them, or send them to a pen through [SVG export](../Output/Export.md).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-Landscapes/WhereWaterGoes-dark.jpg">
-  <img src="../../Guide/Images/23-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/27-Landscapes/WhereWaterGoes-dark.jpg">
+  <img src="../../Guide/Images/27-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
 </picture>
 
 ### Contents

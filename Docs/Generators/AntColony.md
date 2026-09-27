@@ -8,7 +8,7 @@
 
 The web itself is the part worth drawing. `trails` holds the colony's current trail strength for every edge, so drawing it each iteration shows a haze of possibilities condensing into one answer.
 
-<img src="../../Guide/Images/20-ParticleSimulations/AntColonySearch.jpg" alt="Three dark panels of the same scatter of white city dots. Left, after one iteration, a pale web of trails over nearly every pair. Middle, after eight, fewer and stronger edges. Right, after sixty, a settled web with the best tour traced through the cities in orange" width="680">
+<img src="../../Guide/Images/24-ParticleSimulations/AntColonySearch.jpg" alt="Three dark panels of the same scatter of white city dots. Left, after one iteration, a pale web of trails over nearly every pair. Middle, after eight, fewer and stronger edges. Right, after sixty, a settled web with the best tour traced through the cities in orange" width="680">
 
 `AntColony` is a stateful object that you hold on to. `step()` runs one full iteration, and `step(_:)` runs a batch of them. It is seeded, so the same seed searches the same way.
 

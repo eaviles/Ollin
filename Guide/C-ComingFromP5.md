@@ -174,7 +174,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
 | `createImage(w, h)` | `Image(width:height:)` | |
-| `createGraphics(w, h)` | `makeRenderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 16](16-LayersAndEffects.md)) |
+| `createGraphics(w, h)` | `makeRenderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 19](19-LayersAndEffects.md)) |
 
 ### Mouse and keyboard
 
@@ -195,12 +195,12 @@ Each of these gets a chapter, so the table only points.
 | p5.js | Ollin | Where |
 |---|---|---|
 | `createSlider`, `createButton`, the DOM | `@Param` parameters in the inspector | [Chapter 1](01-HelloOllin.md) |
-| `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 16](16-LayersAndEffects.md) |
-| `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | [Chapter 17](17-YourFirstShader.md) |
-| `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 21](21-3DGently.md) |
-| `orbitControl()` | `cameraControl()` | [Chapter 21](21-3DGently.md) |
-| `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 21](21-3DGently.md) |
-| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 28](28-SoundAndControl.md) |
+| `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 19](19-LayersAndEffects.md) |
+| `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | [Chapter 18](18-YourFirstShader.md) |
+| `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 25](25-3DGently.md) |
+| `orbitControl()` | `cameraControl()` | [Chapter 25](25-3DGently.md) |
+| `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 25](25-3DGently.md) |
+| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 34](34-SoundAndControl.md) |
 
 ### Saving your work
 
@@ -212,8 +212,8 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 | `saveFrames(…)` | `--export-sequence out --seconds 5` | |
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
-| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 31](31-SharingAndPerforming.md)) |
-| the sketch runs in the browser | `--export-web out.html` | a page that plays what the sketch drew, with no framework in the browser ([Chapter 31](31-SharingAndPerforming.md)) |
+| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 38](38-SharingAndPerforming.md)) |
+| the sketch runs in the browser | `--export-web out.html` | a page that plays what the sketch drew, with no framework in the browser ([Chapter 38](38-SharingAndPerforming.md)) |
 
 ## Different on purpose
 
@@ -227,9 +227,9 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 **The clock replaces the frame counter.** `time` and `deltaTime` are seconds. Motion written against them holds its speed on a 60 Hz display and a 120 Hz one alike. `frameCount` is still there for counting frames, but it's the wrong unit for speed. [Chapter 3](03-MotionAndTime.md) builds the whole motion vocabulary on this.
 
-**The canvas wipes itself.** In p5 the pixels persist, `background()` is the wipe, and leaving it out is the classic trails trick. Ollin clears every frame whether or not you call `background`, so a ported trails sketch loses its trails in silence. The opt-out is one call, `noClear()`, and [Chapter 16](16-LayersAndEffects.md) builds the long-exposure style on it.
+**The canvas wipes itself.** In p5 the pixels persist, `background()` is the wipe, and leaving it out is the classic trails trick. Ollin clears every frame whether or not you call `background`, so a ported trails sketch loses its trails in silence. The opt-out is one call, `noClear()`, and [Chapter 19](19-LayersAndEffects.md) builds the long-exposure style on it.
 
-**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. [Chapter 31](31-SharingAndPerforming.md) is about doing that well.
+**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. [Chapter 38](38-SharingAndPerforming.md) is about doing that well.
 
 ## Habits worth dropping
 
@@ -239,7 +239,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 - **Mixing colors in RGB.** `Color.mix` defaults to a perceptual space, so the midpoint of blue and yellow is a color you'd actually want. [Chapter 2](02-Color.md) shows the difference side by side.
 - **Hand-rolling grids from margins and nested loops.** `grid(columns: 12, rows: 8)` hands you the cells and their centers in one loop, indices included. [Chapter 6](06-GridsAndRepetition.md).
 - **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the parameter while the sketch runs. When the value feels right, make it the new default. [Chapter 1](01-HelloOllin.md).
-- **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers, which [Chapter 16](16-LayersAndEffects.md) covers. Anything per-pixel you'd invent yourself is a short `shade` function away, in [Chapter 17](17-YourFirstShader.md).
+- **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers, which [Chapter 19](19-LayersAndEffects.md) covers. Anything per-pixel you'd invent yourself is a short `shade` function away, in [Chapter 18](18-YourFirstShader.md).
 
 ## Go deeper
 
