@@ -256,7 +256,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`, and `.ising`: the classic state automata as fields, from spirals and gliders to a circuit, a neighborhood sorting itself, and a magnet against the heat | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 23](23-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
-| Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 18](18-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
+| Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 14](14-FieldsAndFlow.md), [Ch 18](18-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
 
 ## Shaders and compute
 

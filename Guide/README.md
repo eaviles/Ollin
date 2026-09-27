@@ -70,7 +70,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 11. **[Forces and physics](11-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), chases that trace curves of pursuit, flocking from three local rules and the grid that keeps it cheap, a crowd that makes room, and fireflies falling into step.
 13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars with and without arithmetic, and shape grammars. Then growth by crowding, claiming space, chance, voltage, collision, and wandering: differential growth, space colonization, frost from frozen walkers, dielectric breakdown, cracks, and meanders.
-14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: contours where a field equals something, streamlines, evenly spaced flow, particles carried along, and a field you pin down yourself.
+14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: contours where a field equals something and the still lines of a ringing plate, streamlines, evenly spaced flow, particles carried along, and a field you pin down yourself.
 
 ### Part III: Shapes, lines, and marks
 

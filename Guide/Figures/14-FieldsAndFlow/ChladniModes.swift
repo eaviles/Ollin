@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 18): six Chladni modes. Each panel scatters grains
+// Guide diagram (Chapter 14): six Chladni modes. Each panel scatters grains
 // over a square plate and keeps only the ones sitting near a nodal line,
 // where the plate is not moving. The mode numbers m and n are the whole
 // input, and every figure here is one closed-form expression, not a sim.

@@ -7,8 +7,8 @@
 Chladni figures are the patterns that sand forms on a ringing plate. When you bow or drive a square plate at one of its resonant modes, the plate vibrates everywhere except along its **nodal lines**. Loose sand walks off the moving regions and gathers where the plate stands still, so it traces the symmetric figures Ernst Chladni cataloged in 1787. Ollin ships the standing-wave field in closed form. You can reach it as a per-point function for geometry, or as a GPU [`Generator`](../Drawing/Effects.md#generate) that fills a layer with the finished figure.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-YourFirstShader/ChladniModes-dark.jpg">
-  <img src="../../Guide/Images/18-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/14-FieldsAndFlow/ChladniModes-dark.jpg">
+  <img src="../../Guide/Images/14-FieldsAndFlow/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
 </picture>
 
 ### Contents

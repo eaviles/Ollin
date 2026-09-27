@@ -140,7 +140,16 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
   <img src="Images/18-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
 </picture>
 
-There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 16](16-CurvesAndFigures.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [a section below](#standing-waves-chladni-figures) takes apart.
+There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 16](16-CurvesAndFigures.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is the ringing plate from [Chapter 14](14-FieldsAndFlow.md#standing-waves-chladni-figures), the same closed form evaluated at every pixel.
+
+The plate has two readings:
+
+```swift
+drawImage(generate(.chladni(m: 5, n: 2)).image, 0, 0)
+drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
+```
+
+`.sand` gathers grains onto the nodes, like the scattered sand in Chapter 14. `.wave` shows the plate swinging through its cycle instead. The same rule about `m` and `n` holds here, so keep `m` larger. The mode numbers can also come from sound. [Chapter 34](34-Listening.md) teaches listening, and the `Audio/ChladniResonance` example picks `m` and `n` by which pitches are loud. A piece of music then turns into the plate that would have produced it.
 
 This is the part to do rather than read. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
 
@@ -276,38 +285,6 @@ Which parameters it reads, so you know how many floats to pass. A gap gets calle
 Which files it pulled in, in the order it read them.
 
 Pass several files at once and each is reported on its own. The command exits nonzero if any of them failed, which is what you want in a script.
-
-## Standing waves: Chladni figures
-
-Not every wave needs simulating, and this one is a formula you can evaluate at a pixel. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that weren't. Those lines are the plate's nodes, and the figures they make are beautiful enough that Chladni toured Europe demonstrating them.
-
-The square plate's answer has a closed form, so Ollin gives you the value directly instead of a simulation:
-
-```swift
-let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
-```
-
-`u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which is to say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. That's the whole recipe. Scatter grains, and keep the ones sitting near a nodal line.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/18-YourFirstShader/ChladniModes-dark.jpg">
-  <img src="Images/18-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
-</picture>
-
-One rule saves an afternoon. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Those are properties of the physics rather than bugs to work around. Keep `m` larger than `n` and every mode gives you a figure.
-
-`m` and `n` don't have to be whole numbers, which is the door to animation. Fractional modes morph continuously from one figure to the next. A slow tour through mode space then makes the sand rearrange itself, in a way that looks like the bow moving. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
-
-For a whole plate at once there's a GPU version, which is the faster way to fill the canvas:
-
-```swift
-drawImage(generate(.chladni(m: 5, n: 2)).image, 0, 0)
-drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
-```
-
-`.sand` gathers grains onto the nodes like the figure above, and `.wave` shows the plate swinging through its cycle instead. And the nodal lines are just where the field crosses zero, so the vector version of a Chladni figure is a contour extraction away. The [isolines reference](../Docs/Generators/Isolines.md) covers it.
-
-The natural next step is to stop choosing the mode numbers by hand. [Chapter 34](34-Listening.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
 
 ## Putting it together: aurora
 

@@ -82,11 +82,46 @@ Passing all the levels at once samples the field a single time and traces them a
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there's a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That's how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 18](18-YourFirstShader.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+
+## Standing waves: Chladni figures
+
+The noise contours above sit at whatever level you pick. Some fields come with a level that means something on its own, and zero is the usual one. A vibrating plate is the classic example. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that weren't. Those lines are the plate's **nodes**, the places where it doesn't move at all. Chladni toured Europe showing the figures they make.
+
+The square plate's movement has a closed form, so Ollin gives you the value at any point directly instead of a simulation:
+
+```swift
+let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
+```
+
+`u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. The recipe follows from that. Scatter grains, and keep the ones sitting near a nodal line.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/ChladniModes-dark.jpg">
+  <img src="Images/14-FieldsAndFlow/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+</picture>
+
+One rule saves an afternoon. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Both are properties of the physics rather than bugs to work around. Keep `m` larger than `n` and every mode gives you a figure.
+
+`m` and `n` don't have to be whole numbers, and that is how you animate one. Fractional modes morph continuously from one figure to the next. A slow tour through mode space makes the sand rearrange itself, the way it does when the bow moves. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
+
+The grains are a picture of the zero level, and the section above already has the tool for the lines themselves. Hand the same function to `isolines` at zero, and the nodal lines come back as contours you can stroke or plot:
+
+```swift
+let plate = Rectangle(x: 90, y: 90, width: 900, height: 900)
+let lines = isolines(at: 0, in: plate, resolution: 240) { p in
+    let uv = plate.uv(of: p)
+    return chladni(uv.x, uv.y, m: 5, n: 2)
+}
+noFill()
+for line in lines { drawPolyline(line.points, closed: line.isClosed) }
+```
+
+`plate.uv(of:)` turns a point on the canvas into the plate's own `0...1` coordinates, which is what `chladni` reads. To fill a whole layer with the plate instead, [Chapter 18](18-YourFirstShader.md#the-pattern-fields) evaluates the same closed form on the GPU, once for every pixel.
 
 ## Following the flow
 
-The field becomes drawing the moment you stop interviewing it and start obeying it. Put a point down anywhere. Ask the field which way. Take a small step that way. Ask again from where you landed:
+The two sections above drew where a number field equals something. The rest of the chapter goes back to the direction field from the compass. It becomes drawing the moment you stop interviewing it and start obeying it. Put a point down anywhere. Ask the field which way. Take a small step that way. Ask again from where you landed:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/TraceSteps-dark.jpg">
@@ -220,13 +255,14 @@ Then make it yours:
 
 ## Where this comes from
 
-Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The combed-fiber picture is line integral convolution, which Brian Cabral and Leith Leedom published in 1993 for showing vector fields. The print at the top tips its hat to Tyler Hobbs, whose flow-field work defined the look for a generation. The best known of that work is *Fidenza* (2021), and the essay "Flow Fields" generously teaches the craft. Marching squares is the two-dimensional version of the marching cubes algorithm. William Lorensen and Harvey Cline published that algorithm in 1987 for medical imaging. A great many of these techniques were born there before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The combed-fiber picture is line integral convolution, which Brian Cabral and Leith Leedom published in 1993 for showing vector fields. The print at the top tips its hat to Tyler Hobbs, whose flow-field work defined the look for a generation. The best known of that work is *Fidenza* (2021), and the essay "Flow Fields" generously teaches the craft. The plate figures are Ernst Chladni's, from *Entdeckungen über die Theorie des Klanges* (1787), and the closed form Ollin evaluates follows Paul Bourke's "Chladni Plate Mathematics". Marching squares is the two-dimensional version of the marching cubes algorithm. William Lorensen and Harvey Cline published that algorithm in 1987 for medical imaging. A great many of these techniques were born there before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Flow fields](../Docs/Generators/FlowField.md): the full `FlowField` reference, including advection and the transient-sugar rule.
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
 - [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
+- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the amplitude mix that opens up more figures, the nodal lines as geometry, and particles walked down to the nodes. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example tours the modes.
 - [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it ([Chapter 12](12-FlocksAndSwarms.md)'s `follow(_:)`).
 - [Fitting](../Docs/Drawing/Fitting.md): the kernels `RadialBasis` can use, fields of vectors and colors, smoothing, and everything `Fit.minimize` takes.
 - [Layered effects](../Docs/Drawing/Effects.md): `.streaked(along:length:field:)` and the `.lineIntegralConvolution` combine, with the three field readings.
