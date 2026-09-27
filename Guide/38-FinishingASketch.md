@@ -4,9 +4,9 @@
 
 # 38. Finishing a sketch
 
-<!-- Hook image: the finished sketch, one keeper finished as a poster, a loop, and a plot, with its recipe read back. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the contour chart (Figures/38-FinishingASketch/ContourChart.swift). Waiting on its render on the Mac. -->
 
-A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, and motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow.
+A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, and motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
 
 ## Leaving as files
 
@@ -640,15 +640,108 @@ One thing Ollin will not do is write the description for you. It could list your
 
 See [Accessibility](../Docs/Helpers/Accessibility.md) for the rest. `Examples/Basic/Describing` is a day passing over that bay, saying what it shows as it goes.
 
-<!-- Putting it together: the finished sketch goes here: one keeper finished as a poster, a loop, and a plot, with its recipe read back, built from this chapter's steps, with its full listing. -->
+## Putting it together: the contour chart
+
+The contour chart is one keeper made ready to leave. Rings of single lines circle a still center. One looping noise field pushes them in and out, so neighboring rings bend together and the outer ones bend most. The same sketch file leaves three ways, as a poster, a loop, and a plot. Then its recipe is read back to render it again. Make `MySketches/ContourChart.swift`:
+
+```swift
+import Ollin
+
+final class ContourChart: Sketch {
+    @Param(4...40) var rings = 22
+    @Param(0...0.2) var swell = 0.06
+    @Param var paper = Color(hex: 0xF2EDE3)
+    @Param var ink = Color(hex: 0x1D2A44)
+
+    let lapSeconds = 8.0
+    override var loopDuration: Double? { lapSeconds }
+
+    override func setup() {
+        seed(4821)          // the variation this keeper was found at
+    }
+
+    override func draw() {
+        background(paper)
+        noFill()
+        stroke(ink)
+        let unit = min(width, height)       // every size is a fraction of the canvas
+        strokeWeight(unit * 0.002)
+
+        let lap = loopProgress(over: lapSeconds)
+        for k in 0..<rings {
+            let depth = Double(k) / Double(rings)
+            let base = unit * (0.04 + 0.36 * depth)
+            let ring = (0..<240).map { j -> Vector2 in
+                let angle = Double(j) / 240 * .tau
+                let push = signedNoise(cos(angle) * 0.8 + depth * 1.5,
+                                       sin(angle) * 0.8, loop: lap)
+                let r = base + push * unit * swell * (0.3 + depth)
+                return center + Vector2(cos(angle), sin(angle)) * r
+            }
+            drawPolyline(ring, closed: true)
+        }
+
+        describe("\(rings) contour lines around a still center, the outer ones bending most, drifting in an eight-second loop.")
+    }
+}
+```
+
+Most of the listing is the drawing. The rest is what gets it ready to leave.
+
+The seed comes from [Reproducibility is part of the piece](#reproducibility-is-part-of-the-piece). The line in `setup()` is the last one written. Before it, a contact sheet showed the variations to choose from:
+
+```sh
+swift run OllinLive MySketches/ContourChart.swift --export-grid sheet.png --seeds 25
+```
+
+Each tile is labeled with its seed. The keeper was 4821, so `seed(4821)` fixes it. A sketch that sets its own seed ignores `--seed`, so from here every export draws that same chart.
+
+The four parameters are the values tuned in the inspector and copied back into their declarations. A headless export reads what the code says, not what the inspector last showed.
+
+The lap is declared, as [Chapter 3](03-MotionAndTime.md) taught. The noise is read with `loop:`, and the lap runs through it once every `lapSeconds`. So the field drifts and comes home at the end of each lap. The same number is `loopDuration`, which is what lets the loop export find its own length.
+
+Every size is a fraction of `unit`, the shorter side of the canvas, as [Placing things without pixels](01-HelloOllin.md#placing-things-without-pixels) advises. The radii and the line weight scale together, so the chart draws the same on any canvas. Everything is stroked and nothing is filled. A sketch made of lines gives a pen the lines it already has, with nothing to hatch.
+
+The last line is the description from [Saying what it shows](#saying-what-it-shows-describable-output). It is built from `rings`, so it stays true when the count changes.
+
+Then make it yours:
+
+- Size it for paper. Add `override var canvasSize: CanvasSize { .a3.dpi(300) }`, and the PDF is a true A3 page. The chart stays centered and sized to the shorter side, since every size in it is a fraction of the canvas.
+- Put it on a page. `--export-web contours.html` records one lap with no length given, because the sketch declares it. Polylines cross to the page, and the page wraps the lap without a seam.
+- Keep the code with the file. Add `--capture-source` to any of the exports below. The file is then named after a commit of your working tree, so even edits you never committed come back.
+
+When it is ready, it leaves as a poster, a loop, and a plot:
+
+```sh
+swift run OllinLive MySketches/ContourChart.swift --export-pdf poster.pdf
+swift run OllinLive MySketches/ContourChart.swift --export-loop contours.gif --gif-width 540
+swift run OllinLive MySketches/ContourChart.swift --export-svg plot.svg
+```
+
+The poster is a PDF, because every line in it is geometry, so it prints sharp at any size. A PNG would work too, but `--render-scale` would do nothing for it. Stroked lines already work out their coverage by formula, which is why the dial is for filled shapes and outline text. The loop is one lap, exactly, with no `--seconds` given. The plot is the same polylines as single paths, in the order they were drawn, and the SVG carries the description with it.
+
+Then read the recipe back. A GIF has nowhere to keep one, so read it from the poster, where a PDF keeps it in its Subject field:
+
+```sh
+exiftool -Subject poster.pdf
+```
+
+It names seed 4821, the four parameter values, the frame, and the commit the code was at. To render a sibling with one thing changed, hand a parameter back in:
+
+```sh
+swift run OllinLive MySketches/ContourChart.swift --export-pdf dusk.pdf --param paper=#14182A --param ink=#E9DCC4
+```
+
+The new file's recipe names the new colors, and the sketch on disk is untouched.
 
 ## Where this comes from
 
-The pen-plotter revival that SVG export serves grew around the AxiDraw and the #plottertwitter community. They are heirs of the 1960s computer-art plotters this guide's recreations visit. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The pen-plotter revival that SVG export serves grew around the AxiDraw and the #plottertwitter community. They are heirs of the 1960s computer-art plotters this guide's recreations visit. Reading a recipe back leans on Phil Harvey's ExifTool, the common reader for the metadata a file carries. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching, the named frame rates, and transparent output.
+- [Perfect loops](../Docs/Output/Export.md#perfect-loops), [contact sheets](../Docs/Output/Export.md#contact-sheets-proofing-a-variation-space), and [the recipe](../Docs/Output/Export.md#reproducibility-metadata): the lap an export finds for itself, the sheet a keeper is chosen from, and where each format keeps its recipe.
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.

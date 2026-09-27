@@ -346,8 +346,8 @@ Draws from: `Docs/Helpers/Composition.md`, `Docs/Helpers/Sonification.md`, `Docs
 **38. Finishing a sketch.**
 Teaches: exporting stills, sequences, video, GIF; a web page that plays the sketch back; SVG for plotters (closing Ch 15's loop); print separations and a 3D print; USDZ and spatial video; reproducibility as a sharing feature (seeds, params); describable output. Performing is Ch 39's, and handing the work over is Ch 40's.
 Assumes: everything before it, lightly.
-Payoff: one keeper finished as a poster, a loop, and a plot, with its recipe read back (to be drafted; the set moved to Ch 39).
-Figures: the export map; the headless capture; the separations; the fabrication sheet; the spatial pair; describable output; the finished sketch.
+Payoff: the contour chart. Rings of single lines pushed by one looping noise field, finished as a keeper: the seed fixed after a contact sheet, the tuned parameters written back, the lap declared, every size a fraction of the canvas, and a description built from its own numbers. It leaves as a PDF poster, a one-lap GIF, and an SVG plot, and its recipe is read back from the poster and handed in again with `--param`. The set moved to Ch 39. Its source is drafted and its render is owed.
+Figures: the export map; the headless capture; the separations; the fabrication sheet; the spatial pair; describable output; the contour chart.
 Draws from: `Docs/Output/Export.md`, `Docs/Output/Web.md`, `Docs/Output/PrintSeparations.md`, `Docs/Output/Fabrication.md`, `Docs/Output/Spatial.md`; `Examples/Export/`.
 
 **39. Performing.**
