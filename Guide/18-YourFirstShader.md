@@ -437,4 +437,4 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 19, Layers and effects](19-LayersAndEffects.md) · Next: [Chapter 22, Iterated forms](22-IteratedForms.md)
+[Contents](README.md#contents) · Previous: [Chapter 17, Marks and media](17-MarksAndMedia.md) · Next: [Chapter 19, Layers and effects](19-LayersAndEffects.md)
