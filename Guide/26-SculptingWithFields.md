@@ -304,7 +304,7 @@ Meshes and fields differ in a few places over which finish applies to which. The
 
 ## Light that bounces: global illumination
 
-Every light in the last two chapters worked the same way. It left the lamp, hit a surface, and stopped. Real light doesn't stop. The sun patch on your floor lights your ceiling from below. A red wall tints the white shelf beside it, and the dark side of everything in the room is filled in by light arriving second-hand. **Direct light only ever explains half a picture.** The other half has bounced at least once. One call turns that half on:
+Every light since [Chapter 21](21-3DGently.md) worked the same way. It left the lamp, hit a surface, and stopped. Real light doesn't stop. The sun patch on your floor lights your ceiling from below. A red wall tints the white shelf beside it, and the dark side of everything in the room is filled in by light arriving second-hand. **Direct light only ever explains half a picture.** The other half has bounced at least once. One call turns that half on:
 
 ```swift
 spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0), intensity: 3)
@@ -516,7 +516,7 @@ Exports never interpolate. What you keep is the frames you drew, so no file ever
 
 ## Putting it together: molten
 
-The finished sketch is a single body of four melted lobes, twisted a little. It's finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
+The finished sketch is a single body of four melted lobes, twisted a little. It's finished as a polished glaze, a smooth `.dielectric` rather than glass, under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
 
 ```swift
 import Ollin
