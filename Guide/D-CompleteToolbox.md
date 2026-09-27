@@ -143,7 +143,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Everyday math | `map`, `lerp`, `dist`, `clamp`, `fract`, `step`, `smoothstep`, `.tau` | [Ch 3](03-MotionAndTime.md) | [Math](../Docs/Helpers/Math.md) |
 | Loop phases | `loopProgress` and `pingPong`: the sketch clock as a 0…1 cycle | [Ch 3](03-MotionAndTime.md) | [Math](../Docs/Helpers/Math.md) |
 | Easing | The curve catalog, plus `@Eased` values that glide to what you assign | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
-| Smoothing | `@Smoothed` calms jittery inputs (mouse, sensors, knobs) as they arrive | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
+| Smoothing | `@Smoothed` calms jittery inputs (mouse, sensors, knobs) as they arrive | [Ch 35](35-ControlsAndSignals.md#one-parameter-three-hands) | [Animation](../Docs/Helpers/Animation.md) |
 | `Timeline` | Keyframes with per-segment easing, for choreographed sequences | [Ch 3](03-MotionAndTime.md) | [Animation](../Docs/Helpers/Animation.md) |
 | Random | Seeded `random`, Gaussian, choices (plain and weighted), shuffles | [Ch 4](04-Randomness.md) | [Random](../Docs/Generators/Random.md) |
 | Noise | `noise`, `signedNoise`, seamless `loop:` variants, layered `fbm`, `curlNoise` in the plane and in space and `curlField`, the flow field made from it, the whole family as a value in `noiseFields` for work off the main thread | [Ch 5](05-Noise.md), [Ch 14](14-FieldsAndFlow.md) | [Noise](../Docs/Generators/Noise.md) |

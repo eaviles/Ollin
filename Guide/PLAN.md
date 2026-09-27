@@ -86,7 +86,7 @@ Figures: RGB-vs-HSB wheel diagram; a mixing comparison strip (naive vs perceptua
 Draws from: `Docs/Drawing/Color.md`; `Examples/Color/`.
 
 **3. Motion and time.**
-Teaches: `time`, `deltaTime`, frame-rate independence; shaping functions as curves you can see: `map`, lerp, `step`, `smoothstep`, easing curves, each drawn as its curve next to the motion it produces (this is the chapter that must pass the smoothstep test; see AUTHORING.md); sine and cosine as "a point going around a circle", nothing more; phase; `Timeline` keyframes; `@Eased`/`@Smoothed`.
+Teaches: `time`, `deltaTime`, frame-rate independence; shaping functions as curves you can see: `map`, lerp, `step`, `smoothstep`, easing curves, each drawn as its curve next to the motion it produces (this is the chapter that must pass the smoothstep test; see AUTHORING.md); sine and cosine as "a point going around a circle", nothing more; phase; `Timeline` keyframes; `@Eased` and `@Sprung`.
 Assumes: Ch 1 (Ch 2 for nicer figures).
 Payoff: a perfectly looping kinetic piece exported as a GIF (the guide's first export).
 Figures: one curve-plus-motion pair per shaping function; the circle-to-sine diagram; the loop as GIF.
@@ -321,10 +321,10 @@ Figures: the analyzer anatomy; what it hears; the beat timeline; the speech and 
 Draws from: `Docs/Helpers/Audio.md`, `Docs/Helpers/Listening.md`; `Examples/Audio/`, `Examples/Integration/`.
 
 **35. Controls and signals.**
-Teaches: everything that steers a sketch from outside the inspector. `@Param` binding; MIDI, the MIDI clock, and timecode; OSC and OSCQuery; the network tempo session (Link); one parameter on three hands; TUIO tables; game controllers; serial sensors and Firmata; Bluetooth; data that arrives on its own (`DataFeed`, `PushFeed`, `Weather`); and the trackpad's knock as an output.
+Teaches: everything that steers a sketch from outside the inspector. `@Param` binding; MIDI, the MIDI clock, and timecode; OSC and OSCQuery; the network tempo session (Link); one parameter on three hands, with `@Smoothed` for a value that is not a parameter; TUIO tables; game controllers; serial sensors and Firmata; Bluetooth; data that arrives on its own (`DataFeed`, `PushFeed`, `Weather`); and the trackpad's knock as an output.
 Assumes: Ch 1 (`@Param`), Ch 34 (levels and moments, as sound gave them).
 Payoff: the weather rose. A rose of petals whose size and bloom are `@Param` values bound to two MIDI knobs and two OSC faders with smoothing and a show-rule, throbbing and turning on a Link beat, moved by a game controller's stick, its trails blown downwind by a `Weather` reading with calm fallbacks, and a trackpad knock on each downbeat. Kept as a live take (Ch 39). It leaves timecode, OSCQuery, TUIO, serial, Bluetooth, and the pushed feed to the variations and the sections themselves.
-Figures: the binding flow; musical time; timecode pieces; the published parameters; the shared downbeat; the surface frame; a pad being read; the serial loop; bytes into values; the polled and pushed feeds; the weather outside; the felt pattern; the weather rose.
+Figures: the binding flow; a smoothed signal; musical time; timecode pieces; the published parameters; the shared downbeat; the surface frame; a pad being read; the serial loop; bytes into values; the polled and pushed feeds; the weather outside; the felt pattern; the weather rose.
 Draws from: `Docs/Integration/MIDI.md`, `OSC.md`, `OSCQuery.md`, `Link.md`, `TUIO.md`, `Controller.md`, `Serial.md`, `Bluetooth.md`, `Haptics.md`, `Docs/Helpers/Parameters.md`, `LiveData.md`, `Weather.md`; `Examples/Integration/`, `Examples/Data/`.
 
 ### Part VII: Out into the world
@@ -425,7 +425,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 2 | taught (a three-panel figure over one gradient: why snapping bands, the two families and how each decides, `.none` as the teaching control, `levels:` posterizing, and the do-it-in-setup rule) |
 | Retained batches (`Batch`, `makeBatch`/`drawBatch`; `Drawing/Batches.md`) | Ch 15 | taught (after the plate's setup/draw split: what is still costing you per frame, `makeBatch`/`drawBatch`, the measured 150k-circle numbers, transforms at replay, and the refuse-at-the-funnel list) |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
-| `Helpers/Animation.md` (easing, `reversed()`/`mirrored()`, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
+| `Helpers/Animation.md` (easing, `reversed()`/`mirrored()`, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught (@Smoothed is taught in Ch 35, beside `smoothing:`) |
 | Picture fit: `ImageFit`, `drawImage(_:in:fit:)`, `Rectangle(covering:in:)` (`Drawing/Images.md`) | Ch 9 | taught ("The box is never the right shape" with the PictureFit figure: the three modes and what each gives up, the what-would-you-rather-lose framing, a round shape as the tell for a stretch, and cropping costing nothing) |
 | View boxes: `withViewBox(_:fit:_:)` (`Drawing/Drawing.md`) | Ch 6 | taught ("A cell that is a whole canvas" with the ViewBoxSheet figure: a clip that moves the coordinates too, the block still reading the whole canvas, `background` and the mouse remapped, the virtual canvas taking the sketch's shape, and labels belonging outside the block) |
 | 2D view control: `viewControl(center:zoom:in:)`, `viewCenter`/`viewZoom`/`resetView()` (`Drawing/Drawing.md`) | Ch 1 | taught ("Looking closer" under "The canvas is not the window", with the ViewCloser figure: drag and scroll, vector zoom costing no fidelity, the exact drag and the pointer-anchored zoom, what to draw before and after the call, and the remapped mouse) |

@@ -217,9 +217,9 @@ Once a curve is a value, you can make another from it. `curve.reversed()` runs t
 
 That is the whole reason to want it. A sketch that holds one curve as a parameter can send a shape out on `curve` and bring it home on `curve.reversed()`. The pair stays matched whatever the menu picks. The [DerivedCurves example](../Examples/Motion/DerivedCurves/Sketch.swift) does exactly that with three dots on one trip.
 
-## Values that chase, signals that shake: @Eased, @Sprung, @Smoothed
+## Values that chase: @Eased and @Sprung
 
-The shaping functions all assume you're steering `t` yourself, which makes them the chapter's second act, curves under your hand. The third act is motion that runs itself. Three property wrappers handle the everyday cases where you'd rather not steer.
+The shaping functions all assume you're steering `t` yourself, which makes them the chapter's second act, curves under your hand. The third act is motion that runs itself. Two property wrappers handle the everyday cases where you'd rather not steer.
 
 **`@Eased`** is for a value with a *target*. Assign where it should go, read where it currently is, and it glides over on its own along a curve and duration you pick once:
 
@@ -250,21 +250,6 @@ Click around and the dot springs to each click, with no progress variable for yo
 ```
 
 The two parameters are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `kick(_:)`, which shoves a spring without moving its target, and that's how you make something recoil in place. Behind the wrapper, `DampedSpring` evaluates the exact solution for a damped oscillator at each step, instead of integrating one step at a time. So any frame rate produces the same motion.
-
-**`@Smoothed`** is for the opposite situation, where the value arrives *from outside*, continuously, and shakes. A jittery mouse is the obvious case, and later in this guide it'll be MIDI knobs, camera trackers, and phone sensors. There's no target to ease toward here, only a noisy stream to clean up as it comes:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/SmoothedSignal-dark.jpg">
-  <img src="Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
-</picture>
-
-```swift
-@Smoothed var x = 0.0
-// each frame: feed the raw value in, read the calm one back
-x = mouseX
-```
-
-Behind it is an adaptive filter that stays steady while the signal is slow and snaps awake when it moves fast. A simple average can't manage that. File it away until Part V hands you your first shaky tracker, and the [Animation](../Docs/Helpers/Animation.md#smoothed) page has the tuning parameters when you need them.
 
 ## Choreography: Timeline
 

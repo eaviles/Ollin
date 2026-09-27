@@ -191,6 +191,21 @@ override func setup() {
 
 Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the parameter rather than to the wire.
 
+`smoothing:` belongs to a parameter. A value that is not a parameter can be calmed the same way. `@Smoothed` is for a value that arrives from outside, continuously, and shakes. A jittery mouse is one, and so are a tracker from [Chapter 32](32-Seeing.md) and a phone's tilt from [Chapter 33](33-DepthAndThePhone.md). There's no target to ease toward, only a noisy stream to clean up as it comes:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/35-ControlsAndSignals/SmoothedSignal-dark.jpg">
+  <img src="Images/35-ControlsAndSignals/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+</picture>
+
+```swift
+@Smoothed var x = 0.0
+// each frame: feed the raw value in, read the calm one back
+x = mouseX
+```
+
+Behind it is the adaptive filter `.smoothed` uses. It stays steady while the signal is slow and follows quickly when it moves fast, which a simple average can't manage. The [Animation](../Docs/Helpers/Animation.md#smoothed) page has the tuning parameters.
+
 A panel that grows past a dozen parameters starts to hide the one you want behind the ones that don't matter yet. A *show-rule* trims it: tell a parameter to appear only while another parameter gives it something to do, and the inspector tucks the row away the rest of the time.
 
 ```swift
@@ -643,6 +658,7 @@ The smoothing that holds still at rest is the 1€ filter of Géry Casiez, Nicol
 ## Go deeper
 
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
+- [`@Smoothed`](../Docs/Helpers/Animation.md#smoothed): the filter's tuning parameters, the raw value and the jump, and `OneEuroFilter` for a value that is not a property.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [OSCQuery](../Docs/Integration/OSCQuery.md): the parameters published as a tree, what each kind becomes, and what a client sends back.
