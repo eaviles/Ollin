@@ -4,83 +4,13 @@
 
 # 40. Handing it over
 
-<!-- Hook image: the finished sketch, still to be designed. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the sky clock (Figures/40-HandingItOver/SkyClock.swift). Waiting on its render on the Mac. -->
 
-The window you wrote a sketch in is only one place it can live. This chapter hands it over. Your phone takes it, with a finger for the mouse. The Mac takes it as a screen saver, a wallpaper, a menu-bar companion, or a widget. A friend who has never typed `swift` gets an app to double-click. Other programmers get behavior they can add to a sketch, and a package they can import. Every route wraps the sketch rather than porting it, so the `.swift` file stays the thing you work on.
-
-## In your pocket: the sketch on the phone
-
-A sketch written for the desk runs on a phone as it is. The renderer is the same, and so is `draw()`. A finger is the pointer, so `mouseX` and `mouseIsPressed` read the touch. Working on it is one command:
-
-```sh
-ollin phone Apps/OllinSketchApp/Sources/TouchRings.swift
-```
-
-The rings appear on the phone. Save the file, and under ten seconds later the phone shows the new version. The app writes its state down every second and reads it back when it launches. A save keeps the animation's phase and every value you tuned. It is `--keep-clock`, kept on the phone.
-
-A phone runs only code signed inside its app, so nothing can be swapped into it while it runs. Each save is a small build and a reinstall. That sounds slow and is not. The framework builds once, and after that a save recompiles one file.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/SaveToPhone-dark.jpg">
-  <img src="Images/40-HandingItOver/SaveToPhone.jpg" alt="A diagram of a save reaching the phone: the sketch file on the Mac with one line changed, three steps with their times, recompiled, installed again, and launched with the state read back, and two phones showing the rings before and after the save at the same radii in new colors, with a card of what the app writes down every second and the address the parameters open at on the Mac" width="680">
-</picture>
-
-The figure is the loop. The file on the Mac is saved with one line changed, the hue of the rings. The save recompiles that one file and relinks and signs the app, about five to seven seconds. It installs the app again over the cable or Wi-Fi, about two and a half, and launches it. The phone on the right is what launches: the rings in their new colors, at the radii the old version had reached, because the app writes its state down every second and reads it back at launch. That state is the clock and the seed, every `@Param` value, and every `@Saved` property. So the animation keeps its phase, and a value you tuned stays tuned. The framework itself is built for the phone once, about eighty seconds, and not again for that sketch.
-
-The phone's parameters open in a browser on the Mac, live in both directions. It is the [remote surface](../Docs/Integration/Remote.md) an installation is tuned from, pointed the other way.
-
-Two limits are the phone's. It has to be unlocked for the Mac to open the app. And it has to be on the cable, or awake on the same network. [The sketch on the phone](../Docs/Tools/OnThePhone.md) says what comes along, what stays on the desk, and how to write the app by hand.
-
-The app that command writes is its own, under the caches folder. To keep one, make it a project:
-
-```sh
-ollin new Rings --kind ios-app
-```
-
-Out comes the sketch, a host that owns the entry point, and the spec the Xcode project is written from. Run `xcodegen generate`, open the project, pick the phone, press Run. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md) offers the same kind from its menu.
-
-### Leaving it on the Mac
-
-There is a way to hold the sketch without installing it at all. It keeps running on the Mac, and the phone shows its frames. The capture app from [Chapter 33](33-DepthAndThePhone.md) is the screen:
-
-```swift
-import Ollin
-import OllinPhone
-
-final class Pour: Sketch {
-    let device = PhoneDevice()
-
-    override var canvasSize: CanvasSize { .size(1080, 2340) }
-
-    override func setup() {
-        device.show(self)
-    }
-
-    override func draw() {
-        background(Color(white: 0.05))
-        if mouseIsPressed {
-            drawCircle(mouseX, mouseY, 20 + pressure * 40)
-        }
-    }
-}
-```
-
-That one call asks the phone for its **Sketch** mode. From then on the Mac compresses each frame as video and sends it down the cable, and the phone shows it full screen. The first finger on the picture is the pointer, as it is in the installed app, so the same `mouseX` and `mouseIsPressed` work both ways. The canvas is the phone's own shape, nine across and nineteen and a half down.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/ShowOnPhone-dark.jpg">
-  <img src="Images/40-HandingItOver/ShowOnPhone.jpg" alt="A diagram of a sketch shown on the phone from the Mac: the live window on the left with a trail of paint and a finger's circle in it, each frame compressed as HEVC on the Mac's media engine, a cable carrying pictures to the phone on port 1339 and fingers and tilt back on port 1338, the phone on the right showing the same picture with a fingertip resting on the circle, and the first finger set as mouseX, mouseY, mouseIsPressed, and pressure before the next draw" width="680">
-</picture>
-
-Two connections share the cable. The pictures go down on one of their own, because they are most of what crosses it. On the sensor connection a picture would wait behind a sensor reading. Most pictures carry only what changed since the one before, and a whole picture goes out every second. A whole one also goes out when the phone connects or comes back to Sketch mode. When the cable is still busy, the Mac skips the next frame before it compresses it. A picture already made is never dropped, since every picture after it builds on it. The fingers and the tilt come back on the sensor connection, and the first finger becomes the pointer before the next `draw()`.
-
-The loop is the live window's, not the phone's. Save, and the phone shows the edit as soon as the Mac has compiled it, with nothing built for the phone. The inspector and the console stay where you are working. `Examples/3D/Phone/PhoneCanvas` is the fuller version. A finger paints, and the paint falls the way you tilt the phone. The tilt is the same motion stream Chapter 33 reads.
-
-The two ways answer different questions. The picture tells you how a piece looks and plays in the hand while you are still shaping it. The installed app tells you whether the phone's own GPU keeps up, and that the piece runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
+The window you wrote a sketch in is only one place it can live. This chapter hands it over. The Mac takes it as a screen saver, a wallpaper, a menu-bar companion, or a widget. A friend who has never typed `swift` gets an app to double-click. The chapter ends by handing one sketch, a sky clock that follows the hour, to each of them. After it, your phone takes a sketch, with a finger for the mouse. Other programmers get behavior they can add to a sketch, and a package they can import. Every route wraps the sketch rather than porting it, so the `.swift` file stays the thing you work on.
 
 ## Living in the system
 
-A wall is one place a piece can wait. Your own machine is another, and it is a much shorter walk. Every Mac already has a screen that goes idle several times a day. It also has a list of things it could show while it does. Putting your sketch in that list takes two commands.
+Start with the machine you wrote the sketch on. Every Mac has a screen that goes idle several times a day, and a list of things it could show while it does. Putting your sketch in that list takes two commands.
 
 ```sh
 ollin new Ripple --kind screen-saver
@@ -132,7 +62,7 @@ ollin Sources/Ripple/Sketch.swift     # the same file, reloading as you save
 
 The script signs the saver for this machine. Another Mac will refuse it. Handing a screen saver to somebody else needs a Developer ID and a trip through notarization, the same as an app. [The reference page](../Docs/Output/ScreenSaver.md) has those commands.
 
-One more thing worth knowing before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A piece that has to line up across two screens is the installation earlier in this chapter, not a screen saver.
+One more thing to know before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A sketch that has to line up across two screens belongs in an installation, and [Chapter 41](41-Installations.md#several-displays-one-machine) spreads one canvas over every display.
 
 ## The desktop and the menu bar
 
@@ -232,7 +162,7 @@ The generated project has more in it than the others: three targets rather than 
 
 ## An app to hand somebody
 
-The screen saver lives on your own machine. The other thing a finished sketch wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
+The screen saver, the wallpaper, the strip, and the widget all live on your own machine. A finished sketch can also leave it. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
 
 ```sh
 ollin new Orbit --kind mac-app
@@ -262,9 +192,214 @@ That signs with the hardened runtime, sends the app through Apple's notary, and 
 
 The app is also how the wall piece of [Chapter 41](41-Installations.md#putting-it-together-the-wall-piece) reaches its wall. A sketch that declares an `Installation` keeps it inside the app, so the double click opens the piece full screen, unattended, hours and all. The machine that runs it never needs the repo or the toolchain, only the app.
 
-## Adding behavior without touching the sketch: SketchExtension
+## Putting it together: the sky clock
 
-One more piece is worth knowing about once you have several sketches. It answers a question that comes up as soon as you want the same extra behavior in all of them. How do you add something to a sketch's life cycle without editing the sketch?
+The sky clock is one sketch handed to four of the surfaces in this chapter. A sky changes color through the day. A sun crosses it from six in the morning to six at night, and a moon crosses it for the other twelve hours. It reads nothing but the hour, so one file runs in a window, behind the icons, in the menu bar, and as a widget. Start it as a loose file, the way [A shorter way to run things](01-HelloOllin.md#a-shorter-way-to-run-things) showed:
+
+```sh
+ollin new SkyClock.swift
+```
+
+Then replace what it writes with this:
+
+```swift
+import Ollin
+
+final class SkyClock: Sketch {
+    // The day as a band, midnight to midnight: 0.25 is six in the morning, 0.5 is noon.
+    @Param var zenith = Ramp(stops: [(0.00, Color(hex: 0x060A1C)),
+                                     (0.21, Color(hex: 0x0E1535)),
+                                     (0.30, Color(hex: 0x4F77BF)),
+                                     (0.50, Color(hex: 0x2B6ED3)),
+                                     (0.72, Color(hex: 0x4A6CB4)),
+                                     (0.79, Color(hex: 0x1C1B45)),
+                                     (1.00, Color(hex: 0x060A1C))])
+    @Param var horizon = Ramp(stops: [(0.00, Color(hex: 0x10162E)),
+                                      (0.21, Color(hex: 0x2A2A55)),
+                                      (0.26, Color(hex: 0xF3A06B)),
+                                      (0.33, Color(hex: 0xC9E0F2)),
+                                      (0.68, Color(hex: 0xC4DCF0)),
+                                      (0.76, Color(hex: 0xEE7F4A)),
+                                      (0.81, Color(hex: 0x2A2450)),
+                                      (1.00, Color(hex: 0x10162E))])
+    @Param var land = Color(hex: 0x10131C)
+
+    override var canvasSize: CanvasSize { .size(1600, 900) }   // the shape it opens and exports at
+    override var windowMode: WindowMode { .resizable }         // on a surface, the surface's size
+    override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
+
+    var stars: [Vector2] = []
+
+    override func setup() {
+        seed(1440)                                              // the same stars and ridge in every picture
+        stars = (0..<80).map { _ in Vector2(random(1), random(0.7)) }   // fractions, not pixels
+    }
+
+    override func draw() {
+        let hour = WidgetTimeline.timeOfDay(at: date) / 3600    // 0 up to 24
+        let day = hour / 24                                     // where the ramps are read
+
+        noStroke()
+        fill(.linear(from: uv(0, 0), to: uv(0, 0.8),
+                     [zenith.color(at: day), horizon.color(at: day)]))
+        drawRect(0, 0, width, height)
+
+        let night = max(0, cos(day * .tau))                     // 1 at midnight, 0 from six to six
+        fill(Color.white.withAlpha(night * 0.9))
+        for star in stars {
+            drawCircle(center: uv(star.x, star.y), radius: 2 * scale)
+        }
+
+        drawBody(at: (hour - 6) / 12, radius: 70 * scale, color: Color(hex: 0xFFD27A))
+        drawBody(at: (hour + 6).truncatingRemainder(dividingBy: 24) / 12,
+                 radius: 45 * scale, color: Color(hex: 0xE8ECF6))
+
+        var ridge: [Vector2] = []
+        for i in 0...48 {
+            let u = Double(i) / 48
+            ridge.append(uv(u, 0.76 + noise(u * 4) * 0.08))
+        }
+        fill(land)
+        drawPolygon(ridge + [uv(1, 1), uv(0, 1)])
+    }
+
+    // A sun or a moon, `arc` of the way along its path: 0 rising at the left, 1 setting at the right.
+    func drawBody(at arc: Double, radius: Double, color: Color) {
+        guard arc > -0.1, arc < 1.1 else { return }             // below the land for the other half of the day
+        let spot = uv(arc, 0.8 - sin(arc * .pi) * 0.6)
+        fill(.radial(center: spot, radius: radius * 4, [color.withAlpha(0.3), color.withAlpha(0)]))
+        drawCircle(center: spot, radius: radius * 4)
+        fill(color)
+        drawCircle(center: spot, radius: radius)
+    }
+}
+```
+
+Most of the listing is the sky. The rest is what lets one file live on every surface.
+
+The hour comes from `date`, as [The clock is the time of day](#the-clock-is-the-time-of-day) advised. `WidgetTimeline.timeOfDay(at:)` turns that moment into seconds since midnight, the same clock a widget's `time` runs on. Reading `date` makes the hour right on every surface. A widget's `time` is the time of day too, but in a window `time` counts from the launch.
+
+Dividing by 3600 gives the hour, and dividing that by 24 gives how far through the day it is. The two ramps are read at that fraction. Each one is the day laid along a [`Ramp`](02-Color.md#kits-you-carry-palette-and-ramp), with midnight at 0, noon at 0.5, and midnight again at 1. `zenith` is the top of the sky and `horizon` is its bottom. The linear gradient from [Gradients as paint](02-Color.md#gradients-as-paint) runs from one to the other.
+
+The stars, the sun, and the moon follow the same hour. `cos(day * .tau)` is 1 at midnight and 0 at six in the morning, and it stays below 0 until six at night. `max` holds it at 0 through the day, so `night` fades the stars in and out. The sun's arc runs from 0 at six in the morning to 1 at six at night. The moon's adds six hours and wraps at 24 with `truncatingRemainder`, so it runs from six at night to six in the morning. `drawBody` places either one on an arch across the canvas, and skips it during the other half of the day, when it is below the land. The land is drawn last, so a setting sun goes behind the ridge.
+
+Nothing in the listing reads `mouseX` or `key`. As [Living in the system](#living-in-the-system) said, the screen saver, the desktop, and the widget give a sketch no input.
+
+Every position is a fraction of the canvas, and every size is a multiple of `scale`, as [Placing things without pixels](01-HelloOllin.md#placing-things-without-pixels) advised. The stars are kept as fractions too, so they keep their places on any shape. With `windowMode` set to `.resizable`, the canvas is whatever surface the sketch is on. In the menu-bar strip, `scale` is 0.022, so the sun's radius works out to about a point and a half. `canvasSize` only sets the shape the window opens at and the shape of an export.
+
+The seed is fixed in `setup()` for the widget. Each of its pictures is a sketch of its own, with its own `setup()`. The fixed seed gives every picture the same stars and the same ridge.
+
+`widgetTimeline` asks for four pictures a quarter of an hour apart. Between two of them, the sun's arc moves a forty-eighth of the way across, and the ramps move with it.
+
+Then make it yours:
+
+- Move the dawn. In the inspector, each ramp shows as the day on a band. Drag the stops near 0.25 to bring the dawn earlier or later, then copy the stops back into the code.
+- Turn the stars. In the northern sky, the stars turn about fifteen degrees an hour around the pole star. Keep each star as an angle and a distance from a point near the top, and add `hour / 24 * .tau` to its angle before you place it.
+- Make it a screen saver too. One more project, made with `--kind screen-saver`, takes the file the way the others below do. The call to change is the one in `SaverView.swift`.
+
+When it looks right, see the widget's run before you hand it over. The window shows one moment, and the second command writes the next hour:
+
+```sh
+ollin SkyClock.swift                                           # a window, reloading as you save
+ollin SkyClock.swift --export-widget frames --size 360x360     # the next hour, as the widget shows it
+```
+
+Then hand it over, one project per surface. Name each project for where it goes, so each app it builds has a name of its own:
+
+```sh
+ollin new SkyWidget --kind widget
+ollin new SkyDesktop --kind wallpaper
+ollin new SkyStrip --kind menu-bar
+ollin new SkyClock --kind mac-app
+```
+
+In each project, copy `SkyClock.swift` over the `Sketch.swift` in its `Sources` folder. Each project wrote a class named after itself, and the file around the sketch still calls that name. Change that call to `SkyClock()`. The widget makes the call once, in `Piece.swift`. The wallpaper and the strip make it twice, in `Main.swift`. The app has no such file, because it starts from the sketch itself. Its copy needs `@main` on the line above `final class SkyClock`. Then run `./build.sh --install` in each folder.
+
+The widget appears under Edit Widgets once its app has been opened. The wallpaper and the strip are apps in /Applications, and adding them to Login Items starts them with the machine. The app's icon is a frame the build renders, and this sketch draws the hour it runs at. So the icon shows the sky at the hour you built it. Build at noon for a daytime icon, or put an `AppIcon.icns` of your own beside `build.sh`. `--sign` and `--notarize` then make an app any Mac opens, as [An app to hand somebody](#an-app-to-hand-somebody) showed.
+
+Each project keeps its own copy of the sketch. Keep working in the loose file, and copy it over again when it changes.
+
+## Beyond the Mac: the phone
+
+Every surface so far is on the Mac. A phone can take a sketch too, in two ways. It can install the sketch as an app of its own, or show the frames of a sketch that keeps running on the Mac.
+
+### In your pocket: the sketch on the phone
+
+A sketch written for the desk runs on a phone as it is. The renderer is the same, and so is `draw()`. A finger is the pointer, so `mouseX` and `mouseIsPressed` read the touch. Working on it is one command:
+
+```sh
+ollin phone Apps/OllinSketchApp/Sources/TouchRings.swift
+```
+
+The rings appear on the phone. Save the file, and under ten seconds later the phone shows the new version. The app writes its state down every second and reads it back when it launches. A save keeps the animation's phase and every value you tuned. It is `--keep-clock`, kept on the phone.
+
+A phone runs only code signed inside its app, so nothing can be swapped into it while it runs. Each save is a small build and a reinstall. That sounds slow and is not. The framework builds once, and after that a save recompiles one file.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/SaveToPhone-dark.jpg">
+  <img src="Images/40-HandingItOver/SaveToPhone.jpg" alt="A diagram of a save reaching the phone: the sketch file on the Mac with one line changed, three steps with their times, recompiled, installed again, and launched with the state read back, and two phones showing the rings before and after the save at the same radii in new colors, with a card of what the app writes down every second and the address the parameters open at on the Mac" width="680">
+</picture>
+
+The figure is the loop. The file on the Mac is saved with one line changed, the hue of the rings. The save recompiles that one file and relinks and signs the app, about five to seven seconds. It installs the app again over the cable or Wi-Fi, about two and a half, and launches it. The phone on the right is what launches: the rings in their new colors, at the radii the old version had reached, because the app writes its state down every second and reads it back at launch. That state is the clock and the seed, every `@Param` value, and every `@Saved` property. So the animation keeps its phase, and a value you tuned stays tuned. The framework itself is built for the phone once, about eighty seconds, and not again for that sketch.
+
+The phone's parameters open in a browser on the Mac, live in both directions. It is the [remote surface](../Docs/Integration/Remote.md) an installation is tuned from, pointed the other way.
+
+Two limits are the phone's. It has to be unlocked for the Mac to open the app. And it has to be on the cable, or awake on the same network. [The sketch on the phone](../Docs/Tools/OnThePhone.md) says what comes along, what stays on the desk, and how to write the app by hand.
+
+The app that command writes is its own, under the caches folder. To keep one, make it a project:
+
+```sh
+ollin new Rings --kind ios-app
+```
+
+Out comes the sketch, a host that owns the entry point, and the spec the Xcode project is written from. Run `xcodegen generate`, open the project, pick the phone, press Run. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md) offers the same kind from its menu.
+
+### Leaving it on the Mac
+
+There is a way to hold the sketch without installing it at all. It keeps running on the Mac, and the phone shows its frames. The capture app from [Chapter 33](33-DepthAndThePhone.md) is the screen:
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Pour: Sketch {
+    let device = PhoneDevice()
+
+    override var canvasSize: CanvasSize { .size(1080, 2340) }
+
+    override func setup() {
+        device.show(self)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        if mouseIsPressed {
+            drawCircle(mouseX, mouseY, 20 + pressure * 40)
+        }
+    }
+}
+```
+
+That one call asks the phone for its **Sketch** mode. From then on the Mac compresses each frame as video and sends it down the cable, and the phone shows it full screen. The first finger on the picture is the pointer, as it is in the installed app, so the same `mouseX` and `mouseIsPressed` work both ways. The canvas is the phone's own shape, nine across and nineteen and a half down.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/ShowOnPhone-dark.jpg">
+  <img src="Images/40-HandingItOver/ShowOnPhone.jpg" alt="A diagram of a sketch shown on the phone from the Mac: the live window on the left with a trail of paint and a finger's circle in it, each frame compressed as HEVC on the Mac's media engine, a cable carrying pictures to the phone on port 1339 and fingers and tilt back on port 1338, the phone on the right showing the same picture with a fingertip resting on the circle, and the first finger set as mouseX, mouseY, mouseIsPressed, and pressure before the next draw" width="680">
+</picture>
+
+Two connections share the cable. The pictures go down on one of their own, because they are most of what crosses it. On the sensor connection a picture would wait behind a sensor reading. Most pictures carry only what changed since the one before, and a whole picture goes out every second. A whole one also goes out when the phone connects or comes back to Sketch mode. When the cable is still busy, the Mac skips the next frame before it compresses it. A picture already made is never dropped, since every picture after it builds on it. The fingers and the tilt come back on the sensor connection, and the first finger becomes the pointer before the next `draw()`.
+
+The loop is the live window's, not the phone's. Save, and the phone shows the edit as soon as the Mac has compiled it, with nothing built for the phone. The inspector and the console stay where you are working. `Examples/3D/Phone/PhoneCanvas` is the fuller version. A finger paints, and the paint falls the way you tilt the phone. The tilt is the same motion stream Chapter 33 reads.
+
+The two ways answer different questions. The picture tells you how a piece looks and plays in the hand while you are still shaping it. The installed app tells you whether the phone's own GPU keeps up, and that the piece runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
+
+## Behavior and packages for other programmers
+
+Everything so far hands over a whole sketch. Some of what you write is smaller than a sketch: behavior you want in every sketch, or a drawing call you keep copying from one to the next. A `SketchExtension` adds behavior to a sketch without editing it, and a package hands your calls to other programmers.
+
+### Adding behavior without touching the sketch: SketchExtension
+
+This question comes up once you have several sketches and want the same extra behavior in all of them. How do you add something to a sketch's life cycle without editing the sketch?
 
 An **extension** is a small object that gets told when things happen. You register it once. From then on it hears about setup, and about each frame before and after the drawing. If it asks, it also hears about the finished rendered image.
 
@@ -283,9 +418,9 @@ Ollin's own frame-rate statistics work exactly this way, as an extension registe
 
 One detail is worth flagging. Hearing about the rendered image is opt-in, through a property the extension sets. Reading pixels back from the GPU costs real time. An extension that only watches timing pays nothing. The [extension seam](../Docs/Core/Sketch.md#extensions) has the hook list.
 
-## Giving it to somebody else
+### Giving it to somebody else
 
-Say you have written a drawing call you keep copying between pieces. How does somebody else get it?
+Say you have written a drawing call you keep copying between sketches. How does somebody else get it?
 
 An Ollin extension is a Swift package that depends on Ollin. That is the whole format. Somebody adds your package, writes one `import`, and your call sits beside `drawCircle`.
 
@@ -320,21 +455,21 @@ Pick what the starter is built on with `--seam`. A drawing call, as above. A GPU
 
 The generator window from [Chapter 1](01-HelloOllin.md) makes the same package. Pick **Extension package** from its kind menu. The seams take the place of the templates. The stage shows the starter's source instead of a running sketch, checked against the framework. A seam that stopped compiling says so before you press Create.
 
-<!-- Putting it together: the finished sketch goes here, still to be designed, built from this chapter's steps, with its full listing. -->
-
 ## Where this comes from
 
-Most of this chapter wraps a sketch in something Apple's platforms already provide. A screen saver is a plug-in for the ScreenSaver framework, and the wallpaper is a borderless window at the desktop's own level. The menu-bar strip is a status item, and a widget is a WidgetKit timeline of pictures. An app travels on a Developer ID signature that Apple's notary service has checked. The phone's pictures are HEVC, the video standard ITU-T and ISO published together in 2013. Each machine's media engine does the compressing and the decoding.
+Most of this chapter wraps a sketch in something Apple's platforms already provide. A screen saver is a plug-in for the ScreenSaver framework, and the wallpaper is a borderless window at the desktop's own level. The menu-bar strip is a status item, and a widget is a WidgetKit timeline of pictures. An app travels on a Developer ID signature that Apple's notary service has checked. A wallpaper that follows the hour came to the Mac with macOS Mojave in 2018. Its Dynamic Desktop changes the picture through the day. The phone's pictures are HEVC, the video standard ITU-T and ISO published together in 2013. Each machine's media engine does the compressing and the decoding.
 
 Screen savers began as a guard against a still picture burning into a monitor's phosphor. After Dark, from Berkeley Systems in 1989, made them something people chose for fun. The extension seam follows OPENRNDR's `extend`, which lets a program register extensions that run before and after its draw. The `ollinx-` prefix follows the addon naming of openFrameworks. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [The sketch on the phone](../Docs/Tools/OnThePhone.md): what a save does, the parameters on the Mac, what comes along, the options, and an app of your own.
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [Wallpaper](../Docs/Output/Wallpaper.md) and [menu-bar piece](../Docs/Output/MenuBar.md): a sketch behind the desktop and one in the menu bar.
 - [Widget](../Docs/Output/Widget.md): the three targets a widget needs and why, the run and its grid, the clock a picture is drawn on, `--export-widget`, and the signing order the extension depends on.
 - [Sketch as an app](../Docs/Output/App.md): the project the generator writes, the icon, and the one-time setup behind signing and notarizing.
+- [The project generator](../Docs/Tools/ProjectGenerator.md): every kind `ollin new` writes, how a project is named, and every option.
+- [Canvas](../Docs/Core/Canvas.md): [`scale`](../Docs/Core/Canvas.md#resolution-independence), [`uv`](../Docs/Core/Canvas.md#normalized-coordinates-uv), and [the window modes](../Docs/Core/Canvas.md#the-preview-window), which let one sketch fit any surface.
+- [The sketch on the phone](../Docs/Tools/OnThePhone.md): what a save does, the parameters on the Mac, what comes along, the options, and an app of your own.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 
 ---

@@ -358,10 +358,10 @@ Figures: the stage diagram; the called-back cue; the take; parameters on a curve
 Draws from: `Docs/Tools/LiveCoding.md`, `Docs/Helpers/Cues.md`, `Docs/Output/Recording.md`, `Docs/Core/Replay.md`, `Docs/Core/Automation.md`, `Docs/Tools/Timeline.md`, `Docs/Helpers/Formula.md`, `Docs/Integration/Syphon.md`, `Docs/Integration/VirtualCamera.md`; `Examples/Live/`.
 
 **40. Handing it over.**
-Teaches: the sketch on the phone, and on the phone while it runs on the Mac; the screen saver; the desktop and the menu bar; a widget and what it does to a sketch; an app to hand somebody, signed and notarized; adding behavior with a `SketchExtension`; an extension package somebody else imports.
+Teaches: the screen saver; the desktop and the menu bar; a widget and what it does to a sketch; an app to hand somebody, signed and notarized; then, as family sections after the finished sketch, the sketch on the phone and on the phone while it runs on the Mac, adding behavior with a `SketchExtension`, and an extension package somebody else imports.
 Assumes: Ch 38 (a finished sketch to hand over).
-Payoff: to be designed.
-Figures: saving to the phone; living in the system; behind the icons; the smallest canvas; a quarter hour apart; the app to hand; the extension shape; the finished sketch.
+Payoff: the sky clock. A sky whose colors come from two ramps read at the hour, a sun and a moon on their arcs, and stars that fade in at night. It reads the hour from `date`, draws in fractions of the canvas, and takes no input. It is checked with `--export-widget`, then handed to a widget, the wallpaper, the menu-bar strip, and a Mac app whose icon is a frame of it. Its source is drafted and its render is owed; the figure reads the wall clock, so it is marked unstable.
+Figures: living in the system; behind the icons; the smallest canvas; a quarter hour apart; the app to hand; the sky clock; saving to the phone; showing on the phone; the extension shape.
 Draws from: `Docs/Tools/OnThePhone.md`, `Docs/Output/ScreenSaver.md`, `Wallpaper.md`, `MenuBar.md`, `Widget.md`, `App.md`, `Docs/Tools/Extensions.md`.
 
 **41. Installations.**

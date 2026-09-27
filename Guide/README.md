@@ -42,7 +42,7 @@ Read the chapters in order the first time, because each one builds only on the o
 - **Part IV, chapters 18 to 24.** Around 110 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
 - **Part V, chapters 25 to 31.** Around 150 pages, the longest part. Chapter 25 is its gate, and chapter 28 also wants the physics from chapter 11.
 - **Part VI, chapters 32 to 35.** Around 75 pages. Its chapters barely depend on each other, so read the ones you need in any order.
-- **Part VII, chapters 36 to 41.** Around 115 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
+- **Part VII, chapters 36 to 41.** Around 120 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
 
 A few chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 33](33-DepthAndThePhone.md) an iPhone with a LiDAR sensor. [Chapter 34](34-Listening.md) wants a microphone, [Chapter 35](35-ControlsAndSignals.md) a MIDI controller, and [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
@@ -111,7 +111,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, and tunings. Then playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
 38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
 39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, parameters written as rules, and live feeds into other apps.
-40. **[Handing it over](40-HandingItOver.md).** A sketch on your phone, and as a screen saver, a wallpaper, a menu-bar companion, or a widget. Then as an app somebody double-clicks, and as behavior or a package other programmers import.
+40. **[Handing it over](40-HandingItOver.md).** A sketch as a screen saver, a wallpaper, a menu-bar companion, or a widget, and as an app somebody double-clicks. Then on your phone, and as behavior or a package other programmers import.
 41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 
 ### Appendices
