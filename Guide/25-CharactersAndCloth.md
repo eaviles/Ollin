@@ -31,7 +31,7 @@ world.advance(by: deltaTime)
 withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
 ```
 
-That's a walkable scene, five lines and a `step`. The same `world.step` moves the character along with the crates, so there's no second update to forget. `move` sets the speed it's *trying* to walk at and keeps it until you say otherwise. Falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if it's on the ground when the step comes round, so holding the key hops rather than flies.
+That's a walkable scene, five lines and an `advance`. The same `world.advance(by:)` moves the character along with the crates, so there's no second update to forget. `walk(at:)` sets the speed it's *trying* to walk at and keeps it until you say otherwise. Falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if it's on the ground when the step comes round, so holding the key hops rather than flies.
 
 <img src="Images/25-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
 
@@ -180,8 +180,11 @@ drawScene(figure)
 That figure will lie where it lands forever, which is the thing people mean by "ragdoll" and also its limit. `drive(toward:)` is the other half:
 
 ```swift
-target.apply(walk, at: time)             // where the animation wants the limbs
-ragdoll.drive(toward: target, strength: effort)
+var target = figure                      // a second copy, for the animation to pose
+if let walk = figure.animation("walk") {
+    target.apply(walk, at: time.truncatingRemainder(dividingBy: walk.duration))
+}                                        // where the animation wants the limbs
+ragdoll.drive(toward: target, strength: 140)
 world.advance(by: deltaTime)
 figure.apply(ragdoll)                    // where they actually ended up
 ```
@@ -260,8 +263,9 @@ The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it i
 `pinned:` holds a corner of cloth *still*. A cape needs the other thing, held to something that is moving and left to hang off it. Your figure from a page ago already has the moving thing in it, a skeleton. So you can name which joint of it carries which part of the cloth.
 
 ```swift
+let sheet = Mesh.plane(width: 0.8, depth: 1.2, segments: 18)
 cape = try world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
-                         rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                         rotated: .pi / 2, axis: Vector3(1, 0, 0),
                          pinned: { $0.z < -0.55 },      // clasped at the neck
                          skinnedTo: figure,
                          carriedBy: { _ in "chest" })
@@ -302,11 +306,11 @@ Cloth is a surface. Plenty of what you want to hang in a scene is not one. A rop
 ```swift
 let rope = try world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
                          at: Vector3(0, 3, 0),
-                         thickness: 0.04,
+                         radius: 0.02,
                          pinned: { $0.y > -0.001 })      // hung from the top
 ```
 
-Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over. `drawSoftBody(rope)` sweeps a tube of `thickness` along it. Everything from the last few pages still applies. It lands on things, turns up in `world.contacts`, floats, takes `applyForce` for wind, and can be dragged with `grabSoftBody`.
+Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over. `drawSoftBody(rope)` sweeps a tube of that `radius` along it. Everything from the last few pages still applies. It lands on things, turns up in `world.contacts`, floats, takes `applyForce` for wind, and can be dragged with `grabSoftBody`.
 
 Two parameters shape it, and both mean the same thing on a twig and on a mooring line:
 
@@ -523,7 +527,7 @@ final class Yard: Sketch {
         truck?.throttle = throttle
         truck?.steering = steering
 
-        // `move` takes a velocity and the character keeps it, so a figure told
+        // `walk(at:)` takes a velocity and the character keeps it, so a figure told
         // to walk one way walks that way until something stops it. Steering it
         // back toward a home point is what keeps this one in the yard.
         if let pacer {
@@ -581,7 +585,7 @@ final class Yard: Sketch {
 Run it, then drive. What each piece contributes, and two things that will bite you:
 
 - **A character needs a floor to stand on.** `world.ground` is an implicit plane that rigid bodies rest on, and a character ignores it, because a character controller walks on geometry. Leave the floor body out and everything else in the yard looks perfect while the figure falls silently forever. There is no error, and nothing appears.
-- **`move` sets a velocity and the character keeps it.** Tell it to walk one way and it keeps walking that way, out of the scene, past the horizon, for as long as the sketch runs. Steering back toward a home point is the cheapest way to keep a demo figure where you left it.
+- **`walk(at:)` sets a velocity and the character keeps it.** Tell it to walk one way and it keeps walking that way, out of the scene, past the horizon, for as long as the sketch runs. Steering back toward a home point is the cheapest way to keep a demo figure where you left it.
 - `withCharacter` puts the origin at the figure's *feet*, which is what you want for standing a model on the ground and not what you want for a capsule measured from its middle.
 - The truck's body is in `world.bodies` like everything else, so the generic loop has to skip it or it gets drawn twice, once as a plain crate and once as a truck.
 - The banner is the only thing here with no position. `addSoftBody(from:)` takes a mesh and simulates every vertex, and `pinned:` is a test run over those vertices at build time. Two corners held, everything else free, and that is a banner.
