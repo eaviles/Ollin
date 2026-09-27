@@ -4,7 +4,7 @@
 
 # 38. Finishing a sketch
 
-<!-- Hook image: the finished sketch, the contour chart (Figures/38-FinishingASketch/ContourChart.swift). Waiting on its render on the Mac. -->
+<img src="Images/38-FinishingASketch/ContourChart.jpg" alt="Concentric single-line rings around a still center on cream paper, each ring bent by the same noise field so neighboring rings bend together and the outer ones bend most" width="560">
 
 A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, and motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
 
