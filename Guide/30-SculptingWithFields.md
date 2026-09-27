@@ -195,7 +195,7 @@ Flip one `add()` to `carve()` and a bump becomes a dent, which is exactly the ki
 
 ## Folding space: domain repetition
 
-The last trick is the strangest one. Instead of copying a shape, you can fold the *space it lives in*, so one shape answers for many:
+The next trick is stranger. Instead of copying a shape, you can fold the *space it lives in*, so one shape answers for many:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/DomainFold-dark.jpg">

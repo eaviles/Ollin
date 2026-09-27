@@ -373,7 +373,7 @@ final class Tide: Sketch {
 }
 ```
 
-`every:` is in seconds. What comes back is the same `JSON` and `Table` you just read out of files. The drawing code doesn't change at all when the numbers start arriving from the world instead of the disk.
+`every:` is in seconds. What comes back is the same `JSON` and `Table` that [Chapter 9](09-Pictures.md#numbers-you-didnt-type-csv-and-json) read out of files. The drawing code doesn't change at all when the numbers start arriving from the world instead of the disk.
 
 Before the first answer arrives, `json` reads as null and `table` and `text` are `nil`. That is also what they read when the network is down. A feed with nothing to draw is one state and not two, which is why the fallback in the line above covers both.
 

@@ -103,7 +103,7 @@ override func draw() {
 
 A `MeshInstance` is a position, a rotation, a scale, and an optional tint, applied in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field. Twelve thousand small structs is nothing next to the twelve thousand mesh expansions it replaces. And the copies are not a special cheap kind of object. They take the current `fill` and material, the scene's lights, the environment, and the fog. They drop real shadows, and they stand in a mirror when one is nearby, exactly as if you had drawn each one yourself.
 
-This is the same division of labor as the retained `Batch` in [Chapter 15](15-ShapesAsMaterial.md) and the particle flow above, applied to solid geometry. Keep the heavy thing on the GPU and send only what changed. The numbers land where you would hope. Recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all. The [instancing reference](../Docs/3D/Instancing.md) shows that form.
+This is the division of labor behind the retained `Batch` in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) and the attractor flow in [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow). Here it applies to solid geometry. Keep the heavy thing on the GPU and send only what changed. The numbers land where you would hope. Recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all. The [instancing reference](../Docs/3D/Instancing.md) shows that form.
 
 ## Where the copies go
 
@@ -216,7 +216,7 @@ work: the surface has waves at every size from a swell that takes eight seconds 
 the ripple on its back, all crossing each other. So do what oceanographers do and describe
 the sea by its **spectrum** instead: how much water stands at each wavelength and heading
 for a given wind. That is a small, smooth description, and one inverse Fourier transform
-([Chapter 19](19-LayersAndEffects.md)) turns the whole of it into the surface in one step.
+([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves)) turns the whole of it into the surface in one step.
 
 ```swift
 let sea = makeOceanField(.breeze)              // the transform runs here
@@ -507,7 +507,7 @@ Diamond-square terrain comes from Alain Fournier, Don Fussell, and Loren Carpent
 
 Picking a point evenly inside a triangle is older than any of this, and the version here folds the square's two halves together across the diagonal rather than taking a square root, which is Eric Heitz's 2019 note on the map between the two shapes. Spacing the spots out afterward is Cem Yuksel's 2015 elimination method, which is what lets an even scatter be asked for by count on a surface, where a radius has no obvious value.
 
-Lorenz and his relatives come from Edward Lorenz's 1963 paper on deterministic nonperiodic flow. It was a weather model cut down until it would run on the computer he had. [Chapter 22](22-IteratedForms.md) draws the flat members of the same family. Drawing thousands of copies from one call, and letting the GPU decide which ones the camera can see, are practices the real-time industry arrived at together. Graphics chips outgrew the buses feeding them, and the work had to move. Growing grass inside the draw is that same instinct followed to its end. It became practical when GPUs gained a stage that can generate geometry on the way to the screen. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Drawing thousands of copies from one call, and letting the GPU decide which ones the camera can see, are practices the real-time industry arrived at together. Graphics chips outgrew the buses feeding them, and the work had to move. Growing grass inside the draw is that same instinct followed to its end. It became practical when GPUs gained a stage that can generate geometry on the way to the screen. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

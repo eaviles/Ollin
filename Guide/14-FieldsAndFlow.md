@@ -184,7 +184,7 @@ The walk stops at the layer's edge and at any pixel where the field is zero. A h
 
 ## A field you pin down yourself
 
-Every field so far came out of noise. You turned parameters on it, but you never told it what to be at any particular place. Sometimes that is exactly backwards. You know what you want at a few spots, and you want something sensible everywhere else.
+Every field so far came out of noise or out of a formula. You turned parameters on it, but you never told it what to be at any particular place. Sometimes that is exactly backwards. You know what you want at a few spots, and you want something sensible everywhere else.
 
 If those spots sat on a grid you could interpolate between the neighbors. Scattered points have no neighbors to speak of, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave.
 

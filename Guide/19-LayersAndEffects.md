@@ -209,7 +209,7 @@ override func draw() {
 }
 ```
 
-The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes, and `developed(exposure:ground:)` prints the mean the way a photograph is printed, with an exposure, a Reinhard roll-off, and the paper's own tone added after the curve. The `Rendering/DepthOfField` example uses exactly this to turn a million scattered samples a frame into a photograph with a real lens; [Chapter 24](24-ParticleSimulations.md) picks it up where the particles live.
+The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes, and `developed(exposure:ground:)` prints the mean the way a photograph is printed, with an exposure, a Reinhard roll-off, and the paper's own tone added after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a real lens. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera.
 
 ## Brighter than the screen: toneMap
 

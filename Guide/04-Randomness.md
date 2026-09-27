@@ -116,7 +116,7 @@ Pick one genome and the next round is made of copies of it, each with a few numb
 
 The mutation rate defaults far higher than the scored search of [Chapter 24](24-ParticleSimulations.md#letting-the-sketch-find-it-evolution) uses, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation, and maybe twenty generations before you get bored. So a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched. One breeding is a big step when a person is doing the judging. The thing you just chose should not vanish the moment you choose it.
 
-A scored search can only ever find what its score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
+A scored search can only ever find what its score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations. The [`Simulation/Breeding`](../Examples/Simulation/Breeding/Sketch.swift) example is sixteen ornaments you breed this way.
 
 ## Letting chance decide
 

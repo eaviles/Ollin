@@ -54,7 +54,7 @@ let pace = Vector2(walker.actualVelocity.x, walker.actualVelocity.z).length
 stride += pace * deltaTime * 3.4
 ```
 
-One last thing, and it's the one that connects this section to the last. A character is swept through the world by hand rather than simulated, so strictly it isn't in the scene. It carries a stand-in that is: `walker.body`, an ordinary kinematic body riding inside the capsule. That's what lets everything else notice it, sensors included:
+One last thing, and it's the one that ties a character to the world of [Chapter 28](28-WorldsWithWeight.md). A character is swept through the world by hand rather than simulated, so strictly it isn't in the scene. It carries a stand-in that is: `walker.body`, an ordinary kinematic body riding inside the capsule. That's what lets everything else notice it, sensors included:
 
 ```swift
 if lookout.isTouching(walker.body) { /* you're on the platform */ }
@@ -280,7 +280,7 @@ One difference from the crates is useful to know. A settled *pile of crates* fal
 
 ## A cape on someone's back
 
-`pinned:` holds a corner of cloth *still*. A cape needs the other thing, held to something that is moving and left to hang off it. Your figure from a page ago already has the moving thing in it, a skeleton. So you can name which joint of it carries which part of the cloth.
+`pinned:` holds a corner of cloth *still*. A cape needs the other thing, held to something that is moving and left to hang off it. The skinned figure from [Letting a figure fall](#letting-a-figure-fall) already has the moving thing in it, a skeleton. So you can name which joint of it carries which part of the cloth.
 
 ```swift
 let sheet = Mesh.plane(width: 0.8, depth: 1.2, segments: 18)
@@ -330,7 +330,7 @@ let rope = try world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 
                          pinned: { $0.y > -0.001 })      // hung from the top
 ```
 
-Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over. `drawSoftBody(rope)` sweeps a tube of that `radius` along it. Everything from the last few pages still applies. It lands on things, turns up in `world.contacts`, floats, takes `applyForce` for wind, and can be dragged with `grabSoftBody`.
+Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over. `drawSoftBody(rope)` sweeps a tube of that `radius` along it. Everything from the cloth section still applies. It lands on things, turns up in `world.contacts`, takes `applyForce` for wind, and can be dragged with `grabSoftBody`. It floats too, like the raft below.
 
 Two parameters shape it, and both mean the same thing on a twig and on a mooring line:
 

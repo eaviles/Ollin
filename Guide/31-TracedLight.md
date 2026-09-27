@@ -12,7 +12,7 @@ A 3D frame usually stops light at the first thing it hits. This chapter follows 
 
 A scene's depth layer, from [Chapter 25](25-3DGently.md#what-the-depth-buffer-is-for), feeds one more effect, and it is where reflections start.
 
-**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It has one limit worth understanding rather than being surprised by. It reflects what is on the screen, and a picture does not contain the back of anything. Where the true reflection would be of a surface the camera cannot see, such as the underside of a ball resting on a floor, it can only approximate. That shows as a soft zone right at the contact. A touch of `roughness` hides it, and [Chapter 30](30-SculptingWithFields.md) has the exact alternative.
+**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It has one limit worth understanding rather than being surprised by. It reflects what is on the screen, and a picture does not contain the back of anything. Where the true reflection would be of a surface the camera cannot see, such as the underside of a ball resting on a floor, it can only approximate. That shows as a soft zone right at the contact. A touch of `roughness` hides it, and `rayTracedReflections()`, next, is the exact alternative.
 
 `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.
 
@@ -110,7 +110,7 @@ Two parameters. `caustics(intensity: 1.6)` turns the patterns up past physical, 
 
 ## Edges that settle: temporal anti-aliasing
 
-The last two sections shared a trick worth naming. Render a slightly different estimate every frame, and average. The reflections jitter their rays, and the probes rotate their fans. `temporalAntialiasing()` applies the same idea to **every edge in the 3D picture**:
+The reflections and the bounce light share a trick. Render a slightly different estimate every frame, and average. The reflections jitter their rays, and the probes rotate their fans. `temporalAntialiasing()` applies the same idea to **every edge in the 3D picture**:
 
 ```swift
 camera(.orbiting(target: .zero, radius: 8, azimuth: time * 0.05, elevation: 0.3))
@@ -261,7 +261,7 @@ With the strength at zero every ring is sharp, near and far, and the sphere read
 
 ## Rendering fewer pixels: temporal upscaling
 
-Almost everything in this chapter charges by the pixel. The mirrors trace one ray per pixel, the fields march per pixel, and the bounce is gathered per pixel. When a scene gets heavy, the honest lever is to render fewer of them. `temporalUpscaling()` pulls it without giving up the full-size picture:
+Almost everything in this chapter charges by the pixel, and so do the fields of [Chapter 30](30-SculptingWithFields.md). The mirrors trace one ray per pixel, the fields march per pixel, and the bounce is gathered per pixel. When a scene gets heavy, the lever is to render fewer of them. `temporalUpscaling()` pulls it without giving up the full-size picture:
 
 ```swift
 rayTracedReflections()
@@ -471,7 +471,7 @@ The mirrors follow the hybrid rendering Apple describes for Metal ray tracing. I
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of interfaces, writing your own prescription, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): `LineSpray` and the `Bokeh` lens, sampling lines by length or per line, the running mean underneath, and the same pipeline from a kernel over any geometry.
 - [Path-traced export](../Docs/Output/PathTraced.md): what the traced frame adds and what stays raster, the sample count and its timings, the real lens, and the grain filter.
-- Worked examples: [`Examples/3D/Effects/ScreenSpaceReflections`](../Examples/3D/Effects/ScreenSpaceReflections/Sketch.swift), [`RayTracedReflections`](../Examples/3D/Effects/RayTracedReflections/Sketch.swift), [`Examples/3D/Lighting/GlobalIllumination`](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift), [`Caustics`](../Examples/3D/Lighting/Caustics/Sketch.swift), [`Examples/3D/Effects/TemporalAA`](../Examples/3D/Effects/TemporalAA/Sketch.swift), [`SpecularAntialias`](../Examples/3D/Effects/SpecularAntialias/Sketch.swift), [`MotionBlur`](../Examples/3D/Effects/MotionBlur/Sketch.swift), [`LensFlare`](../Examples/3D/Effects/LensFlare/Sketch.swift), [`SceneDefocus`](../Examples/3D/Effects/SceneDefocus/Sketch.swift), [`Upscaling`](../Examples/3D/Effects/Upscaling/Sketch.swift), [`FrameInterpolation`](../Examples/3D/Effects/FrameInterpolation/Sketch.swift), and [`PathTraced`](../Examples/3D/Effects/PathTraced/Sketch.swift).
+- Worked examples: [`Examples/3D/Effects/ScreenSpaceReflections`](../Examples/3D/Effects/ScreenSpaceReflections/Sketch.swift), [`RayTracedReflections`](../Examples/3D/Effects/RayTracedReflections/Sketch.swift), [`Examples/3D/Lighting/GlobalIllumination`](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift), [`Caustics`](../Examples/3D/Lighting/Caustics/Sketch.swift), [`Examples/3D/Effects/TemporalAA`](../Examples/3D/Effects/TemporalAA/Sketch.swift), [`SpecularAntialias`](../Examples/3D/Effects/SpecularAntialias/Sketch.swift), [`MotionBlur`](../Examples/3D/Effects/MotionBlur/Sketch.swift), [`LensFlare`](../Examples/3D/Effects/LensFlare/Sketch.swift), [`SceneDefocus`](../Examples/3D/Effects/SceneDefocus/Sketch.swift), [`Upscaling`](../Examples/3D/Effects/Upscaling/Sketch.swift), [`FrameInterpolation`](../Examples/3D/Effects/FrameInterpolation/Sketch.swift), [`PathTraced`](../Examples/3D/Effects/PathTraced/Sketch.swift), and the lens made of samples in [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) and [`LineSpray`](../Examples/Rendering/LineSpray/Sketch.swift).
 
 ---
 

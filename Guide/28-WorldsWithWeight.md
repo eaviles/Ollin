@@ -172,7 +172,7 @@ Three things about that sentence are worth having straight.
 world.ignoreCollisions(between: "confetti", and: "confetti")
 ```
 
-Everything you can add to a world takes a group, the same way it takes a density. That covers bodies, characters, vehicles, ragdolls, soft bodies, and the static scenery you import from a `Scene`. And a rule holds everywhere the pair could have met, which matters more than it sounds. A filtered pair does not collide, does not turn up in `contacts`, and is not seen by a sensor. It is walked through by a character, another character included, and is not felt by a vehicle's wheels. There is no corner of the world where the rule half-applies.
+Everything you can add to a world takes a group, the same way it takes a density. That covers bodies, characters, vehicles, ragdolls, soft bodies, and the static scenery [a later section](#ground-and-scenery-from-elsewhere-terrain-scenes-and-usd) imports from a `Scene`. And a rule holds everywhere the pair could have met, which matters more than it sounds. A filtered pair does not collide, does not turn up in `contacts`, and is not seen by a sensor. It is walked through by a character, another character included, and is not felt by a vehicle's wheels. There is no corner of the world where the rule half-applies.
 
 Groups also change what a question sees. Every query from earlier in this chapter takes `as:`, which asks it the way a body of that group would ask it:
 
