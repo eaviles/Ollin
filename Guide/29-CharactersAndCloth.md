@@ -381,6 +381,37 @@ Cloth in water behaves like cloth. Its area for its weight is enormous, and drag
 
 The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example puts a cloth raft on a swell with cargo on it. A sounding line shortens onto her deck when you sail her under it, and a harbor gate lights when she passes through. Drag the deck to steer.
 
+## Snapshots of figures, vehicles, and cloth
+
+[Chapter 28](28-WorldsWithWeight.md#keeping-what-settled) saved a settled heap with `snapshot()` and brought it back exact. The things in this chapter come back too. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
+
+The ragdoll is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver holds is a shape per limb, the tree they hang in, and how far each joint may bend. *That* is small enough to write down. The skin stays where it always was, your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
+
+```swift
+try world.restore(saved)
+if let ragdoll = world.ragdolls.first {   // the bodies are new ones
+    figure.apply(ragdoll)                 // your mesh, over the restored pose
+}
+```
+
+Restoring empties the world first, so a `Vehicle3D` or a `Character3D` you were holding onto is gone, like the bodies. Take them from `world.vehicles` and `world.characters` again.
+
+A cloth needs one more step. It is nothing but its mesh, so it is saved only under a name, the way Chapter 28 named a terrain collider:
+
+```swift
+banner?.assetName = "banner"
+```
+
+The resolver then hands the mesh back on the way in:
+
+```swift
+try world.restore(saved) { name in
+    name == "banner" ? .mesh(sheet) : nil
+}
+```
+
+The [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) example keeps a whole yard, with a truck in it, a figure pacing across, and another lying where it fell. Wreck it by dragging, then press R and it is back exactly. Press S, quit, and run it again, and the same yard is standing there. Its terrain floor and its banner are named by the file rather than held in it.
+
 ## Putting it together: the yard
 
 Now you can build the yard at the top. Three things stand in it and no two are held up the same way, which is the whole point of the piece. Make a new file, `MySketches/Yard.swift`:

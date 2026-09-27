@@ -452,35 +452,25 @@ Three heaps, all from the same code. The first was simulated and captured. The s
 
 That is not a bug, it is what falling stones are. It does mean the same code can give you a slightly different heap on a machine whose floating point rounds one bit differently. That is exactly the situation a committed figure, or a piece you want to keep, is in. **Simulating it again gives you *a* heap; only saving gives you *that* heap.**
 
-A snapshot holds every body with its collider and all its parameters, every joint between them, gears and racks, and the collision groups and their rules. It holds the world's gravity, ground, bounce, and water. It also holds the things you built on top of those. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
+A snapshot holds every body with its collider and all its parameters. It holds every joint between them, gears and racks, and the collision groups and their rules. It holds the world's gravity, ground, bounce, and water. It also holds the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md#snapshots-of-figures-vehicles-and-cloth), which says how each one comes back.
 
-That last one is worth a moment, because it is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver actually holds is a shape per limb, the tree they hang in, and how far each joint may bend. *That* is small enough to write down. The skin stays where it always was, your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
+One thing to watch throughout. Restoring empties the world first, so any `Body3D` you were holding onto is gone. Take the bodies from `world.bodies` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.
 
-```swift
-try world.restore(saved)
-if let ragdoll = world.ragdolls.first {   // the bodies are new ones
-    figure.apply(ragdoll)                 // your mesh, over the restored pose
-}
-```
-
-One thing to watch throughout. Restoring empties the world first, so any `Body3D`, `Vehicle3D`, or `Character3D` you were holding onto is gone. Take them from `world.bodies`, `world.vehicles`, and `world.characters` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.
-
-There is one more thing worth saying about size, and it follows the same idea one step further. Almost everything in a world is small. A box is three numbers. But a terrain collider is thousands of samples, and a cloth is a whole mesh. Those get written into the file every single time you save. So name them instead:
+There is one more thing worth saying about size, and it follows the same idea one step further. Almost everything in a world is small. A box is three numbers. But a terrain collider is thousands of samples, and it gets written into the file every single time you save. So name it instead:
 
 ```swift
 island.assetName = "island"
-banner?.assetName = "banner"
 ```
 
-and say what the names mean on the way back in:
+and say what the name means on the way back in:
 
 ```swift
 try world.restore(saved) { name in
-    name == "island" ? .heightfield(terrain) : .mesh(sheet)
+    name == "island" ? .heightfield(terrain) : nil
 }
 ```
 
-On a yard with a terrain floor in it that is the difference between a hundred kilobytes and one. The trade is real, though, and it goes both ways. A snapshot that names nothing is self-contained, which is what lets you commit it beside the sketch and open it anywhere. So that stays the default. A name the resolver doesn't recognize costs you that one body and a note, not the restore. And a cloth needs a name to be saved at all, because a cloth is nothing but its mesh.
+On a yard with a terrain floor in it that is the difference between a hundred kilobytes and one. The trade is real, though, and it goes both ways. A snapshot that names nothing is self-contained, which is what lets you commit it beside the sketch and open it anywhere. So that stays the default. A name the resolver doesn't recognize costs you that one body and a note, not the restore.
 
 That is one direction, keeping a world you found. The other is picking up one somebody else made. A `.usd` file can say which of its prims are physical, and `world.addBodies(from: scene)` reads the lot. A sketch that loads such a file writes no physics of its own:
 
@@ -491,7 +481,7 @@ world.addBodies(from: scene)
 
 Bodies, colliders, joints, masses, materials, gravity. Reading it is lossy, and that is exactly why it works. A file's description of a body is a description, and anything it leaves out has a sensible answer waiting. Writing the same format would not be, which is why the two jobs use two formats. Import to pick up an arrangement, and snapshot to keep one.
 
-The [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) example keeps a whole yard, with a truck in it, a figure pacing across, and another lying where it fell. Wreck it by dragging, then press R and it is back exactly. Press S, quit, and run it again, and the same yard is standing there. Its terrain floor and its banner are named by the file rather than held in it. And [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) goes the other way. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
+The [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) example is this import. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
 
 ## Putting it together: the contraption
 
