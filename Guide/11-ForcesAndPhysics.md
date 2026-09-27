@@ -4,7 +4,7 @@
 
 # 11. Forces and physics
 
-<img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing through a tower of colored bricks, four bricks flying to the right while the rest of the column leans" width="560">
+<img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing into a tower of colored bricks, the bricks it hit shattered into shards flying to the right while the rest of the column leans" width="560">
 
 In [Chapter 10](10-Vectors.md) you moved things yourself. You wrote the velocity, added the gravity, decided what happens at the floor. This chapter is about the layer under that, meaning forces, the pushes that change a velocity. You'll write a few forces by hand first, and find out why mass matters. Then you'll hand the whole job to a physics world. It holds hundreds of bodies at once, connects them with springs and hinges, and lets you grab them with the mouse. The wrecking ball above is where it ends up. You get to knock the tower down yourself.
 
