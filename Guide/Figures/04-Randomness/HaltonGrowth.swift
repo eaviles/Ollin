@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the low-discrepancy property. The first 40,
+// Guide diagram (Chapter 4): the low-discrepancy property. The first 40,
 // 160, and 640 points of one Halton sequence. The earlier points (dark) are
 // in exactly the same places in all three panels; the new ones (orange)
 // only fill the gaps that were left.

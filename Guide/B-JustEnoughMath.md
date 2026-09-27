@@ -166,8 +166,8 @@ Multiply a value by a little less than 1 every frame, keeping 93% say, and it me
 ### Chance is lumpy
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: plain random placement with clumps and bare gaps, and a blue-noise scatter, even but organic" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/ScatterCompare-dark.jpg">
+  <img src="Images/04-Randomness/ScatterCompare.jpg" alt="Two panels with the same number of dots: plain random placement with clumps and bare gaps, and a blue-noise scatter, even but organic" width="680">
 </picture>
 
 Independent random placements clump and leave holes, and they do not space themselves out, because each roll ignores every other. The clumps aren't a bug in the generator, they're what independence looks like. When you want "random but even", you need an algorithm that pushes points apart, like the blue-noise scatter on the right. [Chapter 4](04-Randomness.md) names the lump problem, and [Chapter 15](15-ShapesAsMaterial.md) fixes it.

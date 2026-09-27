@@ -115,41 +115,7 @@ The right panel shows three edits. `simplified(tolerance:)` thins a dense trace,
 
 ## Scatters and territories
 
-Here the material turns from single outlines to populations. Points that spread themselves evenly come first, because nearly everything after them wants a well-mannered scatter to work on.
-
-### The well-mannered scatter
-
-[Chapter 13](13-GrowingThings.md) and [Chapter 14](14-FieldsAndFlow.md) borrowed `poissonDisk` with a promise to explain it here. Here is the problem it solves. Plain `random` placement clumps and leaves bare patches, because independent rolls have no manners about each other ([Chapter 4](04-Randomness.md) warned you). Blue noise is the fix, and the recipe, Robert Bridson's, is charmingly physical. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
-</picture>
-
-```swift
-let scatter = poissonDisk(radius: 26)             // over the whole canvas
-let some = poissonDisk(in: region, radius: 26)    // or a region
-```
-
-One number, `radius`, sets the density. Nearly every technique in this chapter eats these points, which is why the scatter came first.
-
-There's a second kind of even, and it earns its place by being *incremental*.
-
-```swift
-let points = haltonPoints(count: 500)
-let finer = sobolPoints(count: 5000, in: frame)
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/HaltonGrowth-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
-</picture>
-
-These are **low-discrepancy sequences**, and they are not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. That sounds like a limitation until you see what it buys, which the figure shows. Asking for more points never moves the ones you already had. Every new point simply lands in the largest gap left so far.
-
-Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running the whole process again and getting a different arrangement. So this is the tool when you want to keep adding detail to something already on screen. It also suits rendering progressively, or sampling a picture more finely without starting over. It also never touches your sketch's `random`, being pure arithmetic on the index, so mixing it into a seeded piece changes nothing else.
-
-`halton(i, base:)` is the one-dimensional version, and it pays off well away from scatters. Space hues around a wheel, offset animation phases, or choose sample times. It suits anywhere you want values that spread out evenly, no matter how many you end up taking.
+Here the material turns from single outlines to populations. Nearly everything in this part starts from `poissonDisk(radius:)`, the even scatter from [Chapter 4](04-Randomness.md#the-well-mannered-scatter).
 
 ### Territories and neighbors
 
@@ -506,9 +472,9 @@ Both patterns come out as ordinary geometry, like everything else in this chapte
 
 ## Where this comes from
 
-The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
+The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
 
-The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
+The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
 
 The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier.
 
@@ -518,13 +484,12 @@ Crease patterns come from a craft with its own written mathematics. The two flat
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
-- [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the parameter ranges that read well and the cost of each.
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.
-- [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
+- [Circle packing](../Docs/Generators/Packing.md) and [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
 - [Crease patterns](../Docs/Drawing/CreasePattern.md): `CreasePattern` and the two laws, `MiuraFold` with its rigid folding in three dimensions, `RotatingSquares`, joining creases into pen strokes, and taking a sheet to a cutter.
 - The Farmanfarmaian homage [`BehindGlass`](../Examples/Recreations/MonirFarmanfarmaian/BehindGlass/Sketch.swift): a spiral built by moving each side of a kite in a little further than the last and taking the corners where the moved lines meet, painted in the order reverse-glass painting needs. Its `--export-svg` writes the marks in that order, so a frame from behind and one from the front compare mark for mark.

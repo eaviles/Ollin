@@ -292,9 +292,43 @@ Then push it somewhere new:
 - Put the motion back. Writing `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the piece between order and chaos every eight seconds, and [Chapter 3](03-MotionAndTime.md)'s loop rule means a `--export-gif` of it loops seamlessly.
 - Retune the accents. At `0.02` they read as stray errors, and at `0.3` as confetti. Try both.
 
+## The well-mannered scatter
+
+The finished sketch puts every square in its place and lets chance nudge it. The opposite job comes up as often: points placed by chance, but spread evenly. Plain `random` placement clumps and leaves bare patches, as the strip in [Letting chance decide](#letting-chance-decide) showed, because independent rolls have no memory of each other. Blue noise is the fix. The recipe is Robert Bridson's, and it works like throwing darts. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/ScatterCompare-dark.jpg">
+  <img src="Images/04-Randomness/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
+</picture>
+
+```swift
+let scatter = poissonDisk(radius: 26)             // over the whole canvas
+let some = poissonDisk(in: region, radius: 26)    // or a region
+```
+
+One number, `radius`, sets the density. Later chapters start from these points. [Chapter 13](13-GrowingThings.md)'s trees grow toward them, [Chapter 14](14-FieldsAndFlow.md)'s flow lines begin at them, and [Chapter 15](15-ShapesAsMaterial.md) builds its mosaic on them.
+
+There's a second kind of even, and what sets it apart is that it is *incremental*.
+
+```swift
+let points = haltonPoints(count: 500)
+let finer = sobolPoints(count: 5000, in: frame)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/HaltonGrowth-dark.jpg">
+  <img src="Images/04-Randomness/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
+</picture>
+
+These are **low-discrepancy sequences**, and they are not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. That sounds like a limitation until you see what it buys, which the figure shows. Asking for more points never moves the ones you already had. Every new point simply lands in the largest gap left so far.
+
+Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running the whole process again and getting a different arrangement. So this is the tool when you want to keep adding detail to something already on screen. It also suits rendering progressively, or sampling a picture more finely without starting over. It also never touches your sketch's `random`, being pure arithmetic on the index, so mixing it into a seeded piece changes nothing else.
+
+`halton(i, base:)` is the one-dimensional version, and it pays off well away from scatters. Space hues around a wheel, offset animation phases, or choose sample times. It suits anywhere you want values that spread out evenly, no matter how many you end up taking.
+
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s, and both were invented for numerical integration rather than for drawing. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -302,6 +336,8 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the four habits that break a repeat.
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives that each change one rule. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
+- [Blue noise](../Docs/Generators/BlueNoise.md): `poissonDisk` in full, feeding its points to the tessellators, and calling it outside a sketch.
+- [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness).
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).

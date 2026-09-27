@@ -57,7 +57,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. It also sets up the workflow the rest of the guide uses: live reload and tunable parameters.
 2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that matches what your eye expects, palettes and ramps, and gradients used as paint.
 3. **[Motion and time](03-MotionAndTime.md).** Time, shaping functions drawn as curves (map, lerp, smoothstep, easing), sine and cosine explained simply, and timelines.
-4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
+4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters. Then scatters that are random but even: blue noise and the Halton and Sobol sequences.
 5. **[Noise](05-Noise.md).** What Perlin noise is, what it's for, and how to drive motion and form with it.
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, transforms that move the paper, symmetry and the kaleidoscope fold, clipping, and divisions that aren't square: hex, triangle, recursive panels, mazes, and circle foam.
 7. **[Tiles that cover the plane](07-Tiles.md).** Patterns that cover the plane by rule: Truchet tiles, hitomezashi stitching, the ten-print maze, kolam and sona, Celtic knotwork, polyominoes, Wave Function Collapse from tiles or from a picture, the tilings that never repeat (Penrose, Wang, girih, and the single-shape spectre), hyperbolic tiling on the Poincaré disk, and parquet deformations.
@@ -74,7 +74,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part III: Shapes, lines, and marks
 
-15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then scatters, Voronoi territories and packing, hulls and skeletons, and hatching and SVG for pen plotters, with batches to draw it fast. After the plate, crease patterns fold and cut the paper itself.
+15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then Voronoi territories and packing, hulls and skeletons, and hatching and SVG for pen plotters, with batches to draw it fast. After the plate, crease patterns fold and cut the paper itself.
 16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule. Hobby splines and the curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), then spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
 17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
 

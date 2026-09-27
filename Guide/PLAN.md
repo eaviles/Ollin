@@ -93,11 +93,11 @@ Figures: one curve-plus-motion pair per shaping function; the circle-to-sine dia
 Draws from: `Docs/Helpers/Math.md`, `Docs/Helpers/Animation.md`; `Examples/Motion/`.
 
 **4. Randomness.**
-Teaches: `random` ranges and choices; seeds and why determinism matters (the same piece twice); `randomGaussian` vs uniform, shown as scatter; random walks; picking from palettes/arrays.
+Teaches: `random` ranges and choices; seeds and why determinism matters (the same piece twice); `randomGaussian` vs uniform, shown as scatter; random walks; picking from palettes/arrays; then, after the finished sketch, the even scatters: blue noise and the Halton and Sobol sequences.
 Assumes: Ch 1 to 3.
 Payoff: a Molnár-inspired ordered-grid-with-disorder piece (connects to `Examples/Recreations/`).
-Figures: uniform-vs-Gaussian scatter diagram; a seed contact sheet (same sketch, nine seeds); the finished piece.
-Draws from: `Docs/Generators/Random.md`; `Examples/Randomness/`, `Examples/Recreations/`.
+Figures: uniform-vs-Gaussian scatter diagram; a seed contact sheet (same sketch, nine seeds); the finished piece; plain random against blue noise; a Halton sequence growing.
+Draws from: `Docs/Generators/Random.md`, `Docs/Generators/BlueNoise.md`, `Docs/Generators/LowDiscrepancy.md`; `Examples/Randomness/`, `Examples/Recreations/`.
 
 **5. Noise.**
 Teaches: noise as "random that remembers"; 1D noise driving a value over time; 2D noise as terrain/texture; the third dimension as drift; `signedNoise`; layering two noise scales by hand for detail; noise vs random side by side.
@@ -175,11 +175,11 @@ Draws from: `Docs/Generators/FlowField.md`, `Docs/Drawing/Attractors.md`, `Docs/
 ### Part III: Shapes, lines, and marks
 
 **15. Shapes as material.**
-Teaches: `Path` and `Shape` (contours, holes); booleans (union/subtract/intersect) as vocabulary; offsetting; Voronoi and Delaunay from scattered points; blue-noise scatter; circle and shape packing; hatching fills for pen plotters; SVG export; then, after the plate, crease patterns: the two flat-folding laws, the Miura fold in three dimensions, and rotating-squares kirigami.
+Teaches: `Path` and `Shape` (contours, holes); booleans (union/subtract/intersect) as vocabulary; offsetting; Voronoi and Delaunay from scattered points (the blue-noise scatter comes from Ch 4); circle and shape packing; hatching fills for pen plotters; SVG export; then, after the plate, crease patterns: the two flat-folding laws, the Miura fold in three dimensions, and rotating-squares kirigami.
 Assumes: Ch 4 to 6, Ch 10.
 Payoff: a plotter-ready composition (exported SVG shown beside the raster render).
 Figures: boolean-ops diagram; Voronoi/Delaunay duals; packing time-lapse; hatching close-up; the composition; the crease pattern beside the sheet it folds into.
-Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Voronoi.md`, `Docs/Generators/BlueNoise.md`, `Docs/Generators/Packing.md`, `Docs/Generators/ShapePacking.md`, `Docs/Output/Export.md` (SVG), `Docs/Drawing/CreasePattern.md`; `Examples/Shapes/`, `Examples/Patterns/`.
+Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Voronoi.md`, `Docs/Generators/Packing.md`, `Docs/Generators/ShapePacking.md`, `Docs/Output/Export.md` (SVG), `Docs/Drawing/CreasePattern.md`; `Examples/Shapes/`, `Examples/Patterns/`.
 
 **16. Curves and figures.**
 Teaches: figures that come from a rule. Hobby's spline through points; the curves you can write down (phyllotaxis, Lissajous, roses, trochoids, superellipse and supershape, guilloche, harmonograph, Chaikin smoothing); spirolaterals and when they close; envelopes, caustics, and Huygens fronts; the clothoid and eased corners; Fourier epicycles; shape morphing; mirror anamorphosis.
@@ -488,8 +488,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Drawing/Voronoi.md` (+ Delaunay, Lloyd, `powerDiagram`) | Ch 15 | taught ("Territories and neighbors", with the WeightedTerritories figure for the power diagram: why halfway is the wrong boundary for circles of different sizes, weighting by the square of the radius, and that a site can lose its cell entirely) |
 | `Drawing/SpatialIndex.md` (`SpatialIndex`: `nearest`/`kNearest`, within a radius, inside a box; the grid and k-d tree kinds, the growing form) | Ch 12 | taught ("The trick that keeps it cheap" after the assembled flock, with the nine-cells figure: the count that makes a naive flock stutter, a cell one perception radius across so every neighbor sits in the block of nine, `forEachNeighbor` taking a point's *index* so it leaves itself out, `nearest(to:)` and `indices(in:)` named as the other two questions, and rebuild-per-frame as the normal thing to do) |
 | `Drawing/Fitting.md` (`RadialBasis`: kernels, fields of numbers/vectors/colors, smoothing; `Fit.minimize`) | Ch 14 | taught ("A field you pin down yourself" after the riding particles, with the Fitting figure over three panels: a field fitted through six known colors and why the rings prove it interpolates rather than blurs, the same fit carrying vectors as a warp, `smoothing` for noisy data, the fit-once-read-often habit, and a "going the other way" subsection where `Fit.minimize` recovers a circle from scattered marks, why squared distance is the usual score, and the downhill-from-where-you-start caveat) |
-| `Generators/BlueNoise.md` | Ch 15 | taught |
-| `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Ch 15 | taught (beside blue noise, with a growth figure: not random at all, the incremental property blue noise lacks, why it never touches the sketch rng, and the scalar `halton`) |
+| `Generators/BlueNoise.md` | Ch 4 | taught ("The well-mannered scatter" after the finished sketch, with the ScatterCompare figure: why plain random clumps, the dart-throwing recipe, and `radius` as the one number) |
+| `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Ch 4 | taught (beside blue noise, with a growth figure: not random at all, the incremental property blue noise lacks, why it never touches the sketch rng, and the scalar `halton`) |
 | `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Ch 9 | taught ("A picture as one line" explains the settling method in plain words before the Voronoi structure is named in Ch 15, plus `count` and the `cutoff` rounding) |
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Ch 9 | taught (the tour beside the tree in a three-panel figure, both the `through:` and `of:points:` forms) |
 | `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Ch 9 | taught (same figure and section; the minimal-chain decomposition explained as pen lifts) |

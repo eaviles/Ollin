@@ -9,8 +9,8 @@ Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./Bl
 That *prefix property* is the point of the whole technique. Draft a piece with 100 points and render it with 10,000, and the draft is a subset of the final render. There is no seed and no random number generator anywhere, because you pass in an index and get back a point.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/HaltonGrowth-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/HaltonGrowth-dark.jpg">
+  <img src="../../Guide/Images/04-Randomness/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
 </picture>
 
 ### Contents

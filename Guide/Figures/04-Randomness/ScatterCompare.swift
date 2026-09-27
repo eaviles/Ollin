@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): plain random versus blue noise. The same
+// Guide diagram (Chapter 4): plain random versus blue noise. The same
 // number of dots in each panel. Chance clumps and leaves gaps; the
 // dart-throwing scatter keeps every dot a respectful distance from every
 // other, even but never gridded.

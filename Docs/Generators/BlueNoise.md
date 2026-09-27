@@ -9,8 +9,8 @@ A plain [`random`](./Random.md) scatter clumps, so some points land almost on to
 `poissonDisk` is Bridson's dart-throwing sampler. It runs on the seedable `random`, so the same [`seed`](./Random.md#seed) always places the points the same way.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/ScatterCompare-dark.jpg">
+  <img src="../../Guide/Images/04-Randomness/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
 </picture>
 
 ### Contents

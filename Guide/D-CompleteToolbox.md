@@ -153,8 +153,8 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Blue noise | Poisson-disk scatter: random but even | [Ch 15](15-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
-| Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | [Ch 15](15-ShapesAsMaterial.md) | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
+| Blue noise | Poisson-disk scatter: random but even | [Ch 4](04-Randomness.md#the-well-mannered-scatter) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
+| Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | [Ch 4](04-Randomness.md#the-well-mannered-scatter) | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
 | Points on a surface | Scatter a mesh's skin by area, not its vertex list, each spot carrying its normal | [Ch 27](27-Landscapes.md) | [SurfaceSampling](../Docs/Generators/SurfaceSampling.md) |
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | [Ch 9](09-Pictures.md) | [Stippling](../Docs/Generators/Stippling.md) |
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 9](09-Pictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
