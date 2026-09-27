@@ -535,7 +535,10 @@ for (index, row) in table.enumerated() {
 drawPolyline(points)
 ```
 
-<!-- figure: MarksFromNumbers (Images/09-Pictures/MarksFromNumbers.jpg and -dark.jpg), one table of monthly readings drawn as bars, as dots placed by two columns, and as a line through the rows in order; waiting on a render from Guide/Figures/09-Pictures/MarksFromNumbers.swift -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/MarksFromNumbers-dark.jpg">
+  <img src="Images/09-Pictures/MarksFromNumbers.jpg" alt="One table of twelve monthly readings drawn three ways in three panels. Left, a bar per month for rain, tall in winter and short in summer. Middle, a dot per month placed by rain across and high temperature up, each dot labeled with its month, the summer months high on the left and the winter months low on the right. Right, one line through the months in order for the daily high, rising to a plateau in July and August and falling again." width="680">
+</picture>
 
 Color is one more property. A column can carry it outright, as `tint` did in the bars, or a number can pick it from a [Chapter 2](02-Color.md) `Ramp`: `ramp.color(at: map(value, lowest, highest, 0, 1))` turns a temperature into a color the way [Chapter 7](07-Tiles.md)'s tangle turned noise into one.
 

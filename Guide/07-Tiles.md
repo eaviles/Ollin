@@ -90,7 +90,10 @@ for (index, strand) in strands.enumerated() {
 }
 ```
 
-<!-- figure: TruchetStrands (Images/07-Tiles/TruchetStrands.jpg and -dark.jpg), the strands each in a color beside the same strands stroked twice; waiting on a render from Guide/Figures/07-Tiles/TruchetStrands.swift -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/TruchetStrands-dark.jpg">
+  <img src="Images/07-Tiles/TruchetStrands.jpg" alt="Two panels of the same Truchet tangle over an eight-by-eight grid. On the left, 128 strands, each quarter-circle arc in a color of its own, so the arcs read as separate pieces. On the right, the same strands stroked twice, a dark rim under a colored core, so they merge into continuous pipes that run from salmon on the left through cream to teal on the right." width="680">
+</picture>
 
 Run it and the arcs merge into pipes, with the color running unbroken through every doorway. The same two passes, over a bigger grid and with the color taken from `noise`, are the finished sketch.
 

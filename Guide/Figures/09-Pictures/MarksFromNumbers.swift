@@ -97,17 +97,27 @@ final class MarksFromNumbers: Sketch {
         guard let mostRain = rain.max(), let lowest = high.min(), let highest = high.max() else { return }
 
         noStroke()
+        // Two months with the same high and nearly the same rain land on one
+        // spot, so a label that would sit on an earlier one steps a line away,
+        // toward the panel's middle so it stays inside the box.
+        var placed: [Vector2] = []
         for row in table {
             guard let r = row.number("rain"), let h = row.number("high") else { continue }
             let x = map(r, 0, mostRain, area.x + 20, area.x + area.width - 20)
             let y = map(h, lowest, highest, area.y + area.height - 20, area.y + 20)
             fill(accent)
             drawCircle(center: Vector2(x: x, y: y), radius: 7)
+            var labelY = y
+            let step: Double = y > area.y + area.height / 2 ? -14 : 14
+            while placed.contains(where: { abs($0.x - x) < 46 && abs($0.y - labelY) < 14 }) {
+                labelY += step
+            }
+            placed.append(Vector2(x: x, y: labelY))
             fill(faint)
             textFont(OutlineFont.systemMedium)
             textSize(11)
             textAlign(.left, .middle)
-            drawText(row["month"] ?? "", x + 11, y)
+            drawText(row["month"] ?? "", x + 11, labelY)
         }
     }
 
@@ -150,12 +160,15 @@ final class MarksFromNumbers: Sketch {
         drawText(title, area.x, area.y - 10)
     }
 
+    /// The caption wraps inside the panel's own width, so the three never run
+    /// into each other or off the canvas.
     private func label(_ text: String, at area: Rectangle) {
         noStroke()
         fill(faint)
         textFont(OutlineFont.systemMedium)
         textSize(12)
         textAlign(.left, .top)
-        drawText(text, area.x, area.y + area.height + 12)
+        drawText(text, in: Rectangle(x: area.x, y: area.y + area.height + 12,
+                                     width: area.width, height: 44))
     }
 }

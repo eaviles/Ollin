@@ -14,41 +14,42 @@
 # names its prose establishes; it is spliced into every probe from that page.
 
 71ac473ad4ff  Guide/02-Color.md:117  cannot find 'i' in scope
-7a3a73dadcbe  Guide/02-Color.md:136  cannot find 'base' in scope
-85865279977f  Guide/02-Color.md:147  cannot find 't' in scope
-80c3a2baf2ca  Guide/02-Color.md:173  cannot find 'dusk' in scope
-67e891dcb1e2  Guide/02-Color.md:225  cannot find 'myPalette' in scope
-bb59795f7264  Guide/02-Color.md:323  cannot find 'blue' in scope
+7a3a73dadcbe  Guide/02-Color.md:139  cannot find 'base' in scope
+85865279977f  Guide/02-Color.md:150  cannot find 't' in scope
+80c3a2baf2ca  Guide/02-Color.md:176  cannot find 'dusk' in scope
+67e891dcb1e2  Guide/02-Color.md:228  cannot find 'myPalette' in scope
+bb59795f7264  Guide/02-Color.md:326  cannot find 'blue' in scope
 c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:89  cannot find 'ink' in scope
+2ab302b50dae  Guide/04-Randomness.md:433  cannot find 'pool' in scope
 34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
-2ab302b50dae  Guide/04-Randomness.md:98  cannot find 'pool' in scope
-d75cad38ad55  Guide/05-Noise.md:203  cannot find 'points' in scope
-070c1141fb23  Guide/06-GridsAndRepetition.md:203  cannot find 'cell' in scope
-60af001c8df1  Guide/06-GridsAndRepetition.md:275  cannot find 'spiral' in scope
-e06710580a51  Guide/06-GridsAndRepetition.md:72  cannot find 'cell' in scope
-09c0b7adbc3a  Guide/08-Words.md:201  cannot find 'passage' in scope
-962894dbf017  Guide/08-Words.md:217  cannot find 'passage' in scope
-678b6b363dab  Guide/09-Pictures.md:116  cannot find 'picture' in scope
-ed123e551581  Guide/09-Pictures.md:126  cannot find 'picture' in scope
-93ceeb97ff4b  Guide/09-Pictures.md:137  cannot find 'picture' in scope
-ae33653cb376  Guide/09-Pictures.md:161  cannot find 'c' in scope
-cd4b2fbdddc6  Guide/09-Pictures.md:199  cannot find 'photo' in scope
-91f49fa6cea0  Guide/09-Pictures.md:236  cannot find 'picture' in scope
-10c5114223ae  Guide/09-Pictures.md:246  cannot find 'picture' in scope
-c3c5db53cc82  Guide/09-Pictures.md:269  cannot find 'target' in scope
-6af1ccedccb1  Guide/09-Pictures.md:293  cannot find 'depthMap' in scope
-5a7c4c5605e8  Guide/09-Pictures.md:308  cannot find 'picture' in scope
-4bf5f3360259  Guide/09-Pictures.md:319  cannot find 'dots' in scope
-53973e6b4213  Guide/09-Pictures.md:328  cannot find 'picture' in scope
-68079cdd8056  Guide/09-Pictures.md:344  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:373  cannot find 'picture' in scope
-5b3e1eedfb8d  Guide/09-Pictures.md:38  cannot find 'photo' in scope
-b414f6435a99  Guide/09-Pictures.md:395  'module' is inaccessible due to 'internal' protection level
-428ac43c50bf  Guide/09-Pictures.md:418  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:430  'module' is inaccessible due to 'internal' protection level
-23e899676c54  Guide/09-Pictures.md:67  cannot find 'pictures' in scope
-399caa239353  Guide/09-Pictures.md:95  cannot find 'photo' in scope
+b455e4f737c2  Guide/06-GridsAndRepetition.md:228  cannot find 'drawPetals' in scope
+60af001c8df1  Guide/06-GridsAndRepetition.md:379  cannot find 'spiral' in scope
+e06710580a51  Guide/06-GridsAndRepetition.md:95  cannot find 'cell' in scope
+6db7db40c038  Guide/07-Tiles.md:340  cannot find 'tiles' in scope
+c68684592154  Guide/07-Tiles.md:83  cannot find 'strands' in scope
+ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
+678b6b363dab  Guide/09-Pictures.md:114  cannot find 'picture' in scope
+ed123e551581  Guide/09-Pictures.md:124  cannot find 'picture' in scope
+93ceeb97ff4b  Guide/09-Pictures.md:135  cannot find 'picture' in scope
+ae33653cb376  Guide/09-Pictures.md:159  cannot find 'c' in scope
+cd4b2fbdddc6  Guide/09-Pictures.md:279  cannot find 'photo' in scope
+91f49fa6cea0  Guide/09-Pictures.md:320  cannot find 'picture' in scope
+10c5114223ae  Guide/09-Pictures.md:330  cannot find 'picture' in scope
+c3c5db53cc82  Guide/09-Pictures.md:353  cannot find 'target' in scope
+5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
+5a7c4c5605e8  Guide/09-Pictures.md:372  cannot find 'picture' in scope
+4bf5f3360259  Guide/09-Pictures.md:383  cannot find 'dots' in scope
+53973e6b4213  Guide/09-Pictures.md:392  cannot find 'picture' in scope
+68079cdd8056  Guide/09-Pictures.md:408  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:441  cannot find 'picture' in scope
+6af1ccedccb1  Guide/09-Pictures.md:461  cannot find 'depthMap' in scope
+b414f6435a99  Guide/09-Pictures.md:485  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:514  cannot find 'table' in scope
+e4ad8ec48e3a  Guide/09-Pictures.md:527  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:548  'module' is inaccessible due to 'internal' protection level
+23e899676c54  Guide/09-Pictures.md:65  cannot find 'pictures' in scope
+399caa239353  Guide/09-Pictures.md:93  cannot find 'photo' in scope
 d7900de9175f  Guide/10-Vectors.md:158  cannot find 'target' in scope
 7856a82b5957  Guide/10-Vectors.md:94  cannot find 'target' in scope
 766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:271  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'

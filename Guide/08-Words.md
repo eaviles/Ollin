@@ -106,7 +106,10 @@ textJustify()
 drawText(passage, in: box)
 ```
 
-<!-- figure: BothEdgesFlush (Images/08-Words/BothEdgesFlush.jpg and -dark.jpg), one Latin passage in two boxes, ragged beside justified; waiting on a render from Guide/Figures/08-Words/BothEdgesFlush.swift -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/BothEdgesFlush-dark.jpg">
+  <img src="Images/08-Words/BothEdgesFlush.jpg" alt="The same short passage set in two identical gray boxes side by side, each with a thin red rule down its right edge. On the left, labeled ragged right, every line stops where its last word ends, short of the rule. On the right, labeled justified, the spaces between words open until every full line touches the rule, and only the last line keeps its natural length." width="680">
+</picture>
 
 Justification needs to know how far a line should run, and only a box says that. So it applies to the box form of `drawText` and to nothing else. The last line of each paragraph keeps its natural length, because the writing ended there. `noTextJustify()` turns it back off, and `textAlign` still decides which corner of the box the passage opens from.
 
