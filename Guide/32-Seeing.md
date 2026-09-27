@@ -309,13 +309,71 @@ The other way to read the same result suits parameters better. `confidence(of: "
 
 In the figure the attention piles onto her face rather than onto the wall of flowers around her. That's the model doing exactly what it was trained on, since faces and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
 
+## Putting it together: motion paints
+
+The finished sketch is the painting at the top. You stand in front of the camera, and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/32-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
+
+```swift
+import Ollin
+import OllinVision
+
+final class MotionBrush: Sketch {
+    let camera = Camera()
+    lazy var flow = FlowTracker(camera)
+
+    override func setup() {
+        try? camera.start()
+        seed(21)                    // the brush dabs land the same way every run
+        noClear()
+        background(Color(hex: 0x0A0A14))
+    }
+
+    override func draw() {
+        // A faint veil each frame, so old strokes sink slowly into the dark.
+        noStroke()
+        fill(Color(hex: 0x0A0A14, alpha: 0.007))
+        drawRect(0, 0, width, height)
+
+        guard let field = flow.field else { return }
+
+        // How far a picture moves between two frames depends on what it is, so
+        // the brush reads speed against this frame's own fastest sample, with a
+        // floor under it so a still room paints nothing at all.
+        let fastest = max(field.samples(in: bounds, every: 40).map(\.flow.length).max() ?? 0, 0.001)
+        let cut = max(fastest * 0.22, 3)
+
+        // Fling brushes at random spots; paint only where the picture moved.
+        for _ in 0 ..< 900 {
+            let p = Vector2(random(0, width), random(0, height))
+            let v = field.vector(at: p, in: bounds, mirrored: true)
+            let strength = v.length
+            guard strength > cut else { continue }
+            let hue = v.angle / .tau + 0.5              // direction picks the color
+            stroke(Color(hue: hue, saturation: 0.75, brightness: 1)
+                .withAlpha(min(0.5, strength / fastest * 0.3)))
+            strokeWeight((1.2 + strength / fastest * 4) * scale)
+            drawLine(p, p + v * (36 * scale / fastest))
+        }
+    }
+}
+```
+
+The committed figure swaps the camera block for the film, and the painting code is identical. `StageFilm.step()` stands where `flow.field` stands, decoding the next frame and measuring it against the one before, with nobody to mirror. That relative scale matters more than it looks: a hand waved at a webcam crosses tens of pixels between frames and a dancer filmed across the room crosses a few, so a brush tuned to one paints nothing for the other. [Chapter 19](19-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
+
+Then make it yours:
+
+- Change what motion means by using `field.averageFlow(in: bounds)` to steer one big brush instead of thousands of small ones, and the piece becomes a single line that follows the room.
+- Paint with yourself instead of your motion. Swap the flow for `PersonSegmenter` and stamp the `matte`, tinted, wherever you stand, so motion leaves silhouettes.
+- Give the brush a hand by driving it with `HandTracker`'s `.indexTip` instead of flow, and you're drawing in the air.
+- Trace the room instead, with a `ContourDetector` over the same camera drawn as strokes that jitter with [Chapter 5](05-Noise.md)'s noise, which makes the mirror a live etching.
+
 ## Models of your own
 
-The built-in trackers end somewhere, and the sections below go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there. A sketch that lives elsewhere finds that folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models`, so the paths below keep working wherever the sketch is launched from.
+The motion brush needed only what the Mac finds on its own. The built-in trackers end somewhere, though, and the sections below go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there. A sketch that lives elsewhere finds that folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models`, so the paths below keep working wherever the sketch is launched from.
 
 ### A click cuts it loose: PointSegmenter
 
-The segmenters above decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture.
+The segmenters in [Lifting the subject](#lifting-the-subject) decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture.
 
 ```swift
 lazy var picker = PointSegmenter(camera,
@@ -423,7 +481,7 @@ The phrases stay live. Set `concepts` to a new list, or ask `confidence(of:)` ab
 
 ## Footage, the screen, and the past
 
-A camera is one source of frames among three. A clip plays into the same trackers, the screen itself becomes a feed, and a held history of frames turns time into a material.
+The brush painted from a live camera, and a camera is one source of frames among three. A clip plays into the same trackers, the screen itself becomes a feed, and a held history of frames turns time into a material.
 
 ### Footage as material
 
@@ -519,64 +577,6 @@ The figure uses the bundled film rather than a webcam so it can be reproduced, a
 Two practical notes. The history costs width times height times four bytes per frame, so push modest sizes rather than full-resolution stills. And the first push fixes the size, after which differently sized frames are skipped with a one-time note in the console.
 
 > **Swift note.** The type is written `Ollin.SlitScan` in the listing above because the example sketch that ships with this technique is itself named `SlitScan`, and a class shadows a type of the same name. Qualifying with the module name is how you say "I mean the framework's one", the same move SwiftUI code makes for `Image`.
-
-## Putting it together: motion paints
-
-The finished sketch is the painting at the top. You stand in front of the camera, and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/32-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
-
-```swift
-import Ollin
-import OllinVision
-
-final class MotionBrush: Sketch {
-    let camera = Camera()
-    lazy var flow = FlowTracker(camera)
-
-    override func setup() {
-        try? camera.start()
-        seed(21)                    // the brush dabs land the same way every run
-        noClear()
-        background(Color(hex: 0x0A0A14))
-    }
-
-    override func draw() {
-        // A faint veil each frame, so old strokes sink slowly into the dark.
-        noStroke()
-        fill(Color(hex: 0x0A0A14, alpha: 0.007))
-        drawRect(0, 0, width, height)
-
-        guard let field = flow.field else { return }
-
-        // How far a picture moves between two frames depends on what it is, so
-        // the brush reads speed against this frame's own fastest sample, with a
-        // floor under it so a still room paints nothing at all.
-        let fastest = max(field.samples(in: bounds, every: 40).map(\.flow.length).max() ?? 0, 0.001)
-        let cut = max(fastest * 0.22, 3)
-
-        // Fling brushes at random spots; paint only where the picture moved.
-        for _ in 0 ..< 900 {
-            let p = Vector2(random(0, width), random(0, height))
-            let v = field.vector(at: p, in: bounds, mirrored: true)
-            let strength = v.length
-            guard strength > cut else { continue }
-            let hue = v.angle / .tau + 0.5              // direction picks the color
-            stroke(Color(hue: hue, saturation: 0.75, brightness: 1)
-                .withAlpha(min(0.5, strength / fastest * 0.3)))
-            strokeWeight((1.2 + strength / fastest * 4) * scale)
-            drawLine(p, p + v * (36 * scale / fastest))
-        }
-    }
-}
-```
-
-The committed figure swaps the camera block for the film, and the painting code is identical. `StageFilm.step()` stands where `flow.field` stands, decoding the next frame and measuring it against the one before, with nobody to mirror. That relative scale matters more than it looks: a hand waved at a webcam crosses tens of pixels between frames and a dancer filmed across the room crosses a few, so a brush tuned to one paints nothing for the other. [Chapter 19](19-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
-
-Then make it yours:
-
-- Change what motion means by using `field.averageFlow(in: bounds)` to steer one big brush instead of thousands of small ones, and the piece becomes a single line that follows the room.
-- Paint with yourself instead of your motion. Swap the flow for `PersonSegmenter` and stamp the `matte`, tinted, wherever you stand, so motion leaves silhouettes.
-- Give the brush a hand by driving it with `HandTracker`'s `.indexTip` instead of flow, and you're drawing in the air.
-- Trace the room instead, with a `ContourDetector` over the same camera drawn as strokes that jitter with [Chapter 5](05-Noise.md)'s noise, which makes the mirror a live etching.
 
 ## Where this comes from
 
