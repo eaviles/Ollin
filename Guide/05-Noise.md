@@ -6,7 +6,7 @@
 
 <img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in thousands of short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
 
-[Chapter 4](04-Randomness.md) ended with a complaint. The random walk goes interesting places, but its path is all jitter. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that fixes that. It ends in the sketch above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function.
+[Chapter 4](04-Randomness.md)'s random walk goes interesting places, but its path is all jitter. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that fixes that. It ends in the sketch above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function.
 
 ## Random that remembers
 
@@ -205,7 +205,7 @@ DispatchQueue.concurrentPerform(iterations: points.count) { i in
 
 ## Putting it together: a meadow in the wind
 
-The sketch at the top of this chapter uses everything at once, in a field of about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps don't jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
+The meadow at the top of this chapter puts a noise field, time, and layering to work on about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps don't jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
 
 ```swift
 import Ollin
