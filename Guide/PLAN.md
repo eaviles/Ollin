@@ -270,7 +270,7 @@ Figures: the erosion triptych; the terrain mesh; one orbit beside a million; the
 Draws from: `Docs/Generators/Terrain.md`, `Docs/3D/Instancing.md`, `Docs/3D/Strands.md`, `Docs/Drawing/Attractors.md`; `Examples/Rendering/`, `Examples/3D/Geometry/Terrain`.
 
 **28. Worlds with weight.**
-Teaches: `World3D` and rigid bodies in the 3D scene; asking what hit what and what is there (the query family); collision groups and layers; taking degrees of freedom away; machines out of joints (revolute, slider, gear, rack, path, pulley, and links between joints); water and buoyancy (`world.water`, density as the waterline); snapshots and determinism.
+Teaches: `World3D` and rigid bodies in the 3D scene; asking what hit what and what is there (the query family); collision groups and layers; taking degrees of freedom away; machines out of joints (revolute, slider, gear, rack, path, pulley, and links between joints); water and buoyancy (`world.water`, density as the waterline); ground from a heightfield, a scene, or a USD file's physics; snapshots and determinism.
 Assumes: Ch 11 (the 2D physics world), Ch 25 (the 3D scene).
 Payoff: the contraption. A motor on one hinge, a gear link to a second, and a bar that sweeps a shelf of crates, with nothing animated anywhere.
 Figures: the crate fall; the windmill; the rockslide; the trigger and the sightlines; the sorted and flattened pairs; the machines; what settled.

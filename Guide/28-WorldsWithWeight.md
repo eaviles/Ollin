@@ -8,7 +8,7 @@
 
 That machine has one motor in it. A gear link ties its hinge to a second, and everything after that is contact: the bar swings because it is bolted to a wheel, and the crates move because the bar arrives. Nothing there is animated. Take the motor away and the whole thing coasts to a stop on its own.
 
-[Chapter 25](25-3DGently.md) built a scene you look at. This chapter gives it weight. Bodies fall, stack, and knock each other about. Joints tie them into hinges, sliders, gears and ropes. Queries let the sketch ask what a body would hit before it hits it, and water holds up whatever is lighter than it. A snapshot puts a settled arrangement in a file so it comes back exactly as it was. By the end you'll have built the contraption above.
+[Chapter 25](25-3DGently.md) built a scene you look at. This chapter gives it weight. Bodies fall, stack, and knock each other about. Joints tie them into hinges, sliders, gears and ropes. Queries let the sketch ask what a body would hit before it hits it. Water holds up whatever is lighter than it, and the ground can be a landscape or a file. A snapshot puts a settled arrangement in a file so it comes back exactly as it was. By the end you'll have built the contraption above.
 
 ## Things with weight
 
