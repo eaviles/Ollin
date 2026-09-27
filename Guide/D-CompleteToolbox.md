@@ -68,7 +68,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Dashed strokes | `strokeDash(_:)`: a line with gaps, the pattern walked along the path so corners and curves keep their rhythm | [Ch 17](17-MarksAndMedia.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeDash) |
 | Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 15](15-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 19](19-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
-| Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 19](19-LayersAndEffects.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
+| Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 38](38-FinishingASketch.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 
 ## Color

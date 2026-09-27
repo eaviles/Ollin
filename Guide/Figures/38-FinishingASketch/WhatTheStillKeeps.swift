@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 19): what a HEIC still keeps that this page cannot
+// Guide figure (Chapter 38): what a HEIC still keeps that this page cannot
 // show. One probe, a lamp summed past white on an `.extended` sketch, is
 // rendered once through OllinApp.image(of:), the float frame `--export
 // lamp.heic` is written from, and its pixels are read back twice: clamped at

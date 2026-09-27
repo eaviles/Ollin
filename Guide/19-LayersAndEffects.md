@@ -219,49 +219,7 @@ That `toneMap(.aces, exposure: 1.5)` line needs its own moment, because it solve
 
 <img src="Images/19-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
 
-Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive piece, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md).
-
-## Genuinely brighter: HDR output
-
-Tone-mapping is what you do when the screen cannot go any higher. Sometimes it can.
-
-A modern Apple display holds two things back from an ordinary sketch. It can show colors more saturated than sRGB describes, and it can, for a while, make small areas genuinely brighter than white. Both are switched on by one declared line:
-
-```swift
-final class Lamps: Sketch {
-    override var colorOutput: ColorOutput { .extended }
-}
-```
-
-Now the too-bright values stop being a problem to solve. A value of 2.0 is drawn twice as bright as white, and the caption beside it stays white while the lamp core glows. Leave `toneMap` alone here: `.aces` exists to squash those values back under 1.0, which is exactly what you no longer want.
-
-The other half is the color. `Color` stays an sRGB type, and a color outside that gamut is named in the wider one:
-
-```swift
-fill(Color(displayP3: 1, green: 0, blue: 0))    // a red sRGB cannot make
-```
-
-Its stored components come out slightly outside 0…1, which is how a color says "further than sRGB goes". Nothing clamps it on the way through. On a `.standard` sketch it simply lands on the nearest sRGB red at the end, so naming one is always safe.
-
-One honest limit. The brightness half depends on the display having headroom to spare at that moment. The system gives and takes it as screen brightness changes. Read `displayHeadroom` to see what you actually got, where 1.0 means none.
-
-Getting it out of the window is a question of format. An exported PNG keeps the wide color but not the brightness, because PNG stops at white. Two formats do not. An `.extended` sketch's `--export-video` is written as HDR10 with no extra flags, and a still asked for by name keeps its highlights:
-
-```sh
-swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.heic
-# Ollin: exported frame 0 → lamp.heic (1080×1080, highlights to 2.70x white in a gain map)
-```
-
-The picture inside that file is the PNG, so anything at all can open it. Beside it sits a record of the light that was clipped away, called a gain map. A display with headroom puts it back.
-
-Neither the wider gamut nor the light above white survives a page like this one, so no figure can show them. What a figure can show is the record. Here are one still's two pictures, read back from the exported frame:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/WhatTheStillKeeps-dark.jpg">
-  <img src="Images/19-LayersAndEffects/WhatTheStillKeeps.jpg" alt="Two dark square panels with a plus sign between them. Left, a soft lamp whose center is a flat white plateau, beside a small white bar labeled white. Right, the same frame as a gain map: black everywhere except a small soft gray disc where the lamp's core was, labeled as reaching 2.7 times white" width="680">
-</picture>
-
-The left panel is the picture inside the file, the frame clamped at white, and the lamp's flat plateau is where everything above 1.0 went. The right panel is the gain map: black where the frame was within range, brighter the further above white a pixel went, up to the peak the export line reports. A display with headroom multiplies the two together and the plateau turns back into a lamp. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop to watch it happen, and turn the screen brightness down while you look.
+Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive sketch, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md). Some displays can show a little light above white, and [Chapter 38](38-FinishingASketch.md#brighter-than-white-hdr-output) keeps it in the files a sketch leaves as.
 
 ## The canvas that remembers itself
 
@@ -382,7 +340,6 @@ Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at
 - [What survives a frame](../Docs/Concepts/Persistence.md): the whole list of what carries into the next frame, from the ink state to a checkpoint on disk.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): the `develop` print filter, and the lens built on the running mean.
-- [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).

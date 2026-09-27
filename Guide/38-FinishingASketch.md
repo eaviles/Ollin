@@ -6,7 +6,7 @@
 
 <img src="Images/38-FinishingASketch/ContourChart.jpg" alt="Concentric single-line rings around a still center on cream paper, each ring bent by the same noise field so neighboring rings bend together and the outer ones bend most" width="560">
 
-A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, and motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
+A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, or keep the light above white. Motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
 
 ## Leaving as files
 
@@ -94,6 +94,48 @@ What lands is an OpenEXR file, which is what compositing programs read. Its red,
 That last one is worth sitting with. A compositor holding a depth channel can add fog after the fact, at a distance it picks. It can throw the background out of focus without the renderer knowing anything about lenses. A grade that pulls the exposure down finds the shape of a blown highlight instead of a flat white disk. None of it costs a re-render, which is the whole argument for the file.
 
 The cost is size. It is written uncompressed, so a 1080 square frame with depth is about 14 MB, and a sequence adds up fast. Export the moments you need rather than the whole run. Two things are not in the file: surface normals and per-object mattes. Ollin shades in one pass and keeps no geometry buffer to write them from. `Examples/Export/LinearFrame` is a lane of glossy spheres under one hard lamp. It is built so both halves show: highlights ten times over white, and depth running from five units to the far plane.
+
+### Brighter than white: HDR output
+
+The EXR keeps the light above white for another program to use. A display can show some of it too. Tone mapping, from [Chapter 19](19-LayersAndEffects.md#brighter-than-the-screen-tonemap), is what you do when the screen cannot go any higher, and on a modern Apple display it sometimes can.
+
+That display holds two things back from an ordinary sketch. It can show colors more saturated than sRGB describes, and it can, for a while, make small areas brighter than white. Both are switched on by one declared line:
+
+```swift
+final class Lamps: Sketch {
+    override var colorOutput: ColorOutput { .extended }
+}
+```
+
+Now the too-bright values stop being a problem to solve. A value of 2.0 is drawn twice as bright as white, and the caption beside it stays white while the lamp core glows. Leave `toneMap` alone here. `.aces` exists to squash those values back under 1.0, which is what you no longer want.
+
+The other half is the color. `Color` stays an sRGB type, and a color outside that gamut is named in the wider one:
+
+```swift
+fill(Color(displayP3: 1, green: 0, blue: 0))    // a red sRGB cannot make
+```
+
+Its stored components come out slightly outside 0…1, which is how a color says "further than sRGB goes". Nothing clamps it on the way through. On a `.standard` sketch it simply lands on the nearest sRGB red at the end, so naming one is always safe.
+
+There is one limit. The brightness half depends on the display having headroom to spare at that moment. The system gives and takes it as screen brightness changes. Read `displayHeadroom` to see what you actually got, where 1.0 means none.
+
+Getting it out of the window is a question of format. An exported PNG keeps the wide color but not the brightness, because PNG stops at white. Two formats do not. An `.extended` sketch's `--export-video` is written as HDR10 with no extra flags, and a still asked for by name keeps its highlights:
+
+```sh
+swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.heic
+# Ollin: exported frame 0 → lamp.heic (1080×1080, highlights to 2.70x white in a gain map)
+```
+
+The picture inside that file is the PNG, so anything at all can open it. Beside it sits a record of the light that was clipped away, called a gain map. A display with headroom puts it back.
+
+Neither the wider gamut nor the light above white survives a page like this one, so no figure can show them. What a figure can show is the record. Here are one still's two pictures, read back from the exported frame:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/WhatTheStillKeeps-dark.jpg">
+  <img src="Images/38-FinishingASketch/WhatTheStillKeeps.jpg" alt="Two dark square panels with a plus sign between them. Left, a soft lamp whose center is a flat white plateau, beside a small white bar labeled white. Right, the same frame as a gain map: black everywhere except a small soft gray disc where the lamp's core was, labeled as reaching 2.7 times white" width="680">
+</picture>
+
+The left panel is the picture inside the file, the frame clamped at white. The lamp's flat plateau is where everything above 1.0 went. The right panel is the gain map. It is black where the frame was within range. It gets brighter the further above white a pixel went, up to the peak the export line reports. A display with headroom multiplies the two together and the plateau turns back into a lamp. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop to watch it happen, and turn the screen brightness down while you look.
 
 ## Motion: video and GIF
 
@@ -740,6 +782,7 @@ The pen-plotter revival that SVG export serves grew around the AxiDraw and the #
 
 ## Go deeper
 
+- [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching, the named frame rates, and transparent output.
 - [Perfect loops](../Docs/Output/Export.md#perfect-loops), [contact sheets](../Docs/Output/Export.md#contact-sheets-proofing-a-variation-space), and [the recipe](../Docs/Output/Export.md#reproducibility-metadata): the lap an export finds for itself, the sheet a keeper is chosen from, and where each format keeps its recipe.
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
