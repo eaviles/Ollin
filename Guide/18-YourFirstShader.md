@@ -129,7 +129,7 @@ Ollin's own built-in patterns are shaders written with that same library, and `g
 drawImage(generate(.godRays()).image, 0, 0)
 ```
 
-<!-- Figure: DesignGenerators (Figures/18-YourFirstShader/DesignGenerators.swift), the ten design generators at their defaults, one labeled tile each. Waiting on its render on the Mac. -->
+<img src="Images/18-YourFirstShader/DesignGenerators.jpg" alt="Ten labeled tiles, each a design generator at its defaults: a violet mesh gradient, blue filaments, a white smoke ring, stacked color panels, a spiral, yellow waves, orbiting dots, a grainy gradient, a pulsing border, and god rays" width="680">
 
 The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters) meets those.
 

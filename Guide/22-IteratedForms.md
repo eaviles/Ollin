@@ -196,7 +196,10 @@ Where a ball is let go matters as much as the room. In a circle it decides how b
 
 The two balls in the stadium, let go a hair apart, were strangers within a few dozen bounces. A machine with nothing in it but gravity does the same. Two weights swing on two rigid arms, and that is enough to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `advance()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is.
 
-<!-- Figure: PendulumFan (Figures/22-IteratedForms/PendulumFan.swift), one pendulum's traced path beside sixteen pendulums started a ten-thousandth of a radian apart. Waiting on its render on the Mac. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/PendulumFan-dark.jpg">
+  <img src="Images/22-IteratedForms/PendulumFan.jpg" alt="Two panels: one double pendulum over its looping twelve-second trace, and sixteen pendulums that started a ten-thousandth of a radian apart, fanned out in every direction after eight seconds" width="680">
+</picture>
 
 The part to slow down for is that this is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos means, here and in the gray band of the logistic map. A fan of near-identical pendulums is the cheapest way to watch it happen. `Examples/Motion/DoublePendulum` draws one: twenty-four pendulums that swing as one line, then pull apart.
 
