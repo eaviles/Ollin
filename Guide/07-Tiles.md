@@ -90,6 +90,23 @@ What makes it more than a field of loose marks is that the diagonals **meet at t
 
 Two things before you use it. `strokeCap(.round)` is what makes the corners read as turns instead of notches. And `probability` biases the coin: pushed toward 0 or 1 the field combs into long parallel diagonals with the odd cell crossing them, which is quieter and, to some eyes, better.
 
+## One route between any two: perfect mazes
+
+The diagonals read as paths, but not as a maze you could solve. Four that lean together close a box, and whatever is inside it is sealed off. A **perfect maze** makes the opposite promise. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets.
+
+<!-- Figure: PerfectMaze (Figures/07-Tiles/PerfectMaze.swift), two perfect mazes carved over the same grid by .backtracker and .kruskal, each with its longest route traced. Waiting on its render on the Mac. -->
+
+```swift
+seed(9)
+let m = maze(columns: 24, rows: 24, algorithm: .kruskal)
+stroke(.white); strokeWeight(4); strokeCap(.round)
+drawMaze(m)
+stroke(.orange)
+drawPolyline(m.contour(of: m.longestPath(), in: bounds).points)
+```
+
+The algorithm you choose is a texture control as much as a technical one. `.backtracker` gives long winding corridors, while `.kruskal` gives an even sprawl of short dead ends. `drawMaze` strokes the walls. The maze can also hand you its longest path, the single hardest route through it. Its two ends make a natural entrance and exit. The last line draws that path through the cell centers.
+
 ## No coins at all: kolam and sona
 
 Truchet spends a coin per cell. Hitomezashi spends one per line. This one spends none, and it is still the least predictable of the three.
@@ -251,6 +268,29 @@ stroke(.white); noFill()
 drawGirih(over: cells, angle: 60)   // 54° is the classic girih-tile angle
 ```
 
+## A run that never repeats itself
+
+The aperiodic tiles never repeat across the whole plane. A ring of beads can make a different promise, about its short stretches rather than the whole.
+
+Take four colors and lay out sixty-four beads so that **every** run of three colors appears somewhere around the ring, and no run appears twice. That is a de Bruijn sequence, and it is as short as such a ring can be: there are sixty-four possible triples and each takes one place.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/EveryWindowOnce-dark.jpg">
+  <img src="Images/07-Tiles/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+</picture>
+
+```swift
+let code = DeBruijnCode(symbols: 4, window: 3)
+code.sequence            // 64 symbols, every triple exactly once
+code.position(of: seen)  // where those three beads sit
+```
+
+The reason to care is in that last line. Look at any three beads and you know where on the ring you are, because no other three look the same. That is how a rotary encoder finds its angle and how a camera finds its place on a printed ruler. Nothing has to be counted or remembered, only glimpsed.
+
+The run always starts with a row of zeros, because the one Ollin builds is the smallest in dictionary order. The same arguments always give the same run, so a sketch built on it reproduces.
+
+Two things are easy to get wrong. **The run is a ring**, so reading it means wrapping around the end, and drawing it as a straight strip leaves the last windows looking broken. And **the length grows fast**: five symbols with a window of five is already 3,125 beads. Choose the window from how much a reader can see at once, not from how long a run you want.
+
 ## More room than the page has: hyperbolic tiling
 
 One last kind of repetition bends the page itself. Only three regular tilings fit on flat paper: triangles, squares, hexagons. The corners meeting at a vertex must sum to a full turn, and no other shape obliges. Hyperbolic geometry has room for all the rest. Seven-sided tiles meeting three to a corner, pentagons meeting four to a corner, any pair you like, as long as `(sides - 2) * (meeting - 2) > 4`. The Poincaré disk shows the whole infinite tiling at once: every tile is the same true size, only drawn smaller as it nears the circular horizon.
@@ -394,6 +434,8 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest. He pu
 
 Hitomezashi comes from a needle-first world rather than a mathematical one: a running-stitch mending tradition from Japan, worked one stitch per grid space. The mathematician Katherine Seaton, with Carol Hayes, showed its designs are exactly the one-bit-per-line encoding this chapter uses. She also proved the two-tone fill always works.
 
+Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee.
+
 Kolam and sona reach further back than any of it, and belong to the people who draw them rather than to a paper. What connects the two traditions was written down much later. Marcia Ascher's *Ethnomathematics* set the Indian kolam beside the Angolan sona. Paulus Gerdes spent decades recording sona in the field and working out their rules, the count of loops among them. Slavik Jablan named the general object a mirror curve, which is where the walls come from. Celtic knotwork is the same object again, wearing bands: the plait-and-breakline construction that Iain Bain set out for drawing them by hand, and that Peter Cromwell later described in the same mirror-curve terms.
 
 The pieces that have to fit are Solomon Golomb's. He named the polyomino in a 1953 talk to the Harvard Mathematics Club, published it the year after, and wrote a whole volume on them in 1965. Martin Gardner's column carried them to everybody else, as it did the spiral of numbers. The mutilated board is older than the name and has been used to teach the same lesson ever since: a proof can settle in one line what a search would take a long time to say.
@@ -401,6 +443,8 @@ The pieces that have to fit are Solomon Golomb's. He named the polyomino in a 19
 Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model, and learning from a picture is its overlapping model.
 
 The never-repeating tiles have their own lineage. Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic, and his student Robert Berger proved him wrong. Roger Penrose got the tile count down to two in the 1970s. The one-tile question then stayed open until 2023. David Smith, a retired print technician playing with paper cutouts, found the hat. The spectre followed, with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss. The girih strapwork method is E. H. Hankin's polygons-in-contact technique, formalized for the computer by Craig Kaplan. The five girih tiles decorate buildings from medieval Isfahan to Istanbul.
+
+The ring where every window is different is named for Nicolaas Govert de Bruijn, who counted the binary case in 1946, although Camille Flye Sainte-Marie had done it in 1894 and Sanskrit prosodists had the eight-bead version as a memory word centuries before either.
 
 The hyperbolic disk has the grandest lineage of all. The geometer H. S. M. Coxeter sent M. C. Escher a paper with a figure of a hyperbolic tessellation, and Escher wrote back that it gave him "quite a shock": it was the trick he had been hunting for years, infinity closed inside a circle. The *Circle Limit* woodcuts came out of that exchange, and Douglas Dunham later turned the construction into the computer algorithm this chapter's version descends from.
 
@@ -411,16 +455,18 @@ The tile that changes as you read is William Huff's parquet deformation, set as 
 - [Truchet](../Docs/Drawing/Truchet.md): both tiles, the contour output, and feeding the strands to booleans, hatching, or SVG export.
 - [Hitomezashi](../Docs/Drawing/Hitomezashi.md): the stitch reference, the two faces, biased flips, and explicit bits for encoded designs.
 - [Ten print](../Docs/Drawing/TenPrint.md): the two faces, biasing the coin, hand-authored bits, and what the joining does and does not promise.
+- [Mazes](../Docs/Drawing/Tiling.md#maze): all three carving algorithms, the walls as line work, the one route between two cells, and the longest path.
 - [Kolam and sona](../Docs/Drawing/Kolam.md): the full reference for `kolam` and `drawKolam`, the loops and dots, the walls, and the counting rule.
 - [Celtic knotwork](../Docs/Drawing/Knotwork.md): `knotwork` and `drawKnotwork`, the bands already broken at each dive, the crossing count, and the two-tone draw.
 - [Polyominoes](../Docs/Generators/Polyominoes.md): the piece type, the twelve pentominoes and five tetrominoes, counting orientations, outlines, and the fitting search with its two switches.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
 - [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md): the full reference for `penroseTiling` (both variants and the arcs), `wangTiling` (tile sets, weights, the complete set), `girihPattern` (the contact angle, the five girih tiles, composing them edge to edge), and `spectreTiling`.
+- [De Bruijn sequences](../Docs/Generators/DeBruijn.md): the run, the reader that turns a window into a position, and the Lyndon words it is built from.
 - [Hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md): the full `hyperbolicTiling` reference, every valid {p,q} pair, the parity and depth coloring hooks, and the panning viewpoint.
 - [Parquet deformations](../Docs/Drawing/ParquetDeformation.md): the full `parquetDeformation` reference, the profile catalog, the four sweeps and the closure that replaces them, and the two faces.
 - The Farmanfarmaian homages in [`Examples/Recreations/MonirFarmanfarmaian/`](../Examples/Recreations/MonirFarmanfarmaian/): a regular polygon cut into one piece per side and every piece cut again, into rows of triangles for the mirror relief and into a spiraling kite for the maze. Whatever happens in one piece happens in all of them, so the whole keeps the polygon's turn. `Convertible` takes those pieces off the polygon and searches for every other way they can hang: each kite lies along a neighbor's edge, the set turns about one point, and none overlaps.
 - Appendix B draws the idea under all of it, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Angles and circles](B-JustEnoughMath.md#angles-and-circles) for the arcs.
-- Worked examples: [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Hitomezashi`](../Examples/Patterns/Hitomezashi/Sketch.swift) (both faces, on a breathing cloth), [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) (the field resized live, with the loop count read out), [`Patterns/Knotwork`](../Examples/Patterns/Knotwork/Sketch.swift) (the weave with its walls switchable), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide), [`Patterns/HyperbolicTiling`](../Examples/Patterns/HyperbolicTiling/Sketch.swift) (the panning tour of six {p,q} pairs), [`Patterns/ParquetDeformation`](../Examples/Patterns/ParquetDeformation/Sketch.swift) (a square becoming a key under a front that slides back and forth), [`Patterns/Pentominoes`](../Examples/Patterns/Pentominoes/Sketch.swift) (all twelve laid one at a time, with the tray emptying as they go), [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) (a fresh legal pipe network every few seconds), and [`Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift) (three samples written in the source as rows of characters).
+- Worked examples: [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Hitomezashi`](../Examples/Patterns/Hitomezashi/Sketch.swift) (both faces, on a breathing cloth), [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) (the field resized live, with the loop count read out), [`Patterns/Knotwork`](../Examples/Patterns/Knotwork/Sketch.swift) (the weave with its walls switchable), [`Patterns/Maze`](../Examples/Patterns/Maze/Sketch.swift) (all three algorithms, with the longest path tracing through), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide), [`Patterns/DeBruijn`](../Examples/Patterns/DeBruijn/Sketch.swift), [`Patterns/HyperbolicTiling`](../Examples/Patterns/HyperbolicTiling/Sketch.swift) (the panning tour of six {p,q} pairs), [`Patterns/ParquetDeformation`](../Examples/Patterns/ParquetDeformation/Sketch.swift) (a square becoming a key under a front that slides back and forth), [`Patterns/Pentominoes`](../Examples/Patterns/Pentominoes/Sketch.swift) (all twelve laid one at a time, with the tray emptying as they go), [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) (a fresh legal pipe network every few seconds), and [`Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift) (three samples written in the source as rows of characters).
 
 ---
 

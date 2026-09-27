@@ -276,7 +276,7 @@ drawMaze(maze(columns: 24, rows: 24))
 
 `subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. Uneven panels like that are hard to get from a grid and easy to get from recursion. That is why the result reads as a layout rather than a table.
 
-`maze` carves a **perfect maze**. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets. The algorithm you choose is a texture control as much as a technical one. `.backtracker` gives long winding corridors, while `.kruskal` gives an even sprawl of short dead ends. `drawMaze` strokes the walls, and the maze can also hand you its longest path, which is the single hardest route through it.
+`maze` carves the fourth panel, a perfect maze. [Chapter 7](07-Tiles.md#one-route-between-any-two-perfect-mazes) sets it beside the maze of diagonals and says what makes it perfect.
 
 ## Walking a grid: numbers in a spiral
 
@@ -304,29 +304,6 @@ for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, r
 ```
 
 `start` is the other parameter, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form, which is the same fact seen from a different place.
-
-## A run that never repeats itself
-
-This chapter has been about repetition. Here is its opposite, and it is just as exact.
-
-Take four colors and lay out sixty-four beads so that **every** run of three colors appears somewhere around the ring, and no run appears twice. That is a de Bruijn sequence, and it is as short as such a ring can be: there are sixty-four possible triples and each takes one place.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/EveryWindowOnce-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
-</picture>
-
-```swift
-let code = DeBruijnCode(symbols: 4, window: 3)
-code.sequence            // 64 symbols, every triple exactly once
-code.position(of: seen)  // where those three beads sit
-```
-
-The reason to care is in that last line. Look at any three beads and you know where on the ring you are, because no other three look the same. That is how a rotary encoder finds its angle and how a camera finds its place on a printed ruler. Nothing has to be counted or remembered, only glimpsed.
-
-The run always starts with a row of zeros, because the one Ollin builds is the smallest in dictionary order. The same arguments always give the same run, so a sketch built on it reproduces.
-
-Two things are easy to get wrong. **The run is a ring**, so reading it means wrapping around the end, and drawing it as a straight strip leaves the last windows looking broken. And **the length grows fast**: five symbols with a window of five is already 3,125 beads. Choose the window from how much a reader can see at once, not from how long a run you want.
 
 ## Putting it together: a wall of rosettes
 
@@ -417,17 +394,12 @@ Before moving on, make it yours:
 
 The paper-moving transform model goes back to the earliest days of computer graphics, and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The kaleidoscope is younger than it looks: David Brewster patented one in 1817, and it became a craze inside a year.
 
-Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee.
-
-The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since.
-
-The ring where every window is different is named for Nicolaas Govert de Bruijn, who counted the binary case in 1946, although Camille Flye Sainte-Marie had done it in 1894 and Sanskrit prosodists had the eight-bead version as a memory word centuries before either. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Ulam spiral](../Docs/Generators/UlamSpiral.md): the walk, reading any test off it, and the prime helpers behind the marks.
-- [De Bruijn sequences](../Docs/Generators/DeBruijn.md): the run, the reader that turns a window into a position, and the Lyndon words it is built from.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
 - [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.

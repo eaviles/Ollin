@@ -11,8 +11,8 @@ deBruijnSequence(symbols: 2, window: 3)   // 0,0,0,1,0,1,1,1
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/EveryWindowOnce-dark.jpg">
-  <img src="../../Guide/Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/EveryWindowOnce-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
 </picture>
 
 That run is as short as it can be. There are `symbols` to the power of `window` possible windows. Each one needs its own position in the run, so the run is exactly that long.
@@ -91,7 +91,7 @@ Lyndon words are the pieces the de Bruijn sequence is made of. Take the words wh
 - **The length grows fast.** Five symbols with a window of five gives 3,125 beads, and six symbols with a window of six gives 46,656. Choose the window by how many symbols a reader can see at once, not by how long you want the run to be.
 - Nothing here touches `random`, so a sketch built on the sequence reproduces exactly.
 
-Example: `Patterns/DeBruijn`. Guide: [Chapter 6](../../Guide/06-GridsAndRepetition.md).
+Example: `Patterns/DeBruijn`. Guide: [Chapter 7](../../Guide/07-Tiles.md#a-run-that-never-repeats-itself).
 
 ---
 

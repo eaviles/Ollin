@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 6): a de Bruijn sequence. On the left the eight-bead
+// Guide diagram (Chapter 7): a de Bruijn sequence. On the left the eight-bead
 // ring for two symbols and a window of three, with the eight windows it holds
 // listed under it. On the right the sixty-four bead ring for four symbols, with
 // one window picked out.
