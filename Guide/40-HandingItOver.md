@@ -4,7 +4,7 @@
 
 # 40. Handing it over
 
-<!-- Hook image: the finished sketch, the sky clock (Figures/40-HandingItOver/SkyClock.swift). Waiting on its render on the Mac. -->
+<img src="Images/40-HandingItOver/SkyClock.jpg" alt="A wide sky clock at midday: a soft gold sun high in a blue sky that pales toward the horizon, over a black ridge of land drawn last so the sun sets behind it" width="560">
 
 The window you wrote a sketch in is only one place it can live. This chapter hands it over. The Mac takes it as a screen saver, a wallpaper, a menu-bar companion, or a widget. A friend who has never typed `swift` gets an app to double-click. The chapter ends by handing one sketch, a sky clock that follows the hour, to each of them. After it, your phone takes a sketch, with a finger for the mouse. Other programmers get behavior they can add to a sketch, and a package they can import. Every route wraps the sketch rather than porting it, so the `.swift` file stays the thing you work on.
 
