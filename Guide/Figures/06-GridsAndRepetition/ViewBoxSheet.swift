@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram: six view boxes on one canvas, each running the same piece
+// Guide diagram: six view boxes on one canvas, each running the same sketch
 // under a different seed. Each box has its own background, its own coordinates,
 // and its own clip, and none of them knows it is not the whole window. The boxes
 // are given the canvas's own shape, since that is what the code inside believes
@@ -49,7 +49,7 @@ final class ViewBoxSheet: Sketch {
         fill(faint)
         textSize(17)
         textAlign(.center, .top)
-        drawText("one piece, six seeds, six boxes, one canvas", 440, 516)
+        drawText("one sketch, six seeds, six boxes, one canvas", 440, 516)
     }
 
     /// Written as though it owned the window: it reads `width`, `height` and
