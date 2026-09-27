@@ -4,9 +4,9 @@
 
 # 20. Pictures restyled
 
-<!-- Hook image: the finished sketch, a photograph made into a graded, grained print or a hatched still life. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the hand-colored print (Figures/20-PicturesRestyled/HandColored.swift). Waiting on its render on the Mac. -->
 
-A photograph is a place to start rather than a place to stop. This chapter's filters make a picture into another kind of picture. Pen and ink finds its edges, brushwork and flat regions follow its flow, and hatching draws it for a pen. A colorist's look grades it, film adds halation and grain, and a warp folds it into itself. Then come chromatic aberration's five pictures and the design filters that ripple, pour, and melt it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, take a `@Param`, and move with `time`.
+A photograph is a place to start rather than a place to stop. This chapter's filters make a picture into another kind of picture. Pen and ink finds its edges, brushwork and flat regions follow its flow, and hatching draws it for a pen. A colorist's look grades it, film adds halation and grain, and a warp folds it into itself. Then come chromatic aberration's five pictures and the design filters that ripple, pour, and melt it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, take a `@Param`, and move with `time`. The chapter ends by stacking several of them into a hand-colored print.
 
 ## A line where there is an edge: xdog
 
@@ -252,19 +252,83 @@ Underneath, the filter builds a swirling noise field and uses one displacement v
 
 It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial back how far it takes the picture. The sway that animates it uses frequencies that don't divide evenly into each other, so it never perfectly repeats. It drifts forever, but it won't give you a seamless loop.
 
-<!-- Putting it together: the finished sketch goes here: a photograph made into a graded, grained print or a hatched still life, built from this chapter's steps, with its full listing. -->
+## Putting it together: the hand-colored print
+
+The hand-colored print turns a photograph into the kind of picture a print shop once sold, an engraving tinted by hand. It is a stack of this chapter's filters. `brushwork` paints the color and `hatching` draws the line work over it. Then a look grades the frame warm, film grain gives it a texture, and `paperTexture` from the design filters presses it into a sheet. Make `MySketches/HandColored.swift`:
+
+```swift
+import Ollin
+import OllinSamplePhotos
+
+final class HandColored: Sketch {
+    var photo = Image(width: 1, height: 1)
+    var scene: RenderTarget?
+
+    override func setup() {
+        photo = SamplePhoto.city.load()
+        scene = makeRenderTarget()
+    }
+
+    override func draw() {
+        guard let scene else { return }
+
+        // The view drifts across the photograph, which is drawn a little wider
+        // than the canvas so the drift never shows an edge.
+        let drift = Vector2(sin(time * 0.07) * 40, cos(time * 0.05) * 20)
+        withTarget(scene) {
+            drawImage(photo, in: Rectangle(center: center + drift, width: width * 1.1,
+                                           height: height * 1.1), fit: .cover)
+        }
+
+        // The color, painted: detail flattened into patches along the picture.
+        drawImage(scene.filtered(.brushwork(radius: 7)).image, 0, 0)
+
+        // The line work, multiplied over the color, so its white paper drops out.
+        blendMode(.multiply)
+        drawImage(scene.filtered(.hatching(spacing: 4, length: 20,
+                                           foreground: Color(hex: 0x3B2A20))).image, 0, 0)
+        blendMode(.normal)
+
+        // The finish: a warm grade, the grain of film, and the sheet it is printed on.
+        postProcess(.lut(.warmPrint, amount: 0.85))
+        postProcess(.filmGrain(amount: 0.04, size: 2, seed: Double(frameCount)))
+        postProcess(.paperTexture(folds: 0.4))
+    }
+}
+```
+
+The photograph is one of the bundled sample photographs from [Chapter 9](09-Pictures.md), a hillside town under a warm sky. `loadImage("/path/to/yours.jpg")` in its place is the whole change for a picture of your own.
+
+One layer feeds everything. The photograph is drawn into `scene` once a frame, and both the color and the line are read from it. `brushwork` flattens the detail into patches that follow the picture's own contours, so the color stays inside the shapes rather than running across them. `hatching` reads the same picture and lays as many strokes as each tone is dark.
+
+The line work goes down under `.multiply`, the blend mode from [Chapter 19](19-LayersAndEffects.md). Multiplying by white changes nothing, so the paper between the strokes drops out and only the brown ink darkens the color under it.
+
+The rest runs on the whole frame through `postProcess`, and each call works on what the calls before it left. The look grades first, and the grain lands on the graded color. The paper comes last, since the sheet is the last thing a print meets.
+
+The frame moves because the view does. `drift` slides the photograph a little each second, and both filters read it afresh every frame. So the strokes re-flow as the picture passes under them, and the grain changes with `frameCount`. The paper holds still, since its texture is static by design.
+
+Then make it yours:
+
+- Trade the colorist for a poster printer. `.shock(iterations: 6)` in place of `brushwork` flattens the color into bands with crisp edges.
+- Ink it instead of hatching it. `.xdog()` in place of `hatching` gives pen lines and solid shadows, and they multiply over the color the same way.
+- Grade it with a look of your own. `ColorLUT(resource:withExtension:in:)` loads any `.cube` file, and the grade is the only line that changes.
+
+A print is a still, so keep it as one. `swift run OllinLive MySketches/HandColored.swift --export print.png --frame 600` writes the frame ten seconds in. The grain is new on every frame, so try a few frame numbers and keep the one you like.
 
 ## Where this comes from
 
-The picture inside itself is named after a Dutch cocoa tin from 1904, whose label showed a nurse holding a tray with the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery, and left a hole in the middle he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in the hole, and the straighten-repeat-curl construction the filter runs is theirs.
+The picture inside itself is named after a Dutch cocoa tin from 1904. Its label showed a nurse holding a tray with the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery. He left a hole in the middle, which he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in the hole. The straighten-repeat-curl construction the filter runs is theirs.
 
-The stylizing filters each rebuild a published method. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009. The flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017. Halation is written from the photographic physics of light reflected back through the emulsion. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The stylizing filters each rebuild a published method. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009. The flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017. Halation is written from the photographic physics of light reflected back through the emulsion.
+
+A look is read from Adobe's Cube LUT format. The tetrahedral read between its nodes goes back to a 1981 patent by Sakamoto and Itooka. The design filters were cross-read against Paper Shaders, the design-shader library from paper.design with shaders by Ksenia Kondrashova. Each was then written from its underlying technique. The paper texture, for one, is Jim Blinn's bump lighting over a height field of noise. The melt is Inigo Quilez's domain warping, with the picture read through the same warp as the swirl. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Layered effects](../Docs/Drawing/Effects.md#filter): the whole filter catalog with every parameter, the stylizing, look, film, warp and design filters among it.
 - [Looks](../Docs/Drawing/Looks.md): the `.cube` format in both forms, the reader's refusals, the tetrahedral read, and writing a look of your own.
-- Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (a hillside painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (fruit on a grained table flattened into regions by the shock filter), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).
+- [Sample photographs](../Docs/Drawing/SamplePhotos.md): the bundled pictures the chapter's figures and its print start from, and what each one is good for.
+- Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (a hillside painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (fruit on a grained table flattened into regions by the shock filter), [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) (an engraved landscape with the sun crossing it), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) (a night street through halation and grain), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).
 
 ---
 
