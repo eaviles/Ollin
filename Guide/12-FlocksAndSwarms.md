@@ -100,55 +100,6 @@ Both creatures launch with the same speed and the same turning cap, and only the
 
 Both trails here are just arrays of positions, appended each frame and drawn with `drawPolyline`, the same trick as every trail in this chapter.
 
-## Everyone chasing somebody
-
-`seek` and `arrive` both point at something that stands still. Give every creature a target that is also running, and the picture changes completely.
-
-The oldest version of the question is from 1877. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
-
-You can answer it by running it. `Pursuit` is a stepper you hold, like `World` in the last chapter and the flock later in this one. Build it, step it, and read the geometry out:
-
-```swift
-let chase = Pursuit.ring(sides: 4, center: Vector2(540, 540), radius: 380)
-chase.recordEvery = 20   // keep the chase lines along the way
-chase.run()              // and run the whole chase now, rather than per frame
-
-// then, in draw():
-noFill()
-stroke(Color.white.withAlpha(0.15))
-strokeWeight(1)
-for line in chase.web { drawPolyline(line.points) }
-stroke(Color(hex: 0xE4572E))
-strokeWeight(3)
-for trail in chase.trails { drawPolyline(trail.points) }
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/PursuitDogs-dark.jpg">
-  <img src="Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
-</picture>
-
-Both answers are exact. They draw four identical spirals that meet in the middle, and each dog runs exactly one side of the square. Not one and a bit. One.
-
-The spiral is there because a dog is always turning, since the dog it wants never stops moving. The angle between a dog's path and the line to the middle never changes. A curve with that property is a logarithmic spiral, the shape a nautilus shell grows in.
-
-One rule holds the whole figure up, and it is an easy one to get wrong. **Everybody moves at the same moment.** `step()` works out every runner's move from the positions they all held *before* the step. Move them one at a time instead, and each dog runs at a dog that has already left. The square goes lopsided within a few steps and the figure falls apart.
-
-A runner is not a `Vehicle`. It carries no momentum and no turning cap: it faces its target and goes. Setting `maxTurn` puts the cap back, and gives you a runner that swings wide and overshoots, which is the other kind of chase.
-
-A runner that follows nobody holds its heading and runs straight. That is how you write the case on the right of the figure, where a fast pursuer chases a quarry crossing in front of it:
-
-```swift
-let chase = Pursuit(runners: [.holding(Vector2(0, -1), from: Vector2(400, 800), speed: 0.55),
-                              .chasing(0, from: Vector2(700, 800))],
-                    stepSize: 2)
-chase.run()
-```
-
-That one can be worked out in advance too. A pursuer of speed 1, starting a distance `a` square-on from a quarry of speed `k`, covers `a / (1 - k * k)` before it catches up. Set the quarry's speed to 1 and it is never caught at all. The gap closes to half what it started as, and stays there.
-
-Only the quarry runs straight, because it chases nobody. Every chaser curves, because nothing it chases ever stands still.
-
 ## Roaming
 
 The most lifelike behavior needs no target at all. `wander` gives a creature aimless, believable roaming, and the recipe is smarter than "add random turns", which produces nervous jitter, not a stroll. Instead, picture a circle floating a fixed distance ahead of the creature. The creature seeks a point on that circle's rim, and each step the point slides a little way around the rim, at random:
@@ -208,9 +159,58 @@ Two behaviors are stacked here, and that's the point of forces-that-compose: `wa
 
 The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target by aiming where it will be, not where it is, the hunting trick every kitten knows. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` rides the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and you'll meet it properly in a moment. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every parameter.
 
+## Everyone chasing somebody: pursuit curves
+
+`pursue` aims at where a moving target is going to be. The oldest chase is plainer. Every runner aims at where its target is *now*, and every target is running too. The paths that come out are called **pursuit curves**.
+
+The first version of the question is from 1877. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
+
+You can answer it by running it. `Pursuit` is a stepper you hold, like `World` in the last chapter and the flock later in this one. Build it, step it, and read the geometry out:
+
+```swift
+let chase = Pursuit.ring(sides: 4, center: Vector2(540, 540), radius: 380)
+chase.recordEvery = 20   // keep the chase lines along the way
+chase.run()              // and run the whole chase now, rather than per frame
+
+// then, in draw():
+noFill()
+stroke(Color.white.withAlpha(0.15))
+strokeWeight(1)
+for line in chase.web { drawPolyline(line.points) }
+stroke(Color(hex: 0xE4572E))
+strokeWeight(3)
+for trail in chase.trails { drawPolyline(trail.points) }
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/PursuitDogs-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
+</picture>
+
+Both answers are exact. They draw four identical spirals that meet in the middle, and each dog runs exactly one side of the square. Not one and a bit. One.
+
+The spiral is there because a dog is always turning, since the dog it wants never stops moving. The angle between a dog's path and the line to the middle never changes. A curve with that property is a logarithmic spiral, the shape a nautilus shell grows in.
+
+One rule holds the whole figure up, and it is an easy one to get wrong. **Everybody moves at the same moment.** `step()` works out every runner's move from the positions they all held *before* the step. Move them one at a time instead, and each dog runs at a dog that has already left. The square goes lopsided within a few steps and the figure falls apart.
+
+A runner is not a `Vehicle`. It carries no momentum and no turning cap: it faces its target and goes. Setting `maxTurn` puts the cap back, and gives you a runner that swings wide and overshoots, which is the other kind of chase.
+
+A runner that follows nobody holds its heading and runs straight. That is how you write the case on the right of the figure, where a fast pursuer chases a quarry crossing in front of it:
+
+```swift
+let chase = Pursuit(runners: [.holding(Vector2(0, -1), from: Vector2(400, 800), speed: 0.55),
+                              .chasing(0, from: Vector2(700, 800))],
+                    stepSize: 2)
+chase.run()
+```
+
+That one can be worked out in advance too. A pursuer of speed 1, starting a distance `a` square-on from a quarry of speed `k`, covers `a / (1 - k * k)` before it catches up. Set the quarry's speed to 1 and it is never caught at all. The gap closes to half what it started as, and stays there.
+
+Only the quarry runs straight, because it chases nobody. Every chaser curves, because nothing it chases ever stands still.
+
 ## Three rules make a flock
 
-Now the leap that made this famous. In 1986 Reynolds set out to animate a flock of birds and found that the flock does not need a choreographer. Give every creature the same three steering rules, let each one see only its nearby neighbors, and flocking *happens*. Each rule alone is small enough to draw.
+Now the leap that made steering famous. In 1986 Reynolds set out to animate a flock of birds and found that the flock does not need a choreographer. Give every creature the same three steering rules, let each one see only its nearby neighbors, and flocking *happens*. Each rule alone is small enough to draw.
 
 **Separation.** Steer away from anyone inside your personal space, and let the closest neighbors push hardest:
 
