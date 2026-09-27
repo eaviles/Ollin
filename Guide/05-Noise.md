@@ -112,7 +112,7 @@ let n = noise(x * 0.006, y * 0.006, loop: loopProgress(over: 4), radius: 0.6)
 
 One lap of `loop` (a `0...1` progress, which [Chapter 3](03-MotionAndTime.md)'s `loopProgress` makes a four-second one here) tours a closed circle through the field, and `radius` sets how much terrain the lap covers, so bigger is windier weather. The drifting figure above is exactly this move. Under the hood the circle rides extra noise dimensions, a beloved trick of the looping-GIF artists, and the [Noise reference](../Docs/Generators/Noise.md#loop) has the details, including using `loop:` to close a wave around a ring in *space*.
 
-The same circle is built into the `sway` from [Chapter 3](03-MotionAndTime.md#the-sway-you-write-over-and-over). Its `.wander` shape drifts through the noise field rather than following a curve, so it never repeats inside a lap. It walks a closed circle like this one, so it still arrives home at the end of the lap:
+The same circle is built into the `sway` from [Chapter 3](03-MotionAndTime.md#the-sway-you-write-over-and-over-sway). Its `.wander` shape drifts through the noise field rather than following a curve, so it never repeats inside a lap. It walks a closed circle like this one, so it still arrives home at the end of the lap:
 
 ```swift
 drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300, shape: .wander))
