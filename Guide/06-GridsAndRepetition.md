@@ -180,6 +180,8 @@ The folds are computed around wherever you are when you call it, so `translate` 
 Repetition fills space. Sometimes you want it to fill *only part* of the space, and specifically a part shaped like something.
 
 ```swift
+let star = Shape(Profile.star(points: 5, outerRadius: 300, innerRadius: 130)
+                     .map { center + $0 })     // five points, around the middle
 withClip(star) {
     // everything here lands only inside the star
 }
@@ -354,7 +356,7 @@ Two things are easy to get wrong. **The run is a ring**, so reading it means wra
 
 ## Putting it together: a wall of rosettes
 
-Now you can build the image at the top. The plan uses every tool in the chapter, and in the order you met them. A grid hands you the blocks, and inside each one the transforms place, turn, and shrink the work. Then symmetry folds a single arm into a medallion, and a clip cuts the result to a disc. Make a new file, `MySketches/RoseWall.swift`:
+Now you can build the image at the top. The plan uses the grid, the transforms, symmetry, and a clip, in the order you met them. A grid hands you the blocks, and inside each one the transforms place, turn, and shrink the work. Then symmetry folds a single arm into a medallion, and a clip cuts the result to a disc. Make a new file, `MySketches/RoseWall.swift`:
 
 ```swift
 import Ollin
