@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 26): the Hopf fibration. A sphere's worth of circles, no two of
+// Figure for Docs/3D/HopfFibration.md: the Hopf fibration. A sphere's worth of circles, no two of
 // which meet, colored by where on the sphere each one came from, with the straight one
 // standing through the middle.
 import Ollin

@@ -122,36 +122,9 @@ So this is the lossy direction, and it says what it lost. Animation stays behind
 
 Both directions are worth having. `loadScene` is for a set that is still being built. This one is for the moment the file stops being the piece and becomes the material. [Bringing a scene over](../Docs/Tools/SceneImport.md) has the details.
 
-## A shape that only exists in four dimensions
+### A shape from four dimensions: the Hopf fibration
 
-Here is a mesh you could not model, because the thing it draws does not fit in the room.
-
-Take an ordinary sphere. Every single point on it stands for a whole *circle* living in a sphere-in-four-dimensions. Those circles fill that space completely, and not one of them ever touches another. Squash the whole arrangement down into three dimensions and this is what you get:
-
-```swift
-for fiber in hopfFibers(over: hopfBases(latitudes: 4, perCircle: 16)) {
-    fill(color(for: fiber.base))
-    drawTube(fiber.points, radius: 0.02, closed: !fiber.isStraight)
-}
-```
-
-<img src="Images/26-Meshes/HopfFibration.jpg" alt="Nested rings of colored tubing seen at an angle, running from pink and violet at the tight center out through green and blue to orange at the widest, every ring passing through every other, with a thin red line standing vertically through the middle of them all" width="680">
-
-It is called the Hopf fibration, and the reason to draw it is not that it is pretty. **Pick any two rings in that picture, however far apart, and you could not pull them free of each other without cutting one.** That is true of every pair, all the way through. Nothing there is threaded by hand; it falls out of the arrangement.
-
-Each `hopfFibers` result is one `HopfFiber`, holding the `points` of its circle and the `base` point on the sphere it came from. It is ordinary geometry from there, so `drawTube` sweeps it like any other path.
-
-Three details separate a picture of this from a ball of wool.
-
-**The base points have to be arranged.** The linking only reads when neighboring circles are neighbors, so `hopfBases(latitudes:perCircle:)` puts them on rings of latitude. Each ring lifts to one torus of circles, and the tori nest, which is the shape your eye can follow. Scatter the base points at random and you get exactly the same fibration and nothing you can see in it.
-
-**The color has to come from the base point.** Hue running around the sphere, lightness running up it. That is what makes the tangle legible as a picture *of a sphere*. A rainbow handed out in draw order looks similar and says nothing.
-
-**The straight one has to be drawn.** That red line through the middle is a fiber like all the others. Its base point sits at the bottom of the sphere. That is the one place the squashing-down sends to infinity, so its circle comes back as a line instead. It is the axis every other ring is threaded onto, and a picture without it has a hole where its middle should be:
-
-```swift
-let bases = hopfBases(latitudes: 4, perCircle: 16) + [Vector3(0, -1, 0)]
-```
+One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space, no two of which meet and every two of which are linked. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
 
 ## Pictures that change the surface
 
