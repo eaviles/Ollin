@@ -660,4 +660,4 @@ The pen-plotter revival that SVG export serves grew around the AxiDraw and the #
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 32, Seeing](32-Seeing.md) · Next: [Chapter 39, Performing](39-Performing.md)
+[Contents](README.md#contents) · Previous: [Chapter 37, Music by rule](37-MusicByRule.md) · Next: [Chapter 39, Performing](39-Performing.md)

@@ -524,4 +524,4 @@ Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 34, Listening](34-Listening.md) · Next: [Chapter 37, Music by rule](37-MusicByRule.md)
+[Contents](README.md#contents) · Previous: [Chapter 35, Controls and signals](35-ControlsAndSignals.md) · Next: [Chapter 37, Music by rule](37-MusicByRule.md)

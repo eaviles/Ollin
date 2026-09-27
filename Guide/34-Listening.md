@@ -6,7 +6,7 @@
 
 <img src="Images/34-Listening/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
-Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, the inspector slider, or a sensor you wired yourself drives the same parameters. A running sketch becomes something you play. The sketch above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 36](36-MakingSound.md), which picks up where the ears leave off.
+Every sketch so far has listened to two things, the clock and the mouse. This chapter gives it ears. A microphone or a song becomes a handful of numbers you read in `draw()`: how loud each band is, when a beat lands, which note is being sung, and which words were said, and the picture moves with the music. The sketch above is doing exactly that, and by the end you'll have built it. Hands come next, in [Chapter 35](35-ControlsAndSignals.md), where a knob, a fader, or a sensor you wired yourself drives the same parameters, and making sound rather than hearing it is [Chapter 36](36-MakingSound.md).
 
 ## The first listening sketch
 

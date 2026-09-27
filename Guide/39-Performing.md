@@ -46,7 +46,7 @@ A cue is not a default. The **Save parameters** button above the card writes the
 
 ## Keeping the take
 
-Every exporter in [Chapter 38](38-SharingAndPerforming.md) re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The parameter you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.
+Every exporter in [Chapter 38](38-FinishingASketch.md) re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The parameter you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.
 
 So the host records. Press **⌘⇧R** and a red chip starts counting on the stage. Play the set. Press **⌘⇧R** again and the take is a movie in `~/Movies/Ollin/`, picture and sound together, named after the sketch and the moment. The recording rides through evaluations, so a set that changed its code twelve times is still one continuous movie.
 
@@ -91,7 +91,7 @@ swift run OllinLive MySketches/Finale.swift --replay take.json        # the run,
 
 During a replay your mouse belongs to the recording, so the keyboard becomes a transport. Space pauses. The arrows step one frame; with shift held they jump thirty. Home rewinds, End jumps to the last frame, and space at the end starts the night over. Stepping backward re-runs the sketch from the start up to the frame you asked for, which determinism makes exact. Finding the one frame worth keeping becomes arrow keys instead of luck.
 
-The best part is what a take turns into afterwards. `--replay` composes with every exporter in [Chapter 38](38-SharingAndPerforming.md):
+The best part is what a take turns into afterwards. `--replay` composes with every exporter in [Chapter 38](38-FinishingASketch.md):
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --replay take.json --export-video night.mov
@@ -234,7 +234,7 @@ override func setup() {
 }
 ```
 
-Resolume, MadMapper, VDMX, and other creative-coding frameworks all read it live, pixel-identical to your window, with nothing touching disk. It works the other way too. `SyphonClient` subscribes to another app's feed and hands you each frame as an `Image`. Draw it, warp it, or feed it to [Chapter 32](32-Seeing.md)'s trackers. Pair it with [Chapter 34](34-SoundAndControl.md) and the rig conversation goes both directions at once: visuals over Syphon, control over OSC or MIDI. The `Integration/SyphonLoopback` example runs both ends in one sketch, a video-feedback tunnel that watches itself. You can see the plumbing with no second app installed.
+Resolume, MadMapper, VDMX, and other creative-coding frameworks all read it live, pixel-identical to your window, with nothing touching disk. It works the other way too. `SyphonClient` subscribes to another app's feed and hands you each frame as an `Image`. Draw it, warp it, or feed it to [Chapter 32](32-Seeing.md)'s trackers. Pair it with [Chapter 34](34-Listening.md) and the rig conversation goes both directions at once: visuals over Syphon, control over OSC or MIDI. The `Integration/SyphonLoopback` example runs both ends in one sketch, a video-feedback tunnel that watches itself. You can see the plumbing with no second app installed.
 
 ### The sketch as a webcam
 
@@ -323,4 +323,4 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 38, Sharing and performing](38-SharingAndPerforming.md) · Next: [Chapter 40, Handing it over](40-HandingItOver.md)
+[Contents](README.md#contents) · Previous: [Chapter 38, Finishing a sketch](38-FinishingASketch.md) · Next: [Chapter 40, Handing it over](40-HandingItOver.md)

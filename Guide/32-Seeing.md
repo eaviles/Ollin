@@ -563,4 +563,4 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 36, Making sound](36-MakingSound.md) · Next: [Chapter 38, Finishing a sketch](38-FinishingASketch.md)
+[Contents](README.md#contents) · Previous: [Chapter 31, Traced light](31-TracedLight.md) · Next: [Chapter 33, Depth and the iPhone as a sensor](33-DepthAndThePhone.md)
