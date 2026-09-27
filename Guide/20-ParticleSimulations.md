@@ -194,11 +194,11 @@ stepSoftBodies(blobs)
 drawParticles(blobs)
 ```
 
-Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as the last section.
+Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as [Physarum](#crowds-that-organize-themselves-physarum) and its neighbors.
 
 ## Letting the sketch find it: evolution
 
-Every other system in this chapter runs a *rule*. This one runs a *search*.
+The ant colony searched by laying trails. This one searches by breeding.
 
 Thirty thousand individuals set off from the same spot at the same moment. Each carries a genome, which here is a short list of pushes played back in order over a few seconds. A genome is a plan for a journey, and the flight is what that plan turns out to be worth. When the time is up, everyone is scored on how close they came to a target. The whole population is then replaced by the children of whoever did best. Then it happens again.
 
