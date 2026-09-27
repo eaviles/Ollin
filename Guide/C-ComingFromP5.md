@@ -169,7 +169,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 
 | p5.js | Ollin | Notes |
 |---|---|---|
-| `loadImage("a.png")` | `loadImage("a.png")` | returns an optional, since a path can be wrong ([Chapter 9](09-Pictures.md)) |
+| `loadImage("a.png")` | `try? loadImage("a.png")` | throws when a path is wrong, and `try?` turns that into `nil` ([Chapter 9](09-Pictures.md)) |
 | `image(img, x, y)` / `image(img, x, y, w, h)` | `drawImage(img, x, y)` / `drawImage(img, x, y, w, h)` | |
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
@@ -197,7 +197,7 @@ Each of these gets a chapter, so the table only points.
 | `createSlider`, `createButton`, the DOM | `@Param` parameters in the inspector | [Chapter 1](01-HelloOllin.md) |
 | `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 16](16-LayersAndEffects.md) |
 | `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | [Chapter 17](17-YourFirstShader.md) |
-| `WEBGL` mode, `box()`, `sphere()` | `camera()` or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 21](21-3DGently.md) |
+| `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 21](21-3DGently.md) |
 | `orbitControl()` | `cameraControl()` | [Chapter 21](21-3DGently.md) |
 | `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 21](21-3DGently.md) |
 | p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 28](28-SoundAndControl.md) |
