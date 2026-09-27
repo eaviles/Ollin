@@ -116,17 +116,33 @@ let euler = Complex.exp(Complex(0, .pi)) // -1, within rounding
 
 ### The plane and the canvas
 
-Mathematics draws the plane with the imaginary axis pointing **up**. A `Vector2` is a canvas point, with y pointing **down**. `Complex(v)` and `Vector2(z)` copy the coordinates as they are and leave the flip to you. That keeps both conversions honest: a number read off a canvas point is that point, and the other way round. When a picture should read as mathematics writes it, flip the imaginary part once at the edge. The shader library's `complexPlane` does that for a layer:
+Mathematics draws the plane with the imaginary axis pointing **up**. A `Vector2` is a canvas point, with y pointing **down**. `Complex(v)` and `Vector2(z)` copy the coordinates as they are and leave the flip to you. That keeps both conversions honest: a number read off a canvas point is that point, and the other way round. When a picture should read as mathematics writes it, flip the imaginary part once at the edge, and `ComplexPlane` is that edge as a value.
+
+Every picture of the plane in Ollin is framed one way. A `center` sits in the middle of the picture, `span` units run across its shorter side, and the imaginary axis points up. The longer side shows more, so nothing stretches. The shader library's `complexPlane` frames a layer that way. So does every generator that paints the plane (`.mandelbrot`, `.julia`, `.orbitTrap`, [`.domainColoring`](../Drawing/Effects.md#generate), `.newton`), where the span is `3 / zoom`. A `ComplexPlane` holds that framing and converts both ways:
+
+| Call | What it is |
+| --- | --- |
+| `ComplexPlane(center:span:)` | a framing by its span; the default is the origin in the middle and 3 units across |
+| `ComplexPlane(center:zoom:)` | the same framing by a generator's `zoom`, so `zoom: 2` is a span of 1.5 |
+| `center`, `span`, `zoom` | the framing's parts, with `zoom` as `3 / span` |
+| `canvasPoint(of:in:)` | where a number lands on a picture drawn undistorted in a `Rectangle` |
+| `planePoint(at:in:)` | the number under a canvas point of that picture |
+| `Generator.plane` | a generator's own framing, or `nil` for one that paints no plane |
 
 ```swift
-let scale = min(width, height) / 3        // three units across the canvas
-func place(_ z: Complex) -> Vector2 {
-    Vector2(width / 2 + z.real * scale, height / 2 - z.imaginary * scale)
+let plane = ComplexPlane()                                    // the origin, 3 units across
+let dot = plane.canvasPoint(of: Vector2(Complex.unit(time)), in: bounds)
+drawCircle(center: dot, radius: 6)                            // a dot going round counter-clockwise
+
+let julia = Generator.julia(c: Vector2(-0.79, 0.15), zoom: 1.2)
+drawImage(generate(julia).image, 0, 0)
+if let framing = julia.plane {
+    let z = Complex(framing.planePoint(at: mouse, in: bounds))              // the number under the pointer
+    drawCircle(center: framing.canvasPoint(of: .zero, in: bounds), radius: 4)   // the origin, marked
 }
-drawCircle(center: place(Complex.unit(time)), radius: 6)   // a dot going round counter-clockwise
 ```
 
-A [domain coloring](../Drawing/Effects.md#generate) generator frames its plane the same way, three units across at zoom 1. A point placed with this `place` lands on the generator's picture of that point.
+The rectangle is the one the picture was drawn into: `bounds` for a full-canvas layer, or the tile a smaller layer was drawn in. A point placed this way lands on the generator's picture of that number. A number read this way is the one the generator painted there.
 
 <a name="see-also"></a>
 

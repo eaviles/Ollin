@@ -63,7 +63,7 @@ bac6f70b2c26  Guide/15-ShapesAsMaterial.md:145  cannot find 'circles' in scope
 3152d9b01a08  Guide/15-ShapesAsMaterial.md:299  cannot find 'island' in scope
 941d99f289b2  Guide/15-ShapesAsMaterial.md:310  value of type '[Contour]' has no member 'maxInset'
 ff3aae35a44a  Guide/15-ShapesAsMaterial.md:360  cannot find 'art' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:498  unary operator cannot be separated from its operand
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:475  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
@@ -85,7 +85,7 @@ a1896233ab91  Guide/21-PicturesYouSolve.md:229  use of 'layer' refers to instanc
 8f074282df6a  Guide/21-PicturesYouSolve.md:95  cannot find 'bands' in scope
 48a71edbd6ce  Guide/22-IteratedForms.md:168  cannot find 'start' in scope
 f396671e3e8e  Guide/22-IteratedForms.md:188  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type 'Contour'
-561972108ab0  Guide/22-IteratedForms.md:296  reference to member 'domainColoring' cannot be resolved without a contextual type
+561972108ab0  Guide/22-IteratedForms.md:308  reference to member 'domainColoring' cannot be resolved without a contextual type
 43995cc53f0c  Guide/22-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 cb9b9aef4027  Guide/24-ParticleSimulations.md:110  cannot assign value of type 'Physarum' to type 'Particles'
 06dc0b77369e  Guide/24-ParticleSimulations.md:128  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
@@ -204,17 +204,17 @@ c1b390558596  Guide/32-Seeing.md:142  cannot find 'BodyTracker3D' in scope
 873be3e41ecd  Guide/32-Seeing.md:244  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 85406df5d4a0  Guide/32-Seeing.md:270  cannot find 'tracker' in scope
 bd0a016c4f07  Guide/32-Seeing.md:295  cannot find 'ImageClassifier' in scope
-6c349f05e6a5  Guide/32-Seeing.md:320  value of type '@MainActor (Camera3D) -> ()' has no member 'fittedRectangle'
-bbef0b2a77e4  Guide/32-Seeing.md:347  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-3696583136ff  Guide/32-Seeing.md:366  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 2a80728c8212  Guide/32-Seeing.md:37  cannot find 'Camera' in scope
-3264783de5ff  Guide/32-Seeing.md:387  cannot find type 'DepthClip' in scope
-cf77654750d2  Guide/32-Seeing.md:409  cannot find 'ConceptTracker' in scope
-1bd010311fa1  Guide/32-Seeing.md:432  call can throw, but errors cannot be thrown out of a property initializer
-09cdb84809fc  Guide/32-Seeing.md:459  cannot find 'ScreenCapture' in scope
-7d54a23fa0c7  Guide/32-Seeing.md:469  cannot find 'ScreenCapture' in scope
-a231a89505b5  Guide/32-Seeing.md:478  cannot find 'screen' in scope
-6c123c48bf65  Guide/32-Seeing.md:499  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
+6c349f05e6a5  Guide/32-Seeing.md:378  value of type '@MainActor (Camera3D) -> ()' has no member 'fittedRectangle'
+bbef0b2a77e4  Guide/32-Seeing.md:405  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+3696583136ff  Guide/32-Seeing.md:424  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+3264783de5ff  Guide/32-Seeing.md:445  cannot find type 'DepthClip' in scope
+cf77654750d2  Guide/32-Seeing.md:467  cannot find 'ConceptTracker' in scope
+1bd010311fa1  Guide/32-Seeing.md:490  call can throw, but errors cannot be thrown out of a property initializer
+09cdb84809fc  Guide/32-Seeing.md:517  cannot find 'ScreenCapture' in scope
+7d54a23fa0c7  Guide/32-Seeing.md:527  cannot find 'ScreenCapture' in scope
+a231a89505b5  Guide/32-Seeing.md:536  cannot find 'screen' in scope
+6c123c48bf65  Guide/32-Seeing.md:557  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
 37c636d25506  Guide/32-Seeing.md:56  cannot find 'Camera' in scope
 d912ae6ac469  Guide/32-Seeing.md:75  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 6e817aba8f81  Guide/32-Seeing.md:95  cannot find 'FaceTracker' in scope
@@ -324,16 +324,15 @@ d9a1c473df9d  Guide/37-MusicByRule.md:94  cannot find 'Arpeggio' in scope
 de4654592f32  Guide/38-FinishingASketch.md:233  cannot find 'scene' in scope
 8c4c8abbf60d  Guide/38-FinishingASketch.md:315  cannot find 'sketch' in scope
 3e6b653375f4  Guide/38-FinishingASketch.md:335  cannot find 'sketch' in scope
-44d06974cad8  Guide/38-FinishingASketch.md:354  cannot find 'ring' in scope
-74b80e032466  Guide/38-FinishingASketch.md:435  cannot find 'press' in scope
-89f4ed627c95  Guide/38-FinishingASketch.md:456  cannot find 'sculpture' in scope
-39b45f1bdb0a  Guide/38-FinishingASketch.md:473  cannot find 'sculpture' in scope
-28b0f887e08d  Guide/38-FinishingASketch.md:498  cannot find 'scene' in scope
+74b80e032466  Guide/38-FinishingASketch.md:393  cannot find 'press' in scope
+89f4ed627c95  Guide/38-FinishingASketch.md:414  cannot find 'sculpture' in scope
+39b45f1bdb0a  Guide/38-FinishingASketch.md:431  cannot find 'sculpture' in scope
+28b0f887e08d  Guide/38-FinishingASketch.md:456  cannot find 'scene' in scope
+e91e5ee6a25d  Guide/38-FinishingASketch.md:462  cannot find 'sketch' in scope
+55cc676a6725  Guide/38-FinishingASketch.md:481  cannot find 'scene' in scope
 e873c5d7bcef  Guide/38-FinishingASketch.md:50  cannot find 'MySketch' in scope
-e91e5ee6a25d  Guide/38-FinishingASketch.md:504  cannot find 'sketch' in scope
-55cc676a6725  Guide/38-FinishingASketch.md:523  cannot find 'scene' in scope
-233c9fb903ba  Guide/38-FinishingASketch.md:660  cannot find 'sunBox' in scope
-2cab8d98cd98  Guide/38-FinishingASketch.md:669  cannot find 'x' in scope
+233c9fb903ba  Guide/38-FinishingASketch.md:618  cannot find 'sunBox' in scope
+2cab8d98cd98  Guide/38-FinishingASketch.md:627  cannot find 'x' in scope
 1413e784982d  Guide/39-Performing.md:110  cannot find '$radius' in scope
 c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'TimecodeClock' in scope
 663454403921  Guide/39-Performing.md:191  cannot find 'Timecode' in scope
@@ -343,14 +342,15 @@ c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'TimecodeClock' in scope
 9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  @objc attribute used without importing module 'Foundation'
 93d908a1e153  Guide/40-HandingItOver.md:406  cannot find 'MyWatermark' in scope
 0eaa18b2ae73  Guide/40-HandingItOver.md:434  cannot find 'points' in scope
-dc5f30a6160e  Guide/41-Installations.md:206  cannot find type 'Tile' in scope
-0d8566c41a70  Guide/41-Installations.md:351  cannot find 'worldPoint' in scope
-034815159bb9  Guide/41-Installations.md:375  cannot find 'speed' in scope
-eccdf3152cb3  Guide/41-Installations.md:396  cannot find 'room' in scope
+dc5f30a6160e  Guide/41-Installations.md:213  cannot find type 'Tile' in scope
+0d8566c41a70  Guide/41-Installations.md:358  cannot find 'worldPoint' in scope
+034815159bb9  Guide/41-Installations.md:382  cannot find 'speed' in scope
+eccdf3152cb3  Guide/41-Installations.md:403  cannot find 'room' in scope
 0a33b0469dc3  Guide/41-Installations.md:41  cannot find 'DMXSender' in scope
-5ccd51da4dc8  Guide/41-Installations.md:410  cannot find 'room' in scope
-cb54ce31937a  Guide/41-Installations.md:483  expected '}' in class
-f5ad01726d75  Guide/41-Installations.md:529  extraneous '}' at top level
+5ccd51da4dc8  Guide/41-Installations.md:417  cannot find 'room' in scope
+cb54ce31937a  Guide/41-Installations.md:490  expected '}' in class
+f5ad01726d75  Guide/41-Installations.md:536  extraneous '}' at top level
+9c60584f29ab  Guide/41-Installations.md:66  cannot find 'ring' in scope
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand

@@ -42,14 +42,10 @@ final class FractalPair: Sketch {
             let rect = Rectangle(x: x, y: 20, width: Double(tile), height: Double(tile))
             drawImage(generate(panel.1, width: tile, height: tile).image, in: rect)
 
-            // The marker on the first panel. Zoom 1 shows about 3 units of the
-            // complex plane across the tile, and the plane's y runs up while the
-            // canvas runs down.
-            if index == 0 {
-                let span = 3.0
-                let mark = Vector2(
-                    rect.x + rect.width / 2 + (pick.x - mandelCenter.x) / span * rect.width,
-                    rect.y + rect.height / 2 - (pick.y - mandelCenter.y) / span * rect.height)
+            // The marker on the first panel: the Julia's c, placed through the
+            // generator's own framing of the plane.
+            if index == 0, let plane = panel.1.plane {
+                let mark = plane.canvasPoint(of: pick, in: rect)
                 noFill()
                 stroke(Color(hex: 0xF25F5C))
                 strokeWeight(2.5)

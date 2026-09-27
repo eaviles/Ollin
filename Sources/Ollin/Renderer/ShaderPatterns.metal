@@ -1741,9 +1741,12 @@ fragment float4 ollin_gen_chladni(PresentOut in [[stage_in]],
 // colors seamlessly; pixels that never escape are the set, painted the interior
 // color. Mode 0 is the Mandelbrot set (c = the pixel, z starts at 0); mode 1 a
 // Julia set (z starts at the pixel, c fixed). Float precision holds the zoom to
-// a few thousand times before the plane quantizes (params[0]: colorCount,
-// aspect, mode, iterations; params[1]: center.xy, zoom, cycles; params[2]:
-// c.xy, phase; params[3]: interior; then colors).
+// a few thousand times before the plane quantizes. The plane is framed as the
+// domain coloring frames it: `center` in the middle, 3 / zoom units across the
+// shorter side, and the imaginary axis up, so the uv's y (down the canvas) is
+// negated once on the way in. (params[0]: colorCount, aspect, mode, iterations;
+// params[1]: center.xy, zoom, cycles; params[2]: c.xy, phase; params[3]:
+// interior; then colors).
 fragment float4 ollin_gen_escape(PresentOut in [[stage_in]],
                                  constant float4 *params [[buffer(0)]]) {
     int count = int(params[0].x);
@@ -1757,7 +1760,8 @@ fragment float4 ollin_gen_escape(PresentOut in [[stage_in]],
     float phase = params[2].z;
     constant float4 *colors = params + 4;
 
-    float2 p = ollin_pat_square(in.uv, aspect) * (3.0 / zoom) + center;
+    float2 q = ollin_pat_square(in.uv, aspect) * (3.0 / zoom);
+    float2 p = float2(q.x, -q.y) + center;
     float2 z = (mode == 0) ? float2(0.0) : p;
     float2 c = (mode == 0) ? p : cFixed;
 
@@ -1804,7 +1808,9 @@ fragment float4 ollin_gen_orbittrap(PresentOut in [[stage_in]],
     float radius = params[3].z;
     constant float4 *colors = params + 4;
 
-    float2 p = ollin_pat_square(in.uv, aspect) * (3.0 / zoom) + center;
+    // The same framing as the escape-time fractal, imaginary axis up.
+    float2 q = ollin_pat_square(in.uv, aspect) * (3.0 / zoom);
+    float2 p = float2(q.x, -q.y) + center;
     float2 z = (mode == 0) ? float2(0.0) : p;
     float2 c = (mode == 0) ? p : cFixed;
     float ca = cos(angle), sa = sin(angle);

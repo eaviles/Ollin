@@ -222,6 +222,18 @@ The first two panels are the same loop, differing only in which of its two numbe
 
 That is why the red mark matters. It sits at `c = -0.79 + 0.15i`, and the middle panel is the Julia set for exactly that `c`. Move the mark and you get a different Julia set. The rule of thumb is that points near the Mandelbrot set's *edge* give the richest ones. Deep inside gives a plain blob, far outside gives dust. Every Julia set is a portrait of one point of the Mandelbrot set.
 
+The mark was placed through the generator itself. Every generator that paints the plane hands its framing back as `plane`. Its `canvasPoint(of:in:)` says where a number lands in the rectangle the picture was drawn in. So a mark on a `c`, a root, or a zero never redoes the arithmetic:
+
+```swift
+let set = Generator.mandelbrot()
+drawImage(generate(set).image, 0, 0)
+if let plane = set.plane {
+    drawCircle(center: plane.canvasPoint(of: Vector2(-0.79, 0.15), in: bounds), radius: 9)
+}
+```
+
+The other way round, `planePoint(at:in:)` reads the number under the pointer. That is how a sketch lets you pick a `c` by clicking on the set.
+
 The bands look stepless rather than like contour lines, because the coloring uses a smoothed escape count rather than a whole number. `cycles` sets how many times the palette repeats across the range. `phase` walks the colors along the bands, which is the drifting-color animation. It costs nothing, because it recolors rather than recomputes.
 
 There is one thing to get right, and it's the third panel:

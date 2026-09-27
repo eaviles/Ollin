@@ -38,17 +38,11 @@ final class DomainColoring: Sketch {
             let rect = Rectangle(x: x, y: 20, width: Double(tile), height: Double(tile))
             drawImage(generate(panel.1, width: tile, height: tile).image, in: rect)
 
-            // Name the two features on the middle panel. The plane runs 3 units
-            // across the tile with the imaginary axis up, so a point of the plane
-            // lands at the middle plus its own offset, y negated.
-            if index == 1 {
-                let span = 3.0 / 1.35
-                let place: (Vector2) -> Vector2 = { p in
-                    Vector2(rect.x + rect.width / 2 + p.x / span * rect.width,
-                            rect.y + rect.height / 2 - p.y / span * rect.height)
-                }
+            // Name the two features on the middle panel, each placed through
+            // the generator's own framing of the plane.
+            if index == 1, let plane = panel.1.plane {
                 for (point, name) in [(Vector2(-0.55, 0), "zero"), (Vector2(0.55, 0), "pole")] {
-                    let at = place(point)
+                    let at = plane.canvasPoint(of: point, in: rect)
                     noFill()
                     stroke(Color(white: 1, alpha: 0.85))
                     strokeWeight(2)

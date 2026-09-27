@@ -288,6 +288,9 @@ struct OllinDocsCommand {
         }
         print("")
         var facts: [(String, String)] = [("sketch", relative(example.sketch, to: root))]
+        if let credit = example.credit {
+            facts.append(("credit", credit))
+        }
         if !example.modules.isEmpty {
             facts.append(("imports", example.modules.joined(separator: ", ")))
         }
@@ -649,7 +652,7 @@ struct OllinDocsCommand {
                ollin docs --list               one topic per line
 
                ollin examples                  every example, grouped by folder
-               ollin examples <filter>         the ones matching a name, folder, or description
+               ollin examples <filter>         the ones matching a name, folder, description, or credit
                ollin examples <name> --source  print the sketch itself
                ollin examples --list           one path per line
 

@@ -3316,6 +3316,14 @@ struct Complex: AdditiveArithmetic, CustomStringConvertible, Decodable, Encodabl
   var real: Double { get set }
   var reciprocal: Complex { get }
   var vector: Vector2 { get }
+struct ComplexPlane: Equatable, Hashable, Sendable
+  func canvasPoint(of: Vector2, in: Rectangle) -> Vector2
+  func planePoint(at: Vector2, in: Rectangle) -> Vector2
+  init(center: Vector2 = default, span: Double = default)
+  init(center: Vector2 = default, zoom: Double)
+  var center: Vector2 { get set }
+  var span: Double { get set }
+  var zoom: Double { get }
 struct ComposeLayer
   func blended(_: BlendMode) -> ComposeLayer
   func cloned(from: ComposeLayer, amount: Double = default, threshold: Double = default) -> ComposeLayer
@@ -4071,6 +4079,7 @@ struct Generator: Sendable
   static func smokeRing(colors: [Color] = default, background: Color = default, radius: Double = default, thickness: Double = default, fill: Double = default, scale: Double = default, detail: Double = default, phase: Double = default) -> Generator
   static func spiral(foreground: Color = default, background: Color = default, density: Double = default, distortion: Double = default, strokeWidth: Double = default, taper: Double = default, cap: Double = default, noise: Double = default, noiseScale: Double = default, softness: Double = default, scale: Double = default, phase: Double = default) -> Generator
   static func waves(foreground: Color = default, background: Color = default, shape: Double = default, frequency: Double = default, amplitude: Double = default, spacing: Double = default, proportion: Double = default, softness: Double = default, scale: Double = default, phase: Double = default) -> Generator
+  var plane: ComplexPlane? { get }
 struct Genome: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
   func isSet(_: Int, chance: Double = default) -> Bool
   func setting(_: Int, to: Double) -> Genome

@@ -132,6 +132,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 | `scale` (the property) | `min(width, height) / 1000`. Write sizes for a 1000-pixel canvas and multiply by it, and the sketch holds at any canvas size. It is separate from the `scale(_:)` transform. |
 | 2D angles | Radians, 0 along +x, turning clockwise on screen because y points down. `rotate`, `drawArc`, `polar`, and `Vector2(angle:length:)` all work this way. |
 | Degrees | `.degrees(45)` and `.turns(0.125)` convert to radians. The few calls that take degrees say so: an `LSystem` angle, `Ocean.windDirection`, the `Physarum` angles, and the latitude, longitude, and sun position of a `Place`. |
+| The complex plane | Every generator that paints it and the shader library's `complexPlane` put `center` in the middle, 3 / zoom units across the shorter side, and the imaginary axis **up**. A generator's `plane` is that framing as a `ComplexPlane`, with `canvasPoint(of:in:)` and `planePoint(at:in:)`. |
 | Hue | A turn from 0 to 1 that wraps, in `Color(hue:saturation:brightness:)` and in `OKLCH` and `OKHSL`. |
 | 3D coordinates | Right-handed with y up, and the camera looks down its own −z. Nothing draws in 3D until a camera is set with `camera`, `cameraControl`, or the like, and the camera resets every frame. |
 | Field of view | Vertical, in radians, `.pi / 3` by default. A taller canvas keeps the height and shows less width, so a portrait render of a scene framed wide crops its sides. |
@@ -202,7 +203,7 @@ ollin examples ocean --source  # an example that does it, as source
 
 - **`ollin api <name>`** answers "what is it called, what does it take, and is it public". It reads the listings under [`API/`](../API/README.md), which hold every public declaration, so a name it does not know cannot be reached from a sketch. It prints each declaration as its source writes it, with the comment above it, where units and ranges are written down. `ollin api Mesh.tube` picks one type's member, and `ollin api Param` lists a whole type.
 - **`ollin docs <topic>`** opens a page by name or path, and `<topic>#<heading>` opens one section. `ollin docs --search "long exposure"` finds every line that says it.
-- **`ollin examples <word>`** lists the sketches whose name, folder, or description matches, and `--source` prints one.
+- **`ollin examples <word>`** lists the sketches whose name, folder, description, or header credit matches (an exact name alone, anything looser together, names first), and `--source` prints one.
 
 `ollin` is `Scripts/ollin` in the checkout, and it works from any folder. `ollin install` puts it on your `PATH`. Its output is plain text under a pipe, so it composes with `grep`. [The reference offline](./Tools/Reference.md) has the rest.
 

@@ -479,9 +479,10 @@ stepless iteration count through the palette, with `phase` cycling the bands:
 - **`.mandelbrot(colors:interior:center:zoom:iterations:cycles:phase:)`** the Mandelbrot
   set. It iterates z = z² + c from zero at every pixel's c and colors by how fast the
   orbit escapes. Points that never escape are the set, painted `interior`. `center` and
-  `zoom` frame the complex plane, where zoom 1 shows the whole set and float precision
-  holds useful detail to a few thousand times in. `iterations` caps the orbit, so raise
-  it as you zoom.
+  `zoom` frame the complex plane the way every generator on this page does. `center` sits
+  in the middle of the picture, 3 / zoom units run across its shorter side, and the
+  imaginary axis points up. Zoom 1 shows the whole set, and float precision holds useful detail to a few
+  thousand times in. `iterations` caps the orbit, so raise it as you zoom.
 - **`.julia(c:colors:interior:center:zoom:iterations:cycles:phase:)`** a Julia set. It is
   the same iteration with `c` fixed and the orbit started at each pixel, so every `c` yields
   a different filigree, and points near the Mandelbrot set's edge give the richest. Animate
@@ -497,6 +498,23 @@ stepless iteration count through the palette, with `phase` cycling the bands:
   framing. `glow` is the falloff distance in plane units, so tighten it to thin the
   filaments. `angle` turns the trap about its own center, so feed it your `time` and
   the stalks sweep.
+
+Each of these, and the domain coloring and Newton's basins below, hands its framing back
+as a `ComplexPlane` through `plane`. With it a sketch marks a number on the picture, or
+reads the number under the pointer, without redoing the arithmetic. `canvasPoint(of:in:)`
+says where a number lands in the rectangle the picture was drawn in. `planePoint(at:in:)`
+reads the number under a canvas point:
+
+```swift
+let julia = Generator.julia(c: Vector2(-0.79, 0.15), zoom: 1.2)
+drawImage(generate(julia).image, 0, 0)
+if let plane = julia.plane {
+    let z = plane.planePoint(at: mouse, in: bounds)                    // the number under the pointer
+    drawCircle(center: plane.canvasPoint(of: .zero, in: bounds), radius: 6)   // the origin, marked
+}
+```
+
+[The `Complex` page](../Helpers/Complex.md#canvas) has the framing in full.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/FractalPair-dark.jpg">
@@ -519,7 +537,8 @@ scale, so the boundaries are dust where all the colors touch:
   at 0 and 1 that catches it), common once `relaxation` leaves 1. That dial scales the
   step: 0.6 creeps and the basins fatten, 1.4 overshoots and they spiral and shed
   islands, and past 2 nothing lands. `center` and `zoom` frame the plane as
-  `.domainColoring` does, about 3 units across at zoom 1 with y up.
+  every generator here does: `center` in the middle, 3 / zoom units across the shorter
+  side, the imaginary axis up.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/NewtonBasins-dark.jpg">
@@ -619,10 +638,11 @@ drawn rather than proved.
   doubling of the value's size, which is a contour map of magnitude. `.conformal` rules
   direction too, twelve sectors to the turn, so away from the interesting points the field
   tiles into little squares. `strength` (0…1) sets how hard the rulings press.
-- `center` and `zoom` frame the plane as they do for the fractals, and zoom 1 shows about
-  3 units across. The imaginary axis runs **up** the canvas, as it is written on paper.
-  `phase` turns the palette around the wheel and only recolors, so `phase: time * 0.05`
-  is free.
+- `center` and `zoom` frame the plane as they do for the fractals: `center` in the middle
+  of the picture and 3 / zoom units across its shorter side, so zoom 1 shows 3 units. The
+  imaginary axis runs **up** the canvas, as it is written on paper. `plane` hands the
+  framing back as a `ComplexPlane`, for placing a zero on the picture. `phase` turns the
+  palette around the wheel and only recolors, so `phase: time * 0.05` is free.
 
 See `Examples/Effects/DomainColoring` for the four above, one of them swimming its zeros.
 

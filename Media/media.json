@@ -4894,24 +4894,26 @@
       "width": 1080
     },
     "Effects/EscapeTime": {
-      "bytes": {
-        "loop": 6798178,
-        "loopSmall": 1164921,
-        "still": 360816,
-        "stillSmall": 112098
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/EscapeTime/loop.mp4?v=d0d60202",
-      "loopSmall": "examples/Effects/EscapeTime/loop-640.mp4?v=e7db3b58",
-      "motion": 6.621,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.618,
+      "sound": false,
       "source": "9183120e5b03749d",
-      "still": "examples/Effects/EscapeTime/still.jpg?v=c00fcc26",
-      "stillSmall": "examples/Effects/EscapeTime/still-640.jpg?v=2edc6aa2",
-      "width": 1080
+      "rendered": "2026-09-27",
+      "bytes": {
+        "loop": 6832726,
+        "loopSmall": 1175300,
+        "still": 360939,
+        "stillSmall": 112384
+      },
+      "loop": "examples/Effects/EscapeTime/loop.mp4?v=a1d42061",
+      "loopSmall": "examples/Effects/EscapeTime/loop-640.mp4?v=3f79ab18",
+      "still": "examples/Effects/EscapeTime/still.jpg?v=c0598767",
+      "stillSmall": "examples/Effects/EscapeTime/still-640.jpg?v=736dac7c",
+      "seed": 1
     },
     "Effects/Feedback": {
       "bytes": {

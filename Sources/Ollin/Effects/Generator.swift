@@ -632,8 +632,11 @@ public struct Generator: Sendable {
     /// and color by how fast the orbit escapes, banded through `colors` (the
     /// smooth-iteration coloring, so the bands are stepless). Points that never
     /// escape are the set itself, painted `interior`. `center` and `zoom` frame
-    /// the complex plane (zoom 1 shows the whole set; useful detail holds to a
-    /// few thousand times in), `iterations` caps the orbit (raise it as you zoom),
+    /// the complex plane the way every generator here does: `center` in the
+    /// middle, 3 / zoom units across the shorter side, the imaginary axis up
+    /// (zoom 1 shows the whole set; useful detail holds to a few thousand times
+    /// in; `plane` hands the framing back as a `ComplexPlane`, for marking a
+    /// point on the picture), `iterations` caps the orbit (raise it as you zoom),
     /// `cycles` is how many palette laps the bands make, and `phase` cycles the
     /// colors along the bands (feed it your `time`).
     public static func mandelbrot(colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x2B6C8C),
@@ -841,8 +844,10 @@ public struct Generator: Sendable {
     /// rather than proved.
     ///
     /// `shading` adds what color alone cannot say (see `DomainShading`),
-    /// `strength` how hard, `center` and `zoom` frame the plane (zoom 1 shows
-    /// about 3 units across), and `phase` turns the palette around the wheel:
+    /// `strength` how hard, `center` and `zoom` frame the plane (`center` in the
+    /// middle, 3 / zoom units across the shorter side, the imaginary axis up;
+    /// `plane` hands it back as a `ComplexPlane`), and `phase` turns the palette
+    /// around the wheel:
     /// it recolors rather than recomputes, so feeding it your `time` costs
     /// nothing.
     ///
@@ -890,9 +895,10 @@ public struct Generator: Sendable {
     /// 0 and 1), and common once `relaxation` moves off 1. That dial scales the
     /// step, so 0.6 creeps and 1.4 overshoots: the basins swell, spiral, and
     /// shed islands, and past 2 nothing lands anywhere. `center` and `zoom`
-    /// frame the plane as in `domainColoring` (zoom 1 shows about 3 units
-    /// across, y up). Up to eight roots; the default is the three cube roots of
-    /// one, the cubic Cayley asked about in 1879.
+    /// frame the plane as in `domainColoring` (`center` in the middle, 3 / zoom
+    /// units across the shorter side, the imaginary axis up; `plane` hands it
+    /// back). Up to eight roots; the default is the three cube roots of one,
+    /// the cubic Cayley asked about in 1879.
     ///
     /// ```swift
     /// drawImage(generate(.newton(relaxation: 1 + 0.3 * sin(time * 0.2))).image, 0, 0)

@@ -1305,8 +1305,9 @@ static inline float2 ctanh(float2 z) { return cdiv(csinh(z), ccosh(z)); }
 // the shorter side, the imaginary axis UP. A uv's y runs down the canvas, so it
 // is negated once here, and everything downstream (a zero you place, a circle
 // you draw over the layer from draw()) reads as mathematics writes it. The
-// built-in domainColoring generator frames its plane the same way, with
-// span = 3 / zoom.
+// built-in complex-plane generators (escape time, the orbit trap, domain
+// coloring, Newton's basins) frame their plane the same way, with span =
+// 3 / zoom, and ComplexPlane is the same framing as a value on the CPU.
 static inline float2 complexPlane(float2 uv, float2 resolution, float2 center, float span) {
     float aspect = resolution.x / max(resolution.y, 1.0);
     float2 q = (uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0) * span;

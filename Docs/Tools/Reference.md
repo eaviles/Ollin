@@ -79,9 +79,12 @@ The examples answer the other half of the question. They show you not what a cal
 ollin examples                # every sketch, grouped by folder
 ollin examples ocean          # the one you meant
 ollin examples boids          # matched on the description, not the name
+ollin examples turan          # matched on the credit in a sketch's header
 ```
 
-One match prints what it shows and how to run it:
+An exact name answers alone. Anything looser lists every sketch it fits. The ones named for the word come first, then the ones whose folder, description, header credit, or imports say it. So `complex` lists the sketch called ComplexPlane beside the ones described as complex arithmetic. The author of an article a sketch was written after finds every sketch that credits it.
+
+One match prints what it shows, the credit its header carries, and how to run it:
 
 ```
 3D/Geometry/Ocean
