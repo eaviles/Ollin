@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 26): a word as a solid. Left, the whole string as one
+// Guide figure (Chapter 25): a word as a solid. Left, the whole string as one
 // mesh, turned enough to show that it has a thickness and that the O keeps its
 // hole. Right, the same word a letter at a time, each letter tipped about its
 // own center. Both stand on the same floor and throw the same kind of shadow,

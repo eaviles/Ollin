@@ -172,6 +172,38 @@ This sketch also shows the plain `camera(.orbiting(...))` call, a fixed pose you
 
 Nesting `withState` blocks builds solar systems. Translate to a planet and draw it, then translate again and draw its moon, and the moon inherits the planet's motion for free. The `3D/Transforms` example is exactly that, three transforms deep.
 
+## A mesh from a word: type as a solid
+
+The catalog's `drawExtrude` pushes a flat shape into depth, and a letter is a shape. So a word can be a solid that catches the light and throws a shadow, like anything else on the floor.
+
+```swift
+drawText3D("Ollin", size: 2, depth: 0.4)
+```
+
+Read one number there twice. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, so a capital stands about seven tenths of it. Everything else is what you would expect. The current fill colors it, and a material from later in this chapter finishes it. It sits centered on the origin, so you place it like a box.
+
+For anything that draws every frame, reach past the convenience call to the two builders under it. `Mesh.text` gives you the whole word as one mesh, built once and kept. `Mesh.textGlyphs` gives you the same word a letter at a time, each letter still in its place. Every letter knows its own center, which is what lets one turn about itself instead of about the word:
+
+```swift
+let letters = Mesh.textGlyphs("Ollin", size: 1.5, depth: 0.3)   // in setup()
+
+for (i, glyph) in letters.enumerated() {                        // in draw()
+    let pivot = glyph.center
+    withState {
+        translate(pivot)
+        rotateX(sin(time * 1.4 + Double(i) * 0.7))
+        translate(-pivot)
+        drawMesh(glyph)
+    }
+}
+```
+
+<img src="Images/25-3DGently/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O, at the right the same word in pale blue with each letter tipped back at its own angle" width="680">
+
+The call exists because extruding the letter shapes yourself goes wrong in two ways. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
+
+A letter with a hole keeps it, since the caps come from the same triangulator every filled shape uses. What you cannot do is wrap a picture around the result, because an extrusion has no map saying where each part of a picture goes. [Chapter 26](26-Meshes.md#pictures-that-change-the-surface) puts pictures on meshes that have one. A solid word takes a color and a material instead.
+
 ## Light, by playing
 
 Everything so far wore the default lighting. Taking over is one call before you draw, and the fastest way to feel what lighting does is to swap whole moods:
