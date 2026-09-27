@@ -353,156 +353,9 @@ Because the freeze is real, change is a deliberate act: `reheat(0.3)` warms the 
 
 The worked example is [`Examples/Patterns/ForceGraph`](../Examples/Patterns/ForceGraph/Sketch.swift), a network that grows node by node with a preference for already-popular nodes. Hubs emerge while the layout reflows live, and any node drags with the web trailing behind.
 
-## Putting it together: the wrecking ball
-
-Now assemble all of it. The piece has a tower of rigid bricks and a chain of hinged links with a heavy ball at the end. A grab lets you swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that it's your turn. Hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
-
-```swift
-import Ollin
-import OllinPhysics
-
-final class Wrecker: Sketch {
-    let world = World()
-
-    var bricks: [Body] = []
-    var links: [Body] = []
-    var ball: Body?
-    var held: Joint?
-    var anchor = Vector2.zero
-
-    let brickSize = Vector2(150, 54)
-    let ballRadius = 56.0
-    let linkStep = Vector2(angle: .pi / 2 + 1.65, length: 91)   // up and to the left
-    let rows = [
-        Color(hex: 0xE07A5F), Color(hex: 0xF2CC8F),
-        Color(hex: 0x81B29A), Color(hex: 0x8187B9),
-    ]
-
-    override func setup() {
-        world.gravity = Vector2(0, 2600)
-        world.restitution = 0.05
-        world.bounds = bounds
-        build()
-        strokeCap(.round)
-    }
-
-    func build() {
-        bricks.removeAll()
-        links.removeAll()
-
-        // The tower: a single column of bricks standing on the floor.
-        for row in 0 ..< 9 {
-            let y = height - 20 - (Double(row) + 0.5) * (brickSize.y + 2)
-            let brick = world.addBody(.box(width: brickSize.x, height: brickSize.y),
-                                      at: Vector2(width * 0.68, y), friction: 0.6)
-            bricks.append(brick)
-        }
-
-        // The chain: a fixed peg, six links hinged end to end, then the ball.
-        anchor = Vector2(width * 0.64, 130)
-        let peg = world.addBody(.circle(radius: 12), at: anchor, kind: .static)
-        let half = linkStep * 0.42
-
-        var previous = peg
-        for i in 1 ... 7 {
-            let center = anchor + linkStep * Double(i)
-            let hinge = anchor + linkStep * (Double(i) - 0.5)
-            let body: Body
-            if i == 7 {
-                body = world.addBody(.circle(radius: ballRadius), at: center, density: 5)
-                ball = body
-            } else {
-                body = world.addBody(.capsule(from: -half, to: half, radius: 13),
-                                     at: center)
-                links.append(body)
-            }
-            world.connect(previous, body, .revolute(at: hinge))
-            previous = body
-        }
-    }
-
-    override func mousePressed() {
-        let cursor = Vector2(mouseX, mouseY)
-        var grabbable = links
-        if let ball { grabbable.append(ball) }
-        for body in grabbable where body.position.distance(to: cursor) < 130 {
-            held = world.grab(body, at: cursor)
-            return
-        }
-    }
-
-    override func mouseReleased() {
-        held?.remove()
-        held = nil
-    }
-
-    override func keyPressed() {
-        if key == " " {
-            held = nil
-            world.removeAll()
-            build()
-        }
-    }
-
-    override func draw() {
-        background(Color(hex: 0x12151C))
-        held?.target = Vector2(mouseX, mouseY)
-        world.advance(by: deltaTime)
-
-        noStroke()
-        for i in bricks.indices {
-            withState {
-                translate(bricks[i].position)
-                rotate(bricks[i].angle)
-                fill(rows[i % rows.count])
-                drawRect(center: .zero, width: brickSize.x, height: brickSize.y,
-                         cornerRadius: 4)
-            }
-        }
-
-        let half = linkStep * 0.42
-        stroke(Color(hex: 0x8E99A8))
-        strokeWeight(26)
-        for link in links {
-            withState {
-                translate(link.position)
-                rotate(link.angle)
-                drawLine(-half, half)
-            }
-        }
-
-        noStroke()
-        fill(Color(hex: 0x6B7484))
-        drawCircle(center: anchor, radius: 16)
-        if let ball {
-            fill(Color(hex: 0xF2EFE8))
-            drawCircle(center: ball.position, radius: ballRadius)
-        }
-    }
-}
-```
-
-Run it with `swift run OllinLive MySketches/Wrecker.swift`, watch the first swing land, then take over. A few parts are worth pausing on:
-
-- The sketch keeps its own lists, `bricks` and `links`, next to the world's. The world moves the bodies, and the lists remember which body should be drawn as what. The ball and the peg are singled out the same way.
-- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges it to the previous body at the midpoint between them, and moves on. The first body is a `.static` peg, the world's word for "never moves". That single static body is what the whole swinging chain hangs from. The ball is just the seventh link, drawn rounder and made five times denser.
-- Because `linkStep` points up and to the left, the chain is born mid-hoist, and gravity does the first demonstration for you. The committed figure at the top of the chapter is that first swing, caught two-thirds of the way through the tower.
-- `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds. Here that means within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
-- `held` is an optional `Joint`, and every use goes through `?.`, so the same `draw()` works whether or not you're holding something. No flags to keep in sync.
-
-Then push it around:
-
-- Aim the first swing yourself by changing the angle inside `linkStep`. Try `.pi / 2 + 0.6` for a gentler start, or point it up and to the *right* and watch it wrap around the peg.
-- Give the ball a `restitution: 0.8` and it bounces off the rubble instead of shoving through it.
-- Two towers, one on each side of the anchor, and the ball becomes a metronome of destruction.
-- Replace the tower with a pyramid (rows that get one brick shorter as they rise, each row offset half a brick). It resists the ball much better, and knocking it flat takes real aim.
-- Put `world.gravity` on a `@Param` parameter and try demolition on the moon.
-
-Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own completely. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the assembled systems sit alongside both.
-
 ## Breaking things
 
-A body does not have to stay one body. `fractured(into:seed:)` cuts a `Shape` into pieces that fit back together exactly, with no gap between them and no overlap. Each piece is a shape like any other. The cut is a Voronoi diagram of a few seeds scattered inside the outline, which is why every piece comes out convex, and convex is what a rigid body wants.
+Every body the world has moved so far stays in one piece. It does not have to. `fractured(into:seed:)` cuts a `Shape` into pieces that fit back together exactly, with no gap between them and no overlap. Each piece is a shape like any other. The cut is a Voronoi diagram of a few seeds scattered inside the outline, which is why every piece comes out convex, and convex is what a rigid body wants.
 
 Pass a point and the seeds crowd around it:
 
@@ -607,7 +460,196 @@ Try this:
 - Raise the piece count to 40. The break turns to gravel, and the small pieces tumble faster than the big ones because the solver gives them less inertia.
 - Move the impact point to the edge of the disc (`Vector2(150, 0)`) and the break reads as a strike off one side.
 - Break the pieces again on a second collision, and you have a crack that runs.
-- Solids break the same way: `Mesh.fractured(into:around:seed:)` cuts a 3D mesh into convex cells, and `.hull(points)` makes each one a `Body3D`. `Examples/3D/Physics/Burst` is that sketch.
+
+## Putting it together: the wrecking ball
+
+Now assemble all of it. The sketch has a tower of rigid bricks that break where the ball hits them hard, and a chain of hinged links with a heavy ball at the end. A grab lets you swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that it's your turn. Hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
+
+```swift
+import Ollin
+import OllinPhysics
+
+final class Wrecker: Sketch {
+    let world = World()
+
+    struct Shard { let body: Body; let shape: Shape; let color: Color }
+
+    var bricks: [Body] = []
+    var shards: [Shard] = []
+    var links: [Body] = []
+    var ball: Body?
+    var held: Joint?
+    var anchor = Vector2.zero
+
+    let brickSize = Vector2(150, 54)
+    let ballRadius = 56.0
+    let linkStep = Vector2(angle: .pi / 2 + 1.65, length: 91)   // up and to the left
+    let rows = [
+        Color(hex: 0xE07A5F), Color(hex: 0xF2CC8F),
+        Color(hex: 0x81B29A), Color(hex: 0x8187B9),
+    ]
+
+    override func setup() {
+        world.gravity = Vector2(0, 2600)
+        world.restitution = 0.05
+        world.bounds = bounds
+        build()
+        strokeCap(.round)
+    }
+
+    func build() {
+        bricks.removeAll()
+        shards.removeAll()
+        links.removeAll()
+
+        // The tower: a single column of bricks standing on the floor.
+        for row in 0 ..< 9 {
+            let y = height - 20 - (Double(row) + 0.5) * (brickSize.y + 2)
+            let brick = world.addBody(.box(width: brickSize.x, height: brickSize.y),
+                                      at: Vector2(width * 0.68, y), friction: 0.6)
+            brick.userData = rows[row % rows.count]
+            bricks.append(brick)
+        }
+
+        // The chain: a fixed peg, six links hinged end to end, then the ball.
+        anchor = Vector2(width * 0.64, 130)
+        let peg = world.addBody(.circle(radius: 12), at: anchor, kind: .static)
+        let half = linkStep * 0.42
+
+        var previous = peg
+        for i in 1 ... 7 {
+            let center = anchor + linkStep * Double(i)
+            let hinge = anchor + linkStep * (Double(i) - 0.5)
+            let body: Body
+            if i == 7 {
+                body = world.addBody(.circle(radius: ballRadius), at: center, density: 5)
+                ball = body
+            } else {
+                body = world.addBody(.capsule(from: -half, to: half, radius: 13),
+                                     at: center)
+                links.append(body)
+            }
+            world.connect(previous, body, .revolute(at: hinge))
+            previous = body
+        }
+    }
+
+    /// Break one brick where it was hit, into pieces that carry on with it.
+    func shatter(_ i: Int, at hit: Vector2) {
+        let brick = bricks.remove(at: i)
+        let w = brickSize.x / 2, h = brickSize.y / 2
+        let outline = Shape([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h)])
+        for piece in outline.fractured(into: 6, around: hit, seed: bricks.count) {
+            let middle = piece.centroid
+            let local = piece.mapPoints { $0 - middle }
+            guard let corners = local.contours.first?.points else { continue }
+            let body = world.addBody(.polygon(corners),
+                                     at: brick.position + middle.rotated(by: brick.angle),
+                                     friction: 0.6)
+            body.angle = brick.angle
+            body.velocity = brick.velocity + (middle - hit).normalized * 250
+            shards.append(Shard(body: body, shape: local, color: brick.userData as? Color ?? .white))
+        }
+        world.remove(brick)
+    }
+
+    override func mousePressed() {
+        let cursor = Vector2(mouseX, mouseY)
+        var grabbable = links
+        if let ball { grabbable.append(ball) }
+        for body in grabbable where body.position.distance(to: cursor) < 130 {
+            held = world.grab(body, at: cursor)
+            return
+        }
+    }
+
+    override func mouseReleased() {
+        held?.remove()
+        held = nil
+    }
+
+    override func keyPressed() {
+        if key == " " {
+            held = nil
+            world.removeAll()
+            build()
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x12151C))
+        held?.target = Vector2(mouseX, mouseY)
+        world.advance(by: deltaTime)
+
+        // A brick the ball meets fast enough breaks where it was hit.
+        if let ball, ball.velocity.length > 900 {
+            for i in bricks.indices.reversed() {
+                let local = (ball.position - bricks[i].position).rotated(by: -bricks[i].angle)
+                let nearest = Vector2(clamp(local.x, -brickSize.x / 2, brickSize.x / 2),
+                                      clamp(local.y, -brickSize.y / 2, brickSize.y / 2))
+                if local.distance(to: nearest) < ballRadius + 3 { shatter(i, at: nearest) }
+            }
+        }
+
+        noStroke()
+        for brick in bricks {
+            withState {
+                translate(brick.position)
+                rotate(brick.angle)
+                fill(brick.userData as? Color ?? .white)
+                drawRect(center: .zero, width: brickSize.x, height: brickSize.y,
+                         cornerRadius: 4)
+            }
+        }
+        for shard in shards {
+            withState {
+                translate(shard.body.position)
+                rotate(shard.body.angle)
+                fill(shard.color)
+                drawShape(shard.shape)
+            }
+        }
+
+        let half = linkStep * 0.42
+        stroke(Color(hex: 0x8E99A8))
+        strokeWeight(26)
+        for link in links {
+            withState {
+                translate(link.position)
+                rotate(link.angle)
+                drawLine(-half, half)
+            }
+        }
+
+        noStroke()
+        fill(Color(hex: 0x6B7484))
+        drawCircle(center: anchor, radius: 16)
+        if let ball {
+            fill(Color(hex: 0xF2EFE8))
+            drawCircle(center: ball.position, radius: ballRadius)
+        }
+    }
+}
+```
+
+Run it with `swift run OllinLive MySketches/Wrecker.swift`, watch the first swing land, then take over. A few parts are worth pausing on:
+
+- The sketch keeps its own lists, `bricks`, `shards`, and `links`, next to the world's. The world moves the bodies, and the lists remember which body should be drawn as what. The ball and the peg are singled out the same way.
+- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges it to the previous body at the midpoint between them, and moves on. The first body is a `.static` peg, the world's word for "never moves". That single static body is what the whole swinging chain hangs from. The ball is just the seventh link, drawn rounder and made five times denser.
+- Because `linkStep` points up and to the left, the chain is born mid-hoist, and gravity does the first demonstration for you. The committed figure at the top of the chapter is that first swing, caught two-thirds of the way through the tower.
+- A brick breaks when the ball meets it fast. Each frame the ball's center is moved into the brick's own coordinates, and `clamp` finds the nearest point of the brick. A ball closer than its radius shatters the brick there, the way [Breaking things](#breaking-things) broke the disc, and the pieces carry on with the brick's velocity. Each brick keeps its color in `userData`, so taking one out of the list never recolors the ones above it.
+- `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds. Here that means within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
+- `held` is an optional `Joint`, and every use goes through `?.`, so the same `draw()` works whether or not you're holding something. No flags to keep in sync.
+
+Then push it around:
+
+- Aim the first swing yourself by changing the angle inside `linkStep`. Try `.pi / 2 + 0.6` for a gentler start, or point it up and to the *right* and watch it wrap around the peg.
+- Give the ball a `restitution: 0.8` and it bounces off the rubble instead of shoving through it.
+- Two towers, one on each side of the anchor, and the ball becomes a metronome of destruction.
+- Replace the tower with a pyramid (rows that get one brick shorter as they rise, each row offset half a brick). It resists the ball much better, and knocking it flat takes real aim.
+- Put `world.gravity` on a `@Param` parameter and try demolition on the moon.
+
+Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own completely. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the assembled systems sit alongside both.
 
 ## Where this comes from
 

@@ -109,6 +109,8 @@ The hoop in the figure is two bodies in the same place, which is the trick worth
 
 That tray is also why sensors are built the way they are. A ball that settles in it stops moving, and the solver, sensibly, puts anything that has stopped moving to sleep to save the work. A sleeping body reports no contacts, so a still stack reads as touching nothing. A sensor never sleeps, so it goes on counting what's parked in it long after the balls have dozed off. Events are for the moment something happens, and a sensor is for the standing question of what's in here. The playable version, where you can drag a ball and post it through the hoop by hand, is the [`3D/Physics/Trigger`](../Examples/3D/Physics/Trigger/) example.
 
+Solids can break, too, the way flat shapes broke in [Chapter 11](11-ForcesAndPhysics.md#breaking-things). `Mesh.fractured(into:around:seed:)` cuts a 3D mesh into convex cells, and `.hull(points)` makes each one a `Body3D`. `Examples/3D/Physics/Burst` throws solids up and breaks each one at the top of its arc. For a break that happens on impact, a contact's `speed` is the trigger to read.
+
 You don't animate a pile; you drop one.
 
 ## Asking what is there

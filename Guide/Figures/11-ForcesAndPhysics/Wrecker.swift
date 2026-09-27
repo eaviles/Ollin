@@ -2,7 +2,8 @@
 //
 // Guide payoff (Chapter 11): a wrecking ball. A chain of rigid links hangs
 // from a peg by revolute joints and ends in a heavy ball. It starts swung
-// up to one side, so gravity launches it into the brick tower. Hold the
+// up to one side, so gravity launches it into the brick tower, and a brick
+// the ball meets fast enough breaks where it was hit. Hold the
 // mouse near the ball or a link to drag it, release to let it fly, and
 // press space to rebuild.
 import Ollin
@@ -11,7 +12,10 @@ import OllinPhysics
 final class Wrecker: Sketch {
     let world = World()
 
+    struct Shard { let body: Body; let shape: Shape; let color: Color }
+
     var bricks: [Body] = []
+    var shards: [Shard] = []
     var links: [Body] = []
     var ball: Body?
     var held: Joint?
@@ -35,6 +39,7 @@ final class Wrecker: Sketch {
 
     func build() {
         bricks.removeAll()
+        shards.removeAll()
         links.removeAll()
 
         // The tower: a single column of bricks standing on the floor.
@@ -42,6 +47,7 @@ final class Wrecker: Sketch {
             let y = height - 20 - (Double(row) + 0.5) * (brickSize.y + 2)
             let brick = world.addBody(.box(width: brickSize.x, height: brickSize.y),
                                       at: Vector2(width * 0.68, y), friction: 0.6)
+            brick.userData = rows[row % rows.count]
             bricks.append(brick)
         }
 
@@ -66,6 +72,25 @@ final class Wrecker: Sketch {
             world.connect(previous, body, .revolute(at: hinge))
             previous = body
         }
+    }
+
+    /// Break one brick where it was hit, into pieces that carry on with it.
+    func shatter(_ i: Int, at hit: Vector2) {
+        let brick = bricks.remove(at: i)
+        let w = brickSize.x / 2, h = brickSize.y / 2
+        let outline = Shape([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h)])
+        for piece in outline.fractured(into: 6, around: hit, seed: bricks.count) {
+            let middle = piece.centroid
+            let local = piece.mapPoints { $0 - middle }
+            guard let corners = local.contours.first?.points else { continue }
+            let body = world.addBody(.polygon(corners),
+                                     at: brick.position + middle.rotated(by: brick.angle),
+                                     friction: 0.6)
+            body.angle = brick.angle
+            body.velocity = brick.velocity + (middle - hit).normalized * 250
+            shards.append(Shard(body: body, shape: local, color: brick.userData as? Color ?? .white))
+        }
+        world.remove(brick)
     }
 
     override func mousePressed() {
@@ -96,14 +121,32 @@ final class Wrecker: Sketch {
         held?.target = Vector2(mouseX, mouseY)
         world.advance(by: deltaTime)
 
+        // A brick the ball meets fast enough breaks where it was hit.
+        if let ball, ball.velocity.length > 900 {
+            for i in bricks.indices.reversed() {
+                let local = (ball.position - bricks[i].position).rotated(by: -bricks[i].angle)
+                let nearest = Vector2(clamp(local.x, -brickSize.x / 2, brickSize.x / 2),
+                                      clamp(local.y, -brickSize.y / 2, brickSize.y / 2))
+                if local.distance(to: nearest) < ballRadius + 3 { shatter(i, at: nearest) }
+            }
+        }
+
         noStroke()
-        for i in bricks.indices {
+        for brick in bricks {
             withState {
-                translate(bricks[i].position)
-                rotate(bricks[i].angle)
-                fill(rows[i % rows.count])
+                translate(brick.position)
+                rotate(brick.angle)
+                fill(brick.userData as? Color ?? .white)
                 drawRect(center: .zero, width: brickSize.x, height: brickSize.y,
                          cornerRadius: 4)
+            }
+        }
+        for shard in shards {
+            withState {
+                translate(shard.body.position)
+                rotate(shard.body.angle)
+                fill(shard.color)
+                drawShape(shard.shape)
             }
         }
 
