@@ -4,7 +4,7 @@
 
 # 35. Controls and signals
 
-<!-- Hook image: the finished sketch, the weather rose (Figures/35-ControlsAndSignals/WeatherRose.swift). Waiting on its render on the Mac. -->
+<img src="Images/35-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in ink on cream, with fainter copies of itself trailing off to one side as though blown" width="560">
 
 A sketch you tune only from the inspector is a sketch you play alone at a desk. This chapter hands it to everything else that can steer it. MIDI knobs, a phone fader over OSC, a DAW's clock, and a beat shared across the room come first. Then come a table of tagged pieces, a game controller, and sensors on a wire or over Bluetooth. Data arrives on its own too, from the web and from the weather outside. Knobs and faders bind straight to your `@Param` values, and everything else reads in `draw()` as a level or a moment. The trackpad answers back with a knock. The chapter ends on an instrument that takes several of these hands at once. It is a rose opened by a knob and a fader, and blown by the weather.
 
