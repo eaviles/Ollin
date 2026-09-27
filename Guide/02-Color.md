@@ -4,7 +4,7 @@
 
 # 2. Color that works
 
-<img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells sampling one harmony of a violet diagonally, each cell jittered off its neighbors, on a dark ground" width="560">
+<img src="Images/02-Color/ColorField.jpg" alt="A quilt of square cells on a near-black ground, teal at the top left, the violet base through the middle, magenta at the bottom right, each cell jittered a step off its diagonal neighbors" width="560">
 
 Color is the first thing a viewer reads in a sketch, and it is where the arithmetic works against you. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter is the set of tools that avoid all of that. You'll learn the ways to name a color, and how to think in hue rather than in amounts of light. You'll mix in a way that trusts your eye and keep hues at one weight. Then you'll grow a palette from one color, carry palettes and ramps around as kits, and paint with a gradient. It ends in the sketch above, a color field built on one harmony, which redraws itself as a fresh variation on every click. After the sketch, a family section mixes colors the way paint does.
 
