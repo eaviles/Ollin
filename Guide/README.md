@@ -96,7 +96,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 28. **[Worlds with weight](28-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
 29. **[Characters, vehicles, and cloth](29-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
 30. **[Sculpting with fields](30-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals.
-31. **[Traced light](31-TracedLight.md).** Light followed past the first surface: mirrors that see off screen, bounce light, caustics, and the path-traced still. Then the work done across frames and in the lens. Temporal anti-aliasing, highlights that hold still, motion blur, lens flare, the shape of a blur, upscaling, and frames drawn in between.
+31. **[Traced light](31-TracedLight.md).** Light followed past the first surface: mirrors that see off screen, bounce light, caustics, and the path-traced still. Then the work done across frames and in the lens. Temporal anti-aliasing, highlights that hold still, motion blur, lens flare, the shape of a blur, depth of field built from samples of light, upscaling, and frames drawn in between.
 
 ### Part VI: The world coming in
 

@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 24): the same scene of lines through three lenses. One
+// Guide figure (Chapter 31): the same scene of lines through three lenses. One
 // probe, the ring sphere of the LineSpray example, is rendered three times
 // through OllinApp.image(of:) with only the lens's strength changed: no lens,
 // so every ring is sharp near and far; the example's own lens; and one opened
