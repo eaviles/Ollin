@@ -58,8 +58,10 @@ final class LamplitRoom: Sketch {
         withState { fill(Color(hex: 0xC8603A)); translate(-4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
         withState { fill(Color(hex: 0x2A8C8C)); translate(4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
 
-        // A glass ball on a white plinth, where the lamp's light is focused.
-        withState { translate(1.0, 0.25, 0.2); drawBox(width: 0.7, height: 0.5, depth: 0.7) }
+        // A glass ball on a white plinth, wide enough that the lamp's light
+        // comes to its focus on the plinth's top rather than spreading again
+        // on the floor beyond it.
+        withState { translate(1.1, 0.25, 0.2); drawBox(width: 1.6, height: 0.5, depth: 0.9) }
         withState {
             material(.glass(thickness: 1.2))
             fill(.white)
