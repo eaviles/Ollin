@@ -1,7 +1,8 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 26): a scene taken apart. Left, part of the draw() the
-// generator writes from a scene file. Right, the scene those very placements
+// Diagram for Docs/Tools/SceneImport.md, kept in Chapter 26's folder: a
+// scene taken apart. Left, part of the draw() the generator writes from a
+// scene file. Right, the scene those very placements
 // draw. One read of the file feeds both panels: the text is the generator's own
 // output, and the picture is drawn by walking the same description, so neither
 // panel is a hand-made stand-in for the other.

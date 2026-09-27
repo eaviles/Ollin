@@ -103,24 +103,7 @@ Both are ordinary drawing state, saved by `withState`, so one frame holds all th
 
 ### A scene you can take apart
 
-Loading a scene keeps the file in charge. Re-export from the tool and the sketch picks up the change, which is what you want while the model is still moving. There is a moment when you want the opposite: the layout is settled, and now you want to *work* on it. For that, ask for the sketch itself.
-
-```sh
-ollin new Yard --from-scene yard.usdz
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/SceneAsSource-dark.jpg">
-  <img src="Images/26-Meshes/SceneAsSource.jpg" alt="Left, the generated draw() with its camera call, its lights and its nested withState blocks. Right, the same scene drawn from those placements: a torus on a pedestal beside a lamp and a blue sphere" width="680">
-</picture>
-
-That writes a project whose `draw()` is the scene, spelled out. The camera is a `Camera3D` with its own numbers. Each light is the factory that makes it. Every node is a `withState` block holding the moves that put it where the tool put it, nested the way the file nests them.
-
-What does not become source is the geometry. A mesh is not something anybody edits as text. The sketch reads the file once for its meshes and places them itself. That is what `drawPart` does. Materials ride their meshes for the same reason. No `fill` appears anywhere.
-
-So this is the lossy direction, and it says what it lost. Animation stays behind, along with the skins and blend shapes that bend geometry, since nothing in a written-out placement drives them. A mesh wearing several materials draws in the first, and its block is marked. Everything else is a line in your own sketch now.
-
-Both directions are worth having. `loadScene` is for a set that is still being built. This one is for the moment the file stops being the piece and becomes the material. [Bringing a scene over](../Docs/Tools/SceneImport.md) has the details.
+Loading a scene keeps the file in charge, which is what you want while the model is still moving. Once the layout is settled, you may want to work on it as code instead. `ollin new Yard --from-scene yard.usdz` writes a project whose `draw()` is the scene spelled out. It has the camera, the lights, and a `withState` block for every node, while the meshes are still read from the file. [Bringing a scene over](../Docs/Tools/SceneImport.md) shows the result beside the scene it draws, and says what carries over and what stays behind.
 
 ### A shape from four dimensions: the Hopf fibration
 
