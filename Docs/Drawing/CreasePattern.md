@@ -11,8 +11,8 @@ A sheet that is **cut** rather than folded is written the same way. That kind of
 Both come out of Ollin as plain geometry, and that matters more here than usual. A crease pattern is a set of instructions for a machine. The fold lines go to a scoring blade or a pen, and the cut lines go to a cutter. So the same pattern draws on the canvas, [hatches](./Geometry.md), and [exports to SVG](../Output/Fabrication.md).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/CreaseAndFold-dark.jpg">
-  <img src="../../Guide/Images/07-Tiles/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/CreaseAndFold-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
 </picture>
 
 ### The two laws

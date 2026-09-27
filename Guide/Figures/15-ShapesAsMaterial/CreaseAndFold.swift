@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 7): crease patterns. The flat Miura sheet with its
+// Guide figure (Chapter 15): crease patterns. The flat Miura sheet with its
 // mountains and valleys marked, the same sheet folded most of the way, and a
 // rotating-squares cut sheet pulled half open.
 import Ollin

@@ -457,13 +457,62 @@ Then make it yours:
 - Trade hatching for bones. Run `medialAxis` on each cell piece and stroke its branches, and the plate reads as a nervous system rather than a mosaic.
 - Float the ribbon instead of stroking it: `bath.add(ribbon, color:)` into a `Marbling` ([Chapter 17](17-MarksAndMedia.md#ink-on-water)), comb it, and hatch the inks that come out. It still exports as plotter line work.
 
+## A pattern that folds: creases and cuts
+
+The plate leaves as lines for a pen. Lines can also tell a blade where to score and where to cut, and then the paper itself takes the shape.
+
+A crease pattern is how a folded thing is written down. Every fold is a straight line on the flat sheet, and there are only two kinds. A **mountain** points up out of the sheet. A **valley** points down into it. Draw those lines and you have said everything about the finished form.
+
+What is new here is that the pattern can be wrong. A hatched shape draws whatever you hand it. A crease pattern is a set of instructions, and the paper is the test it has to pass.
+
+Two laws decide it, and both look at a single vertex. **Kawasaki's law**: walk around the vertex and list the angles between one fold and the next. Add the first, take away the second, add the third, and keep going all the way around. The answer has to come to zero. **Maekawa's law**: count the mountains and the valleys meeting there. One count is always exactly two more than the other. `isFlatFoldable` asks both, at every vertex inside the sheet.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CreaseAndFold-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
+</picture>
+
+The pattern on the left is the **Miura fold**, and it is the one worth knowing:
+
+```swift
+var sheet = MiuraFold(columns: 8, rows: 5, angle: .pi / 3)
+drawCreases(sheet.pattern.fitted(in: bounds), .mountain)
+```
+
+You can read it off the picture. The zigzag folds running down the sheet are each one kind for their whole length, and they take turns across the sheet. The straight folds running across it change kind at every step. That is what a Miura pattern looks like, and you can spot one anywhere now.
+
+The middle panel is the same sheet folded. `fold` runs from 0, the flat sheet, to 1, a flat packet, and `facets` hands back the panels in three dimensions:
+
+```swift
+sheet.fold = 0.5 * (1 - cos(time))
+for panel in sheet.facets { ... }
+```
+
+Pull two opposite corners of a Miura sheet and the whole thing opens at once, in both directions together. There is no order of operations to remember. That is why it goes into maps, into medical stents, and into solar arrays that travel folded and open in orbit.
+
+It does something stranger as well. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out; this does the opposite, and `poissonRatio` is the negative number that says so.
+
+The right panel is the other half of the craft. Kirigami is origami that is allowed to cut. `RotatingSquares` cuts a grid of squares, leaving a thread of material at each corner. The squares then turn one way and the next as the sheet is pulled:
+
+```swift
+var lattice = RotatingSquares(columns: 6, rows: 6, side: 90, ligament: 6)
+lattice.opening = 0.5 * (1 - cos(time))
+for square in lattice.squares { drawPolygon(square.points) }
+```
+
+Nothing stretches there either. The squares only turn, so the sheet grows the same amount in both directions at once.
+
+Both patterns come out as ordinary geometry, like everything else in this chapter. Run the sketch with `--export-svg`, as the plate did, and the fold lines go to a scoring blade or a pen. The cut lines go to a cutter.
+
 ## Where this comes from
 
 The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
 
 The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
 
-The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier.
+
+Crease patterns come from a craft with its own written mathematics. The two flat-folding laws are named for Toshikazu Kawasaki and Jun Maekawa, who set them down in the 1980s, and Jacques Justin found the first of them independently. The fold in the figure is the Miura-ori, devised by the astrophysicist Koryo Miura in 1970 for packing solar arrays into a rocket, and flown on Japan's Space Flyer Unit in 1995. Mark Schenk and Simon Guest later worked out its behavior as a material, including the pair of Poisson's ratios that multiply to one. The cut sheet is the rotating squares of Joseph Grima and Kenneth Evans, published in 2000, whose Poisson's ratio of exactly -1 is as far as a flat material can go. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -477,12 +526,13 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.
 - [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
+- [Crease patterns](../Docs/Drawing/CreasePattern.md): `CreasePattern` and the two laws, `MiuraFold` with its rigid folding in three dimensions, `RotatingSquares`, joining creases into pen strokes, and taking a sheet to a cutter.
 - The Farmanfarmaian homage [`BehindGlass`](../Examples/Recreations/MonirFarmanfarmaian/BehindGlass/Sketch.swift): a spiral built by moving each side of a kite in a little further than the last and taking the corners where the moved lines meet, painted in the order reverse-glass painting needs. Its `--export-svg` writes the marks in that order, so a frame from behind and one from the front compare mark for mark.
 - The Felguérez homage [`EspacioMultiple`](../Examples/Recreations/ManuelFelguerez/EspacioMultiple/Sketch.swift): a vocabulary of five outlines, each a plain point list. They are painted flat with `drawPolygon` and raised into a relief with `drawExtrude` from the same points, so the exported plan is exactly what stands off the wall. Its sibling `RelieveLacado` has one concave outline, a quarter ring, and that one goes through `drawShape`. `drawPolygon` fans, and a fan fills a ring's inner arc with a chord.
 - The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is one middle line and a closed outline drawn a fixed distance either side of it, round at both ends, so two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
 - The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a figure made of circles and circles cut by circles. A crescent is `drawMoon`, a disk with a disk taken out of it, and an eye is `drawVesica`, the overlap of two disks. Everything but the tail is built on one side and reflected to the other.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), and [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away).
 
 ---
 

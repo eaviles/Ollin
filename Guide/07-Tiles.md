@@ -151,53 +151,6 @@ Draw one band at a time, outline then cord. The next band's outline is what cuts
 
 Walls do the same job here as in the kolam, and a little more. Each one turns the line, so it joins or splits a cord, and it also removes the crossing that would have been at that spot. The middle panel is a plain plait. The right one is the same field with two pairs of walls in the middle. That is the whole distance between wallpaper and a knot with a shape.
 
-## A pattern that folds: creases and cuts
-
-The knot's rule was about drawing. This one is about paper.
-
-A crease pattern is how a folded thing is written down. Every fold is a straight line on the flat sheet, and there are only two kinds. A **mountain** points up out of the sheet. A **valley** points down into it. Draw those lines and you have said everything about the finished form.
-
-What is new here is that the pattern can be wrong. A tiling is a tiling whatever you do with it. A crease pattern is a set of instructions, and the paper is the test it has to pass.
-
-Two laws decide it, and both look at a single vertex. **Kawasaki's law**: walk around the vertex and list the angles between one fold and the next. Add the first, take away the second, add the third, and keep going all the way around. The answer has to come to zero. **Maekawa's law**: count the mountains and the valleys meeting there. One count is always exactly two more than the other. `isFlatFoldable` asks both, at every vertex inside the sheet.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/CreaseAndFold-dark.jpg">
-  <img src="Images/07-Tiles/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
-</picture>
-
-The pattern on the left is the **Miura fold**, and it is the one worth knowing:
-
-```swift
-var sheet = MiuraFold(columns: 8, rows: 5, angle: .pi / 3)
-drawCreases(sheet.pattern.fitted(in: bounds), .mountain)
-```
-
-You can read it off the picture. The zigzag folds running down the sheet are each one kind for their whole length, and they take turns across the sheet. The straight folds running across it change kind at every step. That is what a Miura pattern looks like, and you can spot one anywhere now.
-
-The middle panel is the same sheet folded. `fold` runs from 0, the flat sheet, to 1, a flat packet, and `facets` hands back the panels in three dimensions:
-
-```swift
-sheet.fold = 0.5 * (1 - cos(time))
-for panel in sheet.facets { ... }
-```
-
-Pull two opposite corners of a Miura sheet and the whole thing opens at once, in both directions together. There is no order of operations to remember. That is why it goes into maps, into medical stents, and into solar arrays that travel folded and open in orbit.
-
-It does something stranger as well. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out; this does the opposite, and `poissonRatio` is the negative number that says so.
-
-The right panel is the other half of the craft. Kirigami is origami that is allowed to cut. `RotatingSquares` cuts a grid of squares, leaving a thread of material at each corner. The squares then turn one way and the next as the sheet is pulled:
-
-```swift
-var lattice = RotatingSquares(columns: 6, rows: 6, side: 90, ligament: 6)
-lattice.opening = 0.5 * (1 - cos(time))
-for square in lattice.squares { drawPolygon(square.points) }
-```
-
-Nothing stretches there either. The squares only turn, so the sheet grows the same amount in both directions at once.
-
-Both patterns come out as ordinary geometry, which matters more here than usual. Run the sketch with `--export-svg` and the fold lines go to a scoring blade or a pen, and the cut lines go to a cutter. This is the one pattern in the chapter you can hold.
-
 ## Pieces that have to fit: polyominoes
 
 Every tiling so far has been about *agreement*, neighbors that match at their edges. The other kind of constraint gives the pieces shapes, and the only rule is that they fill the region exactly.
@@ -443,8 +396,6 @@ Hitomezashi comes from a needle-first world rather than a mathematical one: a ru
 
 Kolam and sona reach further back than any of it, and belong to the people who draw them rather than to a paper. What connects the two traditions was written down much later. Marcia Ascher's *Ethnomathematics* set the Indian kolam beside the Angolan sona. Paulus Gerdes spent decades recording sona in the field and working out their rules, the count of loops among them. Slavik Jablan named the general object a mirror curve, which is where the walls come from. Celtic knotwork is the same object again, wearing bands: the plait-and-breakline construction that Iain Bain set out for drawing them by hand, and that Peter Cromwell later described in the same mirror-curve terms.
 
-Crease patterns come from a craft with its own written mathematics. The two flat-folding laws are named for Toshikazu Kawasaki and Jun Maekawa, who set them down in the 1980s, and Jacques Justin found the first of them independently. The fold in the figure is the Miura-ori, devised by the astrophysicist Koryo Miura in 1970 for packing solar arrays into a rocket, and flown on Japan's Space Flyer Unit in 1995. Mark Schenk and Simon Guest later worked out its behavior as a material, including the pair of Poisson's ratios that multiply to one. The cut sheet is the rotating squares of Joseph Grima and Kenneth Evans, published in 2000, whose Poisson's ratio of exactly -1 is as far as a flat material can go.
-
 The pieces that have to fit are Solomon Golomb's. He named the polyomino in a 1953 talk to the Harvard Mathematics Club, published it the year after, and wrote a whole volume on them in 1965. Martin Gardner's column carried them to everybody else, as it did the spiral of numbers. The mutilated board is older than the name and has been used to teach the same lesson ever since: a proof can settle in one line what a search would take a long time to say.
 
 Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model, and learning from a picture is its overlapping model.
@@ -462,7 +413,6 @@ The tile that changes as you read is William Huff's parquet deformation, set as 
 - [Ten print](../Docs/Drawing/TenPrint.md): the two faces, biasing the coin, hand-authored bits, and what the joining does and does not promise.
 - [Kolam and sona](../Docs/Drawing/Kolam.md): the full reference for `kolam` and `drawKolam`, the loops and dots, the walls, and the counting rule.
 - [Celtic knotwork](../Docs/Drawing/Knotwork.md): `knotwork` and `drawKnotwork`, the bands already broken at each dive, the crossing count, and the two-tone draw.
-- [Crease patterns](../Docs/Drawing/CreasePattern.md): `CreasePattern` and the two laws, `MiuraFold` with its rigid folding in three dimensions, `RotatingSquares`, joining creases into pen strokes, and taking a sheet to a cutter.
 - [Polyominoes](../Docs/Generators/Polyominoes.md): the piece type, the twelve pentominoes and five tetrominoes, counting orientations, outlines, and the fitting search with its two switches.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
 - [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md): the full reference for `penroseTiling` (both variants and the arcs), `wangTiling` (tile sets, weights, the complete set), `girihPattern` (the contact angle, the five girih tiles, composing them edge to edge), and `spectreTiling`.
@@ -470,7 +420,7 @@ The tile that changes as you read is William Huff's parquet deformation, set as 
 - [Parquet deformations](../Docs/Drawing/ParquetDeformation.md): the full `parquetDeformation` reference, the profile catalog, the four sweeps and the closure that replaces them, and the two faces.
 - The Farmanfarmaian homages in [`Examples/Recreations/MonirFarmanfarmaian/`](../Examples/Recreations/MonirFarmanfarmaian/): a regular polygon cut into one piece per side and every piece cut again, into rows of triangles for the mirror relief and into a spiraling kite for the maze. Whatever happens in one piece happens in all of them, so the whole keeps the polygon's turn. `Convertible` takes those pieces off the polygon and searches for every other way they can hang: each kite lies along a neighbor's edge, the set turns about one point, and none overlaps.
 - Appendix B draws the idea under all of it, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Angles and circles](B-JustEnoughMath.md#angles-and-circles) for the arcs.
-- Worked examples: [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Hitomezashi`](../Examples/Patterns/Hitomezashi/Sketch.swift) (both faces, on a breathing cloth), [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) (the field resized live, with the loop count read out), [`Patterns/Knotwork`](../Examples/Patterns/Knotwork/Sketch.swift) (the weave with its walls switchable), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide), [`Patterns/HyperbolicTiling`](../Examples/Patterns/HyperbolicTiling/Sketch.swift) (the panning tour of six {p,q} pairs), [`Patterns/ParquetDeformation`](../Examples/Patterns/ParquetDeformation/Sketch.swift) (a square becoming a key under a front that slides back and forth), [`Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away), [`Patterns/Pentominoes`](../Examples/Patterns/Pentominoes/Sketch.swift) (all twelve laid one at a time, with the tray emptying as they go), [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) (a fresh legal pipe network every few seconds), and [`Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift) (three samples written in the source as rows of characters).
+- Worked examples: [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Hitomezashi`](../Examples/Patterns/Hitomezashi/Sketch.swift) (both faces, on a breathing cloth), [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) (the field resized live, with the loop count read out), [`Patterns/Knotwork`](../Examples/Patterns/Knotwork/Sketch.swift) (the weave with its walls switchable), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide), [`Patterns/HyperbolicTiling`](../Examples/Patterns/HyperbolicTiling/Sketch.swift) (the panning tour of six {p,q} pairs), [`Patterns/ParquetDeformation`](../Examples/Patterns/ParquetDeformation/Sketch.swift) (a square becoming a key under a front that slides back and forth), [`Patterns/Pentominoes`](../Examples/Patterns/Pentominoes/Sketch.swift) (all twelve laid one at a time, with the tray emptying as they go), [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) (a fresh legal pipe network every few seconds), and [`Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift) (three samples written in the source as rows of characters).
 
 ---
 
