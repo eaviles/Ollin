@@ -82,7 +82,7 @@ Passing all the levels at once samples the field a single time and traces them a
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there's a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That's how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 19](19-GridSimulations.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 17](17-YourFirstShader.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
 
 ## Following the flow
 
@@ -197,7 +197,7 @@ It walks *downhill from where you start*. A problem with several separate answer
 
 ## Putting it together: the print
 
-Everything above compresses into a surprisingly short piece with a long pedigree. It uses evenly spaced streamlines, three ribbon weights, a warm palette, and cream paper. Make `MySketches/FlowPrint.swift`:
+A flow field and its evenly spaced streamlines make a short piece with a long pedigree. Three ribbon weights, a warm palette, and cream paper finish it. Make `MySketches/FlowPrint.swift`:
 
 ```swift
 import Ollin
