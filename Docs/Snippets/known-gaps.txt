@@ -836,16 +836,16 @@ b3812f188f90  Docs/Helpers/Math.md:24  expected ',' separator
 1af5b1655501  Docs/Helpers/Math.md:60  expected ',' separator
 eaee9918e7ae  Docs/Helpers/Math.md:66  cannot find 'progress' in scope
 7dfe97ef7006  Docs/Helpers/Math.md:76  expected ',' separator
-7e61c6f57b45  Docs/Helpers/Parameters.md:111  unary operator cannot be separated from its operand
-8b0cd896963b  Docs/Helpers/Parameters.md:126  property wrappers are not yet supported in top-level code
-abf53e647a2d  Docs/Helpers/Parameters.md:154  cannot find type 'Opacity' in scope
-c0829da400f9  Docs/Helpers/Parameters.md:196  cannot find '$toonBands' in scope
-c0df20275b80  Docs/Helpers/Parameters.md:223  invalid redeclaration of 'radius'
-1bd9827ae463  Docs/Helpers/Parameters.md:232  cannot find 'side' in scope
-ae1f33524b53  Docs/Helpers/Parameters.md:276  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:291  cannot find '$radius' in scope
-1c6c8dbec021  Docs/Helpers/Parameters.md:71  property wrappers are not yet supported in top-level code
-62c82222d99f  Docs/Helpers/Parameters.md:86  cannot find 'radius' in scope
+62c82222d99f  Docs/Helpers/Parameters.md:104  cannot find 'radius' in scope
+7e61c6f57b45  Docs/Helpers/Parameters.md:129  unary operator cannot be separated from its operand
+8b0cd896963b  Docs/Helpers/Parameters.md:144  property wrappers are not yet supported in top-level code
+abf53e647a2d  Docs/Helpers/Parameters.md:172  cannot find type 'Opacity' in scope
+c0829da400f9  Docs/Helpers/Parameters.md:214  cannot find '$toonBands' in scope
+c0df20275b80  Docs/Helpers/Parameters.md:241  invalid redeclaration of 'radius'
+1bd9827ae463  Docs/Helpers/Parameters.md:250  cannot find 'side' in scope
+ae1f33524b53  Docs/Helpers/Parameters.md:294  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:309  cannot find '$radius' in scope
+1c6c8dbec021  Docs/Helpers/Parameters.md:89  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
 7b95326d799b  Docs/Helpers/Sonification.md:32  cannot find 'numbers' in scope
@@ -1030,8 +1030,8 @@ c1560bc3ed9b  Docs/Output/Export.md:419  'canvasSize' has already been overridde
 9cce5cca05b5  Docs/Output/Export.md:474  cannot find 'MySketch' in scope
 69e3179f9546  Docs/Output/Export.md:481  cannot find 'someShape' in scope
 63d4bbf9aef5  Docs/Output/Export.md:493  cannot find 'sketch' in scope
-5661abd6a536  Docs/Output/Export.md:688  cannot find 'MySketch' in scope
-b050cb53bae3  Docs/Output/Export.md:715  cannot find 'MySketch' in scope
+5661abd6a536  Docs/Output/Export.md:690  cannot find 'MySketch' in scope
+b050cb53bae3  Docs/Output/Export.md:717  cannot find 'MySketch' in scope
 5d07534919d9  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 408662c0edcc  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope
