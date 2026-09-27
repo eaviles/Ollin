@@ -568,7 +568,7 @@ A strip 56 points wide appears among the status items and starts moving.
 
 It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
 
-Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
+Both kinds write the same wrapper [An app to hand somebody](#an-app-to-hand-somebody) describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
 
 ## A widget, and what it does to a sketch
 
@@ -662,7 +662,7 @@ The app is also how the wall piece below reaches its wall. A sketch that declare
 
 The finished sketch is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.
 
-The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the piece repeats every three minutes, which is what lets a shader clock stay small and a viewer feel the sketch has a shape.
+The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the piece repeats every three minutes, the lap the drawing reads through `loopProgress`, so a viewer can feel the sketch has a shape.
 
 ```swift
 import Ollin
@@ -754,7 +754,7 @@ Then make it yours:
 - Add `projection:` and press Command-K, then drag the corners onto a wall that is not square to the projector.
 - Give it a second display with `displays: .spanning` and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
 - Put the strip on a curve instead of a line, or add a matrix over the middle of the canvas.
-- Run it as `swift run --package-path Examples Example-Installation-Unattended --no-installation` first, so you can work on it in an ordinary window.
+- Work on it with `swift run OllinLive MySketches/WallPiece.swift` first. The live window runs it as an ordinary sketch whatever it declares, so you can tune it before it goes on the wall.
 
 ## Where this comes from
 
