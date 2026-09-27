@@ -192,11 +192,51 @@ enum SessionTest {
             fail("deleting the cue did not empty the list and the file")
         }
 
+        print("OllinLiveCoding sessiontest: putting a parameter back …")
+        // The last evaluation declared radius 100 and speed 1. Tune the radius,
+        // put it back, and the run is untouched: same sketch, no reload, the
+        // navigated variation still on it, and the name gone from the tuned set.
+        session.recordParam("radius", .number(42))
+        setRadius(42)
+        guard session.tunedNames == ["radius"], session.tunedParams.map(\.name) == ["radius"] else {
+            fail("the tuned set did not carry the turned parameter")
+        }
+        let tunedSketch = session.sketch
+        let reloadsBefore = session.reloadCount
+        session.resetParams(["radius"])
+        guard value(of: "radius", session) == 100 else {
+            fail("the reset did not put the declared value back (\(value(of: "radius", session) ?? .nan))")
+        }
+        guard session.tunedNames.isEmpty, session.tunedParams.isEmpty else {
+            fail("the reset left the parameter in the tuned set")
+        }
+        guard session.sketch === tunedSketch, session.reloadCount == reloadsBefore,
+              session.sketch?.variation == 777 else {
+            fail("a reset moved the run")
+        }
+        // After a reset, a reload takes the file's edited value rather than the
+        // old tuned one.
+        session.evaluate(loader, input: .source(source(radiusDefault: 150, speedDefault: 1)))
+        await settle(session)
+        guard value(of: "radius", session) == 150 else {
+            fail("after a reset the reload kept the old tuned value (\(value(of: "radius", session) ?? .nan))")
+        }
+        // Reset all puts every parameter back and empties the set.
+        session.recordParam("radius", .number(33))
+        setRadius(33)
+        session.recordParam("speed", .number(4))
+        session.params.first { $0.name == "speed" }?.param.restore(.number(4))
+        session.resetParams()
+        guard value(of: "radius", session) == 150, value(of: "speed", session) == 1,
+              session.tunedNames.isEmpty else {
+            fail("reset all did not put every parameter back")
+        }
+
         await checkSupersedeAcrossARunner(loader: loader)
 
         print("OllinLiveCoding sessiontest passed: the two-speed landing, param carry, variation carry, "
-            + "edited defaults, supersede against both builds, the clean failure, the cue carry, and "
-            + "supersede across a run being carried all hold.")
+            + "edited defaults, supersede against both builds, the clean failure, the cue carry, "
+            + "putting a parameter back, and supersede across a run being carried all hold.")
         exit(0)
     }
 
@@ -277,6 +317,31 @@ enum SessionTest {
             fail("an evaluation that did not ask to carry the run did not start it over "
                 + "(\(HeadlessStage.bars(of: restartedFrame)) bars, frame "
                 + "\(HeadlessStage.saved("frames", of: restarted) ?? -1))")
+        }
+
+        // A reset under a track, with the run carried: the parameter goes back
+        // at once, the frame and the clock stay where they were, and the track
+        // wins its parameter again on the next frame.
+        print("OllinLiveCoding sessiontest: a reset under a track, with the run carried …")
+        session.recordParam("mark", .number(30))
+        restarted.parameters().first { $0.name == "mark" }?.param.restore(.number(30))
+        restarted.automation = Automation(tracks: [
+            Automation.Track(name: "mark", keys: [Automation.Key(at: 0, .number(24))])])
+        guard HeadlessStage.step(runner, view, restarted), mark(of: restarted) == 24 else {
+            fail("the track did not set its parameter (\(mark(of: restarted) ?? .nan))")
+        }
+        let frameBefore = restarted.frameCount
+        let timeBefore = restarted.time
+        session.resetParams(["mark"])
+        guard mark(of: restarted) == 18, session.tunedNames.isEmpty else {
+            fail("the reset did not put the declared value back at once (\(mark(of: restarted) ?? .nan))")
+        }
+        guard restarted.frameCount == frameBefore, restarted.time == timeBefore,
+              session.currentSketch === restarted else {
+            fail("a reset moved the run")
+        }
+        guard HeadlessStage.step(runner, view, restarted), mark(of: restarted) == 24 else {
+            fail("the track did not win its parameter back on the next frame (\(mark(of: restarted) ?? .nan))")
         }
     }
 

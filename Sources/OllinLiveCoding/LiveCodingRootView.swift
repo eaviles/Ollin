@@ -192,7 +192,8 @@ struct LiveCodingRootView: View {
                                        onChange: { name, value in
                                            session.core.recordParam(name, value)
                                        },
-                                       save: session.saveAction)
+                                       save: session.saveAction,
+                                       reset: session.resetAction)
                     CuesCardView(cues: session.core.cues,
                                  currentCue: { session.core.currentCue },
                                  onCall: { request, fade in session.core.callCue(request, over: fade) },

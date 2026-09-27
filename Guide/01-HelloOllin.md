@@ -525,6 +525,8 @@ The button under the rows writes them down for you. Press **Save parameters to H
 
 Only the parameters you actually moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
 
+Going the other way is one click. Every parameter you turn wears a small dot after its name. Click it, or right-click the row and choose **Reset**, and the value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
+
 A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters more than it looks, because `86` and `86.0` are different types to Swift, and only `86.0` is the `Double` you declared.
 
 The same limit as the drag applies, for the same reason. A default the sketch works out has no value to replace, which you can see for yourself by making the `Size` line a calculation and pressing the button again:

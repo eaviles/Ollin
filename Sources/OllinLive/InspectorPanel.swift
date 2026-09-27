@@ -25,7 +25,8 @@ struct InspectorPanel: View {
                                        onChange: { name, value in
                                            session.recordParam(name, value)
                                        },
-                                       save: session.saveAction)
+                                       save: session.saveAction,
+                                       reset: session.resetAction)
                     CuesCardView(cues: session.cues,
                                  currentCue: { session.currentCue },
                                  onCall: { request, fade in session.callCue(request, over: fade) },

@@ -638,4 +638,48 @@ struct ParamTests {
         #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: nil,
                                                         defaults: defaults).isEmpty)
     }
+
+    @Test func theDeclaredValueIsKeptClampedAndResetPutsItBackAtOnce() {
+        let p = Param(wrappedValue: 500.0, 0...100)
+        #expect(p.declaredValue == 100)      // clamped like any other value
+        p.wrappedValue = 20
+        p.reset()
+        #expect(p.wrappedValue == 100)
+    }
+
+    @Test func resetJumpsASmoothedParameterWithNoGlide() {
+        let p = Param(wrappedValue: 20, 0...100, smoothing: .eased(duration: 1, curve: .linear))
+        p.jump(to: 80)
+        p.wrappedValue = 90                  // a glide in progress
+        p.advance(by: 0.25)
+        p.reset()
+        #expect(p.wrappedValue == 20)        // at once
+        p.advance(by: 1)
+        #expect(p.wrappedValue == 20)        // and it stays: the target moved too
+    }
+}
+
+/// A sketch putting its own parameters back: the named ones or every one,
+/// each to the value its declaration gave, and the host hook told which.
+@Suite
+@MainActor
+struct ParamResetTests {
+    private final class Probe: Sketch {
+        @Param(0...100) var radius = 40.0
+        @Param(0...10) var speed = 2.0
+    }
+
+    @Test func aSketchResetsItsParametersAndTellsItsHost() {
+        let sketch = Probe()
+        var told: [[String]] = []
+        sketch.parametersReset = { told.append($0) }
+        sketch.radius = 90
+        sketch.speed = 7
+        sketch.resetParameters(named: ["radius"])
+        #expect(sketch.radius == 40)
+        #expect(sketch.speed == 7)           // not named, so left alone
+        sketch.resetParameters()
+        #expect(sketch.speed == 2)
+        #expect(told == [["radius"], ["radius", "speed"]])
+    }
 }

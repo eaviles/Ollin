@@ -26,6 +26,7 @@ enum RemoteHTTP
     var path: String { get set }
 enum RemoteMessageKind: String, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
   case hello
+  case reset
   case set
   case stats
   case update
@@ -91,6 +92,10 @@ struct RemoteParamDescriptor: Decodable, Encodable, Equatable, Sendable
   var yUpper: Double? { get set }
   var zLower: Double? { get set }
   var zUpper: Double? { get set }
+struct RemoteReset: Decodable, Encodable, Sendable
+  init(names: [String]? = default)
+  var kind: RemoteMessageKind { get set }
+  var names: [String]? { get set }
 struct RemoteSet: Decodable, Encodable, Sendable
   var kind: RemoteMessageKind { get set }
   var name: String { get set }

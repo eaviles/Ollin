@@ -2560,6 +2560,9 @@ open class Sketch {
     var cueTransition: CueTransition?
     /// Called after the sheet changes, for a host that keeps it in a file.
     package var cuesChanged: (() -> Void)?
+    /// Called after `resetParameters(named:)` puts parameters back, with the
+    /// names it reset, for a host that keeps the tuned values across reloads.
+    package var parametersReset: (([String]) -> Void)?
 
     /// Keys currently held down, so `isKeyDown(_:)` can answer and `keyIsPressed`
     /// tracks whether any key is down. The view inserts on press and removes on

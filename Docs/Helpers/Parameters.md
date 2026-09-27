@@ -45,6 +45,7 @@ final class Bands: Sketch {
 - [Show-rules: parameters that come and go](#show-rules)
 - [Where the controls appear](#controls)
 - [Saving what you turned](#saving)
+- [Putting a parameter back](#reset)
 - [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
 - [Driving a parameter from outside](#binding)
@@ -256,6 +257,16 @@ The same answer covers a default that names another value (`houseRadius`), one t
 Two details matter here. A number keeps the form you gave it. A whole default stays whole as long as the value is whole, and a fraction always keeps its decimal point. A color is written to four decimals, which is finer than one step of an 8-bit channel.
 
 In the live host the button writes the file, so the watcher reloads the sketch, exactly as your own save does. In the [performance host](../Tools/LiveCoding.md) it writes into the code on the stage instead, and ⌘S still decides what reaches the disk. This is the same mechanism as [dragging a shape](../Tools/DragToEdit.md), applied to a property's default rather than to a draw call's arguments.
+
+<a name="reset"></a>
+
+### Putting a parameter back
+
+A parameter you turned wears a small dot after its name. Click the dot, or right-click the row and choose **Reset**, and the value goes back to what its `@Param` line declares. **Reset all** beside the save button puts every parameter back, and a group's card offers its own **Reset** once one of its rows is turned. The sketch keeps running: nothing is reloaded and `setup()` does not run again, so the clock, the seed, and an accumulating canvas carry on, and a value that only `setup()` read keeps what `setup()` built from it. A smoothed parameter jumps rather than glides, as it does on a reload. A parameter on a [timeline](../Tools/Timeline.md) track goes back for one frame and then follows its track again.
+
+A reset also forgets the value as tuned. The dot leaves, the save button skips the parameter, and the next reload takes the file's value, so a default you then edit by hand is read.
+
+From code, `$radius.reset()` puts one parameter back, and `resetParameters()` puts every one back (`resetParameters(named: ["radius", "speed"])` a chosen few); a live host is told, so its tuned record follows. `$radius.declaredValue` reads what the line gave it, clamped to the range like any other value. The [remote surface](../Integration/Remote.md) offers the same **Reset all** from the phone.
 
 <a name="scrubbing"></a>
 

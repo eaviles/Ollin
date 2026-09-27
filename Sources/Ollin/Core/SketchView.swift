@@ -1794,8 +1794,19 @@ final class OllinMTKView: MTKView {
     override func keyDown(with event: NSEvent) {
         // Auto-repeat fires keyDown over and over while held; the hook is
         // once-per-press, so ignore repeats (held-key response polls isKeyDown).
-        guard !event.isARepeat else { return }
+        guard !event.isARepeat, !Self.isUndoKey(event) else { return }
         dispatchKey(event, pressed: true)
+    }
+
+    /// Command-Z and Shift-Command-Z, the undo pair. A host with nothing to
+    /// undo leaves the key unclaimed, and AppKit then hands it to the first
+    /// responder, this canvas, so the sketch's `keyPressed()` used to read a
+    /// plain `z` (a preset menu advanced under an undo the inspector never
+    /// offered). Undo belongs to the host, so the pair stops here, on the
+    /// press and on the release.
+    static func isUndoKey(_ event: NSEvent) -> Bool {
+        event.modifierFlags.contains(.command)
+            && event.charactersIgnoringModifiers?.lowercased() == "z"
     }
 
     /// `⌘]` and `⌘[` move the outlined shape among its neighbors, and with
@@ -1824,6 +1835,7 @@ final class OllinMTKView: MTKView {
     }
 
     override func keyUp(with event: NSEvent) {
+        guard !Self.isUndoKey(event) else { return }
         dispatchKey(event, pressed: false)
     }
 

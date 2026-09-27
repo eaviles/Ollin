@@ -4,6 +4,14 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Putting a parameter back.** A parameter tuned in the inspector goes back to the value its `@Param` line declares without quitting the host: a dot after the name marks a tuned row and puts it back on a click, *Reset* is in every row's menu, a group card offers *Reset* for its rows, and *Reset all* sits beside the save button. The sketch keeps running, with no reload and no `setup()`, so the clock, the seed, and the canvas carry on, and a track on the timeline still wins its parameter. From code, `Param.reset()` and `Sketch.resetParameters(named:)`; the remote surface has a *Reset all* of its own (`RemoteReset` on the wire).
+
+### Fixed
+
+- Command-Z and Shift-Command-Z no longer reach a sketch's `keyPressed()` when the host has nothing to undo.
+
 ## [0.12.0] - 2026-09-27
 
 ### Changed

@@ -745,6 +745,25 @@ public struct ParamSaveAction {
     }
 }
 
+/// What the parameters list offers for putting values back: which rows were
+/// turned in this run (they wear a mark beside their name), and the call that
+/// puts some of them, or every parameter, back to the values their `@Param`
+/// lines declare. A host supplies it, since only a host keeps the tuned set
+/// across reloads; a surface without one (the detached panel, the examples
+/// gallery) shows no marks and offers no reset.
+public struct ParamResetAction {
+    /// The names of the parameters turned in this run.
+    public let tuned: Set<String>
+    /// Put these parameters back, or every parameter for `nil`. It runs on the
+    /// main thread, where the rows are read.
+    public let perform: @MainActor ([String]?) -> Void
+
+    public init(tuned: Set<String>, perform: @escaping @MainActor ([String]?) -> Void) {
+        self.tuned = tuned
+        self.perform = perform
+    }
+}
+
 /// What a folded group remembers: whether a sketch's disclosure section was
 /// left open. Only a group the user has toggled writes a key, so an untouched
 /// one keeps its declared start (closed). Package-visible so tests can drive
@@ -780,6 +799,7 @@ public struct ParametersListView: View {
     let parameters: [ParamHandle]
     let onChange: (String, ParamStored) -> Void
     let save: ParamSaveAction?
+    let reset: ParamResetAction?
     /// The identity folded-group state is remembered under (the name the host's
     /// monitor card shows), or `nil` to remember nothing between runs.
     let sketchName: String?
@@ -799,11 +819,13 @@ public struct ParametersListView: View {
     public init(parameters: [ParamHandle],
                 sketchName: String? = nil,
                 onChange: @escaping (String, ParamStored) -> Void = { _, _ in },
-                save: ParamSaveAction? = nil) {
+                save: ParamSaveAction? = nil,
+                reset: ParamResetAction? = nil) {
         self.parameters = parameters
         self.sketchName = sketchName
         self.onChange = onChange
         self.save = save
+        self.reset = reset
         _hiddenIDs = State(initialValue: Self.hiddenIDs(in: parameters))
         _openFoldedGroups = State(initialValue: Self.rememberedOpenGroups(in: parameters, sketch: sketchName))
     }
@@ -866,14 +888,16 @@ public struct ParametersListView: View {
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(sections, id: \.title) { group in
+                    let tuned = tunedNames(in: group.handles)
                     if group.isFolded {
-                        foldedSection(title: group.title) { card(for: group.handles) }
+                        foldedSection(title: group.title, tuned: tuned) { card(for: group.handles) }
                     } else {
-                        section(title: group.title) { card(for: group.handles) }
+                        section(title: group.title, tuned: tuned) { card(for: group.handles) }
                     }
                 }
-                if let save { saveRow(save) }
+                if save != nil || reset != nil { footer }
             }
+            .environment(\.paramReset, reset)
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
             // Keyed on the handle identities so a reload's fresh params restart
             // it (the old task would keep reading the swapped-out sketch's parameters).
@@ -891,15 +915,27 @@ public struct ParametersListView: View {
         }
     }
 
-    private func section(title: String, @ViewBuilder content: () -> some View) -> some View {
+    /// The names in `handles` the host records as turned, in card order, or
+    /// none where no host keeps that record.
+    private func tunedNames(in handles: [ParamHandle]) -> [String] {
+        guard let reset else { return [] }
+        return handles.map(\.name).filter(reset.tuned.contains)
+    }
+
+    private func section(title: String, tuned: [String] = [],
+                         @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.4)
-                .textCase(.uppercase)
-                .foregroundStyle(palette.textTertiary)
-                .padding(.horizontal, 4)
-                .padding(.bottom, 7)
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.4)
+                    .textCase(.uppercase)
+                    .foregroundStyle(palette.textTertiary)
+                Spacer(minLength: 0)
+                groupReset(tuned)
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 7)
 
             content()
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -909,26 +945,30 @@ public struct ParametersListView: View {
 
     /// A folded group's section: the same header as a button with a chevron,
     /// the card under it only while open. Toggling remembers per sketch.
-    private func foldedSection(title: String, @ViewBuilder content: () -> some View) -> some View {
+    private func foldedSection(title: String, tuned: [String] = [],
+                               @ViewBuilder content: () -> some View) -> some View {
         let isOpen = openFoldedGroups.contains(title)
         return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                toggleFoldedGroup(title)
-            } label: {
-                HStack(spacing: 5) {
-                    Text(title)
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.4)
-                        .textCase(.uppercase)
-                    SwiftUI.Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .rotationEffect(.degrees(isOpen ? 90 : 0))
-                    Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Button {
+                    toggleFoldedGroup(title)
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .tracking(0.4)
+                            .textCase(.uppercase)
+                        SwiftUI.Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .bold))
+                            .rotationEffect(.degrees(isOpen ? 90 : 0))
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(palette.textTertiary)
+                    .contentShape(.rect)
                 }
-                .foregroundStyle(palette.textTertiary)
-                .contentShape(.rect)
+                .buttonStyle(.plain)
+                groupReset(tuned)
             }
-            .buttonStyle(.plain)
             .padding(.horizontal, 4)
             .padding(.bottom, isOpen ? 7 : 0)
 
@@ -968,23 +1008,49 @@ public struct ParametersListView: View {
         }
     }
 
-    /// The one action under the cards: put the values you turned into the
-    /// sketch that declared them. What it says afterwards stays until the next
-    /// press, since a refusal names the parameter it could not write. It is
-    /// a footer at the end of the list: a rule sets it apart from the
-    /// parameters above (it acts on all of them and is not one), the system's
-    /// own push button sits centered under it, and it scrolls with the list
-    /// rather than pinning, so a sketch with one parameter does not pay for
-    /// it. A full-width accent box read louder than the rows it serves, plain
-    /// text did not read as a button at all, and a tinted band behind the
-    /// button read as one more card.
-    private func saveRow(_ save: ParamSaveAction) -> some View {
+    /// A group card's own reset, shown once one of its rows is turned: the
+    /// header's trailing word, in the accent the tuned marks wear, so the eye
+    /// reads it as the marks' sum. Nothing where no row is turned, so an
+    /// untouched card keeps its plain header.
+    @ViewBuilder private func groupReset(_ tuned: [String]) -> some View {
+        if let reset, !tuned.isEmpty {
+            Button("Reset") { reset.perform(tuned) }
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(OllinInspector.accent)
+                .help("Put this group's turned parameters back to the values their @Param lines declare.")
+        }
+    }
+
+    /// The actions under the cards: put the values you turned into the sketch
+    /// that declared them, and put every parameter back to what it declares.
+    /// What a save says afterwards stays until the next press, since a
+    /// refusal names the parameter it could not write. It is a footer at the
+    /// end of the list: a rule sets it apart from the parameters above (it
+    /// acts on all of them and is not one), the system's own push buttons sit
+    /// centered under it, and it scrolls with the list rather than pinning,
+    /// so a sketch with one parameter does not pay for it. A full-width
+    /// accent box read louder than the rows it serves, plain text did not read
+    /// as a button at all, and a tinted band behind the button read as one
+    /// more card.
+    private var footer: some View {
         VStack(spacing: 5) {
-            Button(save.title) {
-                saveMessage = save.perform()
+            HStack(spacing: 8) {
+                if let save {
+                    Button(save.title) {
+                        saveMessage = save.perform()
+                    }
+                    .help("Write the parameters you changed into the @Param lines they were declared on.")
+                }
+                if let reset {
+                    Button("Reset all") {
+                        saveMessage = nil
+                        reset.perform(nil)
+                    }
+                    .help("Put every parameter back to the value its @Param line declares. The sketch keeps running, with no reload and no setup().")
+                }
             }
             .buttonStyle(.bordered)
-            .help("Write the parameters you changed into the @Param lines they were declared on.")
 
             if let saveMessage {
                 Text(saveMessage)
@@ -1029,7 +1095,22 @@ private struct ParamRow: View {
     let iconGutter: Bool
     let onChange: (ParamStored) -> Void
 
+    @SwiftUI.Environment(\.paramReset) private var reset
+
+    /// The row wears a Reset in its context menu wherever a host can put a
+    /// value back; the keyframe diamond keeps its own menu, since the nearer
+    /// one wins under the pointer.
     var body: some View {
+        if let reset {
+            control.contextMenu {
+                Button("Reset") { reset.perform([handle.name]) }
+            }
+        } else {
+            control
+        }
+    }
+
+    @ViewBuilder private var control: some View {
         switch handle.control {
         case .slider(let control):
             SliderParamRow(handle: handle, control: control, palette: palette,
@@ -1123,6 +1204,8 @@ private struct ParamRowLabel: View {
     let palette: OllinInspector.Palette
     let iconGutter: Bool
 
+    @SwiftUI.Environment(\.paramReset) private var reset
+
     var body: some View {
         HStack(spacing: 7) {
             if let icon = handle.icon {
@@ -1139,6 +1222,24 @@ private struct ParamRowLabel: View {
                 // A long label can still be trimmed beside a control that
                 // cannot give way; hovering it then shows the whole name.
                 .help(handle.label.count > 12 ? handle.label : "")
+            // The tuned mark: a dot in the accent after the name, only on a
+            // row the host recorded as turned, and a click puts the value
+            // back. A dot rather than a glyph, so it reads as a state (the
+            // way an unsaved document's does) and not as one more control.
+            if let reset, reset.tuned.contains(handle.name) {
+                Button {
+                    reset.perform([handle.name])
+                } label: {
+                    SwiftUI.Circle()
+                        .fill(OllinInspector.accent)
+                        .frame(width: 5, height: 5)
+                        .frame(width: 14, height: 14)
+                        .contentShape(SwiftUI.Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Turned in this run. Click to put it back to the value its @Param line declares.")
+                .accessibilityLabel("Put \(handle.label) back")
+            }
         }
     }
 }
@@ -1155,6 +1256,23 @@ extension EnvironmentValues {
     package var automationTimeline: TimelineModel? {
         get { self[AutomationTimelineKey.self] }
         set { self[AutomationTimelineKey.self] = newValue }
+    }
+}
+
+/// The reset action a host carries, when it carries one: which rows were
+/// turned and the call that puts them back. Injected by the parameters list
+/// so every row's label can wear the mark and every row's menu can offer the
+/// reset without each row kind threading it through; `nil` wherever a surface
+/// keeps no tuned record (the gallery, the detached panel), where rows show
+/// nothing. Computed rather than stored, since the action holds a closure.
+private struct ParamResetKey: EnvironmentKey {
+    static var defaultValue: ParamResetAction? { nil }
+}
+
+extension EnvironmentValues {
+    var paramReset: ParamResetAction? {
+        get { self[ParamResetKey.self] }
+        set { self[ParamResetKey.self] = newValue }
     }
 }
 
