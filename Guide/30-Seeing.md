@@ -80,7 +80,7 @@ final class Faces: Sketch {
 
 That's the whole model, and every tracker follows it. The analysis runs on a background thread, throttled to what the machine keeps up with. Under load it skips analysis frames rather than queueing them, and the *displayed* frame is never dropped. So your `draw()` stays smooth and reads the most recent result.
 
-The second half of the diagram is the part that bites everyone once. Trackers report geometry in **normalized** coordinates: `0...1` across the frame, origin at the *lower left*, y pointing *up*. The canvas is pixels from the *top left*, y pointing *down*, and the frame usually landed letterboxed somewhere inside it. So every result must be flipped and scaled into the rectangle you drew the frame in. You never do that math yourself. Every result type carries `in:` helpers, among them `bounds(in: rect)`, `point(_:in:)`, and `landmarks(_:in:)`. Each takes the rectangle `drawFrame` returned and answers in canvas terms. Pass `mirrored: true` to them when you draw the feed flipped like a bathroom mirror. That is usually what feels right for a piece you stand in front of.
+The second half of the diagram is the part that bites everyone once. Trackers report geometry in **normalized** coordinates: `0...1` across the frame, origin at the *lower left*, y pointing *up*. The canvas is pixels from the *top left*, y pointing *down*, and the frame usually landed letterboxed somewhere inside it. So every result must be flipped and scaled into the rectangle you drew the frame in. You never do that math yourself. Every result type carries `in:` helpers, among them `bounds(in: rect)`, `point(_:in:)`, and `landmarks(_:in:)`. Each takes the rectangle `drawFrame` returned and answers in canvas terms. Pass `mirrored: true` to them when the piece should answer like a bathroom mirror, left for left. That is usually what feels right for a piece you stand in front of. `drawFrame` has no such switch, so to show the feed flipped as well, draw it under `scale(-1, 1)` turned about the middle of the canvas.
 
 > **Swift note.** `lazy var faces = FaceTracker(camera)` builds the tracker the first time it's touched, which is what lets its declaration mention `camera`, another property of the same class. Plain `let` properties initialize too early for that.
 
@@ -273,11 +273,11 @@ The other way to read the same result suits parameters better. `confidence(of: "
 
 **`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of [Chapter 14](14-FieldsAndFlow.md). Use it as a density for stippling, a weight for where to spend detail, or an attractor for particles.
 
-In the figure the attention piles onto the words rather than onto the card as a whole. That's the model doing exactly what it was trained on, since type and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
+In the figure the attention piles onto her face rather than onto the wall of flowers around her. That's the model doing exactly what it was trained on, since faces and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
 
 ## Models of your own
 
-The built-in trackers end somewhere, and these three go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there. A sketch that lives elsewhere finds that folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models`, so the paths below keep working wherever the sketch is launched from.
+The built-in trackers end somewhere, and the sections below go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there. A sketch that lives elsewhere finds that folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models`, so the paths below keep working wherever the sketch is launched from.
 
 ### A click cuts it loose: PointSegmenter
 
@@ -488,7 +488,7 @@ Two practical notes. The history costs width times height times four bytes per f
 
 ## Putting it together: motion paints
 
-The finished sketch is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
+The finished sketch is the painting at the top. You stand in front of the camera, and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
 
 ```swift
 import Ollin
