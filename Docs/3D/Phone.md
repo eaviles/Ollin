@@ -327,8 +327,8 @@ override func setup() {
 Both are *declarations*, not commands fired once. The device remembers them and says them again every time it connects, so plugging in the cable, or launching the capture app, after the sketch is already running works exactly like doing it first.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/33-DepthAndThePhone/DownTheCable-dark.jpg">
-  <img src="../../Guide/Images/33-DepthAndThePhone/DownTheCable.jpg" alt="A sequence diagram with two vertical lifelines, the sketch on the Mac at the left and Ollin Capture on the iPhone at the right: four orange arrows going right for the mode, the library count and two reference pictures with their sizes on the wire, one gray arrow coming back with the phone's state, then a dashed break reading that the cable comes out and goes back in, and the same three orange arrows again underneath" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DownTheCable-dark.jpg">
+  <img src="../Images/DownTheCable.jpg" alt="A sequence diagram with two vertical lifelines, the sketch on the Mac at the left and Ollin Capture on the iPhone at the right: four orange arrows going right for the mode, the library count and two reference pictures with their sizes on the wire, one gray arrow coming back with the phone's state, then a dashed break reading that the cable comes out and goes back in, and the same three orange arrows again underneath" width="680">
 </picture>
 
 The top half is one declaration: the mode first, then a count, then one frame per picture. The sizes are what those frames weigh on the wire. A photograph is most of the cable's work, and everything else is a handful of bytes. The bottom half is the reconnect, where the same declaration goes down again with nobody asking.

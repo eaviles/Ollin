@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Diagram for Docs/3D/Phone.md, kept in Chapter 33's folder: the one
+// Diagram for Docs/3D/Phone.md: the one
 // conversation that runs from the Mac to the
 // phone. A sketch asks for a mode and declares the pictures to look for; the phone
 // answers with what it is doing and what it could not use. Then the cable comes out

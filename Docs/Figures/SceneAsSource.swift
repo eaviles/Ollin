@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Diagram for Docs/Tools/SceneImport.md, kept in Chapter 26's folder: a
+// Diagram for Docs/Tools/SceneImport.md: a
 // scene taken apart. Left, part of the draw() the generator writes from a
 // scene file. Right, the scene those very placements
 // draw. One read of the file feeds both panels: the text is the generator's own
