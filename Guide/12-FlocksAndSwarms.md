@@ -147,7 +147,7 @@ chase.run()
 
 That one can be worked out in advance too. A pursuer of speed 1, starting a distance `a` square-on from a quarry of speed `k`, covers `a / (1 - k * k)` before it catches up. Set the quarry's speed to 1 and it is never caught at all. The gap closes to half what it started as, and stays there.
 
-Nobody in either panel ever runs in a straight line, because nobody is ever chasing something that stands still.
+Only the quarry runs straight, because it chases nobody. Every chaser curves, because nothing it chases ever stands still.
 
 ## Roaming
 
