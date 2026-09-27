@@ -35,10 +35,10 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 29. Characters, vehicles, and cloth | `29-CharactersAndCloth.md` | done |
 | 30. Sculpting with fields | `30-SculptingWithFields.md` | done |
 | 33. Depth and the iPhone as a sensor | `33-DepthAndThePhone.md` | done |
-| 34. Sound and control | `34-SoundAndControl.md` | done |
+| 34. Sound and control | `34-Listening.md` | done |
 | 36. Making sound | `36-MakingSound.md` | done |
 | 32. Seeing | `32-Seeing.md` | done |
-| 38. Sharing and performing | `38-SharingAndPerforming.md` | done |
+| 38. Sharing and performing | `38-FinishingASketch.md` | done |
 | 41. Installations | `41-Installations.md` | done |
 | A. Just enough Swift | `A-JustEnoughSwift.md` | done |
 | B. Just enough math, visually | `B-JustEnoughMath.md` | done |

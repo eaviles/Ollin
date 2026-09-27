@@ -584,20 +584,20 @@ A depth image knows only what its rays touched, so behind every object lies a sh
 ### The spectrum
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-SoundAndControl/Anatomy-dark.jpg">
-  <img src="Images/34-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/Anatomy-dark.jpg">
+  <img src="Images/34-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
 </picture>
 
-Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency, the moment's recipe, bass at the left and brilliance at the right. One more fact makes it drawable. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So useful band bars are log-spaced, giving the low and high octaves equal width instead of letting the treble hog the axis. [Chapter 34](34-SoundAndControl.md) turns spectra into instruments.
+Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency, the moment's recipe, bass at the left and brilliance at the right. One more fact makes it drawable. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So useful band bars are log-spaced, giving the low and high octaves equal width instead of letting the treble hog the axis. [Chapter 34](34-Listening.md) turns spectra into instruments.
 
 ### Events, not levels
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-SoundAndControl/BeatTimeline-dark.jpg">
-  <img src="Images/34-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline: the loudness curve with regular peaks, a beat pulse snapping up at each detection, and tick marks counting beats" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/BeatTimeline-dark.jpg">
+  <img src="Images/34-Listening/BeatTimeline.jpg" alt="A six-second timeline: the loudness curve with regular peaks, a beat pulse snapping up at each detection, and tick marks counting beats" width="680">
 </picture>
 
-Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a sustained chord is loud forever without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short refractory pause keeps one drum hit from counting twice. The signal is change over time, not amount. [Chapter 34](34-SoundAndControl.md) builds its beat-reactive pieces on that comparison.
+Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a sustained chord is loud forever without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short refractory pause keeps one drum hit from counting twice. The signal is change over time, not amount. [Chapter 34](34-Listening.md) builds its beat-reactive pieces on that comparison.
 
 ---
 

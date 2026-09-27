@@ -2,9 +2,9 @@
 
 ---
 
-# 34. Sound and control
+# 34. Listening
 
-<img src="Images/34-SoundAndControl/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
+<img src="Images/34-Listening/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
 Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, the inspector slider, or a sensor you wired yourself drives the same parameters. A running sketch becomes something you play. The sketch above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 36](36-MakingSound.md), which picks up where the ears leave off.
 
@@ -35,7 +35,7 @@ Run it with `swift run OllinLive` like any sketch, say yes when macOS asks about
 
 ## A microphone we can print
 
-A guide has a problem a live sketch doesn't. Every figure in these pages must render the same way on any machine, and no two rooms sound alike. [Chapter 33](33-DepthAndThePhone.md) solved this with a pretend depth camera, and this chapter fakes a microphone. `StageMic` is about thirty lines at the bottom of [`Anatomy.swift`](Figures/34-SoundAndControl/Anatomy.swift), the committed figure. It synthesizes a little band, then feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. The band is a kick drum every half second and a hat between the kicks. Over that sit a held bass note, a slow four-note arpeggio, and a whisper of hiss. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air. Only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
+A guide has a problem a live sketch doesn't. Every figure in these pages must render the same way on any machine, and no two rooms sound alike. [Chapter 33](33-DepthAndThePhone.md) solved this with a pretend depth camera, and this chapter fakes a microphone. `StageMic` is about thirty lines at the bottom of [`Anatomy.swift`](Figures/34-Listening/Anatomy.swift), the committed figure. It synthesizes a little band, then feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. The band is a kick drum every half second and a hat between the kicks. Over that sit a held bass note, a slow four-note arpeggio, and a whisper of hiss. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air. Only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
 
 The analyzer is worth meeting directly, because it's also the seam for sounds Ollin hasn't heard of. It's public, so anything that can produce a stream of samples can feed one.
 
@@ -44,8 +44,8 @@ The analyzer is worth meeting directly, because it's also the seam for sounds Ol
 Sound arrives as **samples**, which are measurements of air pressure, 44,100 of them per second. A microphone hands the analyzer that stream, and the analyzer answers three questions about the most recent instant.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-SoundAndControl/Anatomy-dark.jpg">
-  <img src="Images/34-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/Anatomy-dark.jpg">
+  <img src="Images/34-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
 </picture>
 
 The top panel is the **waveform**, the samples themselves. One big slow swell, the kick's low thump mid-decay, carries fast wiggles on it, which are the melody. It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
@@ -70,8 +70,8 @@ Between the raw spectrum and the shaped bands sit three named conveniences, `bas
 Loudness and spectrum answer "how much", but the other thing music has is **arrivals**. A drum hit is a moment, not a level. A visual that flashes on the drum reads as listening in a way a level meter never does.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-SoundAndControl/BeatTimeline-dark.jpg">
-  <img src="Images/34-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/BeatTimeline-dark.jpg">
+  <img src="Images/34-Listening/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 </picture>
 
 The detector behind this compares each instant's spectrum with the one just before and adds up the rises. A sudden brightening across many frequencies at once spikes that sum, and the analyzer counts it as a beat. A drum hit, a plucked string, and a note starting all do that. Three reads surface it:
@@ -101,8 +101,8 @@ if let heard = mic.pitch {
 The detector does not look for the loudest frequency. It looks for the shortest delay after which the waveform repeats, a method called YIN. A note with harmonics repeats at its fundamental's period even when the fundamental is the quiet part, or missing altogether. That is also how the ear decides. So a bowed string reads at the string's note rather than at its brightest overtone. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed, since a held note holds steady on its own. A sketch that wants a slow needle eases toward `midi` itself.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-SoundAndControl/FollowingANote-dark.jpg">
-  <img src="Images/34-SoundAndControl/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/FollowingANote-dark.jpg">
+  <img src="Images/34-Listening/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
 </picture>
 
 The top strip is four seconds of the bundled violin, one dot per window. The dots sit on the semitone lines because the player is in tune, and each is as solid as the detector was sure. The few dots an octave or more below the melody are double stops. Two strings at once repeat only at the period both share, and the reading lands there. One note at a time is the promise. A chord has no single pitch.
@@ -129,7 +129,7 @@ let tone = Tone(frequency: 220, waveform: .sine)               // a note of your
 let sound = Soundtrack(of: player)                             // a playing video's audio
 ```
 
-`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file and analyzes it as it sounds, taking `.m4a`, `.mp3`, `.wav`, and friends. The `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export. During a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time. [Chapter 38](38-SharingAndPerforming.md) has the whole export story. `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option. The `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from [Chapter 32](32-Seeing.md)'s territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
+`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file and analyzes it as it sounds, taking `.m4a`, `.mp3`, `.wav`, and friends. The `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export. During a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time. [Chapter 38](38-FinishingASketch.md) has the whole export story. `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option. The `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from [Chapter 32](32-Seeing.md)'s territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
 
 ## Words, and what that noise was
 
@@ -151,7 +151,7 @@ That is two things listening to one microphone, which is fine. The source is tap
 
 `SpeechListener` turns talking into words. It runs on your Mac, nothing is uploaded, and it asks for no permission of its own. The microphone asks for its own the first time you start it. The first use of a language may install its model, which takes a moment, and until then `unavailableReason` says so.
 
-<img src="Images/34-SoundAndControl/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
+<img src="Images/34-Listening/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
 
 The left half of that figure is the thing worth understanding before you write any of this. Recognition guesses early and corrects itself as it hears more. Each line there is the same recognizer handed a little more of the same sentence. Three quarters of the way through it was sure the fox jumped over the lace. It was not wrong to say so; it just had not heard the rest yet.
 
@@ -193,7 +193,7 @@ That form is deterministic, which is the same promise the seed made in [Chapter 
 
 ## Putting it together: a playable instrument
 
-The finished sketch wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` parameters wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/34-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/34-SoundAndControl/Resonator.swift):
+The finished sketch wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` parameters wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/34-Listening/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/34-Listening/Resonator.swift):
 
 ```swift
 import Ollin

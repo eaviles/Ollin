@@ -166,8 +166,8 @@ let kick = tone.magnitude(in: 40...120)     // a tighter band
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-SoundAndControl/Anatomy-dark.jpg">
-  <img src="../../Guide/Images/34-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/Anatomy-dark.jpg">
+  <img src="../../Guide/Images/34-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
 </picture>
 
 <a name="bands-and-beats"></a>
@@ -210,8 +210,8 @@ Raise `beatSensitivity` if it triggers too often, and lower it if it misses beat
 The whole beat surface runs on the *sample clock*, so positions are counted in samples of audio. That means the same recording always beats at the same places, `timeSinceBeat` does not advance while no audio arrives, and detection is testable without hardware.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-SoundAndControl/BeatTimeline-dark.jpg">
-  <img src="../../Guide/Images/34-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/BeatTimeline-dark.jpg">
+  <img src="../../Guide/Images/34-Listening/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 </picture>
 
 <a name="pitch"></a>
@@ -246,8 +246,8 @@ for (i, level) in source.chroma.enumerated() {          // C first
 The pitch side costs about a million multiplications a window. The analyzer therefore works it out only when a sketch reads one of the three, once per window. That happens on the thread that reads, never on the audio thread. Reading all three in one frame costs one pass. The **Tuner** example (`Examples/Audio/Tuner`) is all three on the bundled violin, with `--mic` to sing at it, and **GuitarTuner** (`Examples/Audio/GuitarTuner`) reads `midi` against the six open strings, the nearest lit and the needle on that string's own pitch.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-SoundAndControl/FollowingANote-dark.jpg">
-  <img src="../../Guide/Images/34-SoundAndControl/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/FollowingANote-dark.jpg">
+  <img src="../../Guide/Images/34-Listening/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
 </picture>
 
 <a name="audioanalyzer"></a>

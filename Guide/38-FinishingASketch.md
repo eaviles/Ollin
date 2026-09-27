@@ -2,17 +2,17 @@
 
 ---
 
-# 38. Sharing and performing
+# 38. Finishing a sketch
 
-<img src="Images/38-SharingAndPerforming/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
+<!-- Hook image: the finished sketch, one keeper finished as a poster, a loop, and a plot, with its recipe read back. Waiting on the finished sketch and its render. -->
 
-Thirty chapters of pieces have lived on your screen. This chapter is about handing them over. Out as files, meaning a poster, a video, a GIF, a plotter drawing, a print, or something you can hold. Out as live feeds, into a VJ rig or a video call. Out as a package somebody else can build on. And out on a stage, where writing the code is the performance. The sketch above is the final state of a live-coded set you'll build in five evaluations. Every road out of the framework starts from the same place, the sketch you already have. The one road that does not leave, a piece that stays where it is and runs for a month, is [Chapter 41](41-Installations.md).
+A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one: as a still drawn finer than you save it, a video or a GIF, a render slowed or settled before it is written, a plotter drawing, a page that plays in a browser, the machine's own G-code, embroidery, a shop drawing, a laser show, a print in separate inks proofed before it is printed, something you can hold, walk around, or look into, and a description of what it shows. Every file comes from the same sketch run on a fixed clock, so the same seed and frame make the same file every time, and the recipe that made it brings it back tomorrow.
 
 ## Leaving as files
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ExportMap-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ExportMap.jpg" alt="A diagram with a box labeled your sketch in the middle, arrows fanning left to five file outputs (still, sequence, video, GIF, SVG) and right to three live feeds (the window, Syphon, virtual camera)" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/ExportMap-dark.jpg">
+  <img src="Images/38-FinishingASketch/ExportMap.jpg" alt="A diagram with a box labeled your sketch in the middle, arrows fanning left to five file outputs (still, sequence, video, GIF, SVG) and right to three live feeds (the window, Syphon, virtual camera)" width="680">
 </picture>
 
 Every file export runs the sketch *headlessly*. No window opens, `setup()` runs, the clock advances to the frame you asked for, `draw()` runs, and the result is written. Because the offline clock is a fixed timestep, an export is deterministic. The same sketch, seed, and frame make the same file every time, however long the render takes. Sources follow the same clock. A video decodes by frame position, and an `AudioPlayer` feeds its analyzer the matching slice of its file each frame. Even an audio-reactive piece therefore exports with its beats in the same places. The flags live on any example's executable, and a loose sketch file gets the identical surface through the live host:
@@ -29,8 +29,8 @@ swift run --package-path Examples Example-Basic-HelloCircle --export-sequence /t
 Quality has a second dial, and it runs the opposite way from the first. `--render-scale 2` draws the frame at twice the width and twice the height. Then it averages every block of four samples back into one pixel. The file that lands is the size it always was. What changed is how much looking went into each pixel.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SamplingFiner-dark.png">
-  <img src="Images/38-SharingAndPerforming/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one sample per pixel and render scale 4 with sixteen averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SamplingFiner-dark.png">
+  <img src="Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one sample per pixel and render scale 4 with sixteen averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
 </picture>
 
 The difference lives along the edges of filled shapes and the letters of outline text. Those reach the screen as triangles. Every pixel along an edge has to decide how much of one it covers, and more samples means a finer decision. Circles, rectangles, arcs, and every stroked line work their coverage out by formula instead. They are already as crisp as they will get, so the dial does nothing for them.
@@ -65,8 +65,8 @@ This matters the moment you want to render *many* things, or render on your own 
 All of them are a loop around this one call. None of them need a window, a display, or a person watching.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/HeadlessCapture-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/HeadlessCapture.jpg" alt="Four dark square tiles in a row, each showing the same cluster of green-to-orange circles in a different arrangement, labeled frame 0, frame 30, frame 60, and frame 90, above the caption OllinApp.image(of: Pulse(), frame:), four renders, no window" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/HeadlessCapture-dark.jpg">
+  <img src="Images/38-FinishingASketch/HeadlessCapture.jpg" alt="Four dark square tiles in a row, each showing the same cluster of green-to-orange circles in a different arrangement, labeled frame 0, frame 30, frame 60, and frame 90, above the caption OllinApp.image(of: Pulse(), frame:), four renders, no window" width="680">
 </picture>
 
 That figure is the call demonstrating itself. It's one sketch whose `draw()` renders a *different* sketch four times at four frames and lays out the results. A fresh instance is built per capture, so each render starts cleanly from `setup()`.
@@ -87,8 +87,8 @@ swift run OllinLive MySketches/StillLife.swift --export-sequence /tmp/frames --s
 What lands is an OpenEXR file, which is what compositing programs read. Its red, green, and blue hold the light itself. A highlight ten times brighter than white is still ten times brighter than white in the file. Its alpha holds the frame's coverage, the same transparency `background(.clear)` gives a PNG. If the sketch drew through a 3D camera, a fifth channel holds `Z`, the distance from the eye at every pixel, in the sketch's own units.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/LinearFile-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/LinearFile.jpg" alt="Three panels of the same 3D scene of glossy spheres along a lane: the first as a screen shows it with flat white highlights, the second four stops darker where those highlights have shape and color, the third a gray depth image where nearer is darker and the distance is bright" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/LinearFile-dark.jpg">
+  <img src="Images/38-FinishingASketch/LinearFile.jpg" alt="Three panels of the same 3D scene of glossy spheres along a lane: the first as a screen shows it with flat white highlights, the second four stops darker where those highlights have shape and color, the third a gray depth image where nearer is darker and the distance is bright" width="680">
 </picture>
 
 That last one is worth sitting with. A compositor holding a depth channel can add fog after the fact, at a distance it picks. It can throw the background out of focus without the renderer knowing anything about lenses. A grade that pulls the exposure down finds the shape of a blown highlight instead of a flat white disk. None of it costs a re-render, which is the whole argument for the file.
@@ -111,8 +111,8 @@ Reach for video first, because it's almost always the right choice. The default 
 A canvas that starts with `background(.clear)` leaves its background behind. The PNG gets an alpha channel, and so does the clip when the codec carries one. `--codec proRes4444` is the one for an edit timeline, and `hevcWithAlpha` makes a file a fraction of that size. The piece then lands over a camera feed or another layer in a compositing or VJ program rather than over black. `h264` has no alpha channel, so it composites over black and the export says so. The window paints the same frame over black too, so open the file to see the cut.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/LeavingTheBackground-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/LeavingTheBackground.jpg" alt="One export of a cluster of translucent lobes inside a white ring, drawn three times: over the checkerboard an image editor shows behind a see-through file, over a blue and teal layer with soft shapes, and over black" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/LeavingTheBackground-dark.jpg">
+  <img src="Images/38-FinishingASketch/LeavingTheBackground.jpg" alt="One export of a cluster of translucent lobes inside a white ring, drawn three times: over the checkerboard an image editor shows behind a see-through file, over a blue and teal layer with soft shapes, and over black" width="680">
 </picture>
 
 The figure is one export drawn three times. The first panel is the PNG as an image editor shows it, with the checkerboard standing for the alpha. The second is the same file over another layer, which is what a compositor does with a `proRes4444` or `hevcWithAlpha` clip. The third is over black, which is what the window showed while you drew it and what `h264`, `hevc`, and `proRes422` keep. Look at the edge of the white ring in the first two. A pixel the ring half covers keeps the ring's white at half the coverage rather than turning gray. The bytes are premultiplied, which is what every reader of an 8-bit image with alpha expects. A blur or any other frame filter runs on that premultiplied frame, so it spreads the coverage along with the color. A live feed keeps the alpha as well. A Syphon client and a recording of a see-through canvas receive the frame with its coverage. In code, `VideoCodec.carriesAlpha` tells the two kinds of codec apart. `Examples/Export/Cutout` is the cluster of translucent lobes the figure was drawn from.
@@ -128,8 +128,8 @@ swift run OllinLive MySketches/Spot.swift --export-video spot.mp4 --seconds 30 -
 `ntsc` is 30000/1001, the 29.97 of broadcast. `film` is 24, `pal` is 25, `ntscFilm` is 24000/1001, and `ntscDouble` is 60000/1001. In code the same parameter is a `FrameRate`, and a plain number still stands in for one, so `fps: 60` reads as it always did. `FrameRate(30000, per: 1001)` spells any other fraction, `frameDuration` is one frame's length in seconds, and `frames(in:)` is the count an export of that many seconds writes.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/BroadcastGrid-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where the thirtieth NTSC frame lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/BroadcastGrid-dark.jpg">
+  <img src="Images/38-FinishingASketch/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where the thirtieth NTSC frame lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
 </picture>
 
 A name is the exact fraction, not its decimal. The video writer puts every frame on that fraction. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. The loupe in the figure shows what that means. The thirtieth frame lands a millisecond past the second because that is where the grid puts it, and a broadcast timeline has the same grid. The foot of the figure is the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 is then 3.6 seconds off by the end of an hour, 108 frames off its timeline. The named rate carries its fraction into the file's own clock, so nothing rounds. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. That is a tenth of a frame an hour, and a different rate, so name the broadcast rate when that is the one you mean. Every number in the figure is read from `FrameRate` itself. The live window runs at the display's rate, not one of these, and `frameRate` on the sketch reads what it measured.
@@ -145,8 +145,8 @@ swift run OllinLive MySketches/Finale.swift --export-video slow.mp4 --seconds 4 
 That renders four seconds of the sketch's own time and writes sixteen seconds of video. Nothing about the file changes: it still plays at its `--fps`. What changes is how many frames cover the run. The clock steps four times finer, so the sketch is asked for the moments in between. The motion then takes four times as long to play.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SlowerThanItHappened-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SlowerThanItHappened.jpg" alt="Two rows of exported frames of a mark crossing a track: a top row of four frames outlined in orange labeled what the sketch drew, 30 a second, and a bottom row of ten frames labeled --slow-motion 3, 90 a second, with hairlines joining each top frame to the bottom frame showing the same moment" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SlowerThanItHappened-dark.jpg">
+  <img src="Images/38-FinishingASketch/SlowerThanItHappened.jpg" alt="Two rows of exported frames of a mark crossing a track: a top row of four frames outlined in orange labeled what the sketch drew, 30 a second, and a bottom row of ten frames labeled --slow-motion 3, 90 a second, with hairlines joining each top frame to the bottom frame showing the same moment" width="680">
 </picture>
 
 `--seconds` still counts the sketch's own time, as it always has. The export prints both numbers so you never have to work it out.
@@ -198,8 +198,8 @@ for line in lineDrawing(of: scene).paths {
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SceneAsLines-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SceneAsLines.jpg" alt="Two panels of the same scene, a slab with a cylinder, a cube and a ball on it: on the left every edge the drawing considers, with the covered ones ghosted in gray, and on the right the drawing with those taken out" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SceneAsLines-dark.jpg">
+  <img src="Images/38-FinishingASketch/SceneAsLines.jpg" alt="Two panels of the same scene, a slab with a cylinder, a cube and a ball on it: on the left every edge the drawing considers, with the covered ones ghosted in gray, and on the right the drawing with those taken out" width="680">
 </picture>
 
 Three kinds of line are kept, and between them they are what makes a drawing rather than a wireframe. The **silhouette**, where a surface turns away from the camera, which is the outline of a ball or a cylinder. A **crease**, where two faces meet at more than `creaseAngle`, which is the edge of a cube and the rim of a cap. And a **boundary**, where a surface ends. The tessellation inside a smooth surface is left out, which is why the ball above is a circle rather than a net. Lower the crease angle and gentler ridges start to show; set it to 0 and every edge is kept, which is the wireframe.
@@ -222,8 +222,8 @@ swift run OllinLive MySketches/Ring.swift --export-web ring.html --inline
 The recorder writes down the shape records the renderer would have received each frame. Nothing is rendered on the Mac, so nothing GPU-specific lands in the file. The page draws those records with the framework's own shape shader, carried from Metal to GLSL. The rewriter that does it is the one that brings [somebody else's shader](18-YourFirstShader.md#somebody-elses-shader) the other way. A frame on the page is the frame `--export` would have given you. A sketch that declares `loopDuration`, as [Chapter 3](03-MotionAndTime.md) taught, records one lap with no length given, and the page wraps it without a seam. On a lap, each motion is fitted to the sines it is made of, so the page evaluates it at any time from a few numbers. A parameter driven by a [formula](../Docs/Helpers/Formula.md) crosses as the formula, worked out live on the page's own clock and pointer. What fits neither travels as samples, and the page interpolates between them, so a slow motion records well at ten frames a second.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/PageFromRecords-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/PageFromRecords.jpg" alt="Three panels joined by arrows: the frame the Mac renders of a ring of twelve circles; a card listing what the recorder writes, the base stored once, the three moving columns fitted to sines, and the three parameters wired as controls; and the page as a browser window with the same ring on its canvas and a slider and two color wells under it" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/PageFromRecords-dark.jpg">
+  <img src="Images/38-FinishingASketch/PageFromRecords.jpg" alt="Three panels joined by arrows: the frame the Mac renders of a ring of twelve circles; a card listing what the recorder writes, the base stored once, the three moving columns fitted to sines, and the three parameters wired as controls; and the page as a browser window with the same ring on its canvas and a slider and two color wells under it" width="680">
 </picture>
 
 The figure follows one ring of circles across. On the left is the frame the Mac renders. In the middle is what the recorder wrote instead of pixels. Twelve circles a frame, at thirty numbers each. The parts that never change are stored once, and the three that move are kept as columns. The sketch declared a lap, so each column is fitted to the sines it is made of. The page then works the motion out at any instant rather than stepping between frames. On the right is the page. Its canvas is drawn from those records by the framework's own shape shader carried to GLSL. Under it are the three parameters the exporter found it could wire, offered as a slider and two color wells. The size on the arrow is measured by asking for the page and counting its bytes. Most of it is the player and its shaders rather than the ring.
@@ -246,8 +246,8 @@ swift run OllinLive MySketches/Plot.swift --export-gcode cut.gcode --gcode-machi
 A machine needs real units, so the export asks for a physical width, the way a 3D print asks for its size. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer parameters: the pen lift, a laser's power and passes, a mill's depth per pass. A named sheet spares the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side, holding its height as well as its width. `--gcode-paper a4` does the same from the command line. Only line work travels. A stroke plots along its centerline and a fill contributes its outline, with `--hatch` shading fills exactly as it does for SVG.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/OnTheSheet-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/OnTheSheet.jpg" alt="Four sheets of paper drawn to one scale, A3 lying wide, A4, A4 again with a canvas twice as tall as it is wide, and US letter, each with the same rose curve planned inside its margin and the millimeters it came to printed under it: 267 by 267, 190 by 190, 156 by 277, and 196 by 196" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/OnTheSheet-dark.jpg">
+  <img src="Images/38-FinishingASketch/OnTheSheet.jpg" alt="Four sheets of paper drawn to one scale, A3 lying wide, A4, A4 again with a canvas twice as tall as it is wide, and US letter, each with the same rose curve planned inside its margin and the millimeters it came to printed under it: 267 by 267, 190 by 190, 156 by 277, and 196 by 196" width="680">
 </picture>
 
 The figure plans one rose curve onto four sheets through the same planner the flag uses, and prints the size each came to. On A4 with the default margin the drawing is 190 millimeters square, the sheet's width less ten on each side. On A3 lying wide with a fifteen-millimeter margin, the sheet's height is the tighter fit. The drawing comes to 267 and sits at the left. The third sheet shows the rule the other way. A canvas twice as tall as it is wide scales down to the 277 millimeters an A4 leaves for height and comes out 156 wide. The drawing keeps the margin corner as its origin either way. That is why a narrower fit sits at the left of the page rather than centered on it. The program's header names the sheet. `PaperSize` carries the ISO A series from `.a0` to `.a6` and the US `.usLetter`, `.usLegal`, and `.usTabloid`, all portrait like the sheet in the ream. `.landscape` turns one, and `PaperSize(width:height:)` spells a size that is not on the list. `DXF(paper:)` and `--dxf-paper` size a shop drawing the same way.
@@ -255,8 +255,8 @@ The figure plans one rose curve onto four sheets through the same planner the fl
 The exporter plans the route before it writes a move. Open paths whose ends touch merge, so the pen stays down across them. Then a nearest-neighbor walk reorders the paths to keep the pen-up hops short:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/MachineRoute-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/MachineRoute.jpg" alt="Two panels of the same sun-and-wave line work. In the drawn order the pen-up travels tangle across the page at 991 mm; planned, they walk neatly around the shapes at 390 mm" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/MachineRoute-dark.jpg">
+  <img src="Images/38-FinishingASketch/MachineRoute.jpg" alt="Two panels of the same sun-and-wave line work. In the drawn order the pen-up travels tangle across the page at 991 mm; planned, they walk neatly around the shapes at 390 mm" width="680">
 </picture>
 
 The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contours, with the drawn and travel lengths measured in millimeters. The `Export/Toolpath` example draws its own route and walks a pen along it at machine speed. One habit applies to a program from any tool: give it a dry run first, pen out, laser disarmed, cutter above the stock. [G-code](../Docs/Output/GCode.md) has the three machine profiles and every parameter.
@@ -266,8 +266,8 @@ The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contou
 An embroidery machine is a plotter that sews. It moves a hoop under a needle, and every move ends with the needle going down. Ollin writes a frame as those moves, in the `.dst` file nearly every machine reads.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/StitchPlan-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/StitchPlan.jpg" alt="Two panels: a green leaf with pale veins drawn as contours, and the same leaf as its stitches, a dot at every needle penetration along the outline and the veins, rows of stitches filling the leaf, and thin hops where the thread is carried between paths" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/StitchPlan-dark.jpg">
+  <img src="Images/38-FinishingASketch/StitchPlan.jpg" alt="Two panels: a green leaf with pale veins drawn as contours, and the same leaf as its stitches, a dot at every needle penetration along the outline and the veins, rows of stitches filling the leaf, and thin hops where the thread is carried between paths" width="680">
 </picture>
 
 ```swift
@@ -295,8 +295,8 @@ try OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/LayerStack-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/LayerStack.jpg" alt="Two panels: a coaster drawn in three colors, an outline to cut, a ring to score, and a rosette to engrave, and the same drawing pulled apart into three plates, one per color, each labeled with its layer name and the entities on it" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/LayerStack-dark.jpg">
+  <img src="Images/38-FinishingASketch/LayerStack.jpg" alt="Two panels: a coaster drawn in three colors, an outline to cut, a ring to score, and a rosette to engrave, and the same drawing pulled apart into three plates, one per color, each labeled with its layer name and the entities on it" width="680">
 </picture>
 
 So the sketch's colors are the handle. Draw the outline in one color, the fold lines in another, and the engraving in a third, and the file arrives sorted into the three jobs. A layer is named by its color's bytes, `color-1B1040`, and carries the nearest of the nine colors a drawing can show, so the shop sees the same three colors you did.
@@ -333,8 +333,8 @@ A frame holds paths in canvas coordinates, the same numbers every drawing call t
 Between that frame and the projector sits the part worth understanding:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/BeamPath-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/BeamPath.jpg" alt="Two panels. On the left a ring and a small square drawn as outlines. On the right the same two shapes as 136 points the beam visits, with 14 dark ones bridging the gap between them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/BeamPath-dark.jpg">
+  <img src="Images/38-FinishingASketch/BeamPath.jpg" alt="Two panels. On the left a ring and a small square drawn as outlines. On the right the same two shapes as 136 points the beam visits, with 14 dark ones bridging the gap between them" width="680">
 </picture>
 
 Points are spread evenly along each line, so the beam moves at a steady speed and the line looks even. A few points are held at a sharp corner, because the mirrors have mass and would round it off otherwise. Between two shapes the beam goes dark and the mirrors travel. Points are held at both ends of that jump too. Otherwise the beam lights while the mirrors still move, and drags a tail across the gap. The shapes themselves are then visited near to near, since dark travel is time that buys nothing.
@@ -350,8 +350,8 @@ The **LaserPreview** example is that preview with the parameters attached, and i
 Some presses can't print a full-color image at all. A risograph or a screen-printing rig lays down one ink per pass. It needs you to hand it a separate grayscale plate for each one. If you have never prepared work for that kind of press, the mental model is the useful part.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/Separations-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of one photograph of a woman before a wall of marigolds, followed by the color preview of the three overprinted, which reads as the photograph again" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/Separations-dark.jpg">
+  <img src="Images/38-FinishingASketch/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of one photograph of a woman before a wall of marigolds, followed by the color preview of the three overprinted, which reads as the photograph again" width="680">
 </picture>
 
 Each ink gets a **master**, a grayscale image where black means "lay down full ink here" and white means "leave the paper bare". The press runs the paper through once per master, and the inks stack up. Because printing inks are translucent rather than opaque, overlapping them mixes: pink over blue makes a purple neither drum could print alone. That's why the three plain-looking plates above produce a picture with more colors in it than three. The plates are worth reading against the photograph: the flowers take nearly all the yellow drum has, the blue one leaves them bare and spends itself on her instead, and the pink drum runs mid-gray almost everywhere, which is what a warm picture asks of it.
@@ -373,8 +373,8 @@ A screen makes color with light. A press makes it with ink on paper, and the scr
 You can find that out on paper, a week later, at your own expense. Or you can ask first.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ProofBeforePrint-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/ProofBeforePrint-dark.jpg">
+  <img src="Images/38-FinishingASketch/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
 </picture>
 
 A **profile** is a file that describes what one device does with color. Your shop hands you theirs for the press and paper the job will run on. Ollin carries a generic four-ink one for when you have not asked yet:
@@ -420,8 +420,8 @@ sculpture.normalized(scale: 60).write(to: "sculpture.3mf")
 Then there is the thing nobody warns you about, which is that a shape can look completely finished and still be unbuildable. A printer has to decide, for every point in space, whether it is inside the object or outside it. It can only answer that if the surface actually closes. Here are two copies of the same knot, one swept closed and one left open at its ends:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/Fabrication-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/Fabrication.jpg" alt="Two identical-looking gold torus knots side by side; the left is labeled closed and ready to print, the right open at the ends with 36 edges bordering a hole" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/Fabrication-dark.jpg">
+  <img src="Images/38-FinishingASketch/Fabrication.jpg" alt="Two identical-looking gold torus knots side by side; the left is labeled closed and ready to print, the right open at the ends with 36 edges bordering a hole" width="680">
 </picture>
 
 On screen an open surface is exactly as convincing as a closed one. A printer is the first thing that ever disagrees.
@@ -468,8 +468,8 @@ That hands back an ordinary `Scene`, the same kind [Chapter 26](26-Meshes.md) lo
 Here is a frame drawn the ordinary way, beside the same frame written to a `.usdz` and opened again:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SpatialExport-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered gray dust motes, the right has none" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SpatialExport-dark.jpg">
+  <img src="Images/38-FinishingASketch/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered gray dust motes, the right has none" width="680">
 </picture>
 
 The surfaces come back exactly. The dust does not, and that is the rule worth carrying: **a model file holds surfaces**. Meshes travel, with their transforms, their colors, their textures, and as much of their finish as the format has a slot for. The camera and the lights travel too. A point cloud, a GPU particle system, and a raymarched field are not surfaces, so they stay behind. So does 2D drawing, which is why a labeled diagram arrives without its labels. Ollin prints one note for each thing it left, rather than letting you find out later.
@@ -499,8 +499,8 @@ That writes **spatial video**, which is the format Apple's platforms record and 
 Two numbers decide what that looks like, and neither is a setting you get right or wrong. They are composition.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/StereoPair-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/StereoPair-dark.jpg">
+  <img src="Images/38-FinishingASketch/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
 </picture>
 
 **Convergence** is the distance at which the two eyes agree, and the diagram is what that means. Follow a line from each eye through an object to the screen: those two landing places are where each eye sees it. For something sitting at the convergence distance they land together, so it appears *on* the screen. For something nearer, the lines have already crossed by the time they get there, and the marks come out the wrong way round. Your eyes read that as an object in front of the screen, poking out. Farther away, the marks spread apart the ordinary way and the object sits behind. So choosing the convergence distance is choosing what the viewer is looking *into* rather than *out at*.
@@ -566,8 +566,8 @@ swift run --package-path Examples Example-Live-Parameters --export keeper.png --
 Each value is read against its own parameter. A number stays a number. A color is a hex string. A vector is two numbers with a comma between them. A menu choice is its name, spelled loosely: `easeOut`, `ease-out` and `"Ease Out"` all find the same one. The [Export page](../Docs/Output/Export.md#setting-a-parameter-for-the-run) lists every kind.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ParametersBackIn-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ParametersBackIn.jpg" alt="Three square renders of the same rings-on-paper sketch: two small dark rings on cream under the plain export flag, two large dark rings under param radius equals 90, and four pale rings on near-black under radius 90, rings 4, and a dark paper. Under each render a small card labeled the file's recipe lists the seed and the same parameter values" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/ParametersBackIn-dark.jpg">
+  <img src="Images/38-FinishingASketch/ParametersBackIn.jpg" alt="Three square renders of the same rings-on-paper sketch: two small dark rings on cream under the plain export flag, two large dark rings under param radius equals 90, and four pale rings on near-black under radius 90, rings 4, and a dark paper. Under each render a small card labeled the file's recipe lists the seed and the same parameter values" width="680">
 </picture>
 
 The three panels are one sketch rendered three times, with nothing but the flags changed. Under each render is the recipe the file carries, and it names the values the run was drawn with. That is the loop closing: a file tells you its parameters, and the flag hands them back.
@@ -599,8 +599,8 @@ The name, the kind, the value it holds, and what it will take. Every value is pr
 ## Saying what it shows: describable output
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SayingWhatItShows-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SayingWhatItShows-dark.jpg">
+  <img src="Images/38-FinishingASketch/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
 </picture>
 
 Everything so far has been about the picture. Somebody using a screen reader gets none of it. They arrive at your window, or your exported drawing, and find a rectangle with nothing to say for itself.
@@ -640,450 +640,24 @@ One thing Ollin will not do is write the description for you. It could list your
 
 See [Accessibility](../Docs/Helpers/Accessibility.md) for the rest. `Examples/Basic/Describing` is a day passing over that bay, saying what it shows as it goes.
 
-## Live feeds: into other apps
-
-Some pieces shouldn't become files at all. They should stay alive and go *into* something. **Syphon** is the macOS standard for handing GPU frames between running apps, and one line makes a sketch a source every VJ tool can see:
-
-```swift
-import OllinSyphon
-
-override func setup() {
-    publishSyphon(name: "Ollin")     // every frame is now a Syphon source
-}
-```
-
-Resolume, MadMapper, VDMX, and other creative-coding frameworks all read it live, pixel-identical to your window, with nothing touching disk. It works the other way too. `SyphonClient` subscribes to another app's feed and hands you each frame as an `Image`. Draw it, warp it, or feed it to [Chapter 32](32-Seeing.md)'s trackers. Pair it with [Chapter 34](34-SoundAndControl.md) and the rig conversation goes both directions at once: visuals over Syphon, control over OSC or MIDI. The `Integration/SyphonLoopback` example runs both ends in one sketch, a video-feedback tunnel that watches itself. You can see the plumbing with no second app installed.
-
-### The sketch as a webcam
-
-Syphon is app-to-app, which means both ends have to have agreed to speak it. That covers the VJ world and misses everything else, including the one destination people ask about most: the browser. A web page asks the operating system for a *camera*, and no amount of Syphon will make it see one.
-
-So the other publishing route makes the sketch an actual camera:
-
-```swift
-import Ollin
-import OllinCamera
-
-override func setup() {
-    publishVirtualCamera()      // every frame now feeds a system-wide camera
-}
-```
-
-After that, "Ollin Camera" is in the camera menu of every app on the machine. Zoom, Meet, QuickTime, OBS, Photo Booth, and any web page that asks for a camera can all take a sketch as their input. Your next video call can open on a reaction-diffusion field.
-
-There's a one-time setup, and it's worth knowing why. A camera device is a piece of the operating system, not something a sketch can conjure. The device itself is a macOS **system extension**, installed by the Ollin Camera app in this repository. Launch it from `/Applications` and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not any sketch is running. When nothing is publishing it shows a "no signal" test card. That is a friendlier thing for a video call to find than a black rectangle. If you publish without having installed it, nothing breaks: the sketch keeps drawing, and `isAvailable` and `unavailableReason` tell you what's missing.
-
-Two facts about the frame will save you a confused minute:
-
-- **The camera frame is a fixed 1280×720.** Your canvas is scaled to fit and centered. A square canvas therefore arrives with black bars down both sides. If a piece is destined for a call, `canvasSize = .size(1280, 720)` fills the frame exactly.
-- **The camera runs at 30 fps.** A sketch running faster publishes every other frame. A slower one simply updates the camera at its own pace.
-
-And when the picture looks wrong, suspect the *viewer* first. Photo Booth mirrors every camera preview like a selfie mirror. Text in your sketch reads backwards there, exactly as it would on the built-in camera. It also crops, because its preview pane isn't 16:9. Conferencing apps usually mirror your self-view while sending the unmirrored picture to everyone else. QuickTime's File ▸ New Movie Recording shows the frame as published, uncropped and unmirrored. It's the fastest way to see what other apps are really receiving.
-
-## Adding behavior without touching the sketch: SketchExtension
-
-One more piece is worth knowing about once you have several sketches. It answers a question that comes up as soon as you want the same extra behavior in all of them. How do you add something to a sketch's life cycle without editing the sketch?
-
-An **extension** is a small object that gets told when things happen. You register it once. From then on it hears about setup, and about each frame before and after the drawing. If it asks, it also hears about the finished rendered image.
-
-```swift
-extend(MyWatermark())
-```
-
-The reason this exists rather than you just adding lines to `draw()` is that some behavior isn't about the artwork. None of these belong in the piece, and all of them want to apply to every piece:
-
-- a frame recorder,
-- an on-screen readout of the frame rate,
-- a guide overlay you toggle while composing,
-- a logger that notes which seed produced which render.
-
-Ollin's own frame-rate statistics work exactly this way, as an extension registered by the host rather than anything in your sketch.
-
-One detail is worth flagging. Hearing about the rendered image is opt-in, through a property the extension sets. Reading pixels back from the GPU costs real time. An extension that only watches timing pays nothing. The [extension seam](../Docs/Core/Sketch.md#extensions) has the hook list.
-
-## Giving it to somebody else
-
-Say you have written a drawing call you keep copying between pieces. How does somebody else get it?
-
-An Ollin extension is a Swift package that depends on Ollin. That is the whole format. Somebody adds your package, writes one `import`, and your call sits beside `drawCircle`.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ExtensionShape-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone holding one file that adds drawSpiral to Sketch, on the right a sketch that imports it and calls drawSpiral, with the spiral it draws underneath. An arrow between them is labeled import" width="680">
-</picture>
-
-It is straightforward because `drawCircle` is a method on `Sketch`. Yours is too:
-
-```swift
-extension Sketch {
-    public func drawSpiral(center: Vector2, radius: Double) {
-        drawPolyline(points)
-    }
-}
-```
-
-The rest follows from `drawPolyline`. The current `stroke` applies. The transform stack applies. Clipping, `symmetry`, and SVG export apply. You write none of it.
-
-The command that made your first folder makes this one too:
-
-```sh
-ollin new Halftone --kind extension
-```
-
-The package is named the shared way. The folder is `ollinx-halftone` and the module is `OllinxHalftone`. The prefix follows openFrameworks' addon naming and OPENRNDR's own. No enforcement exists, but with no catalog to look in, a shared prefix is how packages get found.
-
-Inside is a worked starter, tests that check something real, and a list of what to fix before publishing. One item on that list catches everybody. The generated manifest points at the copy of Ollin on *your* machine.
-
-Pick what the starter is built on with `--seam`. A drawing call, as above. A GPU effect, written as a shader and wrapped so `layer.filtered(.vignette())` reads like a built-in. A source of frames, which any tracker from [Chapter 32](32-Seeing.md) then accepts. Or a lifecycle extension, which is the section you have just read, packaged. See [writing an extension](../Docs/Tools/Extensions.md) for all four, and for the parts of Ollin that are deliberately closed.
-
-The generator window from [Chapter 1](01-HelloOllin.md) makes the same package. Pick **Extension package** from its kind menu. The seams take the place of the templates. The stage shows the starter's source instead of a running sketch, checked against the framework. A seam that stopped compiling says so before you press Create.
-
-## In your pocket: the sketch on the phone
-
-A sketch written for the desk runs on a phone as it is. The renderer is the same, and so is `draw()`. A finger is the pointer, so `mouseX` and `mouseIsPressed` read the touch. Working on it is one command:
-
-```sh
-ollin phone Apps/OllinSketchApp/Sources/TouchRings.swift
-```
-
-The rings appear on the phone. Save the file, and under ten seconds later the phone shows the new version. The app writes its state down every second and reads it back when it launches. A save keeps the animation's phase and every value you tuned. It is `--keep-clock`, kept on the phone.
-
-A phone runs only code signed inside its app, so nothing can be swapped into it while it runs. Each save is a small build and a reinstall. That sounds slow and is not. The framework builds once, and after that a save recompiles one file.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SaveToPhone-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SaveToPhone.jpg" alt="A diagram of a save reaching the phone: the sketch file on the Mac with one line changed, three steps with their times, recompiled, installed again, and launched with the state read back, and two phones showing the rings before and after the save at the same radii in new colors, with a card of what the app writes down every second and the address the parameters open at on the Mac" width="680">
-</picture>
-
-The figure is the loop. The file on the Mac is saved with one line changed, the hue of the rings. The save recompiles that one file and relinks and signs the app, about five to seven seconds. It installs the app again over the cable or Wi-Fi, about two and a half, and launches it. The phone on the right is what launches: the rings in their new colors, at the radii the old version had reached, because the app writes its state down every second and reads it back at launch. That state is the clock and the seed, every `@Param` value, and every `@Saved` property. So the animation keeps its phase, and a value you tuned stays tuned. The framework itself is built for the phone once, about eighty seconds, and not again for that sketch.
-
-The phone's parameters open in a browser on the Mac, live in both directions. It is the [remote surface](../Docs/Integration/Remote.md) an installation is tuned from, pointed the other way.
-
-Two limits are the phone's. It has to be unlocked for the Mac to open the app. And it has to be on the cable, or awake on the same network. [The sketch on the phone](../Docs/Tools/OnThePhone.md) says what comes along, what stays on the desk, and how to write the app by hand.
-
-The app that command writes is its own, under the caches folder. To keep one, make it a project:
-
-```sh
-ollin new Rings --kind ios-app
-```
-
-Out comes the sketch, a host that owns the entry point, and the spec the Xcode project is written from. Run `xcodegen generate`, open the project, pick the phone, press Run. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md) offers the same kind from its menu.
-
-### Leaving it on the Mac
-
-There is a way to hold the sketch without installing it at all. It keeps running on the Mac, and the phone shows its frames. The capture app from [Chapter 33](33-DepthAndThePhone.md) is the screen:
-
-```swift
-import Ollin
-import OllinPhone
-
-final class Pour: Sketch {
-    let device = PhoneDevice()
-
-    override var canvasSize: CanvasSize { .size(1080, 2340) }
-
-    override func setup() {
-        device.show(self)
-    }
-
-    override func draw() {
-        background(Color(white: 0.05))
-        if mouseIsPressed {
-            drawCircle(mouseX, mouseY, 20 + pressure * 40)
-        }
-    }
-}
-```
-
-That one call asks the phone for its **Sketch** mode. From then on the Mac compresses each frame as video and sends it down the cable, and the phone shows it full screen. The first finger on the picture is the pointer, as it is in the installed app, so the same `mouseX` and `mouseIsPressed` work both ways. The canvas is the phone's own shape, nine across and nineteen and a half down.
-
-The loop is the live window's, not the phone's. Save, and the phone shows the edit as soon as the Mac has compiled it, with nothing built for the phone. The inspector and the console stay where you are working. `Examples/3D/Phone/PhoneCanvas` is the fuller version. A finger paints, and the paint falls the way you tilt the phone. The tilt is the same motion stream Chapter 33 reads.
-
-The two ways answer different questions. The picture tells you how a piece looks and plays in the hand while you are still shaping it. The installed app tells you whether the phone's own GPU keeps up, and that the piece runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
-
-## Performing the code itself
-
-The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/StageDiagram-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual filling the stage, code lines riding over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
-</picture>
-
-The loop is different from the live-reload host you've used since [Chapter 1](01-HelloOllin.md). There is no file watching and no separate editor, so you type in the window and press **⌘↩** to evaluate. The buffer compiles in the background while the running sketch keeps drawing. On success the new sketch swaps in with the clock carried across, so a phase-driven motion never jumps mid-set. It swaps in twice: a plain build the moment it compiles, and the optimized build behind it when that is ready, the clock carried both times, so the edit shows sooner and the sketch still runs at release speed. [Live coding](../Docs/Tools/LiveCoding.md#the-evaluate-loop) has the numbers, and the flag for a sketch that should not start over twice. Tuned `@Param` values (including ones bound over MIDI or OSC) carry across too. A typo can't stop the show. The last good sketch keeps playing, the errors land in a strip along the bottom, and you fix and evaluate again. When the code should get out of the way, **⌃⇧H** hides it and the visuals keep the whole stage. Fullscreen for the projector is **⌃⌘F**. For a real set, `Scripts/OllinLiveCoding` builds the host in release mode so the framework renders at full speed.
-
-Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
-
-What the swap does to the piece depends on what you changed. The host compares your buffer with the code the stage was built from. If you moved nothing but the inside of a method, the run carries on. `setup()` does not run again, so the canvas keeps what is piled on it, and `random()` picks up where it was. A long exposure you have been building for ten minutes survives the edit. Change a property, a signature, or `setup()` itself, and the piece starts over, which is what a swap has always done. The toast tells you which happened, and the editor lights the block you were standing in. To carry state of your own across an edit, mark it `@Saved`, the same word that carries a piece across a relaunch. [Live coding](../Docs/Tools/LiveCoding.md#what-the-edit-changed) has the whole rule.
-
-You type with the framework's names in reach. The first letters of a call open a list under the caret, from the toolchain's own completion service: every drawing call, every color, every member of a value the buffer holds. Return or Tab takes the row, and the call lands with its arguments as placeholders that Tab walks. A dot after `Color` lists the palette. Escape opens the list when it is closed and closes it when it is open, so a stray Escape never drops the stage out of fullscreen. [Live coding](../Docs/Tools/LiveCoding.md#completing-a-name) has the keys, and the switch that keeps the list away until you ask.
-
-The host's own actions answer to a controller too, beside the bindings your sketch makes for itself. Set a port in the inspector's Controls card and the host listens for OSC at `/ollin/evaluate`, `/ollin/code/hidden`, `/ollin/record`, and the rest. A second machine or a phone layout can run the show that way. For a pad or a fader, press Learn on an action and then press or move the control, and the host remembers it. Evaluate lands on a pad next to the ones playing the notes, and a fader rides the strip behind the code. None of this is in the sketch; it is the host's own preference. [Live coding](../Docs/Tools/LiveCoding.md#the-host-on-a-controller) lists the addresses.
-
-The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
-
-### A look you come back to: cues
-
-A set has looks it comes back to, and a look is every parameter at once. Save one as a *cue*. `saveCue("night")` does it in code, and a name typed into the Cues card under the parameters does it by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the sheet in order. A cue can be called from anywhere a sketch reads: a key, a beat, a sensor.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/CalledBack-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/CalledBack.jpg" alt="Three square looks of one ring of twelve dots: small violet dots on near-black labeled night, larger green dots with bright cores on gray labeled one second in, and large orange dots with bright cores on cream labeled dawn, with arrows between them under the call cue dawn over 2. Below, four lanes over two seconds: size rising along an eased curve, hue falling along one, ground as a band blending from navy to cream, and lit stepping up at the first frame; a small card at the left lists five cue names with dawn marked" width="680">
-</picture>
-
-What eases and what jumps is decided by the parameter's kind, the same way it is on a track. A number, a color, a point, and a range have values between two settings, so they ease there, slow at both ends. A switch, a menu choice, and a piece of text have nothing in between, so they take the cue's value on the first frame of the fade. That is why the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
-
-The hosts keep the sheet in `Sketch.cues.json` beside the sketch, so a reload never loses a look. On stage a MIDI program change calls a cue by number, `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) carries five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
-
-A cue is not a default. The **Save parameters** button above the card writes the values you turned into the `@Param` lines, which is where the piece starts. A cue is where it goes back to.
-
-## Keeping the take
-
-Every exporter in this chapter re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The parameter you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.
-
-So the host records. Press **⌘⇧R** and a red chip starts counting on the stage. Play the set. Press **⌘⇧R** again and the take is a movie in `~/Movies/Ollin/`, picture and sound together, named after the sketch and the moment. The recording rides through evaluations, so a set that changed its code twelve times is still one continuous movie.
-
-A sketch can also record itself, anywhere, with one pair of calls:
-
-```swift
-override func keyPressed() {
-    guard key == "r" else { return }
-    if isRecording {
-        stopRecording()
-    } else {
-        startRecording()
-    }
-}
-```
-
-The sound needs no wiring. The recorder finds the instruments the sketch is holding, the same way the offline soundtrack does, and what they play lands in the file's audio track in sync. When the music comes from outside the sketch, record the room instead: `startRecording(audio: .microphone)` asks for the microphone and listens to the air.
-
-For a run filmed from its very first frame, the watcher host takes a flag:
-
-```sh
-swift run OllinLive MySketches/Finale.swift --record
-```
-
-Stopping is generous on purpose. Quitting the host finishes the movie first, and so does Control-C in the terminal, because a take that ends badly should still be a take. The working example is [`Examples/Export/Record`](../Examples/Export/Record/Sketch.swift), an instrument you drag to play; everything else lives in [Recording](../Docs/Output/Recording.md).
-
-## Playing the night again: replay
-
-A movie remembers what the performance looked like. A *take* remembers the performance itself: the seed the run rolled, the clock it followed, every pointer move, every parameter you adjusted. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/TheTake-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/TheTake.jpg" alt="A diagram of four lanes over twenty-four frames: a seed chip at frame 0, a bar of clock time per frame with slight jitter, two runs of pointer dots with a key press between them, and chips where two parameters changed. Below, five frames of a run and the same five replayed, each pair identical" width="680">
-</picture>
-
-Four lanes are the whole file. The seed is one number, rolled once. The clock is one sample per frame, written down as the display drove it, jitter included. So a replay never smooths the night into an idealized version of itself. The pointer lane holds every move, press, and key, each stamped with the frame it preceded. The parameter lane holds where every `@Param` started and each change after, on its frame. Nothing else drives a deterministic sketch, so a fresh instance fed the same four lanes walks through the same frames. The two rows under the lanes are five frames drawn from those lanes twice, which is all a replay is.
-
-```sh
-swift run OllinLive MySketches/Finale.swift --record-take take.json   # play; quitting writes the file
-swift run OllinLive MySketches/Finale.swift --replay take.json        # the run, again, exactly
-```
-
-During a replay your mouse belongs to the recording, so the keyboard becomes a transport. Space pauses. The arrows step one frame; with shift held they jump thirty. Home rewinds, End jumps to the last frame, and space at the end starts the night over. Stepping backward re-runs the sketch from the start up to the frame you asked for, which determinism makes exact. Finding the one frame worth keeping becomes arrow keys instead of luck.
-
-The best part is what a take turns into afterwards. `--replay` composes with every exporter in this chapter:
-
-```sh
-swift run OllinLive MySketches/Finale.swift --replay take.json --export-video night.mov
-swift run OllinLive MySketches/Finale.swift --replay take.json --export still.png --frame 412
-swift run OllinLive MySketches/Finale.swift --replay take.json --path-traced --export-video film.mov
-```
-
-A replayed video needs no `--seconds`; it renders the whole take. So the set you played live at sixty frames a second can re-render overnight at seconds per frame, exactly as performed. And `--seed` beside `--replay` keeps your gestures while `random()` walks a different world, so one good performance can audition many variations.
-
-What replays is what drives the sketch: time, input, parameters, randomness. A camera feed or a microphone keeps playing live during a replay. A piece leaning on the room follows your recorded hands, not the recorded room. The whole contract, and the `Take` type under the flags, lives in [Replay](../Docs/Core/Replay.md).
-
-## Directing the parameters: keyframes
-
-A take remembers what you did. Keyframes say what should happen. You already have parameters: the `@Param` properties from [Chapter 1](01-HelloOllin.md). An *automation* moves them for you. A value is placed at one moment, another later, and a curve carries the first into the second.
-
-```swift
-override func setup() {
-    automate($radius) { track in
-        track.key(at: 0, 40)
-        track.key(at: 2, 320, curve: .easeInOut)
-        track.key(at: 4, 40)
-    }
-    automation?.loops = true
-}
-```
-
-That is the whole idea. Every frame, before your `draw()` runs, the parameter is set to whatever its curve holds at the sketch clock. You stop adjusting the parameter and start writing down what it does.
-
-Each key carries the curve that *leaves* it, so the last key's curve is never read. Five of them are named, and one is drawn:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ParameterOnACurve-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
-</picture>
-
-`.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles bend the clock as well as the value, the way a curve dragged in an editor does.
-
-Not every parameter can travel. A number, a color, a point, or a range has values in between two settings, so it moves along the curve. A switch, a menu choice, and a piece of text have nothing in between. They step instead, holding what they were given until the next key takes over. That is the honest behavior, and it is why a fill toggle on a track blinks rather than fades.
-
-How a pass plays is three properties. `loops` wraps at the end. `speed` scales the clock, so `2` runs twice as fast, and a negative speed runs the piece backwards from a `start` at the end. `length` holds past the last key before the wrap comes around, which is how you leave a beat of stillness in a loop.
-
-Here is why keyframes sit in this chapter. The tracks read the sketch clock, and every exporter drives that clock at a fixed step. So the piece you directed renders exactly as it played:
-
-```sh
-swift run --package-path Examples Example-Motion-Automation --export-video directed.mp4 --seconds 12
-```
-
-An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same parameters from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
-
-### Directing by hand: the timeline panel
-
-You do not have to write keys as code. In OllinLive, the timeline panel places them for you, at the moment you are looking at.
-
-Click **Timeline** in the title bar, or press **⌘T**, and a floating panel opens with a ruler, a transport, and one lane per track. Try it on the Automation example:
-
-```sh
-swift run OllinLive Examples/Motion/Automation/Sketch.swift
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/DirectingByHand-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles on the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane stepping up at three seconds, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
-</picture>
-
-Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it wears a function mark instead, and the next section is about that.
-
-The loop has three moves. Scrub the ruler, or step a frame at a time, and the picture follows the playhead. Adjust a parameter in the inspector until the frame looks right. Then click the small diamond in that parameter's row, and a key lands at the playhead holding that value. A hollow diamond starts a track; a filled one already has one; clicking on a key takes it away.
-
-The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click one to pick the curve that leaves it, and a Bezier grows two handles you shape by eye. Option-drag the ruler to choose a stretch, and the loop button repeats it while you work. That region is the transport's alone, the tinted band on the ruler in the figure, and it never touches the piece itself.
-
-Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same parameter wins that parameter, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
-
-## Writing the parameter as a rule
-
-Keys say where a parameter is at a few moments. Sometimes you do not want moments. You want to say what the parameter *is*, and have it be that at every moment:
-
-```swift
-override func setup() {
-    drive($radius, "190 + sin(time * tau / 6) * 80")
-}
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ParameterAsARule-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
-</picture>
-
-That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the sketch is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
-
-The field is real. In OllinLive, right-click the diamond of any number or switch in the inspector and choose **Write a Rule**, and a field opens under the row. Type the rule, press Return, and the parameter follows it from the next frame, with its diamond turned into a function mark and its slider dimmed. Get a character wrong and the row says so, with a caret under the character and the reason beneath, while the rule that was running keeps running. A rule written this way lands in the same automation file as the keys, so an export plays it. The panel page has the details in [Writing a rule in the row](../Docs/Tools/Timeline.md#writing-a-rule-in-the-row).
-
-The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other parameters by name:
-
-```swift
-drive($radius, "190 + sin(time * tau / 6) * 80")
-drive($count, "8 + round(sin(time * tau / 12) * 5)")   // a whole number rounds
-drive($edge, "radius / 22")                            // worked out from another parameter
-drive($filled, "time % 6 < 3")                         // a switch, on when it is not zero
-```
-
-`edge` is the interesting line. It reads *this* frame's radius, not last frame's, because the parameter a formula names is always set first. That ordering is not a nicety. It is what keeps a formula a plain function of the clock. The same second gives the same picture whether the window runs at 60 a second or an export steps at 30.
-
-The price of that promise is that two parameters cannot name each other, and a parameter cannot name itself. `"n + 1"` never settles on one frame. Ollin says so and leaves that parameter alone, rather than play a value that would drift with the frame rate. For a number that builds on itself, keep a plain property and step it in `draw()`, the way [Chapter 3](03-MotionAndTime.md) does.
-
-A formula is a track like any keyed one. It loops, it plays at any speed, and it renders frame for frame through every export. It travels in the same `--automation` file too, written down as the text you typed. The [Formula example](../Examples/Motion/Formula/Sketch.swift) drives six parameters this way and prints the rule driving each one under the picture. The whole vocabulary is in [Formula](../Docs/Helpers/Formula.md).
-
-Two spellings will catch you once. `-2^2` is `-4`, because a power binds tighter than a minus sign, the way a calculator reads it. And `-1 % 3` is `2`, not `-1`, because the remainder wraps rather than reflects, which is what makes a phase continuous as it crosses zero.
-
-### A parameter that holds more than one number
-
-A point holds two numbers. A color holds four. A rectangle holds four of its own. Each part takes its own rule, named where you write it:
-
-```swift
-drive($frame, width: "620 + sin(time * tau / 7) * 220")
-drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/ParameterParts-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
-</picture>
-
-The part you leave out is the part you keep. That rectangle changes size while its `x` and `y` stay wherever you dragged them, and you can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for a whole parameter.
-
-One part of a parameter is a name too, spelled `parameter.part`. That is how `eye` above follows the rectangle it sits in. The name works whether keys carry that part or another rule works it out.
-
-Three things to know before you write one. One call carries the whole parameter, so give every part at once, because a second call replaces the first. A pair of ends stays ordered, so a `lower` that climbs past `upper` lifts it along. And a color's parts are the plain 0-to-1 numbers with nothing holding them there, so write `saturate(...)` where you want a limit.
-
-The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints the rule driving each part under the picture.
-
-## Putting it together: a set in five evaluations
-
-What you'll build here is a short performed set. Open the host with a fresh buffer. Build the chapter's finale the way an audience would watch it grow, one evaluation at a time. [Chapter 18](18-YourFirstShader.md)'s `Visual` chains are the natural material for this kind of set, since every step is one added line:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/SetSteps-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/SetSteps.jpg" alt="Five numbered thumbnails: vertical color bands, the bands folded into a five-pointed mandala, the fold melted by noise, the melt posterized into hard bands, and the whole thing color-shifted toward green" width="680">
-</picture>
-
-1. Start with breath. Type `drawVisual(.oscillator(frequency: 11, speed: 0.6, colorShift: 0.5))`, press ⌘↩, and drifting bands fill the stage.
-2. Fold space by adding `.kaleidoscope(segments: 5)`, which turns the bands into a five-pointed mandala, still breathing.
-3. Melt the fold with `.displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)`.
-4. Make it a print with `.posterized(levels: 6, gamma: 0.75)`, and the melt hardens into contour bands like a screen print.
-5. Set it flying with `.rotated(time * 0.03)` and `.colorCycled(time * 0.04)`, a slow spin through the whole color wheel.
-
-The finished buffer is the whole piece, and it's small enough to retype from memory, which is rather the point. The committed figure is [`Finale.swift`](Figures/38-SharingAndPerforming/Finale.swift):
-
-```swift
-import Ollin
-
-final class Finale: Sketch {
-    override func draw() {
-        drawVisual(
-            .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
-                .kaleidoscope(segments: 5)
-                .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
-                .posterized(levels: 6, gamma: 0.75)
-                .rotated(time * 0.03)
-                .colorCycled(time * 0.04)
-        )
-    }
-}
-```
-
-Then close the loop this chapter opened. Save the buffer with ⌘S. Render a shareable file with `swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 12`, or press ⌘⇧R before the first evaluation and keep the performed version instead, evaluations and all. And if a projector or a call is nearby, run `publishSyphon()` or `publishVirtualCamera()` while you perform. The same small sketch just left as a video, a take, and a live feed.
-
-Then make it yours:
-
-- Play the set differently by reordering the moves, or swap step 2's fold for `.repeated(x: 3, y: 3)` and the mandala becomes wallpaper.
-- Wire [Chapter 34](34-SoundAndControl.md) in: `@Param` the oscillator frequency, bind it to a MIDI parameter, and the set gets a second instrument.
-- Feed it eyes: `.displaced(by: .layer(feed), amount: 0.1)` over a layer you draw the webcam into, and the audience melts the piece.
-- Perform an old friend, since any finished sketch from this guide runs in the host as-is. Try evaluating changes into [Chapter 23](23-GridSimulations.md)'s reaction-diffusion while it grows.
+<!-- Putting it together: the finished sketch goes here: one keeper finished as a poster, a loop, and a plot, with its recipe read back, built from this chapter's steps, with its full listing. -->
 
 ## Where this comes from
 
-Live coding as a performance practice was organized by TOPLAP (founded 2004), whose manifesto demanded "show us your screens". The code-over-the-visuals layout of this host is that idea. Its most direct model is Olivia Jack's browser instrument Hydra, which made the pattern feel effortless. Alex McLean and the TidalCycles community built the musical wing of the same practice. Syphon is Tom Butterworth and Anton Marini's gift to the Mac's visual ecosystem, and the vendored framework carries their names. The pen-plotter revival that SVG export serves grew around the AxiDraw and the #plottertwitter community. They are heirs of the 1960s computer-art plotters this guide's recreations visit. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The pen-plotter revival that SVG export serves grew around the AxiDraw and the #plottertwitter community. They are heirs of the 1960s computer-art plotters this guide's recreations visit. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching, the named frame rates, and transparent output.
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
-- [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [G-code](../Docs/Output/GCode.md): the three machines and their parameters, a named sheet, what the planner does, previewing the route, and the dry run.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
-- [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
-- [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
-- [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
-- [The sketch on the phone](../Docs/Tools/OnThePhone.md): what a save does, the parameters on the Mac, what comes along, the options, and an app of your own.
-- [Cues](../Docs/Helpers/Cues.md): looks you saved and call back, over a fade, from a key, the card, a program change, or `--cue`.
-- [Replay](../Docs/Core/Replay.md): what a take holds, the transport keys, re-rendering a take through any export, and what stays live.
-- [The parameter timeline](../Docs/Tools/Timeline.md): the panel, its lanes and keys, the rule field in the row, the transport, and the file it writes.
-- [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
-- [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a parameter's rule speaks, what it can name, and what it reports rather than throws.
-- Worked examples: [`Examples/Export/`](../Examples/Export/), [`Examples/Live/`](../Examples/Live/), and [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift).
+- Worked examples: [`Examples/Export/`](../Examples/Export/).
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 32, Seeing](32-Seeing.md) · Next: [Chapter 41, Installations](41-Installations.md)
+[Contents](README.md#contents) · Previous: [Chapter 32, Seeing](32-Seeing.md) · Next: [Chapter 39, Performing](39-Performing.md)

@@ -223,7 +223,7 @@ Past that there are more steps rather than different ones, in `.nineteen`, `.thi
 
 ## Playing along with the room: tempo sync
 
-[Chapter 34](34-SoundAndControl.md)'s beat detector told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
+[Chapter 34](34-Listening.md)'s beat detector told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
 
 ```swift
 let mic = AudioInput()                   // start it in setup(), as in Chapter 34
@@ -553,4 +553,4 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 36, Making sound](36-MakingSound.md) · Next: [Chapter 38, Sharing and performing](38-SharingAndPerforming.md)
+[Contents](README.md#contents) · Previous: [Chapter 36, Making sound](36-MakingSound.md) · Next: [Chapter 38, Finishing a sketch](38-FinishingASketch.md)

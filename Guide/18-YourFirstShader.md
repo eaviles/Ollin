@@ -347,7 +347,7 @@ drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
 
 `.sand` gathers grains onto the nodes like the figure above, and `.wave` shows the plate swinging through its cycle instead. And the nodal lines are just where the field crosses zero, so the vector version of a Chladni figure is a contour extraction away. The [isolines reference](../Docs/Generators/Isolines.md) covers it.
 
-The natural next step is to stop choosing the mode numbers by hand. [Chapter 34](34-SoundAndControl.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
+The natural next step is to stop choosing the mode numbers by hand. [Chapter 34](34-Listening.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
 
 ## Putting it together: aurora
 

@@ -307,7 +307,7 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 38](38-SharingAndPerforming.md) carries the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 38](38-FinishingASketch.md) carries the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 

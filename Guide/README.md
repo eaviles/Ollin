@@ -42,7 +42,7 @@ Read the chapters in order the first time, because each one builds only on the o
 - **Part IV, chapters 21 to 26.** Around 140 pages. Chapter 25 is its gate, and chapter 24 also wants the physics from chapter 11.
 - **Part V, chapters 27 to 32.** Around 180 pages, the longest part, and the loosest. Its chapters barely depend on each other, so read the ones you need in any order.
 
-Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 33](33-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 34](34-SoundAndControl.md) a microphone and later a MIDI controller. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
+Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 33](33-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 34](34-Listening.md) a microphone and later a MIDI controller. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
 Work along in the live-reload host, `swift run OllinLive path/to/YourSketch.swift`. It recompiles your sketch on save, so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
@@ -91,10 +91,10 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 ### Part V: Out into the world
 
 33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
-34. **[Sound and control](34-SoundAndControl.md).** Hearing loudness, spectrum, beats, pitch, speech and sound events. Then the controls in your hands: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, and serial and Bluetooth wires to the physical world.
+34. **[Sound and control](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech and sound events. Then the controls in your hands: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, and serial and Bluetooth wires to the physical world.
 36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, instruments built by patching or from recordings, physical models of a string, a struck shape, a bow and a tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
 32. **[Seeing](32-Seeing.md).** The webcam as input, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
-38. **[Sharing and performing](38-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
+38. **[Sharing and performing](38-FinishingASketch.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
 41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 
 ### Appendices

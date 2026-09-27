@@ -50,7 +50,7 @@ Counting is why the grid can't drift. Each tick is exactly one twenty-fourth of 
 
 The readers in the figure cover most of what you'll want. `beats` is the running count with a fraction, and `phase` is where you sit inside the current beat as `0...1`. `bar` and `barPhase` are the same idea one level up, over however many beats you declare a bar to be. `progress(over:)` is the one to reach for most. It gives you a ramp that resets every N beats, which is how you make a slow sweep that lands exactly on the downbeat.
 
-`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you in [Chapter 34](34-SoundAndControl.md#hearing-the-beat). A beat-reactive sketch can swap between hearing the room and reading the wire. That is worth knowing when the room is loud and the wire is honest.
+`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you in [Chapter 34](34-Listening.md#hearing-the-beat). A beat-reactive sketch can swap between hearing the room and reading the wire. That is worth knowing when the room is loud and the wire is honest.
 
 Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/Tempo` example (in its MIDI mode) rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
@@ -290,7 +290,7 @@ if controller.hasMotion { rotate(controller.gravity.x * 0.5) }
 
 Several people can play. `controller(2)` is player two, and a controller keeps its number while it stays connected. Unplugging player two doesn't turn player three into player two.
 
-Because a controller is live input, an export reads it as centered and says so, the same way the microphone did in [Chapter 34](34-SoundAndControl.md). The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` parameter draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
+Because a controller is live input, an export reads it as centered and says so, the same way the microphone did in [Chapter 34](34-Listening.md). The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` parameter draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
 
 ## A wire to the physical world: serial
 
@@ -545,4 +545,4 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 34, Sound and control](34-SoundAndControl.md) · Next: [Chapter 36, Making sound](36-MakingSound.md)
+[Contents](README.md#contents) · Previous: [Chapter 34, Listening](34-Listening.md) · Next: [Chapter 36, Making sound](36-MakingSound.md)

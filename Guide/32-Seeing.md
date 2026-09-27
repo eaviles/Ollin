@@ -405,7 +405,7 @@ override func setup() { player.loops = true; player.play() }
 override func draw() { drawFrame(player) }
 ```
 
-Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. [Chapter 34](34-SoundAndControl.md)'s `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/ContourTrace`, handed a clip path on launch, runs its contour tracker over recorded footage live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
+Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. [Chapter 34](34-Listening.md)'s `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/ContourTrace`, handed a clip path on launch, runs its contour tracker over recorded footage live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
 
 ### Drawing with the screen: ScreenCapture
 
@@ -563,4 +563,4 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 36, Making sound](36-MakingSound.md) · Next: [Chapter 38, Sharing and performing](38-SharingAndPerforming.md)
+[Contents](README.md#contents) · Previous: [Chapter 36, Making sound](36-MakingSound.md) · Next: [Chapter 38, Finishing a sketch](38-FinishingASketch.md)

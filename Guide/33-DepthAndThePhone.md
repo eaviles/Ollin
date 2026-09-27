@@ -529,7 +529,7 @@ One thing to set up before you build on it. The room's origin is wherever the ph
 
 The phone has ears as well as eyes. Switch **Hear** on, under the modes, and it names the sounds around it: a dog, a kettle, applause, a knock at the door. The classifier runs on the phone, so only the names cross the cable, never the audio. It needs no camera, which is why it is a switch and not a mode. It runs beside whichever mode is on.
 
-Chapter 34 teaches the Mac's own [`SoundClassifier`](34-SoundAndControl.md#words-and-what-that-noise-was), and the phone's ears give you the same two reads over the same values. A level, for a question that rises and falls:
+Chapter 34 teaches the Mac's own [`SoundClassifier`](34-Listening.md#words-and-what-that-noise-was), and the phone's ears give you the same two reads over the same values. A level, for a question that rises and falls:
 
 ```swift
 let music = device.sounds.confidence(of: "music")
@@ -657,4 +657,4 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 30, Sculpting with fields](30-SculptingWithFields.md) · Next: [Chapter 34, Sound and control](34-SoundAndControl.md)
+[Contents](README.md#contents) · Previous: [Chapter 30, Sculpting with fields](30-SculptingWithFields.md) · Next: [Chapter 34, Listening](34-Listening.md)

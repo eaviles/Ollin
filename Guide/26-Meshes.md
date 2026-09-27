@@ -271,7 +271,7 @@ What comes back is an ordinary mesh. It draws the same and takes a material and 
 
 Three things to know before you cut.
 
-**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 38](38-SharingAndPerforming.md) runs before it writes a mesh for a printer.
+**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 38](38-FinishingASketch.md) runs before it writes a mesh for a printer.
 
 **A cutter has to be the right way out.** Mirroring a mesh turns it inside out, whether you swap two of its coordinates or scale an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
 

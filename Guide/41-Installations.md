@@ -8,7 +8,7 @@
 
 Nobody is sitting in front of that. It is on a wall, it has been there since Tuesday, and it will still be there when the building shuts on Sunday. The band along its bottom edge is not decoration either. A strip of lamps is reading that band and lighting the wall under the screen with it.
 
-[Chapter 38](38-SharingAndPerforming.md) sent work out as files and feeds. This chapter is the other way a piece leaves your desk: it stays where it is, and you go home. That turns out to be a different job. The output may not even be a screen, the frame budget stops being a preference, and a room does things to a sketch that a desk never does. By the end you'll have built the sketch above, declared for a room rather than a window.
+[Chapter 38](38-FinishingASketch.md) sent work out as files. This chapter is the other way a piece leaves your desk: it stays where it is, and you go home. That turns out to be a different job. The output may not even be a screen, the frame budget stops being a preference, and a room does things to a sketch that a desk never does. By the end you'll have built the sketch above, declared for a room rather than a window.
 
 ## Light instead of pixels: DMX
 
@@ -34,7 +34,7 @@ override func draw() {
   <img src="Images/41-Installations/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
 </picture>
 
-It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same parameter the inspector slider moves. That is exactly like [Chapter 34](34-SoundAndControl.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
+It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same parameter the inspector slider moves. That is exactly like [Chapter 34](34-Listening.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
 
 The rig's big sibling is the LED wall, and for that you stop filling channels by hand. An `LEDMap` lays the fixtures over the canvas itself. A strip is a run of sample points along a line or a curve, and a matrix is a grid of them. Every frame the map reads the rendered pixels under each LED and ships them through a `DMXSender`. That read happens on the GPU, over a few hundred points, never as a whole-frame readback. The wall is just the canvas, somewhere else.
 
@@ -86,7 +86,7 @@ The one thing worth getting right before you write a filter is the wildcards, be
   <img src="Images/41-Installations/TopicsAndFilters.jpg" alt="A matrix diagram: five topics a house publishes written vertically across the top, four subscription filters down the left side, and a filled mark where a filter matches a topic, with the dollar-prefixed topic unmatched by every wildcard row" width="680">
 </picture>
 
-Reading works the way [Chapter 34](34-SoundAndControl.md)'s controllers did, because it is the same problem. A reading that keeps coming is read at its latest with `bus.number(topic, default:)`, something that happens once is drained from `bus.messages()` every frame, and `bus.bind("home/dial/level", to: $radius)` puts a dial on a wall onto a parameter. Payloads are just bytes and the protocol says nothing about them, so `MQTTMessage` reads the three things devices actually write: a decimal number, a switch word like `ON` or `offline`, and a small JSON object whose fields come out through `message.number(named: "temperature")`.
+Reading works the way [Chapter 34](34-Listening.md)'s controllers did, because it is the same problem. A reading that keeps coming is read at its latest with `bus.number(topic, default:)`, something that happens once is drained from `bus.messages()` every frame, and `bus.bind("home/dial/level", to: $radius)` puts a dial on a wall onto a parameter. Payloads are just bytes and the protocol says nothing about them, so `MQTTMessage` reads the three things devices actually write: a decimal number, a switch word like `ON` or `offline`, and a small JSON object whose fields come out through `message.number(named: "temperature")`.
 
 The traffic goes both ways, and that is what makes this an installation feature rather than an input one. `bus.publish("home/lamp/set", true)` sends the word a relay expects. Publish with `retains: true` and the broker keeps that as the topic's stored value, so the next thing to subscribe learns it immediately instead of waiting for the next reading: a piece that starts up already knowing the room.
 
@@ -405,7 +405,7 @@ That is a different tool from the `visibleRegion` rectangle earlier in this chap
 
 **One set of parameters.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Change a parameter on any machine and the rest follow within a frame. Two people adjusting one parameter at the same moment is settled by the room's clock: the later turn wins everywhere.
 
-Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 34](34-SoundAndControl.md):
+Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 34](34-Listening.md):
 
 ```swift
 room.send("bird", position, reliable: false)      // sent every frame
@@ -473,190 +473,6 @@ The `RemoteSurface` example serves a tunable aurora with every control family. I
 swift run --package-path Examples Example-Integration-RemoteSurface
 ```
 
-
-## Living in the system
-
-A wall is one place a piece can wait. Your own machine is another, and it is a much shorter walk. Every Mac already has a screen that goes idle several times a day. It also has a list of things it could show while it does. Putting your sketch in that list takes two commands.
-
-```sh
-ollin new Ripple --kind screen-saver
-cd Ripple && ./build.sh --install
-```
-
-Open System Settings, go to Screen Saver, and there it is. Nothing about the sketch changed to get there. It is the same class you would run in a window, and you can still open it in a window while you work on it.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/LivingInTheSystem-dark.jpg">
-  <img src="Images/41-Installations/LivingInTheSystem.jpg" alt="A diagram in two columns: on the left, three stacked cards for the files inside Ripple.saver, with an arrow joining the NSPrincipalClass line in the property list to the matching @objc name in the code; on the right, two wide black screens showing a drawing filling one edge to edge and sitting square in the middle of the other" width="680">
-</picture>
-
-A screen saver is not a program. It is a plug-in: a folder called `Ripple.saver` holding one binary, which the system loads when it needs something to show. So there is no `@main` anywhere, and one small class stands in for it:
-
-```swift
-@objc(RippleSaverView)
-final class RippleSaverView: SketchSaverView {
-    override func makeSketch() -> Sketch { Ripple() }
-}
-```
-
-That is the whole of the wiring. `SketchSaverView` builds the canvas when the system starts the saver. It runs the frames off the display's own clock, and puts everything away when the saver is over. `@objc` pins the name so the property list can point at it.
-
-### Two things are different, and neither is the framework's idea
-
-**Your sketch gets no input.** A key or a click ends a screen saver. That is what a screen saver is for. A canvas that answered the click would be a canvas that swallowed it, leaving somebody hammering at a machine that will not come back. So the canvas stays out of the way entirely, and `mouseX`, `mouseY`, and `key` hold whatever they started at. Write the piece to run on `time` alone, which is how most of this guide's sketches already run.
-
-**Your sketch cannot write files.** The system loads a screen saver into a sandbox that reads anything and writes almost nothing. Pictures, fonts, meshes, and clips all load as they always did. Exporting a frame does not, and neither does a checkpoint. None of that belongs in a screen saver anyway.
-
-### Filling the screen, or sitting in the middle of it
-
-A display is almost never the shape of a canvas. Which of the two you get is the sketch's own `windowMode`, the same property that decides it in a window:
-
-```swift
-override var windowMode: WindowMode { .resizable }
-```
-
-With that line, the canvas *is* the display: `width` and `height` are the screen's, and the drawing goes edge to edge. `ollin new` writes it for you, because filling the screen is what people mean by a screen saver. Take it out and a square sketch stays square, as large as fits, centered on black. Neither one stretches the drawing, which is the answer you want either way: a circle stays a circle on a wide screen.
-
-### Building it again
-
-Every edit needs a rebuild, so do the work in a window and install when it looks right:
-
-```sh
-ollin Sources/Ripple/Sketch.swift     # the same file, reloading as you save
-./build.sh --install                  # when you are happy with it
-```
-
-The script signs the saver for this machine. Another Mac will refuse it. Handing a screen saver to somebody else needs a Developer ID and a trip through notarization, the same as an app. [The reference page](../Docs/Output/ScreenSaver.md) has those commands.
-
-One more thing worth knowing before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A piece that has to line up across two screens is the installation earlier in this chapter, not a screen saver.
-
-## The desktop and the menu bar
-
-The screen saver waits for you to leave. Two more surfaces work while you stay. The desktop can run a sketch behind the icons, and the menu bar can hold a moving strip of one beside the clock. Each is two commands, and the sketch stays an ordinary sketch.
-
-```sh
-ollin new Drift --kind wallpaper
-cd Drift && swift run Drift
-```
-
-The desktop becomes the piece. Windows still stack over it, icons still sit on it, and clicks still land where they always did.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/BehindTheIcons-dark.jpg">
-  <img src="Images/41-Installations/BehindTheIcons.jpg" alt="On the left a screen with a drawing running edge to edge behind the file icons and an open window, a pointer resting on the window; on the right three cards, two small displays each running their own copy, a sparkle with its quit menu, and a note about what it costs to draw all day" width="680">
-</picture>
-
-The piece takes no input at all, which is the whole reason the desktop still works as a desktop. `mouseX`, `mouseY`, and `key` hold whatever they started at, and every click goes to the icon or the window under it. Write the piece to run on `time`, the way most of this guide's sketches already do.
-
-The sparkle at the right end of the menu bar is the way out, because a window-less program has no other one. Each display runs its own copy, edge to edge, and the copies are not in step: they started at different moments and share nothing. `./build.sh --install` makes it an app in /Applications. Add that app to your Login Items and it is the machine's wallpaper for good.
-
-It earns one honest note about cost. Wallpaper draws at the display's rate for as long as the machine is up, through every meeting and every compile. Calm pieces wear well here, and a still one can call `noLoop()` and cost nothing at all.
-
-The menu bar is the same idea at the other extreme of size:
-
-```sh
-ollin new Pulse --kind menu-bar
-cd Pulse && swift run Pulse
-```
-
-A strip 56 points wide appears among the status items and starts moving.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/SmallestCanvas-dark.jpg">
-  <img src="Images/41-Installations/SmallestCanvas.jpg" alt="A menu bar across the top with one status item outlined, a line leading down to the same strip enlarged five times with its canvas marked: the origin at the top left, width 56, height 22, and a line down the middle labeled width over two" width="680">
-</picture>
-
-It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
-
-Both kinds write the same wrapper [An app to hand somebody](#an-app-to-hand-somebody) describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
-
-## A widget, and what it does to a sketch
-
-There is a fourth place in the system, and it is the one that changes what a sketch is. A widget sits on the desktop and in the notification panel, beside the weather and the calendar. Two commands again.
-
-```sh
-ollin new Ripple --kind widget
-cd Ripple && ./build.sh --install
-```
-
-Open the app once, so the system sees what is inside it. Then right-click the desktop, choose Edit Widgets, and look for **Ripple**.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/AQuarterHourApart-dark.jpg">
-  <img src="Images/41-Installations/AQuarterHourApart.jpg" alt="Four square tiles in a row, each a dark disc with a colored ring filled to a different amount, labeled 14:00, 14:15, 14:30 and 14:45, with arrows between them marked 15 min and nothing runs here; below, two cards, one listing what time, deltaTime and date mean here, the other explaining why the clock is the day" width="680">
-</picture>
-
-A screen saver, the wallpaper, and the menu bar all draw. A widget does not. The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. There is no frame rate on this surface. There are four draws an hour, and what somebody sees is the difference between two pictures rather than the motion between them.
-
-So the piece has to be one that **changes** rather than one that moves. A dial that turns through the day works. A color that drifts from morning to evening works. A ball bouncing does not. By the time the next picture goes up, that ball has been somewhere else a thousand times, and nobody saw any of it.
-
-### The clock is the time of day
-
-`time` here is seconds since midnight of the moment being drawn. `time / 3600` is the hour, and the number runs from 0 to 86400 and starts over.
-
-That is not the clock the rest of this guide uses, and the reason is worth a minute. The system throws a run of pictures away and asks for another whenever it likes. If `time` counted from the start of a run, the piece would jump back to the beginning every time it did. Reading the day instead, a quarter past two draws the same picture today as it will tomorrow, whichever run happened to draw it.
-
-The rest follows from that. `deltaTime` is the spacing, which is what really passed since the picture before this one. `frameCount` is 1 every time, because each picture is the first frame of a sketch of its own. Nothing carries from one to the next, which is exactly what makes a moment reliable.
-
-One more, and it is the one that catches people. A widget's pictures are drawn *before* their moments arrive, sometimes an hour before. A piece that asks `Date()` is asking about the wrong time. `date` is the moment being drawn, and at a desk it is simply now, so a piece written against it is right in both places.
-
-### How far apart the pictures sit
-
-The sketch says so, the same way it says how big its canvas is:
-
-```swift
-override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
-```
-
-Four pictures a quarter of an hour apart, which covers the next hour. It is a wish rather than a promise. The system decides when it comes back, and it will not come back every minute for anybody. A quarter of an hour is the shortest spacing worth asking for.
-
-The moments land on a grid counted from midnight, not from whenever the system happened to ask. A quarter-hour piece therefore steps at the quarter hours. The next run carries on that same grid rather than starting one of its own.
-
-That grid has a consequence worth knowing before it puzzles you. A piece whose own period divides the spacing is caught in the same place every time, so it never appears to move at all. A run every fifteen minutes cannot show you anything that repeats every fifteen minutes. Pick a period that does not divide the day evenly, or read the day directly, as the piece in the figure does.
-
-### Seeing the run without waiting for it
-
-Waiting a quarter of an hour to judge a change is no way to work. The window still works, and there is one more command that matters more here than anywhere else:
-
-```sh
-swift run RippleApp --export-widget frames --size 360x360
-```
-
-That writes the whole run into `frames/`, one picture per moment, named by the moment. It is exactly what the widget will show, drawn by exactly the same call, and it takes a second. The flag works on any sketch, so you can try a piece on this surface before you wrap it for one.
-
-The generated project has more in it than the others: three targets rather than one. A widget is two programs, the app the system finds it through and the widget itself, and two programs cannot share a folder of sources. [The reference page](../Docs/Output/Widget.md) has the split and the one public line that keeps your sketch an ordinary sketch.
-
-## An app to hand somebody
-
-The screen saver lives on your own machine. The other thing a finished sketch wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
-
-```sh
-ollin new Orbit --kind mac-app
-cd Orbit && ./build.sh
-```
-
-`Orbit.app` appears beside the script. Double-click it and the sketch opens in its window, the same window `swift run` would have given you.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/AppToHand-dark.jpg">
-  <img src="Images/41-Installations/AppToHand.jpg" alt="On the left one rendered frame of a sketch with an arrow to the same drawing as the app's rounded icon; on the right two cards, the plain build reaching this Mac and the signed and notarized build reaching any Mac" width="680">
-</picture>
-
-Nothing about the sketch changed on the way in. It keeps its `@main`, its mouse, its keyboard, and every export flag. The app is a wrapper, not a port, so you keep working in a window (`ollin Sources/Orbit/Sketch.swift`) and wrap when it looks right.
-
-Two of the wrapper's choices are worth knowing.
-
-**The icon is the sketch.** The script runs the binary it just built, renders one frame, and folds that picture into the icon the Finder shows. The piece wears its own face, and the face changes as the piece does. Drop an `AppIcon.icns` beside `build.sh` when you would rather choose it yourself.
-
-**The signature decides how far it travels.** `./build.sh` alone signs the app for this machine and says so every time, so nobody ships one by accident. Handing it to somebody else takes a Developer ID and one more flag:
-
-```sh
-./build.sh --sign "Developer ID Application: Your Name (TEAMID)" --notarize ollin-notary
-```
-
-That signs with the hardened runtime, sends the app through Apple's notary, and leaves an `Orbit.zip` beside the app, ready to send. Any Mac opens what is inside. [The reference page](../Docs/Output/App.md) has the one-time setup behind the `ollin-notary` name.
-
-The app is also how the wall piece below reaches its wall. A sketch that declares an `Installation` keeps it inside the app, so the double click opens the piece full screen, unattended, hours and all. The machine that runs it never needs the repo or the toolchain, only the app.
 
 ## Putting it together: the wall piece
 
@@ -765,8 +581,6 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 ## Go deeper
 
 - [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, and several displays.
-- [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
-- [Widget](../Docs/Output/Widget.md): the three targets a widget needs and why, the run and its grid, the clock a picture is drawn on, `--export-widget`, and the signing order the extension depends on.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - The Bonačić homage [`NamaFrieze`](../Examples/Recreations/VladimirBonacic/NamaFrieze/Sketch.swift): a light frieze from 1969 that ran 36 meters across a department store, drawn to scale and sent back out as eighteen dimmer channels, so the same universe that lights the picture can light a wall.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
@@ -777,4 +591,4 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 38, Sharing and performing](38-SharingAndPerforming.md) · Next: [Appendix A, Just enough Swift](A-JustEnoughSwift.md)
+[Contents](README.md#contents) · Previous: [Chapter 40, Handing it over](40-HandingItOver.md) · Next: [Appendix A, Just enough Swift](A-JustEnoughSwift.md)

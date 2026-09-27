@@ -10,7 +10,7 @@ This chapter gives a sketch a voice of its own. It starts with one note and buil
 
 ## A sketch that plays
 
-[Chapter 34](34-SoundAndControl.md)'s `Tone` sounds one note forever, which is enough to feed an analyzer and not much else. When you want the sketch to actually play something, the instrument is `Synth`, and asking it for a note is one line:
+[Chapter 34](34-Listening.md)'s `Tone` sounds one note forever, which is enough to feed an analyzer and not much else. When you want the sketch to actually play something, the instrument is `Synth`, and asking it for a note is one line:
 
 ```swift
 let synth = Synth(.pluck)
@@ -54,7 +54,7 @@ Envelope.swell.level(at: 0.7, heldFor: 1.4)   // where a note has got to
 
 The other half of a voice is the `filter`, and it is most of what people mean when they say something sounds like a synthesizer. A note that is bright when struck and darkens as it fades is not the wave changing. It is a filter closing over it. `Voice.Filter.sweep(from:by:)` is that gesture, and `.pluck` is built from it.
 
-Finally, a `Synth` is an `AudioSource` like the microphone is, so every read in [Chapter 34](34-SoundAndControl.md) works on the sketch's own playing:
+Finally, a `Synth` is an `AudioSource` like the microphone is, so every read in [Chapter 34](34-Listening.md) works on the sketch's own playing:
 
 ```swift
 drawCircle(width / 2, height / 2, 100 + Double(synth.amplitude) * 900)
@@ -524,4 +524,4 @@ Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 34, Sound and control](34-SoundAndControl.md) · Next: [Chapter 37, Music by rule](37-MusicByRule.md)
+[Contents](README.md#contents) · Previous: [Chapter 34, Listening](34-Listening.md) · Next: [Chapter 37, Music by rule](37-MusicByRule.md)
