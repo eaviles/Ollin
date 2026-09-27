@@ -1106,6 +1106,10 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     /// Only the `Double` initializers offer smoothing.
     public let smoothing: ParamSmoothing?
 
+    /// The value the declaration gave, clamped like any other, taken once when
+    /// the parameter was made. `reset()` puts the parameter back to it.
+    public let declaredValue: Value
+
     /// The current value (the gliding one when smoothed); assigning sets a new
     /// target the value eases toward (or snaps to, with no smoothing).
     public var wrappedValue: Value {
@@ -1125,6 +1129,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         self.groupIsFolded = group?.isFolded ?? false
         self.smoothing = smoothing
         let v = Value.clamped(value, by: constraints)
+        self.declaredValue = v
         var filter: OneEuroFilter<Double>?
         if case .smoothed(let minCutoff, let beta) = smoothing {
             var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
@@ -1149,6 +1154,15 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
             state.filter?.jump(to: (v as? Double) ?? 0)
         }
+    }
+
+    /// Put the parameter back to `declaredValue`, the value its `@Param` line
+    /// gave it, with no glide: a smoothed parameter jumps, as it does on a
+    /// restore, rather than easing in from wherever it was. A host that keeps a
+    /// tuned value for the next reload is not told by this call; a sketch
+    /// resets its own parameters through `resetParameters(named:)`, which is.
+    public func reset() {
+        jump(to: declaredValue)
     }
 
     /// Show this parameter's inspector row only while `rule` passes for `other`'s
@@ -1538,6 +1552,8 @@ public protocol AnyParam: AnyObject, Sendable {
     /// Jump straight to a persisted value with no glide; a payload of the wrong
     /// kind is ignored. Used by the hosts to re-apply tuned values on reload.
     func restore(_ stored: ParamStored)
+    /// Put the parameter back to the value its declaration gave, with no glide.
+    func reset()
 }
 
 extension Param: AnyParam {
@@ -1599,5 +1615,22 @@ public extension Sketch {
             mirror = current.superclassMirror
         }
         return handles
+    }
+
+    /// Put parameters back to the values their `@Param` lines declare: the ones
+    /// in `names`, or every parameter when none are given. Each jumps with no
+    /// glide, as a restore does. Nothing else moves: `setup()` does not run
+    /// again, and the clock, the seed, and the canvas carry on, so a value that
+    /// only `setup()` read keeps what `setup()` built from it. A track on the
+    /// timeline still wins its parameter on the next frame. A live host is told
+    /// which parameters went back (`parametersReset`), so a value it kept as
+    /// tuned steps aside and the file's value wins the next reload.
+    func resetParameters(named names: [String]? = nil) {
+        var reset: [String] = []
+        for handle in parameters() where names?.contains(handle.name) ?? true {
+            handle.param.reset()
+            reset.append(handle.name)
+        }
+        parametersReset?(reset)
     }
 }

@@ -82,6 +82,9 @@
   .cell .k { font-size: 8.5px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
   .group-h { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-3); padding: 0 4px 7px; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
+  .footer { display: flex; justify-content: center; padding: 10px; }
+  .footer button { background: var(--field); color: var(--text-2); border: 0.5px solid var(--field-stroke); border-radius: 7px; padding: 9px 18px; font-size: 14px; font-weight: 500; }
+  .footer.hidden { display: none; }
   .bar { position: relative; height: 46px; border-radius: 7px; overflow: hidden; background: var(--field); border: 0.5px solid var(--field-stroke); display: flex; align-items: center; touch-action: none; }
   .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); pointer-events: none; }
   .bar .label { position: relative; padding-left: 13px; font-size: 15px; font-weight: 500; pointer-events: none; }
@@ -153,6 +156,7 @@
     <div class="cell"><div class="v accent" id="stat-frame">--</div><div class="k">Frame</div></div>
   </div>
   <div id="groups"></div>
+  <div class="card footer hidden" id="footer"><button type="button" id="reset-all" title="Put every parameter back to the value its @Param line declares">Reset all</button></div>
 <script>
 (function () {
   'use strict';
@@ -188,6 +192,13 @@
     if (!socket || socket.readyState !== 1) { return; }
     socket.send(JSON.stringify({ kind: 'set', name: name, value: value }));
   }
+  // Every parameter back to what its declaration says; the values travel
+  // back through the next update, so no row is touched here.
+  function sendReset() {
+    if (!socket || socket.readyState !== 1) { return; }
+    socket.send(JSON.stringify({ kind: 'reset' }));
+  }
+  document.getElementById('reset-all').addEventListener('click', sendReset);
 
   // ---- formatting ----
 
@@ -634,6 +645,7 @@
     document.title = (hello.sketch || 'Ollin') + ' Remote';
     groupsHost.innerHTML = '';
     rows = {};
+    document.getElementById('footer').classList.toggle('hidden', !hello.params.length);
     if (!hello.params.length) {
       var note = document.createElement('div');
       note.className = 'empty';

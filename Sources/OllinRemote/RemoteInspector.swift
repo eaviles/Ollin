@@ -107,10 +107,22 @@ public final class RemoteInspector: SketchExtension {
         server.enqueue(name, value)
     }
 
+    /// Queues a reset for the next `beforeDraw`: `names`, or every parameter
+    /// for `nil`. The network side is its only production caller; tests use
+    /// it to stand in for a page.
+    nonisolated func enqueueReset(_ names: [String]?) {
+        server.enqueueReset(names)
+    }
+
     public func beforeDraw(_ sketch: Sketch) {
         for set in server.drainPending() {
             guard let handle = handlesByName[set.name] else { continue }
             RemoteWire.apply(set.value, to: handle)
+        }
+        // A reset goes through the sketch's own call, so a live host that
+        // keeps tuned values across reloads is told which ones went back.
+        for names in server.drainResets() {
+            sketch.resetParameters(named: names)
         }
     }
 
@@ -206,6 +218,9 @@ final class RemoteServer: @unchecked Sendable {
     }
     private let links = OSAllocatedUnfairLock<[ObjectIdentifier: Link]>(uncheckedState: [:])
     private let pendingSets = OSAllocatedUnfairLock<[(name: String, value: ParamStored)]>(initialState: [])
+    /// Resets waiting for the frame boundary: a list of names each, or `nil`
+    /// for every parameter.
+    private let pendingResets = OSAllocatedUnfairLock<[[String]?]>(initialState: [])
     private let snapshot = OSAllocatedUnfairLock(initialState: Snapshot())
     private let page: Data
 
@@ -235,6 +250,18 @@ final class RemoteServer: @unchecked Sendable {
 
     func drainPending() -> [(name: String, value: ParamStored)] {
         pendingSets.withLock { pending in
+            let drained = pending
+            pending.removeAll()
+            return drained
+        }
+    }
+
+    func enqueueReset(_ names: [String]?) {
+        pendingResets.withLock { $0.append(names) }
+    }
+
+    func drainResets() -> [[String]?] {
+        pendingResets.withLock { pending in
             let drained = pending
             pending.removeAll()
             return drained
@@ -410,10 +437,24 @@ final class RemoteServer: @unchecked Sendable {
         }
     }
 
+    /// The one field every message carries, read first to pick the decoder.
+    private struct MessageHead: Decodable {
+        let kind: RemoteMessageKind
+    }
+
     private func receiveMessage(_ payload: [UInt8]) {
-        guard let set = try? JSONDecoder().decode(RemoteSet.self, from: Data(payload)),
-              set.kind == .set else { return }
-        enqueue(set.name, set.value)
+        let data = Data(payload)
+        guard let head = try? JSONDecoder().decode(MessageHead.self, from: data) else { return }
+        switch head.kind {
+        case .set:
+            guard let set = try? JSONDecoder().decode(RemoteSet.self, from: data) else { return }
+            enqueue(set.name, set.value)
+        case .reset:
+            guard let reset = try? JSONDecoder().decode(RemoteReset.self, from: data) else { return }
+            enqueueReset(reset.names)
+        case .hello, .update, .stats:
+            return   // the server's own kinds; a page never sends them
+        }
     }
 
     // MARK: Sending

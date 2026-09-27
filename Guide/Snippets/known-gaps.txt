@@ -28,7 +28,6 @@ a3a4dacf7c92  Guide/06-GridsAndRepetition.md:229  cannot find 'drawTheWholePiece
 60af001c8df1  Guide/06-GridsAndRepetition.md:304  cannot find 'spiral' in scope
 e31a147f6780  Guide/06-GridsAndRepetition.md:345  cannot find 'seen' in scope
 e06710580a51  Guide/06-GridsAndRepetition.md:72  cannot find 'cell' in scope
-38c291053d5e  Guide/07-Tiles.md:180  unary operator cannot be separated from its operand
 09c0b7adbc3a  Guide/08-Words.md:201  cannot find 'passage' in scope
 962894dbf017  Guide/08-Words.md:217  cannot find 'passage' in scope
 ae33653cb376  Guide/09-Pictures.md:116  cannot find 'c' in scope
@@ -59,14 +58,13 @@ c75eb2a20310  Guide/12-FlocksAndSwarms.md:334  cannot find 'crowd' in scope
 4bd9e3101756  Guide/13-GrowingThings.md:308  missing argument label 'at:' in call
 750461323d36  Guide/14-FieldsAndFlow.md:156  cannot find 'x' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:104  cannot find 'road' in scope
-d12699261cc4  Guide/15-ShapesAsMaterial.md:129  cannot convert value of type 'Shape' to expected argument type 'Rectangle'
-5bdd80a90abf  Guide/15-ShapesAsMaterial.md:138  cannot find 'frame' in scope
-bac6f70b2c26  Guide/15-ShapesAsMaterial.md:179  cannot find 'circles' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:206  cannot find 'square' in scope
-6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:264  cannot find 'blob' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:287  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:298  value of type '[Contour]' has no member 'maxInset'
-ff3aae35a44a  Guide/15-ShapesAsMaterial.md:348  cannot find 'art' in scope
+bac6f70b2c26  Guide/15-ShapesAsMaterial.md:145  cannot find 'circles' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:172  cannot find 'square' in scope
+6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:230  cannot find 'blob' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:253  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:264  value of type '[Contour]' has no member 'maxInset'
+ff3aae35a44a  Guide/15-ShapesAsMaterial.md:314  cannot find 'art' in scope
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:452  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
@@ -346,9 +344,9 @@ e873c5d7bcef  Guide/38-FinishingASketch.md:50  cannot find 'MySketch' in scope
 30dedeb34bae  Guide/39-Performing.md:171  cannot find '$radius' in scope
 17254b9bfd8a  Guide/39-Performing.md:188  cannot find '$radius' in scope
 7f198c23270e  Guide/39-Performing.md:207  cannot find '$frame' in scope
-93d908a1e153  Guide/40-HandingItOver.md:271  cannot find 'MyWatermark' in scope
-0eaa18b2ae73  Guide/40-HandingItOver.md:299  cannot find 'points' in scope
-9b4b9e9a8ca2  Guide/40-HandingItOver.md:99  @objc attribute used without importing module 'Foundation'
+9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  @objc attribute used without importing module 'Foundation'
+93d908a1e153  Guide/40-HandingItOver.md:406  cannot find 'MyWatermark' in scope
+0eaa18b2ae73  Guide/40-HandingItOver.md:434  cannot find 'points' in scope
 dc5f30a6160e  Guide/41-Installations.md:206  cannot find type 'Tile' in scope
 0d8566c41a70  Guide/41-Installations.md:351  cannot find 'worldPoint' in scope
 034815159bb9  Guide/41-Installations.md:375  cannot find 'speed' in scope

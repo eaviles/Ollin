@@ -94,9 +94,11 @@
   convenience init(wrappedValue: Vector3, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
   convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
   func jump(to: Value)
+  func reset()
   func restore(_: ParamStored)
   func show(when: Param<Other>, _: (Other) -> Bool)
   let constraints: Value.Constraints
+  let declaredValue: Value
   let group: String?
   let groupIsFolded: Bool
   let icon: String?
@@ -2434,6 +2436,7 @@ open class Sketch: Sendable
   func repeated(spacing: Vector3, count: Int, _: () -> Void)
   func repeatedRadially(count: Int, around: Vector3 = default, _: () -> Void)
   func resetCamera(animated: Bool = default, duration: Double = default)
+  func resetParameters(named: [String]? = default)
   func resetView()
   func ridgedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -2683,6 +2686,7 @@ open class Sketch: Sendable
   var viewZoom: Double { get }
   var width: Double { get }
 protocol AnyParam: Sendable where Self : AnyObject, Self : Sendable
+  func reset()
   func restore(_: ParamStored)
   var control: ParamControl { get }
   var group: String? { get }
@@ -5223,6 +5227,10 @@ struct ParamRectangleConstraints: Sendable
   var width: ClosedRange<Double> { get set }
   var x: ClosedRange<Double> { get set }
   var y: ClosedRange<Double> { get set }
+struct ParamResetAction
+  init(tuned: Set<String>, perform: ([String]?) -> Void)
+  let perform: ([String]?) -> Void
+  let tuned: Set<String>
 struct ParamSaveAction
   init(title: String, perform: () -> String?)
   let perform: () -> String?
@@ -5242,7 +5250,7 @@ struct ParamVectorConstraints: Sendable
   var x: ClosedRange<Double> { get set }
   var y: ClosedRange<Double> { get set }
 struct ParametersListView: Sendable, View
-  init(parameters: [ParamHandle], sketchName: String? = default, onChange: (String, ParamStored) -> Void = default, save: ParamSaveAction? = default)
+  init(parameters: [ParamHandle], sketchName: String? = default, onChange: (String, ParamStored) -> Void = default, save: ParamSaveAction? = default, reset: ParamResetAction? = default)
   var body: some SwiftUI.View { get }
 struct ParametricLSystem: Sendable
   func contours(iterations: Int, step: Double = default, start: Vector2 = default, heading: Double = default) -> [Contour]

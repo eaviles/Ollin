@@ -115,6 +115,10 @@ public final class SketchSession {
     /// loaded sketch so a parameter doesn't snap back. Only values the user actually
     /// changed are stored, so editing a default in code still takes effect.
     @ObservationIgnored private var paramValues: [String: ParamStored] = [:]
+    /// The names in `paramValues`, kept observable where the values are not,
+    /// so an inspector's tuned marks appear with the first edit and leave with
+    /// a reset or a save.
+    public private(set) var tunedNames: Set<String> = []
     /// A variation seed the user navigated to, re-applied to each freshly
     /// loaded sketch (before its `setup()`) so the composition doesn't shuffle
     /// under an edit. Only set once the user actually touches the seed card,
@@ -145,6 +149,7 @@ public final class SketchSession {
     /// Record a parameter the user changed, so it survives the next evaluation.
     public func recordParam(_ name: String, _ value: ParamStored) {
         paramValues[name] = value
+        tunedNames.insert(name)
     }
 
     /// The parameters the user has turned, in declaration order, each carrying what
@@ -161,6 +166,27 @@ public final class SketchSession {
     /// winning, and editing that default by hand would look ignored.
     public func forgetTunedParams(_ names: [String]) {
         for name in names { paramValues.removeValue(forKey: name) }
+        tunedNames.subtract(names)
+    }
+
+    /// Put parameters back to the values their `@Param` lines declare, `names`
+    /// or every parameter when none are given, and forget them as tuned: the
+    /// rows stop reading as turned, the save button skips them, and the next
+    /// reload takes the file's value. The values change in place, with no
+    /// reload and no `setup()`, so the clock, the seed, and the canvas carry
+    /// on; a smoothed parameter jumps rather than glides, as it does on a
+    /// restore. A track on the timeline still wins its parameter on the next
+    /// frame. The sketch does the resetting and says which names went back
+    /// through `parametersReset`, the same route a reset from the remote
+    /// surface takes, so the tuned store follows either.
+    public func resetParams(_ names: [String]? = nil) {
+        // The instance on stage, since later evaluations swap inside the
+        // runner while `sketch` stays the first mount.
+        if let onStage = currentSketch {
+            onStage.resetParameters(named: names)
+        } else {
+            forgetTunedParams(names ?? Array(paramValues.keys))
+        }
     }
 
     // MARK: - Cues
@@ -373,6 +399,9 @@ public final class SketchSession {
         // The cue sheet the same way, then the hook that files every change.
         if let cueSheet { sketch.cueSheet = cueSheet }
         sketch.cuesChanged = { [weak self] in self?.cueSheetDidChange() }
+        // A reset, from the inspector or the remote surface, drops the names
+        // it put back, so the file's value wins the next reload.
+        sketch.parametersReset = { [weak self] names in self?.forgetTunedParams(names) }
         cues = sketch.cueSheet.cues
         let handles = sketch.parameters()
         for handle in handles {

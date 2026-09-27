@@ -56,7 +56,7 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
 
 /// The wire discriminator on every message; raw values are the wire spelling.
 public enum RemoteMessageKind: String, Codable, Sendable {
-    case hello, update, stats, set
+    case hello, update, stats, set, reset
 }
 
 /// Server to client, once per connection: the sketch's identity and every parameter.
@@ -88,6 +88,19 @@ public struct RemoteSet: Codable, Sendable {
     public var kind = RemoteMessageKind.set
     public var name: String
     public var value: ParamStored
+}
+
+/// Client to server: put parameters back to the values their `@Param` lines
+/// declare, `names` or every parameter when absent. The sketch resets them at
+/// the next frame boundary, where a set lands, through the same call the Mac
+/// inspector's own reset makes, so a live host's tuned record follows.
+public struct RemoteReset: Codable, Sendable {
+    public var kind = RemoteMessageKind.reset
+    public var names: [String]?
+
+    public init(names: [String]? = nil) {
+        self.names = names
+    }
 }
 
 // MARK: - Descriptors

@@ -259,6 +259,35 @@ private final class RemoteProbeSketch: Sketch {
         }
     }
 
+    @Test func aResetMessagePutsParametersBackAndTellsTheHost() throws {
+        let sketch = RemoteProbeSketch()
+        let remote = RemoteInspector(port: 0)
+        remote.discover(sketch)
+        var told: [[String]] = []
+        sketch.parametersReset = { told.append($0) }
+        sketch.speed = 3.0
+        sketch.trails = false
+
+        remote.enqueueReset(["speed"])
+        #expect(sketch.speed == 3.0)   // nothing lands until the frame boundary
+        remote.beforeDraw(sketch)
+        #expect(sketch.speed == 1.4)
+        #expect(sketch.trails == false)   // not named, so left alone
+        #expect(told == [["speed"]])
+
+        remote.enqueueReset(nil)
+        remote.beforeDraw(sketch)
+        #expect(sketch.trails == true)
+        #expect(told.count == 2 && told[1].contains("trails"))
+
+        // The wire spelling a page sends, with names and without.
+        let all = try JSONDecoder().decode(RemoteReset.self, from: Data(#"{"kind":"reset"}"#.utf8))
+        #expect(all.names == nil)
+        let some = try JSONDecoder().decode(RemoteReset.self,
+                                            from: Data(#"{"kind":"reset","names":["speed"]}"#.utf8))
+        #expect(some.names == ["speed"])
+    }
+
     @Test func queuedValuesApplyOnTheNextBeforeDraw() {
         let sketch = RemoteProbeSketch()
         let remote = RemoteInspector(port: 0)

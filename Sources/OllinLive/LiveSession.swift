@@ -243,6 +243,15 @@ final class LiveSession {
         }
     }
 
+    /// The inspector's reset action: the names turned in this run, for the
+    /// marks, and the call that puts parameters back. Read fresh on each
+    /// render, so the marks follow the tuned set.
+    var resetAction: ParamResetAction {
+        ParamResetAction(tuned: core.tunedNames) { [weak self] names in
+            self?.core.resetParams(names)
+        }
+    }
+
     /// Write the tuned parameter values into the `@Param` lines they came from, and
     /// say in one line what happened. Nothing here reaches into the running
     /// sketch: the file is the only thing that changes, the watcher sees the

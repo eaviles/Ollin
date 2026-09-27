@@ -79,11 +79,13 @@ A header shows the sketch's name and the connection state. A monitor strip shows
 
 Edits travel both ways. Move a slider on the phone and the new value lands in the sketch. When the Mac inspector changes a parameter, or the sketch changes a value itself, that value travels back to every open page.
 
+**Reset all** under the rows puts every parameter back to the value its `@Param` line declares. It is the same call the Mac inspector's own reset makes, so a live host's record of tuned values follows, and the values travel back to the page with the next update.
+
 <a name="how-values-land"></a>
 
 ### How values land
 
-A value from the phone is queued, then applied on the main thread at the next frame boundary, before `draw()`. That is the same place the host inspector's own edits land. Because of that, a remote edit can never tear a frame or race the draw loop. Values travel as the same persisted payloads the hosts use, so a control accepts and clamps exactly what the inspector would.
+A value from the phone is queued, then applied on the main thread at the next frame boundary, before `draw()`. That is the same place the host inspector's own edits land. Because of that, a remote edit can never tear a frame or race the draw loop. Values travel as the same persisted payloads the hosts use, so a control accepts and clamps exactly what the inspector would. A reset is queued the same way and lands at the same boundary.
 
 <a name="the-network-story"></a>
 

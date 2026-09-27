@@ -347,6 +347,15 @@ final class PerformanceSession {
         }
     }
 
+    /// The inspector's reset action: the names turned in this run, for the
+    /// marks, and the call that puts parameters back in place, with the run
+    /// and its clock carried on.
+    var resetAction: ParamResetAction {
+        ParamResetAction(tuned: core.tunedNames) { [weak self] names in
+            self?.core.resetParams(names)
+        }
+    }
+
     /// Put the parameters the performer turned into the `@Param` lines on screen, so
     /// the code the audience reads is the code that draws what they see. The
     /// running sketch is left alone: the values are already in it, and rewriting
