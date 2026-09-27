@@ -73,7 +73,7 @@ noAerialPerspective()
 
 Fog paints every distance the same color, but real outdoor air does two different things at once. The light *from* a far surface loses its short wavelengths first, by the 1/λ⁴ law, so a distant ridge turns warmer and darker. At the same time, sunlight scatters *into* the view path along the way. That scattered light veils the same ridge in blue when the sun is to the side. When you look toward the sun, the veil is a brighter, whiter glow.
 
-<img src="../../Guide/Images/25-3DGently/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
+<img src="../../Guide/Images/26-Meshes/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
 `aerialPerspective()` computes both effects in closed form. It uses the same exact integral as fog, split by wavelength. That is the depth cue that makes a landscape read as kilometers instead of meters. It replaces `fog` for the frame, because the last call wins. `volumetricLight` beams follow it exactly as they follow fog.
 

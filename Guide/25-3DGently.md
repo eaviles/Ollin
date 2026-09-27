@@ -281,7 +281,7 @@ Shadows work the way the last section said, with the panel's size standing in fo
 
 The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor, its softbox breathing so the shadows harden and soften with it. Put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look.
 
-Two more things can be done with lights, and the reference covers both. A light can be shaped. An **IES profile** gives a point or spot light the measured throw of a real fixture, and a **cookie** projects an image through a spot's cone. The [light shaping reference](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) has both, and the `3D/Lighting/LightShaping` example puts a downlight, a batwing, a wallwasher, and a window over one floor. And since lights are drawing state, one frame can hold several rigs. `withLights` gives a block its own lamps, and `withoutLights` draws it flat. The [light sets reference](../Docs/3D/3D.md#light-sets) has both, and the `3D/Lighting/LightSets` example is three rooms under three rigs.
+Two more things can be done with lights, and the reference covers both. A light can be shaped. An **IES profile** gives a point or spot light the measured throw of a real fixture. A **cookie** projects an image through a spot's cone. The [light shaping reference](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) has both. The `3D/Lighting/LightShaping` example puts a downlight, a batwing, a wallwasher, and a window over one floor. And since lights are drawing state, one frame can hold several rigs. `withLights` gives a block its own lamps, and `withoutLights` draws it flat. The [light sets reference](../Docs/3D/3D.md#light-sets) has both, and the `3D/Lighting/LightSets` example is three rooms under three rigs.
 
 ## Air you can see
 
@@ -293,16 +293,7 @@ fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
 
 `fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is an exact formula rather than a blur pass, so animating the density is just a number moving. The fog half of the `3D/Effects/Atmosphere` example is a colonnade standing in exactly this mist. The density is in world units. When you would rather say how much of the scene the air should take, hand `fog` a `Fog` value instead. `fog(.groundMist)` measures the veil against the camera's target distance, so it reads the same at any scene scale, and the presets sit on the inspector's menu as a `@Param`.
 
-Fog paints every distance toward one color, which is right for a room. Outdoor air is choosier. It takes the blue out of a far ridge's own light, and it adds sunlight scattered into the path, blue from the side, brighter and whiter toward the sun. That is aerial perspective, the cue that makes mountains read as mountains, and it needs to know where the sun sits. So first give the scene a sky. `environment(.sky)` wraps the world in a computed one, with `turbidity` for how dusty the air is and `sunElevation` for how high the sun rides. An environment can light a whole scene, which is the next chapter's territory. Here its job is handing the haze its sun, and with the sky in place the perspective itself is one call:
-
-```swift
-environment(.sky(turbidity: 2.4, sunElevation: 0.34))
-aerialPerspective()
-```
-
-<img src="Images/25-3DGently/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
-
-With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, the last call wins, and the beams below ride it exactly as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+Fog paints every distance toward one color, which is right for a room. Outdoor air also blues the far ridges and brightens toward the sun. That is **aerial perspective**, and it needs a sky to take its sun from, so [Chapter 26](26-Meshes.md#surroundings-as-the-light-environments) teaches it beside the environments. The second call here is the beam half, and it wants a little haze to live in:
 
 ```swift
 castShadows()

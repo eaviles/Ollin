@@ -1,6 +1,6 @@
 // figure: frame=0 width=680
 //
-// Guide figure (Chapter 25): aerial perspective. A file of dark ridgelines
+// Guide figure (Chapter 26): aerial perspective. A file of dark ridgelines
 // steps away beneath a procedural sky: each silhouette is a measured step
 // paler and bluer than the one before, the farthest melting into the horizon,
 // the air brightening toward the sky's own sun. Fixed camera and sun, seeded

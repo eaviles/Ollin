@@ -492,6 +492,17 @@ environment(.sky(sunElevation: 0.5).clouds(coverage: 0.9))       // a gray lid: 
 
 Two parameters come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlurred(_:)` softens just the backdrop, which pushes it back behind the subject. Both figures above use a little.
 
+A computed sky also hands the air its sun. [Chapter 25](25-3DGently.md#air-you-can-see)'s `fog` paints every distance toward one color, which is right for a room. Outdoor air is choosier. It takes the blue out of a far ridge's own light. It adds sunlight scattered into the path, blue from the side, brighter and whiter toward the sun. That is **aerial perspective**, the cue that makes mountains read as mountains. With a sky in place it is one call:
+
+```swift
+environment(.sky(turbidity: 2.4, sunElevation: 0.34))
+aerialPerspective()
+```
+
+<img src="Images/26-Meshes/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
+
+With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 25's volumetric beams ride it exactly as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+
 ### The room as the light: Environment.feed
 
 Every environment so far was somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
@@ -915,6 +926,7 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 - [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md): both schemes, what happens at an open boundary, and when to pick which.
 - [Mesh growth](../Docs/Generators/MeshGrowth.md): the differential-growth and reaction-diffusion forms, their parameters, and how to keep a growth stable.
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky parameters.
+- [Atmosphere](../Docs/3D/Atmosphere.md): `aerialPerspective` with its `density` and `haziness`, how it follows a `.sky` environment's sun, and how it trades places with `fog`.
 - [Physically based materials](../Docs/3D/3D.md): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission parameter with its units, the environment requirement, and the honest edges spelled out.
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering parameters, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).
