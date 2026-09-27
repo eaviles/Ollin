@@ -568,8 +568,8 @@ These letters join into one connected stroke. Each letter is as wide as its own 
 Ollin shapes the line horizontally, which keeps the joins and the widths. It then turns that line a quarter turn clockwise.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/08-Words/ColumnsTheOtherWay-dark.jpg">
-  <img src="../../Guide/Images/08-Words/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/ColumnsTheOtherWay-dark.jpg">
+  <img src="../Images/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
 </picture>
 
 A column otherwise behaves as it does under `.topToBottom`, including the `textAlign` axes.
@@ -623,8 +623,8 @@ drawText(passage, in: box)
 A stop may not open a line. So a stop that will not fit would normally take the character it follows onto the next line. That leaves a hole at the edge where both used to be. Hanging leaves the pair where it is and lets the stop cross the edge. Japanese calls it ぶら下げ, and it is the same move a Latin typesetter makes to keep a right margin looking straight.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/08-Words/HangingStops-dark.jpg">
-  <img src="../../Guide/Images/08-Words/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/HangingStops-dark.jpg">
+  <img src="../Images/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
 </picture>
 
 Only stops and commas hang: `。` and `、`, their full-width and half-width forms, and the Latin `.` and `,`. A closing bracket may not open a line either, but hanging one would leave the bracket outside the thing it closes.

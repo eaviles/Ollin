@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 8): one passage in two identical boxes, with a rule
+// Figure for Docs/Drawing/Text.md (hanging punctuation): one passage in two identical boxes, with a rule
 // down the edge each line is measured to. On the left every character stays
 // inside it. On the right the stops that would not fit cross it, and the passage
 // takes one line less.

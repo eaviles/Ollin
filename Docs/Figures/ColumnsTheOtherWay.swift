@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 8): the other vertical writing. Top, one phrase set
+// Figure for Docs/Drawing/Text.md (columns that fill the other way): the other vertical writing. Top, one phrase set
 // across a line and then the same phrase turned a quarter turn to stand as a
 // column. Bottom, two blocks side by side, one filling left to right and the
 // other right to left, so the column order is a comparison rather than a claim.
