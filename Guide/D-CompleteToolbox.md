@@ -201,7 +201,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Dielectric breakdown | Lightning grown where the solved field is strongest, eta picking bush or bolt | [Ch 13](13-GrowingThings.md) | [DielectricBreakdown](../Docs/Generators/DielectricBreakdown.md) |
 | Crack growth | Perpendicular cracks subdividing the plane into city blocks, with a watercolor wash | [Ch 13](13-GrowingThings.md) | [CrackGrowth](../Docs/Generators/CrackGrowth.md) |
 | Meander | A river migrating by curvature, cutting off oxbow lakes and leaving scars | [Ch 13](13-GrowingThings.md) | [Meander](../Docs/Generators/Meander.md) |
-| Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw, and as a field a million particles ride | [Ch 22](22-IteratedForms.md), [Ch 27](27-Landscapes.md) | [Attractors](../Docs/Drawing/Attractors.md) |
+| Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw, and as a field a million particles ride | [Ch 22](22-IteratedForms.md), [Ch 24](24-ParticleSimulations.md) | [Attractors](../Docs/Drawing/Attractors.md) |
 | Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 22](22-IteratedForms.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
 | Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 23](23-GridSimulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
 | Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 23](23-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |

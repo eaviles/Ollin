@@ -52,9 +52,42 @@ drawImage(light.developed(exposure: 20).image, 0, 0)
 
 Grains drawn as light into a running mean are also how Ollin builds a lens that blurs by distance. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) takes that up with the 3D camera. The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, the multi-buffer dispatch, and the typed core underneath.
 
+## A million riding the same field: attractor flow
+
+The grains above rode a curl-noise field across the plane. A strange attractor is a field too. [Chapter 22](22-IteratedForms.md#motion-found-in-a-formula) plotted the flat ones as ghosts of their own orbits. The 3D ones, Lorenz and his relatives, live in space, so they need a camera. [Chapter 25](25-3DGently.md) teaches cameras properly, and here one call, `cameraShowcase`, sets up a camera that circles the attractor slowly. A continuous system like Lorenz is a **velocity field**. Hand it a point in space and it tells you which way that point is moving. `StrangeAttractor` integrates one starting point through that field and hands back the path, which you draw as a curve. That is the left half of the picture below.
+
+The right half is the same field with six hundred thousand particles in it. Each follows it from wherever it happens to be, and all of them step every frame on the GPU.
+
+<img src="Images/24-ParticleSimulations/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
+
+```swift
+var flow: AttractorFlow!
+
+override func setup() {
+    flow = makeAttractorFlow(count: 600_000, .lorenz())
+}
+
+override func draw() {
+    background(.black)
+    blendMode(.add)
+    toneMap(.aces)
+    cameraShowcase(target: flow.center, radius: flow.extent * 3.4)
+    stepAttractorFlow(flow)
+    drawParticles(flow)
+}
+```
+
+That is the whole thing. A flow is 3D and draws through the camera, so `drawParticles` does nothing without one. A million particles step and draw at 55 frames a second on an M2, at two tenths of a millisecond of CPU work per frame. Every particle reads only its own position and nothing else, so there is no neighbor search here, unlike [the flock](#the-flock-a-thousand-times-bigger) later in this chapter.
+
+Notice what the sketch never says. It never says where the attractor is, how big it is, or how fast to run it. Lorenz spans about fifty units and Aizawa about three, and their natural clocks differ by more than an order of magnitude. Hard-coding any of that would tie the sketch to one system. Instead the flow integrates a single CPU orbit when you build it and reads the answers off that. It takes `center` and `extent` for the camera, a splat size, a color range, and a pace that crosses the attractor about once a second. Swap `.lorenz()` for `.aizawa()` and everything re-measures.
+
+The colors are worth a sentence, because they carry a second fact. A particle's color comes from how fast it is moving, which is what separates the fast outer sweeps from the slow, crowded core. But the picture is drawn additively, so brightness already means *how many particles are here*. **Color is speed, brightness is crowd.** The default ramp shifts hue while holding its brightness roughly level, so those two facts stay on separate channels. A ramp that ran dark to light as well would make a slow crowded region and a fast empty one look the same.
+
+One more decision shows in the picture. The particles start spread over the attractor itself, sampled from a settled orbit, and then nudged off it by a hair. The nudge is the part that matters. Sitting exactly on the orbit, every particle follows the same trajectory forever. The picture can only ever be that one curve with dots sliding along it. A hair off, chaos separates them within a few laps into as many trajectories as there are particles. That is the reason to run this many. Sensitivity to initial conditions is usually the thing that makes chaotic systems hard to work with. Here it is the mechanism.
+
 ## Crowds that organize themselves: Physarum
 
-The grains in the last section never noticed each other. Making a hundred thousand particles *aware* of their neighbors is a harder problem than it looks. Asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The standard fix is to sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort as `SpatialHash`, and it's public, so you can build your own neighbor-aware system on it. Three classic ones come already built.
+Neither the grains nor the attractor's particles ever noticed each other. Making a hundred thousand particles *aware* of their neighbors is a harder problem than it looks. Asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The standard fix is to sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort as `SpatialHash`, and it's public, so you can build your own neighbor-aware system on it. Three classic ones come already built.
 
 <img src="Images/24-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
 
@@ -318,7 +351,7 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-GPU particle systems are a demoscene and games inheritance, and the additive light-deposit rendering they power here is as old as long-exposure photography. The systems built on top of them have names attached. Particle Life descends from Jeffrey Ventrella's *Clusters*. The Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. Particle Lenia carries the continuous-automaton idea of Bert Wang-Chak Chan's Lenia onto moving individuals. The ant colony is the Ant System of Marco Dorigo, Vittorio Maniezzo, and Alberto Colorni, from their 1996 paper. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation, and its near-density anti-clumping term is the one Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005. The jellies use Müller's 2005 meshless shape matching.
+GPU particle systems are a demoscene and games inheritance, and the additive light-deposit rendering they power here is as old as long-exposure photography. The strange attractors are the published systems of Edward Lorenz, from 1963, and his successors, collected at dynamicmath.xyz. The systems built on top of the particles have names attached. Particle Life descends from Jeffrey Ventrella's *Clusters*. The Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. Particle Lenia carries the continuous-automaton idea of Bert Wang-Chak Chan's Lenia onto moving individuals. The ant colony is the Ant System of Marco Dorigo, Vittorio Maniezzo, and Alberto Colorni, from their 1996 paper. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation, and its near-density anti-clumping term is the one Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005. The jellies use Müller's 2005 meshless shape matching.
 
 The breeding half has its own lineage. The genetic algorithm is John Holland's, set out in 1975 in *Adaptation in Natural and Artificial Systems*. David Goldberg's 1989 book made it practical for the rest of us. That book is where crossover, mutation, and the roulette-wheel and tournament ways of choosing parents are all laid out. Those became the parents of the next generation. The flying-toward-a-target version is the one Daniel Shiffman teaches as smart rockets in *The Nature of Code*. It follows an earlier sketch by Jer Thorp. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
@@ -326,6 +359,7 @@ The breeding half has its own lineage. The genetic algorithm is John Holland's, 
 
 - [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, and projecting through the sketch's camera from a kernel.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): `LineSpray` and the `Bokeh` lens, the light particle style's deposit rules, and the `develop` print.
+- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` parameters, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own. [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift) runs the flow.
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every parameter, plus the matrix rolling and the reproducibility caveat.
 - [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and reading the best tour back out.
 - [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every parameter, and how to pick a temperament rather than a number.

@@ -1,6 +1,6 @@
 // figure: frame=200
 //
-// Guide diagram (Chapter 27): the same Lorenz field twice. On the left, one
+// Guide diagram (Chapter 24): the same Lorenz field twice. On the left, one
 // orbit integrated once and drawn as the thin curve it is. On the right, the
 // field under 600,000 particles stepped every frame, where the shape arrives
 // as material and its density is the attractor's own.

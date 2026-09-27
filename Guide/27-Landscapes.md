@@ -8,7 +8,7 @@
 
 Nobody placed a tree in that picture. The ground grew out of noise and then had rain run over it for a while. Everything standing on it was scattered by asking the ground where a pine could take root. The grass in the foreground was never built at all. The GPU works it out while drawing it and keeps nothing afterwards.
 
-[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. A million particles riding one field, ten thousand copies of one mesh, a quarter of a million solids the camera trims for you, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
+[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. Ten thousand copies of one mesh, a quarter of a million solids the camera trims for you, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
 
 ## A landscape you grow
 
@@ -73,42 +73,9 @@ The middle panel is the other thing that falls out for free. Every cell knows wh
 
 What comes back is points, so a river network strokes, hatches, and plots like any other geometry. It is also, unlike most of this chapter, a 2D result: a map rather than a mesh.
 
-## A million riding the same field
-
-[Chapter 22](22-IteratedForms.md) plotted the flat attractors as ghosts of their own orbits and left the 3D ones, Lorenz and his relatives, waiting for a camera. Here they are. A continuous system like Lorenz is a **velocity field**. Hand it a point in space and it tells you which way that point is moving. `StrangeAttractor` integrates one starting point through that field and hands back the path, which you draw as a curve. That is the left half of the picture below.
-
-The right half is the same field with six hundred thousand particles in it. Each follows it from wherever it happens to be, and all of them step every frame on the GPU.
-
-<img src="Images/27-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
-
-```swift
-var flow: AttractorFlow!
-
-override func setup() {
-    flow = makeAttractorFlow(count: 600_000, .lorenz())
-}
-
-override func draw() {
-    background(.black)
-    blendMode(.add)
-    toneMap(.aces)
-    cameraShowcase(target: flow.center, radius: flow.extent * 3.4)
-    stepAttractorFlow(flow)
-    drawParticles(flow)
-}
-```
-
-That is the whole thing. A flow is 3D and rides the camera like a point cloud, so `drawParticles` does nothing without one. A million particles step and draw at 55 frames a second on an M2, at two tenths of a millisecond of CPU work per frame. Every particle reads only its own position and nothing else, so there is no neighbor search here, unlike the flock in [Chapter 24](24-ParticleSimulations.md).
-
-Notice what the sketch never says. It never says where the attractor is, how big it is, or how fast to run it. Lorenz spans about fifty units and Aizawa about three, and their natural clocks differ by more than an order of magnitude. Hard-coding any of that would tie the sketch to one system. Instead the flow integrates a single CPU orbit when you build it and reads the answers off that. It takes `center` and `extent` for the camera, a splat size, a color range, and a pace that crosses the attractor about once a second. Swap `.lorenz()` for `.aizawa()` and everything re-measures.
-
-The colors are worth a sentence, because they carry a second fact. A particle's color comes from how fast it is moving, which is what separates the fast outer sweeps from the slow, crowded core. But the picture is drawn additively, so brightness already means *how many particles are here*. **Color is speed, brightness is crowd.** The default ramp shifts hue while holding its brightness roughly level, so those two facts stay on separate channels. A ramp that ran dark to light as well would make a slow crowded region and a fast empty one look the same.
-
-One more decision shows in the picture. The particles start spread over the attractor itself, sampled from a settled orbit, and then nudged off it by a hair. The nudge is the part that matters. Sitting exactly on the orbit, every particle rides the same trajectory forever, and the picture can only ever be that one curve with dots sliding along it. A hair off, and chaos separates them within a few laps into as many separate trajectories as there are particles, which is the whole reason to run this many. Sensitivity to initial conditions is usually the thing that makes chaotic systems hard to work with. Here it is the mechanism.
-
 ## Ten thousand of the same thing
 
-The particles above are points. Sooner or later you want the same abundance out of *solids*: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The loop you would naturally write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh is millions of vertices rebuilt per frame, and the frame rate goes where you would expect.
+Once there is ground, you want many things standing on it: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The loop you would naturally write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh is millions of vertices rebuilt per frame, and the frame rate goes where you would expect.
 
 Instancing is the escape. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. **The mesh uploads once; only the placements travel.**
 
@@ -525,9 +492,8 @@ Lorenz and his relatives come from Edward Lorenz's 1963 paper on deterministic n
 - [Points on a surface](../Docs/Generators/SurfaceSampling.md): the whole `surfacePoints` surface, asking by spacing instead of count, what a `SurfaceSample` carries, `alignment(spin:)`, and `surfaceArea` for holding a density rather than a count.
 - [The ocean](../Docs/3D/Ocean.md): the whole sea state, the field a transform writes, every look parameter, what it costs, and the four things it will not do.
 - [Strands](../Docs/3D/Strands.md): every blade parameter, the distance grading, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
-- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` parameters, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own.
 - Appendix B draws two ideas this chapter leans on: [Layering scales](B-JustEnoughMath.md#layering-scales), which is what makes a heightfield look like land, and [The 3D world frame](B-JustEnoughMath.md#the-3d-world-frame).
-- Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a parameter that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift).
+- Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a parameter that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), and [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side).
 
 ---
 

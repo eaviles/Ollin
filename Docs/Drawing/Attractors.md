@@ -165,7 +165,7 @@ let mine = ChaoticMap(start: .zero) { p in
 
 `StrangeAttractor` integrates **one** orbit and returns the points. `AttractorFlow` runs the same field on the GPU for a million particles at once. Each particle follows its own trajectory, and the flow steps all of them every frame. You see the attractor as a volume of particles rather than as a single curve. It is dense where the orbit moves slowly, thin where the orbit moves fast, and you can see it flowing along itself.
 
-<img src="../../Guide/Images/27-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
+<img src="../../Guide/Images/24-ParticleSimulations/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
 ```swift
 var flow: AttractorFlow!
