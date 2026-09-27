@@ -8,6 +8,8 @@
 # whose name does not say so, or the platform's own word for a physical
 # quantity that is not light.
 magnitude Environment.*            # the image-based light: its intensity scales the light the environment casts
+magnitude MeshMaterial.emissiveIntensity   # the surface's own light: how strongly it glows in its own color
+magnitude MeshMaterial.init        # the same value as the initializer's label
 magnitude Generator.godRays        # shafts of light; coreIntensity and intensity are the light's
 magnitude SprayLine.*              # a line of light for a LineSpray; each end has an intensity
 magnitude SprayQuad.*              # a surface of light in the same spray; its tone times an intensity is its light

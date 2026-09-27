@@ -149,6 +149,14 @@ An **occlusion map** is baked shadow for the crevices geometry doesn't have, and
 
 An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is what the third sphere leans on, a nearly black shell whose engraved seams glow. Emission is the surface's own radiance, so fog veils it with distance like everything else. One line of housekeeping is worth knowing. A glowing surface doesn't light its neighbors unless global illumination is on, at which point it does.
 
+`emissiveColor` is one color a mesh, so a vertex-colored mesh under it either washes toward white or takes one tint whole. To make a surface glow in its **own** colors, the fill, the vertex colors, and the texture all included, give it an intensity instead:
+
+```swift
+drawMesh(ribbon.glowing(1.5))     // each vertex glows in its own hue
+```
+
+`Mesh.glowing(_:)` sets `emissiveIntensity` on a copy. 1 adds the surface's own color once as light, more is brighter, and a `bloom` filter turns the glow into a halo.
+
 Loaded glTF and USD models carry all of these in and out without being asked, and the round trip through `saveScene` keeps them. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
 
 ### Depth from a picture: height maps
@@ -414,6 +422,13 @@ drawMesh(body)
 Those two images are the same solids, the same material, the same camera, and the same floor. The only difference is one word. Look at the left flank of the largest ball in the second picture and you can read the buildings in it. That's the whole idea in one glance. The surroundings *are* the reflection, and they are also the light. The floor is lit by the sky in the first and by an ochre evening in the second, without a single light being placed.
 
 Twenty environments come curated. Eight of them are bundled, so they work offline and instantly. Those are `.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, and `.sunset`. The other twelve download the first time you use one and cache from then on. They range enormously in real brightness, so each is exposed to a consistent level for you. They also pair well with `toneMap(.aces)` from [Chapter 19](19-LayersAndEffects.md), for a filmic rolloff on the highlights.
+
+Put the choice on a parameter and the inspector offers all twenty as a menu, so you can flip a scene from a studio to a dusk while it runs:
+
+```swift
+@Param var surroundings = Environment.studio
+environment(surroundings)
+```
 
 The first image uses none of them. **`.sky(...)`** builds a daylight sky at runtime with nothing to load:
 

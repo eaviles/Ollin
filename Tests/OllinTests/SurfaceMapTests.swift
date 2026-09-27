@@ -389,6 +389,41 @@ struct SurfaceMapTests {
         #expect(process.terminationStatus == 0, "usdchecker --arkit refused the mapped package:\n\(text)")
     }
 
+    @Test func theWriterCarriesTheSelfGlowAsOneColor() throws {
+        // A preview surface has one emissive slot, so the surface's own glow
+        // is written as the base color times the intensity (linear), and a
+        // vertex-colored mesh with no other emission connects the slot to the
+        // vertex-color reader as well; a material without the glow writes the
+        // factor alone, as before.
+        var mesh = Mesh.plane(width: 2, depth: 2)
+        let base = Color(red: 0.5, green: 0.25, blue: 0.5)
+        mesh.material = MeshMaterial(baseColor: base, emissiveIntensity: 1.5)
+        mesh.colors = Array(repeating: .white, count: mesh.positions.count)
+        var node = SceneNode(name: "glow")
+        node.mesh = mesh
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-self-glow-\(UUID().uuidString).usda")
+        try Scene(nodes: [node]).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("inputs:emissiveColor.connect = </") && text.contains("/vertexColor.outputs:result>"),
+                "a vertex-colored self-glow connects the emissive slot to the vertex colors")
+        let back = try Scene(contentsOf: url)
+        func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
+            for n in nodes {
+                if let mesh = n.mesh { return mesh }
+                if let hit = firstMesh(n.children) { return hit }
+            }
+            return nil
+        }
+        let m = try #require(firstMesh(back.nodes)?.material)
+        for (got, want) in [(m.emissiveColor.red, base.red), (m.emissiveColor.green, base.green),
+                            (m.emissiveColor.blue, base.blue)] {
+            let expected = Color.linearToSrgb(1.5 * Color.srgbToLinear(want))
+            #expect(abs(got - expected) < 2e-3, "the glow reads back as 1.5 × the base, got \(got) for \(expected)")
+        }
+    }
+
     // MARK: - Render probes
 
     private func pixel(of image: CGImage, x: Int, y: Int) -> (r: Int, g: Int, b: Int) {
@@ -472,6 +507,32 @@ struct SurfaceMapTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func theSurfaceGlowsInItsOwnColors() throws {
+        // A red-to-blue vertex-colored quad lit from behind: with
+        // `emissiveIntensity` each side glows in its own hue, where an
+        // `emissiveColor` would have washed both toward one color; without it
+        // the same quad reads black.
+        let lit = try #require(OllinApp.image(of: SurfaceMapProbe.make(.selfGlow), frame: 1))
+        let left = pixel(of: lit, x: 64, y: 128)      // the quad spans about pixels 54…202
+        let right = pixel(of: lit, x: 192, y: 128)
+        #expect(left.r > 120 && left.r > left.b + 60, "the left glows red, got \(left)")
+        #expect(right.b > 120 && right.b > right.r + 60, "the right glows blue, got \(right)")
+        let dark = try #require(OllinApp.image(of: SurfaceMapProbe.make(.selfGlowControl), frame: 1))
+        let l = pixel(of: dark, x: 64, y: 128), r = pixel(of: dark, x: 192, y: 128)
+        #expect(max(l.r, l.g, l.b) < 30 && max(r.r, r.g, r.b) < 30,
+                "the unlit control must stay dark, got \(l) and \(r)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aZeroIntensityLeavesTheBytesAlone() throws {
+        // `glowing(0)` is the documented off switch: the mesh keeps the plain
+        // textured routing and renders the bytes it always did.
+        let plain = try #require(OllinApp.image(of: SurfaceMapProbe.make(.texturedOnly), frame: 1))
+        let zero = try #require(OllinApp.image(of: SurfaceMapProbe.make(.zeroIntensityTextured), frame: 1))
+        #expect(imageBytes(plain) == imageBytes(zero), "intensity 0 must be byte-identical to no glow")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func theFactorsMultiplyTheSample() throws {
         // Metallic factor 0: a full-metal map and a no-metal map must render
         // byte-identically, because the factor multiplies the sample. This is
@@ -499,6 +560,7 @@ private final class SurfaceMapProbe: Sketch {
         case metalSplit, metalControl, roughSplit, aoAmbient, aoDirect
         case emissive, emissiveBlackFactor, factorZeroMetalMap, factorZeroDielectricMap
         case aoStrengthZero, texturedOnly
+        case selfGlow, selfGlowControl, zeroIntensityTextured
     }
     var mode = Mode.metalSplit
 
@@ -587,6 +649,20 @@ private final class SurfaceMapProbe: Sketch {
         case .texturedOnly:
             directionalLight(.white, direction: Vector3(0, 0, -1))
             mesh = mesh.textured(solid(255, 255, 255))
+        case .selfGlow, .selfGlowControl:
+            // A vertex-colored quad, red on the left and blue on the right, lit
+            // from behind under no ambient so its own shading is black: with
+            // the glow the surface shows each vertex's own color, without it
+            // nothing. `fill` and the base color stay white so the surface
+            // color is the vertex color alone.
+            fill(.white)
+            ambientLight(.black)
+            directionalLight(.white, direction: Vector3(0, 0, 1))
+            mesh.colors = [.red, .blue, .blue, .red]
+            if mode == .selfGlow { mesh = mesh.glowing(1) }
+        case .zeroIntensityTextured:
+            directionalLight(.white, direction: Vector3(0, 0, -1))
+            mesh = mesh.textured(solid(255, 255, 255)).glowing(0)
         }
         drawMesh(mesh)
     }

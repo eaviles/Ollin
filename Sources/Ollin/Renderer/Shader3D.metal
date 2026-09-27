@@ -305,6 +305,25 @@ vertex VelocityOut ollin_mesh_velocity_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// The deforming form (`drawMesh(_:previous:)`): the sketch handed last frame's
+// vertex positions, and the drawer baked them to world space through last
+// frame's model matrix, so each vertex reads its own previous position from a
+// second buffer instead of one transform carrying the whole range. Everything
+// else is the pass above, so a mesh that both moves and changes shape writes
+// the sum of the two motions and a still one writes the camera's alone.
+vertex VelocityOut ollin_mesh_velocity_deform_vertex(uint vid [[vertex_id]],
+                                                     const device OllinMeshVertex *verts [[buffer(0)]],
+                                                     constant Uniforms3D &u [[buffer(2)]],
+                                                     constant OllinVelocityUniforms &vu [[buffer(3)]],
+                                                     const device float4 *previous [[buffer(4)]]) {
+    float4 wp = float4(verts[vid].position.xyz, 1.0);
+    VelocityOut out;
+    out.position = u.projection * (u.view * wp);
+    out.curClip = out.position;
+    out.prevClip = vu.previousViewProjection * float4(previous[vid].xyz, 1.0);
+    return out;
+}
+
 fragment float4 ollin_mesh_velocity_fragment(VelocityOut in [[stage_in]],
                                              constant Uniforms3D &u [[buffer(2)]]) {
     if (in.prevClip.w <= 0.0) { return float4(OLLIN_VELOCITY_NONE, 0.0, 0.0, 0.0); }
@@ -6626,6 +6645,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     if (mat.emissive.w > 0.0) {
         emissive *= ollin_sample_map(emissiveTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy).rgb;
     }
+    // The surface glowing in its own color: the resolved base (fill, base color,
+    // vertex color, texture, detail, and decals all in) times the intensity,
+    // added beside the constant factor so a vertex-colored mesh keeps each
+    // vertex's hue instead of washing toward one color. Zero leaves the sum
+    // untouched, so a mesh without it renders the bytes it always did.
+    emissive += mat.emissiveIntensity * base;
     // The spread of shading normals under this pixel, on the fully resolved normal (map,
     // detail map, and decals all included, since each of them turns the surface). Taken
     // here rather than where `N` was last written, because the derivatives compare the

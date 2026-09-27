@@ -1595,6 +1595,19 @@ extension MetalRenderer {
               let velPipe = try? pipeline(.meshVelocity(depth: depthPixelFormat)),
               let occPipe = try? pipeline(.meshVelocityOccluder(depth: depthPixelFormat))
         else { return nil }
+        // A mesh that changed shape (`drawMesh(_:previous:)`) carries its own
+        // previous world positions; they upload here, into this encode's ring
+        // slot, and its ranges draw through the deforming vertex function.
+        // Resolved before the encoder opens so a failure encodes nothing.
+        var deformPipe: MTLRenderPipelineState?
+        var previousBuffer: MTLBuffer?
+        if !drawer.moverPreviousPositions.isEmpty {
+            guard let pipe = try? pipeline(.meshVelocityDeforming(depth: depthPixelFormat)),
+                  let buffer = velocityPreviousBuffer(filledWith: drawer.moverPreviousPositions)
+            else { return nil }
+            deformPipe = pipe
+            previousBuffer = buffer
+        }
         let target: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)
         if let cached = velocityCache, cached.w == width, cached.h == height {
             target = cached
@@ -1660,17 +1673,49 @@ extension MetalRenderer {
                 enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: end - cursor)
             }
         }
-        // Phase 2: the movers, each carried back through last frame's matrices.
+        // Phase 2: the movers, each carried back through last frame's matrices,
+        // or, for a mesh that changed shape, through its own previous positions
+        // (the pipeline switches only where the kind changes; ranges of one kind
+        // in a row share it).
         enc.setRenderPipelineState(velPipe)
+        var deforming = false
         for r in ranges {
             var vu = OllinVelocityUniforms(previousViewProjection: previousViewProjection,
                                            previousOfCurrent: r.previousOfCurrent)
             enc.setVertexBytes(&vu, length: MemoryLayout<OllinVelocityUniforms>.stride, index: 3)
             enc.setVertexBuffer(meshBuffer, offset: r.start * meshStride, index: 0)
+            if r.previousStart >= 0, let deformPipe, let previousBuffer {
+                if !deforming { enc.setRenderPipelineState(deformPipe); deforming = true }
+                enc.setVertexBuffer(previousBuffer,
+                                    offset: r.previousStart * MemoryLayout<SIMD4<Float>>.stride,
+                                    index: 4)
+            } else if deforming {
+                enc.setRenderPipelineState(velPipe)
+                deforming = false
+            }
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: r.count)
         }
         enc.endEncoding()
         return target.tex
+    }
+
+    /// This encode's ring slot for the deforming movers' previous world
+    /// positions, grown on demand and filled with `positions`. The ring advances
+    /// per call (see `velocityPreviousBuffers`), so a slot is never rewritten
+    /// under a frame still reading it.
+    private func velocityPreviousBuffer(filledWith positions: [SIMD4<Float>]) -> MTLBuffer? {
+        let needed = max(positions.count, 1) * MemoryLayout<SIMD4<Float>>.stride
+        let index = velocityPreviousCursor
+        velocityPreviousCursor = (index + 1) % velocityPreviousBuffers.count
+        if velocityPreviousBuffers[index].map({ $0.length < needed }) ?? true {
+            velocityPreviousBuffers[index] = device.makeBuffer(length: needed + needed / 2,
+                                                               options: .storageModeShared)
+        }
+        guard let buffer = velocityPreviousBuffers[index] else { return nil }
+        positions.withUnsafeBytes { raw in
+            buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        return buffer
     }
 
     /// TEST SEAM: run the mover-velocity pass for `drawer`'s recorded frame

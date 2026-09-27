@@ -181,6 +181,28 @@ public extension Mesh {
         return copy
     }
 
+    /// A copy that glows in its **own** color: the surface's color as drawn
+    /// (the `fill`, the material's `baseColor`, the mesh's vertex `colors`, and
+    /// its `texture`) added `intensity` times over as light of its own, so a
+    /// vertex-colored ribbon glows in each vertex's hue where an
+    /// `emissiveColor` would tint the whole mesh one color. 1 adds the color
+    /// once; more is brighter, and 0 turns it off. Sets
+    /// `MeshMaterial.emissiveIntensity`, keeping everything else the material
+    /// carries, so it composes with `textured(_:)` and `surfaceMapped(...)` in
+    /// any order. It works with no lights at all, and a `bloom` filter turns
+    /// the glow into a halo.
+    ///
+    /// ```swift
+    /// drawMesh(ribbon.glowing(1.5))
+    /// ```
+    func glowing(_ intensity: Double = 1) -> Mesh {
+        var copy = self
+        var m = copy.material ?? MeshMaterial()
+        m.emissiveIntensity = intensity
+        copy.material = m
+        return copy
+    }
+
     /// A copy wearing `image` projected onto the surface from the three world
     /// axes (triplanar projection), for a mesh with **no uvs at all**: a
     /// marched isosurface or metaball skin, a grown or reconstructed shell, a

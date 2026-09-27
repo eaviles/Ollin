@@ -13,18 +13,20 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
+76ba2c72194a  Docs/3D/3D.md:1345  cannot find 'ribbon' in scope
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1495  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1518  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1563  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1581  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1608  cannot find 'paint' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1637  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1653  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1673  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1704  cannot find 'rock' in scope
-5809ee8f07b9  Docs/3D/3D.md:1728  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1774  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1508  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1531  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1576  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1594  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1621  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1638  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1660  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1676  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1696  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1727  cannot find 'rock' in scope
+5809ee8f07b9  Docs/3D/3D.md:1751  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1797  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
 ad56e3965bd1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
@@ -836,16 +838,16 @@ b3812f188f90  Docs/Helpers/Math.md:24  expected ',' separator
 1af5b1655501  Docs/Helpers/Math.md:60  expected ',' separator
 eaee9918e7ae  Docs/Helpers/Math.md:66  cannot find 'progress' in scope
 7dfe97ef7006  Docs/Helpers/Math.md:76  expected ',' separator
-62c82222d99f  Docs/Helpers/Parameters.md:105  cannot find 'radius' in scope
-7e61c6f57b45  Docs/Helpers/Parameters.md:130  unary operator cannot be separated from its operand
-8b0cd896963b  Docs/Helpers/Parameters.md:145  property wrappers are not yet supported in top-level code
-abf53e647a2d  Docs/Helpers/Parameters.md:173  cannot find type 'Opacity' in scope
-c0829da400f9  Docs/Helpers/Parameters.md:215  cannot find '$toonBands' in scope
-c0df20275b80  Docs/Helpers/Parameters.md:242  invalid redeclaration of 'radius'
-1bd9827ae463  Docs/Helpers/Parameters.md:251  cannot find 'side' in scope
-ae1f33524b53  Docs/Helpers/Parameters.md:305  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:320  cannot find '$radius' in scope
-1c6c8dbec021  Docs/Helpers/Parameters.md:90  property wrappers are not yet supported in top-level code
+62c82222d99f  Docs/Helpers/Parameters.md:106  cannot find 'radius' in scope
+7e61c6f57b45  Docs/Helpers/Parameters.md:131  unary operator cannot be separated from its operand
+8b0cd896963b  Docs/Helpers/Parameters.md:146  property wrappers are not yet supported in top-level code
+abf53e647a2d  Docs/Helpers/Parameters.md:174  cannot find type 'Opacity' in scope
+c0829da400f9  Docs/Helpers/Parameters.md:216  cannot find '$toonBands' in scope
+c0df20275b80  Docs/Helpers/Parameters.md:243  invalid redeclaration of 'radius'
+1bd9827ae463  Docs/Helpers/Parameters.md:252  cannot find 'side' in scope
+ae1f33524b53  Docs/Helpers/Parameters.md:306  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:321  cannot find '$radius' in scope
+1c6c8dbec021  Docs/Helpers/Parameters.md:91  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
 7b95326d799b  Docs/Helpers/Sonification.md:32  cannot find 'numbers' in scope
@@ -1041,7 +1043,7 @@ bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 12359ddcd771  Docs/Output/Installation.md:409  cannot find 'worldPoint' in scope
 a40222f7916b  Docs/Output/MenuBar.md:30  '@main' attribute cannot be applied to this declaration
 826ef6fcd6ec  Docs/Output/MenuBar.md:48  cannot find 'Pulse' in scope
-79619800883b  Docs/Output/PathTraced.md:98  cannot find 'sketch' in scope
+79619800883b  Docs/Output/PathTraced.md:99  cannot find 'sketch' in scope
 3556da3286df  Docs/Output/PrintColor.md:140  cannot find 'sketch' in scope
 ceadd572010a  Docs/Output/PrintColor.md:23  cannot find 'url' in scope
 79f5c5017900  Docs/Output/PrintColor.md:54  cannot find 'artwork' in scope

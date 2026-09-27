@@ -401,6 +401,14 @@ final class MetalRenderer {
                         fragment: "ollin_mesh_velocity_fragment",
                         depthFormat: depth, isVelocity: true)
         }
+        // the same pass for a mesh that changes shape (`drawMesh(_:previous:)`):
+        // each vertex reads its own previous world position from a second buffer
+        // instead of one transform for the range; same fragment, same target.
+        static func meshVelocityDeforming(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_velocity_deform_vertex",
+                        fragment: "ollin_mesh_velocity_fragment",
+                        depthFormat: depth, isVelocity: true)
+        }
         // the velocity pass's depth-only occluder phase: everything that is not a
         // mover, rasterized for depth alone (the plain mesh vertex, no fragment,
         // color masked off) so a hidden mover loses the depth test.
@@ -1420,6 +1428,13 @@ final class MetalRenderer {
     /// frame that runs the pass (live TAA + declared movers), so a frame without
     /// `withMotion` costs nothing.
     var velocityCache: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+    /// The deforming movers' previous world positions (`drawMesh(_:previous:)`),
+    /// uploaded by the velocity pass itself: a ring of two slots per frame in
+    /// flight, advanced per encode, because the pass runs at most twice a frame
+    /// (once for the temporal resolve, once for the blur or the upscaler) and a
+    /// slot must never be rewritten while a frame still in flight reads it.
+    var velocityPreviousBuffers = [MTLBuffer?](repeating: nil, count: 2 * MetalRenderer.maxFramesInFlight)
+    var velocityPreviousCursor = 0
     /// The temporal upscaler's persistent state (the live on-screen path): the
     /// platform scaler object (whose accumulation history lives inside it), the
     /// sizes it was built for, its full-screen motion fill and full-resolution

@@ -234,6 +234,7 @@ struct PathTraceTests {
             case opaqueShadow          // the same pane, opaque (the comparison anchor)
             case texturedSphere        // a two-tone textured sphere (parity vs raster)
             case emissivePanel         // a glowing panel over a matte floor, no lights
+            case selfGlowQuad          // a vertex-colored quad glowing in its own colors, no lights
             case everything            // all three at once (the determinism scene)
         }
         var kind: Kind = .glassFurnace
@@ -331,6 +332,19 @@ struct PathTraceTests {
                     material(Material())
                     drawMesh(emissivePanelMesh())
                 }
+            case .selfGlowQuad:
+                // Red on the left, blue on the right, no light at all: only
+                // the surface's own glow can put color on the frame.
+                ambientLight(.black)
+                camera(Camera3D(eye: Vector3(0, 0, 3), target: .zero))
+                fill(.white)
+                material(Material())
+                var quad = Mesh(positions: [Vector3(-1, -1, 0), Vector3(1, -1, 0),
+                                            Vector3(1, 1, 0), Vector3(-1, 1, 0)],
+                                normals: [.unitZ, .unitZ, .unitZ, .unitZ],
+                                indices: [0, 1, 2, 0, 2, 3])
+                quad.colors = [.red, .blue, .blue, .red]
+                drawMesh(quad.glowing(1))
             case .everything:
                 ambientLight(Color(white: 0.1))
                 directionalLight(Color(white: 0.5), direction: Vector3(-1, -1, -0.5))
@@ -465,6 +479,21 @@ struct PathTraceTests {
                 "floor reads \(measured) linear, expected ~\(expected)")
         let noise = regionRelativeNoise(image, x0: 0.44, x1: 0.56, y0: 0.44, y1: 0.56)
         #expect(noise < 0.35, "relative noise \(noise) at 32 spp")
+    }
+
+    /// The surface's own glow through the trace: a hit adds `emissiveIntensity`
+    /// times its albedo after the maps, so a vertex-colored quad under no light
+    /// at all traces red on its left and blue on its right, each side in its own
+    /// hue, the way the raster fragment shows it.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aSurfaceGlowingInItsOwnColorTracesEachHue() throws {
+        let image = try #require(pathTracedSlice(.selfGlowQuad, samples: 16, depth: 2))
+        let leftRed = regionMean(image, x0: 0.30, x1: 0.36, y0: 0.47, y1: 0.53, channel: 0)
+        let leftBlue = regionMean(image, x0: 0.30, x1: 0.36, y0: 0.47, y1: 0.53, channel: 2)
+        let rightRed = regionMean(image, x0: 0.64, x1: 0.70, y0: 0.47, y1: 0.53, channel: 0)
+        let rightBlue = regionMean(image, x0: 0.64, x1: 0.70, y0: 0.47, y1: 0.53, channel: 2)
+        #expect(leftRed > 120 && leftRed > leftBlue + 60, "the left traces red, got \(leftRed) / \(leftBlue)")
+        #expect(rightBlue > 120 && rightBlue > rightRed + 60, "the right traces blue, got \(rightRed) / \(rightBlue)")
     }
 
     /// The house determinism rule: the same export command must produce the same

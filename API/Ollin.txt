@@ -2099,6 +2099,7 @@ open class Sketch: Sendable
   func drawMesh(_: Mesh)
   func drawMesh(_: Mesh, instances: ComputeBuffer<COllinShaders.OllinMeshInstance>, count: Int? = default)
   func drawMesh(_: Mesh, instances: [MeshInstance])
+  func drawMesh(_: Mesh, previous: [Vector3], file: String = default, line: Int = default)
   func drawMeshField(_: MeshField)
   func drawMobius(radius: Double = default, width: Double = default, segments: Int = default, sides: Int = default)
   func drawMoon(_: Double, _: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
@@ -3603,7 +3604,7 @@ struct Embroidery: Equatable, Sendable
   var optimizesTravel: Bool { get set }
   var stitchLength: Double { get set }
   var width: Double { get set }
-struct Environment: Equatable, Hashable, Sendable
+struct Environment: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   enum Resolution: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
     case eightK
     case fourK
@@ -3652,6 +3653,7 @@ struct Environment: Equatable, Hashable, Sendable
   static let sunrise: Environment
   static let sunset: Environment
   static let warehouse: Environment
+  static var paramChoices: [(name: String, value: Environment)] { get }
   var backgroundBlur: Double? { get set }
   var bundledResource: String? { get set }
   var clouds: Clouds? { get set }
@@ -4830,6 +4832,7 @@ struct Mesh: Sendable
   func fractured(into: Int, seed: Int = default) -> [Mesh]
   func generatingSmoothNormals() -> Mesh
   func generatingTangents() -> Mesh
+  func glowing(_: Double = default) -> Mesh
   func intersection(_: Mesh) -> Mesh
   func mapPositions(_: (Vector3) -> Vector3) -> Mesh
   func normalMapped(_: Image, scale: Double = default) -> Mesh
@@ -4903,7 +4906,7 @@ struct MeshInstance: Sendable
   var rotation: Vector3 { get set }
   var scale: Vector3 { get set }
 struct MeshMaterial: Sendable
-  init(baseColor: Color = default, texture: Image? = default, wrap: TextureWrap = default, normalTexture: Image? = default, normalScale: Double = default, metallicRoughnessTexture: Image? = default, occlusionTexture: Image? = default, occlusionStrength: Double = default, emissiveTexture: Image? = default, emissiveColor: Color = default, heightTexture: Image? = default, heightScale: Double = default, triplanarScale: Double = default, detailTexture: Image? = default, detailNormalTexture: Image? = default, detailScale: Double = default, detailAmount: Double = default, metallic: Double = default, roughness: Double = default, opacity: Double = default, ior: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default)
+  init(baseColor: Color = default, texture: Image? = default, wrap: TextureWrap = default, normalTexture: Image? = default, normalScale: Double = default, metallicRoughnessTexture: Image? = default, occlusionTexture: Image? = default, occlusionStrength: Double = default, emissiveTexture: Image? = default, emissiveColor: Color = default, emissiveIntensity: Double = default, heightTexture: Image? = default, heightScale: Double = default, triplanarScale: Double = default, detailTexture: Image? = default, detailNormalTexture: Image? = default, detailScale: Double = default, detailAmount: Double = default, metallic: Double = default, roughness: Double = default, opacity: Double = default, ior: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default)
   var baseColor: Color { get set }
   var clearcoat: Double { get set }
   var clearcoatRoughness: Double { get set }
@@ -4912,6 +4915,7 @@ struct MeshMaterial: Sendable
   var detailScale: Double { get set }
   var detailTexture: Image? { get set }
   var emissiveColor: Color { get set }
+  var emissiveIntensity: Double { get set }
   var emissiveTexture: Image? { get set }
   var heightScale: Double { get set }
   var heightTexture: Image? { get set }

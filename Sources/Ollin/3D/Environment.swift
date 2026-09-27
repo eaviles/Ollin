@@ -294,6 +294,19 @@ public struct Environment: Equatable, Hashable, Sendable {
         allBuiltins.filter { $0.environment.bundledResource != nil }
 }
 
+extension Environment: ParamChoices {
+    /// The twenty built-ins on the inspector's menu, in `allBuiltins` order:
+    /// `@Param var surroundings = Environment.studio`. A menu needs fixed
+    /// values, so an environment built another way (`.sky(...)`, `.hdri(...)`,
+    /// `.feed`, or a built-in with `lightingOnly()` or `highResolution(_:)`
+    /// applied) is off it and reads as the first entry, the `ParamChoices`
+    /// rule; keep the parameter on the plain built-in and apply the modifier
+    /// where the sketch uses it.
+    public static var paramChoices: [(name: String, value: Environment)] {
+        allBuiltins.map { ($0.name, $0.environment) }
+    }
+}
+
 // MARK: - Loading (CPU)
 
 extension Environment {

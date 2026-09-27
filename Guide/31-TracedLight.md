@@ -128,6 +128,15 @@ The figure is what that looks like in the pixels themselves. The same four rods 
 
 One thing the average can't know on its own is where a *moving object* was last frame. The camera's motion is followed automatically. A mesh spinning or flying through the scene on its own refreshes its history instead, so there are no ghost trails, at the price of its edges reading rawer mid-flight. Wrap its drawing in `withMotion { }` and Ollin remembers the block's placement from frame to frame. That hands the average each mover's exact screen motion, so its edges keep their refinement while they move. Name the block, as in `withMotion("rotor") { }`, if the code path that draws it changes between frames.
 
+A mesh that *changes shape* is the one case `withMotion` can't see, because there is no single placement to remember. A ribbon you rebuild every frame, a marching-cubes surface, a cloth: their vertices move on their own. Hand the average last frame's positions instead, and it follows every vertex.
+
+```swift
+drawMesh(ribbon, previous: lastPositions)   // last frame's positions, same count and order
+lastPositions = ribbon.positions
+```
+
+Keep the array from one frame to the next and pass it before you rebuild. The same call feeds the motion blur below, so a bending ribbon streaks where it bent.
+
 The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a parameter. An orbiting bar has a `withMotion` parameter of its own. Flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind, so hairline geometry, high contrast, and movement.
 
 ## Highlights that hold still: specular anti-aliasing
@@ -172,6 +181,8 @@ withMotion {
 <img src="Images/31-TracedLight/MotionStreak.jpg" alt="Three colored spheres orbiting a ring of gray columns. The fast yellow sphere draws a long horizontal streak, the middle orange one a short smear, the slow blue one is nearly crisp, and the columns stay perfectly sharp" width="640">
 
 The figure is one still frame, and it already tells you who is moving and how fast. The fast sphere draws a long streak along its orbit, the middle one a short smear, the slow one barely softens, and the columns stay razor sharp. That's the whole contract. Each pixel streaks along *its own* motion. The camera's movement is read from the depth buffer with no declaration at all, so pan past a still scene and the whole scene smears by exactly how far it slid. An object moving on its own declares itself with the same `withMotion { }` block temporal AA already uses, one wrapper serving both systems.
+
+A mesh that changes shape streaks too, once you hand it its last positions with `drawMesh(_:previous:)`, the same call temporal anti-aliasing used above. One declaration serves both.
 
 `shutter` is the photographic dial. The default `0.5` is the film standard, the shutter open for half of each frame, the look every movie trained you on. Drop it toward `0.1` and motion turns crisp and staccato, the action-movie look. Raise it to `1` for a full frame of smear, and past it for a streak no real camera could make. Because the blur reads the motion *between frames*, an export carries it deterministically. Frame k streaks by exactly how things moved since frame k-1, a video export looks like the live window, and the very first frame, with nothing before it, is honestly sharp.
 

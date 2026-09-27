@@ -1356,7 +1356,8 @@ open class Sketch {
     /// ambient and reflections from it, so metals read as metal. It adds to any
     /// `directionalLight`/`pointLight`/`spotLight` you set; with no other lights, the
     /// environment alone lights the scene. Per-frame state like the lights, so call it in
-    /// `draw()`; the renderer bakes its lighting maps once and caches them.
+    /// `draw()`; the renderer bakes its lighting maps once and caches them. The twenty
+    /// built-ins are a menu in the inspector: `@Param var surroundings = Environment.studio`.
     public func environment(_ environment: Environment) { drawer.environment(environment) }
 
     /// Clear the image-based-lighting environment for this frame (the default).
@@ -1890,6 +1891,38 @@ open class Sketch {
     /// you add a light (`lights()`, `directionalLight`, …). A no-op without a camera.
     /// The primitive calls below are sugar over this.
     public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
+
+    /// Draw a mesh that **changes shape** from frame to frame (a ribbon rebuilt
+    /// every frame, a marching-cubes surface, a cloth), handing the renderer
+    /// last frame's vertex positions so `temporalAntialiasing()` follows every
+    /// vertex exactly and `motionBlur()` streaks it along its own motion.
+    /// `withMotion { }` covers a mesh that *moves whole*, since it remembers the
+    /// block's transform; a mesh whose vertices move on their own leaves no such
+    /// record, so under temporal AA it falls back to the conservative blend and
+    /// under motion blur it takes only the camera's streak. `previous` is the
+    /// mesh's `positions` as they were last frame, in the same count and order
+    /// (keep the array from one frame to the next and hand it over before you
+    /// rebuild); a count that does not match notes once and draws the mesh with
+    /// transform-only motion. Inside a `withMotion` block the previous positions
+    /// ride last frame's placement of that block too, so a mesh that both moves
+    /// and changes shape writes the sum; outside one the call is its own mover,
+    /// keyed by its call site like `withMotion`. Purely additive: with both
+    /// features off the mesh draws as `drawMesh(_:)` does.
+    ///
+    /// ```swift
+    /// drawMesh(ribbon, previous: lastPositions)
+    /// lastPositions = ribbon.positions
+    /// ```
+    public func drawMesh(_ mesh: Mesh, previous: [Vector3],
+                         file: String = #fileID, line: Int = #line) {
+        if drawer.hasOpenMotionBlock {
+            drawer.drawMesh(mesh, previous: previous)
+        } else {
+            drawer.withMotion(source: "\(file):\(line)") {
+                drawer.drawMesh(mesh, previous: previous)
+            }
+        }
+    }
 
     /// Draw `mesh` once per placement in `instances`, as one instanced GPU draw:
     /// the mesh uploads once and the GPU places every copy, so a field of

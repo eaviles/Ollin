@@ -115,6 +115,10 @@ typedef struct {
 // mover's baked *current* world-space vertex back to where last frame's model
 // matrix put it (prevModel · inverse(curModel)), the identity for a mover that
 // held still, so a stationary mover writes exactly the camera's own motion.
+// A mesh that changes shape (`drawMesh(_:previous:)`) draws through the
+// deforming vertex function instead, which ignores `previousOfCurrent` and
+// reads each vertex's own previous world position from a float4 buffer bound
+// at vertex index 4, one entry per expanded vertex of the range.
 typedef struct {
     simd_float4x4 previousViewProjection;
     simd_float4x4 previousOfCurrent;
@@ -602,6 +606,10 @@ typedef struct {
                                   // light of its own; 0,0,0 = none, the gate for the constant
                                   // term); w = 1 when an emissive map is bound (sampled sRGB,
                                   // multiplied by the factor), 0 = factor alone
+    float emissiveIntensity;      // > 0 = the surface also adds its own resolved color (the
+                                  // fill, the base color, the vertex colors, the texture) times
+                                  // this as light, so a vertex-colored mesh glows in each
+                                  // vertex's color; 0 = none (the gate, and the default)
     float parallax;               // > 0 = a height map is bound (its r channel, sampled as data):
                                   // the relief depth the fragment's parallax march carves below
                                   // the surface, as a fraction of the uv tile

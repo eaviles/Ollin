@@ -76,6 +76,44 @@ struct VelocityBufferTests {
         }
     }
 
+    /// A mesh that changes shape (`drawMesh(_:previous:)`): the same 30-unit box
+    /// under the same 1:1 ortho, but its vertices carry `shift` baked into the
+    /// positions while the transform holds still (or steps by `transformStep`
+    /// inside a `withMotion` block when `inBlock`). Each frame hands last frame's
+    /// positions as `previous`, the way a sketch keeps them from one frame to the
+    /// next; `mismatch` hands a wrong count instead.
+    final class DeformProbe: Sketch {
+        var shift = Vector3(0, 0, 0)
+        var transformStep = Vector3(0, 0, 0)
+        var inBlock = false
+        var mismatch = false
+        var lastPositions: [Vector3] = []
+
+        private func mesh() -> Mesh {
+            var box = Mesh.box(width: 30, height: 30, depth: 2)
+            box.positions = box.positions.map { $0 + shift }
+            return box
+        }
+
+        override func draw() {
+            background(.black)
+            ortho(eye: Vector3(0, 0, 100), target: .zero, height: 128, near: 1, far: 200)
+            temporalAntialiasing()
+            let box = mesh()
+            let previous = mismatch ? [Vector3.zero]
+                : (lastPositions.isEmpty ? box.positions : lastPositions)
+            if inBlock {
+                withMotion("bend") {
+                    translate(transformStep.x, transformStep.y, transformStep.z)
+                    drawMesh(box, previous: previous)
+                }
+            } else {
+                drawMesh(box, previous: previous)
+            }
+            lastPositions = box.positions
+        }
+    }
+
     private func matches(_ m: simd_float4x4, taking p: SIMD3<Float>, to q: SIMD3<Float>,
                          within tolerance: Float = 1e-3) -> Bool {
         let r = m * SIMD4<Float>(p, 1)
@@ -194,6 +232,96 @@ struct VelocityBufferTests {
                 "temporal AA never runs on a render target, so its movers record nothing")
     }
 
+    // MARK: A mesh that changes shape (CPU)
+
+    /// The expanded previous position of the range's first vertex, and the world
+    /// position that vertex holds now.
+    private func firstVertex(of s: DeformProbe) -> (now: SIMD3<Float>, previous: SIMD3<Float>)? {
+        guard let r = s.drawer.moverRanges.first, r.previousStart >= 0,
+              s.drawer.moverPreviousPositions.count >= r.previousStart + r.count else { return nil }
+        let now = s.drawer.meshVertices[r.start].position
+        let prev = s.drawer.moverPreviousPositions[r.previousStart]
+        return (SIMD3(now.x, now.y, now.z), SIMD3(prev.x, prev.y, prev.z))
+    }
+
+    @Test func aDeformingMeshRecordsOnItsFirstSighting() {
+        let s = DeformProbe()
+        s.setup()
+        s.performDraw()
+        let ranges = s.drawer.moverRanges
+        #expect(ranges.count == 1, "the sketch said where the vertices were, so there is motion to state")
+        guard let r = ranges.first else { return }
+        #expect(r.previousStart == 0)
+        #expect(s.drawer.moverPreviousPositions.count == r.count,
+                "one previous position per expanded vertex of the range")
+        guard let v = firstVertex(of: s) else { return }
+        #expect(simd_distance(v.now, v.previous) < 1e-5,
+                "handing this frame's own positions states no motion")
+    }
+
+    @Test func aDeformingMeshRecordsEachVertexsPreviousPlace() {
+        let s = DeformProbe()
+        s.setup()
+        s.performDraw()
+        s.shift = Vector3(10, 8, 0)
+        s.performDraw()
+        #expect(s.drawer.moverRanges.count == 1)
+        guard let r = s.drawer.moverRanges.first, let v = firstVertex(of: s) else {
+            Issue.record("expected a deforming range")
+            return
+        }
+        #expect(matches(r.previousOfCurrent, taking: SIMD3(7, -3, 2), to: SIMD3(7, -3, 2)),
+                "a deforming range leaves the transform delta at the identity")
+        #expect(simd_distance(v.now - v.previous, SIMD3(10, 8, 0)) < 1e-4,
+                "the vertex moved by the shift baked into the positions, got \(v.now - v.previous)")
+    }
+
+    @Test func aMismatchedCountFallsBackToTransformOnlyMotion() {
+        let s = DeformProbe()
+        s.mismatch = true
+        s.setup()
+        s.performDraw()
+        #expect(s.drawer.moverRanges.isEmpty,
+                "the fallback is the transform-only mover, which records nothing on its first frame")
+        #expect(s.drawer.drawerNotes.contains { $0.hasPrefix("drawMesh(_:previous:) wants") },
+                "a mismatch says so once")
+        s.performDraw()
+        let ranges = s.drawer.moverRanges
+        #expect(ranges.count == 1)
+        #expect(ranges.first?.previousStart == -1)
+        #expect(s.drawer.moverPreviousPositions.isEmpty)
+    }
+
+    @Test func previousPositionsRideLastFramesPlacementInsideABlock() {
+        // Frame 1 at rest; frame 2 the block steps 5 right while the vertices
+        // themselves shift 3 right: the previous positions go through last
+        // frame's placement (the identity), so the vertex's total motion is 8.
+        let s = DeformProbe()
+        s.inBlock = true
+        s.setup()
+        s.performDraw()
+        s.transformStep = Vector3(5, 0, 0)
+        s.shift = Vector3(3, 0, 0)
+        s.performDraw()
+        #expect(s.drawer.moverRanges.count == 1, "inside a block the draw joins it rather than opening its own")
+        guard let v = firstVertex(of: s) else {
+            Issue.record("expected a deforming range")
+            return
+        }
+        #expect(simd_distance(v.now - v.previous, SIMD3(8, 0, 0)) < 1e-4,
+                "the sum of the block's step and the vertex shift, got \(v.now - v.previous)")
+    }
+
+    @Test func theWipeAndTheNextFrameDropThePreviousPositions() {
+        let s = DeformProbe()
+        s.setup()
+        s.performDraw()
+        #expect(!s.drawer.moverPreviousPositions.isEmpty)
+        s.drawer.beginFrame()
+        #expect(s.drawer.moverPreviousPositions.isEmpty,
+                "previous positions are per-frame like the ranges that index them")
+    }
+
     // MARK: The velocity pass (Metal render probes)
 
     private func makeRenderer() throws -> (MetalRenderer, MTLDevice)? {
@@ -288,6 +416,64 @@ struct VelocityBufferTests {
         let visible = at(field, 64 + 23, 64)
         #expect(isWritten(visible))
         #expect(abs(visible.x - -10) < 0.15)
+    }
+
+    /// Drive the deforming probe two frames (the vertices shift from `from` to
+    /// `to` inside the positions, the transform still) and read the texture.
+    private func deformingField(_ s: DeformProbe, from: Vector3, to: Vector3,
+                                renderer: MetalRenderer) throws -> [SIMD2<Float>] {
+        s.setup()
+        s.shift = from
+        s.performDraw()
+        let prevCamera = try #require(s.drawer.camera3D)
+        let prevVP = prevCamera.projectionMatrix(aspect: 1) * prevCamera.viewMatrix
+        s.shift = to
+        s.performDraw()
+        return try #require(renderer.debugVelocityReadback(
+            s.drawer, width: 128, height: 128, previousViewProjection: prevVP))
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDeformingMeshWritesWhereItsVerticesCameFrom() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        // The same right 10, up 8 as the transform probe, carried in the vertex
+        // positions under a still transform: previous minus current at the new
+        // center is (-10, +8) in y-down pixels, the projected displacement.
+        let field = try deformingField(DeformProbe(), from: .zero, to: Vector3(10, 8, 0),
+                                       renderer: renderer)
+        let center = at(field, 64 + 10, 64 - 8)
+        #expect(isWritten(center))
+        #expect(abs(center.x - -10) < 0.15, "expected -10 px in x, got \(center.x)")
+        #expect(abs(center.y - 8) < 0.15, "expected +8 px in y (y-down), got \(center.y)")
+        #expect(!isWritten(at(field, 8, 8)), "an unwritten texel must keep the sentinel")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theDeformingAndTransformFormsAgreeOnTheSameDisplacement() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        // One displacement stated two ways must write the same field: both
+        // project the same previous world position through the same matrices.
+        let moved = try velocityField(MoverProbe(), from: .zero, to: Vector3(10, 8, 0),
+                                      renderer: renderer)
+        let bent = try deformingField(DeformProbe(), from: .zero, to: Vector3(10, 8, 0),
+                                      renderer: renderer)
+        var writtenAlike = 0, differ = 0
+        for i in moved.indices {
+            let a = moved[i], b = bent[i]
+            guard isWritten(a) || isWritten(b) else { continue }
+            if isWritten(a) != isWritten(b) || simd_length(a - b) > 0.05 { differ += 1 } else { writtenAlike += 1 }
+        }
+        #expect(writtenAlike > 500, "the box covers about 900 texels, got \(writtenAlike) alike")
+        #expect(differ == 0, "\(differ) texels differ between the two forms")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aStillDeformingMeshWritesZeroNotTheSentinel() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        let field = try deformingField(DeformProbe(), from: .zero, to: .zero, renderer: renderer)
+        let center = at(field, 64, 64)
+        #expect(isWritten(center), "a mesh that handed its own positions is still a written mover")
+        #expect(simd_length(center) < 0.05, "no motion under a still camera")
     }
 
     // MARK: The resolve's velocity branch (a pure function, probed directly)

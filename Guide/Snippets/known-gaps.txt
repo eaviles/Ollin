@@ -102,21 +102,22 @@ c1755d1ac067  Guide/24-ParticleSimulations.md:96  cannot assign value of type 'P
 0253ea5cf1ea  Guide/25-3DGently.md:99  cannot find 'anchor' in scope
 1a571812c99a  Guide/26-Meshes.md:122  cannot find 'dents' in scope
 a0d4c8d842eb  Guide/26-Meshes.md:138  cannot find 'paint' in scope
-3116ee605b52  Guide/26-Meshes.md:160  cannot find 'base' in scope
-371520eae381  Guide/26-Meshes.md:202  cannot find 'block' in scope
-b0c465e3a91b  Guide/26-Meshes.md:218  cannot find 'ring' in scope
-3bb451e5be2a  Guide/26-Meshes.md:252  cannot find 'growth' in scope
-d861efd8d23b  Guide/26-Meshes.md:267  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
-b842f5f92dc5  Guide/26-Meshes.md:295  cannot find 'grown' in scope
-de16d0d4ea1b  Guide/26-Meshes.md:305  cannot find 'u' in scope
-4b1f9e2f920c  Guide/26-Meshes.md:322  cannot find 'boulder' in scope
-4279c6e5416b  Guide/26-Meshes.md:341  cannot find 'dropPoint' in scope
-dba927805441  Guide/26-Meshes.md:404  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
+a49346a622b2  Guide/26-Meshes.md:154  cannot find 'ribbon' in scope
+3116ee605b52  Guide/26-Meshes.md:168  cannot find 'base' in scope
+371520eae381  Guide/26-Meshes.md:210  cannot find 'block' in scope
+b0c465e3a91b  Guide/26-Meshes.md:226  cannot find 'ring' in scope
+3bb451e5be2a  Guide/26-Meshes.md:260  cannot find 'growth' in scope
+d861efd8d23b  Guide/26-Meshes.md:275  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
+b842f5f92dc5  Guide/26-Meshes.md:303  cannot find 'grown' in scope
+de16d0d4ea1b  Guide/26-Meshes.md:313  cannot find 'u' in scope
+4b1f9e2f920c  Guide/26-Meshes.md:330  cannot find 'boulder' in scope
+4279c6e5416b  Guide/26-Meshes.md:349  cannot find 'dropPoint' in scope
+dba927805441  Guide/26-Meshes.md:412  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
 12920b7a4e82  Guide/26-Meshes.md:46  cannot find 'stage' in scope
-307ebc159073  Guide/26-Meshes.md:561  expected '}' in class
-7deb4e20fcbe  Guide/26-Meshes.md:640  cannot find 'picture' in scope
+307ebc159073  Guide/26-Meshes.md:576  expected '}' in class
+7deb4e20fcbe  Guide/26-Meshes.md:655  cannot find 'picture' in scope
 cd7cc7722169  Guide/26-Meshes.md:66  cannot find 'stage' in scope
-02f7d4dd947d  Guide/26-Meshes.md:724  extraneous '}' at top level
+02f7d4dd947d  Guide/26-Meshes.md:739  extraneous '}' at top level
 cb73ed16193c  Guide/26-Meshes.md:80  cannot find 'teal' in scope
 db4a3035423c  Guide/26-Meshes.md:92  cannot find 'planks' in scope
 ee027f846921  Guide/27-Landscapes.md:118  cannot find 'island' in scope
@@ -197,7 +198,8 @@ a3caae6b59cd  Guide/29-CharactersAndCloth.md:59  cannot find 'lookout' in scope
 b07345766984  Guide/30-SculptingWithFields.md:158  cannot find 'box' in scope
 e94f9d5f972b  Guide/30-SculptingWithFields.md:205  cannot find 'cluster' in scope
 fbd600f5cd66  Guide/30-SculptingWithFields.md:65  cannot find 'a' in scope
-5834d913fb21  Guide/31-TracedLight.md:186  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
+206d2dbd05e7  Guide/31-TracedLight.md:133  cannot find 'ribbon' in scope
+5834d913fb21  Guide/31-TracedLight.md:197  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
 c1b390558596  Guide/32-Seeing.md:142  cannot find 'BodyTracker3D' in scope
 46df4d27e4c7  Guide/32-Seeing.md:161  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 54b0ded2c3af  Guide/32-Seeing.md:199  cannot find 'FlowTracker' in scope

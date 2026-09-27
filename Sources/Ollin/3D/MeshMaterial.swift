@@ -143,6 +143,17 @@ public struct MeshMaterial: @unchecked Sendable {
     /// with an `emissiveTexture` it scales the map, without one it emits as a
     /// constant color.
     public var emissiveColor: Color
+    /// How strongly the surface glows in its **own** color: 0 (the default)
+    /// not at all; 1 adds the surface's own color once as light of its own,
+    /// and more is brighter. The color it glows in is the one it is drawn
+    /// with: the `fill`, `baseColor`, the mesh's vertex `colors`, and its
+    /// `texture` all included, so a vertex-colored mesh keeps each vertex's
+    /// hue where `emissiveColor` would tint the whole mesh one color. The two
+    /// add, so a surface can carry both a constant glow and its own. Like every
+    /// emission it works with no lights at all, adds after shading and before
+    /// the atmosphere, and lights its neighbors only under global illumination
+    /// or in a path-traced export. `Mesh.glowing(_:)` sets it on a copy.
+    public var emissiveIntensity: Double
     /// A detail color map: a second, much finer texture tiled `detailScale`
     /// times across each base tile, multiplying the base color so a surface
     /// keeps texture when the camera gets close. Sampled as raw data with
@@ -189,6 +200,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 metallicRoughnessTexture: Image? = nil,
                 occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
                 emissiveTexture: Image? = nil, emissiveColor: Color = .black,
+                emissiveIntensity: Double = 0,
                 heightTexture: Image? = nil, heightScale: Double = 0.05,
                 triplanarScale: Double = 0,
                 detailTexture: Image? = nil, detailNormalTexture: Image? = nil,
@@ -205,6 +217,7 @@ public struct MeshMaterial: @unchecked Sendable {
         self.occlusionStrength = occlusionStrength
         self.emissiveTexture = emissiveTexture
         self.emissiveColor = emissiveColor
+        self.emissiveIntensity = emissiveIntensity
         self.heightTexture = heightTexture
         self.heightScale = heightScale
         self.triplanarScale = triplanarScale

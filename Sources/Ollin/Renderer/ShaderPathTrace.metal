@@ -305,6 +305,7 @@ struct OllinPTTexEntry {
 // the hit's environment share.
 struct OllinPTMapped {
     float3 emissive;
+    float3 selfEmissive;   // the surface's own color times `emissiveIntensity`
     float ao;
 };
 
@@ -359,6 +360,7 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
                                                 float coneWidth) {
     OllinPTMapped out;
     out.emissive = h.mat.emissive.rgb;
+    out.selfEmissive = float3(0.0);
     out.ao = 1.0;
     // One lookup for both halves: which material slot the hit wears (its own
     // geometry's for a plain mesh, its run's for a copy), and where its triangle
@@ -427,6 +429,14 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     if (h.mat.emissive.w > 0.0) {
         out.emissive *= ollin_pt_sample_map(maps.emissive, uv,
             ollin_pt_map_lod(lodBias, maps.emissive), wrap).rgb;
+    }
+    // The surface glowing in its own color, priced on the albedo after the base
+    // map has multiplied it, so a traced hit glows in the same color the raster
+    // fragment does. Kept apart from the factor: the mesh-light table weighs
+    // only the factor, so this share is never sampled as a light and is
+    // credited whole where a path finds it (unbiased, the copy rule).
+    if (h.mat.emissiveIntensity > 0.0) {
+        out.selfEmissive = h.mat.emissiveIntensity * h.s.albedo;
     }
     return out;
 }
@@ -929,6 +939,12 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                     wE = ollin_pt_mis(prevPdf, pdfSA);
                 }
                 radiance += throughput * mapped.emissive * wE;
+            }
+            // The surface's own color glowing (`emissiveIntensity`): no
+            // next-event strategy ever aims at this share, so it is credited
+            // whole wherever a path lands on it.
+            if (any(mapped.selfEmissive > float3(0.0))) {
+                radiance += throughput * mapped.selfEmissive;
             }
 
             if (glassVertex) {

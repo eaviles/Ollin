@@ -458,11 +458,17 @@ final class Drawer {
     /// model matrix put them (prevModel · inverse(curModel)). The renderer's
     /// velocity pass re-renders these ranges to give temporal AA exact history
     /// for world-space movers; everything else keeps the depth-reprojection
-    /// fallback. Recorded in draw order (the determinism rule).
+    /// fallback. Recorded in draw order (the determinism rule). A mesh that
+    /// changed shape (`drawMesh(_:previous:)`) carries `previousStart` instead:
+    /// the index of its first entry in `moverPreviousPositions`, one baked
+    /// previous world position per expanded vertex of the range, and the
+    /// velocity pass reads those rather than applying `previousOfCurrent`
+    /// (left the identity); -1 means the transform-only form.
     struct MoverRange {
         var start: Int
         var count: Int
         var previousOfCurrent: simd_float4x4
+        var previousStart: Int = -1
     }
 
     /// A mover's cross-frame identity: the `withMotion` call site, its occurrence
@@ -489,6 +495,18 @@ final class Drawer {
     /// pass iterates this array directly (never a Dictionary, the determinism
     /// rule); reset each frame.
     private(set) var moverRanges: [MoverRange] = []
+
+    /// The deforming movers' previous world positions this frame
+    /// (`drawMesh(_:previous:)`): last frame's vertex positions, expanded in the
+    /// mesh's index order like `meshVertices` and baked through last frame's
+    /// model matrix, so the velocity pass reads each vertex's own previous
+    /// position from a buffer of these. Indexed by `MoverRange.previousStart`;
+    /// reset each frame with the ranges.
+    private(set) var moverPreviousPositions: [SIMD4<Float>] = []
+
+    /// The previous positions the `drawMesh(_:previous:)` entry hands the mover
+    /// recorder through the ordinary `drawMesh(_:)` body; nil on every other draw.
+    private var pendingPreviousPositions: [Vector3]?
 
     /// Each mover key's model matrix from the frame it was last drawn. Persists
     /// across frames (it *is* the cross-frame memory); entries not refreshed for
@@ -2100,6 +2118,7 @@ final class Drawer {
         // (The history keeps its entries: a redrawn block this frame takes a
         // fresh occurrence key, and unmatched entries prune next frame.)
         moverRanges.removeAll(keepingCapacity: true)
+        moverPreviousPositions.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)
@@ -3344,13 +3363,41 @@ final class Drawer {
         body()
     }
 
+    /// Whether a `withMotion` block is open, so `drawMesh(_:previous:)` can join
+    /// the block's identity rather than open one of its own.
+    var hasOpenMotionBlock: Bool { !moverStack.isEmpty }
+
+    /// Record a solid 3D mesh that **changed shape** since last frame, handing the
+    /// mover recorder last frame's vertex positions (same count and order as
+    /// `mesh.positions`), so the velocity pass carries each vertex back to its
+    /// own previous place rather than the range back through one transform. A
+    /// count that does not match notes once and draws the mesh as `drawMesh(_:)`
+    /// does (transform-only motion when a block is open). Everything else is
+    /// `drawMesh(_:)`: the same batches, the same shading, the same exporters.
+    func drawMesh(_ mesh: Mesh, previous: [Vector3]) {
+        guard previous.count == mesh.positions.count else {
+            noteOnce("drawMesh(_:previous:) wants one previous position per vertex, in the same order (got \(previous.count) for \(mesh.positions.count) vertices); drawing the mesh with transform-only motion.")
+            drawMesh(mesh)
+            return
+        }
+        pendingPreviousPositions = previous
+        defer { pendingPreviousPositions = nil }
+        drawMesh(mesh)
+    }
+
     /// The `drawMesh` tail hook: record the just-appended vertex range as a mover
     /// when a `withMotion` block is open. Main canvas only (temporal AA never runs
     /// on a render target) and never for a wireframe (the velocity pass rasterizes
     /// solid triangles, which would fill a wireframe's see-through interior).
     /// First sighting of a key records nothing: with no previous matrix there is
-    /// no motion to state, and the resolve's fallback handles the frame.
-    private func recordMoverRange(from start: Int, wireframe: Bool) {
+    /// no motion to state, and the resolve's fallback handles the frame. A draw
+    /// that handed previous positions (`drawMesh(_:previous:)`) records on its
+    /// first sighting too, since the sketch has said where the vertices were:
+    /// they are expanded in the mesh's index order like the vertices themselves
+    /// and baked through last frame's model matrix when the key has one (a
+    /// mover that also moved whole writes the sum of both motions), else through
+    /// this frame's (a transform that held still).
+    private func recordMoverRange(from start: Int, wireframe: Bool, mesh: Mesh) {
         guard !moverStack.isEmpty, currentTarget == nil, !wireframe else { return }
         let count = meshVertices.count - start
         guard count > 0 else { return }
@@ -3362,7 +3409,24 @@ final class Drawer {
         let m = modelMatrix
         let previous = moverHistory[key]
         moverHistory[key] = (matrix: m, frame: moverFrame)
-        guard moverFrame > 0, let previous, previous.frame == moverFrame - 1 else { return }
+        let hasHistory = moverFrame > 0 && previous?.frame == moverFrame - 1
+        if let previousPositions = pendingPreviousPositions {
+            let previousModel = hasHistory ? previous!.matrix : m
+            let previousStart = moverPreviousPositions.count
+            moverPreviousPositions.reserveCapacity(previousStart + count)
+            for idx in mesh.indices {
+                let i = Int(idx)
+                guard i < previousPositions.count else { continue }   // the vertex loop's own skip
+                let p = previousPositions[i]
+                let w = previousModel * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                moverPreviousPositions.append(SIMD4<Float>(w.x, w.y, w.z, 1))
+            }
+            moverRanges.append(MoverRange(start: start, count: count,
+                                          previousOfCurrent: matrix_identity_float4x4,
+                                          previousStart: previousStart))
+            return
+        }
+        guard hasHistory, let previous else { return }
         // World now -> world last frame. A degenerate (non-invertible) transform
         // yields non-finite velocities, which the resolve's sentinel test reads
         // as unwritten, so it degrades to the fallback rather than mis-drawing.
@@ -3495,9 +3559,14 @@ final class Drawer {
         // the shader-side sampling gates.
         var mrMapped = false, occlusionMapped = false, emissiveMapped = false
         var emissiveOn = false
+        // The surface glowing in its own color rides the same pipeline as the
+        // constant factor (it multiplies the fragment's resolved base, so it
+        // needs no map and no uvs of its own) and the same routing rule.
+        var selfGlow = false
         if !wireframe, matcap == nil, let mat = material {
             emissiveOn = mat.emissiveColor.red > 0 || mat.emissiveColor.green > 0
                 || mat.emissiveColor.blue > 0
+            selfGlow = mat.emissiveIntensity > 0
             if triplanar {
                 // The sampled surface maps stay uv-mapped (the cut noted above);
                 // a constant emissive factor needs no sampling and still adds.
@@ -3517,7 +3586,7 @@ final class Drawer {
         // surface-mapped fragment, where the shifted uv reaches every map.
         let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped || heightMapped
             || detailColorMapped || detailNormalMapped
-            || triplanar || (emissiveOn && (uvsAligned || material?.texture == nil))
+            || triplanar || ((emissiveOn || selfGlow) && (uvsAligned || material?.texture == nil))
         let writesUV = textured || (surfaceMapped && uvsAligned)
         if wireframe {
             beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
@@ -3569,6 +3638,9 @@ final class Drawer {
                                                    Float(Color.srgbToLinear(f.green)),
                                                    Float(Color.srgbToLinear(f.blue)),
                                                    emissiveMapped ? 1 : 0)
+                }
+                if selfGlow {
+                    finish.emissiveIntensity = Float(mat.emissiveIntensity)
                 }
             }
             beginMeshBatch(material: material, finish: finish)
@@ -3670,7 +3742,7 @@ final class Drawer {
             }
             meshVertices.append(v)
         }
-        recordMoverRange(from: moverStart, wireframe: wireframe)
+        recordMoverRange(from: moverStart, wireframe: wireframe, mesh: mesh)
     }
 
     /// Draw `mesh` once per placement in `instances`, as ONE instanced GPU draw:
@@ -4193,6 +4265,7 @@ final class Drawer {
         moverFrame += 1
         if recordsSourceSites { sourcePickTargets.removeAll(keepingCapacity: true) }
         moverRanges.removeAll(keepingCapacity: true)
+        moverPreviousPositions.removeAll(keepingCapacity: true)
         moverOccurrence.removeAll(keepingCapacity: true)
         moverStack.removeAll(keepingCapacity: true)
         if !moverHistory.isEmpty {

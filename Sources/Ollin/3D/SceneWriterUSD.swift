@@ -244,7 +244,7 @@ struct USDSceneWriter {
                                tag(occlusion), num(material.occlusionStrength),
                                tag(emissive),
                                num(material.emissiveColor.red), num(material.emissiveColor.green),
-                               num(material.emissiveColor.blue),
+                               num(material.emissiveColor.blue), num(material.emissiveIntensity),
                                tag(heightMap), num(material.heightScale)]
         let key = parts.joined(separator: "/")
         if let found = materials.first(where: { $0.key == key }) { return found.path }
@@ -382,14 +382,36 @@ struct USDSceneWriter {
 
         let emissiveOn = material.emissiveColor.red > 0 || material.emissiveColor.green > 0
             || material.emissiveColor.blue > 0
+        // The surface glowing in its own color (`emissiveIntensity`) has no slot
+        // of its own in a preview surface, which takes one emissive color: it is
+        // written as that color, the base color times the intensity in linear,
+        // added to the constant factor when both are set (with no intensity the
+        // sum is the factor itself, to the digit). A mesh with per-vertex colors
+        // and no other emission also connects the slot to the vertex-color
+        // reader the diffuse slot uses, so a reader that follows connections
+        // shows each vertex's own hue (at unit intensity, since the reader has
+        // no multiplier); the value stays beside the connection, the diffuse
+        // rule, for a reader that only looks at values.
+        let selfGlow = material.emissiveIntensity > 0
+        let k = material.emissiveIntensity
+        let f = (Color.srgbToLinear(material.emissiveColor.red),
+                 Color.srgbToLinear(material.emissiveColor.green),
+                 Color.srgbToLinear(material.emissiveColor.blue))
+        let b = (Color.srgbToLinear(material.baseColor.red),
+                 Color.srgbToLinear(material.baseColor.green),
+                 Color.srgbToLinear(material.baseColor.blue))
+        let glow = "(\(num(f.0 + k * b.0)), \(num(f.1 + k * b.1)), \(num(f.2 + k * b.2)))"
         if emissiveOn, let emissive = material.emissiveTexture, let file = textureFile(emissive) {
             shaders += textureShader("emissiveTexture", file: file, raw: false,
                                      scale: linearScale(material.emissiveColor),
                                      outputs: ["float3 outputs:rgb"])
-            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveColor))\n"
+            mapInputs += "  color3f inputs:emissiveColor = \(glow)\n"
             mapInputs += "  color3f inputs:emissiveColor.connect = <\(path)/emissiveTexture.outputs:rgb>\n"
-        } else if emissiveOn {
-            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveColor))\n"
+        } else if emissiveOn || selfGlow {
+            mapInputs += "  color3f inputs:emissiveColor = \(glow)\n"
+            if selfGlow, !emissiveOn, perVertexColor {
+                mapInputs += "  color3f inputs:emissiveColor.connect = <\(path)/vertexColor.outputs:result>\n"
+            }
         }
 
         if needsST {

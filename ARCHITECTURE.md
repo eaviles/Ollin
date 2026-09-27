@@ -3297,6 +3297,29 @@ an `emissive` float4 claiming the last two tail pads plus one appended row),
 zero on every other batch, so unmapped frames keep their exact codegen by
 construction.
 
+**The surface's own color as its emission.** `emissiveColor` is one color a
+mesh. A vertex-colored mesh under a white factor gets the same light added
+everywhere and washes toward white; under a colored factor it takes one tint
+whole. The second emission term, `emissiveIntensity`, multiplies the fragment's
+resolved base instead: the fill times the base color times the vertex color
+times the texture, with the detail and decal layers already applied. Each pixel
+then glows in the color it is drawn with. The term is a float after the
+`emissive` float4 in the finish, it routes down the same surface-mapped pipeline
+under the constant factor's uv rule, and it joins the same `c.rgb += emissive`
+add, so a zero changes no byte. The tracer computes the same product on the
+hit's albedo after the base map has multiplied it, and keeps the result in a
+field of its own (`selfEmissive`). The emissive-triangle CDF weighs the factor
+alone, so next-event estimation never samples this share of the glow. Adding it
+to the MIS-weighted factor term would therefore lose part of it at every hit
+where a next-event pass had competed, so the hit adds it at full weight instead.
+That is the same rule a glowing instanced copy follows, and it is unbiased for
+the same reason: only one strategy can find this light. The USD writer has one
+emissive slot per material. It writes `factor + intensity × baseColor` in linear
+there, and for a vertex-colored mesh with no other emission it also connects the
+slot to the vertex-color primvar reader the diffuse slot uses. The value stays
+beside the connection, as the diffuse slot does it, for a reader that only looks
+at values.
+
 **Sampling color spaces split by meaning.** Metallic-roughness and occlusion
 are data (`Image.linearTexture(for:)`, the raw-bytes cache slot the normal map
 introduced); emissive is color (`texture(for:)`, sRGB-decoded). All four map
@@ -4195,6 +4218,30 @@ is never read as one frame of motion) and, from a mover's second frame on,
 records its vertex range with `previousOfCurrent = prevModel ·
 inverse(curModel)`: the transform that takes this frame's baked world
 positions back to last frame's placement.
+
+**A mesh that changes shape has no transform to diff**, so `drawMesh(_:previous:)`
+takes the record from the sketch instead: last frame's vertex positions, in the
+mesh's own count and order (the array a ribbon sketch already holds from one
+frame to the next). The drawer expands them in the mesh's index order exactly as
+the vertex loop expands the positions, so the two lists pair one to one, and
+bakes each through last frame's model matrix when the mover's key has one (a
+mesh that both moves whole and bends writes the sum of the two motions) or this
+frame's when it does not. The range records with `previousStart` into a
+per-frame `moverPreviousPositions` list and `previousOfCurrent` at the identity,
+and a first sighting records, unlike the transform form, because the sketch has
+said where the vertices were. The velocity pass uploads that list itself, into a
+ring of two slots per frame in flight advanced per encode (it can run twice a
+frame, once for the temporal resolve and once for the blur or the upscaler, and a
+slot must never be rewritten under a frame still reading it), and draws such
+ranges through a second vertex function that reads each vertex's previous world
+position from vertex buffer 4 and projects it through the same unjittered
+previous view·projection. Nothing else changes: the same occluder phase, the
+same fragment, the same sentinel, so one displacement stated either way writes
+the same field (a probe holds every texel within 0.05 px). The Sketch entry opens
+an implicit `withMotion` block keyed by its call site when none is open, and
+joins the open one otherwise, so the cross-frame identity rule above holds for
+the deforming form too. A count that does not match the mesh notes once and
+falls back to the transform-only form rather than pairing positions wrongly.
 
 The buffer itself is designed once for its three consumers (TAA now, MetalFX
 temporal upscaling and motion blur ahead): **rg16Float at render resolution,
