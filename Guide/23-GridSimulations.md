@@ -296,6 +296,26 @@ Every cell is a spin, and the rule is a bargain with the heat. A spin whose flip
 
 There is nothing to seed. The field starts as a random mix, which is the field at infinite temperature, and cooling it is the picture. Drag the temperature down from the critical value while it runs and the clusters coarsen into domains. Drag it up and they dissolve. `field` is an outside magnet pulling every spin one way, and a small one is enough to decide which color wins a cold field. Draw a white patch and it magnetizes up, draw a black one and it flips down (`IsingSpin` names the two), and the heat then works on the patch. A run replays exactly under its `seed`. Every coin the rule throws is a hash of the cell, the pass, and the seed, so an export never shows a frame the window did not.
 
+## In step with the neighbors: oscillators on a lattice
+
+The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` reads, cell by cell, where it has locked.
+
+```swift
+var grid: HexGrid { hexGrid(columns: 24, rows: 20) }
+let sync = Kuramoto(columns: 24, rows: 20, layout: .hex, coupling: 3, spread: 0.3, range: 1, seed: 7)
+
+override func draw() {
+    sync.advance()
+    let locked = sync.localCoherence
+    for (i, cell) in grid.enumerated() {
+        fill(Color(hue: sync.phases[i] / .tau, saturation: locked[i], brightness: 0.9))
+        drawPolygon(cell.corners)
+    }
+}
+```
+
+The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way, so what you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The lesson is the one this chapter keeps finding: a local rule, a global result, and a threshold where the result appears.
+
 ## Sand that falls
 
 The sandpile counts grains. The other sand automaton moves them. Every cell holds one material: empty, water, sand, or wall. Each pass, the grid is cut into 2x2 blocks, and every block settles on its own. A grain over an empty cell falls into it. A grain over water swaps with it, so it sinks and the water rises. A grain that cannot fall straight down rolls into an empty cell diagonally below it. Water swaps with the empty cell beside it, so a pool spreads until it lies flat. A wall never moves. Then the blocks shift by one cell and the next pass runs, so what one block could not see, the next one settles. That is the whole rule, and it makes heaps, slopes, and pools:
@@ -659,6 +679,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [A simulation of your own](../Docs/Drawing/Effects.md#simfield-shader): the kernel contract, the readers, the inject, `edge`, `precision`, `inputs`, `.arrows`, and `snapshot()`.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
+- [Coupled oscillators on a lattice](../Docs/Simulation/Oscillators.md#on-a-lattice): the square and hex layouts, `range`, the neighbors a site listens to, and [where the crowd has locked](../Docs/Simulation/Oscillators.md#local-coherence).
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (twelve rules on a picker, Wireworld, Schelling's board, the Ising model, and the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
