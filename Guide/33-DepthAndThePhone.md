@@ -78,36 +78,7 @@ for i in 0 ..< 6 {
 
 Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery. The marbles are ordinary solids from [Chapter 25](25-3DGently.md), z-tested against depths that came from a camera. That camera is our pretend one here, and the real one with a phone.
 
-## Flat drawing that knows where it is
-
-Solids were the easy case, because they already live in space. The more useful trick is putting *2D* drawing into the same depth buffer. It's the one worth learning properly, because labels, tags, halos, and sprites are what you actually want to put into a scanned room.
-
-By default, 2D drawing lays over a 3D frame completely. That's right for a caption and wrong for anything that belongs in the scene. Three calls change it:
-
-```swift
-withState {
-    depth(at: anchor)                        // this mark now sits at a world point's depth
-    if let screen = project(anchor) {        // and here is where that point lands on the canvas
-        drawCircle(center: screen, radius: 96)
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
-
-Those rings are `drawCircle`. Not tubes, not meshes, but flat 2D circles that were handed a depth. They are now in the queue with everything else, hidden wherever a pillar stands nearer than they do.
-
-The three calls divide the job cleanly, and keeping them separate in your head saves confusion later:
-
-- **`depth(at: worldPoint)`** sets the *depth* of subsequent 2D drawing, and nothing else. The mark still lands wherever its canvas coordinates say. `noDepth()` puts it back on top.
-- **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, which is a case worth handling rather than forcing.
-- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there, so inside the block you draw around `(0, 0)` and it lands on the point at the right depth. The numbered tags above are billboards, and it's the same call that labeled the shapes in [Chapter 25](25-3DGently.md)'s figures.
-
-Notice what the rings do *not* do. They don't get smaller with distance. All three are 96 points across, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually exactly what you want from a label, readable at any distance and correctly occluded. It's also the thing to remember when a sprite refuses to shrink.
-
-A depth *feed* is different from 3D geometry you drew. There's no world point to hand `depth(at:)`, so `depth(0.5)` takes a fraction of the map's own near-to-far range instead. Everything else behaves the same.
-
-Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera, and without a camera it quietly does nothing. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both scene kinds side by side.
+Flat drawing can take part too. A label, a tag, or a halo belongs in the scanned room, and [Chapter 25](25-3DGently.md#flat-drawing-that-knows-where-it-is-depth-compositing) taught `depth(at:)`, `project`, and `withBillboard` for putting 2D marks at a depth. A depth *feed* has no world point to hand `depth(at:)`, so `depth(0.5)` takes a fraction of the map's own near-to-far range instead. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
 
 ## The real sensors
 

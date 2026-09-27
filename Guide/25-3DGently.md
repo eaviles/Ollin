@@ -92,6 +92,33 @@ Three things happened at once. `translate` grew a third argument, so it moves th
 
 `drawPlane` is the floor, a flat sheet on the ground, and it's the stage most scenes stand on. Its sibling `drawGround()` is the same stage as a thin slab, its top at `y = 0` and an optional color and material scoped to it. Reach for it once shadows and reflections should read a real thickness. `fieldOfView` is the lens. Smaller angles are telephoto, which reads calm and flat and suits product shots, while bigger angles are wide-angle, dramatic and stretched at the edges. The default is a fairly wide lens, so this sketch tightens it to a quarter turn.
 
+## Flat drawing that knows where it is: depth compositing
+
+The spheres hid each other because the depth test compared their distances. Flat 2D drawing can take part in that test too. By default it lays over a 3D frame completely. That's right for a caption and wrong for a label, a tag, a halo, or a sprite that belongs in the scene. Three calls change it:
+
+```swift
+withState {
+    depth(at: anchor)                        // this mark now sits at a world point's depth
+    if let screen = project(anchor) {        // and here is where that point lands on the canvas
+        drawCircle(center: screen, radius: 96)
+    }
+}
+```
+
+<img src="Images/25-3DGently/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
+
+Those rings are `drawCircle`, flat 2D circles that were handed a depth. They are now in the queue with everything else, hidden wherever a pillar stands nearer than they do.
+
+The three calls divide the job, and keeping them separate in your head saves confusion later:
+
+- **`depth(at: worldPoint)`** sets the *depth* of subsequent 2D drawing, and nothing else. The mark still lands wherever its canvas coordinates say. `noDepth()` puts it back on top.
+- **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, which is a case worth handling rather than forcing.
+- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there, so inside the block you draw around `(0, 0)` and it lands on the point at the right depth. The numbered tags above are billboards. It is the same call that labels the solids in the catalog figure in the next section.
+
+Notice what the rings do *not* do. They don't get smaller with distance. All three are 96 points across, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually what you want from a label, readable at any distance and correctly occluded. It's also the thing to remember when a sprite refuses to shrink.
+
+Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera, and without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 33](33-DepthAndThePhone.md#drawing-inside-the-picture) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
+
 ## A catalog of solids
 
 The catalog runs well past spheres and boxes. Each of these is one call, shaded and depth-tested like everything else:

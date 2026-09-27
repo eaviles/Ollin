@@ -1,6 +1,6 @@
 // figure: frame=0 probe
 //
-// Guide figure (Chapter 33): 2D drawing inside a 3D depth buffer. Three pillars
+// Guide figure (Chapter 25): 2D drawing inside a 3D depth buffer. Three pillars
 // at increasing distance, each ringed by an ordinary drawCircle given that
 // pillar's depth. Every ring is cut where its pillar stands in front of it, and
 // every ring is the same 96-point radius on the canvas: a 2D mark keeps its

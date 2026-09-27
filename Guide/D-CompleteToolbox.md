@@ -308,7 +308,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Mesh fields | A retained world of placed meshes drawn by one call, GPU-culled per copy against the camera (`MeshField`/`drawMeshField`) | [Ch 27](27-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
 | Strand fields | Grass grown inside the draw call: bending, swaying blades with no geometry buffers, camera-culled and distance-graded (`StrandField`/`drawStrands`) | [Ch 27](27-Landscapes.md) | [Strands](../Docs/3D/Strands.md) |
 | The ocean | A sea built from its own wave spectrum: one inverse Fourier transform makes the surface, drawn as water with no geometry, its wave height a measurement in world units (`Ocean`/`makeOceanField`/`drawOcean`) | [Ch 27](27-Landscapes.md) | [The ocean](../Docs/3D/Ocean.md) |
-| Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 33](33-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
+| Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 25](25-3DGently.md), [Ch 33](33-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
 | What stacks with what | The compatibility map across the 3D features | [Ch 25](25-3DGently.md), [Ch 30](30-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 
 ## Sculpting with fields
