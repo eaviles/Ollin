@@ -102,6 +102,51 @@ A round shape in the picture is the fastest way to tell which one you are lookin
 
 Cropping is free here, which is worth knowing before you avoid it. `.cover` does not clip the drawing. It reads a smaller part of the picture instead, so a covered photograph costs the same one quad and one texture read as a stretched one.
 
+## Making it narrower without squashing it
+
+The three answers above keep every pixel and change how the picture sits in the box. A fourth changes the picture's own shape, and tries hard to leave the looking alone.
+
+Say a picture is 1200 wide and the space it has to fit is 800. You can squash it with `.stretch`, and everything inside gets a third thinner. You can crop it with `.cover`, and lose whatever was at the edge. **Seam carving** is the fourth answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
+  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
+</picture>
+
+```swift
+let narrow = picture.seamCarved(toWidth: 800)
+```
+
+A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
+
+Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
+
+That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
+
+```swift
+let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
+let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
+```
+
+A mask is just a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
+
+Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
+
+Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes, and like any heavy work on a picture that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
+
+```swift
+override func setup() {
+    map = picture.seamMap()
+}
+
+override func draw() {
+    let wanted = Int(300 + sin(time) * 120)
+    if let framed = map?.image(wanted) { drawImage(framed, in: canvasRectangle) }
+}
+```
+
+And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
+
 ## An image you can ask
 
 The real gift of `Image` for generative work isn't drawing it, it's *reading* it. The subscript `image[x, y]` returns the color stored at a pixel, and suddenly a picture is a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
@@ -279,51 +324,6 @@ The threshold is the whole technique. It decides which pixels are in play, and e
 Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And the direction matters against the picture's own gradient. The alley runs bright at the top and dark at the bottom. An ascending sort piles each run's dark pixels at its top, so it turns the picture inside out. On a picture that already runs dark to bright down the column, that same sort changes nearly nothing, and `reversed: true` is the direction with the drama.
 
 Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
-
-## Making it narrower without squashing it
-
-Every treatment so far changed how a picture looks. This one changes its shape, and tries hard to leave the looking alone.
-
-Say a picture is 1200 wide and the space it has to fit is 800. You can squash it, and everything inside gets a third thinner. You can crop it, and lose whatever was at the edge. **Seam carving** is the third answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
-  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
-</picture>
-
-```swift
-let narrow = picture.seamCarved(toWidth: 800)
-```
-
-A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
-
-Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
-
-That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
-
-```swift
-let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
-let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
-```
-
-A mask is just a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
-
-Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
-
-Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes, and like everything else in this chapter that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
-
-```swift
-override func setup() {
-    map = picture.seamMap()
-}
-
-override func draw() {
-    let wanted = Int(300 + sin(time) * 120)
-    if let framed = map?.image(wanted) { drawImage(framed, in: canvasRectangle) }
-}
-```
-
-And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
 
 ## Numbers you didn't type: CSV and JSON
 
