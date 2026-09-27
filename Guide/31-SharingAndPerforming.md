@@ -153,7 +153,7 @@ swift run OllinLive MySketches/Spot.swift --export-video spot.mp4 --seconds 30 -
   <img src="Images/31-SharingAndPerforming/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where the thirtieth NTSC frame lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
 </picture>
 
-A name is the exact fraction, not its decimal. The video writer puts every frame on that fraction. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. The loupe in the figure shows what that means. The thirtieth frame lands a millisecond past the second because that is where the grid puts it, and a broadcast timeline has the same grid. The foot of the figure is the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 is then 3.6 seconds long by the end of an hour, 108 frames off its timeline. The named rate carries its fraction into the file's own clock, so nothing rounds. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. That is a tenth of a frame an hour, and a different rate, so name the broadcast rate when that is the one you mean. Every number in the figure is read from `FrameRate` itself. The live window runs at the display's rate, not one of these, and `frameRate` on the sketch reads what it measured.
+A name is the exact fraction, not its decimal. The video writer puts every frame on that fraction. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. The loupe in the figure shows what that means. The thirtieth frame lands a millisecond past the second because that is where the grid puts it, and a broadcast timeline has the same grid. The foot of the figure is the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 is then 3.6 seconds off by the end of an hour, 108 frames off its timeline. The named rate carries its fraction into the file's own clock, so nothing rounds. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. That is a tenth of a frame an hour, and a different rate, so name the broadcast rate when that is the one you mean. Every number in the figure is read from `FrameRate` itself. The live window runs at the display's rate, not one of these, and `frameRate` on the sketch reads what it measured.
 
 ## Slower than it happened
 
@@ -470,7 +470,7 @@ swift run Example-3D-Geometry-Solids --export-usdz piece.usdz
 
 USDZ is the format Apple's platforms read without being asked. Double-click the file and Quick Look opens it. Send it in a message and it opens there too. Tap the AR button and the piece stands on the floor in front of you at whatever size the file says it is. Drop it into a visionOS app and it is already a model.
 
-The thing to notice is what changed about the artifact. Every export so far in this chapter has been a *picture of* the sketch, taken from where the camera happened to be. This one is the scene itself. Whoever opens it picks their own angle.
+The thing to notice is what changed about the artifact. The stills, videos, and drawings above are *pictures of* the sketch, taken from where the camera happened to be, and the 3D print is one mesh out of it. This one is the whole scene. Whoever opens it picks their own angle.
 
 Any `Scene` writes the same way, including one you loaded or built by hand:
 
@@ -1111,7 +1111,7 @@ final class Finale: Sketch {
 }
 ```
 
-Then close the loop this chapter opened. Save the buffer with ⌘S. Render a shareable file with `swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 12`, or press ⌘⇧R before the first evaluation and keep the performed version instead, evaluations and all. And if a projector or a call is nearby, run `publishSyphon()` or `publishVirtualCamera()` while you perform. The same small sketch just walked out of every door this chapter opened.
+Then close the loop this chapter opened. Save the buffer with ⌘S. Render a shareable file with `swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 12`, or press ⌘⇧R before the first evaluation and keep the performed version instead, evaluations and all. And if a projector or a call is nearby, run `publishSyphon()` or `publishVirtualCamera()` while you perform. The same small sketch just left as a video, a take, and a live feed.
 
 Then make it yours:
 
