@@ -306,31 +306,6 @@ The window on the right is the second shaper, a **cookie**, an image a spot proj
 
 Two habits worth keeping. A profile ends where its measurements end, so a downlight file that stops at 90° sends nothing above the fixture's own horizon. To wash a wall, tilt the light's `axis:` at it, the way the real fixture would be aimed. And both shapers are made-once values. The profile parses its file and the cookie resamples its image at construction, so build them in `setup()` and hand the same value to the light every frame. The `3D/Lighting/LightShaping` example stages a downlight, a batwing, a wallwasher, and this same window over one floor. Its three `.ies` files ride beside the sketch as bundled resources.
 
-## A courtyard of lamps
-
-Every light so far has been one of a handful, placed by hand. A lamp is a different animal. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
-
-The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
-
-```swift
-for i in 0 ..< 64 {
-    let angle = Double(i) * 2.4, radius = 4 + Double(i) * 0.3
-    pointLight(Color(hue: Double(i) / 64, saturation: 0.75, brightness: 1),
-               at: Vector3(cos(angle) * radius, 2.4, sin(angle) * radius),
-               intensity: 1.7, reach: 11)
-}
-```
-
-<img src="Images/25-3DGently/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
-
-`reach:` is how far a light carries, in world units. Inside it the lamp is full strength at the source and a quarter of that halfway out. At `reach` and beyond it is *exactly* nothing. That is the part that matters. The dark between the pools is real dark, not a very dim wash. (Real light thins as the inverse square of the distance. That curve has no end, and it blows up at the source. This is the same shape with both ends made usable.) Every light with a position takes it, the area panels included. `Light.reaching(_:)` sets or clears it on a light you have already built. Leave it off and the light is exactly what it was before.
-
-The second thing that goes wrong is cost. Forward lighting shades every pixel against every light, which is why the plain path stops at eight. **A frame carries up to 256 lights.** Past eight, the renderer divides the screen into small squares. It works out, once per square, which lamps can possibly arrive there. A pixel then shades against the four or five standing over it instead of the sixty-four in the courtyard. You write the same calls either way, and the picture is identical either way. On an M2 at a 1080-pixel canvas, sixty-four lamps cost 16.9 ms a frame instead of 42.7.
-
-The `reach` is what did that. A lamp with no bound can arrive anywhere, so it stays in every square and costs full price. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable, which is a rare and pleasant thing.
-
-A few things stay on the frame's first eight lights on purpose. Shadows are the big one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Sixty-four shadow-casting lamps is not a feature, it's a stall. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
-
 ## One frame, several rigs
 
 Everything so far treats the lights as a property of the frame. Set a key and a fill at the top of `draw()`, and every solid drawn after them is lit by them. That is the right default, and most scenes never want anything else.
@@ -374,7 +349,7 @@ Three things stay with the frame's own rig rather than following a block.
 
 **Lamps set the ordinary way.** A light set outside any block joins the frame's rig, wherever in `draw()` you set it, exactly as before. Nothing about a sketch you have already written changes.
 
-A frame holds its own rig plus fifteen. Each one is another set of lights the renderer packs. Past the eight-lamp mark from the last section, each is also another pass of that tile arithmetic. So the count is bounded. Past fifteen the extras quietly draw under the frame's own, and Ollin says so once.
+A frame holds its own rig plus fifteen. Each one is another set of lights the renderer packs. Past eight lamps, each is also another pass of the tile arithmetic that [Chapter 27](27-Landscapes.md#a-courtyard-of-lamps-many-lights) explains. So the count is bounded. Past fifteen the extras quietly draw under the frame's own, and Ollin says so once.
 
 The cost goes both ways. Splitting a frame into rigs costs a little: a room's solids can no longer be drawn in one go with the next room's. It also saves a lot: a surface pays for its own room's lamps instead of every lamp in the building. On an M2, a hall of eight rooms with eight lamps each renders in 2.3 ms as eight rigs. As one rig of sixty-four lamps it takes 13.3 ms. With two lamps each it is about 1.2 against 4.0. At two rooms and four lamps in all, the two are within the noise of each other. They are different pictures as well as different costs, so this is a tool to reach for rather than a tax to avoid.
 

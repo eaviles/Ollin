@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 25): what a `reach` is for, and what it buys. Three
+// Guide figure (Chapter 27): what a `reach` is for, and what it buys. Three
 // panels of the same courtyard, each rendered on its own through
 // `OllinApp.image(of:)` and drawn here as read-back pixels, because each panel
 // needs its own camera and one frame carries one. Left: twelve lamps with no

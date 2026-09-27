@@ -8,7 +8,7 @@
 
 Nobody placed a tree in that picture. The ground grew out of noise and then had rain run over it for a while. Everything standing on it was scattered by asking the ground where a pine could take root. The grass in the foreground was never built at all. The GPU works it out while drawing it and keeps nothing afterwards.
 
-[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. Ten thousand copies of one mesh, a quarter of a million solids the camera trims for you, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
+[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. Ten thousand copies of one mesh, a quarter of a million solids the camera trims, sixty-four lamps, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
 
 ## A landscape you grow
 
@@ -159,6 +159,31 @@ override func draw() {
 The picture above holds 240,000 solids. Each frame, a small compute pass tests every copy's bounding sphere against the camera and writes the draws itself. The CPU issues one draw per *kind* of mesh and never meets a copy again. Point the camera at the ground and the rest of the plain simply is not drawn. The part worth trusting is that culling can never change the picture, because everything it skips was outside the view to begin with. The [`MeshField`](../Examples/Rendering/MeshField/Sketch.swift) example wires the culling to a parameter so you can watch the frame rate move while the picture holds still, and the test suite pins exactly that.
 
 A field bakes its colors when you place it (each copy's own tint on top), shades through whatever `material(_:)` is current, and still drops real shadows, including from copies *behind* you, which is the sort of detail you only notice when it is wrong. The shadow pass culls too, against the light's own view instead of yours. A field stands in a mirror as well, so a ray-traced reflection shows its copies like anything else. That part is bounded on purpose. A copy inside the traced scene costs real GPU time every frame. So a field larger than `tracedCopyBudget`, 20,000 copies by default, stays out of the traced passes and says so once. Raise it when a slow frame is a price you are happy to pay. On an M2, this world costs 18.5 ms of GPU per frame with culling on and 50.8 ms with it off, a 2.7x win, and the one `drawMeshField` call costs the CPU nothing worth printing. The [instancing reference](../Docs/3D/Instancing.md) has the field's fine print.
+
+## A courtyard of lamps: many lights
+
+The camera trims the copies it cannot see. Lights run into the same problem once there are many of them. [Chapter 25](25-3DGently.md#light-by-playing) lit its scenes with a handful of lights placed by hand. Lamps come in numbers. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
+
+The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
+
+```swift
+for i in 0 ..< 64 {
+    let angle = Double(i) * 2.4, radius = 4 + Double(i) * 0.3
+    pointLight(Color(hue: Double(i) / 64, saturation: 0.75, brightness: 1),
+               at: Vector3(cos(angle) * radius, 2.4, sin(angle) * radius),
+               intensity: 1.7, reach: 11)
+}
+```
+
+<img src="Images/27-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
+
+`reach:` is how far a light carries, in world units. Inside it the lamp is full strength at the source and a quarter of that halfway out. At `reach` and beyond it is *exactly* nothing. That is the part that matters. The dark between the pools has no light in it at all. (Real light thins as the inverse square of the distance. That curve has no end, and it blows up at the source. This is the same shape with both ends made usable.) Every light with a position takes it, the area panels included. `Light.reaching(_:)` sets or clears it on a light you have already built. Leave it off and the light is exactly what it was before.
+
+The second thing that goes wrong is cost. Forward lighting shades every pixel against every light, which is why the plain path stops at eight lights. **A frame carries up to 256 lights.** Past eight, the renderer divides the screen into small squares. It works out, once per square, which lamps can possibly arrive there. A pixel then shades against the four or five standing over it instead of the sixty-four in the courtyard. You write the same calls either way, and the picture is identical either way. On an M2 at a 1080-pixel canvas, sixty-four lamps cost 16.9 ms a frame instead of 42.7.
+
+The `reach` is what did that. A lamp with no bound can arrive anywhere, so it stays in every square and costs full price. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable.
+
+A few things stay on the frame's first eight lights on purpose. Shadows are the big one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Sixty-four shadow-casting lamps would stall the frame. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
 
 ## Grass that was never built
 
