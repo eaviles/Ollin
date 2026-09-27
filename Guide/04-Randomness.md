@@ -6,7 +6,7 @@
 
 <img src="Images/04-Randomness/DisorderGrid.jpg" alt="A nine-by-nine grid of nested square outlines on warm paper, perfectly ordered at the top and dissolving into tangled quadrilaterals toward the bottom, with a few red, blue, and ochre accents" width="560">
 
-Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. [Chapter 2](02-Color.md) used all of this in its poster and promised the full story later. This chapter is that story, and it ends in the sketch above: a grid that begins in perfect order and comes apart one row at a time.
+Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. [Chapter 2](02-Color.md) used a little of this in its color field and promised the full story later. This chapter is that story, and it ends in the sketch above: a grid that begins in perfect order and comes apart one row at a time.
 
 ## Rolling dice
 
@@ -150,7 +150,7 @@ One more idea completes the starter kit, and it's the one that points at the res
 
 The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and suddenly there's a *path* that wanders, drifts, and doubles back. This is the **random walk**, the humble ancestor of most organic motion in generative art. Give the same treatment to a point in two dimensions and it traces a journey.
 
-To draw that journey you need one shape this guide hasn't written out yet. `drawLine(x1, y1, x2, y2)` draws a straight segment between two points, and it's the third of the basic shapes from [Chapter 1](01-HelloOllin.md)'s contact sheet. Joining each step of the walk to the next is all it takes. Make `MySketches/WalkGrows.swift`:
+To draw that journey you need the third of the basic shapes from [Chapter 1](01-HelloOllin.md)'s contact sheet. `drawLine(x1, y1, x2, y2)` draws a straight segment between two points. Joining each step of the walk to the next is all it takes. Make `MySketches/WalkGrows.swift`:
 
 ```swift
 import Ollin
