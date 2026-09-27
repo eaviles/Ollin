@@ -8,4 +8,3 @@ let bolt = DielectricBreakdown(seeds: [Vector2(64, 64)],
                                in: Rectangle(x: 0, y: 0, width: 100, height: 100), seed: 7)
 let field = CrackGrowth(width: 128, height: 128, seed: 7)
 let river = Meander.line(from: Vector2(0, 10), to: Vector2(100, 10))
-let sample = Image(width: 8, height: 8)

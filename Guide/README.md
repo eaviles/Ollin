@@ -60,7 +60,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
 5. **[Noise](05-Noise.md).** What Perlin noise is, what it's for, and how to drive motion and form with it.
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, transforms that move the paper, symmetry and the kaleidoscope fold, clipping, and divisions that aren't square: hex, triangle, recursive panels, mazes, and circle foam.
-7. **[Tiles that cover the plane](07-Tiles.md).** Patterns that cover the plane by rule: Truchet tiles, hitomezashi stitching, the ten-print maze, kolam and sona, Celtic knotwork, crease patterns, polyominoes, the tilings that never repeat (Penrose, Wang, girih, and the single-shape spectre), hyperbolic tiling on the Poincaré disk, and parquet deformations.
+7. **[Tiles that cover the plane](07-Tiles.md).** Patterns that cover the plane by rule: Truchet tiles, hitomezashi stitching, the ten-print maze, kolam and sona, Celtic knotwork, crease patterns, polyominoes, Wave Function Collapse from tiles or from a picture, the tilings that never repeat (Penrose, Wang, girih, and the single-shape spectre), hyperbolic tiling on the Poincaré disk, and parquet deformations.
 8. **[Words](08-Words.md).** Drawing text, the three kinds of font, per-glyph motion, letters as geometry you can warp and respace, and typesetting in any script: vertical, justified, and with hanging punctuation.
 9. **[Pictures and data](09-Pictures.md).** Reading a picture as data instead of displaying it: fitting it to a box, marks and halftone, mosaics made of pictures, a shape hidden in an autostereogram, stipple and one unbroken line, thread between pins, sorted pixels, and seam carving. Then numbers from CSV and JSON.
 
@@ -69,7 +69,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 10. **[Vectors, gently](10-Vectors.md).** Vectors as arrows, then position, velocity, and acceleration, then steering toward a target.
 11. **[Forces and physics](11-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), chases that trace curves of pursuit, flocking from three local rules and the grid that keeps it cheap, a crowd that makes room, and fireflies falling into step.
-13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars with and without arithmetic, and shape grammars. Then growth by crowding, claiming space, chance, voltage, collision, and wandering: differential growth, space colonization, frost from frozen walkers, dielectric breakdown, cracks, and meanders. Last, Wave Function Collapse, from tiles or from a picture.
+13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars with and without arithmetic, and shape grammars. Then growth by crowding, claiming space, chance, voltage, collision, and wandering: differential growth, space colonization, frost from frozen walkers, dielectric breakdown, cracks, and meanders.
 14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: contours where a field equals something, streamlines, evenly spaced flow, particles carried along, and a field you pin down yourself.
 
 ### Part III: Shapes, lines, and marks

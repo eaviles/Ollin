@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 13): Wave Function Collapse. Left, the vocabulary:
+// Guide figure (Chapter 7): Wave Function Collapse. Left, the vocabulary:
 // each tile's edges carry sockets (pipe or blank), and two tiles may sit
 // side by side only when the touching sockets match. Right, a solved grid:
 // every neighbor agrees, so the pipes connect everywhere.

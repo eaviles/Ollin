@@ -377,11 +377,11 @@ An L-system grows a *sentence*, not a picture. Start from an axiom, replace ever
 ### Constraint propagation
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/TilesAgree-dark.jpg">
-  <img src="Images/13-GrowingThings/TilesAgree.jpg" alt="Enlarged pipe tiles with dots marking their edge sockets, beside a solved grid where every pipe meets a pipe" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/TilesAgree-dark.jpg">
+  <img src="Images/07-Tiles/TilesAgree.jpg" alt="Enlarged pipe tiles with dots marking their edge sockets, beside a solved grid where every pipe meets a pipe" width="680">
 </picture>
 
-Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts as "could be anything", and each placement rules options out of its neighbors, which rule options out of theirs. The solver always settles the most-constrained cell next (the one with fewest options left), because that's where a contradiction would surface soonest. One local law, "edges must match", propagated relentlessly, forces global coherence. [Chapter 13](13-GrowingThings.md) closes with it.
+Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts as "could be anything", and each placement rules options out of its neighbors, which rule options out of theirs. The solver always settles the most-constrained cell next (the one with fewest options left), because that's where a contradiction would surface soonest. One local law, "edges must match", propagated relentlessly, forces global coherence. [Chapter 7](07-Tiles.md#every-neighbor-must-agree-wave-function-collapse) solves a pipe network with it.
 
 ### A parameter space is a map
 

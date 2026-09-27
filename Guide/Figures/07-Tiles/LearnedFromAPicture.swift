@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 13): Wave Function Collapse's overlapping model.
+// Guide figure (Chapter 7): Wave Function Collapse's overlapping model.
 // Left, the sample: a small picture drawn by hand. Right, a much larger
 // texture built out of the square patches that picture contains, so that
 // every overlap agrees. Nothing in the result is new up close; everything

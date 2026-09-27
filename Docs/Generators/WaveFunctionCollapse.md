@@ -25,8 +25,8 @@ There are two models, and they differ in where the rules come from. The **tiled*
 A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to each other when the sockets on their shared edge are *equal*. A socket is therefore an `Int` label for what an edge connects to. For example, a socket can mark a pipe or no pipe, and it can mark a grass edge or a water edge. Sockets are listed clockwise from the top.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/TilesAgree-dark.jpg">
-  <img src="../../Guide/Images/13-GrowingThings/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/TilesAgree-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
 </picture>
 
 ```swift
@@ -99,8 +99,8 @@ Declaring tiles and sockets takes work, and some textures do not break into tile
 What comes out is new as a whole, but every small part of it comes from the sample. Stated exactly, the guarantee is that **every square of the output is a square the sample already contained.**
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/LearnedFromAPicture-dark.jpg">
-  <img src="../../Guide/Images/13-GrowingThings/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/LearnedFromAPicture-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
 </picture>
 
 ```swift
