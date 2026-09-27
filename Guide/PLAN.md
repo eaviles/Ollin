@@ -79,10 +79,10 @@ Figures: the coordinate-system diagram; looking closer; a first-shapes contact s
 Draws from: `Docs/Core/Sketch.md`, `Docs/Core/Canvas.md`, `Docs/Drawing/Drawing.md`, `Docs/Helpers/Input.md`, `Docs/Helpers/Parameters.md`; `Examples/Basic/`.
 
 **2. Color that works.**
-Teaches: `Color` and the named set; RGB vs HSB and when each is natural; opacity; palettes and `Ramp`s; mixing that looks right (OKLab by intuition: "mix in a space that matches your eye", one diagram, no math); `Colormap`s; gradient paint on shapes.
+Teaches: `Color` and the named set; RGB vs HSB and when each is natural; opacity; mixing that looks right (OKLab by intuition: "mix in a space that matches your eye", one diagram, no math); lightness on a dial of its own (OKLCH and OKHSL, hues that weigh the same); the hue wheel and the four harmonies as angles on it; palettes and `Ramp`s; `Colormap`s; gradient paint on shapes. After the sketch, a family: mixing like paint and `Spectrum`.
 Assumes: Ch 1.
-Payoff: a generative color-field poster from one palette, re-rolled live.
-Figures: RGB-vs-HSB wheel diagram; a mixing comparison strip (naive vs perceptual); palette/ramp swatch sheets; the poster.
+Payoff: a generative color field from one harmony of one base color, re-rolled live.
+Figures: RGB-vs-HSB wheel diagram; a mixing comparison strip (naive vs perceptual); the hue wheel with the four harmonies marked (HarmonyWheel); palette/ramp swatch sheets; the field.
 Draws from: `Docs/Drawing/Color.md`; `Examples/Color/`.
 
 **3. Motion and time.**
@@ -417,8 +417,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Outline questions (`Contour.tangent(at:)`/`normal(at:)`/`nearestPoint(to:)`/`fraction(of:)`/`distance(to:)`/`piece(from:to:)`/`crossings(with:)`/`crossings()`/`Contour.Crossing`/`simplified(tolerance:)`/`reversed()`/`rounded(_:)`/`chamfered(_:)`, the `Shape` edits; `Drawing/Geometry.md#contour-questions`) | Ch 15 | taught ("Asking an outline where it goes" after the shape-editing verbs, with a three-panel figure: a probe dropped to the nearest place on a curve with its tangent, normal, and the walked piece; a seven-point loop woven over and under through its own crossings, with why the alternation never goes wrong; and a dense wave simplified beside a star rounded and chamfered. The fraction as the shared measure, `fraction(of:)` undoing `point(at:)`, the piece through a closed outline's seam, `Crossing`'s two fractions, and the `Shapes/OverUnder` example) |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
 | Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
-| `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught (a `Palette` is a collection too, walked with `enumerated()` in Ch 2's kit section) |
-| `Drawing/Spectrum.md` (Spectrum, `.paint` mixing, wavelength/blackbody, `.thinFilm`/`.diffraction`/`.paintMix`) | Ch 2 | taught ("Blue and yellow make green": the three-row PaintMixing figure, the `.paint` call and Ramp form, the reflectance story, and the pointer to the full spectral surface) |
+| `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught (a `Palette` is a collection too, walked with `enumerated()` in Ch 2's kit section; lightness in "Hues that weigh the same: lightness" with OKLCH, OKHSL, and the derived colors; the four harmonies in "Kits you carry: Palette and Ramp" as angles on the hue wheel, with the HarmonyWheel figure, what each is for, and the finished sketch's ramp grown from an analogous harmony) |
+| `Drawing/Spectrum.md` (Spectrum, `.paint` mixing, wavelength/blackbody, `.thinFilm`/`.diffraction`/`.paintMix`) | Ch 2 | taught ("Mixing like paint", a family after the finished sketch: the three-row PaintMixing figure, the `.paint` call and Ramp form, the reflectance story, `Spectrum` as a curve, and the pointer to the full spectral surface) |
 | Gradient paint (`Drawing/Color.md`: linear, radial, conic, along the path) | Ch 2 | taught (the four-panel GradientPaint figure; the conic named as a color wheel, a dial, or a pie, with the seam-hiding ramp) |
 | Rounded corners, one radius or one per corner (`drawRect(cornerRadius:)` / `drawRect(cornerRadii:)`, `CornerRadii`; `Drawing/Drawing.md#rect`) | Ch 1 | shown (a paragraph and a listing after the centered rectangle: the tab, the named four, and the fit rule) |
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |

@@ -55,7 +55,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 ### Part I: Seeing something move
 
 1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, what creative coding is, the draw loop, coordinates, shapes and draw order, and motion by default. It also sets up the workflow the rest of the guide uses: live reload, tunable parameters, dragging a shape into place, and the `ollin` command.
-2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that matches what your eye expects, palettes and ramps, and gradients used as paint.
+2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that matches what your eye expects, hues kept at one weight, harmonies grown from one color, palettes and ramps, and gradients used as paint. Then mixing the way paint does.
 3. **[Motion and time](03-MotionAndTime.md).** Time, shaping functions drawn as curves (map, lerp, smoothstep, easing), sine and cosine explained simply, and timelines.
 4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters. Then scatters that are random but even: blue noise and the Halton and Sobol sequences.
 5. **[Noise](05-Noise.md).** What Perlin noise is, what it's for, and how to drive motion and form with it.

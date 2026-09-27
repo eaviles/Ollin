@@ -1,20 +1,21 @@
 // figure: frame=60
 //
-// Guide figure: the Chapter 2 payoff. A quilt of cells sampling one ramp
-// diagonally, jittered by seeded randomness; a click swaps the seed for a
-// fresh variation of the same poster.
+// Guide figure: the Chapter 2 finished sketch. A quilt of cells sampling one
+// ramp diagonally, jittered by seeded randomness; a click swaps the seed for
+// a fresh variation of the same field. The ramp is an analogous harmony of
+// one base color, blended in OKLCH, so the Base parameter re-colors the field.
 import Ollin
 
 final class ColorField: Sketch {
+    @Param("Base") var base = Color(hex: 0x5E60CE)
     @Param("Columns", 4...28) var columns = 14
     @Param("Jitter", 0...1) var jitter = 0.4
 
     var fieldSeed = 7
 
-    let ramp = Ramp([
-        Color(hex: 0x14213D), Color(hex: 0x5E60CE),
-        Color(hex: 0xE56B6F), Color(hex: 0xFFB703), Color(hex: 0xFFF3E0),
-    ])
+    var ramp: Ramp {
+        Palette.analogous(of: base, count: 5, spread: 1.0 / 8).ramp(in: .oklch)
+    }
 
     override func draw() {
         randomSeed(fieldSeed)
