@@ -599,7 +599,7 @@ The parameters beyond `count` and the radius range change the character rather t
 
 The output is `[Shape]`, so it flows straight into everything earlier in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
-`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 16](16-LayersAndEffects.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
+`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 12](12-FlocksAndSwarms.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
 
 ## Outlines and bones
 
@@ -836,7 +836,7 @@ The rule of thumb is simple. If the drawing doesn't change between frames, it be
 
 ## Putting it together: the plate
 
-The plate brings the whole chapter to one piece of paper. A blue-noise scatter is relaxed once, and its Voronoi mosaic is inset cell by cell. A stroked ribbon is subtracted from every cell with a halo of breathing room, over two pens' worth of hatching. Make `MySketches/Plate.swift`:
+The plate brings a scatter, a Voronoi mosaic, offsets, a boolean, and hatching to one piece of paper. A blue-noise scatter is relaxed once, and its Voronoi mosaic is inset cell by cell. A stroked ribbon is subtracted from every cell with a halo of breathing room, over two pens' worth of hatching. Make `MySketches/Plate.swift`:
 
 ```swift
 import Ollin
