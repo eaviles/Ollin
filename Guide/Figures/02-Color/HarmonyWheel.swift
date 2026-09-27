@@ -28,24 +28,31 @@ final class HarmonyWheel: Sketch {
         noStroke()
         textSize(20)
 
-        // The wheel itself, with the four quarter turns named.
-        let center = Vector2(232, 262)
-        ring(at: center, radius: 178, width: 62)
+        // The wheel itself, with the four quarter turns named beside it. Each
+        // label is aligned away from the ring, so the one on the left ends
+        // short of the canvas edge instead of straddling it.
+        let center = Vector2(250, 258)
+        let radius = 160.0
+        ring(at: center, radius: radius, width: 56)
         fill(theme.ink)
+        let gap = radius + 14
+        textAlign(.left, .middle)
+        drawText("0", center.x + gap, center.y)
+        textAlign(.center, .top)
+        drawText("¼ turn", center.x, center.y + gap)
+        textAlign(.right, .middle)
+        drawText("½ turn", center.x - gap, center.y)
+        textAlign(.center, .bottom)
+        drawText("¾ turn", center.x, center.y - gap)
         textAlign(.center, .middle)
-        for (turn, name) in [(0.0, "0"), (0.25, "¼ turn"), (0.5, "½ turn"), (0.75, "¾ turn")] {
-            let angle = turn * .tau
-            let x = center.x + cos(angle) * 218
-            let y = center.y + sin(angle) * 218
-            drawText(name, x, y)
-        }
-        drawText("hue, as a turn of the wheel", center.x, center.y + 254)
+        drawText("hue, as a turn of the wheel", center.x, center.y + 242)
 
-        // The four harmonies, each on a small wheel of the same hues.
-        harmony(Palette.complementary(of: base), at: Vector2(560, 138), label: "complementary")
-        harmony(Palette.splitComplementary(of: base), at: Vector2(750, 138), label: "split complementary")
-        harmony(Palette.triadic(of: base), at: Vector2(560, 372), label: "triadic")
-        harmony(Palette.analogous(of: base, count: 5), at: Vector2(750, 372), label: "analogous")
+        // The four harmonies, each on a small wheel of the same hues, spaced
+        // so the two longest captions keep clear of each other.
+        harmony(Palette.complementary(of: base), at: Vector2(548, 138), label: "complementary")
+        harmony(Palette.splitComplementary(of: base), at: Vector2(762, 138), label: "split complementary")
+        harmony(Palette.triadic(of: base), at: Vector2(548, 372), label: "triadic")
+        harmony(Palette.analogous(of: base, count: 5), at: Vector2(762, 372), label: "analogous")
     }
 
     /// A ring of the wheel's hues: a conic disk with the paper drawn back
@@ -58,31 +65,35 @@ final class HarmonyWheel: Sketch {
     }
 
     /// One harmony on its own wheel: a dot per color where its hue sits on
-    /// the ring, chords from the base to each companion, and a label.
+    /// the ring, chords from the base to each companion, and a label. The
+    /// base is found by value, since the analogous builder centers it in its
+    /// list rather than putting it first.
     func harmony(_ palette: Palette, at center: Vector2, label: String) {
         let radius = 74.0
         ring(at: center, radius: radius, width: 26)
-        let points = palette.map { color -> Vector2 in
+        let colors = Array(palette)
+        let baseIndex = colors.firstIndex(of: base) ?? 0
+        let points = colors.map { color -> Vector2 in
             let angle = OKHSL(color).h * .tau
             return Vector2(center.x + cos(angle) * (radius - 13),
                            center.y + sin(angle) * (radius - 13))
         }
         stroke(theme.ink)
         strokeWeight(2)
-        for point in points.dropFirst() {
-            drawLine(points[0], point)
+        for (i, point) in points.enumerated() where i != baseIndex {
+            drawLine(points[baseIndex], point)
         }
         noStroke()
         for (i, point) in points.enumerated() {
             fill(theme.paper)
             drawCircle(center: point, radius: 12)
-            fill(palette[i])
+            fill(colors[i])
             drawCircle(center: point, radius: 9)
         }
         noFill()
         stroke(theme.ink)
         strokeWeight(2.5)
-        drawCircle(center: points[0], radius: 15)
+        drawCircle(center: points[baseIndex], radius: 15)
         noStroke()
         fill(theme.ink)
         textAlign(.center, .top)

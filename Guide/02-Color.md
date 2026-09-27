@@ -129,7 +129,10 @@ Eight classic sets ship built in, from `.set1` through `.accent`. A palette can 
 - **Triadic** is three hues a third of a turn apart. Nothing in it is the ground, so it reads as lively, and it wants one of the three kept small.
 - **Analogous** is the base and its neighbors, a twelfth of a turn apart by default. It is calm, because every color shares most of its hue with the next, which is why a sunset or a forest reads as one thing.
 
-<!-- figure: HarmonyWheel (Images/02-Color/HarmonyWheel.jpg, themed), waiting on a render: the hue wheel and the four harmonies marked on it -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/HarmonyWheel-dark.jpg">
+  <img src="Images/02-Color/HarmonyWheel.jpg" alt="The hue wheel with its quarter turns named, and four small wheels marking a red base and its companions: the opposite hue, the two flanking the opposite, three hues a third of a turn apart, and five neighbors in a row" width="680">
+</picture>
 
 The builders work in OKLCH, so the companions keep the base's lightness and chroma rather than drifting lighter or darker. That is the weight matching from the section above:
 
