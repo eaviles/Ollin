@@ -900,7 +900,7 @@ Read it as three acts. The flock is untouched [Chapter 12](12-FlocksAndSwarms.md
 Then make it yours:
 
 - Adjust the feedback parameters. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
-- Put a `@Param` on the bloom's `amount` and the tone map's `exposure` and grade the piece live, like color-timing film.
+- Put a `@Param` on the bloom's `amount` and the tone map's `exposure` and grade the sketch live, like color-timing film.
 - Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected particles, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Draw a dim `generate(.meshGradient(...))` layer where the flat `background` is, and the comets fly over weather.
 

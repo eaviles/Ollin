@@ -197,7 +197,7 @@ It walks *downhill from where you start*. A problem with several separate answer
 
 ## Putting it together: the print
 
-A flow field and its evenly spaced streamlines make a short piece with a long pedigree. Three ribbon weights, a warm palette, and cream paper finish it. Make `MySketches/FlowPrint.swift`:
+A flow field and its evenly spaced streamlines make a short sketch with a long pedigree. Three ribbon weights, a warm palette, and cream paper finish it. Make `MySketches/FlowPrint.swift`:
 
 ```swift
 import Ollin

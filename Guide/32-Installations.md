@@ -662,7 +662,7 @@ The app is also how the wall piece below reaches its wall. A sketch that declare
 
 The finished sketch is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.
 
-The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the piece repeats every three minutes, the lap the drawing reads through `loopProgress`, so a viewer can feel the sketch has a shape.
+The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the sketch repeats every three minutes, the lap the drawing reads through `loopProgress`, so a viewer can feel it has a shape.
 
 ```swift
 import Ollin
