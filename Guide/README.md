@@ -103,14 +103,14 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 32. **[Seeing](32-Seeing.md).** The webcam as input and as the light in a 3D scene, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
 33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 34. **[Listening](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech, and sound events.
-35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector. MIDI, timecode, OSC and OSCQuery, a beat shared over Link, and MIDI and OSC bound straight to your parameters. Then TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
+35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector. MIDI, OSC and OSCQuery, a beat shared over Link, and MIDI and OSC bound straight to your parameters. Then TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
 
 ### Part VII: Out into the world
 
 36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects, and a room you can draw. Instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
 37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, and tunings. Then playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
 38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, frames kept in linear light or brighter than white, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
-39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, parameters written as rules, and live feeds into other apps.
+39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, a show's timecode, parameters written as rules, and live feeds into other apps.
 40. **[Handing it over](40-HandingItOver.md).** A sketch as a screen saver, a wallpaper, a menu-bar companion, or a widget, and as an app somebody double-clicks. Then on your phone, and as behavior or a package other programmers import.
 41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 

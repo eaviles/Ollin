@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 35): how a position arrives over a MIDI cable. The
+// Guide diagram (Chapter 39): how a position arrives over a MIDI cable. The
 // eight quarter-frame messages that spell one timecode, four to a frame, with
 // the nibble each one carries read from the shipped encoder rather than typed
 // out here, so the figure cannot disagree with the wire. Below, the locate:

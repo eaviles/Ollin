@@ -54,36 +54,7 @@ The readers in the figure cover most of what you'll want. `beats` is the running
 
 Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/Tempo` example (in its MIDI mode) rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
-### Where it is, not how fast: timecode
-
-The other position a cable carries is *timecode*. A video deck, a show controller, a lighting desk, or a DAW locked to picture broadcasts where it is rather than how fast it goes. It sends hours, minutes, seconds, and frames, as MIDI Time Code. A `TimecodeClock` reads it, so a sketch can land a cue on the frame the video hits it:
-
-```swift
-lazy var timecode = TimecodeClock(from: midi)
-// in draw():
-let t = timecode.seconds                                          // where the timeline is
-drawText(timecode.timecode.map { "\($0)" } ?? "--:--:--:--", 40, 60)   // 00:01:30:12
-```
-
-The wire is worth one look, because it explains a behavior that is otherwise hard to place. A position is too big for a single MIDI message, so the sender spells it in eight small ones, four to a frame:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/35-ControlsAndSignals/TimecodePieces-dark.jpg">
-  <img src="Images/35-ControlsAndSignals/TimecodePieces.jpg" alt="Eight cards in a row, one per quarter-frame message, each naming the part of the position it carries and showing its four bits, with stalks down to a two-frame strip; below, the timecode the eight of them spell and the eight bytes of the locate message" width="680">
-</picture>
-
-Each message carries four bits, half of one number. The frames take two messages, the seconds two more, and so on up to the hours, whose last message carries the frame rate too. Eight messages take two frames to arrive, so the set that lands names a time 1.75 frames back. The clock steps to it and glides on at the frame rate, which is why `seconds` moves smoothly while `timecode` changes on frame boundaries.
-
-Two more behaviors come off the same picture. Stop the deck and the messages stop, so the position holds where it was. Press locate and the deck sends the whole position at once, as the eight bytes on the right. The clock jumps there rather than waiting for a new set.
-
-`timecode.timecode` is the frame the timeline is on, and `seconds` is the same moment as a number to compute with. `frameRate` is the rate once a set has arrived, and `isPlaying` says whether messages are still coming. Landing a cue is a comparison:
-
-```swift
-let cue = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 12, frameRate: .fps25)
-if timecode.seconds >= cue.totalSeconds { flash() }
-```
-
-The **Timecode** example (`Examples/Integration/Timecode`) plays the deck itself with an internal timer. You can watch cues flash under a scrolling timeline with nothing plugged in.
+A cable can also carry *where* a timeline is rather than how fast it goes. That is timecode, and [Chapter 39](39-Performing.md#following-another-timeline-timecode) reads it to land a cue on the frame a video hits.
 
 ### Over the network: OSC
 

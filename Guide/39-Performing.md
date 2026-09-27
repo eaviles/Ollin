@@ -6,7 +6,7 @@
 
 <img src="Images/39-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
 
-Code can be the performance. This chapter puts it on stage, in a host where you type over the running picture and evaluate without stopping it. Looks you save come back on cue, and a take records what you did and plays the night again through any export. Parameters can follow keyframes, a timeline, or a rule. Live feeds carry the picture into a VJ rig or a video call. The sketch above is the last state of a set you'll build in five evaluations.
+Code can be the performance. This chapter puts it on stage, in a host where you type over the running picture and evaluate without stopping it. Looks you save come back on cue, and a take records what you did and plays the night again through any export. Parameters can follow keyframes, a timeline, or a rule, and the timeline can be a show's own, read as timecode. Live feeds carry the picture into a VJ rig or a video call. The sketch above is the last state of a set you'll build in five evaluations.
 
 ## Performing the code itself
 
@@ -164,6 +164,37 @@ The lanes draw what will happen. A number lane plots its curve, a color lane sho
 
 Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same parameter wins that parameter, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
 
+### Following another timeline: timecode
+
+The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to something else: a video deck, a show controller, a lighting desk, or a DAW locked to picture. Each broadcasts where it is rather than how fast it goes. That is *timecode*, hours, minutes, seconds, and frames, sent as MIDI Time Code over the MIDI input from [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere). A `TimecodeClock` reads it, so a sketch can land a cue on the frame the video hits it:
+
+```swift
+lazy var timecode = TimecodeClock(from: midi)
+// in draw():
+let t = timecode.seconds                                          // where the timeline is
+drawText(timecode.timecode.map { "\($0)" } ?? "--:--:--:--", 40, 60)   // 00:01:30:12
+```
+
+One look at the wire explains a behavior that is otherwise hard to place. A position is too big for a single MIDI message, so the sender spells it in eight small ones, four to a frame:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/39-Performing/TimecodePieces-dark.jpg">
+  <img src="Images/39-Performing/TimecodePieces.jpg" alt="Eight cards in a row, one per quarter-frame message, each naming the part of the position it carries and showing its four bits, with stalks down to a two-frame strip; below, the timecode the eight of them spell and the eight bytes of the locate message" width="680">
+</picture>
+
+Each message carries four bits, half of one number. The frames take two messages, the seconds two more, and so on up to the hours, whose last message carries the frame rate too. Eight messages take two frames to arrive, so the set that lands names a time 1.75 frames back. The clock steps to it and glides on at the frame rate, which is why `seconds` moves smoothly while `timecode` changes on frame boundaries.
+
+Two more behaviors come off the same picture. Stop the deck and the messages stop, so the position holds where it was. Press locate and the deck sends the whole position at once, as the eight bytes on the right. The clock jumps there rather than waiting for a new set.
+
+`timecode.timecode` is the frame the timeline is on, and `seconds` is the same moment as a number to compute with. `frameRate` is the rate once a set has arrived, and `isPlaying` says whether messages are still coming. Landing a cue is a comparison:
+
+```swift
+let cue = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 12, frameRate: .fps25)
+if timecode.seconds >= cue.totalSeconds { flash() }
+```
+
+The **Timecode** example (`Examples/Integration/Timecode`) plays the deck itself with an internal timer. You can watch cues flash under a scrolling timeline with nothing plugged in.
+
 ## Writing the parameter as a rule
 
 Keys say where a parameter is at a few moments. Sometimes you do not want moments. You want to say what the parameter *is*, and have it be that at every moment:
@@ -312,6 +343,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 ## Go deeper
 
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
+- [Timecode](../Docs/Integration/MIDI.md#timecode-timecodeclock): `TimecodeClock` over MIDI Time Code, the frame rates, the hold and the locate, and landing a cue.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
