@@ -412,4 +412,4 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 18, Your first shader](18-YourFirstShader.md) · Next: [Chapter 23, Simulations on a grid](23-GridSimulations.md)
+[Contents](README.md#contents) · Previous: [Chapter 21, Pictures you solve](21-PicturesYouSolve.md) · Next: [Chapter 23, Simulations on a grid](23-GridSimulations.md)
