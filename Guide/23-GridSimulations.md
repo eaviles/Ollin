@@ -298,7 +298,7 @@ There is nothing to seed. The field starts as a random mix, which is the field a
 
 ## In step with the neighbors: oscillators on a lattice
 
-The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` reads, cell by cell, where it has locked.
+The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` reads, cell by cell, where it has locked.
 
 ```swift
 var grid: HexGrid { hexGrid(columns: 24, rows: 20) }
