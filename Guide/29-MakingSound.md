@@ -715,13 +715,14 @@ Past that there are more steps rather than different ones, in `.nineteen`, `.thi
 [Chapter 28](28-SoundAndControl.md)'s beat detector told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
 
 ```swift
+let mic = AudioInput()                   // start it in setup(), as in Chapter 28
 lazy var room = BeatFollower(mic)
 var counter = StepCounter(perBeat: 2)
 
 override func draw() {
     room.advance(to: time)
     for step in counter.steps(upTo: room.beats) {
-        synth.play(scale[step % 5], for: 0.2)
+        synth.play(key[step % 5], for: 0.2)
     }
 }
 ```
@@ -808,7 +809,7 @@ Writing one takes the notes you already have:
 var phrase: [ScheduledNote] = []
 var bar = 0.0
 while bar < 32 {
-    phrase += sequencer.events(upTo: bar)
+    phrase += drums.events(upTo: bar)
     bar += 4
 }
 try MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
@@ -1016,7 +1017,7 @@ The second part is the drawing, and it knows nothing about sound. Every note the
 }
 ```
 
-Read the picture back against the code and every part of the chapter is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones walk up and back down because an arpeggio is read at the step rather than restarted. The pink ones hold for two and a half beats each, which is why they overlap.
+Read the picture back against the code and each voice's rhythm is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones walk up and back down because an arpeggio is read at the step rather than restarted. The pink ones hold for two and a half beats each, which is why they overlap.
 
 Then make it yours:
 
