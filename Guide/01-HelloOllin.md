@@ -211,7 +211,7 @@ The figure shows one reason to zoom. The place names are drawn at the same text 
 
 A drag moves the content as far as the pointer went, so the drawing stays under your finger. A zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose: a flat plane under a finger reads better without inertia.
 
-Only what you draw after `viewControl()` moves. Anything drawn *before* the call stays put, so a fixed backdrop goes there. A caption that has to be drawn last needs `withState { }`, which [Chapter 6](06-GridsAndRepetition.md#move-the-paper) introduces. Put the call and the drawing inside it, and draw the caption after it.
+Only what you draw after `viewControl()` moves. Anything drawn *before* the call stays put, so a fixed backdrop goes there. A caption that has to be drawn last needs `withState { }`, which [Chapter 6](06-GridsAndRepetition.md#moving-the-paper-translate-rotate-and-scale) introduces. Put the call and the drawing inside it, and draw the caption after it.
 
 The mouse, which arrives [later in this chapter](#the-mouse-joins-in), comes in the coordinates now on screen. So `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom.
 

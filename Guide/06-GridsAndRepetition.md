@@ -6,13 +6,11 @@
 
 <img src="Images/06-GridsAndRepetition/RoseWall.jpg" alt="A five-by-five wall of cut-paper medallions on cream, each a colored disc with cream arms folded around it, the color drifting diagonally from coral through amber and green to deep indigo" width="560">
 
-There are twenty-five medallions up there, and one crooked little arm behind all of them. The arm is drawn once. A grid decides where each medallion sits, and the transforms turn and shrink it in place. Symmetry folds that single arm into a ring of copies, and a clip trims whatever runs past the rim.
+Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. This chapter teaches the four tools that make both. They are a grid you loop once, transforms that move the paper under your shapes, a fold that repeats every drawing call, and a region that decides what survives. There are twenty-five medallions in the sketch above, and one crooked little arm behind all of them. The arm is drawn once. A grid decides where each medallion sits, and the transforms turn and shrink it in place. Symmetry folds that single arm into a ring of copies, and a clip trims whatever runs past the rim. A little disorder inside a strict structure, the move you know from [Chapter 4](04-Randomness.md), is where the life comes from. After the sketch come two other ways to divide and walk a grid: uneven panels split by recursion, and a spiral of numbers.
 
-Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. A little disorder inside a strict structure, the move you know from [Chapter 4](04-Randomness.md), is where the life comes from. By the end you'll have the wall above, and a click that re-rolls it forever. You'll also have the four tools that built it: a grid you loop once, transforms that move the paper under your shapes, a fold that repeats every drawing call, and a region that decides what survives.
+## One loop, not two: `grid`
 
-## One loop, not two
-
-You've already built grids twice, the long way. [Chapter 2](02-Color.md)'s color field and [Chapter 4](04-Randomness.md)'s disorder grid both did the same chores. Pick a margin, then divide the leftover width into cells. Run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
+You have already built grids twice, the long way. [Chapter 2](02-Color.md)'s color field and [Chapter 4](04-Randomness.md)'s disorder grid both did the same chores. Pick a margin, then divide the leftover width into cells. Run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
 
 ```swift
 import Ollin
@@ -37,14 +35,14 @@ final class ColorTiles: Sketch {
 
 <img src="Images/06-GridsAndRepetition/ColorTiles.jpg" alt="A twelve-by-twelve grid of square tiles fading from midnight blue to amber along the diagonal" width="560">
 
-One loop. `grid(columns:rows:padding:gutter:)` lays a grid over the canvas, where `padding` is the outer margin and `gutter` the gap between tiles. Its `cells` is a list you loop, and every cell arrives knowing everything about itself. It carries its `frame`, the rectangle to draw, plus its `center`, its `column` and its `row`. Those indices are the point. The old nested loops existed mostly so you'd have a column number and a row number in hand. Here every cell carries its own, so the indexed tricks stay one-loop simple. A checkerboard from `(cell.column + cell.row) % 2` is one, and this diagonal fade is another.
+One loop. `grid(columns:rows:padding:gutter:)` lays a grid over the canvas, where `padding` is the outer margin and `gutter` the gap between tiles. Its `cells` is a list you loop, and every cell arrives knowing everything about itself. It carries its `frame`, the rectangle to draw, plus its `center`, its `column` and its `row`. Those indices are the point. The old nested loops existed mostly so you would have a column number and a row number in hand. Here every cell carries its own, so the indexed tricks stay one-loop simple. A checkerboard from `(cell.column + cell.row) % 2` is one, and this diagonal fade is another.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/GridAnatomy-dark.jpg">
   <img src="Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
 </picture>
 
-The grid offers two things to loop, and you pick by what you're drawing. `cells` are the tiles. `points` are the dots, one per cell center by default. Pass `distribution: .spanning` for a lattice that reaches the edges, the layout you want when the piece *is* a grid of dots. A dot field is two lines:
+The grid offers two things to loop, and you pick by what you are drawing. `cells` are the tiles. `points` are the dots, one per cell center by default. Pass `distribution: .spanning` for a lattice that reaches the edges, the layout you want when the sketch *is* a grid of dots. A dot field is two lines:
 
 ```swift
 for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).points {
@@ -52,22 +50,47 @@ for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).point
 }
 ```
 
-Two more things before we move on. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
+Two more things are useful to know. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
 
 > **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. You can also drop the `.cells` and loop the grid itself: `for cell in grid(columns: 12, rows: 12)`. As far as Swift is concerned a grid *is* its cells. It walks them in the same order, working each one out as the loop asks for it, so it never builds the array. Everything Swift can do to a list it can do to a grid, so `grid.count` and `grid.filter { ... }` read too. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. [Chapter 10](10-Vectors.md) makes proper friends with vectors, and until then you can read `Vector2` as "a point".
 
-## Move the paper
+## Grids that aren't square: `hexGrid` and `triangleGrid`
 
-The grid raises a question immediately. How do you draw something *rotated* inside a cell? `drawRect` and friends don't take an angle. The answer is one of the oldest ideas in computer graphics, and it feels backwards for about ten minutes. You don't rotate the shape, you rotate the *paper*.
+`grid` divides a rectangle into rectangles, which covers a great deal but not everything. Two more regular divisions come with Ollin, and both read the same way. Ask for the cells, then loop over them once.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/OtherGrids-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+</picture>
+
+```swift
+for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
+    drawPolygon(cell.corners)
+}
+for cell in triangleGrid(columns: 21, rows: 10).cells {
+    fill(cell.pointsUp ? .white : .black)
+    drawPolygon(cell.vertices)
+}
+```
+
+`hexGrid` and `triangleGrid` are the other two regular tilings, the only other *regular polygons* that cover a plane with no gaps and no overlaps. Plenty of irregular shapes manage it, which is [Chapter 7](07-Tiles.md)'s subject. Hexagons cannot stretch the way a rectangle can. So the block keeps its true proportions and centers itself, rather than distorting to fill your bounds. The hex grid also knows its own geometry, so `distance(from:to:)` counts rings between two cells. That is what colors the first panel, and what a board game needs. A cell hands you its corners, and `drawPolygon` draws a closed shape through a list of points, so a whole honeycomb is two lines.
+
+The figure's other two panels are divisions of another kind. The third splits a rectangle into unequal panels by recursion, which comes after the finished sketch in [Uneven panels by recursion](#uneven-panels-by-recursion-subdivide). The fourth is a maze carved by `maze(columns:rows:)`, and [Chapter 7](07-Tiles.md#one-route-between-any-two-perfect-mazes) sets it beside the maze of diagonals and says what makes it perfect.
+
+> **Swift note.** `cell.pointsUp ? .white : .black` is the compact if, which reads as the condition, then the value when true, then the value when false.
+
+## Moving the paper: `translate`, `rotate`, and `scale`
+
+The grid raises a question. How do you draw something *rotated* inside a cell? `drawRect` and friends do not take an angle. The answer is one of the oldest ideas in computer graphics. You do not rotate the shape, you rotate the *paper*.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/TransformSteps-dark.jpg">
   <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
 </picture>
 
-Three calls move the paper. `translate(x, y)` slides the origin, the point that counts as (0, 0), somewhere else. `rotate(angle)` turns the paper around that origin (angles work like [Chapter 3](03-MotionAndTime.md): `.tau / 4` is a quarter turn). `scale(factor)` stretches it. After any of them, every drawing call is measured on the moved paper, which is what the diagram shows. All four flags are the very same `drawRect` at the very same numbers, drawn on paper that had been slid, turned, and stretched first.
+Three calls move the paper. `translate(x, y)` slides the origin, the point that counts as (0, 0), somewhere else. `rotate(angle)` turns the paper around that origin (angles work like [Chapter 3](03-MotionAndTime.md): `.tau / 4` is a quarter turn). `scale(factor)` stretches it. After any of them, every drawing call is measured on the moved paper, which is what the diagram shows. All four flags are the same `drawRect` at the same numbers, drawn on paper that had been slid, turned, and stretched first.
 
-The moves accumulate as `draw()` runs, so you also need the undo. That's `withState`:
+The moves accumulate as `draw()` runs, so you also need the undo. That is `withState`:
 
 ```swift
 withState {
@@ -77,7 +100,7 @@ withState {
 }                               // paper snaps back as if nothing happened
 ```
 
-Everything inside the braces draws on the moved paper. At the closing brace the paper is restored, along with any `fill` or `stroke` you changed inside. This is the cell-drawing recipe you'll use for the rest of the guide. Translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*. Coordinates like `(-40, -40)` straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from [Chapter 4](04-Randomness.md), and identical parts start composing figures nobody drew:
+Everything inside the braces draws on the moved paper. At the closing brace the paper is restored, along with any `fill` or `stroke` you changed inside. This is the cell-drawing recipe you will use for the rest of the guide. Translate to the cell's center, turn or stretch as the sketch demands, then draw *around the origin*. Coordinates like `(-40, -40)` straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from [Chapter 4](04-Randomness.md), and identical parts start composing figures nobody drew:
 
 ```swift
 import Ollin
@@ -107,13 +130,13 @@ final class Pinwheels: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Pinwheels.jpg" alt="A ten-by-ten field of black right triangles at random quarter turns, a few in red; pinwheels, hourglasses, and arrows emerge from the repetition" width="560">
 
-One right triangle, half a cell drawn by handing `drawPolygon` its three corners. Four possible spins, and the neighbors do the rest. Hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That's the effect this chapter keeps returning to. It only works because every triangle is *exactly* the same size in *exactly* the same place in its cell, so any two spins fit together. Hold that thought for Truchet.
+One right triangle, half a cell drawn by handing `drawPolygon` its three corners. Four possible spins, and the neighbors do the rest. Hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That is the effect this chapter keeps returning to. It only works because every triangle is the same size in the same place in its cell, so any two spins fit together. [Chapter 7](07-Tiles.md)'s Truchet tiles rest on the same fact.
 
-> **Swift note.** `random() < 0.12 ? accent : ink` is the compact if, which reads as the condition, then the value when true, then the value when false. And notice that `withState { ... }` takes a block of code in braces, like `draw()` itself. Running the block with the paper moved and then restoring it is the whole trick.
+> **Swift note.** `withState { ... }` takes a block of code in braces, like `draw()` itself. Running the block with the paper moved and then restoring it is the whole trick.
 
-## Symmetry for free
+## Symmetry by hand: rotating around the center
 
-Rotating the paper around a cell gave a quilt. Rotate around the canvas center instead, and repetition becomes symmetry. Every sketch carries that center as a property called `center`, which is just the `Vector2` at `width / 2, height / 2` and saves you writing it out:
+Rotating the paper around a cell gave a quilt. Rotate around the canvas center instead, and repetition becomes symmetry. Every sketch carries that center as a property called `center`, which is the `Vector2` at `width / 2, height / 2` and saves you writing it out:
 
 ```swift
 import Ollin
@@ -150,13 +173,13 @@ final class Rosette: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Rosette.jpg" alt="A twelve-fold rosette: one branching arm with disks at its tips, repeated by rotation into a botanical snowflake" width="560">
 
-This time there's no `withState`, on purpose. Each `rotate(.tau / 12)` *adds* to the last, so the twelve copies of the arm land a twelfth of a turn apart and close the circle exactly. The arm itself is deliberately lopsided, a stem along the x axis, one branch reaching up, disks of different sizes. A symmetric arm makes a boring rosette. The symmetry comes from the repetition, so the part is free to be as crooked as it likes. Change `12` to `5` or `48`, redraw the arm, drop `time` into the rotation. Every mandala, snowflake, and kaleidoscope pattern you've seen is some cousin of this loop.
+This time there is no `withState`, on purpose. Each `rotate(.tau / 12)` *adds* to the last, so the twelve copies of the arm land a twelfth of a turn apart and close the circle. The arm itself is deliberately lopsided, a stem along the x axis, one branch reaching up, disks of different sizes. A symmetric arm makes a boring rosette. The symmetry comes from the repetition, so the part is free to be as crooked as it likes. Change `12` to `5` or `48`, redraw the arm, drop `time` into the rotation. Every mandala, snowflake, and kaleidoscope pattern you have seen is some cousin of this loop.
 
-> **Swift note.** `func drawArm()` declares a helper function on your sketch, a named block you call like any built-in. Pulling the arm out of the loop keeps `draw()` readable and gives you one obvious place to redesign the arm.
+> **Swift note.** `func drawArm()` declares a helper function on your sketch, a named block you call like any built-in, the same move as [Chapter 4](04-Randomness.md)'s `roll()`. Pulling the arm out of the loop keeps `draw()` readable and gives you one place to redesign the arm.
 
-## The fold, done for you
+## The fold, done for you: `symmetry`
 
-Write that loop yourself once, because it shows you what symmetry actually is. After that there's a shortcut, and it can do something the loop can't.
+Write that loop yourself once, because it shows you what symmetry is. After that there is a shortcut, and it can do something the loop cannot.
 
 ```swift
 symmetry(8)                  // every draw call now happens eight times
@@ -164,18 +187,18 @@ symmetry(8, mirrored: true)  // sixteen times, alternate copies flipped
 noSymmetry()                 // back to normal
 ```
 
-`symmetry` is drawing state, like `fill` or a transform, so it applies to everything you draw until you turn it off, and `withState { }` scopes it. Once it's on you stop thinking about repetition entirely. You draw one wedge, and every circle, line, and shape in it lands in all the folds at once.
+`symmetry` is drawing state, like `fill` or a transform, so it applies to everything you draw until you turn it off, and `withState { }` scopes it. Once it is on you stop thinking about repetition. You draw one wedge, and every circle, line, and shape in it lands in all the folds at once.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/Kaleidoscope-dark.jpg">
   <img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
 </picture>
 
-The mirrored form is the part worth having. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That's the difference between a pinwheel and an actual kaleidoscope. Doing it by hand means negative scales and reversed winding, a mess you now don't have to write.
+The mirrored form is the one to reach for. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That is the difference between a pinwheel and a kaleidoscope. Doing it by hand means negative scales and reversed winding, a mess you now do not have to write.
 
-The folds are computed around wherever you are when you call it, so `translate` first if the center isn't the canvas center. And because it happens per draw call rather than per shape, a whole composition folds just as easily as a single arm.
+The folds are computed around wherever you are when you call it, so `translate` first if the center is not the canvas center. And because it happens per draw call rather than per shape, a whole composition folds as easily as a single arm.
 
-## Drawing inside a shape
+## Drawing inside a shape: `withClip`
 
 Repetition fills space. Sometimes you want it to fill *only part* of the space, and specifically a part shaped like something.
 
@@ -192,11 +215,11 @@ withClip(star) {
   <img src="Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
 </picture>
 
-`withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
+`withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. You never work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
 Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
-## A cell that is a whole canvas
+## A cell that is a whole canvas: `withViewBox`
 
 A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas:
 
@@ -212,71 +235,15 @@ withViewBox(cell.frame) {
   <img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
 </picture>
 
-Inside that block `width` and `height` still report the whole canvas, `center` is still the middle of it, and a circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a piece written for the whole window to a box, and it runs there unchanged.
+Inside that block `width` and `height` still report the whole canvas, and `center` is still the middle of it. A circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a sketch written for the whole window to a box, and it runs there unchanged.
 
-Two more things are quietly remapped so that stays true. `background` fills the box rather than the frame, because the frame belongs to every box at once and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive piece works in each box separately.
+Two more things are quietly remapped so that stays true. `background` fills the box rather than the frame. The frame belongs to every box at once, and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive sketch works in each box separately.
 
-The virtual canvas has the *sketch's* shape, not the box's, so a box shaped like the canvas is the case where everything lands exactly. When it does not, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md): `.contain` leaves the box showing along two edges, `.cover` fills it and crops, `.stretch` squashes.
+The virtual canvas has the *sketch's* shape, not the box's, so in a box shaped like the canvas everything lands as drawn. When the shapes differ, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md). `.contain` leaves the box showing along two edges, `.cover` fills it and crops, and `.stretch` squashes.
 
 Labels belong outside the block, in canvas coordinates, or they get scaled down with everything else. That is what keeps the six captions in the figure one size.
 
-This is the fastest way to see a piece think. Change one number, run six of it, and the ones that are dead give themselves away immediately. You learn more from six of a piece than from one.
-
-## Grids that aren't square
-
-The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way. Ask for the cells, then loop over them once.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/OtherGrids-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
-</picture>
-
-```swift
-for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
-    drawPolygon(cell.corners)
-}
-for cell in triangleGrid(columns: 21, rows: 10).cells {
-    fill(cell.pointsUp ? .white : .black)
-    drawPolygon(cell.vertices)
-}
-for cell in subdivide(minSize: 90, chance: 0.75) {
-    drawRect(cell.frame)
-}
-drawMaze(maze(columns: 24, rows: 24))
-```
-
-`hexGrid` and `triangleGrid` are the other two regular tilings, the only other *regular polygons* that cover a plane with no gaps and no overlaps. Plenty of irregular shapes manage it, which is [Chapter 7](07-Tiles.md)'s subject. Hexagons can't stretch the way a rectangle can. So the block keeps its true proportions and centers itself, rather than distorting to fill your bounds. The hex grid also knows its own geometry, so `distance(from:to:)` counts rings between two cells. That is what colors the first panel, and exactly what a board game needs.
-
-`subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. Uneven panels like that are hard to get from a grid and easy to get from recursion. That is why the result reads as a layout rather than a table.
-
-`maze` carves the fourth panel, a perfect maze. [Chapter 7](07-Tiles.md#one-route-between-any-two-perfect-mazes) sets it beside the maze of diagonals and says what makes it perfect.
-
-## Walking a grid: numbers in a spiral
-
-Every loop so far has read the grid the way a page is read: left to right, top to bottom. That order is a choice, and changing it changes what the grid can show you.
-
-Walk it as a square spiral instead, from the middle outward, writing the whole numbers one per cell. Then mark the cells whose number passes some test. Mark the primes and something happens that has no business happening: the marks fall on diagonal lines.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
-</picture>
-
-```swift
-let spiral = ulamSpiral(size: 101)
-noStroke(); fill(.white)
-for point in spiral.primePoints { drawCircle(center: point, radius: 3) }
-```
-
-Stanisław Ulam found this on a notepad during a dull talk in 1963. The lines are not a mystery once you see where they come from. Step diagonally in a square spiral and the number under you grows by a quadratic, so a diagonal *is* a quadratic, and a crowded one is a quadratic that keeps returning primes. Mathematics has known such polynomials since Euler. What the picture does is make them visible.
-
-The primes are only the famous test. `points(where:)` takes any test at all, and `numbers` hands you the whole square if you would rather ask your own question:
-
-```swift
-for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, radius: 2) }
-```
-
-`start` is the other parameter, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form, which is the same fact seen from a different place.
+This is a quick way to see a sketch think. Change one number, run six of it, and the ones that are dead give themselves away. You learn more from six of a sketch than from one.
 
 ## Putting it together: a wall of rosettes
 
@@ -347,14 +314,20 @@ final class RoseWall: Sketch {
 }
 ```
 
-Run it, then click. What each piece contributes:
+Run it, then click. What each part contributes:
 
 - `blocks.cells` is the one loop. Each cell arrives knowing its own `frame` and `center`, so nothing here rebuilds an x and a y from indices, and `cell.column + cell.row` is the diagonal you already used for the color tiles.
 - `withState` is what makes the block independent. Everything inside it, the position, the turn, the shrink, the fold, and the clip, is undone at the closing brace, so the next cell starts from a clean page.
 - `translate` then `rotate` then `scale` is the usual order, and the order matters. The turn and the shrink both happen around the cell's center because `translate` moved the origin there first.
 - The arm reaches to `radius * 1.30`, well outside its own block. That is deliberate. The clip is what cuts it back, which is why every medallion has a crisp rim and no two rims are cut the same way.
 - `symmetry(folds, mirrored:)` is inside the clip, so the fold happens to the arm and not to the disc under it. Turn `Mirrored` off and the medallions become pinwheels: same arms, but every copy leaning the same way, and the seams between them stop closing.
-- `seed(wallSeed)` at the top of `draw()` pins the fold counts, the turns, and the shrinks, so the wall holds still. The Seed parameter, or a click, deals a whole new wall.
+- `seed(wallSeed)` at the top of `draw()` pins the fold counts, the turns, and the shrinks, so the wall holds still, the reseed-every-frame habit from [Chapter 4](04-Randomness.md). The Seed parameter, or a click, deals a whole new wall.
+
+When a wall is a keeper, export it as a still:
+
+```sh
+swift run OllinLive MySketches/RoseWall.swift --export wall.png
+```
 
 Before moving on, make it yours:
 
@@ -362,6 +335,47 @@ Before moving on, make it yours:
 - Swap `[5, 6, 8, 12]` for `[3, 4]` and the wall goes from lace to heraldry.
 - Give the disc a stroke in `ink` and drop the gutter to `4`, so the medallions crowd their neighbors like tiles rather than floating.
 - Drive `reach` from `noise` at the cell center instead of the diagonal, and the color arrives in patches ([Chapter 5](05-Noise.md)) rather than a clean gradient.
+
+## Other ways to divide and walk a grid
+
+The wall's grid divided the canvas into equal blocks and read them the way a page is read, left to right, top to bottom. Neither is the only choice. The wall has no use for the other two. A layout wants panels of different sizes, and a picture of numbers wants a different reading order.
+
+### Uneven panels by recursion: `subdivide`
+
+`subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. It is for layouts: a poster's panels, a comic's frames, a wall of windows, anything that should read as designed rather than tabulated. Uneven panels like that are hard to get from a grid and easy to get from recursion. That is why the result reads as a layout rather than a table. The split is the binary space partition of computer graphics, a space cut in two and each half cut again, put to work on a page. The third panel of the figure in [Grids that aren't square](#grids-that-arent-square-hexgrid-and-trianglegrid) is one such split. Every panel is a cell with a `frame`, so the loop reads like a grid's:
+
+```swift
+for cell in subdivide(minSize: 90, chance: 0.75) {
+    drawRect(cell.frame)
+}
+```
+
+`chance` is the coin. At `1` every piece splits until `minSize` stops it, and lower values leave some panels large. [Tiling and layout](../Docs/Drawing/Tiling.md) has the split styles.
+
+### Walking a grid: numbers in a spiral
+
+Every loop so far has read the grid the way a page is read. Walk it as a square spiral instead, from the middle outward, writing the whole numbers one per cell. The grid becomes a picture of the numbers. Mark the cells whose number passes some test. Mark the primes, and the marks fall on diagonal lines. Stanisław Ulam found this on a notepad during a dull talk in 1963.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+</picture>
+
+```swift
+let spiral = ulamSpiral(size: 101)
+noStroke(); fill(.white)
+for point in spiral.primePoints { drawCircle(center: point, radius: 3) }
+```
+
+The lines are not a mystery once you see where they come from. Step diagonally in a square spiral and the number under you grows by a quadratic. So a diagonal *is* a quadratic, and a crowded one is a quadratic that keeps returning primes. Mathematics has known such polynomials since Euler. What the picture does is make them visible.
+
+The primes are only the famous test. `points(where:)` takes any test at all, and `numbers` hands you the whole square if you would rather ask your own question:
+
+```swift
+for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, radius: 2) }
+```
+
+`start` is the other parameter, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form. It is the same fact seen from a different place. [Ulam spiral](../Docs/Generators/UlamSpiral.md) is the reference.
 
 ## Where this comes from
 
@@ -374,7 +388,7 @@ The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Ulam spiral](../Docs/Generators/UlamSpiral.md): the walk, reading any test off it, and the prime helpers behind the marks.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
-- [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
+- [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which do not. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
 - [Tiling and layout](../Docs/Drawing/Tiling.md): every parameter for `HexGrid`, `TriangleGrid`, `Subdivision`, and `Maze`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Moving the paper](B-JustEnoughMath.md#moving-the-paper).
@@ -385,7 +399,7 @@ The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 
 - The Schuh homages in [`Examples/Recreations/OwenSchuh/`](../Examples/Recreations/OwenSchuh/): `CountingTheRationals` fills a table of fractions along its diagonals rather than row by row, which is how one walk reaches every cell of a grid with no edge. It weaves the result, so a crossing shows whichever ribbon the walk let pass. `DiagonalArgument` reads the diagonal of a grid of digits and writes a row that no row of the grid can equal.
 - The Bonačić homage [`DynamicObject`](../Examples/Recreations/VladimirBonacic/DynamicObject/Sketch.swift): a 32 by 32 grid sorted into groups by `row ^ column`, each cell's row and column combined bit by bit. Every group has one cell in each row and each column. Lighting a few groups at a time makes rings, pairs of squares, and triangles, always symmetric about the diagonal.
 - The Mohamedi homage [`Registers`](../Examples/Recreations/NasreenMohamedi/Registers/Sketch.swift): a grid with one axis taken away. The sheet is nothing but horizontals, and the whole picture is in how their intervals change. Within each register every interval is the last times a ratio, so the lines gather against a heavy line and open away from it. A field of parallels then reads as planes seen edge on.
-- The Gego homage [`Tejedura`](../Examples/Recreations/Gego/Tejedura/Sketch.swift): a grid nobody drew. The columns are the strips a print was cut into and the rows the strips of foil woven through them, none of them the same width, and each cell shows whichever strip is on top there: the foil, or the print's own lines cut to exactly that cell.
+- The Gego homage [`Tejedura`](../Examples/Recreations/Gego/Tejedura/Sketch.swift): a grid nobody drew. The columns are the strips a print was cut into and the rows the strips of foil woven through them, none of them the same width, and each cell shows whichever strip is on top there: the foil, or the print's own lines cut to that cell.
 - The Farmanfarmaian homage [`Geometric`](../Examples/Recreations/MonirFarmanfarmaian/Geometric/Sketch.swift): a grid of triangles ruled across the whole sheet and used as the ruler for everything after it. The hexagons, the spokes, and the filled triangles all sit on its points. The hatching sits on the same grid cut finer, so the export can be checked point by point against the grid.
 - The Sato homage [`StraightLines`](../Examples/Recreations/OsamuSato/StraightLines/Sketch.swift): copying, shifting, mirroring, and rotating as the whole method of a picture. Each lid of the eye is one bent line copied five times, each copy shifted up from the last. The blocks around it are one block turned sixteen times, and the whole eye is mirrored both ways.
 - Next door: [Chapter 7](07-Tiles.md) keeps the grid and changes what goes in the cells, so that neighboring cells have to agree with each other.
