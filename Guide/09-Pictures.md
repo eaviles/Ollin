@@ -6,11 +6,9 @@
 
 <img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait of a young woman in a lace headdress built entirely from the word OLLIN repeated in a grid, the letters large and white where the lace is, smaller and warm across the face, and small and dark in the hair and the blouse" width="560">
 
-Two kinds of material arrive from outside your sketch, and both come in the same way. A picture is a grid of colors you can ask questions of, and a spreadsheet is a grid of numbers you can ask questions of. Neither is something to display. Both are something to *read*, one sample at a time, and turn into marks of your own choosing.
+Two kinds of material arrive from outside your sketch, and both come in the same way. A picture is a grid of colors you can ask questions of, and a table is a grid of numbers you can ask questions of. This chapter teaches how to read both, one sample at a time, and turn each sample into a mark of your own. You load a picture and draw it, keep a small working copy for the reading, fit it to a box or carve it narrower, and ask it for the color under a point. Those steps build the portrait above: one photograph, sampled a few thousand times, with every sample answered by a letter sized and colored by the pixel under it. After the sketch come the other ways to answer a pixel. A palette read out of the picture and dithered back into it. A character, a dot, or a smaller picture per cell. One unbroken line, a thread wound between pins, and the picture's own pixels sorted or hidden in a repeat. Then the numbers: a spreadsheet's rows and a document's keys, and how a column becomes marks.
 
-The portrait above is one photograph, sampled a few thousand times, with every sample answered by a letter, sized and colored by the pixel underneath it. By the end of the chapter you'll have built it, and you'll have a handful of other ways to answer a pixel: with a dot, with one unbroken line, with a thread wound between pins, by sorting the pixels the picture already has, or by taking pixels away until the picture fits the space you have.
-
-## Pictures
+## A picture on the canvas: `loadImage` and `drawImage`
 
 Images follow the pattern you already know from fonts: load once in `setup()`, keep the result, draw it in `draw()`.
 
@@ -31,7 +29,7 @@ final class Photo: Sketch {
 }
 ```
 
-`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends). It throws when the path is wrong or the file isn't a picture, and `try?` turns that into `nil`, which the `if let` in `draw()` skips. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
+`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends). It throws when the path is wrong or the file is not a picture, and `try?` turns that into `nil`, which the `if let` in `draw()` skips. `drawImage` places the image by its top-left corner, at native size or scaled into a box. It composites in draw order with everything else and rides the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
@@ -43,11 +41,11 @@ drawImage(photo, 60, 60, width, height)
 noTint()                                        // back to as-is
 ```
 
-Tint never edits the image itself, only how it's drawn, and `withState { }` scopes it like any other state.
+Tint never edits the image itself, only how it is drawn, and `withState { }` scopes it like any other state.
 
-### Twenty pictures to start with
+### A working copy: `resized` and `cropped`
 
-For a picture to try right now, Ollin bundles twenty. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones. They share a shape, so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Every example in this chapter's territory reads one of them. So does every figure in this chapter that starts from a picture, and most of the figures from here on. [Sample photographs](../Docs/Drawing/SamplePhotos.md) shows all twenty on one page, each under its name.
+For a picture to try right now, Ollin bundles twenty. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square, and [Sample photographs](../Docs/Drawing/SamplePhotos.md) shows all twenty on one page, each under its name, with what it is for and the credit it carries. Every figure in this chapter that starts from a picture reads one of them, and so does every example in this chapter's territory.
 
 A picture arrives at one size, and the size you work at is the next choice:
 
@@ -58,7 +56,7 @@ A picture arrives at one size, and the size you work at is the next choice:
 
 A 1600-pixel square is more than a stipple, a dither, or a mosaic needs. Each of those reads every pixel, and they were tuned on a copy a few hundred pixels a side. `resized(width:height:)` makes that copy. `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call, and the copy has twenty-eight times fewer pixels to read. Keep the small copy for the reading and the full picture for the drawing. `cropped(toAspect:)` is the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of the square and scales nothing, which is how a square photograph stands in for a wide one.
 
-Each picture carries its `credit`: the photographer, the place, the page it came from, and the terms it is used under. `SamplePhoto.city.credit.line` is the sentence at the foot of the figure, ready to draw. The terms do not ask for it. The Guide gives it anyway.
+Each bundled picture carries its `credit`: the photographer, the place, the page it came from, and the terms it is used under. `SamplePhoto.city.credit.line` is the sentence at the foot of the figure, ready to draw. The terms do not ask for it. The Guide gives it anyway.
 
 ### A picture you drop on the window
 
@@ -79,7 +77,7 @@ override func filesDropped() {
 
 `droppedFiles()` empties itself as you read it, so a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input outside a take, so a replay from [Chapter 39](39-Performing.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
 
-## The box is never the right shape
+## The box is never the right shape: `fit`
 
 That first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.
 
@@ -100,13 +98,13 @@ So the question is never which one is correct. It is what you would rather lose.
 
 A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The church dome in the figure gives the game away in all three panels at once.
 
-Cropping is free here, which is worth knowing before you avoid it. `.cover` does not clip the drawing. It reads a smaller part of the picture instead, so a covered photograph costs the same one quad and one texture read as a stretched one.
+Cropping costs nothing here. `.cover` does not clip the drawing. It reads a smaller part of the picture instead, so a covered photograph costs the same one quad and one texture read as a stretched one.
 
-## Making it narrower without squashing it
+## Making it narrower without squashing it: seam carving
 
 The three answers above keep every pixel and change how the picture sits in the box. A fourth changes the picture's own shape, and tries hard to leave the looking alone.
 
-Say a picture is 1200 wide and the space it has to fit is 800. You can squash it with `.stretch`, and everything inside gets a third thinner. You can crop it with `.cover`, and lose whatever was at the edge. **Seam carving** is the fourth answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times.
+Say a picture is 1200 wide and the space it has to fit is 800. You can squash it with `.stretch`, and everything inside gets a third thinner. You can crop it with `.cover`, and lose whatever was at the edge. **Seam carving** is the fourth answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times. Shai Avidan and Ariel Shamir published the method in 2007 as an answer to a plain engineering problem: a photograph on a web page has to fit whatever window it lands in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
@@ -128,7 +126,7 @@ let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
 let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
 ```
 
-A mask is just a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
+A mask is a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for, and the part of its demonstration video that went around the world.
 
 Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
 
@@ -147,304 +145,30 @@ override func draw() {
 
 And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
 
-## An image you can ask
+## An image you can ask: `image[x, y]`
 
-The real gift of `Image` for generative work isn't drawing it, it's *reading* it. The subscript `image[x, y]` returns the color stored at a pixel, and suddenly a picture is a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
+Drawing a picture is the smaller half of what `Image` does for generative work. The larger half is *reading* it. The subscript `image[x, y]` returns the color stored at a pixel, and a picture becomes a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
   <img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a photograph of a woman in profile on a plain tan ground; right, the same picture redrawn as a grid of dots on a dark ground, each dot taking its pixel's color and sized by its brightness, so the ground is large tan dots and the face is small dark ones" width="680">
 </picture>
 
-The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`, and rows work the same way, so any grid samples any image size. Second, "how bright is this pixel" takes one more line than you might guess, because your eye does not weigh the three channels equally, with green counting most and blue least. The standard weights are
+The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`, and rows work the same way, so any grid samples any image size. Second, "how bright is this pixel" takes one more line than the three channels suggest, because your eye does not weigh them equally. Green counts most and blue least, and the standard weights are
 
 ```swift
 let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 ```
 
-and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. ([Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
+and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. [Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright. Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
 
-You can also write pixels. `Image(width:height:)` makes a blank image and `image[x, y] = color` paints one pixel, so a picture can come out of code as readily as out of a file. A double loop over every pixel, a [Chapter 2](02-Color.md) ramp read by height, and a little [Chapter 5](05-Noise.md) noise is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and everything in this section reads an authored image exactly as it reads a photograph.
-
-## Palettes from a photograph
-
-Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. Give `Palette(extractedFrom:count:)` an image and how many colors you want. It groups the pixels by how similar they look and hands back the center of each group:
-
-```swift
-let photo = try! loadImage("beach.jpg")
-let p = Palette(extractedFrom: photo, count: 5)
-fill(p[0])     // the color the photo is mostly made of
-```
-
-The colors come back most-used first, so `p[0]` is the one you'd name if someone asked what color the photo is. The grouping happens in OKLab for the same reason [mixing](02-Color.md#mixing-you-can-trust) does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
-
-Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from [Chapter 1](01-HelloOllin.md) is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
-
-```swift
-var photo: Image?
-var palette = Palette([])
-
-override func setup() {
-    photo = try? loadImage("beach.jpg")
-    if let photo { palette = Palette(extractedFrom: photo, count: 5) }
-}
-```
-
-A palette pulled from a photograph you took is a palette nobody else has.
-
-## Fewer colors than the picture needs: dithering
-
-Once you have those colors, you can put the picture back together in them:
-
-```swift
-if let photo {
-    let poster = photo.dithered(.floydSteinberg, to: palette)
-    drawImage(poster, in: bounds)
-}
-```
-
-Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".)
-
-`dithered` is the word to understand rather than just call, because it answers a problem you will meet constantly. You have fewer colors than the picture needs.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/Dithering-dark.jpg">
-  <img src="Images/09-Pictures/Dithering.jpg" alt="Four panels: a smooth color gradient, then the same gradient reduced to five colors three ways. The first reduction shows wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, and both of the latter read as the original gradient from a distance" width="680">
-</picture>
-
-The first panel is the picture as it came. Snapping each pixel to the nearest available color is the obvious way to fit it into five, and the second panel shows what that costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
-
-There are two families, and they look different on purpose.
-
-**Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
-
-**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
-
-A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
-
-## A picture as marks
-
-Reading a pixel and drawing a mark is such a common move that Ollin ships two finished versions of it, and both are worth knowing before you hand-roll your own.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsGlyphs-dark.jpg">
-  <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same photograph of an older woman in a scarf: on the left a mosaic of ASCII characters that get denser where the face and the scarf are lit, on the right a halftone screen of dots that grow in the same places" width="680">
-</picture>
-
-`drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
-
-```swift
-textFont(BitmapFont.builtIn)
-fill(.white)
-drawGlyphMosaic(picture, columns: 72)
-```
-
-The part to understand is how it picks the character. It doesn't use a ramp somebody typed out from memory. It *measures* every character you offer it in the font you're currently using, counting lit pixels for a bitmap font, outline area for an outline font, pen travel for a stroke font, and then matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay honest. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from, and `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
-
-`drawHalftone` does the same job with the printing industry's answer, which is one dot per cell, grown until it covers the right fraction of that cell:
-
-```swift
-fill(.black)
-noStroke()
-drawHalftone(picture, pitch: 14)
-```
-
-`pitch` is the cell size and `angle` rotates the screen, defaulting to the 45 degrees printers have used for a century because a diagonal grid is the least visible to the eye. Coverage is computed exactly, so tone is right rather than approximated, and the dots are real circles. That last detail matters more than it sounds: a halftone can go straight out to a pen plotter as circles it can actually draw.
-
-Comparing the two panels shows the honest difference between them. A mosaic has exactly as many tones as it has characters, so it steps, while a halftone's radius is continuous and gives you a smooth ramp. Choose by which texture you want, not by which is better.
-
-One polarity trap sits between them. `drawGlyphMosaic` grows its mark with *brightness* by default, which suits glowing marks on a dark ground, while `drawHalftone` grows its dot with *darkness*, because it is modeling ink on paper. Each takes `inverted: true` to flip, and the figure above uses the mosaic's default beside the halftone's inverted form to get both reading the same way.
-
-Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which hand back the cells or dots instead of drawing them. That's the door to your own marks: same measurement, but you draw hexagons, or letters from a message, or nothing at all where the tone is light.
-
-## A picture made of pictures
-
-The marks so far have been characters and dots. They can be pictures.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
-  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a photograph of a young woman in a lace headdress, the same picture rebuilt as a grid of small tiles cut from four photographs, and seven of those cells enlarged so each is visibly a piece of a real picture" width="680">
-</picture>
-
-```swift
-let mosaic = target.mosaic(of: library, columns: 32, rows: 32)
-drawMosaic(mosaic, of: library, in: bounds, tint: 0.25)
-```
-
-Every cell of the target is averaged, every picture in the library is averaged once, and each cell takes the nearest one. Stand back and the cells add up to the target; step forward and each is a picture of its own.
-
-**The averaging happens in linear light, and that is not a detail.** A cell that is half black and half white is middle gray, which is 0.5 in linear light and about 0.74 written back out in sRGB. Average the sRGB numbers instead and you get 0.5, a quarter too dark, and the mosaic loses its lights. Ollin does this the right way for you; the reason to know it is that hand-rolling the same loop is where the mistake usually lives.
-
-Two parameters matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off: a quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
-
-The thing that decides whether a mosaic works is not the code. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the whole frame, which is a picture of nothing. `mosaic.uses(of:)` counts how many of the library actually got used, and it is the number to watch when a mosaic looks flat.
-
-## A picture that hides a shape
-
-One more, and this one hides its picture instead of drawing it.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DepthInARepeat-dark.jpg">
-  <img src="Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
-</picture>
-
-A pattern that repeats at a fixed spacing gives both eyes the same marks to pair, and they read those marks at whatever depth that spacing stands for. **Shorten the repeat and the pair reads as nearer.** That is the entire trick, and it means a depth map can be turned into a picture: shorten the repeat wherever the shape is closer.
-
-```swift
-let hidden = depthMap.autostereogram(Autostereogram(repeatWidth: 120, relief: 0.22))
-drawImage(hidden, in: rect)
-```
-
-Hand it a picture where bright means near, and get back a field of noise with a shape buried in it. Look *through* the picture, at something behind the screen, until the repeats double up. It takes a moment the first time, and crossing your eyes instead reads the same picture inside out, so the shape sinks rather than stands.
-
-Four things decide whether one works, and only the first is code.
-
-**Draw it at its own pixel size.** Scaling resamples the very repeats the eyes have to pair, and a stereogram at half size is impossible to fuse. **Keep the relief under about a third** of the repeat, which is where the eyes give up. **Use hard edges**, because a soft gradient gives them nothing to lock onto. And expect a shimmer along every edge of the shape: within one repeat of a depth step neither depth is the answer, which is in the technique rather than in the picture.
-
-## A picture as one line
-
-The other family turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. Getting that right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. ([Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.)
-
-```swift
-let dots = stipple(of: picture, count: 4000, in: frame)
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsLines-dark.jpg">
-  <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the profile photograph, dense in the face and hair and empty on the plain ground, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
-</picture>
-
-Once you have the dots, two ways of joining them give two very different drawings:
-
-```swift
-let tour = singleLine(through: dots)        // one closed loop
-let chains = spanningTree(through: dots)    // branching, minimal pen lifts
-```
-
-`singleLine` finds a short tour that visits every dot once and comes back, which is the classic routing problem known as TSP, and drawings made this way are called TSP art. The result is one continuous line, and the picture appears out of how tightly that line has to wander. `spanningTree` instead finds the shortest set of links that still connects every dot, then breaks the result into the fewest separate chains it can, so a drawing machine lifts its pen as few times as the branching truly requires. The first reads as a maze, the second as veins.
-
-Both also take a picture directly and do the stippling for you:
-
-```swift
-let line = singleLine(of: picture, points: 4000, in: frame)
-let veins = spanningTree(of: picture, points: 4000, in: frame)
-```
-
-In those forms `cutoff` is the parameter to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the plain ground behind the profile would have done. The figure was made with a cutoff of 0.62, low enough to call that tan ground paper. That is why the ground is empty and every dot went to the face.
-
-## A picture wound from thread
-
-String art takes the same idea to its most physical extreme. Ring the canvas with pins, tie one thread to a pin, and wind it straight across, again and again. Nothing curves and nothing lifts. The picture has to come out of where the crossings pile up.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WoundFromThread-dark.jpg">
-  <img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a photograph of a woman in profile on a plain ground, the first 350 chords of its winding crowding into the dark of the head, and the finished winding where the profile is dense thread and the ground a light veil" width="680">
-</picture>
-
-```swift
-let art = StringArt(of: picture, center: Vector2(540, 540), radius: 470)
-
-override func setup() { noClear() }
-
-override func draw() {
-    if frameCount == 1 { background(.white) }
-    stroke(Color.black.withAlpha(0.35))
-    for chord in art.step(8) {
-        drawLine(chord.from, chord.to)
-    }
-}
-```
-
-Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores every reachable pin by the darkness the straight chord would still cover. It winds the best one, subtracts that ink from its copy of the picture, and goes again from the pin it landed on. Dark regions demand crossing after crossing. Light regions are left almost alone. The picture emerges from where the thread had to go.
-
-It is a stepper you hold on to, like the growth systems of [Chapter 13](13-GrowingThings.md). Each `step` winds a few more chords onto a never-clearing canvas, so the figure knits itself over the first seconds of a run. And the result is honest thread: `art.thread` is one open polyline. `art.sequence` is the winding order itself, pin numbers you could follow on a real rim.
-
-One honest note, and it is why the profile is the picture here rather than a street or a sky. Bold tonal masses knit into a clear figure. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
-
-## Sorting the pixels
-
-The last treatment doesn't add marks, it rearranges the ones already there. **Pixel sorting** walks each row or column, finds runs of pixels whose brightness falls inside a band you choose, and sorts each run.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/SortedPixels-dark.jpg">
-  <img src="Images/09-Pictures/SortedPixels.jpg" alt="A photograph of a Guanajuato alley under a wide sky beside a version with its columns sorted: the clouds fall to the bottom of the sky in vertical streaks, the pastel walls pour downward, and the deepest doorways and the brightest clouds stay where they were" width="680">
-</picture>
-
-```swift
-let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
-let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
-```
-
-The threshold is the whole technique. It decides which pixels are in play, and everything outside the band stays exactly where it was, which is why the deepest doorways and the brightest clouds survive in the picture above while everything between them pours. Sort by `.brightness`, `.hue`, or `.saturation`, and `reversed` flips which end of the run the bright pixels pile up at.
-
-Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And the direction matters against the picture's own gradient. The alley runs bright at the top and dark at the bottom. An ascending sort piles each run's dark pixels at its top, so it turns the picture inside out. On a picture that already runs dark to bright down the column, that same sort changes nearly nothing, and `reversed: true` is the direction with the drama.
-
-Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
-
-## Numbers you didn't type: CSV and JSON
-
-Words and pictures are material you bring in. So are numbers.
-
-A comma-separated file is the format everything exports: a spreadsheet, a sensor log, a download from a public archive. `loadTable` reads one, and each row hands you its cells by column name.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DataAsMaterial-dark.jpg">
-  <img src="Images/09-Pictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
-</picture>
-
-```swift
-var table: Table?
-
-override func setup() {
-    table = try? loadTable(resource: "visits", withExtension: "csv", in: .module)
-}
-
-override func draw() {
-    background(.white)
-    guard let table else { return }
-
-    for (index, row) in table.enumerated() {
-        let y = 100 + Double(index) * 60
-        fill(row.color("tint") ?? .gray)
-        drawRect(corner: Vector2(80, y), width: row.number("visits") ?? 0, height: 22)
-    }
-}
-```
-
-A cell is text, because that is what a file holds. `row["city"]` gives you that text, and `row.number(_:)`, `row.int(_:)`, `row.bool(_:)`, and `row.color(_:)` convert it when you ask. Each one answers `nil` when the column isn't there or the cell isn't what you asked for, which is the honest answer for a file with a gap in it. An empty cell is not a zero.
-
-The scale should come from the file too. `table.numbers("visits")` reads a whole column as a series, so the drawing fits whatever the file holds:
-
-```swift
-let visits = table.numbers("visits")
-guard let most = visits.max() else { return }
-let length = (row.number("visits") ?? 0) / most * 250
-```
-
-Once the numbers come from a file, the drawing changes when the file does, and you never touch the sketch.
-
-Two things about the format matter, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `header: false` and read cells by position instead.
-
-JSON works the same way, for documents with a shape rather than rows:
-
-```swift
-let doc = try? loadJSON(resource: "places", withExtension: "json", in: .module)
-
-for point in doc?["points"].array ?? [] {
-    fill(point["tint"].color ?? .gray)
-    drawCircle(point["x"].number ?? 0, point["y"].number ?? 0, 20)
-}
-```
-
-Reach in by name or index, then ask for the kind you want at the end: `.text`, `.number`, `.int`, `.bool`, `.color`, `.array`. A key that isn't there answers null rather than stopping, so a whole path is safe to write in one line, and a loop over a key that isn't there runs zero times. That is why the `tint` above needs no check: a point that doesn't carry one lands on the fallback.
-
-Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives.
+You can also write pixels. `Image(width:height:)` makes a blank image and `image[x, y] = color` paints one pixel, so a picture can come out of code as readily as out of a file. A double loop over every pixel, a [Chapter 2](02-Color.md) ramp read by height, and a little [Chapter 5](05-Noise.md) noise is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and everything in this chapter reads an authored image the way it reads a photograph.
 
 ## Putting it together: a picture painted with type
 
-This is the sketch from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the photograph at its own position, takes the pixel's color, and scales by its brightness.
+This is the sketch from the top of the chapter, and it composes the steps above in one grid: a picture loaded once and read at a working size, sampled with `image[x, y]`, and answered with words drawn by [Chapter 8](08-Words.md)'s `drawText`, so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the photograph at its own position, takes the pixel's color, and scales by its brightness.
 
-It is a glyph mosaic built by hand, and that's on purpose. `drawGlyphMosaic` would give you a better ramp in one line, but it chooses the character for you, and this sketch needs the characters to spell something. Building the grid yourself is what buys that. Make `MySketches/TypeMosaic.swift`:
+It is a glyph mosaic built by hand, on purpose. The finished glyph mosaic after the sketch would give you a better ramp in one line, but it chooses the character for you, and this sketch needs the characters to spell something. Building the grid yourself is what buys that. Make `MySketches/TypeMosaic.swift`:
 
 ```swift
 import Ollin
@@ -501,24 +225,344 @@ Run it with `swift run OllinLive MySketches/TypeMosaic.swift` and take it apart:
 - `resized(width:height:)` makes the 160-pixel working copy the grid reads, the habit from the top of the chapter. Each pixel of the copy is roughly the average of a ten-by-ten patch of the original. So a letter reads the whole of its cell, not whichever single pixel happens to sit under its center.
 - The double loop is [Chapter 6](06-GridsAndRepetition.md)'s grid chore done by hand, because what it loops over is the *message*: `k % chars.count` deals the letters out in reading order, so the rows spell the message over and over, and `u`/`v` fractions map each cell onto its pixel.
 - `brightness * brightness` is contrast shaping, since squaring pushes mid grays down so the lace pops. The `fill` mixes each pixel's color a step toward white in the brightest cells, which makes the lit lace read as light rather than paint.
-- `textMode(.atlas)` matters here, because sixty-four columns is a few thousand glyphs per frame, and the atlas mode draws each as one cheap textured quad instead of re-tessellating outlines. It's the volume switch for text, one line, and the chapter's one performance note.
+- `textMode(.atlas)` matters here, because sixty-four columns is a few thousand glyphs per frame, and the atlas mode draws each as one cheap textured quad instead of re-tessellating outlines. It is the volume switch for text, one line, and the chapter's one performance note.
 - `Breathe` feeds a slow `signedNoise` into the letter sizes, so the picture shimmers without changing what it says. The `Message` parameter is a text field in the live window, so type into it and the portrait respells itself as you watch.
 
 > **Swift note.** `guard let source else { return }` is `if let` turned around, unwrapping the value or leaving the function right there. And `Array(message)` turns a string into a list of its characters, so `chars[k % chars.count]` can deal them out like [Chapter 1](01-HelloOllin.md)'s palette cycling.
 
+When a portrait is a keeper, export it as a still:
+
+```sh
+swift run OllinLive MySketches/TypeMosaic.swift --export portrait.png
+```
+
 Then make it yours:
 
-- Swap the picture: `SamplePhoto.scarf` or `loadImage("/path/to/yours.jpg")` in place of the portrait is the whole change. A face reads at 60 to 80 columns, a street wants more, and a picture you author with `Image(width:height:)` reads exactly the same way.
+- Swap the picture: `SamplePhoto.scarf` or `loadImage("/path/to/yours.jpg")` in place of the portrait is the whole change. A face reads at 60 to 80 columns, a street wants more, and a picture you author with `Image(width:height:)` reads the same way.
 - Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtIn)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
-- Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)` and the poster becomes one unbroken thread a plotter could draw.
+- Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)`, from the family below, and the poster becomes one unbroken thread a plotter could draw.
+
+## The colors read back: palettes and dithering
+
+The portrait read one pixel at a time and answered each with a letter. The two techniques here read the whole picture at once, first to ask what colors it is made of, and then to put it back together in only those. The portrait has no use for either. But a palette from a photograph is a palette nobody else has, and dithering answers a problem you will meet whenever you have fewer colors than a picture needs.
+
+### Palettes from a photograph
+
+Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. Give `Palette(extractedFrom:count:)` an image and how many colors you want. It groups the pixels by how similar they look and hands back the center of each group:
+
+```swift
+let photo = try! loadImage("beach.jpg")
+let p = Palette(extractedFrom: photo, count: 5)
+fill(p[0])     // the color the photo is mostly made of
+```
+
+The colors come back most-used first, so `p[0]` is the one you would name if someone asked what color the photo is. The grouping happens in OKLab for the same reason [mixing](02-Color.md#mixing-you-can-trust) does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
+
+Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces, which matters once you start exporting. The second is that it does enough work that you do not want it running sixty times a second. Load the photo and extract the palette once in `setup()`, keep both in properties, and let `draw()` read what is already there:
+
+```swift
+var photo: Image?
+var palette = Palette([])
+
+override func setup() {
+    photo = try? loadImage("beach.jpg")
+    if let photo { palette = Palette(extractedFrom: photo, count: 5) }
+}
+```
+
+### Fewer colors than the picture needs: dithering
+
+Once you have those colors, you can put the picture back together in them:
+
+```swift
+if let photo {
+    let poster = photo.dithered(.floydSteinberg, to: palette)
+    drawImage(poster, in: bounds)
+}
+```
+
+Every pixel of the result is one of your five colors. `bounds` there is the whole canvas as a rectangle, which every sketch has ready, so it is the short way to say "fill the frame".
+
+`dithered` is the word to understand rather than only call, because it answers a problem you will meet constantly. You have fewer colors than the picture needs.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/Dithering-dark.jpg">
+  <img src="Images/09-Pictures/Dithering.jpg" alt="Four panels: a smooth color gradient, then the same gradient reduced to five colors three ways. The first reduction shows wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, and both of the latter read as the original gradient from a distance" width="680">
+</picture>
+
+The first panel is the picture as it came. Snapping each pixel to the nearest available color is the obvious way to fit it into five, and the second panel shows what that costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was there. The picture keeps its gradients using colors it does not have.
+
+There are two families, and they look different on purpose.
+
+**Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
+
+**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it has not reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` throws away a quarter of the error on purpose, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
+
+A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. There is a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
+
+## A picture as marks: glyphs, dots, pictures, lines, and thread
+
+The portrait was a mosaic built by hand, one letter per cell, so that the message could spell something. When the marks do not need to spell anything, the framework ships the same move finished, and several others in the same spirit: a character or a dot per cell, a small picture per cell, dots settled into one line or one tree, and a single thread wound between pins. Every one reads brightness the way the portrait did and answers it with a different mark. All of them descend from one idea, the halftone that newspapers were printing by the 1880s: pick a mark, vary it by the brightness underneath, and let the eye put the picture back together.
+
+### One mark per cell: `drawGlyphMosaic` and `drawHalftone`
+
+Reading a pixel and drawing a mark is such a common move that Ollin ships two finished versions of it. A glyph mosaic puts one character in each cell of a grid, the picture a line printer made in the 1960s, and a halftone puts one dot in each cell, grown to the tone, which is the printing industry's answer. Both are for a picture that should read as texture from a distance and as marks up close, and the halftone is the one to reach for when the marks have to be drawn by a pen.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsGlyphs-dark.jpg">
+  <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same photograph of an older woman in a scarf: on the left a mosaic of ASCII characters that get denser where the face and the scarf are lit, on the right a halftone screen of dots that grow in the same places" width="680">
+</picture>
+
+`drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
+
+```swift
+textFont(BitmapFont.builtIn)
+fill(.white)
+drawGlyphMosaic(picture, columns: 72)
+```
+
+The part to understand is how it picks the character. It *measures* every character you offer it in the font you are currently using, counting lit pixels for a bitmap font, outline area for an outline font, pen travel for a stroke font, and then matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay true. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from, and `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
+
+`drawHalftone` does the same job with one dot per cell, grown until it covers the right fraction of that cell:
+
+```swift
+fill(.black)
+noStroke()
+drawHalftone(picture, pitch: 14)
+```
+
+`pitch` is the cell size and `angle` rotates the screen, defaulting to the 45 degrees printers have used for a century because a diagonal grid is the least visible to the eye. Coverage is computed exactly, so tone is right rather than approximated, and the dots are real circles. That last detail is what lets a halftone go straight out to a pen plotter, as circles it can draw.
+
+Comparing the two panels shows the difference between them. A mosaic has exactly as many tones as it has characters, so it steps, while a halftone's radius is continuous and gives you a smooth ramp. Choose by which texture you want.
+
+One polarity trap sits between them. `drawGlyphMosaic` grows its mark with *brightness* by default, which suits glowing marks on a dark ground, while `drawHalftone` grows its dot with *darkness*, because it is modeling ink on paper. Each takes `inverted: true` to flip, and the figure above uses the mosaic's default beside the halftone's inverted form to get both reading the same way.
+
+Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which hand back the cells or dots instead of drawing them. That is the door to your own marks: same measurement, but you draw hexagons, or letters from a message, or nothing at all where the tone is light.
+
+### A picture made of pictures
+
+The marks so far have been characters and dots. They can be pictures. A photo mosaic rebuilds a target out of a library of smaller pictures, one per cell, and it is for the picture that rewards a second look: from across the room it is the target, and up close every cell is a picture of its own.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
+  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a photograph of a young woman in a lace headdress, the same picture rebuilt as a grid of small tiles cut from four photographs, and seven of those cells enlarged so each is visibly a piece of a real picture" width="680">
+</picture>
+
+```swift
+let mosaic = target.mosaic(of: library, columns: 32, rows: 32)
+drawMosaic(mosaic, of: library, in: bounds, tint: 0.25)
+```
+
+Every cell of the target is averaged, every picture in the library is averaged once, and each cell takes the nearest one.
+
+**The averaging happens in linear light, and it has to.** A cell that is half black and half white is middle gray, which is 0.5 in linear light and about 0.74 written back out in sRGB. Average the sRGB numbers instead and you get 0.5, a quarter too dark, and the mosaic loses its lights. Ollin does this the right way for you. The reason to know it is that hand-rolling the same loop is where the mistake usually lives.
+
+Two parameters matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off. A quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
+
+What decides whether a mosaic works is the material rather than the code. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the whole frame, which is a picture of nothing. `mosaic.uses(of:)` counts how many of the library got used, and it is the number to watch when a mosaic looks flat.
+
+### A picture as one line: stippling, `singleLine`, and `spanningTree`
+
+This entry turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. It is for the drawings a pen makes: a plotter draws dots, one closed tour, or a branching tree, and never a fill. Stippling with dots of even weight was a hand discipline in scientific illustration for a very long time. Adrian Secord gave it an algorithm in 2002, and the one unbroken tour through the dots, where the picture appears out of how tightly the line has to wander, was made popular by Robert Bosch and Craig Kaplan in the mid-2000s. Drawings made that way are called TSP art, after the routing problem that finds the tour.
+
+Getting a stipple right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. [Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.
+
+```swift
+let dots = stipple(of: picture, count: 4000, in: frame)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsLines-dark.jpg">
+  <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the profile photograph, dense in the face and hair and empty on the plain ground, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
+</picture>
+
+Once you have the dots, two ways of joining them give two very different drawings:
+
+```swift
+let tour = singleLine(through: dots)        // one closed loop
+let chains = spanningTree(through: dots)    // branching, minimal pen lifts
+```
+
+`singleLine` finds a short tour that visits every dot once and comes back. The result is one continuous line, and the picture appears out of how tightly that line has to wander. `spanningTree` instead finds the shortest set of links that still connects every dot, then breaks the result into the fewest separate chains it can, so a drawing machine lifts its pen as few times as the branching requires. The first reads as a maze, the second as veins.
+
+Both also take a picture directly and do the stippling for you:
+
+```swift
+let line = singleLine(of: picture, points: 4000, in: frame)
+let veins = spanningTree(of: picture, points: 4000, in: frame)
+```
+
+In those forms `cutoff` is the parameter to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is what the plain ground behind the profile would have done. The figure was made with a cutoff of 0.62, low enough to call that tan ground paper. That is why the ground is empty and every dot went to the face.
+
+### A picture wound from thread: `StringArt`
+
+String art takes the same idea to its most physical form. Ring the canvas with pins, tie one thread to a pin, and wind it straight across, again and again. Nothing curves and nothing lifts, and the picture has to come out of where the crossings pile up. It is for a picture you could wind for real, on a hoop of nails, and the winding order comes out with it. Petros Vrellis made it famous as a computational technique in 2016.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WoundFromThread-dark.jpg">
+  <img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a photograph of a woman in profile on a plain ground, the first 350 chords of its winding crowding into the dark of the head, and the finished winding where the profile is dense thread and the ground a light veil" width="680">
+</picture>
+
+```swift
+let art = StringArt(of: picture, center: Vector2(540, 540), radius: 470)
+
+override func setup() { noClear() }
+
+override func draw() {
+    if frameCount == 1 { background(.white) }
+    stroke(Color.black.withAlpha(0.35))
+    for chord in art.step(8) {
+        drawLine(chord.from, chord.to)
+    }
+}
+```
+
+Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores every reachable pin by the darkness the straight chord would still cover. It winds the best one, subtracts that ink from its copy of the picture, and goes again from the pin it landed on. Dark regions demand crossing after crossing. Light regions are left almost alone. The picture emerges from where the thread had to go.
+
+It is a stepper you hold on to, like the growth systems of [Chapter 13](13-GrowingThings.md). Each `step` winds a few more chords onto a never-clearing canvas, so the figure knits itself over the first seconds of a run. And the result is thread you could follow: `art.thread` is one open polyline, and `art.sequence` is the winding order itself, pin numbers you could follow on a real rim.
+
+One note, and it is why the profile is the picture here rather than a street or a sky. Bold tonal masses knit into a clear figure. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
+
+## Two more treatments: sorted pixels and a hidden shape
+
+Everything so far answered a pixel with a mark of its own. The two techniques here keep the picture's own pixels. One rearranges them, and the other reads a depth map's pixels to hide a shape in a field of repeats. Neither is in the portrait, and both read real pixels on the CPU, like the stipple and the thread above, so each one is `setup()` work: run it once, hold the result, and let `draw()` replay it. A texture-backed image needs `snapshot()` first.
+
+### Sorting the pixels
+
+Pixel sorting adds no marks. It rearranges the ones already there. It walks each row or column, finds runs of pixels whose brightness falls inside a band you choose, and sorts each run. It is the glitch look, a picture melting in streaks, and it comes from glitch art rather than illustration: it spread from a 2010 sketch by Kim Asendorf.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/SortedPixels-dark.jpg">
+  <img src="Images/09-Pictures/SortedPixels.jpg" alt="A photograph of a Guanajuato alley under a wide sky beside a version with its columns sorted: the clouds fall to the bottom of the sky in vertical streaks, the pastel walls pour downward, and the deepest doorways and the brightest clouds stay where they were" width="680">
+</picture>
+
+```swift
+let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
+let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
+```
+
+The threshold is the whole technique. It decides which pixels are in play, and everything outside the band stays where it was, which is why the deepest doorways and the brightest clouds survive in the picture above while everything between them pours. Sort by `.brightness`, `.hue`, or `.saturation`, and `reversed` flips which end of the run the bright pixels pile up at.
+
+Two notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a clean gradient sorts almost invisibly. And the direction matters against the picture's own gradient. The alley runs bright at the top and dark at the bottom. An ascending sort piles each run's dark pixels at its top, so it turns the picture inside out. On a picture that already runs dark to bright down the column, that same sort changes nearly nothing, and `reversed: true` is the direction with the drama.
+
+### A picture that hides a shape
+
+An autostereogram hides its picture instead of drawing it. It is a field of marks that repeats, with the repeat shortened wherever a shape is nearer, so that two eyes looking through it see the shape standing out of the page. It is for the poster that holds a secret, and it needs a depth map rather than a photograph.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DepthInARepeat-dark.jpg">
+  <img src="Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
+</picture>
+
+A pattern that repeats at a fixed spacing gives both eyes the same marks to pair, and they read those marks at whatever depth that spacing stands for. **Shorten the repeat and the pair reads as nearer.** That is the whole trick, and it means a depth map can be turned into a picture: shorten the repeat wherever the shape is closer.
+
+```swift
+let hidden = depthMap.autostereogram(Autostereogram(repeatWidth: 120, relief: 0.22))
+drawImage(hidden, in: rect)
+```
+
+Hand it a picture where bright means near, and get back a field of noise with a shape buried in it. Look *through* the picture, at something behind the screen, until the repeats double up. Crossing your eyes instead reads the same picture inside out, so the shape sinks rather than stands.
+
+Four things decide whether one works, and only the first is code.
+
+**Draw it at its own pixel size.** Scaling resamples the repeats the eyes have to pair, and a stereogram at half size cannot be fused. **Keep the relief under about a third** of the repeat, which is where the eyes give up. **Use hard edges**, because a soft gradient gives them nothing to lock onto. And expect a shimmer along every edge of the shape: within one repeat of a depth step neither depth is the answer, which is in the technique rather than in the picture.
+
+## Numbers you didn't type: CSV and JSON
+
+Words and pictures are material you bring in. So are numbers, and they come in the same way: a file read once in `setup()`, then asked one row at a time. The portrait has no use for them. But a spreadsheet, a sensor log, and a download from a public archive all export as one of two formats, and once a sketch reads them, the drawing changes when the file does and you never touch the sketch.
+
+### Reading a table: `loadTable`
+
+A comma-separated file is the format everything exports. `loadTable` reads one, and each row hands you its cells by column name.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DataAsMaterial-dark.jpg">
+  <img src="Images/09-Pictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
+</picture>
+
+```swift
+var table: Table?
+
+override func setup() {
+    table = try? loadTable(resource: "visits", withExtension: "csv", in: .module)
+}
+
+override func draw() {
+    background(.white)
+    guard let table else { return }
+
+    for (index, row) in table.enumerated() {
+        let y = 100 + Double(index) * 60
+        fill(row.color("tint") ?? .gray)
+        drawRect(corner: Vector2(80, y), width: row.number("visits") ?? 0, height: 22)
+    }
+}
+```
+
+A cell is text, because that is what a file holds. `row["city"]` gives you that text, and `row.number(_:)`, `row.int(_:)`, `row.bool(_:)`, and `row.color(_:)` convert it when you ask. Each one answers `nil` when the column is not there or the cell is not what you asked for, which is the right answer for a file with a gap in it. An empty cell is not a zero.
+
+Two things about the format matter, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `header: false` and read cells by position instead.
+
+### From numbers to marks
+
+A file gives you rows and columns. A drawing wants marks, and nothing in the file says which. That choice is yours, and it comes down to three questions for every mark: which column, which property of the mark, and over what range.
+
+Take one column and one property first. In the bars above, `visits` became a length. It could as well have become a radius, a height, a hue, or a turn, because every property of a mark is a number. The range is the part to get right, and the file should set it. `numbers(_:)` reads a column as a series, `min()` and `max()` find its ends, and `map` from [Chapter 3](03-MotionAndTime.md) carries a value from that range into the one your mark needs:
+
+```swift
+let rain = table.numbers("rain")
+guard let most = rain.max() else { return }
+for (index, row) in table.enumerated() {
+    let height = map(row.number("rain") ?? 0, 0, most, 0, 250)
+    drawRect(corner: Vector2(60 + Double(index) * 30, 300 - height), width: 20, height: height)
+}
+```
+
+A length starts at zero. A bar twice as long stands for a number twice as big only when the scale starts there, so the low end of a length's range is 0 whatever the column's smallest value is. A position is the opposite. Map it from the column's smallest value to its largest, and the marks spread over the whole space you gave them. A dot sized by a number is a third case, because the eye reads a dot by its area: give the radius the square root of the mapped value, `.squareRoot()`, and a value twice as big reads twice as big instead of four times.
+
+Two columns place a mark. Read one into x and one into y, and every row becomes a point in a field, the drawing a scientist calls a scatter. The rows in order place a mark too. When the rows are a sequence, the months of a year or the readings of a day, the row's index is the x and its number is the y, and joining those points with `drawPolyline` gives the line everybody reads as time:
+
+```swift
+let high = table.numbers("high")
+guard let lowest = high.min(), let highest = high.max() else { return }
+var points: [Vector2] = []
+for (index, row) in table.enumerated() {
+    let y = map(row.number("high") ?? lowest, lowest, highest, 300, 60)
+    points.append(Vector2(60 + Double(index) * 30, y))
+}
+drawPolyline(points)
+```
+
+<!-- figure: MarksFromNumbers (Images/09-Pictures/MarksFromNumbers.jpg and -dark.jpg), one table of monthly readings drawn as bars, as dots placed by two columns, and as a line through the rows in order; waiting on a render from Guide/Figures/09-Pictures/MarksFromNumbers.swift -->
+
+Color is one more property. A column can carry it outright, as `tint` did in the bars, or a number can pick it from a [Chapter 2](02-Color.md) `Ramp`: `ramp.color(at: map(value, lowest, highest, 0, 1))` turns a temperature into a color the way [Chapter 7](07-Tiles.md)'s tangle turned noise into one.
+
+The marks are the sketch's, so nothing holds you to bars and dots. A circle that grows with its number, a line that turns by it, a letter from [Chapter 8](08-Words.md) sized by it, all read the same column. [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) draws a year as one bar per month from its low to its high, with a rain dot sized by its column and a color the file carries, which is this step's table drawn as one chart.
+
+### Documents with a shape: `loadJSON`
+
+JSON works the same way, for documents with a shape rather than rows:
+
+```swift
+let doc = try? loadJSON(resource: "places", withExtension: "json", in: .module)
+
+for point in doc?["points"].array ?? [] {
+    fill(point["tint"].color ?? .gray)
+    drawCircle(point["x"].number ?? 0, point["y"].number ?? 0, 20)
+}
+```
+
+Reach in by name or index, then ask for the kind you want at the end: `.text`, `.number`, `.int`, `.bool`, `.color`, `.array`. A key that is not there answers null rather than stopping, so a whole path is safe to write in one line, and a loop over a key that is not there runs zero times. That is why the `tint` above needs no check: a point that does not carry one lands on the fallback.
+
+Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives. The two readers are small on purpose, because a document with a shape worth naming is `Codable`'s job rather than this framework's, and [Data](../Docs/Helpers/Data.md#codable) shows that route. [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) draws a JSON survey.
 
 ## Where this comes from
 
-Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Every technique in this chapter descends from that one idea. Pick a mark, vary it by the brightness underneath, and let the eye put the picture back together.
+Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size, and every treatment in this chapter descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a portrait as line-printer characters, and then its derivative, which is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is the youngest technique on the spine, and it comes from neither printing nor art. Shai Avidan and Ariel Shamir published it in 2007, and its demonstration video went around the world, mostly because of the part where a mask makes something disappear.
 
-Stippling with dots of even weight was a hand discipline in scientific illustration for a very long time. Adrian Secord gave it an algorithm in 2002, using weighted Voronoi relaxation, and that is the method behind the even scatters here. The single unbroken line is the modern descendant of the engraver's spiral. The one-tour version, where a closed loop visits every dot, was popularized by Robert Bosch and Craig Kaplan in the mid-2000s. String art wound between pins around a hoop was made famous as a computational technique by Petros Vrellis in 2016. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster as line-printer characters, and then its derivative. Pixel sorting is much younger, and it comes from glitch art rather than illustration. It spread from a 2010 sketch by Kim Asendorf. Seam carving is younger still, and it comes from neither. Shai Avidan and Ariel Shamir published it in 2007 as an answer to a plain engineering problem, which was that a photograph on a web page has to fit whatever window it lands in. The demonstration video went around the world, mostly because of the part where a mask makes something disappear. The two data readers here are deliberately small, because a document with a shape worth naming is `Codable`'s job rather than this framework's. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The families after the sketch name their own sources, from Secord's stipple to Asendorf's sorted pixels. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
