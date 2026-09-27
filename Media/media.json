@@ -12,8 +12,8 @@
       "lead": 6,
       "leads": {
         "10-Vectors/Swarm": 2,
-        "19-GridSimulations/Organism": 10,
-        "20-ParticleSimulations/Drift": 30
+        "23-GridSimulations/Organism": 10,
+        "24-ParticleSimulations/Drift": 30
       },
       "of": "the sketch each chapter builds, in chapter order",
       "seconds": 6,

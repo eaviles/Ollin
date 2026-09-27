@@ -13,9 +13,10 @@
 # of is written down, so a hero is rebuilt rather than remembered.
 #
 # The guide's cells are the sketch each chapter of the Guide builds. Nothing
-# picks them by eye: every chapter figure marks its own `Guide payoff` in
-# source, so the list is the book's and there are exactly as many as there are
-# chapters. The README's cells are named in the manifest.
+# picks them by eye: every chapter's figure marks itself in source as the
+# chapter's `Guide payoff` or its `finished sketch`, so the list is the book's
+# and there are exactly as many as there are chapters, which the run checks
+# before it films anything. The README's cells are named in the manifest.
 #
 # Each cell is filmed with a running start, or a sketch that accumulates opens
 # on an empty canvas and the grid begins full of holes. Three of the guide's
@@ -52,11 +53,25 @@ if (( upload )); then
          RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true
 fi
 
-# The sketch each chapter builds, filmed from its own figure file.
+# The sketch each chapter builds, filmed from its own figure file. A header
+# names it either way the chapters have: `Guide payoff (Chapter 4)`,
+# `the Chapter 1 finished sketch`, or `Guide finished sketch (Chapter 3)`.
+payoff_figures() {
+  grep -rlE 'Guide payoff|payoff sketch|Chapter [0-9]+ payoff|Chapter [0-9]+ finished sketch|Guide finished sketch \(Chapter' \
+       $ROOT/Guide/Figures/*/*.swift \
+    | sed "s|$ROOT/Guide/Figures/||;s|\.swift$||" | sort
+}
+
 film_guide() {
   local n=0
-  for figure in $(grep -rl 'Guide payoff\|payoff sketch\|Chapter 2 payoff' $ROOT/Guide/Figures/*/*.swift \
-                  | sed "s|$ROOT/Guide/Figures/||;s|\.swift$||" | sort); do
+  local figures=($(payoff_figures))
+  local chapters=($ROOT/Guide/[0-9][0-9]-*.md(N))
+  if [[ ${#figures} -ne ${#chapters} ]]; then
+    echo "example-heroes: ${#figures} chapter figures mark themselves the chapter's sketch, but there are ${#chapters} chapters:" >&2
+    printf '  %s\n' $figures >&2
+    exit 1
+  fi
+  for figure in $figures; do
     n=$((n+1))
     local lead=$(python3 -c "
 import json; h = json.load(open('$MANIFEST'))['heroes']['guide']

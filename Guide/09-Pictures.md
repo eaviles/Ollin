@@ -133,6 +133,8 @@ Growing works the same way in reverse. Ask for a bigger size and the same cheap 
 Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes, and like any heavy work on a picture that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
 
 ```swift
+var seams: SeamMap?   // every seam the picture holds, worked out once
+
 override func setup() {
     seams = picture.seamMap()
 }
