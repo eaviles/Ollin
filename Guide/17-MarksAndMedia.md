@@ -4,7 +4,7 @@
 
 # 17. Marks and media
 
-<!-- Hook image: the finished sketch, the monogram over its marbled heart (Figures/17-MarksAndMedia/Monogram.swift). Waiting on its render on the Mac. -->
+<img src="Images/17-MarksAndMedia/Monogram.jpg" alt="The initials OL in navy ink over a spray of gold, inside the pale core of a heart of marbled rings in navy, red, gold, and green, on a combed and feathered marbled sheet framed by a dotted rule" width="560">
 
 A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to speed and pressure, and breaks into the prints of a brush. This chapter gives your strokes that life. A profile shapes a finished path's width, and dynamics read the hand while it paints. A brush stamps a tip along the path, and a dash pattern cuts it. Then come two wet media, marbling and watercolor, made from outlines bent and stacked. It all stays vector geometry, so a painted mark exports as the region it covers. The chapter ends by writing your initials into a marbled heart.
 
@@ -267,12 +267,13 @@ final class Monogram: Sketch {
         bath.comb(through: Vector2(45, height / 2), direction: -.unitY,
                   spacing: 90, strength: 140, falloff: 20)
 
-        // The bull's-eye, with a core of paper color to write in.
+        // The bull's-eye, with a core of paper color to write in. Every drop
+        // pushes the ground outward, so a small eye keeps the feathering in view.
         let eye = Vector2(540, 420)
-        for ring in 0 ..< 10 {
-            bath.drop(at: eye, radius: 330 - Double(ring) * 17, color: inks[ring % 4])
+        for ring in 0 ..< 6 {
+            bath.drop(at: eye, radius: 200 - Double(ring) * 15, color: inks[ring % 4])
         }
-        bath.drop(at: eye, radius: 140, color: paper)
+        bath.drop(at: eye, radius: 100, color: paper)
 
         // One stylus pulled down through the eye makes the heart.
         bath.tine(through: eye, direction: .unitY, strength: 240, falloff: 160)
@@ -294,9 +295,9 @@ final class Monogram: Sketch {
     // The initials as single pen lines, each line written by the hand.
     func letter() {
         textFont(StrokeFont.builtIn)
-        textSize(150)
+        textSize(120)
         textAlign(.center, .middle)
-        strokes = textToShapes(initials, 540, 620)
+        strokes = textToShapes(initials, 540, 600)
             .flatMap { $0.contours }
             .map { handwrite($0) }
         written = initials

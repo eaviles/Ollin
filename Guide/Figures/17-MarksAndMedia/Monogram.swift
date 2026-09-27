@@ -39,12 +39,13 @@ final class Monogram: Sketch {
         bath.comb(through: Vector2(45, height / 2), direction: -.unitY,
                   spacing: 90, strength: 140, falloff: 20)
 
-        // The bull's-eye, with a core of paper color to write in.
+        // The bull's-eye, with a core of paper color to write in. Every drop
+        // pushes the ground outward, so a small eye keeps the feathering in view.
         let eye = Vector2(540, 420)
-        for ring in 0 ..< 10 {
-            bath.drop(at: eye, radius: 330 - Double(ring) * 17, color: inks[ring % 4])
+        for ring in 0 ..< 6 {
+            bath.drop(at: eye, radius: 200 - Double(ring) * 15, color: inks[ring % 4])
         }
-        bath.drop(at: eye, radius: 140, color: paper)
+        bath.drop(at: eye, radius: 100, color: paper)
 
         // One stylus pulled down through the eye makes the heart.
         bath.tine(through: eye, direction: .unitY, strength: 240, falloff: 160)
@@ -66,9 +67,9 @@ final class Monogram: Sketch {
     // The initials as single pen lines, each line written by the hand.
     func letter() {
         textFont(StrokeFont.builtIn)
-        textSize(150)
+        textSize(120)
         textAlign(.center, .middle)
-        strokes = textToShapes(initials, 540, 620)
+        strokes = textToShapes(initials, 540, 600)
             .flatMap { $0.contours }
             .map { handwrite($0) }
         written = initials
