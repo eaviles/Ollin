@@ -1,10 +1,9 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 25): one frame carrying three lighting rigs. Three rooms
+// Figure for Docs/3D/3D.md (light sets): one frame carrying three lighting rigs. Three rooms
 // side by side, each drawn inside its own `withLights` block, so the lamps in
 // force when a wall is drawn are the lamps that shade it and nothing crosses a
-// divider. Unlike the LampsAtNight figure beside it, this one is a single frame
-// rather than three renders read back: carrying several rigs at once is the
+// divider. This one is a single frame rather than several renders read back: carrying several rigs at once is the
 // thing being shown, so composing it out of separate frames would prove nothing.
 //
 // The white plate on every back wall is the control. It is drawn in one

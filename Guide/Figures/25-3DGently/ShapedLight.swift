@@ -1,6 +1,6 @@
 // figure: gif duration=6 fps=15 width=560
 //
-// Guide figure (Chapter 25): the shape of a light's throw. Two shaped lights
+// Figure for Docs/3D/3D.md (light shaping): the shape of a light's throw. Two shaped lights
 // over one small set: a downlight wearing an IES profile (a hot center with a
 // spill ring, authored inline) pooling its signature on the left, and a spot
 // projecting a window-frame cookie whose slow roll rocks the panes of light
