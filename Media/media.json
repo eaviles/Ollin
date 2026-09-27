@@ -280,7 +280,9 @@
     ],
     "Recreations/OsamuSato": [
       "Recreations/OsamuSato/Totem",
-      "Recreations/OsamuSato/Alphabet"
+      "Recreations/OsamuSato/Alphabet",
+      "Recreations/OsamuSato/StraightLines",
+      "Recreations/OsamuSato/TotemBuilder"
     ],
     "Recreations/OwenSchuh": [
       "Recreations/OwenSchuh/CountingTheRationals",
@@ -384,8 +386,8 @@
         "3D/Depth/ClosedLoopScan",
         "3D/Depth/DepthCloud"
       ],
-      "image": "groups/3D-Depth.jpg?v=7b19792a",
-      "imageSmall": "groups/3D-Depth-640.jpg?v=ba453c33"
+      "image": "groups/3D-Depth.jpg?v=3b1cc6c5",
+      "imageSmall": "groups/3D-Depth-640.jpg?v=a2607e78"
     },
     "3D/Effects": {
       "of": [
@@ -739,10 +741,12 @@
     "Recreations/OsamuSato": {
       "of": [
         "Recreations/OsamuSato/Totem",
-        "Recreations/OsamuSato/Alphabet"
+        "Recreations/OsamuSato/Alphabet",
+        "Recreations/OsamuSato/StraightLines",
+        "Recreations/OsamuSato/TotemBuilder"
       ],
-      "image": "groups/Recreations-OsamuSato.jpg?v=8010bd2b",
-      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=44f367b6"
+      "image": "groups/Recreations-OsamuSato.jpg?v=9f70fbbd",
+      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=f06909c7"
     },
     "Recreations/OwenSchuh": {
       "of": [
@@ -8937,6 +8941,27 @@
       "stillSmall": "examples/Recreations/OsamuSato/Alphabet/still-640.jpg?v=543c2329",
       "width": 1080
     },
+    "Recreations/OsamuSato/StraightLines": {
+      "width": 1000,
+      "height": 1400,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.513,
+      "sound": false,
+      "source": "d3c91e0a1d4d59c9",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "loop": 2900978,
+        "loopSmall": 742322,
+        "still": 116634,
+        "stillSmall": 42915
+      },
+      "loop": "examples/Recreations/OsamuSato/StraightLines/loop.mp4?v=3e6bcc88",
+      "loopSmall": "examples/Recreations/OsamuSato/StraightLines/loop-640.mp4?v=02b31061",
+      "still": "examples/Recreations/OsamuSato/StraightLines/still.jpg?v=60540cbe",
+      "stillSmall": "examples/Recreations/OsamuSato/StraightLines/still-640.jpg?v=c1bd0a64"
+    },
     "Recreations/OsamuSato/Totem": {
       "bytes": {
         "loop": 1607796,
@@ -8956,6 +8981,27 @@
       "still": "examples/Recreations/OsamuSato/Totem/still.jpg?v=cb35af55",
       "stillSmall": "examples/Recreations/OsamuSato/Totem/still-640.jpg?v=538b7d5a",
       "width": 1080
+    },
+    "Recreations/OsamuSato/TotemBuilder": {
+      "width": 1000,
+      "height": 1250,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.697,
+      "sound": false,
+      "source": "ca25e18819487ed5",
+      "rendered": "2026-09-26",
+      "bytes": {
+        "loop": 1408589,
+        "loopSmall": 346899,
+        "still": 70528,
+        "stillSmall": 31565
+      },
+      "loop": "examples/Recreations/OsamuSato/TotemBuilder/loop.mp4?v=1c6251e2",
+      "loopSmall": "examples/Recreations/OsamuSato/TotemBuilder/loop-640.mp4?v=d6ddb984",
+      "still": "examples/Recreations/OsamuSato/TotemBuilder/still.jpg?v=6087b190",
+      "stillSmall": "examples/Recreations/OsamuSato/TotemBuilder/still-640.jpg?v=598eeb50"
     },
     "Recreations/OwenSchuh/CountingTheRationals": {
       "width": 920,

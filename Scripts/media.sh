@@ -49,6 +49,12 @@
 # camera take the bundled picture instead. Without it this machine's own
 # camera answers and the sketch is filmed reading a dark room.
 #
+# Every render also passes one `--seed`. The clip and the still are two
+# renders, and a sketch that rolls its variation would otherwise deal a new
+# piece for each, so the page's poster showed one piece and its clip another.
+# A sketch that pins its own seed keeps it, since `seed(_:)` in `setup()`
+# comes after the flag.
+#
 # A sketch with a detector in it also needs wall-clock time before its first
 # useful frame, since the model is prepared on another thread and the drawing
 # has nothing to draw until it lands. `--settle` redraws the captured frame
@@ -74,6 +80,7 @@ BIN=$ROOT/Examples/.build/out/Products/Release
 SECONDS_DEFAULT=10
 FPS=60
 STILL_FRAME_DEFAULT=480      # eight seconds at sixty
+SEED=1                       # the one variation every render of an example draws
 MOTION_FLOOR=1.0
 RENDER_LIMIT=300             # seconds before a sketch is given up on and drawn as one frame
 
@@ -189,10 +196,10 @@ for example in $list; do
 
   master=$OUT/$key.mov
   if grep -q 'loopDuration' $folder/Sketch.swift; then
-    render $BIN/$target --export-loop $master --codec proRes422 --fps $FPS --photo $skip || true
+    render $BIN/$target --export-loop $master --codec proRes422 --fps $FPS --photo --seed $SEED $skip || true
     length=lap
   else
-    render $BIN/$target --export-video $master --seconds $want_seconds --fps $FPS --codec proRes422 --photo $skip || true
+    render $BIN/$target --export-video $master --seconds $want_seconds --fps $FPS --codec proRes422 --photo --seed $SEED $skip || true
     length=${want_seconds}s
   fi
   # A render that ran out of time is killed part way and leaves a file that
@@ -204,7 +211,7 @@ for example in $list; do
   if [[ -z $size ]]; then
     echo "  no film came back, so a picture instead"
     rm -f $master
-    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo $settle || true
+    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
     if [[ ! -f $OUT/$key.png ]]; then
       echo "  could not be drawn at all" >&2
       python3 $ROOT/Scripts/media-manifest.py skip $MANIFEST "$example" "could not be drawn on this machine" "$digest"
@@ -234,7 +241,7 @@ for example in $list; do
   still_only=0
   [[ $(echo "$motion < $MOTION_FLOOR" | bc -l) == 1 && -z $sound ]] && still_only=1
 
-  render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo $settle || true
+  render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
   if (( still_only )); then
     rm -f $master
     [[ -f $OUT/$key.png ]] || { echo "  nothing to show" >&2; continue; }
