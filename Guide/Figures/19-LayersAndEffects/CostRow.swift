@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 41): the inspector's cost tier, annotated. A stylized
+// Guide diagram (Chapter 19): the inspector's cost tier, annotated. A stylized
 // card drawn with Ollin itself: the cell grid ending in the three counts, and
 // the two bars scaled to one frame. Callouts name what each part answers.
 import Ollin

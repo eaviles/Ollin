@@ -74,14 +74,14 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part III: Shapes, lines, and marks
 
-15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then Voronoi territories, packing by growth and by rule (the Apollonian gasket and Ford circles), hulls and skeletons, and hatching and SVG for pen plotters, with batches to draw it fast. After the plate, crease patterns fold and cut the paper itself.
+15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then Voronoi territories, packing by growth and by rule (the Apollonian gasket and Ford circles), hulls and skeletons, and hatching and SVG for pen plotters. After the plate, crease patterns fold and cut the paper itself.
 16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule. Hobby splines and the curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), then spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
 17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
 
 ### Part IV: Pixels and light
 
 18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, the design generators and pattern fields Ollin ships, smoothing the stair-stepped edges a shader leaves, and chaining visuals.
-19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR, and what to do when a frame gets slow.
 20. **[Pictures restyled](20-PicturesRestyled.md).** Filters that make a photograph into another kind of picture. Ink lines, brushwork, flat regions, and hatching, a colorist's look and the film look, relighting and dithering, the picture inside itself, chromatic aberration, the design filters, and melt.
 21. **[Pictures you solve](21-PicturesYouSolve.md).** Layers treated as problems to solve. Diffusion curves, a seamless paste, the measured distance field, the frequency domain, light worked out in a flat sketch, and local averages.
 22. **[Iterated forms](22-IteratedForms.md).** Pictures made by applying one rule over and over: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, a ball bouncing in a room, the double pendulum, escape-time fractals, Newton's basins, domain coloring, and complex arithmetic in a shader of your own.
@@ -112,7 +112,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, frames kept in linear light or brighter than white, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
 39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, a show's timecode, parameters written as rules, and live feeds into other apps.
 40. **[Handing it over](40-HandingItOver.md).** A sketch as a screen saver, a wallpaper, a menu-bar companion, or a widget, and as an app somebody double-clicks. Then on your phone, and as behavior or a package other programmers import.
-41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
+41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, and everything a room does to a sketch left running for weeks.
 
 ### Appendices
 

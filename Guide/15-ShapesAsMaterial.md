@@ -369,29 +369,6 @@ for (i, shape) in fitted.shapes.enumerated() {
 
 A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things matter before you lean on it. Text doesn't import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
 
-## Record it once: batches
-
-One habit has come up in section after section: build the geometry once, hold it, and let `draw()` only replay it. There's a last step available when even the replaying gets heavy. `draw()` still walks your arrays and re-issues every line to the GPU, sixty times a second, for a picture that never changes.
-
-```swift
-var drawing: Batch?
-
-override func setup() {
-    drawing = makeBatch {
-        // any drawing calls that don't change between frames
-    }
-}
-
-override func draw() {
-    background(.white)
-    if let drawing { drawBatch(drawing) }
-}
-```
-
-`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is not subtle. A hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way, and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
-
-The rule of thumb is simple. If the drawing doesn't change between frames, it belongs in a batch. If it does change, leave it alone. A few things can't be recorded, namely 3D meshes, particles, layer blocks, and clipping. Rather than silently dropping them, Ollin refuses at the point you draw them and tells you why.
-
 ## Putting it together: the plate
 
 The plate brings a scatter, a Voronoi mosaic, offsets, a boolean, and hatching to one piece of paper. A blue-noise scatter is relaxed once, and its Voronoi mosaic is inset cell by cell. A stroked ribbon is subtracted from every cell with a halo of breathing room, over two pens' worth of hatching. Make `MySketches/Plate.swift`:
@@ -456,7 +433,7 @@ final class Plate: Sketch {
 }
 ```
 
-All the geometry happens once in `setup()` and lands in four plain arrays, and `draw()` only replays lines. That split *is* the plotter mindset, a piece reduced to strokes a machine could follow. It also keeps the sketch fast, no matter how elaborate the geometry gets. And nothing in `draw()` changes between frames, so the plate is exactly what `makeBatch` records. Wrap the loops and the whole piece replays as one `Batch`.
+All the geometry happens once in `setup()` and lands in four plain arrays, and `draw()` only replays lines. That split *is* the plotter mindset, a drawing reduced to strokes a machine could follow. It also keeps the sketch fast, no matter how elaborate the geometry gets. And nothing in `draw()` changes between frames, so the whole plate could be recorded once and replayed, which is what the batches in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) do.
 
 Then make it yours:
 
@@ -532,7 +509,6 @@ Crease patterns come from a craft with its own written mathematics. The two flat
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
-- [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the parameter ranges that read well and the cost of each.
 - [Fitting by walking downhill](../Docs/Drawing/Fitting.md#minimize): everything `Fit.minimize` takes, and what it hands back.

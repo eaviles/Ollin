@@ -44,7 +44,9 @@ Read across and you can see which of the three properties to trust. `frameRate` 
 
 That is the whole reason for the two habits above. Motion derived from `time`, or stepped by `deltaTime`, keeps its speed as the rate falls. It gets choppier, and it does not get slower.
 
-Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) shows you where the time went.
+Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish. `draw()` is not called at all that time, because skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place. It runs on a fixed clock that gives every frame exactly `1 / fps`, however long the drawing takes. A sketch too heavy to play smoothly still exports at full speed.
+
+To see where a slow frame's time goes, press **⌘/** for the inspector. Its last row has two bars, one for your `draw()` and one for the graphics card, each drawn against the length of one frame. The longer bar is the one to shorten. [Chapter 19](19-LayersAndEffects.md#which-half-is-slow-the-cost-row) reads the whole row once layers are part of the picture, and the [profiler reference](../Docs/Tools/Profiling.md) has the rest.
 
 ## The circle behind `sin`
 

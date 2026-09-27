@@ -9,8 +9,8 @@ Ollin renders on the GPU, so a sketch can draw a great deal before it slows down
 In a standalone sketch, open the inspector with **⌘/**. In OllinLive, the gallery, and the live-coding host, the inspector is in the sidebar. Every host shows the same card.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/41-Installations/CostRow-dark.jpg">
-  <img src="../../Guide/Images/41-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-LayersAndEffects/CostRow-dark.jpg">
+  <img src="../../Guide/Images/19-LayersAndEffects/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
 </picture>
 
 ### Contents

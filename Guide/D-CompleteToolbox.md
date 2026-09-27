@@ -66,7 +66,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Variable-width strokes | `strokeProfile(_:)`: width shaped along the path, so a line tapers, swells, or carries a profile you wrote | [Ch 17](17-MarksAndMedia.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeProfile) |
 | Brushes | `strokeBrush(_:)`: a stamp repeated along the path instead of one continuous ribbon, with its own tip, spacing, jitter, and angle | [Ch 17](17-MarksAndMedia.md) | [Marks](../Docs/Drawing/Marks.md#brushes) |
 | Dashed strokes | `strokeDash(_:)`: a line with gaps, the pattern walked along the path so corners and curves keep their rhythm | [Ch 17](17-MarksAndMedia.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeDash) |
-| Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 15](15-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
+| Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 19](19-LayersAndEffects.md) | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 19](19-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
 | Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 38](38-FinishingASketch.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
@@ -431,7 +431,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | A sketch as a widget | `ollin new --kind widget` shows a piece on the desktop as a widget: `widgetTimeline` says how far apart the pictures sit, one is drawn per moment on the day's own clock, and `--export-widget` shows the run without waiting for it | [Ch 40](40-HandingItOver.md) | [Widget](../Docs/Output/Widget.md) |
 | Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 41](41-Installations.md) | [Installation](../Docs/Output/Installation.md) |
 | Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 41](41-Installations.md) | [Installation](../Docs/Output/Installation.md) |
-| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 41](41-Installations.md) | [Profiling](../Docs/Tools/Profiling.md) |
+| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 19](19-LayersAndEffects.md) | [Profiling](../Docs/Tools/Profiling.md) |
 
 ---
 

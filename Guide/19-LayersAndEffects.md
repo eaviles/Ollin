@@ -323,6 +323,66 @@ Then make it yours:
 - Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected particles, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Draw a dim `generate(.meshGradient(...))` layer where the flat `background` is, and the comets fly over weather.
 
+## When it gets slow
+
+The comets fit in a frame with room to spare. Sooner or later a sketch will not. Then the useful question is which half of the frame is behind, the drawing your code does or the pixels the card fills. The inspector's cost row answers that, and batches are the usual fix when the drawing is the slow half.
+
+### Which half is slow: the cost row
+
+Press **⌘/** for the inspector. The cell grid ends with three counts, and two bars sit under it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/CostRow-dark.jpg">
+  <img src="Images/19-LayersAndEffects/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
+</picture>
+
+The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there: every fill and every stroke is cut into triangles before the GPU sees it. The **GPU** bar is what the card spent on the frame, taken from its own clock.
+
+Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
+
+The bars are kept apart on purpose. The CPU is already building the next frame while the GPU draws this one, so the two overlap in time rather than adding up.
+
+The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, texture, or clip changes.
+
+The batch count is the one to watch. Ten thousand circles in a row cost one draw call. Ten circles that each change the blend mode cost ten. If the batch count is close to the shape count, group the shapes that share a state.
+
+The rest of the reading is short:
+
+- **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a batch, recorded once and replayed from the card, which the next section shows.
+- **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `makeRenderTarget(scale:)`.
+- **Both short and still slow?** Something outside the drawing is holding the frame, like a file read in the middle of `draw()`.
+
+When you need to know which pass, hand the frame to Xcode:
+
+```sh
+MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
+```
+
+Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order on the way past. Often that printed list is the whole answer.
+
+### Record it once: batches
+
+A long CPU bar on a picture that never changes is the easiest one to fix. [Chapter 15](15-ShapesAsMaterial.md)'s habit was to build the geometry once, hold it, and let `draw()` only replay it. Even the replaying costs something. `draw()` still walks your arrays and re-issues every line to the GPU, sixty times a second, for a picture that never changes.
+
+```swift
+var drawing: Batch?
+
+override func setup() {
+    drawing = makeBatch {
+        // any drawing calls that don't change between frames
+    }
+}
+
+override func draw() {
+    background(.white)
+    if let drawing { drawBatch(drawing) }
+}
+```
+
+`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is large. A hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way, and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
+
+The rule of thumb is simple. If the drawing doesn't change between frames, it belongs in a batch. If it does change, leave it alone. A few things can't be recorded, namely 3D meshes, particles, layer blocks, and clipping. Rather than silently dropping them, Ollin refuses at the point you draw them and tells you why.
+
 ## Where this comes from
 
 Off-screen layers are as old as computer graphics has had memory to spare. The shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding.
@@ -341,6 +401,8 @@ Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): the `develop` print filter, and the lens built on the running mean.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
+- [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
+- [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 

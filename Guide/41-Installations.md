@@ -102,46 +102,11 @@ Pull the plug on the machine and `gallery/piece/status` reads `gone` a moment la
 
 The second is what happens when the network blinks, which over a month it will. The client reconnects on its own, after a delay that starts at a quarter second and doubles up to eight so a rebooting broker is waited out rather than hammered, and it puts every subscription back up when it returns. Anything you published at `.atLeastOnce` and that was never acknowledged goes out again, marked as a resend. That level is worth paying for on a command, since a lamp that never heard `OFF` stays on all night, and not worth it on a reading that will be published again in a moment. `bus.connectionCount` counts how many times the broker has accepted you, which is a better thing for a log to watch than a boolean that is only false for a second.
 
-## When it gets slow: the cost row
-
-The night before an opening is a bad time to discover that a piece runs at 24 frames a second. Sooner or later one will, and the useful question is not "is it slow" but "which half is slow".
-
-Press **⌘/** for the inspector. The cell grid ends with three counts, and two bars sit under it.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/CostRow-dark.jpg">
-  <img src="Images/41-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
-</picture>
-
-The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there: every fill and every stroke is cut into triangles before the GPU sees it. The **GPU** bar is what the card spent on the frame, taken from its own clock.
-
-Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
-
-They are not stacked into one bar on purpose. The CPU is already building the next frame while the GPU draws this one, so the two overlap in time rather than adding up.
-
-The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, texture, or clip changes.
-
-That last one is the surprise. Ten thousand circles in a row cost one draw call. Ten circles that each change the blend mode cost ten. If the batch count is close to the shape count, group the shapes that share a state.
-
-The rest of the reading is short:
-
-- **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a [retained batch](../Docs/Drawing/Batches.md), recorded once and replayed from the card.
-- **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `makeRenderTarget(scale:)`.
-- **Both short and still slow?** Something outside the drawing is holding the frame, like a file read in the middle of `draw()`.
-
-When you need to know which pass, hand the frame to Xcode:
-
-```sh
-MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
-```
-
-Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order on the way past. Often that printed list is the whole answer.
-
 ## Leaving it running
 
 Some pieces are not files. They go on a wall, or in a shop window, and stay there for a week with nobody watching them.
 
-That is a different job from a sketch at your desk, and different things end it. The screen saver comes on at midnight. The display sleeps. Somebody unplugs the monitor to borrow it. None of that is your drawing's fault, and all of it stops the show.
+That is a different job from a sketch at your desk, and different things end it. A frame that runs long is one, and the night before an opening is a bad time to find it. [Chapter 19](19-LayersAndEffects.md#which-half-is-slow-the-cost-row)'s cost row says which half of the frame is behind. The rest have nothing to do with speed. The screen saver comes on at midnight. The display sleeps. Somebody unplugs the monitor to borrow it. None of that is your drawing's fault, and all of it stops the show.
 
 One line asks Ollin to hold it off:
 
@@ -583,7 +548,6 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, and several displays.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - The Bonačić homage [`NamaFrieze`](../Examples/Recreations/VladimirBonacic/NamaFrieze/Sketch.swift): a light frieze from 1969 that ran 36 meters across a department store, drawn to scale and sent back out as eighteen dimmer channels, so the same universe that lights the picture can light a wall.
-- [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what the devices write in a payload, the two service levels, retained values, the last will, and the reconnection.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
 - [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared parameters, the clock they agree on and what it costs, seats, and who can join.
