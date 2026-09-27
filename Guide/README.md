@@ -36,7 +36,7 @@ Both kinds of image are already on this page. The grid above is the sketch each 
 
 Read the chapters in order the first time, because each one builds only on the ones before it. It also helps to know roughly what each part is going to ask of you. The page counts reckon three hundred words of prose to a page, listings aside.
 
-- **Part I, chapters 1 to 9.** Around 125 pages. It is the base everything else stands on, so it is the one part you cannot skip.
+- **Part I, chapters 1 to 9.** Around 130 pages. It is the base everything else stands on, so it is the one part you cannot skip.
 - **Part II, chapters 10 to 14.** Around 55 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
 - **Part III, chapters 15 to 17.** Around 35 pages, the shortest part. Read chapter 15 first, because the curves and marks after it come back as the shapes it teaches you to hold.
 - **Part IV, chapters 18 to 24.** Around 105 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
