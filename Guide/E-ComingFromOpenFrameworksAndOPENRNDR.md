@@ -230,7 +230,7 @@ override func draw() {
 }
 ```
 
-`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, so it covers most of what ofxAssimpModelLoader loads. [Chapter 21](21-3DGently.md) starts there.
+`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, so it covers most of what ofxAssimpModelLoader loads. [Chapter 22](22-Meshes.md) starts there.
 
 ### C++ habits that change
 
@@ -307,7 +307,7 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets this up, and [the project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 31](31-SharingAndPerforming.md) carries the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 
@@ -534,7 +534,8 @@ The other thing that stays behind is years of community work. The `ofx` and `orx
 - [Appendix A](A-JustEnoughSwift.md): the Swift you need, including values against references.
 - [Chapter 16, Layers and effects](16-LayersAndEffects.md): layers, filters, feedback, and `compose`.
 - [Chapter 17, Your first shader](17-YourFirstShader.md): the `shade` contract, the shader library, and bringing GLSL over.
-- [Chapter 21, 3D, gently](21-3DGently.md): the camera, lights, and meshes.
+- [Chapter 21, 3D, gently](21-3DGently.md): the camera, lights, and the built-in solids.
+- [Chapter 22, Meshes, maps, and materials](22-Meshes.md): meshes from files and from other meshes, and the maps and finishes that dress them.
 - [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each.
 
 ---
