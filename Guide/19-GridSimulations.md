@@ -75,7 +75,7 @@ let rows = elementaryCA(rule: 30, width: 161, generations: 161)
 
 Rule 30, on the left, is the famous one, because a rule that small has no business producing something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 turns out to be complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
 
-**A turmite** is an ant on a grid instead of a whole row of cells. It reads the color under it, writes a new one, turns, steps forward, and adopts a new state. That is the entire creature. Langton's ant, the classic, spends about ten thousand steps making an incoherent blot. Then, with no warning at all, it starts laying a perfectly regular diagonal highway and walks off along it forever. Nobody has a satisfying explanation for why. You hold one and step it, the way you held a `DifferentialGrowth` in [Chapter 12](12-FlocksAndSwarms.md):
+**A turmite** is an ant on a grid instead of a whole row of cells. It reads the color under it, writes a new one, turns, steps forward, and adopts a new state. That is the entire creature. Langton's ant, the classic, spends about ten thousand steps making an incoherent blot. Then, with no warning at all, it starts laying a perfectly regular diagonal highway and walks off along it forever. Nobody has a satisfying explanation for why. You hold one and step it, the way you held a `DifferentialGrowth` in [Chapter 13](13-GrowingThings.md):
 
 ```swift
 let ant = Turmite(.langton, columns: 260, rows: 260)
@@ -326,7 +326,7 @@ Reaction-diffusion is the Game of Life's continuous cousin, and the engine of th
   <img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 </picture>
 
-Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance. Every regime along that band has its own signature. There are dividing dots, which are the defaults, plus worm mazes and coral walls. Put `feed` and `kill` on `@Param` parameters and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
+Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance. Every regime along that band has its own signature. There are dividing dots, plus the worm mazes and coral walls the defaults grow. Put `feed` and `kill` on `@Param` parameters and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
 
 The regime doesn't have to be one choice for the whole dish. Give the sim two settings: `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`. Then attach any layer as `dish.modulation`, and that layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. **A picture can choose the chemistry, place by place.** It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
@@ -532,7 +532,7 @@ func orb(at center: Vector2, radius: Double, _ color: Color) {
 
 You draw the whole scene into the field, background and all, and composite the field instead of the scene. The measuring is the sim's job: it compares this frame's drawing with the last one, so anything that visibly moves, moves the history. Notice the sketch never declares a velocity. The fluid needed a `force:`; this field reads the push off the picture itself.
 
-`strength` picks the look. At 1 the carried ghost lands exactly back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears, and `decay` a touch under 1 sinks old trails toward black.
+`amount` picks the look. At 1 the carried ghost lands exactly back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears, and `decay` a touch under 1 sinks old trails toward black.
 
 One practical note: the motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal, and a camera or video frame drawn into the field works just as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
 
@@ -574,7 +574,7 @@ Two more things round the kit out. A two-channel state reads as a picture throug
 
 ## Putting it together: the organism
 
-The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its maze regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin
