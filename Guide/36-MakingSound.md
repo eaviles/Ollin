@@ -4,7 +4,7 @@
 
 # 36. Making sound
 
-<!-- Hook image: the finished sketch, the workbench (Figures/36-MakingSound/Workbench.swift). Waiting on its render on the Mac. -->
+<img src="Images/36-MakingSound/Workbench.jpg" alt="A dark workbench: a room's impulse response drawn across the top, three outlines (a circle, a tilted square, and a hand-drawn blob) with a bar chart of tones under each, six strings across the middle, and a gold bowed string at the bottom" width="560">
 
 This chapter gives a sketch a voice of its own. It starts with one note and builds everything a note is made of. An instrument is patched from oscillators, envelopes, and filters, and effects move a sound, hold it, or take it apart. A room can be drawn, and an instrument can be somebody's recordings, a wavetable, or a cloud of grains. Physical models work a note out from a plucked string, a struck shape, a bow, or a breath, and a finger can bend it. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md). Nothing here needs a microphone, a controller, or a file, so run it and you will hear it. The chapter ends on a workbench you play with the mouse. Drawn outlines are struck there, strings are plucked and bowed, and everything rings in a room drawn from a rule.
 
