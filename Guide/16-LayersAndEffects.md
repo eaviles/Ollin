@@ -39,7 +39,7 @@ final class FirstLayer: Sketch {
 
 <img src="Images/16-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the whole idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 8](08-Words.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
+Three calls carry the whole idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
 
 Two habits to form now. A `makeRenderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
 
@@ -426,7 +426,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 Every pixel ends up wearing the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points, and it costs one lookup per pixel. Run it with `field.combined(with: marks, .shader(...))`.
 
-Note `sampleRaw` rather than the `sample` you met in the filters above. The ordinary read hands a layer over as a color, and a distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched.
+Note `sampleRaw` rather than `sample`, the read the shaders in [Chapter 17](17-YourFirstShader.md) make. The ordinary read hands a layer over as a color, and a distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched.
 
 One practical note. Measuring the whole canvas costs a few milliseconds, because the measurement works outward in steps and needs one step per doubling of the distance it carries. When you only care about a band near the marks, say so and it gets shorter:
 
@@ -514,7 +514,7 @@ Underneath, the answer is a ladder of light fields. Each one holds a single ring
 
 ## Averages of a neighborhood, at a flat price
 
-The section above asked every pixel how far away something was. Here is a different question, and a cheaper answer than you would expect. **What does the neighborhood around this pixel look like?**
+The [distance field](#a-field-you-measure-how-far-is-the-nearest-edge) asked every pixel how far away something was. Here is a different question, and a cheaper answer than you would expect. **What does the neighborhood around this pixel look like?**
 
 The obvious way to answer costs more the wider you look. A 5-pixel square is 25 reads, a 500-pixel square is 250,000, and a blur that reaches across the canvas is out of the question. There is another way, and it turns the cost into a flat fee.
 
@@ -900,9 +900,9 @@ Read it as three acts. The flock is untouched [Chapter 12](12-FlocksAndSwarms.md
 Then make it yours:
 
 - Adjust the feedback parameters. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
-- Put a `@Param` on the bloom `intensity` and `exposure` and grade the piece live, like color-timing film.
+- Put a `@Param` on the bloom's `amount` and the tone map's `exposure` and grade the piece live, like color-timing film.
 - Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected particles, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
-- Add a second `compose` layer beneath with a dim `generate(.meshGradient(...))` and the comets fly over weather.
+- Draw a dim `generate(.meshGradient(...))` layer where the flat `background` is, and the comets fly over weather.
 
 ## Where this comes from
 
