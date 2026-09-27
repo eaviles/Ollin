@@ -1,8 +1,10 @@
 // figure: frame=90
 //
-// Guide figure: the Chapter 1 payoff sketch. A ring of circles drifts and
+// Guide figure: the Chapter 1 finished sketch. A ring of circles drifts and
 // breathes; every bit of motion comes from `time` appearing in an expression,
-// and the parameters tune it live in the inspector.
+// and the parameters tune it live in the inspector. The ring is placed from
+// `uv(0.5, 0.5)` and sized in units of `scale`, so the same sketch fills a
+// canvas of any shape.
 import Ollin
 
 final class HelloMotion: Sketch {
@@ -19,14 +21,15 @@ final class HelloMotion: Sketch {
     override func draw() {
         background(ground)
         noStroke()
+        let center = uv(0.5, 0.5)
         for i in 0..<count {
             let angle = Double(i) / Double(count) * .tau + time * speed
             let breathe = sin(time * 1.4 + Double(i) * 0.5)
-            let ring = 310 + breathe * 80
-            let x = width / 2 + cos(angle) * ring
-            let y = height / 2 + sin(angle) * ring
+            let ring = (310 + breathe * 80) * scale
+            let x = center.x + cos(angle) * ring
+            let y = center.y + sin(angle) * ring
             fill(colors[i % colors.count])
-            drawCircle(x, y, size + breathe * 16)
+            drawCircle(x, y, (size + breathe * 16) * scale)
         }
     }
 }
