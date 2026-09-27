@@ -50,7 +50,7 @@ final class TreeByHand: Sketch {
 
 <img src="Images/13-GrowingThings/TreeByHand.jpg" alt="A bare fractal tree in pale ink on a dark canvas: one trunk splitting into two branches, each splitting again, nine levels deep into a fine canopy" width="560">
 
-This is **recursion**, a rule applied to its own output. `branch` draws one segment and then asks `branch` to finish the job, twice, smaller. The `depth` counter is what keeps it from asking forever, and `guard depth > 0 else { return }` is the floor it stops on. Nine levels is `2⁹` tips, five hundred twelve of them, out of fourteen lines of code.
+This is **recursion**, a rule applied to its own output. `branch` draws one segment and then asks `branch` to finish the job, twice, smaller. The `depth` counter is what keeps it from asking forever, and `guard depth > 0 else { return }` is the floor it stops on. Nine levels is `2⁸` tips, two hundred fifty-six of them, on 511 segments, out of fourteen lines of code.
 
 Look at where `withState` sits, because it's doing the quiet work. Each branch draws in its own coordinate world, using [Chapter 6](06-GridsAndRepetition.md)'s trick. `translate` walks to the top of the segment just drawn, each `withState { rotate(...) ... }` tilts, recurses, and *puts the transform back* when its block ends. That put-it-back is the whole trick of drawing a tree. The left subtree's thousands of segments may wander anywhere. After it finishes, the pen is back at the fork, facing the way the fork faced, ready for the right subtree. A saved-and-restored state is how every branching drawing in this chapter works, and it's about to get a name from 1968.
 
@@ -105,7 +105,7 @@ Usually that is fine. Sometimes it is the thing in your way. A real branch is a 
 A(s)  :  s > 0.02  ->  F(s)[+A(s*0.5)][-A(s*0.5)]
 ```
 
-Read that left to right. When a bud `A` is longer than a hundredth, draw a segment its own length, then fork into two buds, each half as long. When it is *not* longer, no rule matches it. A symbol no rule matches is left alone, so that bud simply stops. Growth ends because the arithmetic ran out, not because you counted the rounds.
+Read that left to right. When a bud `A` is longer than 0.02, draw a segment its own length, then fork into two buds, each half as long. When it is *not* longer, no rule matches it. A symbol no rule matches is left alone, so that bud simply stops. Growth ends because the arithmetic ran out, not because you counted the rounds.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CarryingNumbers-dark.jpg">
@@ -161,7 +161,7 @@ for cell in lattice.run(generations: 9, seed: 7) {
   <img src="Images/13-GrowingThings/CutAndCutAgain.jpg" alt="Four panels of the same frame cut by one rule after one, three, six, and nine sweeps: two cells, then eight, then fifty-one, then fifty-five and finished, with cells still large enough to cut drawn in warm orange and the rest in black" width="680">
 </picture>
 
-A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. Symbols can always be rewritten again, so an L-system grows forever. Shapes are rewritten in place, so a shape grammar runs out of room.
+A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. A plain L-system can always rewrite its symbols again, so it grows for as many rounds as you ask. Shapes are rewritten in place, so a shape grammar runs out of room.
 
 One arithmetic fact sits behind this whole family, and it saves you from writing rules down. The cut meets two edges away from their ends. So it hands one new corner to each part at each end, and every corner the cell had lands in exactly one part. Whatever the cell was, **the two parts carry four more corners between them than the cell had**. Now say that the parts may only have three, four, or five corners. A triangle can then only become a triangle and a quadrilateral. A quadrilateral can only become a triangle and a pentagon, or two quadrilaterals. A pentagon can only become a quadrilateral and another pentagon. A hexagon has exactly one legal cut. A shape with seven corners has none at all, so it is finished however large it is. Nobody writes those rules. They are what is left once you name the corner range.
 
