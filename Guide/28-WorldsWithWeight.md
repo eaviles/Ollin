@@ -63,23 +63,6 @@ let cross = world.addBody(.compound(parts), at: hubCenter)
 
 That's a windmill's blade cross, five shapes in one body. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing. `withBody` still draws the whole thing, so translate to each part's pose inside the block and draw its shape.
 
-Hinges and sliders can also be *powered*. Give one `limits` when you connect it, measured from the pose it was built in, so 0 means "as built". The returned joint carries a small motor. `drive(at: 2.5)` turns it at a steady rate, `drive(to: 0)` is a spring servo that seeks a pose and holds it, `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* parameter rather than a compromise. It's what makes a door closer something a thrown ball can still barge through.
-
-<img src="Images/28-WorldsWithWeight/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, colored balls scattered across the floor, and two low swing gates on either side both pushed open by balls rolling through them" width="560">
-
-One motored hinge does all the animating here. The compound blade cross from above rides a `.revolute` driven at a constant rate. The balls it bats away shove through swing gates on either side, each a limited hinge with springy stops (`softenLimits`), held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
-
-And the landscape you grew in [Chapter 27](27-Landscapes.md) can hold all of this up. `.heightfield` takes a `Heightfield` directly, sized exactly like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
-
-```swift
-world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
-              at: .zero, kind: .static)
-```
-
-<img src="Images/28-WorldsWithWeight/Rockslide.jpg" alt="Brightly colored rocks, spheres, boxes, and cones, spread mid-slide down a pale eroded mountainside, a gold box caught mid-tumble, green scrub at the foot of the slope" width="560">
-
-The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice parameter that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
-
 ## Asking what hit what
 
 So far the world has been something to watch. To make it something to *play*, you need to know when things happen. A ball reached the goal, a crate landed hard, or the plate has something on it. Ollin hands that over the way it hands over the mouse. Every `step` leaves a list on the world, and `draw()` reads it:
@@ -256,6 +239,12 @@ All three can be set when you add a body and changed while it runs. The [`3D/Phy
 
 ## Machines out of joints
 
+Hinges and sliders can be *powered*, and that is where a machine starts. Give one `limits` when you connect it, measured from the pose it was built in, so 0 means "as built". The returned joint carries a small motor. `drive(at: 2.5)` turns it at a steady rate, and `drive(to: 0)` is a spring servo that seeks a pose and holds it. `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* parameter rather than a compromise. It's what makes a door closer something a thrown ball can still barge through.
+
+<img src="Images/28-WorldsWithWeight/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, colored balls scattered across the floor, and two low swing gates on either side both pushed open by balls rolling through them" width="560">
+
+One motored hinge does all the animating here. The compound blade cross from "Things with weight" rides a `.revolute` driven at a constant rate. The balls it bats away shove through swing gates on either side. Each gate is a limited hinge with springy stops (`softenLimits`), held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
+
 A hinge and a slider will get you a door and a drawer. A machine wants more, and the joints left over are each one idea.
 
 **A track.** Hand `.path` a ring of points and the second body is threaded onto the smooth curve through them, free to travel along it and nothing else. A rollercoaster car, a bead on a wire, a camera on a dolly rail:
@@ -416,6 +405,30 @@ Two things matter before you build on this. `world.water` is an ocean rather tha
 
 The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths. A stone anchor sits on the bottom, and a current carries the lot past. Drag one under and let go.
 
+## Ground and scenery from elsewhere: terrain, scenes, and USD
+
+Every world so far has stood on a flat `ground`, or on boxes you placed. Ground can come from elsewhere too. The landscape you grew in [Chapter 27](27-Landscapes.md) can hold a world up. `.heightfield` takes a `Heightfield` directly, sized exactly like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
+
+```swift
+world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
+              at: .zero, kind: .static)
+```
+
+<img src="Images/28-WorldsWithWeight/Rockslide.jpg" alt="Brightly colored rocks, spheres, boxes, and cones, spread mid-slide down a pale eroded mountainside, a gold box caught mid-tumble, green scrub at the foot of the slope" width="560">
+
+The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice parameter that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
+
+A file can bring more than scenery. A `.usd` file can say which of its prims are physical, and `world.addBodies(from: scene)` reads the lot. A sketch that loads such a file writes no physics of its own:
+
+```swift
+let scene = try! loadScene("yard.usda")
+world.addBodies(from: scene)
+```
+
+Bodies, colliders, joints, masses, materials, gravity. Reading it is lossy, and that is why it works. A file's description of a body is a description, and anything it leaves out has a sensible answer waiting.
+
+The [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) example is this import. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
+
 ## Keeping what settled
 
 Some arrangements you don't design, you find. A heap of stones tipped in one at a time and left to rock itself quiet is one of them. Four hundred steps of falling and leaning went into it, and there is no way to write it down as code. It only exists in the world's memory, and closing the sketch loses it.
@@ -472,16 +485,7 @@ try world.restore(saved) { name in
 
 On a yard with a terrain floor in it that is the difference between a hundred kilobytes and one. The trade is real, though, and it goes both ways. A snapshot that names nothing is self-contained, which is what lets you commit it beside the sketch and open it anywhere. So that stays the default. A name the resolver doesn't recognize costs you that one body and a note, not the restore.
 
-That is one direction, keeping a world you found. The other is picking up one somebody else made. A `.usd` file can say which of its prims are physical, and `world.addBodies(from: scene)` reads the lot. A sketch that loads such a file writes no physics of its own:
-
-```swift
-let scene = try! loadScene("yard.usda")
-world.addBodies(from: scene)
-```
-
-Bodies, colliders, joints, masses, materials, gravity. Reading it is lossy, and that is exactly why it works. A file's description of a body is a description, and anything it leaves out has a sensible answer waiting. Writing the same format would not be, which is why the two jobs use two formats. Import to pick up an arrangement, and snapshot to keep one.
-
-The [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) example is this import. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
+A snapshot is Ollin's own format rather than USD, on purpose. Reading USD is lossy, and writing it back would lose things too. So the two jobs use two formats. Import to pick up an arrangement somebody else made, and snapshot to keep one you found.
 
 ## Putting it together: the contraption
 
