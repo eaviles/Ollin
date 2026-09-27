@@ -6,7 +6,7 @@
 
 <img src="Images/38-FinishingASketch/ContourChart.jpg" alt="Concentric single-line rings around a still center on cream paper, each ring bent by the same noise field so neighboring rings bend together and the outer ones bend most" width="560">
 
-A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, or keep the light above white. Motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
+A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, or keep the light above white. Motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, or a shop drawing. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow. The chapter ends by finishing one keeper, a chart of contour lines, three ways, and reading its recipe back.
 
 ## Leaving as files
 
@@ -344,48 +344,6 @@ try OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
 So the sketch's colors are the handle. Draw the outline in one color, the fold lines in another, and the engraving in a third, and the file arrives sorted into the three jobs. A layer is named by its color's bytes, `color-1B1040`, and carries the nearest of the nine colors a drawing can show, so the shop sees the same three colors you did.
 
 The width is yours to give, as it is for G-code, because a drawing on a shop's screen has real millimeters. Strokes arrive as lines and polylines along their centerlines, and fills as their outlines, unless a hatching turns them into line work. A circle that nothing has skewed stays a circle, which a cutter drilling a hole prefers. Paths whose ends touch merge into one, and a clip cuts the work as it cuts the render. [`Examples/Export/Drafting`](../Examples/Export/Drafting/Sketch.swift) draws a box panel that way and lists the layers beside it, read from the planner. Whatever wrote the drawing, check its size against the material in the shop's software before anything moves.
-
-## Drawing with light: a show laser
-
-A laser draws with one moving dot. Two mirrors steer the beam. A fixed clock decides how often they are told where to point, and at each of those points the beam is lit or dark. Nothing in a laser holds a picture. What you see is one dot going round a loop fast enough that your eye keeps the whole shape.
-
-That makes the geometry from [Chapter 15](15-ShapesAsMaterial.md) exactly the right material. `import OllinLaser` sends it:
-
-```swift
-import OllinLaser
-
-let laser = LaserProjector(etherDream: "192.168.1.50")
-
-override func setup() {
-    laser.connect()
-    laser.arm()                       // nothing goes out before this
-}
-
-override func draw() {
-    background(.black)
-    var frame = LaserFrame(canvas: bounds)
-    frame.add(ring, color: .green)
-    laser.send(frame)
-    drawLaserPreview(laser.stream)    // watch it on screen too
-}
-```
-
-A frame holds paths in canvas coordinates, the same numbers every drawing call takes. A `Shape` contributes its outlines. There are no fills in a laser, so shade a region with `Hatching`, the way the plotter does.
-
-Between that frame and the projector sits the part worth understanding:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/BeamPath-dark.jpg">
-  <img src="Images/38-FinishingASketch/BeamPath.jpg" alt="Two panels. On the left a ring and a small square drawn as outlines. On the right the same two shapes as 136 points the beam visits, with 14 dark ones bridging the gap between them" width="680">
-</picture>
-
-Points are spread evenly along each line, so the beam moves at a steady speed and the line looks even. A few points are held at a sharp corner, because the mirrors have mass and would round it off otherwise. Between two shapes the beam goes dark and the mirrors travel. Points are held at both ends of that jump too. Otherwise the beam lights while the mirrors still move, and drags a tail across the gap. The shapes themselves are then visited near to near, since dark travel is time that buys nothing.
-
-Time is the whole budget. The point rate divided by the frame rate is every point a frame can hold. At 20,000 points a second and 30 frames a second, that is about 660. Past it the frame still plays whole and repeats more slowly, which the eye reads as flicker. `stream.isOverBudget` says when you are there. Draw less, or set `spacing` wider.
-
-The last part is not about pictures at all. A projector puts real power into a beam, and the mirrors are the only thing spreading it. So **a `LaserProjector` sends nothing until you call `arm()`**. Under that gate the brightness starts at half. A beam that stops moving is blanked, and so is a frame the sketch stopped feeding. Give the first run the same courtesy you give a cutter: low power, pointed at a wall, nobody in the beam.
-
-The **LaserPreview** example is that preview with the parameters attached, and it runs with no hardware at all. [Laser](../Docs/Integration/Laser.md) has the rest, including the ILDA file that reaches a rig this library does not talk to directly.
 
 ## Printing one ink at a time: separations
 

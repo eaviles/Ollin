@@ -421,7 +421,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 41](41-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
-| Show lasers | Line work scanned by a projector: the point stream a laser actually draws, spaced, held at corners, blanked between shapes, and gated behind an explicit arm step | [Ch 38](38-FinishingASketch.md) | [Laser](../Docs/Integration/Laser.md) |
+| Show lasers | Line work scanned by a projector: the point stream a laser actually draws, spaced, held at corners, blanked between shapes, and gated behind an explicit arm step | [Ch 41](41-Installations.md) | [Laser](../Docs/Integration/Laser.md) |
 | A sketch as the screen saver | `ollin new --kind screen-saver` wraps a sketch as a `.saver` the system loads when the machine goes idle, with one script to build, sign, and install it | [Ch 40](40-HandingItOver.md) | [Screen saver](../Docs/Output/ScreenSaver.md) |
 | A sketch as an app | `ollin new --kind mac-app` wraps a finished sketch as a signed, double-clickable `.app` for a Mac without the toolchain, wearing a frame of itself as its icon | [Ch 40](40-HandingItOver.md) | [A sketch as an app](../Docs/Output/App.md) |
 | The sketch on the phone | `ollin phone` puts a sketch on a paired iPhone or iPad and installs it again on every save, its clock and parameters carried across, with the parameters live on the Mac | [Ch 40](40-HandingItOver.md) | [OnThePhone](../Docs/Tools/OnThePhone.md) |

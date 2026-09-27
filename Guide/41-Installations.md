@@ -57,6 +57,48 @@ After `extend(leds)` you draw as if the wall didn't exist. Whatever lands under 
   <img src="Images/41-Installations/LEDWall.jpg" alt="A diagram in two rows: a colorful gradient picture with a wavy strip of small rings and a bracketed grid of rings mapped over it, and below, the same LEDs lit for real: the strip laid out straight in wire order and the panel beside it, each labeled with the universe it occupies" width="680">
 </picture>
 
+## Drawing with light: a show laser
+
+DMX lights a room one fixture at a time, and the picture is spread over the lamps. A show laser draws the picture itself, in light, with one moving dot. Two mirrors steer the beam. A fixed clock decides how often they are told where to point, and at each of those points the beam is lit or dark. Nothing in a laser holds a picture. What you see is one dot going round a loop fast enough that your eye keeps the whole shape.
+
+That makes the line geometry from [Chapter 15](15-ShapesAsMaterial.md) the right material, the same lines a plotter takes in [Chapter 38](38-FinishingASketch.md#vector-the-plotter-path). `import OllinLaser` sends it:
+
+```swift
+import OllinLaser
+
+let laser = LaserProjector(etherDream: "192.168.1.50")
+
+override func setup() {
+    laser.connect()
+    laser.arm()                       // nothing goes out before this
+}
+
+override func draw() {
+    background(.black)
+    var frame = LaserFrame(canvas: bounds)
+    frame.add(ring, color: .green)
+    laser.send(frame)
+    drawLaserPreview(laser.stream)    // watch it on screen too
+}
+```
+
+A frame holds paths in canvas coordinates, the same numbers every drawing call takes. A `Shape` contributes its outlines. There are no fills in a laser, so shade a region with `Hatching`, the way the plotter does.
+
+Between that frame and the projector the lines become the path the beam takes:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/BeamPath-dark.jpg">
+  <img src="Images/41-Installations/BeamPath.jpg" alt="Two panels. On the left a ring and a small square drawn as outlines. On the right the same two shapes as 136 points the beam visits, with 14 dark ones bridging the gap between them" width="680">
+</picture>
+
+Points are spread evenly along each line, so the beam moves at a steady speed and the line looks even. A few points are held at a sharp corner, because the mirrors have mass and would round it off otherwise. Between two shapes the beam goes dark and the mirrors travel. Points are held at both ends of that jump too. Otherwise the beam lights while the mirrors still move, and drags a tail across the gap. The shapes themselves are then visited near to near, since dark travel is time that buys nothing.
+
+Time is the whole budget. The point rate divided by the frame rate is every point a frame can hold. At 20,000 points a second and 30 frames a second, that is about 660. Past it the frame still plays whole and repeats more slowly, which the eye reads as flicker. `stream.isOverBudget` says when you are there. Draw less, or set `spacing` wider.
+
+The last part is not about pictures at all. A projector puts real power into a beam, and the mirrors are the only thing spreading it. So **a `LaserProjector` sends nothing until you call `arm()`**. Under that gate the brightness starts at half. A beam that stops moving is blanked, and so is a frame the sketch stopped feeding. Give the first run the care you would give a machine that cuts: low power, pointed at a wall, nobody in the beam.
+
+The **LaserPreview** example is that preview with the parameters attached, and it runs with no hardware at all. [Laser](../Docs/Integration/Laser.md) has the rest, including the ILDA file that reaches a rig this library does not talk to directly.
+
 ## What the building already says: MQTT
 
 Lights are one thing a room has. Most rooms have more, and a lot of it is already on a network talking to itself. A thermostat, a door sensor, a power meter, a smart plug, an air quality board somebody screwed to a wall: on almost every one of those, the protocol underneath is **MQTT**. A sensor publishes a reading to a named topic, a broker in the middle holds the whole thing together, and anything that subscribed to that topic gets the reading. Neither end knows the other exists. That is the point of it, and it is why a sketch can join a building it had nothing to do with.
@@ -547,6 +589,7 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 
 - [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, and several displays.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
+- [Laser](../Docs/Integration/Laser.md): frames and colors, how the path is ordered and spaced, the point budget, the safety gate, the Ether Dream DAC, and the ILDA file for a rig the library does not drive directly.
 - The Bonačić homage [`NamaFrieze`](../Examples/Recreations/VladimirBonacic/NamaFrieze/Sketch.swift): a light frieze from 1969 that ran 36 meters across a department store, drawn to scale and sent back out as eighteen dimmer channels, so the same universe that lights the picture can light a wall.
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what the devices write in a payload, the two service levels, retained values, the last will, and the reconnection.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.

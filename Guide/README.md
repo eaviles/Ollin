@@ -109,10 +109,10 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects, and a room you can draw. Instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
 37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, and tunings. Then playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
-38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, frames kept in linear light or brighter than white, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
+38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, frames kept in linear light or brighter than white, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
 39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, a show's timecode, parameters written as rules, and live feeds into other apps.
 40. **[Handing it over](40-HandingItOver.md).** A sketch as a screen saver, a wallpaper, a menu-bar companion, or a widget, and as an app somebody double-clicks. Then on your phone, and as behavior or a package other programmers import.
-41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, and everything a room does to a sketch left running for weeks.
+41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX, LED maps, and a show laser, and everything a room does to a sketch left running for weeks.
 
 ### Appendices
 

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): what a laser makes of a drawing. The same line
+// Guide diagram (Chapter 41): what a laser makes of a drawing. The same line
 // work twice: on the left as it is drawn, on the right as one dot traces it,
 // with the beam's own footsteps as points and the dark travel between shapes
 // as thin lines. Both panels are measured from the same optimized stream, not
