@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 6): Ford circles. On the left the fractions with
+// Guide diagram (Chapter 15): Ford circles. On the left the fractions with
 // denominators up to four, labeled, on the right the same picture once every
 // denominator up to twelve has arrived, with the new circles dropping into the
 // gaps the old ones left.

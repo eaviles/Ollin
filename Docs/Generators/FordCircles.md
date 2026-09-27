@@ -7,8 +7,8 @@
 **`fordCircles`** gives every fraction a circle, and the circles fit together on their own. The fraction `p/q` in lowest terms gets a circle of radius `1/(2q²)`. That circle sits on the number line at `p/q`, so it touches the line and nothing below it. The rule says nothing about fitting, and yet no two of the circles ever overlap. Two of them touch exactly when `ps - qr` is `1` or `-1`, which is what it means for two fractions to be neighbors. Lester Ford described them in 1938.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/CircleForEveryFraction-dark.jpg">
-  <img src="../../Guide/Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/CircleForEveryFraction-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
 </picture>
 
 A small denominator means a big circle, and a big circle means a fraction that stays a good approximation to everything near it. That is why the picture was drawn in the first place. It shows how well a number can be approximated by fractions, because the circles that reach highest belong to the fractions worth approximating with.
@@ -105,7 +105,7 @@ A denominator of zero is taken as one. A fraction over nothing is not a number, 
 - **Color by denominator, not by position.** The denominator is what the picture is about, and the size already shows it. A ramp over the denominator therefore reads immediately.
 - The circles are plain `Circle` values, so they hatch, cut, and export to SVG for a pen plotter like any other geometry.
 
-Example: `Patterns/FordCircles`. Guide: [Chapter 6](../../Guide/06-GridsAndRepetition.md).
+Example: `Patterns/FordCircles`. Guide: [Chapter 15](../../Guide/15-ShapesAsMaterial.md#a-circle-for-every-fraction).
 
 ---
 
