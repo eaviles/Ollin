@@ -6,6 +6,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **A radius per corner.** `drawRect(_:cornerRadii:)`, on every anchor `cornerRadius:` takes and on `drawRects`, rounds each corner of a rectangle by its own radius: `CornerRadii.top(20)` for a tab, `.bottom`, `.left`, and `.right` for the other pairs, or all four named. Two radii that add up past their side scale down together so the shape is kept. Four equal radii draw exactly as one radius does. The dashed outline, the hollow band, and the merged fields (`SDF.rect(width:height:cornerRadii:)`, `SDF.square(_:cornerRadii:)`) carry the four, and the SVG and PDF exports write the outline as a path with an arc at each rounded corner.
+
+- **A gradient that sweeps around a point.** `Gradient.conic(center:startAngle:)` lays a ramp once around a center from an angle the sketch chooses (radians from three o'clock, clockwise, like every angle in Ollin), for a color wheel, a dial, or a pie. It paints fills and strokes on every shape, the tessellated shapes and outline text by vertex, and the merged fields by position, and it crosses to the web page. On the tessellated path a fill triangle that straddled the sweep's seam used to shade backwards through the whole ramp; it is now cut along the seam, which also mends an along-path fill. The vector exports, which have no sweep, write the ramp's midpoint color as they do for an along-path fill.
+
 - **Putting a parameter back.** A parameter tuned in the inspector goes back to the value its `@Param` line declares without quitting the host: a dot after the name marks a tuned row and puts it back on a click, *Reset* is in every row's menu, a group card offers *Reset* for its rows, and *Reset all* sits beside the save button. The sketch keeps running, with no reload and no `setup()`, so the clock, the seed, and the canvas carry on, and a track on the timeline still wins its parameter. From code, `Param.reset()` and `Sketch.resetParameters(named:)`; the remote surface has a *Reset all* of its own (`RemoteReset` on the wire).
 
 ### Fixed

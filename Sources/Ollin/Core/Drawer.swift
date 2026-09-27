@@ -21,7 +21,8 @@ extension OllinVertex {
 /// `shape` codes the fragment in `ShaderShapes.metal` tests.
 enum SDFShape: UInt32 {
     case ellipse  = 0   // size = (rx, ry); circle is rx == ry
-    case box      = 1   // size = (w/2, h/2); extra = corner radius
+    case box      = 1   // size = (w/2, h/2); extra = corner radius, or param0/param1 =
+                        // (top-left, top-right), (bottom-right, bottom-left) radii
     case capsule  = 2   // a line: param0 = (b-a)/2; extra = half-width; fill = line color
     case arcOpen  = 3   // circular arc, open: size = (ra, ra)
     case arcChord = 4   // circular arc, chord-closed
@@ -1954,8 +1955,8 @@ final class Drawer {
             let outline = SDFOutline.ellipse(radiusX: rx, radiusY: ry,
                                              segments: circleSegments(for: max(rx, ry)))
             return [(svgOffset(outline, center), true)]
-        case let .rect(corner, w, h, r):
-            return [(SDFOutline.roundedRect(corner: corner, width: w, height: h, radius: r), true)]
+        case let .rect(corner, w, h, radii):
+            return [(SDFOutline.roundedRect(corner: corner, width: w, height: h, radii: radii), true)]
         default:
             return nil
         }
@@ -4566,6 +4567,9 @@ final class Drawer {
     /// Draw every rectangle in `rectangles`, each with the same `cornerRadius`.
     func drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0) {
         for r in rectangles { drawRect(r, cornerRadius: cornerRadius) }
+    }
+    func drawRects(_ rectangles: [Rectangle], cornerRadii: CornerRadii) {
+        for r in rectangles { drawRect(r, cornerRadii: cornerRadii) }
     }
 }
 

@@ -26,9 +26,9 @@
 // 27 and 28 are the first shapes parameterized by three free points, so they
 // read corners / control points from param0/param1/param2 (see SDFInstance).
 // The shape tag occupies the low byte; bits 8-9 carry the stroke alignment
-// (0 center, 1 inside, 2 outside) and bits 10-11 / 12-13 the fill / stroke
-// paint kind (0 solid, 1 linear, 2 radial, 3 along-path — see resolvePaint),
-// so the vertex shader masks before the switch.
+// (0 center, 1 inside, 2 outside) and bits 10-12 / 13-15 the fill / stroke
+// paint kind (0 solid, 1 linear, 2 radial, 3 along-path, 4 conic; see
+// resolvePaint), so the vertex shader masks before the switch.
 
 struct SDFOut {
     float4 position [[position]];
@@ -46,7 +46,7 @@ struct SDFOut {
     float strokeRow;
     uint  shape [[flat]]; // constant per instance; never interpolate an integer tag
     uint  align [[flat]]; // stroke alignment: 0 center, 1 inside, 2 outside
-    uint  fillKind [[flat]];   // paint kind: 0 solid, 1 linear, 2 radial, 3 along-path
+    uint  fillKind [[flat]];   // paint kind: 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic
     uint  strokeKind [[flat]];
 };
 
@@ -97,8 +97,8 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     out.strokeRow = inst.strokeGradient;
     out.shape = inst.shape & 0xFFu;   // strip the alignment/paint bits for the tag switch
     out.align = shapeAlign;
-    out.fillKind = (inst.shape >> 10) & 0x3u;
-    out.strokeKind = (inst.shape >> 12) & 0x3u;
+    out.fillKind = (inst.shape >> 10) & 0x7u;
+    out.strokeKind = (inst.shape >> 13) & 0x7u;
     return out;
 }
 
@@ -202,8 +202,13 @@ static inline float capsuleCoverage(float s, float hw) {
 static float ollin_sdf_distance(uint shape, float2 p, float2 size,
                                 float2 param0, float2 param1, float2 param2, float extra) {
     switch (shape) {
-    case 1u:     // rounded box
-        return sdRoundBox(p, size, extra);
+    case 1u: {   // rounded box: extra = one radius, or param0/param1 = a radius
+                 // per corner (top-left, top-right, bottom-right, bottom-left);
+                 // the per-corner form is read only when a corner carries one,
+                 // so every box drawn with one radius keeps its old distance.
+        float4 rr = float4(param0, param1);
+        return (dot(rr, float4(1.0)) > 0.0) ? sdRoundedBox(p, size, rr) : sdRoundBox(p, size, extra);
+    }
     case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
         return sdTriangleIsosceles(p, size);
     case 7u:     // regular polygon / star: size.x = outer radius. sdStar's native
@@ -330,9 +335,12 @@ static void ollin_sdf_coverage(uint shape, uint align, float2 p, float2 size,
     }
 
     switch (shape) {
-    case 1u:     // rounded box
-        regionFill(sdRoundBox(p, size, extra), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
+    case 1u: {   // rounded box (one radius in extra, or one per corner in param0/param1)
+        float4 rr = float4(param0, param1);
+        float d = (dot(rr, float4(1.0)) > 0.0) ? sdRoundedBox(p, size, rr) : sdRoundBox(p, size, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
+    }
     case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
         // Region coverage (inside-biased), so abutting triangles — the rotated
         // wedges that tile a cell — meet at full coverage and leave no seam.
@@ -605,7 +613,10 @@ static void ollin_sdf_coverage(uint shape, uint align, float2 p, float2 size,
 // (the space `p` lives in), mapped to t and sampled from `row` of the gradient
 // strip, an sRGB texture, so the sample comes back linear with no extra math.
 // `pathT` is the along-path coordinate (kind 3): the curve parameter on a
-// capsule/Bézier, a conic sweep around the center on region shapes.
+// capsule/Bézier, a sweep around the shape's own center on region shapes. The
+// conic (kind 4) is that sweep about a center the sketch chose, starting at
+// the angle it chose (measured from three o'clock, turning clockwise, like
+// every other angle here) and wrapping once around.
 static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pathT,
                            texture2d<float> gradients, sampler gradientSampler) {
     if (kind == 0u) { return float4(srgbToLinear(slot.rgb), slot.a); }
@@ -615,6 +626,9 @@ static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pa
         t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
     } else if (kind == 2u) {     // radial: slot = (center.xy, radius, –)
         t = length(p - slot.xy) / max(slot.z, 1e-6);
+    } else if (kind == 4u) {     // conic: slot = (center.xy, start angle, –)
+        float2 d = p - slot.xy;
+        t = fract((atan2(d.y, d.x) - slot.z) * (1.0 / 6.283185307179586));
     } else {                     // along-path
         t = pathT;
     }

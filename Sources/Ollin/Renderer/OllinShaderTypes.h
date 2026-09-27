@@ -152,12 +152,13 @@ typedef struct {
 // stride is still 144 with no spare bytes.
 //
 // Gradient paints ride the existing slots rather than widening the struct: when
-// a paint-kind field in `shape` (bits 10-11 for fill, 12-13 for stroke; 0 solid,
-// 1 linear, 2 radial, 3 along-path) is non-zero, the matching color slot is
-// reinterpreted as gradient *geometry* relative to `center` — linear packs
-// (start.xy, end.xy), radial packs (center.xy, radius, unused) — and
-// `fillGradient`/`strokeGradient` carry the paint's row in the gradient strip
-// texture the ramp was baked into (see BakedGradient).
+// a paint-kind field in `shape` (bits 10-12 for fill, 13-15 for stroke; 0 solid,
+// 1 linear, 2 radial, 3 along-path, 4 conic) is non-zero, the matching color
+// slot is reinterpreted as gradient *geometry* relative to `center` (linear
+// packs (start.xy, end.xy), radial packs (center.xy, radius, unused), conic
+// packs (center.xy, start angle, unused)), and `fillGradient`/`strokeGradient`
+// carry the paint's row in the gradient strip texture the ramp was baked into
+// (see BakedGradient). Nothing reads the tag above bit 15.
 typedef struct {
     simd_float3x3 transform;   // local sketch space -> sketch space (the CTM)
     simd_float2 center;        // shape center, local sketch space

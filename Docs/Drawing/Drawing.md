@@ -459,19 +459,28 @@ drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadi
 drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = 0)
 drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)
 drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0)
+drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadii: CornerRadii)
+drawRect(corner: Vector2, width: Double, height: Double, cornerRadii: CornerRadii)
+drawRect(center: Vector2, width: Double, height: Double, cornerRadii: CornerRadii)
+drawRect(_ rectangle: Rectangle, cornerRadii: CornerRadii)
 ```
 
 A rectangle, anchored by its top-left corner or by its center, or built from a `Rectangle` value. The center form matches p5's `rectMode(CENTER)`. `cornerRadius` rounds the corners and is clamped to half the shorter side. The default of `0` is a sharp rectangle.
 
+`cornerRadii` takes a `CornerRadii`, one radius per corner. `CornerRadii(topLeft:topRight:bottomRight:bottomLeft:)` names all four, as they sit on the canvas; `.top(r)`, `.bottom(r)`, `.left(r)`, and `.right(r)` round one pair and leave the other square, for a tab or a card that meets a straight edge; `.all(r)` is the one-radius form, and `uniformRadius` reads that one radius back, or `nil` when the corners differ. Two radii that meet along a side and add up past it are scaled down together, all four by the same factor, so the shape is kept and only its size gives; `fitted(width:height:)` is that rule as a call, for a sketch that wants the radii as they will draw. Four equal radii draw exactly as `cornerRadius:` does, on the same analytic path, and the vector exports write the outline as a path with an arc at each rounded corner.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRect-dark.jpg">
-  <img src="../Images/DrawRect.jpg" alt="Three rectangles: one anchored by an accent dot at its top-left corner, one by a dot at its center, and one with its corners rounded by a cornerRadius of 26" width="680">
+  <img src="../Images/DrawRect.jpg" alt="Four rectangles: one anchored by an accent dot at its top-left corner, one by a dot at its center, one with its corners rounded by a cornerRadius of 26, and one with a different radius on each corner, the top-left the largest and the bottom-left square" width="680">
 </picture>
 
 ```swift
 drawRect(40, 40, 120, 80)                                   // top-left corner
 drawRect(center: center, width: 200, height: 120)
 drawRect(40, 40, 120, 80, cornerRadius: 16)                 // rounded corners
+drawRect(40, 140, 120, 40, cornerRadii: .top(16))           // a tab
+drawRect(40, 200, 120, 80, cornerRadii: CornerRadii(topLeft: 40, topRight: 8,
+                                                     bottomRight: 24, bottomLeft: 0))
 ```
 
 <a name="orientedbox"></a>
@@ -1140,6 +1149,7 @@ drawCircles(_ centers: [Vector2], radius: Double)
 drawPoints(_ points: [Vector2])
 drawPoints(_ points: [Vector2], size: Double)
 drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0)
+drawRects(_ rectangles: [Rectangle], cornerRadii: CornerRadii)
 ```
 
 These are collection-call sugar, where one Swift call draws a whole array. The current `fill`, `stroke`, and transform apply to every shape in the array. Use them when the shapes share a style, as a point cloud, a scatter, or a grid does. Each shape is still its own instanced quad, so a batch costs the same as the loop it replaces. The call site gets shorter, not the GPU work.

@@ -20,6 +20,12 @@ struct PaintTests {
         let along = Gradient.alongPath(ramp)
         #expect(along.geometry == .alongPath)
 
+        let conic = Gradient.conic(center: Vector2(30, 40), startAngle: 1.5, [.red, .blue])
+        #expect(conic.geometry == .conic(center: Vector2(30, 40), startAngle: 1.5))
+        #expect(conic.ramp.stops.count == 2)
+        // The start angle defaults to three o'clock, where every other angle starts.
+        #expect(Gradient.conic(center: .zero, ramp).geometry == .conic(center: .zero, startAngle: 0))
+
         #expect(Paint.color(.red).solidColor == .red)
         #expect(Paint.gradient(linear).solidColor == nil)
     }

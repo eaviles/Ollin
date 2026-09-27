@@ -75,7 +75,7 @@ Geometry calls wear a `draw` prefix, and circular things take radii where p5 tak
 |---|---|---|
 | `circle(x, y, d)` | `drawCircle(x, y, r)` | radius, not diameter |
 | `ellipse(x, y, w, h)` | `drawEllipse(x, y, rx, ry)` | radii, so halve both |
-| `rect(x, y, w, h)` | `drawRect(x, y, w, h)` | same corner anchor; round with `cornerRadius:` |
+| `rect(x, y, w, h)` | `drawRect(x, y, w, h)` | same corner anchor; round with `cornerRadius:`, or one radius per corner with `cornerRadii:` |
 | `square(x, y, s)` | `drawRect(x, y, s, s)` | |
 | `line(x1, y1, x2, y2)` | `drawLine(x1, y1, x2, y2)` | |
 | `point(x, y)` | `drawPoint(x, y)` | |

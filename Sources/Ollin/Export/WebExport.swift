@@ -761,8 +761,8 @@ struct WebShaders {
         vStrokeRow = aRows.y;
         vShape = tag & 255u;
         vAlign = align;
-        vFillKind = (tag >> 10u) & 3u;
-        vStrokeKind = (tag >> 12u) & 3u;
+        vFillKind = (tag >> 10u) & 7u;
+        vStrokeKind = (tag >> 13u) & 7u;
     }
     """
 
@@ -785,6 +785,9 @@ struct WebShaders {
             t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
         } else if (kind == 2u) {
             t = length(p - slot.xy) / max(slot.z, 1e-6);
+        } else if (kind == 4u) {
+            vec2 d = p - slot.xy;
+            t = fract((atan(d.y, d.x) - slot.z) * (1.0 / 6.283185307179586));
         } else {
             t = pathT;
         }

@@ -2144,10 +2144,15 @@ open class Sketch: Sendable
   func drawPolyline(_: [Vector2], closed: Bool = default)
   func drawPowerDiagram(of: [Circle], in: Rectangle? = default)
   func drawPyramid(width: Double = default, depth: Double = default, height: Double = default)
+  func drawRect(_: Double, _: Double, _: Double, _: Double, cornerRadii: CornerRadii, file: StaticString = default, line: Int = default, column: Int = default)
   func drawRect(_: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawRect(_: Rectangle, cornerRadii: CornerRadii)
   func drawRect(_: Rectangle, cornerRadius: Double = default)
+  func drawRect(center: Vector2, width: Double, height: Double, cornerRadii: CornerRadii, file: StaticString = default, line: Int = default, column: Int = default)
   func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawRect(corner: Vector2, width: Double, height: Double, cornerRadii: CornerRadii, file: StaticString = default, line: Int = default, column: Int = default)
   func drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawRects(_: [Rectangle], cornerRadii: CornerRadii)
   func drawRects(_: [Rectangle], cornerRadius: Double = default)
   func drawRhombus(_: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
@@ -3374,6 +3379,21 @@ struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, Rando
   var midpoint: Vector2 { get }
   var points: [Vector2] { get set }
   var startIndex: Int { get }
+struct CornerRadii: Equatable, Hashable, Sendable
+  func fitted(width: Double, height: Double) -> CornerRadii
+  init(_: Double)
+  init(topLeft: Double, topRight: Double, bottomRight: Double, bottomLeft: Double)
+  static func all(_: Double) -> CornerRadii
+  static func bottom(_: Double) -> CornerRadii
+  static func left(_: Double) -> CornerRadii
+  static func right(_: Double) -> CornerRadii
+  static func top(_: Double) -> CornerRadii
+  static let zero: CornerRadii
+  var bottomLeft: Double { get set }
+  var bottomRight: Double { get set }
+  var topLeft: Double { get set }
+  var topRight: Double { get set }
+  var uniformRadius: Double? { get }
 struct CosinePalette: Sendable
   func color(at: Double) -> Color
   init(a: CosinePalette.RGB, b: CosinePalette.RGB, c: CosinePalette.RGB, d: CosinePalette.RGB)
@@ -4078,11 +4098,14 @@ struct GlyphPair: Equatable, Hashable, Sendable
 struct Gradient: Equatable, Hashable, Sendable
   enum Geometry: Equatable, Hashable, Sendable
     case alongPath
+    case conic(center: Vector2, startAngle: Double)
     case linear(start: Vector2, end: Vector2)
     case radial(center: Vector2, radius: Double)
   init(ramp: Ramp, geometry: Gradient.Geometry)
   static func alongPath(_: Ramp) -> Gradient
   static func alongPath(_: [Color], in: ColorSpace = default) -> Gradient
+  static func conic(center: Vector2, startAngle: Double = default, _: Ramp) -> Gradient
+  static func conic(center: Vector2, startAngle: Double = default, _: [Color], in: ColorSpace = default) -> Gradient
   static func linear(from: Vector2, to: Vector2, _: Ramp) -> Gradient
   static func linear(from: Vector2, to: Vector2, _: [Color], in: ColorSpace = default) -> Gradient
   static func radial(center: Vector2, radius: Double, _: Ramp) -> Gradient
@@ -5616,9 +5639,11 @@ struct SDF
   static func circle(radius: Double) -> SDF
   static func ellipse(radiusX: Double, radiusY: Double) -> SDF
   static func ngon(radius: Double, sides: Int) -> SDF
+  static func rect(width: Double, height: Double, cornerRadii: CornerRadii) -> SDF
   static func rect(width: Double, height: Double, cornerRadius: Double = default) -> SDF
   static func rhombus(width: Double, height: Double, cornerRadius: Double = default) -> SDF
   static func ring(innerRadius: Double, outerRadius: Double) -> SDF
+  static func square(_: Double, cornerRadii: CornerRadii) -> SDF
   static func square(_: Double, cornerRadius: Double = default) -> SDF
   static func star(outerRadius: Double, innerRadius: Double, points: Int) -> SDF
   static func triangle(radius: Double) -> SDF

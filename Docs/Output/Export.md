@@ -430,7 +430,7 @@ The exporter captures each draw call at its semantic level, before tessellation.
 | You draw | SVG element |
 |---|---|
 | `drawCircle` / `drawEllipse` | `<circle>` / `<ellipse>` |
-| `drawRect` (with `cornerRadius`) | `<rect>` (with `rx`) |
+| `drawRect` (with `cornerRadius`) | `<rect>` (with `rx`); a radius per corner (`cornerRadii`) is a `<path>` with an arc at each rounded corner |
 | `drawLine`, `drawBezier` | `<line>`, `<path>` |
 | `drawPolyline` / `drawPolygon` | `<polyline>` / `<polygon>` |
 | `drawShape`, `drawCurve`, curve-builder, **outline text** | `<path>` (with `fill-rule`) |

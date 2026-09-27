@@ -14,26 +14,26 @@
 # names its prose establishes; it is spliced into every probe from that page.
 
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1487  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1510  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1555  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1573  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1600  cannot find 'paint' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1629  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1645  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1665  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1696  cannot find 'rock' in scope
-5809ee8f07b9  Docs/3D/3D.md:1720  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1766  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1495  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1518  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1563  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1581  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1608  cannot find 'paint' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1637  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1653  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1673  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1704  cannot find 'rock' in scope
+5809ee8f07b9  Docs/3D/3D.md:1728  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1774  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
 ad56e3965bd1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
 602cc0895e58  Docs/3D/3D.md:423  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this declaration
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
-a5b3460feb06  Docs/3D/3D.md:930  cannot find 'e' in scope
-59a8691ecc04  Docs/3D/3D.md:971  overriding declaration requires an 'override' keyword
-03e5bc13e5b1  Docs/3D/3D.md:988  cannot call value of non-function type 'Double'
+a5b3460feb06  Docs/3D/3D.md:938  cannot find 'e' in scope
+59a8691ecc04  Docs/3D/3D.md:979  overriding declaration requires an 'override' keyword
+03e5bc13e5b1  Docs/3D/3D.md:996  cannot call value of non-function type 'Double'
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
@@ -66,48 +66,48 @@ f4879e166444  Docs/3D/Phone.md:199  cannot find 'face' in scope
 d7ae0890d8bb  Docs/3D/Phone.md:262  cannot find 'device' in scope
 d7d5e4c7a266  Docs/3D/Phone.md:289  cannot find 'device' in scope
 8311497bd4ff  Docs/3D/Phone.md:317  cannot find 'device' in scope
-aa50201a3785  Docs/3D/Phone.md:331  cannot find 'PhoneReference' in scope
-28b77be058c9  Docs/3D/Phone.md:344  cannot find 'device' in scope
-cd52aa432ca6  Docs/3D/Phone.md:373  cannot find 'device' in scope
-99be21e026a2  Docs/3D/Phone.md:391  cannot find 'balls' in scope
-e5dc2ea249e1  Docs/3D/Phone.md:412  cannot find 'device' in scope
-09c01475e157  Docs/3D/Phone.md:436  cannot find 'device' in scope
-b052fb9b5d7e  Docs/3D/Phone.md:465  cannot find 'world' in scope
-cf3d32b543b2  Docs/3D/Phone.md:483  cannot find 'world' in scope
-ecbd4c6ff46d  Docs/3D/Phone.md:498  cannot find 'cameraCloud' in scope
-0916b30d362c  Docs/3D/Phone.md:514  cannot find 'update' in scope
-8b328b4bd70a  Docs/3D/Phone.md:549  cannot find 'device' in scope
-0fa742730514  Docs/3D/Phone.md:559  cannot find 'device' in scope
-47781ccd5094  Docs/3D/Phone.md:574  unary operator cannot be separated from its operand
-d4aeba848259  Docs/3D/Phone.md:585  cannot find 'scan' in scope
-f6f39e6371ff  Docs/3D/Phone.md:605  cannot find 'device' in scope
-64961a44b09d  Docs/3D/Phone.md:613  cannot find 'device' in scope
-47be1ad501f5  Docs/3D/Phone.md:627  unary operator cannot be separated from its operand
-3ada032ec232  Docs/3D/Phone.md:642  cannot find 'device' in scope
-4b39ac917156  Docs/3D/Phone.md:658  cannot find 'device' in scope
-5f30c7ac01bb  Docs/3D/Phone.md:670  cannot find 'device' in scope
-9fa280ebe85c  Docs/3D/Phone.md:678  value of type '@MainActor (Light) -> ()' has no member 'direction'
-73798537a0b5  Docs/3D/Phone.md:685  cannot find 'device' in scope
-6e76d190e7fe  Docs/3D/Phone.md:691  cannot find 'device' in scope
-a265e10930ee  Docs/3D/Phone.md:705  cannot find 'device' in scope
-90f5c5e41eec  Docs/3D/Phone.md:712  cannot find 'device' in scope
-b04a39d51409  Docs/3D/Phone.md:729  cannot find 'device' in scope
-5891ba6f04a9  Docs/3D/Phone.md:758  cannot find 'device' in scope
-ef5ff4dcdc03  Docs/3D/Phone.md:774  cannot find 'device' in scope
+aa50201a3785  Docs/3D/Phone.md:338  cannot find 'PhoneReference' in scope
+28b77be058c9  Docs/3D/Phone.md:351  cannot find 'device' in scope
+cd52aa432ca6  Docs/3D/Phone.md:380  cannot find 'device' in scope
+99be21e026a2  Docs/3D/Phone.md:398  cannot find 'balls' in scope
+e5dc2ea249e1  Docs/3D/Phone.md:419  cannot find 'device' in scope
+09c01475e157  Docs/3D/Phone.md:443  cannot find 'device' in scope
+b052fb9b5d7e  Docs/3D/Phone.md:472  cannot find 'world' in scope
+cf3d32b543b2  Docs/3D/Phone.md:490  cannot find 'world' in scope
+ecbd4c6ff46d  Docs/3D/Phone.md:505  cannot find 'cameraCloud' in scope
+0916b30d362c  Docs/3D/Phone.md:521  cannot find 'update' in scope
+8b328b4bd70a  Docs/3D/Phone.md:556  cannot find 'device' in scope
+0fa742730514  Docs/3D/Phone.md:566  cannot find 'device' in scope
+47781ccd5094  Docs/3D/Phone.md:581  unary operator cannot be separated from its operand
+d4aeba848259  Docs/3D/Phone.md:592  cannot find 'scan' in scope
+f6f39e6371ff  Docs/3D/Phone.md:612  cannot find 'device' in scope
+64961a44b09d  Docs/3D/Phone.md:620  cannot find 'device' in scope
+47be1ad501f5  Docs/3D/Phone.md:634  unary operator cannot be separated from its operand
+3ada032ec232  Docs/3D/Phone.md:649  cannot find 'device' in scope
+4b39ac917156  Docs/3D/Phone.md:665  cannot find 'device' in scope
+5f30c7ac01bb  Docs/3D/Phone.md:677  cannot find 'device' in scope
+9fa280ebe85c  Docs/3D/Phone.md:685  value of type '@MainActor (Light) -> ()' has no member 'direction'
+73798537a0b5  Docs/3D/Phone.md:692  cannot find 'device' in scope
+6e76d190e7fe  Docs/3D/Phone.md:698  cannot find 'device' in scope
+a265e10930ee  Docs/3D/Phone.md:712  cannot find 'device' in scope
+90f5c5e41eec  Docs/3D/Phone.md:719  cannot find 'device' in scope
+b04a39d51409  Docs/3D/Phone.md:736  cannot find 'device' in scope
+5891ba6f04a9  Docs/3D/Phone.md:765  cannot find 'device' in scope
+ef5ff4dcdc03  Docs/3D/Phone.md:781  cannot find 'device' in scope
 d3a2c54227d7  Docs/3D/Phone.md:79  cannot find 'PhoneDevice' in scope
-abd0d3efd585  Docs/3D/Phone.md:797  cannot find 'device' in scope
-dfcb15f63246  Docs/3D/Phone.md:805  cannot find 'device' in scope
-0efaf3e1b543  Docs/3D/Phone.md:814  cannot find 'device' in scope
-ce2562f59ad4  Docs/3D/Phone.md:824  cannot find 'device' in scope
-4d48cb586784  Docs/3D/Phone.md:832  cannot find 'PhoneSounds' in scope
-aa6b39505d99  Docs/3D/Phone.md:846  cannot find 'device' in scope
-cfacfcd36d59  Docs/3D/Phone.md:861  cannot find 'device' in scope
-c1dfed3638ac  Docs/3D/Phone.md:873  cannot find 'device' in scope
-77a761fca424  Docs/3D/Phone.md:887  cannot find 'PhoneTouches' in scope
-1fe6d21c2a07  Docs/3D/Phone.md:927  cannot find 'device' in scope
-b6794226e9fd  Docs/3D/Phone.md:948  cannot find 'device' in scope
-e2d2e419cc1e  Docs/3D/Phone.md:963  cannot find 'PhoneAir' in scope
-499b37412097  Docs/3D/Phone.md:971  cannot find 'device' in scope
+abd0d3efd585  Docs/3D/Phone.md:804  cannot find 'device' in scope
+dfcb15f63246  Docs/3D/Phone.md:812  cannot find 'device' in scope
+0efaf3e1b543  Docs/3D/Phone.md:821  cannot find 'device' in scope
+ce2562f59ad4  Docs/3D/Phone.md:831  cannot find 'device' in scope
+4d48cb586784  Docs/3D/Phone.md:839  cannot find 'PhoneSounds' in scope
+aa6b39505d99  Docs/3D/Phone.md:853  cannot find 'device' in scope
+cfacfcd36d59  Docs/3D/Phone.md:868  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:880  cannot find 'device' in scope
+77a761fca424  Docs/3D/Phone.md:894  cannot find 'PhoneTouches' in scope
+1fe6d21c2a07  Docs/3D/Phone.md:934  cannot find 'device' in scope
+b6794226e9fd  Docs/3D/Phone.md:955  cannot find 'device' in scope
+e2d2e419cc1e  Docs/3D/Phone.md:970  cannot find 'PhoneAir' in scope
+499b37412097  Docs/3D/Phone.md:978  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
@@ -180,28 +180,28 @@ acd0630dbda0  Docs/Drawing/Color.md:131  cannot find 'brand' in scope
 ddbe57709497  Docs/Drawing/Color.md:147  expected ',' separator
 53df4ad44e2c  Docs/Drawing/Color.md:159  cannot find 'ink' in scope
 bc263aff0c18  Docs/Drawing/Color.md:174  cannot find 'energy' in scope
-ce8340e46df2  Docs/Drawing/Color.md:191  cannot find 'sky' in scope
-04196cfd36c7  Docs/Drawing/Color.md:208  cannot find 'beat' in scope
-a289bd896621  Docs/Drawing/Color.md:226  cannot find 'x' in scope
-9e7fb1cec3a6  Docs/Drawing/Color.md:235  cannot find 'palette' in scope
-47ccf99dc7f7  Docs/Drawing/Color.md:247  cannot find 'base' in scope
-105cb16feaaa  Docs/Drawing/Color.md:264  'module' is inaccessible due to 'internal' protection level
+d8147ec3af4e  Docs/Drawing/Color.md:191  cannot find 'sky' in scope
+04196cfd36c7  Docs/Drawing/Color.md:211  cannot find 'beat' in scope
+a289bd896621  Docs/Drawing/Color.md:229  cannot find 'x' in scope
+9e7fb1cec3a6  Docs/Drawing/Color.md:238  cannot find 'palette' in scope
+47ccf99dc7f7  Docs/Drawing/Color.md:250  cannot find 'base' in scope
+105cb16feaaa  Docs/Drawing/Color.md:267  'module' is inaccessible due to 'internal' protection level
 a5908cabee46  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-512f523c5b16  Docs/Drawing/Color.md:319  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:373  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:392  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:414  cannot find 'x' in scope
+512f523c5b16  Docs/Drawing/Color.md:322  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:376  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:395  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:417  cannot find 'x' in scope
 c708de778678  Docs/Drawing/Color.md:59  cannot find 'userString' in scope
 3340ea233772  Docs/Drawing/Color.md:72  cannot find 'base' in scope
 a47e065ecf70  Docs/Drawing/Color.md:91  cannot find 'albedo' in scope
 2c556ffcbf3d  Docs/Drawing/Color.md:99  cannot find 'ink' in scope
-688be5dd137a  Docs/Drawing/Combinators.md:133  cannot find 'a' in scope
-48a73e312322  Docs/Drawing/Combinators.md:150  cannot find 'a' in scope
-37573516968f  Docs/Drawing/Combinators.md:170  cannot find 'field' in scope
-159d41fcbd18  Docs/Drawing/Combinators.md:182  cannot find 'field' in scope
-09143c7b4d6b  Docs/Drawing/Combinators.md:204  cannot find 'warmRamp' in scope
-010007b214be  Docs/Drawing/Combinators.md:219  cannot find 'field' in scope
-76de28b817a4  Docs/Drawing/Combinators.md:239  cannot find 'field' in scope
+688be5dd137a  Docs/Drawing/Combinators.md:135  cannot find 'a' in scope
+48a73e312322  Docs/Drawing/Combinators.md:152  cannot find 'a' in scope
+37573516968f  Docs/Drawing/Combinators.md:172  cannot find 'field' in scope
+159d41fcbd18  Docs/Drawing/Combinators.md:184  cannot find 'field' in scope
+09143c7b4d6b  Docs/Drawing/Combinators.md:206  cannot find 'warmRamp' in scope
+010007b214be  Docs/Drawing/Combinators.md:221  cannot find 'field' in scope
+76de28b817a4  Docs/Drawing/Combinators.md:241  cannot find 'field' in scope
 3c5de8336af9  Docs/Drawing/CreasePattern.md:116  unary operator cannot be separated from its operand
 7cda209c9b9a  Docs/Drawing/CreasePattern.md:64  cannot find 'sheet' in scope
 f488fa76404d  Docs/Drawing/CreasePattern.md:76  cannot find 'placed' in scope
@@ -225,25 +225,25 @@ f217cb6898e7  Docs/Drawing/DistanceFields.md:140  cannot find 'field' in scope
 20760d26b2ab  Docs/Drawing/DistanceFields.md:154  cannot find 'marks' in scope
 b2388a221e5e  Docs/Drawing/DistanceFields.md:176  cannot find 'marks' in scope
 674cbdf10ab3  Docs/Drawing/DistanceFields.md:92  cannot find 'marks' in scope
-2e4e9c502369  Docs/Drawing/Drawing.md:1010  expected ',' separator
+2e4e9c502369  Docs/Drawing/Drawing.md:1019  expected ',' separator
 690fd7f321e9  Docs/Drawing/Drawing.md:103  expected ',' separator
-6a8858a2e0a2  Docs/Drawing/Drawing.md:1032  expected ',' separator
-18ad2a02b526  Docs/Drawing/Drawing.md:1055  expected ',' separator
-077bc486aafc  Docs/Drawing/Drawing.md:1076  expected ',' separator
-e53b4d2d8108  Docs/Drawing/Drawing.md:1111  expected ',' separator
-c80044be1c38  Docs/Drawing/Drawing.md:1137  expected ',' separator
-680e41ce146a  Docs/Drawing/Drawing.md:1176  expected ',' separator
-e65b8eaf1117  Docs/Drawing/Drawing.md:1192  expected ',' separator
-011dda0d843f  Docs/Drawing/Drawing.md:1208  expected ',' separator
-d7e175ab4cc3  Docs/Drawing/Drawing.md:1225  expected ',' separator
-62a57a467e83  Docs/Drawing/Drawing.md:1253  expected ',' separator
+6a8858a2e0a2  Docs/Drawing/Drawing.md:1041  expected ',' separator
+18ad2a02b526  Docs/Drawing/Drawing.md:1064  expected ',' separator
+077bc486aafc  Docs/Drawing/Drawing.md:1085  expected ',' separator
+e53b4d2d8108  Docs/Drawing/Drawing.md:1120  expected ',' separator
+9c6087bd2b9f  Docs/Drawing/Drawing.md:1146  expected ',' separator
+680e41ce146a  Docs/Drawing/Drawing.md:1186  expected ',' separator
+e65b8eaf1117  Docs/Drawing/Drawing.md:1202  expected ',' separator
+011dda0d843f  Docs/Drawing/Drawing.md:1218  expected ',' separator
+d7e175ab4cc3  Docs/Drawing/Drawing.md:1235  expected ',' separator
 ee564943cad2  Docs/Drawing/Drawing.md:126  expected ',' separator
-613a9ba9ed9d  Docs/Drawing/Drawing.md:1285  expected ',' separator
-5c1a6281f480  Docs/Drawing/Drawing.md:1291  cannot find 'drawThePiece' in scope
-4ed540340851  Docs/Drawing/Drawing.md:1315  expected expression in list of expressions
-487239db150d  Docs/Drawing/Drawing.md:1321  cannot find 'drawTheWholePiece' in scope
-14769638dbef  Docs/Drawing/Drawing.md:1348  expected ',' separator
-5e56b7ee3652  Docs/Drawing/Drawing.md:1368  cannot find 'p' in scope
+62a57a467e83  Docs/Drawing/Drawing.md:1263  expected ',' separator
+613a9ba9ed9d  Docs/Drawing/Drawing.md:1295  expected ',' separator
+5c1a6281f480  Docs/Drawing/Drawing.md:1301  cannot find 'drawThePiece' in scope
+4ed540340851  Docs/Drawing/Drawing.md:1325  expected expression in list of expressions
+487239db150d  Docs/Drawing/Drawing.md:1331  cannot find 'drawTheWholePiece' in scope
+14769638dbef  Docs/Drawing/Drawing.md:1358  expected ',' separator
+5e56b7ee3652  Docs/Drawing/Drawing.md:1378  cannot find 'p' in scope
 7104eda5800a  Docs/Drawing/Drawing.md:143  expected ',' separator
 c3b0324127d0  Docs/Drawing/Drawing.md:160  expected ',' separator
 0f06a901f40d  Docs/Drawing/Drawing.md:206  expected ',' separator
@@ -264,34 +264,34 @@ f5bebebcc0f6  Docs/Drawing/Drawing.md:398  cannot find 'p' in scope
 01f7b5276233  Docs/Drawing/Drawing.md:411  expected ',' separator
 f73e2a666dbf  Docs/Drawing/Drawing.md:43  expected ',' separator
 5897940c393a  Docs/Drawing/Drawing.md:436  expected ',' separator
-6f5613acb2cd  Docs/Drawing/Drawing.md:457  expected ',' separator
-b6c2aaf98e79  Docs/Drawing/Drawing.md:481  expected ',' separator
-3a9c799c6e0c  Docs/Drawing/Drawing.md:503  expected ',' separator
-c9dad3ec2189  Docs/Drawing/Drawing.md:530  expected ',' separator
-fd2a67f41615  Docs/Drawing/Drawing.md:557  expected ',' separator
-19ef973cc53e  Docs/Drawing/Drawing.md:582  expected ',' separator
-580e2f37d212  Docs/Drawing/Drawing.md:601  cannot find 'middle' in scope
-e600e3306e72  Docs/Drawing/Drawing.md:610  expected ',' separator
-2ebd1fa68dab  Docs/Drawing/Drawing.md:631  expected ',' separator
-80e9dcc056a0  Docs/Drawing/Drawing.md:652  expected ',' separator
+c027fffa5813  Docs/Drawing/Drawing.md:457  expected ',' separator
+b6c2aaf98e79  Docs/Drawing/Drawing.md:490  expected ',' separator
+3a9c799c6e0c  Docs/Drawing/Drawing.md:512  expected ',' separator
+c9dad3ec2189  Docs/Drawing/Drawing.md:539  expected ',' separator
+fd2a67f41615  Docs/Drawing/Drawing.md:566  expected ',' separator
+19ef973cc53e  Docs/Drawing/Drawing.md:591  expected ',' separator
+580e2f37d212  Docs/Drawing/Drawing.md:610  cannot find 'middle' in scope
+e600e3306e72  Docs/Drawing/Drawing.md:619  expected ',' separator
+2ebd1fa68dab  Docs/Drawing/Drawing.md:640  expected ',' separator
 75a80710c4b3  Docs/Drawing/Drawing.md:66  expected ',' separator
-989aaeae4881  Docs/Drawing/Drawing.md:673  expected ',' separator
-dc089806cdfb  Docs/Drawing/Drawing.md:695  expected ',' separator
-dbfbe40fa9f2  Docs/Drawing/Drawing.md:716  expected ',' separator
-e7f33863e6a1  Docs/Drawing/Drawing.md:737  expected ',' separator
-22db4e012abd  Docs/Drawing/Drawing.md:758  expected ',' separator
-30f68c03e75e  Docs/Drawing/Drawing.md:779  expected ',' separator
-96de4189c763  Docs/Drawing/Drawing.md:800  expected ',' separator
-79775b304523  Docs/Drawing/Drawing.md:821  expected ',' separator
-b19cb6e95c72  Docs/Drawing/Drawing.md:842  expected ',' separator
-54663e6a9a1b  Docs/Drawing/Drawing.md:863  expected ',' separator
+80e9dcc056a0  Docs/Drawing/Drawing.md:661  expected ',' separator
+989aaeae4881  Docs/Drawing/Drawing.md:682  expected ',' separator
+dc089806cdfb  Docs/Drawing/Drawing.md:704  expected ',' separator
+dbfbe40fa9f2  Docs/Drawing/Drawing.md:725  expected ',' separator
+e7f33863e6a1  Docs/Drawing/Drawing.md:746  expected ',' separator
+22db4e012abd  Docs/Drawing/Drawing.md:767  expected ',' separator
+30f68c03e75e  Docs/Drawing/Drawing.md:788  expected ',' separator
+96de4189c763  Docs/Drawing/Drawing.md:809  expected ',' separator
+79775b304523  Docs/Drawing/Drawing.md:830  expected ',' separator
+b19cb6e95c72  Docs/Drawing/Drawing.md:851  expected ',' separator
 8ac606f9b53d  Docs/Drawing/Drawing.md:87  expected ',' separator
-6293a50aeb05  Docs/Drawing/Drawing.md:888  expected ',' separator
-1f3d372da7f1  Docs/Drawing/Drawing.md:909  expected ',' separator
-b774992b6378  Docs/Drawing/Drawing.md:929  expected ',' separator
-1545ca2f9764  Docs/Drawing/Drawing.md:949  expected ',' separator
-0375abf145ad  Docs/Drawing/Drawing.md:970  expected ',' separator
-6d78937929ce  Docs/Drawing/Drawing.md:990  expected ',' separator
+54663e6a9a1b  Docs/Drawing/Drawing.md:872  expected ',' separator
+6293a50aeb05  Docs/Drawing/Drawing.md:897  expected ',' separator
+1f3d372da7f1  Docs/Drawing/Drawing.md:918  expected ',' separator
+b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
+1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
+0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
+6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
 f9dd3d125f11  Docs/Drawing/Effects.md:107  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 8528c8e05574  Docs/Drawing/Effects.md:133  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 0070bfefdb14  Docs/Drawing/Effects.md:160  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'

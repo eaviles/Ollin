@@ -214,6 +214,17 @@ Colors come as names or as hex values like `Color(hex: 0xE4572E)`, the same six 
 
 When you want a rectangle centered on a point instead of hung from its corner, ask for it by name: `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor. Naming the anchor is how you say which part of the shape the position refers to.
 
+A rectangle can also round its corners. `cornerRadius: 20` rounds all four the same, and `cornerRadii:` gives each corner its own radius, so a tab is rounded along its top and square where it meets the page:
+
+```swift
+drawRect(300, 240, 240, 160, cornerRadius: 20)          // every corner the same
+drawRect(300, 440, 240, 60, cornerRadii: .top(20))       // a tab: the top two rounded
+drawRect(300, 540, 240, 160, cornerRadii: CornerRadii(topLeft: 60, topRight: 0,
+                                                       bottomRight: 60, bottomLeft: 0))
+```
+
+`.top`, `.bottom`, `.left`, and `.right` round one pair of corners, and `CornerRadii` names all four. A radius too large for its side is scaled down until it fits, so the shape is kept.
+
 > **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. That's all you need from it here. [Chapter 10](10-Vectors.md) gives it a whole chapter, because once a position is one value you can add positions together, and that is how motion and forces get written.
 
 > **Swift note.** Some calls take bare values in a fixed order, like `drawCircle(540, 540, 200)` for x, y, and radius. Others name their values, like `Color(hex: 0xE4572E)`, where the `hex:` is part of the call. And `.white` is shorthand for `Color.white`, because Swift lets you drop the type name when it can already tell what you mean.

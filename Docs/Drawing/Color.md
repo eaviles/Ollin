@@ -186,20 +186,23 @@ The stops are `Ramp.Stop` values with a `position` and a `color`. `Ramp(stops: [
 
 ### Gradient paint
 
-A `Ramp` becomes paint through `Gradient`. `fill(_:)` and `stroke(_:)` take a gradient anywhere they take a color, on every shape. A gradient is a `Ramp` laid over the canvas by one of three geometries:
+A `Ramp` becomes paint through `Gradient`. `fill(_:)` and `stroke(_:)` take a gradient anywhere they take a color, on every shape. A gradient is a `Ramp` laid over the canvas by one of four geometries:
 
 ```swift
 fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), sky))   // start → end
 fill(.radial(center: sun, radius: 260, [.white, .clear]))         // center → radius
+fill(.conic(center: dial, startAngle: -.pi / 2, wheel))           // once around a point
 stroke(.alongPath(heat))                                          // along the stroke
 ```
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/GradientPaint-dark.jpg">
-  <img src="../../Guide/Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+  <img src="../../Guide/Images/02-Color/GradientPaint.jpg" alt="Four panels: a rectangle with a vertical dusk gradient, a soft radial glow, a disk whose rainbow sweeps once around its center, and a ring stroked with a rainbow that runs along it" width="680">
 </picture>
 
 Each factory takes a `Ramp` or a plain `[Color]` list. A list is spread evenly and mixed in OKLab by default, and you pass `in:` for another space. Coordinates are in drawing space, so a gradient follows the transform stack together with the shapes it paints. One gradient laid across many shapes shades them as one. `t` clamps at the ends. Alpha is part of the ramp, so a radial gradient that fades to `.clear` makes a soft-edged glow.
+
+`.conic` sweeps the ramp once around `center`, from `startAngle` (radians from three o'clock, turning clockwise, like every angle in Ollin; `-.pi / 2` starts at twelve) back around to it. It reads by position, so it paints a fill and a stroke alike, a shape of any kind, and a merged field, and the sweep does not care where the shape's own center is: a color wheel, a dial, and a pie chart are each one call. The sweep wraps where it started, so a ramp whose last color repeats its first hides that seam.
 
 `.alongPath` follows the shape it paints. On `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours, the ramp runs from start to end by arc length, and each contour runs its own `0...1`. On a region shape, including its fill, the ramp sweeps once around the shape's center. The sweep starts at 12 o'clock and turns clockwise, so a ring outline becomes a color wheel. A cyclic ramp, one whose end colors match, hides the seam where the sweep wraps.
 
@@ -210,7 +213,7 @@ let paint: Paint = beat > 0 ? .gradient(.radial(center: c, radius: r, heat)) : .
 fill(paint)
 ```
 
-The analytic SDF shapes (circles, rects, stars, lines, …) evaluate a gradient per pixel, so the result is exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, and outline text) shade across their vertices instead. Gradient strokes subdivide automatically, so the ramp follows the path. A fill is sampled only at its outline points, so a radial gradient centered *inside* a large polygon does not show its bullseye there. Where that matters, use an SDF shape. Vector export maps linear and radial gradients to native SVG gradients. An along-path stroke exports as short solid runs, and an along-path fill falls back to the color at the ramp's midpoint.
+The analytic SDF shapes (circles, rects, stars, lines, …) evaluate a gradient per pixel, so the result is exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, and outline text) shade across their vertices instead. Gradient strokes subdivide automatically, so the ramp follows the path. A fill is sampled only at its outline points, so a radial gradient centered *inside* a large polygon does not show its bullseye there. Where that matters, use an SDF shape. Vector export maps linear and radial gradients to native SVG gradients. An along-path stroke exports as short solid runs, and an along-path fill falls back to the color at the ramp's midpoint. A conic paint falls back the same way, since neither SVG nor PDF has a sweep. On the tessellated path a sweeping paint has a seam, the ray where the ramp wraps, and a triangle that crosses it is cut there so the seam stays a line.
 
 <a name="palette"></a>
 

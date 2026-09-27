@@ -2,7 +2,8 @@
 //
 // Docs catalog figure (Drawing/Drawing.md, drawRect): the two anchors side
 // by side, the top-left corner form and the center form, each with its
-// anchor dotted, and a third rectangle with rounded corners.
+// anchor dotted, a third rectangle with rounded corners, and a fourth with a
+// radius per corner.
 import Ollin
 import OllinDiagram
 
@@ -24,26 +25,29 @@ final class DrawRect: Sketch {
         fill(wash)
         stroke(ink)
         strokeWeight(3)
-        drawRect(62, 92, 210, 122)
-        drawRect(center: Vector2(452, 153), width: 210, height: 122)
-        drawRect(636, 92, 200, 122, cornerRadius: 26)
+        drawRect(40, 92, 170, 122)
+        drawRect(center: Vector2(345, 153), width: 170, height: 122)
+        drawRect(480, 92, 170, 122, cornerRadius: 26)
+        drawRect(690, 92, 170, 122, cornerRadii: CornerRadii(topLeft: 56, topRight: 12,
+                                                             bottomRight: 30, bottomLeft: 0))
 
         // The anchors: (x, y) is the top-left in the corner form, the
         // middle in the center form.
         noStroke()
         fill(accent)
-        drawCircle(62, 92, 3.5)
-        drawCircle(center: Vector2(452, 153), radius: 3.5)
+        drawCircle(40, 92, 3.5)
+        drawCircle(center: Vector2(345, 153), radius: 3.5)
         textSize(16)
         textAlign(.left, .middle)
-        drawText("(x, y)", 74, 84)
-        drawText("(x, y)", 464, 145)
+        drawText("(x, y)", 52, 84)
+        drawText("(x, y)", 357, 145)
 
         fill(ink)
         textSize(18)
         textAlign(.center, .top)
-        drawText("corner anchor", 167, 272)
-        drawText("center anchor", 452, 272)
-        drawText("cornerRadius: 26", 736, 272)
+        drawText("corner anchor", 125, 272)
+        drawText("center anchor", 345, 272)
+        drawText("cornerRadius: 26", 565, 272)
+        drawText("one radius per corner", 775, 272)
     }
 }

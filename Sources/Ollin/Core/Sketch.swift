@@ -3283,6 +3283,29 @@ open class Sketch {
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
 
+    /// A rectangle with a radius per corner (see `CornerRadii`): `.top(20)`
+    /// for a tab, `.left(r)` for a card that meets a straight edge, or all four
+    /// named. The same four anchors as `cornerRadius:`; four equal radii draw
+    /// exactly as that one radius does.
+    public func drawRect(_ rectangle: Rectangle, cornerRadii: CornerRadii) {
+        drawer.drawRect(rectangle, cornerRadii: cornerRadii)
+    }
+    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadii: CornerRadii,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy(width: 2, height: 3).fromCorner); defer { clearSite() }
+        drawer.drawRect(Rectangle(x: x, y: y, width: width, height: height), cornerRadii: cornerRadii)
+    }
+    public func drawRect(corner: Vector2, width: Double, height: Double, cornerRadii: CornerRadii,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point(width: 1, height: 2).fromCorner); defer { clearSite() }
+        drawer.drawRect(Rectangle(corner: corner, width: width, height: height), cornerRadii: cornerRadii)
+    }
+    public func drawRect(center: Vector2, width: Double, height: Double, cornerRadii: CornerRadii,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point(width: 1, height: 2)); defer { clearSite() }
+        drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadii: cornerRadii)
+    }
+
     /// Draw every circle in `circles` in one call (all share the current
     /// fill/stroke/transform; each is still its own instanced quad).
     public func drawCircles(_ circles: [Circle]) { drawer.drawCircles(circles) }
@@ -3297,6 +3320,10 @@ open class Sketch {
     /// Draw every rectangle in `rectangles`, each with the same `cornerRadius`.
     public func drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0) {
         drawer.drawRects(rectangles, cornerRadius: cornerRadius)
+    }
+    /// Draw every rectangle in `rectangles`, each with the same `cornerRadii`.
+    public func drawRects(_ rectangles: [Rectangle], cornerRadii: CornerRadii) {
+        drawer.drawRects(rectangles, cornerRadii: cornerRadii)
     }
 
     // MARK: Retained batches

@@ -15,14 +15,16 @@ public enum Paint: Equatable, Hashable, Sendable {
     }
 }
 
-/// A gradient paint: a `Ramp` of colors laid over a geometry — a line between
-/// two points, a radius around a center, or the run of the path it strokes.
-/// Coordinates are in drawing space (the same space the shape's own coordinates
-/// use), so the gradient rides the transform stack with the shapes it paints.
+/// A gradient paint: a `Ramp` of colors laid over a geometry: a line between
+/// two points, a radius around a center, a sweep around a center, or the run
+/// of the path it strokes. Coordinates are in drawing space (the same space the
+/// shape's own coordinates use), so the gradient rides the transform stack with
+/// the shapes it paints.
 ///
 /// ```swift
 /// fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), sky))
 /// fill(.radial(center: Vector2(x, y), radius: 200, [.white, .clear]))
+/// fill(.conic(center: Vector2(x, y), startAngle: -.pi / 2, wheel))
 /// stroke(.alongPath(heat))   // the ramp runs start → end along the stroke
 /// ```
 public struct Gradient: Equatable, Hashable, Sendable {
@@ -34,6 +36,11 @@ public struct Gradient: Equatable, Hashable, Sendable {
         /// The ramp runs outward from `center` (t = 0) to `radius` (t = 1) and
         /// clamps beyond it.
         case radial(center: Vector2, radius: Double)
+        /// The ramp sweeps once around `center`, t = 0 at `startAngle` and
+        /// t = 1 a full turn later. The angle is in radians from three o'clock,
+        /// turning clockwise, the way every angle in Ollin is measured, so
+        /// `-.pi / 2` starts the sweep at twelve.
+        case conic(center: Vector2, startAngle: Double)
         /// The ramp follows the painted path: along a `drawLine` / `drawBezier`
         /// stroke and a stroked polyline or contour it runs start → end by arc
         /// length; on a region shape (and its fill) it sweeps once around the
@@ -75,6 +82,21 @@ public struct Gradient: Equatable, Hashable, Sendable {
     public static func radial(center: Vector2, radius: Double, _ colors: [Color],
                               in space: ColorSpace = .oklab) -> Gradient {
         radial(center: center, radius: radius, Ramp(colors, in: space))
+    }
+
+    /// A gradient sweeping once around `center` from `startAngle` (radians from
+    /// three o'clock, clockwise; `-.pi / 2` starts at twelve): a color wheel, a
+    /// dial, a pie.
+    public static func conic(center: Vector2, startAngle: Double = 0, _ ramp: Ramp) -> Gradient {
+        Gradient(ramp: ramp, geometry: .conic(center: center, startAngle: startAngle))
+    }
+
+    /// A gradient sweeping once around `center` from `startAngle`, spreading
+    /// `colors` evenly (mixed in `space`, OKLab by default). A list whose last
+    /// color repeats its first hides the seam where the sweep wraps.
+    public static func conic(center: Vector2, startAngle: Double = 0, _ colors: [Color],
+                             in space: ColorSpace = .oklab) -> Gradient {
+        conic(center: center, startAngle: startAngle, Ramp(colors, in: space))
     }
 
     /// A gradient that follows the painted path (see `Geometry.alongPath`).

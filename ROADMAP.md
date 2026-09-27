@@ -30,9 +30,7 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 These are near-term, fairly self-contained pieces. Each one is small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
-- **Rounded corners of different sizes.** A rectangle takes one radius per corner, for a tab, a speech bubble, or a card with one square edge. The instanced box has free parameter slots to carry the four radii.
 - **Drawing part of an image.** `drawImage` takes a source rectangle inside the image. A sprite sheet, a tile set, or a film strip then draws one frame at a time, with no cropping first.
-- **A gradient that sweeps around a point.** This is the conic gradient, used for color wheels, dials, and pie charts. The sketch chooses the center and the angle the sweep starts from.
 - **Pitch bend bound to a parameter.** A parameter binds to a MIDI control change. The pitch wheel is the other continuous control on most keyboards, and it binds the same way.
 - **Points inside a shape.** A sketch scatters random points evenly inside any `Shape`, holes included, or along its outline by length. The same helper offers a blue-noise scatter inside the shape.
 - **One mesh from several.** Meshes placed by their transforms join into one mesh, with no boolean. The result is one draw call and one file for a printer.

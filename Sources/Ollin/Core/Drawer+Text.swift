@@ -206,12 +206,7 @@ extension Drawer {
                 let tri = glyph.localFill
                 replicated {
                     for i in stride(from: 0, to: tri.count - 2, by: 3) {
-                        let p0 = tri[i] + origin
-                        let p1 = tri[i + 1] + origin
-                        let p2 = tri[i + 2] + origin
-                        emit(p0.simd2, color: vp.color(at: p0))
-                        emit(p1.simd2, color: vp.color(at: p1))
-                        emit(p2.simd2, color: vp.color(at: p2))
+                        emitTriangle(tri[i] + origin, tri[i + 1] + origin, tri[i + 2] + origin, paint: vp)
                     }
                 }
             }
@@ -1026,15 +1021,11 @@ extension Drawer {
         }
         if let fill = fillPaint {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points))
-            let p0 = points[0].simd2
-            let c0 = vp.color(at: points[0])
             replicated {
                 let start = vertices.count
                 // The fan from the first vertex, in the shared expander's order.
                 FillExpander.fan(count: points.count) { _, b, c in
-                    emit(p0, color: c0)
-                    emit(points[b].simd2, color: vp.color(at: points[b]))
-                    emit(points[c].simd2, color: vp.color(at: points[c]))
+                    emitTriangle(points[0], points[b], points[c], paint: vp)
                 }
                 if recordsWebSources, case .solid(let c) = vp {
                     webSources.append(WebSource(kind: .fan(color: c), points: points.map { Point2D($0.x, $0.y) },
@@ -1078,9 +1069,7 @@ extension Drawer {
             replicated {
                 let start = vertices.count
                 for i in stride(from: 0, to: triangles.count - 2, by: 3) {
-                    emit(triangles[i].simd2, color: vp.color(at: triangles[i]))
-                    emit(triangles[i + 1].simd2, color: vp.color(at: triangles[i + 1]))
-                    emit(triangles[i + 2].simd2, color: vp.color(at: triangles[i + 2]))
+                    emitTriangle(triangles[i], triangles[i + 1], triangles[i + 2], paint: vp)
                 }
                 if recordsWebSources, case .solid(let c) = vp {
                     // The contours the tessellator was given, in its order.

@@ -137,12 +137,16 @@ private struct PDFPainter {
         }
     }
 
-    /// A paint with the inexpressible case resolved: an along-path gradient
-    /// that kept no path (an ellipse/rect outline sweep) falls back to its
-    /// ramp's midpoint color, the same fallback the SVG serializer uses.
+    /// A paint with the inexpressible cases resolved: an along-path gradient
+    /// that kept no path (an ellipse/rect outline sweep) and a conic gradient
+    /// (a PDF shading has no sweep) fall back to the ramp's midpoint color,
+    /// the same fallback the SVG serializer uses.
     private func resolved(_ paint: Paint) -> Paint {
-        if case .gradient(let g) = paint, g.geometry == .alongPath {
-            return .color(g.ramp.color(at: 0.5))
+        if case .gradient(let g) = paint {
+            switch g.geometry {
+            case .alongPath, .conic: return .color(g.ramp.color(at: 0.5))
+            case .linear, .radial: break
+            }
         }
         return paint
     }
@@ -162,7 +166,7 @@ private struct PDFPainter {
         case let .radial(center, radius):
             ctx.drawRadialGradient(gradient, startCenter: point(center), startRadius: 0,
                                    endCenter: point(center), endRadius: CGFloat(radius), options: options)
-        case .alongPath:
+        case .alongPath, .conic:
             break   // resolved before serialization / by `resolved(_:)`
         }
     }
@@ -203,13 +207,34 @@ private func pdfPath(_ geometry: SVGGeometry) -> CGPath? {
     case let .ellipse(center, rx, ry):
         path.addEllipse(in: CGRect(x: center.x - rx, y: center.y - ry,
                                    width: rx * 2, height: ry * 2))
-    case let .rect(corner, w, h, r):
+    case let .rect(corner, w, h, radii):
         let rect = CGRect(x: corner.x, y: corner.y, width: w, height: h)
-        let rr = min(r, min(w, h) / 2)   // a radius past the half-extent traps
-        if rr > 0 {
-            path.addRoundedRect(in: rect, cornerWidth: rr, cornerHeight: rr)
+        if let r = radii.uniformRadius {
+            let rr = min(r, min(w, h) / 2)   // a radius past the half-extent traps
+            if rr > 0 {
+                path.addRoundedRect(in: rect, cornerWidth: rr, cornerHeight: rr)
+            } else {
+                path.addRect(rect)
+            }
         } else {
-            path.addRect(rect)
+            // A radius per corner: each rounded corner is the arc tangent to
+            // its two sides, and a square corner is the point they meet at.
+            let fitted = radii.fitted(width: w, height: h)
+            let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
+            path.move(to: CGPoint(x: x0 + fitted.topLeft, y: y0))
+            func turn(_ r: Double, at cx: Double, _ cy: Double, next nx: Double, _ ny: Double) {
+                if r > 0 {
+                    path.addArc(tangent1End: CGPoint(x: cx, y: cy), tangent2End: CGPoint(x: nx, y: ny),
+                                radius: CGFloat(r))
+                } else {
+                    path.addLine(to: CGPoint(x: cx, y: cy))
+                }
+            }
+            turn(fitted.topRight, at: x1, y0, next: x1, y1)
+            turn(fitted.bottomRight, at: x1, y1, next: x0, y1)
+            turn(fitted.bottomLeft, at: x0, y1, next: x0, y0)
+            turn(fitted.topLeft, at: x0, y0, next: x1, y0)
+            path.closeSubpath()
         }
     case let .line(a, b):
         path.move(to: point(a))

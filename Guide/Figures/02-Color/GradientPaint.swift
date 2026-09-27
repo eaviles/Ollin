@@ -1,7 +1,7 @@
 // figure: frame=0 themed
 //
-// Guide diagram: the three gradient geometries. A ramp laid along a line,
-// out from a center, and around a stroked path.
+// Guide diagram: the four gradient geometries. A ramp laid along a line,
+// out from a center, once around a center, and along a stroked path.
 import Ollin
 import OllinDiagram
 
@@ -17,7 +17,7 @@ final class GradientPaint: Sketch {
     override func draw() {
         background(paper)
         noStroke()
-        textSize(20)
+        textSize(16)
         textAlign(.center, .top)
 
         let dusk = Ramp([
@@ -26,26 +26,32 @@ final class GradientPaint: Sketch {
         ])
 
         // Linear: start point to end point.
-        fill(.linear(from: Vector2(60, 100), to: Vector2(60, 400), dusk))
-        drawRect(60, 100, 240, 300)
-        caption(".linear(from:to:)", 180)
+        fill(.linear(from: Vector2(40, 100), to: Vector2(40, 400), dusk))
+        drawRect(40, 100, 180, 300)
+        caption(".linear(from:to:)", 130)
 
         // Radial: center out to a radius, fading to clear.
         let glow = Ramp(stops: [(0, Color(hex: 0xE4572E)),
                                 (0.4, Color(hex: 0xE4572E)),
                                 (1, Color(hex: 0xE4572E, alpha: 0))])
-        fill(.radial(center: Vector2(440, 250), radius: 145, glow))
-        drawCircle(440, 250, 145)
-        caption(".radial(center:radius:)", 440)
+        fill(.radial(center: Vector2(340, 250), radius: 108, glow))
+        drawCircle(340, 250, 108)
+        caption(".radial(center:radius:)", 340)
 
-        // Along the path: the ramp sweeps around the stroke.
+        // Conic: once around a center, from twelve o'clock; the ramp's last
+        // color repeats its first, so the seam does not show.
         let wheel = Ramp((0...10).map { Color(hue: Double($0) / 10, saturation: 0.8, brightness: 0.95) })
+        fill(.conic(center: Vector2(550, 250), startAngle: -.pi / 2, wheel))
+        drawCircle(550, 250, 96)
+        caption(".conic(center:startAngle:)", 550)
+
+        // Along the path: the ramp runs along the stroke itself.
         noFill()
         stroke(.alongPath(wheel))
-        strokeWeight(26)
-        drawCircle(700, 250, 118)
+        strokeWeight(22)
+        drawCircle(760, 250, 84)
         noStroke()
-        caption(".alongPath(...)", 700)
+        caption(".alongPath(...)", 760)
     }
 
     func caption(_ text: String, _ x: Double) {

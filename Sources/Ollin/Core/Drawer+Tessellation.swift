@@ -23,6 +23,20 @@ extension Drawer {
         /// (no path parameter) sweep once around `center`, matching the SDF
         /// fragment's conic fallback.
         case along(center: Vector2, baked: BakedGradient)
+        /// Conic paint: a sweep once around `center` from `startAngle`, read
+        /// by position on fills and strokes alike.
+        case conic(center: Vector2, startAngle: Double, baked: BakedGradient)
+
+        /// The center and start angle of a paint that sweeps around a point,
+        /// which is where a triangle it colors may need splitting (see
+        /// `emitTriangle`); `nil` for the paints that vary smoothly.
+        var sweep: (center: Vector2, startAngle: Double)? {
+            switch self {
+            case .along(let center, _): return (center, -.pi / 2)
+            case .conic(let center, let startAngle, _): return (center, startAngle)
+            case .solid, .linear, .radial: return nil
+            }
+        }
 
         var isGradient: Bool {
             if case .solid = self { return false }
@@ -39,11 +53,27 @@ extension Drawer {
             case .radial(let center, let invRadius, let baked):
                 return baked.sample((p - center).length * invRadius)
             case .along(let center, let baked):
-                // Conic sweep: 0 at 12 o'clock, increasing clockwise (y-down) —
+                // Conic sweep: 0 at 12 o'clock, increasing clockwise (y-down),
                 // the same wrap the SDF fragment computes.
                 let raw = atan2(p.x - center.x, -(p.y - center.y)) / Double.tau
                 return baked.sample(raw - raw.rounded(.down))
+            case .conic(let center, let startAngle, let baked):
+                // The same sweep from the angle the sketch chose, measured
+                // from three o'clock like every other angle.
+                let raw = (atan2(p.y - center.y, p.x - center.x) - startAngle) / Double.tau
+                return baked.sample(raw - raw.rounded(.down))
             }
+        }
+
+        /// The color at a point that sits on the seam of a sweeping paint,
+        /// read from the side `before` says: the end of the ramp when the
+        /// point closes the sweep, its start when the point opens it. Off the
+        /// seam this is `color(at:)`.
+        func color(at p: Vector2, seamBefore before: Bool?) -> SIMD4<Float> {
+            guard let before, sweep != nil else { return color(at: p) }
+            if case .along(_, let baked) = self { return baked.sample(before ? 1 : 0) }
+            if case .conic(_, _, let baked) = self { return baked.sample(before ? 1 : 0) }
+            return color(at: p)
         }
 
         /// The paint color for a stroked-path vertex: along-path paint reads the
@@ -70,10 +100,80 @@ extension Drawer {
                 return .linear(origin: start, dir: d, invLen2: 1 / len2, baked: baked)
             case .radial(let center, let radius):
                 return .radial(center: center, invRadius: 1 / max(radius, 1e-6), baked: baked)
+            case .conic(let center, let startAngle):
+                return .conic(center: center, startAngle: startAngle, baked: baked)
             case .alongPath:
                 return .along(center: anchor(), baked: baked)
             }
         }
+    }
+
+    /// Emit one fill triangle colored by `paint` at its corners. A paint that
+    /// sweeps around a point (a conic, or an along-path fill) wraps from the
+    /// ramp's end back to its start along one ray out of the center, and a
+    /// triangle whose corners fall on both sides of that seam would shade
+    /// through the whole ramp backwards across its face. Such a triangle is
+    /// cut along the line the seam lies on; a corner on the seam takes the
+    /// ramp end its own piece is on, and each piece fans out from the cut.
+    /// Every other paint emits the three corners as they are.
+    func emitTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2, paint: VertexPaint) {
+        guard let (center, startAngle) = paint.sweep else {
+            emit(a.simd2, color: paint.color(at: a))
+            emit(b.simd2, color: paint.color(at: b))
+            emit(c.simd2, color: paint.color(at: c))
+            return
+        }
+        let dir = Vector2(cos(startAngle), sin(startAngle))
+        // Which side of the seam's line a point is on: positive is the side the
+        // sweep opens on (t near 0), negative the side it closes on (t near 1).
+        func side(_ p: Vector2) -> Double { let d = p - center; return dir.x * d.y - dir.y * d.x }
+        // Only the ray ahead of the center is the seam; behind it the line is
+        // where the sweep passes its midpoint, and the color is continuous.
+        func onRay(_ p: Vector2) -> Bool { let d = p - center; return dir.x * d.x + dir.y * d.y >= 0 }
+        let corners = [a, b, c]
+        let sides = corners.map(side)
+        let eps = 1e-9
+        let hasOpen = sides.contains { $0 > eps }
+        let hasClose = sides.contains { $0 < -eps }
+        guard hasOpen && hasClose else {
+            // One side only, but a corner that sits on the seam ray still takes
+            // this side's ramp end rather than whichever end atan2 lands on.
+            for (p, s) in zip(corners, sides) {
+                let onSeam = abs(s) <= eps && onRay(p)
+                emit(p.simd2, color: paint.color(at: p, seamBefore: onSeam ? !hasOpen : nil))
+            }
+            return
+        }
+        // Clip the triangle into the two half-planes (a triangle or a quad
+        // each), marking the corners that lie on the line.
+        var opening: [(point: Vector2, onLine: Bool)] = []
+        var closing: [(point: Vector2, onLine: Bool)] = []
+        for i in 0..<3 {
+            let p = corners[i], s = sides[i]
+            let q = corners[(i + 1) % 3], sq = sides[(i + 1) % 3]
+            if s >= -eps { opening.append((p, abs(s) <= eps)) }
+            if s <= eps { closing.append((p, abs(s) <= eps)) }
+            if (s > eps && sq < -eps) || (s < -eps && sq > eps) {
+                let x = p + (q - p) * (s / (s - sq))
+                opening.append((x, true))
+                closing.append((x, true))
+            }
+        }
+        func fan(_ piece: [(point: Vector2, onLine: Bool)], opens: Bool) {
+            guard piece.count >= 3 else { return }
+            func color(_ v: (point: Vector2, onLine: Bool)) -> SIMD4<Float> {
+                let seam = v.onLine && onRay(v.point)
+                return paint.color(at: v.point, seamBefore: seam ? !opens : nil)
+            }
+            let c0 = color(piece[0])
+            for k in 1..<(piece.count - 1) {
+                emit(piece[0].point.simd2, color: c0)
+                emit(piece[k].point.simd2, color: color(piece[k]))
+                emit(piece[k + 1].point.simd2, color: color(piece[k + 1]))
+            }
+        }
+        fan(opening, opens: true)
+        fan(closing, opens: false)
     }
 
     /// The center of `points`' bounding box — the conic anchor for an

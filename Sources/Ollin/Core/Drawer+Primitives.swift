@@ -697,10 +697,15 @@ extension Drawer {
     /// the paint kind for the shape-tag bits and the ramp's strip row.
     private struct EncodedPaint {
         var slot: SIMD4<Float>
-        var kind: UInt32      // 0 solid, 1 linear, 2 radial, 3 along-path
+        var kind: UInt32      // 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic
         var row: Float
 
         static let none = EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 0, row: 0)
+
+        /// Whether the paint reads a position rather than a path: a solid, a
+        /// linear, a radial, or a conic, which the merged fields and the 3D
+        /// fields can paint (an along-path needs a path they do not have).
+        var isPositional: Bool { kind != 3 }
     }
 
     private func encodePaint(_ paint: Paint, center: Vector2) -> EncodedPaint {
@@ -719,6 +724,10 @@ extension Drawer {
                 let cc = c - center
                 return EncodedPaint(slot: SIMD4<Float>(Float(cc.x), Float(cc.y), Float(max(r, 1e-6)), 0),
                                     kind: 2, row: row)
+            case .conic(let c, let startAngle):
+                let cc = c - center
+                return EncodedPaint(slot: SIMD4<Float>(Float(cc.x), Float(cc.y), Float(startAngle), 0),
+                                    kind: 4, row: row)
             case .alongPath:
                 return EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 3, row: row)
             }
@@ -750,7 +759,7 @@ extension Drawer {
             if shape == .box {
                 let corner = Vector2(center.x - Double(size.x), center.y - Double(size.y))
                 svgRecord(.rect(corner: corner, width: Double(size.x) * 2, height: Double(size.y) * 2,
-                                cornerRadius: Double(extra)), fill: fill, stroke: stroke)
+                                cornerRadii: CornerRadii(Double(extra))), fill: fill, stroke: stroke)
             }
             return
         }
@@ -806,9 +815,10 @@ extension Drawer {
             extra: extra,
             bandWidth: band,
             // Stroke alignment and the two paint kinds ride in the shape tag's
-            // high bits (the tag itself is < 256), so they cost no instance room.
+            // high bits (the tag itself is < 256), so they cost no instance room:
+            // bits 8-9 the alignment, 10-12 the fill kind, 13-15 the stroke kind.
             shape: shape.rawValue | (strokeAlignment.shaderCode << 8)
-                 | (fillEnc.kind << 10) | (strokeEnc.kind << 12),
+                 | (fillEnc.kind << 10) | (strokeEnc.kind << 13),
             fillGradient: fillEnc.row,
             strokeGradient: strokeEnc.row)
         sdfInstances.append(instance)
@@ -869,21 +879,21 @@ extension Drawer {
         var fillRow: Float = 0
         if let fillPaint, case .gradient = fillPaint {
             let enc = encodePaint(fillPaint, center: .zero)
-            if enc.kind == 1 || enc.kind == 2 {
+            if enc.isPositional {
                 fillGeo = enc.slot; fillKind = Float(enc.kind); fillRow = enc.row
             }
         }
 
-        // Stroke: a solid color, or a linear/radial gradient traced along the merged outline
-        // (its geometry rides the `strokeColor` slot, as `SDFInstance` reuses its color slots).
-        // An along-path gradient has no single path on a merged outline, so it draws no stroke.
+        // Stroke: a solid color, or a linear/radial/conic gradient traced along the merged
+        // outline (its geometry rides the `strokeColor` slot, as `SDFInstance` reuses its color
+        // slots). An along-path gradient has no single path on a merged outline, so it draws no stroke.
         var strokeSlot = SIMD4<Float>(repeating: 0)
         var strokeKind: Float = 0
         var strokeRow: Float = 0
         var strokeOn = false
         if strokeWidth > 0, let strokePaint {
             let enc = encodePaint(strokePaint, center: .zero)
-            if enc.kind <= 2 {            // 0 solid, 1 linear, 2 radial (3 along-path: unsupported)
+            if enc.isPositional {         // 0 solid, 1 linear, 2 radial, 4 conic (3 along-path: unsupported)
                 strokeSlot = enc.slot
                 strokeKind = Float(enc.kind)
                 strokeRow = enc.row
@@ -977,13 +987,13 @@ extension Drawer {
         // A gradient `fill` paints the whole merged surface by screen position (the leaves'
         // own colors are bypassed). The geometry is in absolute canvas points (center .zero),
         // since the raymarch fragment samples it at each hit's projected screen position;
-        // along-path has no meaning on a field, so only linear/radial paint the surface.
+        // along-path has no meaning on a field, so linear/radial/conic paint the surface.
         var gradientGeo = SIMD4<Float>(repeating: 0)
         var gradientKind: Float = 0
         var gradientRow: Float = 0
         if let fillPaint, case .gradient = fillPaint {
             let encoded = encodePaint(fillPaint, center: .zero)
-            if encoded.kind == 1 || encoded.kind == 2 {
+            if encoded.isPositional {
                 gradientGeo = encoded.slot
                 gradientKind = Float(encoded.kind)
                 gradientRow = encoded.row
@@ -1315,21 +1325,13 @@ extension Drawer {
                 switch mode {
                 case .open, .chord:
                     // Circular segment: convex, so a fan from the first point fills it.
-                    let p0 = pts[0].simd2
-                    let c0 = vp.color(at: pts[0])
                     FillExpander.fan(count: pts.count) { _, b, c in
-                        emit(p0, color: c0)
-                        emit(pts[b].simd2, color: vp.color(at: pts[b]))
-                        emit(pts[c].simd2, color: vp.color(at: pts[c]))
+                        emitTriangle(pts[0], pts[b], pts[c], paint: vp)
                     }
                 case .pie:
                     // Wedge: the fan of the polygon that starts at the center.
-                    let cc = center.simd2
-                    let centerColor = vp.color(at: center)
                     FillExpander.fan(count: pts.count + 1) { _, b, c in
-                        emit(cc, color: centerColor)
-                        emit(pts[b - 1].simd2, color: vp.color(at: pts[b - 1]))
-                        emit(pts[c - 1].simd2, color: vp.color(at: pts[c - 1]))
+                        emitTriangle(center, pts[b - 1], pts[c - 1], paint: vp)
                     }
                 }
                 if recordsWebSources, case .solid(let c) = vp {
@@ -1471,7 +1473,8 @@ extension Drawer {
         guard rect.width > 0, rect.height > 0 else { return }
         let r = max(0, min(cornerRadius, min(rect.width, rect.height) / 2))
         if svgRecorder != nil {
-            svgRecord(.rect(corner: Vector2(rect.x, rect.y), width: rect.width, height: rect.height, cornerRadius: r),
+            svgRecord(.rect(corner: Vector2(rect.x, rect.y), width: rect.width, height: rect.height,
+                            cornerRadii: CornerRadii(r)),
                       fill: fillPaint, stroke: strokePaint)
             return
         }
@@ -1481,6 +1484,35 @@ extension Drawer {
             appendSDF(shape: .box, center: rect.center,
                       size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
                       fill: fillPaint, stroke: strokePaint, extra: Float(r))
+        }
+    }
+
+    /// An axis-aligned `Rectangle` with a radius per corner. Four equal radii
+    /// take the one-radius path above, instance for instance, so a rectangle
+    /// that rounds every corner the same draws exactly as `cornerRadius:` does;
+    /// radii that differ ride the box's parameter slots, and the fragment
+    /// picks each corner's radius by the quadrant a pixel falls in.
+    func drawRect(_ rect: Rectangle, cornerRadii: CornerRadii) {
+        guard rect.width > 0, rect.height > 0 else { return }
+        let radii = cornerRadii.fitted(width: rect.width, height: rect.height)
+        if let r = radii.uniformRadius {
+            drawRect(rect, cornerRadius: r)
+            return
+        }
+        if svgRecorder != nil {
+            svgRecord(.rect(corner: Vector2(rect.x, rect.y), width: rect.width, height: rect.height,
+                            cornerRadii: radii),
+                      fill: fillPaint, stroke: strokePaint)
+            return
+        }
+        withDashedOutline(SDFOutline.roundedRect(corner: Vector2(rect.x, rect.y), width: rect.width,
+                                                 height: rect.height, radii: radii),
+                          anchor: rect.center) {
+            appendSDF(shape: .box, center: rect.center,
+                      size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
+                      fill: fillPaint, stroke: strokePaint, extra: 0,
+                      param0: SIMD2<Float>(Float(radii.topLeft), Float(radii.topRight)),
+                      param1: SIMD2<Float>(Float(radii.bottomRight), Float(radii.bottomLeft)))
         }
     }
 }

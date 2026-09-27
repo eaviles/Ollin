@@ -111,21 +111,34 @@ enum SDFOutline {
     /// corner. The outline starts at the top edge, and the outline a dashed
     /// rectangle strokes and the fill a hatched one covers both come from here.
     static func roundedRect(corner: Vector2, width w: Double, height h: Double, radius r: Double) -> [Vector2] {
+        roundedRect(corner: corner, width: w, height: h, radii: CornerRadii(min(r, min(w, h) / 2)))
+    }
+
+    /// The outline of a rectangle with a radius per corner, each rounded corner
+    /// an eight-segment arc and a square corner one point, walked clockwise
+    /// from the top-right corner (a rectangle with no rounding starts at its
+    /// top-left, the order the sharp form always had). `radii` is read as
+    /// given; fit it to the rectangle first (`CornerRadii.fitted`).
+    static func roundedRect(corner: Vector2, width w: Double, height h: Double, radii: CornerRadii) -> [Vector2] {
         let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
-        let rr = min(r, min(w, h) / 2)
-        guard rr > 0 else { return [Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)] }
+        let tl = max(0, radii.topLeft), tr = max(0, radii.topRight)
+        let br = max(0, radii.bottomRight), bl = max(0, radii.bottomLeft)
+        guard tl > 0 || tr > 0 || br > 0 || bl > 0 else {
+            return [Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)]
+        }
         let seg = 8
-        func arc(cx: Double, cy: Double, from: Double, to: Double) -> [Vector2] {
-            (0...seg).map { k -> Vector2 in
+        func arc(cx: Double, cy: Double, radius rr: Double, from: Double, to: Double) -> [Vector2] {
+            guard rr > 0 else { return [Vector2(cx, cy)] }
+            return (0...seg).map { k -> Vector2 in
                 let a = from + (to - from) * Double(k) / Double(seg)
                 return Vector2(cx + cos(a) * rr, cy + sin(a) * rr)
             }
         }
         var pts: [Vector2] = []
-        pts += arc(cx: x1 - rr, cy: y0 + rr, from: -.pi / 2, to: 0)        // top-right
-        pts += arc(cx: x1 - rr, cy: y1 - rr, from: 0, to: .pi / 2)         // bottom-right
-        pts += arc(cx: x0 + rr, cy: y1 - rr, from: .pi / 2, to: .pi)       // bottom-left
-        pts += arc(cx: x0 + rr, cy: y0 + rr, from: .pi, to: 3 * .pi / 2)   // top-left
+        pts += arc(cx: x1 - tr, cy: y0 + tr, radius: tr, from: -.pi / 2, to: 0)        // top-right
+        pts += arc(cx: x1 - br, cy: y1 - br, radius: br, from: 0, to: .pi / 2)         // bottom-right
+        pts += arc(cx: x0 + bl, cy: y1 - bl, radius: bl, from: .pi / 2, to: .pi)       // bottom-left
+        pts += arc(cx: x0 + tl, cy: y0 + tl, radius: tl, from: .pi, to: 3 * .pi / 2)   // top-left
         return pts
     }
 

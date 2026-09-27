@@ -78,7 +78,9 @@ origin, and you move it with [`.at`](#placing).
 | `SDF.circle(radius:)` | a circle |
 | `SDF.ellipse(radiusX:radiusY:)` | an axis-aligned ellipse |
 | `SDF.rect(width:height:cornerRadius:)` | a rectangle, optionally rounded |
+| `SDF.rect(width:height:cornerRadii:)` | a rectangle with a radius per corner (`CornerRadii`) |
 | `SDF.square(_:cornerRadius:)` | a square |
+| `SDF.square(_:cornerRadii:)` | a square with a radius per corner |
 | `SDF.ngon(radius:sides:)` | a regular polygon, one vertex up |
 | `SDF.star(outerRadius:innerRadius:points:)` | a star |
 | `SDF.rhombus(width:height:cornerRadius:)` | a diamond |

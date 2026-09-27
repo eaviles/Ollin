@@ -72,7 +72,7 @@ Each brief lists what the chapter teaches, what it assumes, the piece it builds 
 ### Part I: Seeing something move
 
 **1. Hello, Ollin.**
-Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system, and looking closer with `viewControl`; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` parameters in the inspector; running any repo example.
+Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system, and looking closer with `viewControl`; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`, and a rectangle's corners rounded all the same or one radius each; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` parameters in the inspector; running any repo example.
 Assumes: can program a little, in any language. First Swift callouts: a `class ... : Sketch` is a recipe; `var`/`let`; calling functions with labels.
 Payoff: a small animated composition (drifting circles over a colored ground) the reader tunes live with parameters.
 Figures: the coordinate-system diagram; looking closer; a first-shapes contact sheet; the finished piece at a fixed frame.
@@ -419,7 +419,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught (a `Palette` is a collection too, walked with `enumerated()` in Ch 2's kit section) |
 | `Drawing/Spectrum.md` (Spectrum, `.paint` mixing, wavelength/blackbody, `.thinFilm`/`.diffraction`/`.paintMix`) | Ch 2 | taught ("Blue and yellow make green": the three-row PaintMixing figure, the `.paint` call and Ramp form, the reflectance story, and the pointer to the full spectral surface) |
-| Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
+| Gradient paint (`Drawing/Color.md`: linear, radial, conic, along the path) | Ch 2 | taught (the four-panel GradientPaint figure; the conic named as a color wheel, a dial, or a pie, with the seam-hiding ramp) |
+| Rounded corners, one radius or one per corner (`drawRect(cornerRadius:)` / `drawRect(cornerRadii:)`, `CornerRadii`; `Drawing/Drawing.md#rect`) | Ch 1 | shown (a paragraph and a listing after the centered rectangle: the tab, the named four, and the fit rule) |
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |
 | Palette extraction from an image (`Palette(extractedFrom:)`; `Drawing/Color.md`) | Ch 9 | taught ("Palettes from a photograph" after the pixel reads: most-used first, grouped in OKLab, the same answer every run, and extracting once in `setup()`) |
 | Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 9 | taught ("Fewer colors than the picture needs: dithering" after the extracted palette, with a three-panel figure over one gradient: why snapping bands, the two families and how each decides, `.none` as the teaching control, `levels:` posterizing, and the do-it-in-setup rule) |

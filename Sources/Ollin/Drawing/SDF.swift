@@ -85,9 +85,23 @@ public extension SDF {
         return .init(.leaf(shape: .box, size: SIMD2(Float(width / 2), Float(height / 2)),
                            p0: .zero, p1: .zero, p2: .zero, extra: Float(r), color: nil))
     }
+    /// A rectangle `width` by `height` with a radius per corner (see
+    /// `CornerRadii`); four equal radii are the one-radius rectangle exactly.
+    static func rect(width: Double, height: Double, cornerRadii: CornerRadii) -> SDF {
+        let radii = cornerRadii.fitted(width: width, height: height)
+        if let r = radii.uniformRadius { return rect(width: width, height: height, cornerRadius: r) }
+        return .init(.leaf(shape: .box, size: SIMD2(Float(width / 2), Float(height / 2)),
+                           p0: SIMD2(Float(radii.topLeft), Float(radii.topRight)),
+                           p1: SIMD2(Float(radii.bottomRight), Float(radii.bottomLeft)),
+                           p2: .zero, extra: 0, color: nil))
+    }
     /// A square of the given side, with optional rounded corners.
     static func square(_ side: Double, cornerRadius: Double = 0) -> SDF {
         rect(width: side, height: side, cornerRadius: cornerRadius)
+    }
+    /// A square of the given side with a radius per corner.
+    static func square(_ side: Double, cornerRadii: CornerRadii) -> SDF {
+        rect(width: side, height: side, cornerRadii: cornerRadii)
     }
     /// A regular polygon of `sides` (3+), one vertex pointing up, circumradius `radius`.
     static func ngon(radius: Double, sides: Int) -> SDF {

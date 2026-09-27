@@ -31,7 +31,7 @@ struct SVGStyle {
 /// case to an SVG element; the matching CTM rides alongside as a `transform`.
 enum SVGGeometry {
     case ellipse(center: Vector2, radiusX: Double, radiusY: Double)   // circle when the radii match
-    case rect(corner: Vector2, width: Double, height: Double, cornerRadius: Double)
+    case rect(corner: Vector2, width: Double, height: Double, cornerRadii: CornerRadii)
     case line(Vector2, Vector2)                             // stroke-only
     case quad(start: Vector2, control: Vector2, end: Vector2)  // stroke-only
     case polyline([Vector2])                               // open, stroke-only
@@ -161,8 +161,8 @@ func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: F
             return center + Vector2(cos(a) * rx, sin(a) * ry)
         }
         return ([pts], .evenOdd)
-    case let .rect(corner, w, h, r):
-        return ([SDFOutline.roundedRect(corner: corner, width: w, height: h, radius: r)], .evenOdd)
+    case let .rect(corner, w, h, radii):
+        return ([SDFOutline.roundedRect(corner: corner, width: w, height: h, radii: radii)], .evenOdd)
     case let .polygon(points):
         return points.count >= 3 ? ([points], .evenOdd) : nil
     case let .path(shape):
@@ -304,11 +304,12 @@ private func clipPathDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [Stri
     return ("  <defs>\n" + lines.joined(separator: "\n") + "\n  </defs>\n", ids)
 }
 
-/// Replace along-path paints with what a vector document can express: a
-/// gradient *stroke* following a path becomes a run of short solid segments
-/// (round-capped so they chain seamlessly), and an along-path *fill* (the
-/// conic sweep) becomes its ramp's midpoint color. Shared by the SVG and PDF
-/// serializers, so both approximate identically.
+/// Replace along-path and conic paints with what a vector document can
+/// express: a gradient *stroke* following a path becomes a run of short solid
+/// segments (round-capped so they chain seamlessly), and an along-path *fill*
+/// (the sweep around the shape) or a conic paint (neither format has a sweep)
+/// becomes its ramp's midpoint color. Shared by the SVG and PDF serializers,
+/// so both approximate identically.
 func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
     var out: [SVGCommand] = []
     for event in commands {
@@ -324,6 +325,12 @@ func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
         }
         if case .gradient(let g) = command.style.fill, g.geometry == .alongPath {
             command.style.fill = .color(g.ramp.color(at: 0.5))
+        }
+        if case .gradient(let g) = command.style.fill, case .conic = g.geometry {
+            command.style.fill = .color(g.ramp.color(at: 0.5))
+        }
+        if case .gradient(let g) = command.style.stroke, case .conic = g.geometry {
+            command.style.stroke = .color(g.ramp.color(at: 0.5))
         }
         if command.style.fill != nil || command.style.stroke != nil {
             out.append(.draw(command))
@@ -396,7 +403,7 @@ private func gradientDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [Grad
                          + "cx=\"\(n(center.x))\" cy=\"\(n(center.y))\" r=\"\(n(radius))\">")
             lines.append(contentsOf: stopLines(g.ramp))
             lines.append("    </radialGradient>")
-        case .alongPath:
+        case .alongPath, .conic:
             break   // resolved by approximateAlongPaths before serialization
         }
     }
@@ -449,9 +456,15 @@ private func svgElement(_ c: RecordedSVG, _ ids: [Gradient: String]) -> String {
         }
         return "<ellipse cx=\"\(n(center.x))\" cy=\"\(n(center.y))\" rx=\"\(n(rx))\" ry=\"\(n(ry))\"\(fillStroke)\(t)/>"
 
-    case let .rect(corner, w, h, r):
-        let radius = r > 0 ? " rx=\"\(n(r))\"" : ""
-        return "<rect x=\"\(n(corner.x))\" y=\"\(n(corner.y))\" width=\"\(n(w))\" height=\"\(n(h))\"\(radius)\(fillStrokeAttrs(c.style, ids))\(t)/>"
+    case let .rect(corner, w, h, radii):
+        if let r = radii.uniformRadius {
+            let radius = r > 0 ? " rx=\"\(n(r))\"" : ""
+            return "<rect x=\"\(n(corner.x))\" y=\"\(n(corner.y))\" width=\"\(n(w))\" height=\"\(n(h))\"\(radius)\(fillStrokeAttrs(c.style, ids))\(t)/>"
+        }
+        // A radius per corner has no <rect> form (rx is one radius), so the
+        // outline is a path: a line along each side and a quarter arc at each
+        // rounded corner, a square corner taking the line straight through.
+        return "<path d=\"\(roundedRectPath(corner: corner, width: w, height: h, radii: radii))\"\(fillStrokeAttrs(c.style, ids))\(t)/>"
 
     case let .line(a, b):
         return "<line x1=\"\(n(a.x))\" y1=\"\(n(a.y))\" x2=\"\(n(b.x))\" y2=\"\(n(b.y))\"\(strokeOnlyAttrs(c.style, ids))\(t)/>"
@@ -572,6 +585,27 @@ private func pathData(_ shape: Shape) -> String {
 
 /// Format a coordinate: up to 3 decimals, trailing zeros trimmed, so the output
 /// stays compact and `-0` reads as `0`.
+/// The path data of a rectangle with a radius per corner: clockwise from the
+/// end of the top-left corner, a line along each side and a quarter arc
+/// (`A r r 0 0 1`, the small clockwise arc) at each rounded corner. A square
+/// corner is the point where two sides meet, so its two lines join there.
+func roundedRectPath(corner: Vector2, width w: Double, height h: Double, radii: CornerRadii) -> String {
+    let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
+    let tl = max(0, radii.topLeft), tr = max(0, radii.topRight)
+    let br = max(0, radii.bottomRight), bl = max(0, radii.bottomLeft)
+    var d = "M \(n(x0 + tl)) \(n(y0))"
+    func side(to x: Double, _ y: Double) { d += " L \(n(x)) \(n(y))" }
+    func arc(_ r: Double, to x: Double, _ y: Double) {
+        guard r > 0 else { return }
+        d += " A \(n(r)) \(n(r)) 0 0 1 \(n(x)) \(n(y))"
+    }
+    side(to: x1 - tr, y0); arc(tr, to: x1, y0 + tr)          // top side, top-right corner
+    side(to: x1, y1 - br); arc(br, to: x1 - br, y1)          // right side, bottom-right corner
+    side(to: x0 + bl, y1); arc(bl, to: x0, y1 - bl)          // bottom side, bottom-left corner
+    side(to: x0, y0 + tl); arc(tl, to: x0 + tl, y0)          // left side, top-left corner
+    return d + " Z"
+}
+
 private func n(_ value: Double) -> String {
     if value == 0 { return "0" }
     var s = String(format: "%.3f", value)

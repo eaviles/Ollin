@@ -157,6 +157,10 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { TintedImage() }),
     SnapshotCase("gradient-shapes", note: "Gradient paint on shapes.",
                  make: { GradientShapes() }),
+    SnapshotCase("conic-gradient", note: "The conic paint on the SDF, tessellated, and combinator paths, with the seam split on the tessellated fill.",
+                 make: { ConicGradient() }),
+    SnapshotCase("rounded-corners", note: "A radius per corner on the box path, its stroke, its hollow band, a dashed outline, and a combinator leaf.",
+                 make: { RoundedCorners() }),
     SnapshotCase("status-notices", note: "The drawStatus / drawCaption standard notices.",
                  make: { StatusNotices() }),
     SnapshotCase("additive-blend", note: "The additive blend mode.",
@@ -10685,5 +10689,78 @@ private final class EffectsArrows: Sketch {
         """)
         drawImage(wind.filtered(.shader(speed)).filtered(.gradientMap(.viridis)).image, 0, 0)
         drawImage(wind.filtered(.arrows(spacing: 30, scale: 22, color: .white, width: 1.5)).image, 0, 0)
+    }
+}
+
+/// The conic paint on every path that draws it: a color wheel as a disk fill
+/// (the SDF path, exact per pixel), the same sweep as a ring's stroke from a
+/// chosen start angle, a conic fill on a tessellated polygon whose triangles
+/// cross the seam (the split keeps the seam a line rather than a smear), a
+/// conic fill on a merged field, and a dial whose sweep starts at twelve.
+private final class ConicGradient: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.12))
+        noStroke()
+        let wheel = Ramp((0...12).map { Color(hue: Double($0) / 12, saturation: 0.85, brightness: 0.95) })
+        // A disk: the wheel sweeps once around its own center from three o'clock.
+        fill(.conic(center: Vector2(64, 64), wheel))
+        drawCircle(64, 64, 52)
+        // A ring outline swept by the same wheel, started at twelve.
+        noFill()
+        stroke(.conic(center: Vector2(192, 64), startAngle: -.pi / 2, wheel))
+        strokeWeight(14)
+        drawCircle(192, 64, 44)
+        noStroke()
+        // A tessellated square whose fan triangles straddle the seam at nine
+        // o'clock: two colors only, so the seam reads as one hard line.
+        fill(.conic(center: Vector2(64, 192), startAngle: .pi,
+                    [Color(hex: 0xFFB36B), Color(hex: 0x2B3A67)]))
+        drawPolygon([Vector2(14, 142), Vector2(114, 142), Vector2(114, 242), Vector2(14, 242)])
+        // A merged field painted by one conic across both of its leaves.
+        fill(.conic(center: Vector2(192, 192), startAngle: .pi / 4,
+                    [Color(hex: 0xFFF3C4), Color(hex: 0xD03060), Color(hex: 0xFFF3C4)]))
+        drawSDF(SDF.circle(radius: 34).at(178, 178)
+            .smoothUnion(SDF.rect(width: 50, height: 50, cornerRadius: 8).at(210, 210), k: 18))
+    }
+}
+
+/// A radius per corner: a tab, a speech bubble with one square corner, a
+/// card rounded down one side, the four radii all different, each drawn
+/// filled and stroked; a hollow band and a dashed outline on the per-corner
+/// box; and a combinator leaf carrying its four radii into a merged field.
+private final class RoundedCorners: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.96))
+        stroke(Color(hex: 0x2B3A67))
+        strokeWeight(3)
+        fill(Color(hex: 0xFFB36B))
+        drawRect(12, 12, 108, 56, cornerRadii: .top(22))
+        fill(Color(hex: 0x2BB3A3))
+        drawRect(136, 12, 108, 56, cornerRadii: CornerRadii(topLeft: 22, topRight: 22, bottomRight: 22, bottomLeft: 0))
+        fill(Color(hex: 0xD03060))
+        drawRect(12, 84, 108, 56, cornerRadii: .left(28))
+        fill(Color(hex: 0x8187B9))
+        drawRect(136, 84, 108, 56, cornerRadii: CornerRadii(topLeft: 4, topRight: 12, bottomRight: 24, bottomLeft: 40))
+        // The hollow band and a dashed outline follow the per-corner outline.
+        noStroke()
+        fill(Color(hex: 0x2B3A67))
+        hollow(8)
+        drawRect(12, 156, 108, 84, cornerRadii: .bottom(30))
+        solid()
+        noFill()
+        stroke(Color(hex: 0xD03060))
+        strokeWeight(4)
+        strokeDash([10, 6])
+        drawRect(136, 156, 50, 84, cornerRadii: .right(20))
+        noStrokeDash()
+        // A merged field: the per-corner box melts into a disk.
+        noStroke()
+        fill(Color(hex: 0xE07A5F))
+        drawSDF(SDF.rect(width: 44, height: 60, cornerRadii: .top(20)).at(218, 190)
+            .smoothUnion(SDF.circle(radius: 16).at(218, 226), k: 10))
     }
 }

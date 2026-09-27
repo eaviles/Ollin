@@ -792,6 +792,18 @@ static float sdRoundBox(float2 p, float2 b, float r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+// Rounded box of half-extent b with a radius per corner: r = (top-left,
+// top-right, bottom-right, bottom-left) in y-down local space, so the quadrant
+// p falls in picks its radius, and the box math is then sdRoundBox's exactly
+// (four equal radii give the same distance to the bit).
+static float sdRoundedBox(float2 p, float2 b, float4 r) {
+    float top = (p.x > 0.0) ? r.y : r.x;
+    float bottom = (p.x > 0.0) ? r.z : r.w;
+    float rr = (p.y > 0.0) ? bottom : top;
+    float2 q = abs(p) - b + rr;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rr;
+}
+
 // Oriented box: the rectangle whose centerline runs from `a` to `b` with full
 // width (thickness) `th`. `a`/`b` arrive relative to the shape center, so their
 // midpoint is the origin. The plane is rotated into the box's own frame (x along

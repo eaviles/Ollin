@@ -181,20 +181,21 @@ A good place to get palettes is [nice-color-palettes](https://github.com/Experie
 
 ## Gradients as paint
 
-A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
+A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of four ways:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/GradientPaint-dark.jpg">
-  <img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+  <img src="Images/02-Color/GradientPaint.jpg" alt="Four panels: a rectangle with a vertical dusk gradient, a soft radial glow, a disk whose rainbow sweeps once around its center, and a ring stroked with a rainbow that runs along it" width="680">
 </picture>
 
 ```swift
 fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), dusk))   // along a line
 fill(.radial(center: spot, radius: 260, glow))                     // out from a point
+fill(.conic(center: spot, startAngle: -.pi / 2, wheel))            // once around a point
 stroke(.alongPath(wheel))                                          // along the stroke itself
 ```
 
-Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the middle panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs from the start of a line to its end, and on a closed shape it sweeps once around, which is how the ring above became a color wheel.
+Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the second panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.conic` sweeps the ramp once around a point you choose, starting from an angle you choose, which is a color wheel, a dial, or a pie in one call; a ramp whose last color repeats its first hides the seam where the sweep comes back around. `.alongPath` runs from the start of a line to its end, and on a closed shape it sweeps once around its own center, which is how the ring above became a wheel too.
 
 ## Will everybody see it?
 

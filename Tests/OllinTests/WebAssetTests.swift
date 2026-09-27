@@ -129,6 +129,35 @@ import OllinWebGate
         }
     }
 
+    /// The conic paint and a radius per corner on the wire: a wheel as a disk's
+    /// fill, a sweep from twelve as a ring's stroke, a conic on a tessellated
+    /// square whose triangles cross the seam, a tab and a card with four
+    /// different radii, and a per-corner leaf in a merged field.
+    final class Swept: Sketch {
+        override var canvasSize: CanvasSize { .square(240) }
+        override func draw() {
+            background(.white)
+            noStroke()
+            let wheel = Ramp((0...8).map { Color(hue: Double($0) / 8, saturation: 0.85, brightness: 0.95) })
+            fill(Gradient.conic(center: Vector2(60, 60), wheel))
+            drawCircle(60, 60, 48)
+            noFill()
+            strokeWeight(12)
+            stroke(Gradient.conic(center: Vector2(180, 60), startAngle: -.pi / 2, wheel))
+            drawCircle(180, 60, 40)
+            noStroke()
+            fill(Gradient.conic(center: Vector2(60, 180), startAngle: .pi, [Color(hex: 0xFFB36B), Color(hex: 0x2B3A67)]))
+            drawPolygon([Vector2(14, 134), Vector2(106, 134), Vector2(106, 226), Vector2(14, 226)])
+            fill(Color(hex: 0x2BB3A3))
+            drawRect(126, 130, 100, 40, cornerRadii: .top(18))
+            fill(Color(hex: 0xD03060))
+            drawRect(126, 180, 100, 48, cornerRadii: CornerRadii(topLeft: 4, topRight: 12, bottomRight: 24, bottomLeft: 36))
+            fill(Color(hex: 0x2B3A67))
+            drawSDF(SDF.rect(width: 30, height: 40, cornerRadii: .bottom(14)).at(120, 100)
+                .smoothUnion(SDF.circle(radius: 12).at(120, 78), k: 8))
+        }
+    }
+
     /// Atlas text and a picture inside a recording, replayed turning.
     final class Batched: Sketch {
         override var canvasSize: CanvasSize { .square(200) }
@@ -298,8 +327,8 @@ import OllinWebGate
         // The rect's fill is linear (kind 1) on row 0; the circle's radial
         // (kind 2) on row 1; the ring's stroke along the path (kind 3) on row
         // 2; the second rect's stroke linear on row 3; the moving disc on row 4.
-        func fillKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 10) & 3 }
-        func strokeKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 12) & 3 }
+        func fillKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 10) & 7 }
+        func strokeKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 13) & 7 }
         #expect(fillKind(0) == 1 && instance(0)[28] == 0)
         #expect(fillKind(1) == 2 && instance(1)[28] == 1)
         #expect(strokeKind(2) == 3 && instance(2)[29] == 2)
@@ -310,6 +339,28 @@ import OllinWebGate
         // The rows are the same table on every frame, whatever order the frame
         // baked them in.
         for f in recording.frames { #expect(Array(f.vector[28 ..< 30]) == [0, 0]) }
+        #expect(WebTrack(recording).stable)
+    }
+
+    @Test func aConicAndARadiusPerCornerCrossOnTheWire() throws {
+        let recording = try OllinApp.recordWebFrames(of: Swept(), frames: 2, fps: 30)
+        let frame = recording.frames[0]
+        // The disk, the ring, the tab, and the card; the square is triangles
+        // and the merged field a group.
+        #expect(frame.graph.instanceCount == 4)
+        let n = WebInstance.floats
+        func instance(_ i: Int) -> [Float] { Array(frame.vector[i * n ..< (i + 1) * n]) }
+        func fillKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 10) & 7 }
+        func strokeKind(_ i: Int) -> Int { (Int(instance(i)[WebInstance.shapeColumn]) >> 13) & 7 }
+        // The disk's fill and the ring's stroke are conic (kind 4) on the
+        // wheel's one row; the stroke's slot carries its start at twelve.
+        #expect(fillKind(0) == 4 && instance(0)[28] == 0)
+        #expect(strokeKind(1) == 4 && instance(1)[29] == 0)
+        #expect(abs(instance(1)[16] - Float(-Double.pi / 2)) < 1e-6)
+        // The tab and the card carry their radii in the two parameter pairs
+        // (top-left, top-right, bottom-right, bottom-left) and nothing in extra.
+        #expect(Array(instance(2)[18 ..< 22]) == [18, 18, 0, 0] && instance(2)[25] == 0)
+        #expect(Array(instance(3)[18 ..< 22]) == [4, 12, 24, 36] && instance(3)[25] == 0)
         #expect(WebTrack(recording).stable)
     }
 
@@ -379,6 +430,7 @@ import OllinWebGate
             ("AtlasText (three sizes, a gradient fill, a turned line)", { AtlasText() }, 6, 0),
             ("AtlasText, moving", { AtlasText() }, 6, 4),
             ("Graded (linear, radial, along the path, a gradient stroke, a moving ramp)", { Graded() }, 6, 3),
+            ("Swept (a conic disk and ring, a conic on a split fan, a tab, four radii, a per-corner leaf)", { Swept() }, 1, 0),
             ("Batched (text and a picture in a recording, turning)", { Batched() }, 4, 2),
         ]
         for (k, c) in cases.enumerated() {
