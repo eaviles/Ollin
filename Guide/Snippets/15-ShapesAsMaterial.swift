@@ -34,3 +34,6 @@ let sites: [Vector2] = [.zero, Vector2(10, 4), Vector2(4, 10)]
 let points: [Vector2] = [.zero, Vector2(10, 4), Vector2(4, 10)]
 let skeleton: [Contour] = []
 let x = 0.0
+
+// The marks a circle is fitted to.
+let marks: [Vector2] = []

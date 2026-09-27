@@ -244,6 +244,26 @@ Choosing between them comes down to what you'll do next. When the result has to 
 
 The one number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same parameter give the same outline every run. The `Shapes/Hulls` example breathes `concavity` from 0 to tight so you can watch the band sink into the gulf.
 
+### The circle they were scattered around
+
+The hulls wrap a scatter. Sometimes you want the shape it was scattered around instead, and the scatter is all you have. Say a set of marks sits roughly on a circle, and nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are. It walks them downhill until they stop being wrong:
+
+```swift
+let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
+    marks.reduce(0.0) { total, mark in
+        let off = Vector2(p[0], p[1]).distance(to: mark) - p[2]
+        return total + off * off
+    }
+}
+drawCircle(best.values[0], best.values[1], best.values[2])
+```
+
+The closure is the whole of it. You never say how to search, only how to score. Squared distance is the usual scoring: it punishes one badly placed mark much harder than several slightly off ones, which is what makes the answer settle in the middle of the crowd.
+
+It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each parameter a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
+
+The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself) is this call, a circle fitted through the middle of a ring of pale marks.
+
 ### The skeleton inside: the medial axis
 
 Hulls describe a region from the outside. The **medial axis** describes it from the inside by finding its middle. Take every disk that fits within the shape while touching the boundary in two or more places. The centers of those disks trace a skeleton. A blob collapses to the veins running down its lobes, and a letterform collapses to the stroke a pen would have made to write it.
@@ -515,6 +535,7 @@ Crease patterns come from a craft with its own written mathematics. The two flat
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the parameter ranges that read well and the cost of each.
+- [Fitting by walking downhill](../Docs/Drawing/Fitting.md#minimize): everything `Fit.minimize` takes, and what it hands back.
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.
 - [Circle packing](../Docs/Generators/Packing.md) and [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.

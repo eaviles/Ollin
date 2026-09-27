@@ -165,7 +165,7 @@ fill(field.value(at: Vector2(x, y)))
 
 The left panel is six colors at six places, read back at every pixel. It looks like a gradient and it is not one. Nothing was blended between two stops; every pixel is a weighted sum of all six. Look at the rings marking the points: what shows inside each one is the field's own color there, and it matches the color that point was given. **A field that passes through its data is interpolating. One that merely heads in the right direction is blurring.**
 
-The values do not have to be colors. Give the same call `Vector2`s and each known point says "this place should move to *there*", which makes the field a warp. That is the middle panel: a straight grid, with each of its points read through the warp, bending around six pulls. Read a shape's outline through it instead and the shape bends.
+The values do not have to be colors. Give the same call `Vector2`s and each known point says "this place should move to *there*", which makes the field a warp. That is the middle panel: a straight grid, with each of its points read through the warp, bending around six pulls. Read a shape's outline through it instead and the shape bends. The third panel runs the other way, fitting a circle to scattered marks, and [Chapter 15](15-ShapesAsMaterial.md#the-circle-they-were-scattered-around) explains it beside the hulls.
 
 You can ask it not to be so obedient. `smoothing:` lets the field miss its values in exchange for fewer wobbles between them, which is what noisy data usually wants:
 
@@ -174,26 +174,6 @@ RadialBasis(points: samples, values: readings, smoothing: 0.05)
 ```
 
 One habit. Fitting solves a system that grows with the cube of how many points you give it, and reading the field costs one term per point every single time. Fit in `setup()`, read in `draw()`. Six points read over a whole canvas is nothing; six thousand is a different program.
-
-### Going the other way
-
-The third panel is the reverse trick, and it belongs here even though it is not a field at all.
-
-Those pale dots are scattered around a circle. Nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are, and walks them downhill until they stop being wrong:
-
-```swift
-let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
-    marks.reduce(0.0) { total, mark in
-        let off = Vector2(p[0], p[1]).distance(to: mark) - p[2]
-        return total + off * off
-    }
-}
-drawCircle(best.values[0], best.values[1], best.values[2])
-```
-
-The closure is the whole of it. You never say how to search, only how to score. Squared distance is the usual scoring: it punishes one badly placed mark much harder than several slightly off ones, which is what makes the answer settle in the middle of the crowd.
-
-It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each parameter a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
 
 ## Putting it together: the print
 
@@ -240,7 +220,7 @@ Then make it yours:
 
 ## Where this comes from
 
-Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The combed-fiber picture is line integral convolution, which Brian Cabral and Leith Leedom published in 1993 for showing vector fields. The print at the top tips its hat to Tyler Hobbs, whose flow-field work defined the look for a generation. The best known of that work is *Fidenza* (2021), and the essay "Flow Fields" generously teaches the craft. The same cascade appears in the sine map and in dripping faucets. Marching squares is the two-dimensional version of the marching cubes algorithm. William Lorensen and Harvey Cline published that algorithm in 1987 for medical imaging. A great many of these techniques were born there before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The combed-fiber picture is line integral convolution, which Brian Cabral and Leith Leedom published in 1993 for showing vector fields. The print at the top tips its hat to Tyler Hobbs, whose flow-field work defined the look for a generation. The best known of that work is *Fidenza* (2021), and the essay "Flow Fields" generously teaches the craft. Marching squares is the two-dimensional version of the marching cubes algorithm. William Lorensen and Harvey Cline published that algorithm in 1987 for medical imaging. A great many of these techniques were born there before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

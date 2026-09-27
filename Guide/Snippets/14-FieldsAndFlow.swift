@@ -14,6 +14,3 @@ let anchors: [Vector2] = [.zero, Vector2(10, 10)]
 let inks: [Color] = [.red, .blue]
 let samples: [Vector2] = [.zero, Vector2(10, 10)]
 let readings: [Double] = [0, 1]
-
-// The measurements the fitting section is chasing.
-let marks: [Vector2] = []
