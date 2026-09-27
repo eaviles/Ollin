@@ -43,27 +43,6 @@ swift run OllinLive MySketches/Finale.swift --export poster.png --render-scale 2
 
 One thing the dial leaves strictly alone: a blur, a flare, and anything else you asked for with `postProcess` still measure in canvas pixels. A `.gaussianBlur(radius: 12)` is twelve pixels wide at every scale. A quality parameter that quietly resized your blur would not be a quality parameter.
 
-### The slow render worth waiting for
-
-A 3D scene has one more way out of the window. Add `--path-traced` to a still, sequence, or video export and the frame renders by *tracing light* instead of rasterizing. Shadows from an area light sharpen at contact and melt with distance. Color bleeds between neighboring surfaces. Every polished thing mirrors the scene, including the other mirrors. A `.glass` material becomes real glass. The view bends through a solid body, and a colored one tints the light crossing it. Even the shadow glows with what got through instead of going black. A mesh with an emissive material becomes a lamp with a shape, lighting its neighbors as smoothly as a softbox. A textured surface keeps its picture in reflections and bounces. The copies of [Chapter 27](27-Landscapes.md) are in there as well, so a field of ten thousand pebbles shadows and mirrors like ten thousand hand-placed ones. The other maps ride along too: a normal map's relief, a roughness map's wear, a glow map's shape all reach the traced light. And the camera gains a real lens. Set `aperture` and `focusDistance` on your `Camera3D`, and the export has true depth of field while the live window stays pinhole-sharp for framing.
-
-```sh
-swift run OllinLive MySketches/StillLife.swift --export poster.png --path-traced 512
-```
-
-The number is light paths per pixel; more is smoother, and takes longer in step. The live window is the viewfinder, and the flag is the film back. Tune fast, then let the machine take its time. It needs an Apple-silicon Mac, and [the reference](../Docs/Output/PathTraced.md) lists exactly what the traced frame adds and what stays with the raster pipeline.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-SharingAndPerforming/TracedLight-dark.jpg">
-  <img src="Images/38-SharingAndPerforming/TracedLight.jpg" alt="Three renders of the same set of three spheres on a pale floor under one softbox: rasterized, with a hard-edged shadow, a tinted glass shell, and a dark chrome ball; path-traced at 96 samples, with soft shadows, red bled onto the floor, the glass lit through, and grain; and the same trace denoised, the grain gone and the edges kept" width="680">
-</picture>
-
-The figure is one small set rendered three ways through the same call the flag wraps. The window rasterizes it. The softbox throws a hard-edged shadow, and the floor is lit by the lamp alone. The glass sphere is a tinted shell, and the chrome one is a dark ball with a highlight. Traced at 96 paths a pixel, the shadows soften as they fall away from each sphere. The red sphere warms the floor beside it. The light goes through the amber glass and lands as a tinted pool where the raster had a black shadow. The chrome shows the set. What is left at 96 is grain. The third panel is the same trace through the grain filter this section ends on. The grain is gone, and the edges of the spheres and of their shadows are where they were.
-
-Your light rig comes over as you left it. Here the tracer follows the light itself, so it needs no `castShadows()` and every lamp in the frame throws one. A light you told not to throw still throws nothing, which matters because the fill in a preset rig is exactly such a light. The shadows in the file are the shadows you framed.
-
-There is one more thing you can ask for before the file is written. What is left of the error in a traced render is grain. Buying it away costs the square: four times the paths for half the speckle. `--denoise` filters it out instead. The useful trick is that the tracer wrote down what it *hit*, not only what it saw. It kept the first surface's own color, the way it faces, and how far off it is. It also kept how much the pixel's own samples disagreed. The filter divides the light by that color, smooths the light alone, and multiplies the color back. A texture keeps its edges and a silhouette keeps its line, because neither was ever in the part being smoothed. And since the strength comes from the disagreement, a thin render is smoothed hard and a nearly finished one only a little. On the example scene, 64 filtered samples land about where 240 raw ones would have. It holds at the deep end too: even a 2048-sample render comes out closer to the truth, not merely smoother. It is off unless you ask, because a raw render is the honest one to hand you, and a real sparkle reads softer once the filter has been over it.
-
 ### Rendering from code
 
 Those flags are a command-line wrapper around one function, and the function is available to you directly:
@@ -1127,7 +1106,6 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 ## Go deeper
 
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching, the named frame rates, and transparent output.
-- [Path-traced export](../Docs/Output/PathTraced.md): what the traced frame adds and what stays raster, the sample count and its timings, the real lens, and the grain filter.
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.

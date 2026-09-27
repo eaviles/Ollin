@@ -492,7 +492,7 @@ Two smaller things. The current `fill` tints the result, so keep it `.white` to 
 
 ## What the depth buffer is for
 
-[Chapter 19](19-LayersAndEffects.md) filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has. For every pixel, it knows how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
+[Chapter 19](19-LayersAndEffects.md) filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has. For every pixel, it knows how far away the thing at that pixel is. That's the **depth buffer**, and two effects exist purely to use it.
 
 ```swift
 let scene = makeRenderTarget()
@@ -513,18 +513,7 @@ drawImage(scene.combined(with: scene.depth,
 
 **`.defocus`** is a camera lens. It keeps a band of distance sharp, set by `focus` and `range`, and blurs everything else more the further it is from that band, up to `maxBlur`. It's how you point at one thing in a busy scene. Both `focus` and `range` are read against the depth layer's `0...1`, so they depend on the camera's `near` and `far`. That is why setting those to actually bracket your scene matters, rather than leaving them enormous.
 
-A blur has a shape, and it is not always a circle. Out of focus, a point of light is not a smudge. It is a picture of the opening its light came through. Hand `.defocus` a `blades` count and every highlight becomes a polygon of that many sides. That is what the iris of a real lens is made of. `catsEye` adds the barrel around that iris. The barrel clips the opening away from the middle of the frame. So a highlight that is whole in the middle lies down into a lemon toward the corners.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/25-3DGently/TheOpening-dark.jpg">
-  <img src="Images/25-3DGently/TheOpening.jpg" alt="Three panels of the same handful of out-of-focus lights: round blobs through a round opening, clean pentagons through a five-bladed iris, and the same pentagons clipped into lemons toward the corners once the barrel is added" width="680">
-</picture>
-
-Leaving `blades` unsaid is not the same as asking for nothing. A scene defocused by its own depth takes the count from the camera that drew it. So one line, `camera.apertureBlades = 6`, shapes this blur, the flare ghosts of [Chapter 30](30-SculptingWithFields.md), and the path-traced export together. Name `blades` at the call only for a blur no camera knows about, such as a tilt-shift over a ramp you drew by hand. One practical note. The blur gathers a fixed number of samples. A light smaller than the space between them shows the pattern of the gather instead of a clean edge, so keep a light a few pixels across, or raise `quality`.
-
-**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It has one limit worth understanding rather than being surprised by. It reflects what is on the screen, and a picture does not contain the back of anything. Where the true reflection would be of a surface the camera cannot see, such as the underside of a ball resting on a floor, it can only approximate. That shows as a soft zone right at the contact. A touch of `roughness` hides it, and [Chapter 30](30-SculptingWithFields.md) has the exact alternative.
-
-All three take a `quality` tier, `.performance`, `.default`, or `.detail`, which trades frame rate for smoothness. The tier is relative to your machine rather than an absolute setting, so `.default` means "the balanced choice for this GPU" and buys more samples on a faster one. Raising it to `.detail` for a final export is the usual move, since the export doesn't have to keep up with a display.
+Both take a `quality` tier, `.performance`, `.default`, or `.detail`, which trades frame rate for smoothness. The tier is relative to your machine rather than an absolute setting, so `.default` means "the balanced choice for this GPU" and buys more samples on a faster one. Raising it to `.detail` for a final export is the usual move, since the export doesn't have to keep up with a display.
 
 ## Keeping your bearings
 
