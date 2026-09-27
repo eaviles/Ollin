@@ -11,7 +11,7 @@
 | [HelloText](HelloText/) | [MongolianColumns](MongolianColumns/) | [PlaydateFont](PlaydateFont/) | [Scripts](Scripts/) |
 | [![StrokeText](https://media.ollin.art/examples/Text/StrokeText/still-640.jpg?v=b62bbb34)](StrokeText/) | [![TextBox](https://media.ollin.art/examples/Text/TextBox/still-640.jpg?v=382a3297)](TextBox/) | [![TextMetrics](https://media.ollin.art/examples/Text/TextMetrics/still-640.jpg?v=77b3658e)](TextMetrics/) | [![TextOnPath](https://media.ollin.art/examples/Text/TextOnPath/still-640.jpg?v=aa8a4bcd)](TextOnPath/) |
 | [StrokeText](StrokeText/) | [TextBox](TextBox/) | [TextMetrics](TextMetrics/) | [TextOnPath](TextOnPath/) |
-| [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg?v=9dd686c8)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg?v=537eb2e7)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg?v=bf979f74)](VariableFont/) |  |
+| [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg?v=9dd686c8)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg?v=c27376a5)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg?v=bf979f74)](VariableFont/) |  |
 | [TextVolume](TextVolume/) | [TypeAsGeometry](TypeAsGeometry/) | [VariableFont](VariableFont/) |  |
 
 These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and outline (`.ttf`/`.otf`) fonts.

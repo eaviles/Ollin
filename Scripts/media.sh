@@ -25,7 +25,11 @@
 # a MIDI or serial or lighting or laser rig, a tablet, a second machine) is
 # **held back rather than drawn**, read off its own imports. Its media wants a
 # person at the desk with the thing in hand, so it waits for one, and the
-# manifest says so under `passedOver` with what it is waiting for.
+# manifest says so under `passedOver` with what it is waiting for. An example
+# that imports a device library and plays the far end itself (a loopback on
+# this Mac, a stand-in tracker, a dancer of its own) is staged instead:
+# `RUNS_ALONE` in `example-devices.zsh` names what stands in, it renders like
+# any other, and its row carries that sentence as `staged`.
 #
 # Everything else renders. Whether it keeps a clip is measured rather than
 # guessed: the master is sampled once a second and the largest change between
@@ -64,7 +68,14 @@
 # The master is ProRes, so each deliverable is encoded once from clean pixels
 # and never from an already compressed file; it is deleted as soon as the two
 # clips are out. The clips are H.264 High 4.0 at yuv420p tagged bt709, which
-# is the combination an iPhone decodes and every browser plays.
+# is the combination an iPhone decodes and every browser plays. Both are
+# capped, the page clip at 6 Mbit/s and the small one at 2, since a field of
+# noise does not compress and a grid plays a dozen small ones at once.
+#
+# Two kinds of sketch are treated apart. A canvas left partly clear by a
+# translucent background has its still laid over black, as the clip shows it.
+# And a sketch that films in HDR keeps its still and no clip, since the page's
+# standard-range clip would play it dim.
 #
 # Credentials come from ~/.config/ollin/r2.env, which is outside the repository
 # and never committed.
@@ -137,6 +148,40 @@ motion_of() {
   | awk -F'=' '/YAVG/{ if ($2 > mx) mx = $2 } END { printf "%.3f", mx + 0 }'
 }
 
+# A canvas that a translucent background leaves partly clear keeps that alpha
+# in its PNG, and a JPEG would drop it and show the colors unweighted, paler
+# than the clip, which shows the canvas over black. So a picture with any
+# alpha below full is laid over black first, as the clip is, and an opaque one
+# passes through untouched.
+over_black() {
+  local low=$(ffmpeg -v error -i "$1" \
+    -vf "format=rgba,alphaextract,signalstats,metadata=print:key=lavfi.signalstats.YMIN:file=-" \
+    -f null /dev/null 2>/dev/null | awk -F'=' '/YMIN/{ print int($2); exit }')
+  if [[ -n $low ]] && (( low < 255 )); then echo "format=rgba,premultiply=inplace=1,format=rgb24,"; fi
+}
+
+# The still at both sizes, from the example's rendered picture.
+make_stills() {
+  local flat=$(over_black $OUT/$key.png)
+  ffmpeg -y -loglevel error -i $OUT/$key.png -vf "${flat}$(cap 1080)" -q:v 2 $OUT/$key-still.jpg
+  ffmpeg -y -loglevel error -i $OUT/$key.png -vf "${flat}$(cap 640)" -q:v 3 $OUT/$key-still-640.jpg
+}
+
+# An example that keeps a still and no clip: both sizes up, and the row
+# written with its motion and the reason (`publish_still <motion> <reason>`).
+publish_still() {
+  make_stills
+  for suffix in still.jpg still-640.jpg; do
+    if (( upload )); then
+      rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
+        --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+    fi
+  done
+  python3 $ROOT/Scripts/media-manifest.py still $MANIFEST "$example" "$size" "$want_frame" \
+    "$1" $OUT/$key-still.jpg $OUT/$key-still-640.jpg "$digest" "$2"
+  rm -f $OUT/$key-*
+}
+
 # Render with a limit, since a sketch that blocks would otherwise hold the run.
 render() {
   "$@" > /dev/null 2>&1 &
@@ -176,6 +221,10 @@ for example in $list; do
   fi
 
   echo "=== $example"
+  # What the row records about the render: the seed it drew under, and what
+  # stood in for a device, if anything did.
+  export MEDIA_SEED=$SEED MEDIA_STAGED="$(stand_in $example)"
+  if [[ -n $MEDIA_STAGED ]]; then echo "  staged: $MEDIA_STAGED"; fi
   target="Example-${example//\//-}"
   swift build -c release --package-path $ROOT/Examples --product $target > /dev/null 2>&1 \
     || { echo "  build failed" >&2; continue; }
@@ -192,6 +241,19 @@ for example in $list; do
   if grep -q '^import OllinVision$' $folder/Sketch.swift; then
     settle=(--settle 600)
     skip=(--skip 3)
+  fi
+
+  # A sketch that carries light past white films in HDR, and the page's clip
+  # is standard range: encoded without a tone map it plays dim and gray. Its
+  # picture is already the standard-range one, so it keeps that and no clip.
+  if grep -q 'colorOutput: ColorOutput { \.extended }' $folder/Sketch.swift; then
+    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
+    [[ -f $OUT/$key.png ]] || { echo "  nothing to show" >&2; continue; }
+    size=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 $OUT/$key.png)
+    echo "  films in HDR, so a picture and no clip"
+    publish_still 0 "films in HDR, which the page's standard-range clip would play dim"
+    (( made += 1 ))
+    continue
   fi
 
   master=$OUT/$key.mov
@@ -219,17 +281,7 @@ for example in $list; do
       continue
     fi
     size=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 $OUT/$key.png)
-    ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 1080) -q:v 2 $OUT/$key-still.jpg
-    ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 640) -q:v 3 $OUT/$key-still-640.jpg
-    for suffix in still.jpg still-640.jpg; do
-      if (( upload )); then
-        rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
-          --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
-      fi
-    done
-    python3 $ROOT/Scripts/media-manifest.py still $MANIFEST "$example" "$size" "$want_frame" \
-      "0" $OUT/$key-still.jpg $OUT/$key-still-640.jpg "$digest" "too slow to film on this machine"
-    rm -f $OUT/$key-*
+    publish_still 0 "too slow to film on this machine"
     (( made += 1 ))
     continue
   fi
@@ -245,18 +297,8 @@ for example in $list; do
   if (( still_only )); then
     rm -f $master
     [[ -f $OUT/$key.png ]] || { echo "  nothing to show" >&2; continue; }
-    ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 1080) -q:v 2 $OUT/$key-still.jpg
-    ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 640) -q:v 3 $OUT/$key-still-640.jpg
-    for suffix in still.jpg still-640.jpg; do
-      if (( upload )); then
-        rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
-          --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
-      fi
-    done
     echo "  holds still ($motion), so a picture and no clip"
-    python3 $ROOT/Scripts/media-manifest.py still $MANIFEST "$example" "$size" "$want_frame" \
-      "$motion" $OUT/$key-still.jpg $OUT/$key-still-640.jpg "$digest" "holds still"
-    rm -f $OUT/$key-*
+    publish_still $motion "holds still"
     (( made += 1 ))
     continue
   fi
@@ -270,9 +312,8 @@ for example in $list; do
     -colorspace bt709 -maxrate 6M -bufsize 12M -g 120 $audio -movflags +faststart $OUT/$key-loop.mp4
   ffmpeg -y -loglevel error -i $master -vf $(cap 640) -r 30 -c:v libx264 -profile:v high -level 4.0 \
     -crf 24 -preset slow -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 \
-    -colorspace bt709 -g 60 -an -movflags +faststart $OUT/$key-loop-640.mp4
-  ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 1080) -q:v 2 $OUT/$key-still.jpg
-  ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 640) -q:v 3 $OUT/$key-still-640.jpg
+    -colorspace bt709 -maxrate 2M -bufsize 4M -g 60 -an -movflags +faststart $OUT/$key-loop-640.mp4
+  make_stills
   rm -f $master
 
   weight=0

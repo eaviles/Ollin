@@ -8895,8 +8895,33 @@ about 3, so the floor separates them with room to spare. Below it the sketch
 keeps its still and loses only the clip, and a sketch with its own music earns
 a clip whatever its picture does. A sketch that needs something plugged in is
 held back instead of drawn, read off its own imports, and the manifest records
-what it is waiting for. Nothing is decided in silence: every example is under
-one heading or the other with its reason.
+what it is waiting for. One that imports a device library but plays the far
+end itself (a loopback on the same Mac, a stand-in tracker, a dancer of its
+own) is staged instead: `RUNS_ALONE` in `Scripts/example-devices.zsh` names
+what stands in, it renders like any other, and its row says so as `staged`.
+A loopback that still draws nothing alone (it waits for a hand, or for play,
+or its far end serves only a live window) is held under `HELD_BECAUSE` with
+that reason rather than the device it imports. Nothing is decided in silence:
+every example is under one heading or the other with its reason.
+
+**One seed per example.** The clip and the still are separate renders, and a
+sketch that rolls its variation deals a new piece for each, so every render
+passes the same `--seed` and the row records it as `seed`. A row without one
+predates the rule. To find a page whose poster and clip disagree, compare the
+published still against every frame of its own small clip. A page that shows
+one piece mostly scores a mean difference of one to three levels at its best
+frame, but a busy or fast one (a field of noise, grass in the wind) can score
+near ten, and so can two different pieces; so a pair past three is looked at
+side by side before it is re-rendered.
+
+**A clear canvas and an HDR film.** A canvas left partly clear by a
+translucent `background(...)` keeps that alpha in its PNG. A JPEG drops it
+and shows the colors unweighted, paler than the clip, which shows the canvas
+over black, so a still with any alpha below full is laid over black first. A
+sketch whose `colorOutput` is `.extended` films in HDR (PQ, Rec. 2020), which
+the page's standard-range clip would play dim without a tone map, so it keeps
+its still and no clip. Both clips are capped, the page clip at 6 Mbit/s and
+the small one at 2, since a field of noise does not compress.
 
 **What is a choice rather than a rule** is written down in the manifest, not
 computed: `covers` names the four sketches that stand for a group,

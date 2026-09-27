@@ -4,9 +4,11 @@
 
 ## Integration
 
-| [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |  |
+| [![DMXLoopback](https://media.ollin.art/examples/Integration/DMXLoopback/still-640.jpg?v=479b4033)](DMXLoopback/) | [![LaserPreview](https://media.ollin.art/examples/Integration/LaserPreview/still-640.jpg?v=d7597429)](LaserPreview/) | [![MIDILoopback](https://media.ollin.art/examples/Integration/MIDILoopback/still-640.jpg?v=af43d088)](MIDILoopback/) | [![OSCLoopback](https://media.ollin.art/examples/Integration/OSCLoopback/still-640.jpg?v=5a5bc5fc)](OSCLoopback/) |
 |---|---|---|---|
-| [VirtualCamera](VirtualCamera/) |  |  |  |
+| [DMXLoopback](DMXLoopback/) | [LaserPreview](LaserPreview/) | [MIDILoopback](MIDILoopback/) | [OSCLoopback](OSCLoopback/) |
+| [![TUIOSurface](https://media.ollin.art/examples/Integration/TUIOSurface/still-640.jpg?v=feb1fa97)](TUIOSurface/) | [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |
+| [TUIOSurface](TUIOSurface/) | [VirtualCamera](VirtualCamera/) |  |  |
 
 These sketches talk to the other apps and gear in a rig. Control comes in over OSC, MIDI, a shared network tempo session, a serial board, a Bluetooth device, a game controller, or a phone's browser. Visuals go out (and come in) over Syphon, as a system-wide virtual camera, as stage light, as LEDs, or as a laser. The Mac's own screen can be taken as material. Several machines can join into one room and draw one piece. Touch can go back under the hand as a felt pattern.
 

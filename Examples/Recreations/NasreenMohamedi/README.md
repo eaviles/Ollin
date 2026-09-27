@@ -4,7 +4,7 @@
 
 ## Nasreen Mohamedi
 
-| [![Diagonals](https://media.ollin.art/examples/Recreations/NasreenMohamedi/Diagonals/still-640.jpg?v=1f4c559f)](Diagonals/) | [![Registers](https://media.ollin.art/examples/Recreations/NasreenMohamedi/Registers/still-640.jpg?v=869a3c69)](Registers/) |  |  |
+| [![Diagonals](https://media.ollin.art/examples/Recreations/NasreenMohamedi/Diagonals/still-640.jpg?v=4bb7716e)](Diagonals/) | [![Registers](https://media.ollin.art/examples/Recreations/NasreenMohamedi/Registers/still-640.jpg?v=3767a131)](Registers/) |  |  |
 |---|---|---|---|
 | [Diagonals](Diagonals/) | [Registers](Registers/) |  |  |
 

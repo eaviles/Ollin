@@ -4,7 +4,7 @@
 
 ## Manuel Felguérez
 
-| [![EspacioMultiple](https://media.ollin.art/examples/Recreations/ManuelFelguerez/EspacioMultiple/still-640.jpg?v=53c3b13a)](EspacioMultiple/) | [![MaquinaEstetica](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=d66d2cfa)](MaquinaEstetica/) | [![RelieveLacado](https://media.ollin.art/examples/Recreations/ManuelFelguerez/RelieveLacado/still-640.jpg?v=c546d92f)](RelieveLacado/) |  |
+| [![EspacioMultiple](https://media.ollin.art/examples/Recreations/ManuelFelguerez/EspacioMultiple/still-640.jpg?v=84947186)](EspacioMultiple/) | [![MaquinaEstetica](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=5cd791a2)](MaquinaEstetica/) | [![RelieveLacado](https://media.ollin.art/examples/Recreations/ManuelFelguerez/RelieveLacado/still-640.jpg?v=272a87e6)](RelieveLacado/) |  |
 |---|---|---|---|
 | [EspacioMultiple](EspacioMultiple/) | [MaquinaEstetica](MaquinaEstetica/) | [RelieveLacado](RelieveLacado/) |  |
 

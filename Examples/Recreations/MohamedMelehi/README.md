@@ -4,7 +4,7 @@
 
 ## Mohamed Melehi
 
-| [![Flamme](https://media.ollin.art/examples/Recreations/MohamedMelehi/Flamme/still-640.jpg?v=4d3115fe)](Flamme/) | [![Waves](https://media.ollin.art/examples/Recreations/MohamedMelehi/Waves/still-640.jpg?v=fef33489)](Waves/) |  |  |
+| [![Flamme](https://media.ollin.art/examples/Recreations/MohamedMelehi/Flamme/still-640.jpg?v=09bb9f7d)](Flamme/) | [![Waves](https://media.ollin.art/examples/Recreations/MohamedMelehi/Waves/still-640.jpg?v=4fe2fc40)](Waves/) |  |  |
 |---|---|---|---|
 | [Flamme](Flamme/) | [Waves](Waves/) |  |  |
 

@@ -4,7 +4,7 @@
 
 ## Gego
 
-| [![Chorro](https://media.ollin.art/examples/Recreations/Gego/Chorro/still-640.jpg?v=114ebef1)](Chorro/) | [![DrawingWithoutPaper](https://media.ollin.art/examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=a8475e98)](DrawingWithoutPaper/) | [![Reticularea](https://media.ollin.art/examples/Recreations/Gego/Reticularea/still-640.jpg?v=3a9ba4cc)](Reticularea/) | [![Tejedura](https://media.ollin.art/examples/Recreations/Gego/Tejedura/still-640.jpg?v=2ed4ce11)](Tejedura/) |
+| [![Chorro](https://media.ollin.art/examples/Recreations/Gego/Chorro/still-640.jpg?v=094667bb)](Chorro/) | [![DrawingWithoutPaper](https://media.ollin.art/examples/Recreations/Gego/DrawingWithoutPaper/still-640.jpg?v=bc327622)](DrawingWithoutPaper/) | [![Reticularea](https://media.ollin.art/examples/Recreations/Gego/Reticularea/still-640.jpg?v=4f746781)](Reticularea/) | [![Tejedura](https://media.ollin.art/examples/Recreations/Gego/Tejedura/still-640.jpg?v=07f8419d)](Tejedura/) |
 |---|---|---|---|
 | [Chorro](Chorro/) | [DrawingWithoutPaper](DrawingWithoutPaper/) | [Reticularea](Reticularea/) | [Tejedura](Tejedura/) |
 

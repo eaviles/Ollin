@@ -4,7 +4,7 @@
 
 ## Effects
 
-| [![AmbientOcclusion](https://media.ollin.art/examples/3D/Effects/AmbientOcclusion/still-640.jpg?v=58a7c12d)](AmbientOcclusion/) | [![Atmosphere](https://media.ollin.art/examples/3D/Effects/Atmosphere/still-640.jpg?v=9ddb09d3)](Atmosphere/) | [![ContactShadows](https://media.ollin.art/examples/3D/Effects/ContactShadows/still-640.jpg?v=666d2617)](ContactShadows/) | [![FrameInterpolation](https://media.ollin.art/examples/3D/Effects/FrameInterpolation/still-640.jpg?v=ff8e6ab9)](FrameInterpolation/) |
+| [![AmbientOcclusion](https://media.ollin.art/examples/3D/Effects/AmbientOcclusion/still-640.jpg?v=0db656ec)](AmbientOcclusion/) | [![Atmosphere](https://media.ollin.art/examples/3D/Effects/Atmosphere/still-640.jpg?v=edace7e2)](Atmosphere/) | [![ContactShadows](https://media.ollin.art/examples/3D/Effects/ContactShadows/still-640.jpg?v=666d2617)](ContactShadows/) | [![FrameInterpolation](https://media.ollin.art/examples/3D/Effects/FrameInterpolation/still-640.jpg?v=ff8e6ab9)](FrameInterpolation/) |
 |---|---|---|---|
 | [AmbientOcclusion](AmbientOcclusion/) | [Atmosphere](Atmosphere/) | [ContactShadows](ContactShadows/) | [FrameInterpolation](FrameInterpolation/) |
 | [![LensFlare](https://media.ollin.art/examples/3D/Effects/LensFlare/still-640.jpg?v=16e887f8)](LensFlare/) | [![MotionBlur](https://media.ollin.art/examples/3D/Effects/MotionBlur/still-640.jpg?v=33b9dfa5)](MotionBlur/) | [![PathTraced](https://media.ollin.art/examples/3D/Effects/PathTraced/still-640.jpg?v=6cc33dd0)](PathTraced/) | [![RayTracedReflections](https://media.ollin.art/examples/3D/Effects/RayTracedReflections/still-640.jpg?v=5a07a8cf)](RayTracedReflections/) |

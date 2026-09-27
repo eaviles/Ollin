@@ -4,7 +4,7 @@
 
 ## Export
 
-| [![Capture](https://media.ollin.art/examples/Export/Capture/still-640.jpg?v=23b0f63d)](Capture/) | [![Cutout](https://media.ollin.art/examples/Export/Cutout/still-640.jpg?v=37be503f)](Cutout/) | [![Drafting](https://media.ollin.art/examples/Export/Drafting/still-640.jpg?v=f29a25aa)](Drafting/) | [![Embroidery](https://media.ollin.art/examples/Export/Embroidery/still-640.jpg?v=b75d065a)](Embroidery/) |
+| [![Capture](https://media.ollin.art/examples/Export/Capture/still-640.jpg?v=23b0f63d)](Capture/) | [![Cutout](https://media.ollin.art/examples/Export/Cutout/still-640.jpg?v=3e962c04)](Cutout/) | [![Drafting](https://media.ollin.art/examples/Export/Drafting/still-640.jpg?v=f29a25aa)](Drafting/) | [![Embroidery](https://media.ollin.art/examples/Export/Embroidery/still-640.jpg?v=b75d065a)](Embroidery/) |
 |---|---|---|---|
 | [Capture](Capture/) | [Cutout](Cutout/) | [Drafting](Drafting/) | [Embroidery](Embroidery/) |
 | [![Hatching](https://media.ollin.art/examples/Export/Hatching/still-640.jpg?v=453a89a9)](Hatching/) | [![LineDrawing](https://media.ollin.art/examples/Export/LineDrawing/still-640.jpg?v=877697b7)](LineDrawing/) | [![LinearFrame](https://media.ollin.art/examples/Export/LinearFrame/still-640.jpg?v=22decf44)](LinearFrame/) | [![Record](https://media.ollin.art/examples/Export/Record/still-640.jpg?v=9ac2baec)](Record/) |

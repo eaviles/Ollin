@@ -21,6 +21,12 @@ an example has no media at all;
 either way the file is rewritten sorted, so the diff of a sweep is one line
 per example rather than a reshuffle. An example moves between the two lists
 rather than appearing in both.
+
+Two facts about a render ride the environment rather than the argument list,
+so the positions above stay put: `MEDIA_SEED` is the one seed every render of the
+example drew under, and `MEDIA_STAGED` says what stood in for the device when an
+example that imports one staged it for itself (a loopback, a stand-in of its
+own). Both land in the row that `still` or `write` makes.
 """
 import json
 import os
@@ -64,6 +70,15 @@ def save(path, data):
         f.write("\n")
 
 
+def rendered_under(row):
+    """The row with the seed and the stand-in the render ran under."""
+    if os.environ.get("MEDIA_SEED"):
+        row["seed"] = int(os.environ["MEDIA_SEED"])
+    if os.environ.get("MEDIA_STAGED"):
+        row["staged"] = os.environ["MEDIA_STAGED"]
+    return row
+
+
 def main():
     if len(sys.argv) < 4:
         sys.exit(__doc__)
@@ -95,6 +110,7 @@ def main():
             "still": versioned(f"examples/{example}/still.jpg", still),
             "stillSmall": versioned(f"examples/{example}/still-640.jpg", small),
         }
+        rendered_under(data["examples"][example])
         save(path, data)
         return
 
@@ -127,7 +143,7 @@ def main():
     for name, suffix, file in zip(names, ("loop.mp4", "loop-640.mp4", "still.jpg", "still-640.jpg"), files):
         row[name] = versioned(f"examples/{example}/{suffix}", file)
     data["passedOver"].pop(example, None)
-    data["examples"][example] = row
+    data["examples"][example] = rendered_under(row)
     save(path, data)
 
 

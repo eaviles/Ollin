@@ -61,6 +61,9 @@ RENDER_LIMIT=300             # seconds before a render is given up on
 
 # The ones that draw the world as it is while they run, on purpose.
 LIVE_WORLD=(Data/Edits Data/Outside)
+# The loopbacks whose far end answers over UDP, so a frame draws whichever
+# packet had landed by then, a different one each run.
+OVER_UDP=(Integration/DMXLoopback Integration/OSCLoopback)
 # The ones too slow to reach the media's frame here, with the frame they are
 # checked at instead. Watercolor takes about four seconds a frame.
 typeset -A EARLY_FRAME
@@ -296,6 +299,7 @@ for example in $list; do
   [[ -f $sketch ]] || { echo "$example: no Sketch.swift" >&2; continue; }
   waiting=$(held_back $example)
   (( ${LIVE_WORLD[(Ie)$example]} )) && waiting="draws the world as it is while it runs"
+  (( ${OVER_UDP[(Ie)$example]} )) && waiting="draws the packet that had landed by then"
   if [[ -n $waiting ]]; then
     echo "--- $example: $waiting"
     record $example held "$waiting"

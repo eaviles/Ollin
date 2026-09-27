@@ -4,7 +4,7 @@
 
 ## Josef Albers
 
-| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=bd118fab)](Homage/) |  |  |  |
+| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=443362bd)](Homage/) |  |  |  |
 |---|---|---|---|
 | [Homage](Homage/) |  |  |  |
 

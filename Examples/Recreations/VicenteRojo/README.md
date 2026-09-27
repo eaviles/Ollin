@@ -4,7 +4,7 @@
 
 ## Vicente Rojo
 
-| [![MexicoBajoLaLluvia](https://media.ollin.art/examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still-640.jpg?v=f1be86b3)](MexicoBajoLaLluvia/) | [![Negaciones](https://media.ollin.art/examples/Recreations/VicenteRojo/Negaciones/still-640.jpg?v=49392fc3)](Negaciones/) | [![PiramidesYVolcanes](https://media.ollin.art/examples/Recreations/VicenteRojo/PiramidesYVolcanes/still-640.jpg?v=c0677d80)](PiramidesYVolcanes/) | [![Senales](https://media.ollin.art/examples/Recreations/VicenteRojo/Senales/still-640.jpg?v=28c23029)](Senales/) |
+| [![MexicoBajoLaLluvia](https://media.ollin.art/examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still-640.jpg?v=74a11f6a)](MexicoBajoLaLluvia/) | [![Negaciones](https://media.ollin.art/examples/Recreations/VicenteRojo/Negaciones/still-640.jpg?v=c3706286)](Negaciones/) | [![PiramidesYVolcanes](https://media.ollin.art/examples/Recreations/VicenteRojo/PiramidesYVolcanes/still-640.jpg?v=79fd10ae)](PiramidesYVolcanes/) | [![Senales](https://media.ollin.art/examples/Recreations/VicenteRojo/Senales/still-640.jpg?v=2b661aa2)](Senales/) |
 |---|---|---|---|
 | [MexicoBajoLaLluvia](MexicoBajoLaLluvia/) | [Negaciones](Negaciones/) | [PiramidesYVolcanes](PiramidesYVolcanes/) | [Senales](Senales/) |
 

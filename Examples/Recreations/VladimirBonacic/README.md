@@ -4,7 +4,7 @@
 
 ## Vladimir Bonačić
 
-| [![DynamicObject](https://media.ollin.art/examples/Recreations/VladimirBonacic/DynamicObject/still-640.jpg?v=e4a3f8f7)](DynamicObject/) | [![GFE164](https://media.ollin.art/examples/Recreations/VladimirBonacic/GFE164/still-640.jpg?v=1b7423d8)](GFE164/) | [![NamaFrieze](https://media.ollin.art/examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=d959587b)](NamaFrieze/) | [![Random63](https://media.ollin.art/examples/Recreations/VladimirBonacic/Random63/still-640.jpg?v=97d4bb2a)](Random63/) |
+| [![DynamicObject](https://media.ollin.art/examples/Recreations/VladimirBonacic/DynamicObject/still-640.jpg?v=2aa0f0d9)](DynamicObject/) | [![GFE164](https://media.ollin.art/examples/Recreations/VladimirBonacic/GFE164/still-640.jpg?v=ce95a1c2)](GFE164/) | [![NamaFrieze](https://media.ollin.art/examples/Recreations/VladimirBonacic/NamaFrieze/still-640.jpg?v=78e1dab5)](NamaFrieze/) | [![Random63](https://media.ollin.art/examples/Recreations/VladimirBonacic/Random63/still-640.jpg?v=cc122adc)](Random63/) |
 |---|---|---|---|
 | [DynamicObject](DynamicObject/) | [GFE164](GFE164/) | [NamaFrieze](NamaFrieze/) | [Random63](Random63/) |
 

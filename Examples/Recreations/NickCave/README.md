@@ -4,6 +4,10 @@
 
 ## Nick Cave
 
+| [![Soundsuit](https://media.ollin.art/examples/Recreations/NickCave/Soundsuit/still-640.jpg?v=7b4f4c3f)](Soundsuit/) |  |  |  |
+|---|---|---|---|
+| [Soundsuit](Soundsuit/) |  |  |  |
+
 **Nick Cave** (b. 1959) is an American artist who trained as a fiber artist and a dancer. He is best known for the **Soundsuits**, wearable sculptures he has made since 1992. He builds them from found materials such as twigs, raffia, dyed synthetic hair, buttons, and sequins. He made the first one from twigs in response to the police beating of Rodney King. A Soundsuit covers the wearer completely, so race, gender, and class disappear inside it. He has described the suits as protective shields. The name comes from what he heard when he first put one on: the suit makes sound as the body moves. Worn by dancers, the suits rustle, whoosh, and rattle.
 
 This recreation is a live piece rather than a still. A body wears the suit, either staged or streamed, and the suit makes its sound through the speakers.
