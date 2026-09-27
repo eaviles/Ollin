@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 38): what an extension package is. On the left, the
+// Guide diagram (Chapter 40): what an extension package is. On the left, the
 // package and the one file that matters in it. On the right, the sketch that
 // imports it, and what the borrowed call draws.
 //

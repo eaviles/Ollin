@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 38): the path-traced export, in the exported pixels
+// Guide figure (Chapter 31): the path-traced export, in the exported pixels
 // themselves. One small set, three spheres on a floor under one softbox, is
 // rendered three times through OllinApp.image(of:): as the window rasterizes
 // it, with OllinApp.pathTracedExport set the way `--path-traced 96` sets it,

@@ -1,6 +1,6 @@
 // figure: frame=200 themed
 //
-// Guide diagram (Chapter 38): the performance host, annotated. A stylized
+// Guide diagram (Chapter 39): the performance host, annotated. A stylized
 // OllinLiveCoding window drawn with Ollin itself: the sketch fills the stage,
 // the code rides over it as translucent text, a toast confirms the last
 // evaluation. Callouts name the moving parts.

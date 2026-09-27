@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): a cue called back over a fade. Three looks of
+// Guide diagram (Chapter 39): a cue called back over a fade. Three looks of
 // one small piece, the same ring of dots: the night look, the piece one second
 // into cue("dawn", over: 2), and dawn. Under them, what each parameter did
 // across the two seconds: the size and the hue ease, slow at both ends; the

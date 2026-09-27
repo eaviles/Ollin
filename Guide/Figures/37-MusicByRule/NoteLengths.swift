@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): what a Tempo and a NoteLength say. One bar of
+// Guide diagram (Chapter 37): what a Tempo and a NoteLength say. One bar of
 // four beats at 96 beats a minute runs across the top, each beat marked with
 // the second it lands on. Under it, the named lengths are laid across that
 // same bar as many times as they fit. Every width, every name, and every

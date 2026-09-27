@@ -196,7 +196,7 @@ To keep or direct a performance:
 
 To explore a seeded sketch, the inspector's [Variation card](Docs/Core/Variations.md) steps, rolls, or jumps through seeds. Or proof a range as a contact sheet with `--export-grid`, then render the one you keep at full size.
 
-To hand over a piece that keeps running, follow [Sharing and performing](Guide/38-FinishingASketch.md) for app bundles and other output surfaces, or [Installations](Guide/41-Installations.md) for work left on a wall. A loose file runs in installation mode with `ollin dots.swift --installation`, which gives it its own window and runs the code it started with.
+To hand over a sketch that keeps running, follow [Handing it over](Guide/40-HandingItOver.md) for app bundles and the Mac's own surfaces, or [Installations](Guide/41-Installations.md) for work left on a wall. A loose file runs in installation mode with `ollin dots.swift --installation`, which gives it its own window and runs the code it started with.
 
 ## Documentation
 

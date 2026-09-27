@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): what a controller reads, in one pose. A stick
+// Guide diagram (Chapter 35): what a controller reads, in one pose. A stick
 // held up and to the right, a trigger half pulled, one face button down, with
 // the value each read returns beside it. The values are the figure's own, so
 // this draws the same whether or not a controller is plugged in.

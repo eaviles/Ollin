@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 19): a film look. A night street drawn plain and
+// Guide figure (Chapter 20): a film look. A night street drawn plain and
 // through halation and film grain; under them the same lamp magnified four
 // times, plain and halated, so the white core can be seen to hold while the
 // ring lands around it, and a gray ramp plain above and grained below, so

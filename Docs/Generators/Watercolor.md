@@ -9,8 +9,8 @@ Watercolor paints pigment from nothing but polygon deformation and translucency.
 **`drawWatercolor`** is the one-line call. The typed base is there for interleaving pigments and for reusing a blob's character. Both take the *geometric* approach, which is cheap to run and works on a plotter. For real wet paint that flows, dries with darkened edges, and glazes optically, see the [watercolor simulation](../Simulation/Watercolor.md).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/WatercolorLayers-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/WatercolorLayers-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
 </picture>
 
 ### Contents

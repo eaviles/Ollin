@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 38): the same two keys read by four curves. Each
+// Guide diagram (Chapter 39): the same two keys read by four curves. Each
 // panel builds a real Automation.Track and samples it, so the shapes are the
 // shipped curves rather than a drawing of them; the dot marks one moment, and
 // the circle above each panel is the value the parameter holds there.

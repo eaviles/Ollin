@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 19): diffusion curves. The marks on their own, the field
+// Guide figure (Chapter 21): diffusion curves. The marks on their own, the field
 // they settle into, and what one more curve does to it.
 import Ollin
 import OllinDiagram

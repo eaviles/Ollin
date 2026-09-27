@@ -1,6 +1,6 @@
 // figure: gif duration=8 fps=12 width=560
 //
-// Guide figure (Chapter 30): what a spread reflection is for. One satin floor
+// Guide figure (Chapter 31): what a spread reflection is for. One satin floor
 // between two colored walls, from a camera that never moves, switching between
 // the single mirror ray and the traced lobe every two seconds. With one ray the
 // floor fades to the gray environment and the room drains out of it; with the

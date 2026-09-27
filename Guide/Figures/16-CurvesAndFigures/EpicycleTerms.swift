@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): an outline rebuilt from spinning circles. The
+// Guide diagram (Chapter 16): an outline rebuilt from spinning circles. The
 // same letter reconstructed with three, twelve, and sixty-four terms, with
 // the circles that produced each drawn faintly behind. More circles, more
 // detail; the largest ones were always doing most of the work.

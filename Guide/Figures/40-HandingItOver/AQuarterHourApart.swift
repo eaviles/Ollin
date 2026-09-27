@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 41): a sketch as a widget. Along the top, the same
+// Guide diagram (Chapter 40): a sketch as a widget. Along the top, the same
 // piece at four moments a quarter of an hour apart, with the gaps between them
 // marked as what they are: nothing runs there. Below, the clock the piece is
 // drawn on, and the one thing that follows from a run being thrown away and

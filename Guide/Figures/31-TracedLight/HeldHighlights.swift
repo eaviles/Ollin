@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 30): specular anti-aliasing, in the exported pixels
+// Guide figure (Chapter 31): specular anti-aliasing, in the exported pixels
 // themselves. One probe, a bed of polished balls a few pixels across under
 // one hard light, is rendered three times through OllinApp.image(of:): with
 // the call off, with the call off at sixteen samples a pixel (the reference,

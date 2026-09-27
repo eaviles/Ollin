@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the same curve drawn three ways at one
+// Guide diagram (Chapter 17): the same curve drawn three ways at one
 // strokeWeight. A uniform line, a taper that swells in the middle and
 // vanishes at both ends, and a flat nib that thickens across its edge and
 // thins along it. Only the profile changes.

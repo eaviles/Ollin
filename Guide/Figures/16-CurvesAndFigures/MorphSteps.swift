@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): a shape morph. A star becoming a rounded blob
+// Guide diagram (Chapter 16): a shape morph. A star becoming a rounded blob
 // with a hole, read at five points along the way. Every in-between is a real
 // shape, so it fills, strokes, and exports like anything else.
 import Ollin

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 41): what wrapping a sketch as an app gives you and
+// Guide diagram (Chapter 40): what wrapping a sketch as an app gives you and
 // what it does not. On the left, the app itself and where its icon comes from,
 // which is one rendered frame of the sketch. On the right, the two ways it can
 // travel, because the signature is what decides that: unsigned reaches this

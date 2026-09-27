@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): three hands on one parameter. A MIDI controller, an
+// Guide diagram (Chapter 35): three hands on one parameter. A MIDI controller, an
 // OSC message from a phone, and the inspector slider all drive the same
 // @Param; the sketch just reads the property. Boxes and arrows drawn with
 // Ollin, like every diagram in the guide.

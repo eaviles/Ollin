@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): what a Standard MIDI File carries, and the one
+// Guide diagram (Chapter 37): what a Standard MIDI File carries, and the one
 // thing about it that is not obvious. The piece is composed here, written to
 // bytes, and read back, so every mark is read off a real `MIDIFile` rather
 // than drawn to look like one. Top: the file as a piano roll, two parts on

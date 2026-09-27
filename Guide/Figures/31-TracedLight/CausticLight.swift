@@ -1,6 +1,6 @@
 // figure: frame=0 unstable
 //
-// Guide figure (Chapter 30): caustics. A clear glass sphere throws a tight
+// Guide figure (Chapter 31): caustics. A clear glass sphere throws a tight
 // bright spot inside its own shadow, a bottle-green sphere throws a green
 // one, and a chrome ring lying almost flat folds light into a curved fan.
 // Ray-traced; the camera looks down enough to keep the floor in view, since

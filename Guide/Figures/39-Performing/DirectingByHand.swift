@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): the timeline panel, annotated. A stylized
+// Guide diagram (Chapter 39): the timeline panel, annotated. A stylized
 // OllinLive inspector on the left, with the diamond every parameter row
 // carries: hollow where nothing drives the parameter yet, filled where a track
 // does, and the function mark where a rule typed in the row drives it. The

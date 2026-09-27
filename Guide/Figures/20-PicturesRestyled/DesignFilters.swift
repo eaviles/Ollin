@@ -1,6 +1,6 @@
 // figure: frame=0 probe
 //
-// Guide figure (Chapter 19): the two kinds of design filter. The top row starts
+// Guide figure (Chapter 20): the two kinds of design filter. The top row starts
 // from one plain white heart on a transparent layer, and three filters read only
 // that silhouette to build a material out of it. The bottom row starts from a
 // picture, and three filters put something in front of it.

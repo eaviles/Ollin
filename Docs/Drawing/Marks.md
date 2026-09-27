@@ -5,8 +5,8 @@ Stroke dynamics drive width and opacity from how a mark is being made, rather th
 [`strokeProfile`](Drawing.md#strokeProfile) shapes a stroke by its *shape*. It reads the fraction along a finished path and answers with a width. That is the right tool for a designed mark, such as a taper you decided on in advance. It is the wrong tool for a mark someone is drawing right now. The path has no length yet, so there is no fraction to read.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/MarkWidth-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
 </picture>
 
 A **`StrokeMark`** is the other half. It records a path as it happens, and it measures how fast the pointer is traveling and how hard it is pressed. It then keeps the width and opacity the hand asked for at every point.
@@ -26,8 +26,8 @@ override func draw() {
 Drag, and the mark comes out full where you moved slowly and thin where you hurried.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkDynamics-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/MarkDynamics-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
 </picture>
 
 **Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [What exports](#export)
@@ -224,8 +224,8 @@ This is also how a mark differs from `StrokeProfile.values([...])`, and why it i
 A width profile and a recorded mark both shape one continuous ribbon. A **`Brush`** replaces that ribbon, and repeats a shape along the path instead.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/BrushStamps-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/BrushStamps-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
 </picture>
 
 ```swift

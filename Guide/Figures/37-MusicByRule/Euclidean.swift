@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): what "spread as evenly as whole steps allow"
+// Guide diagram (Chapter 37): what "spread as evenly as whole steps allow"
 // means. Every row is a real Rhythm, read through its own subscript and its own
 // intervals, so the picture cannot drift from what the type does. The left
 // column is the written notation, the middle the steps themselves, the right

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): one row of unevenly spaced dots threaded three
+// Guide diagram (Chapter 16): one row of unevenly spaced dots threaded three
 // ways. Straight segments, the neighbor-by-neighbor spline drawCurve uses by
 // default, and Hobby's fit, which looks at the whole run and bends evenly
 // through every dot.

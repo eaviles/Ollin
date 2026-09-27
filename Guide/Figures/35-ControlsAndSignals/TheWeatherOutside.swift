@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 9): two readings drawn by one sky. The left panel is
+// Guide figure (Chapter 35): two readings drawn by one sky. The left panel is
 // a mostly clear afternoon and the right a rainy dusk. Both are built by hand
 // as a `Weather.Reading` rather than fetched, so the figure needs no network,
 // and the sun in each is placed by `Place.sun(at:)` from the reading's own

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): the physical-computing loop. A microcontroller
+// Guide diagram (Chapter 35): the physical-computing loop. A microcontroller
 // prints one number per line over USB, a SerialPort reads it three ways, and
 // a line written back drives the hardware. Boxes and arrows drawn with Ollin,
 // like every diagram in the guide.

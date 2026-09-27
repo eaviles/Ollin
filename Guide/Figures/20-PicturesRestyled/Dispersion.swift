@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): one amount, six pictures. The same scene split by
+// Guide diagram (Chapter 20): one amount, six pictures. The same scene split by
 // each mode of the chromatic-aberration filter, plus the tap budget that turns
 // three hard ghosts into a continuous smear.
 import Ollin

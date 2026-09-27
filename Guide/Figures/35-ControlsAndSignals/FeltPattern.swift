@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): what a trackpad makes of a felt pattern. The
+// Guide diagram (Chapter 35): what a trackpad makes of a felt pattern. The
 // same phrase twice: on the left as it was written, a tap and a rising hum and
 // a last tap, with height standing for strength; on the right the knocks a
 // trackpad is actually asked for, measured from the plan rather than drawn by

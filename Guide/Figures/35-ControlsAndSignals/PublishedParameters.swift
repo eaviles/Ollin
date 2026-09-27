@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): what OSCQuery removes. Each declared parameter
+// Guide diagram (Chapter 35): what OSCQuery removes. Each declared parameter
 // becomes a node that carries its own type and range, and the control app
 // builds its control from the node rather than from an address somebody typed.
 // The tree goes out over HTTP; the values come back over OSC at the same port.

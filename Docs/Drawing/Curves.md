@@ -7,8 +7,8 @@
 These are the classic curve builders of generative art. Each one is a **pure function of its numbers**, so you pass numbers in and get geometry back. All of them are closed forms except the [spirolateral](#spirolateral), which is a walk. They return ordinary values, either `[Vector2]` points or a `Contour`, so everything downstream already works with them. That includes `drawPolyline` and `drawShape`, the [shape booleans](./Geometry.md#shape-booleans), [Chaikin smoothing](#smoothing), hatching, and [SVG export](../Output/Export.md) for the pen plotter. None of them read `random` or `noise`, so the same arguments always produce the same curve. That means a fixed frame renders the same way every time, and an export can be rebuilt from the same arguments.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ClassicCurves-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/ClassicCurves-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
 </picture>
 
 ```swift
@@ -195,8 +195,8 @@ struct Spirolateral {
 Step one length, turn, step two lengths, turn again, and keep going up to `order` lengths. Then run the whole sequence again. That is the entire rule. The figures it makes are not obvious from it: pinwheels, square knots, and walks that leave and never return. Frank Odds named and studied them in 1973, and the same walk is a standard turtle-geometry exercise.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/Spirolaterals-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the bottom right instead of closing" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/Spirolaterals-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the bottom right instead of closing" width="680">
 </picture>
 
 **Whether the walk closes follows from arithmetic.** One run turns the walker through `netTurn`. So run `m` is run 1 rotated by `m` times that angle. The runs close into a ring as soon as a whole number of them makes a whole number of turns. At the classic quarter turn that means `4 / gcd(order, 4)` runs. The one exception is an order that is a multiple of four. A run of that order comes back facing the way it set off, so every repeat lands further away in the same direction. The walk leaves the page. In that case `closes` reads false, `center` is nil, and the walk is drawn open.

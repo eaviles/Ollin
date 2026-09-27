@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the same curve dashed three ways at one
+// Guide diagram (Chapter 17): the same curve dashed three ways at one
 // strokeWeight. An even dash, dots made of zero-length dashes under round caps,
 // and a taper that keeps reading the whole path across the gaps. Only the
 // pattern and the cap change.

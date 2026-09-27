@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 19): one page under a light that falls across it, cut
+// Guide figure (Chapter 21): one page under a light that falls across it, cut
 // two ways. The same photograph, one number for the whole page against each
 // pixel's own neighborhood. The picture is a bundled sample, a book held open
 // with dappled shadow over half of it, which is the case the filter exists for.

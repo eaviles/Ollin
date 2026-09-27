@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): bytes mean nothing until a characteristic says
+// Guide diagram (Chapter 35): bytes mean nothing until a characteristic says
 // what they are. One heart rate reading is read right and read wrong, and two
 // more values show a scale and a sign. Boxes and arrows drawn with Ollin,
 // like every diagram in the guide.

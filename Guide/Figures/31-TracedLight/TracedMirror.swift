@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide diagram (Chapter 30): what a traced reflection shows that a
+// Guide diagram (Chapter 31): what a traced reflection shows that a
 // screen-space one cannot. Three solids on a nearly polished floor. The
 // box's reflection shows its underside, the face turned toward the floor,
 // which the camera has no view of and so has no pixels of to borrow.

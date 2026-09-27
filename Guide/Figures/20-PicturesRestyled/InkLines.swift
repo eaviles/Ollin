@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): the flow-based difference of Gaussians. A
+// Guide diagram (Chapter 20): the flow-based difference of Gaussians. A
 // photograph (one of the bundled sample photographs) drawn into a layer, then
 // the same layer through `.xdog()`: a line where the picture has an edge, ink
 // where it is dark, paper everywhere else.

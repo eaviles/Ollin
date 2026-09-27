@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 19): a look from a .cube file. The bundled portrait
+// Guide figure (Chapter 20): a look from a .cube file. The bundled portrait
 // plain and through the bundled warm print, and under them the two things a
 // look is judged on, a gray ramp and a sweep of hues, each drawn plain above
 // and through the same look beneath.

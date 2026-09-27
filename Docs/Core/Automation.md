@@ -74,8 +74,8 @@ A key carries the curve that *leaves* it and runs to the next key, so the curve 
 | `.bezier(x1:y1:x2:y2:)` | a cubic Bezier through two handle points |
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-FinishingASketch/ParameterOnACurve-dark.jpg">
-  <img src="../../Guide/Images/38-FinishingASketch/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/39-Performing/ParameterOnACurve-dark.jpg">
+  <img src="../../Guide/Images/39-Performing/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
 </picture>
 
 The Bezier is the curve you shape yourself. Its two handles change the timing as well as the value, the same way a curve you draw by hand does. The `x` of each handle stays inside `0...1`, so the curve always reads from left to right. The `y` may go outside that range, and then the value overshoots and comes back.

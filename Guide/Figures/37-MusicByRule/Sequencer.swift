@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): what the step sequencer and the arpeggiator do
+// Guide diagram (Chapter 37): what the step sequencer and the arpeggiator do
 // to time. Every mark is read off the types themselves through
 // `events(upTo:)`, so the picture cannot drift from what they compute. Top:
 // one bar of sixteen steps straight and at two swings, the offbeats moved and

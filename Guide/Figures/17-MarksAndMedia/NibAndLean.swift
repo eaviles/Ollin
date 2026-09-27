@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): what a pen's lean is for. The same path drawn
+// Guide diagram (Chapter 17): what a pen's lean is for. The same path drawn
 // three times with a broad-edged nib laid across three different leans, so the
 // stroke thickens where the path runs across the nib and thins where it runs
 // along it. The nib is drawn as the quad a chisel lays down between two points,

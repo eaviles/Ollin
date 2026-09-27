@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): what a save does when the sketch is on the
+// Guide diagram (Chapter 40): what a save does when the sketch is on the
 // phone. The file on the Mac, with one line changed; the three steps a save
 // runs, with the times each takes; and the phone before and after, its screen
 // rendered from one probe through OllinApp.image(of:) at the same frame twice,

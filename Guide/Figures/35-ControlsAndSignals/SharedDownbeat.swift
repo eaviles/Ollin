@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 34): what a network tempo session shares. Every
+// Guide diagram (Chapter 35): what a network tempo session shares. Every
 // participant keeps its own running beat count, so the whole numbers differ,
 // but all of them sit at the same place inside the bar. The phase is the
 // shared thing; the downbeat lands together.

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): three filters that want particular food. The
+// Guide diagram (Chapter 20): three filters that want particular food. The
 // same noise layer lit as a physical surface, screened into exactly two
 // colors, and warped around a point that is not the middle.
 import Ollin

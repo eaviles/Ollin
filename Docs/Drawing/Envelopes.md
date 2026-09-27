@@ -22,8 +22,8 @@ for run in caustic(off: circlePoints, from: .parallel(0), closed: true) {
 The construction is that simple: **the envelope is where consecutive lines cross**. As two members of the family come together, their crossing settles onto the point where the family touches the curve. So the answer is close rather than exact. The error falls with the *square* of the step between lines, which means doubling the samples quarters it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/RaysLeanOnACurve-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/RaysLeanOnACurve.jpg" alt="Two panels. On the left forty tangent lines of a circle, with the circle they lean on picked out in orange. On the right a circular cup lit from outside, its bounced rays crowding along an orange caustic curve with a cusp" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/RaysLeanOnACurve-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/RaysLeanOnACurve.jpg" alt="Two panels. On the left forty tangent lines of a circle, with the circle they lean on picked out in orange. On the right a circular cup lit from outside, its bounced rays crowding along an orange caustic curve with a cusp" width="680">
 </picture>
 
 ### Contents
@@ -131,7 +131,7 @@ A positive distance travels along the front's own normal, so a ring built by inc
 - **A sampled curve is a run of chords sitting a little inside it.** A front measured against them is right to about one sagitta. `huygensFront` compares each moved point against its *own* two segments rather than against the distance you asked for. That comparison keeps a front moving into a bend from throwing itself away.
 - The result is `Contour`s, so you can stroke it, hatch it, and export it to SVG for a pen plotter like any other geometry.
 
-Examples: `Patterns/Caustic`, `Patterns/Wavefront`. Guide: [Chapter 15](../../Guide/15-ShapesAsMaterial.md).
+Examples: `Patterns/Caustic`, `Patterns/Wavefront`. Guide: [Chapter 16](../../Guide/16-CurvesAndFigures.md).
 
 ---
 

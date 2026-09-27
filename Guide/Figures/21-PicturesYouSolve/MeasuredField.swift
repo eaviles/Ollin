@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 19): a measured distance field. The marks on their own, how far
+// Guide figure (Chapter 21): a measured distance field. The marks on their own, how far
 // every pixel is from the nearest one, and which way that nearest one lies.
 import Ollin
 import OllinDiagram

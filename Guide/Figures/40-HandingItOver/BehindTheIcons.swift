@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 41): a sketch as the desktop. On the left, what the
+// Guide diagram (Chapter 40): a sketch as the desktop. On the left, what the
 // screen looks like once it is running: the piece edge to edge, with the icons
 // on it and a window over it, and a pointer that reaches both of those and
 // never the piece. On the right, the three things worth knowing before leaving

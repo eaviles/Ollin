@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 38): the same motion said two ways. The left panel is
+// Guide diagram (Chapter 39): the same motion said two ways. The left panel is
 // a keyed Automation.Track, sampled, with a dot at each key. The right panel is
 // the same track filled by a Formula instead, sampled the same way, with the
 // text that made it underneath. Both read the shipped types, so the shapes are

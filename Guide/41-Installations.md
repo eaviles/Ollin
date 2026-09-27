@@ -34,7 +34,7 @@ override func draw() {
   <img src="Images/41-Installations/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
 </picture>
 
-It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same parameter the inspector slider moves. That is exactly like [Chapter 34](34-Listening.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
+It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same parameter the inspector slider moves. That is exactly like [Chapter 35](35-ControlsAndSignals.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
 
 The rig's big sibling is the LED wall, and for that you stop filling channels by hand. An `LEDMap` lays the fixtures over the canvas itself. A strip is a run of sample points along a line or a curve, and a matrix is a grid of them. Every frame the map reads the rendered pixels under each LED and ships them through a `DMXSender`. That read happens on the GPU, over a few hundred points, never as a whole-frame readback. The wall is just the canvas, somewhere else.
 
@@ -86,7 +86,7 @@ The one thing worth getting right before you write a filter is the wildcards, be
   <img src="Images/41-Installations/TopicsAndFilters.jpg" alt="A matrix diagram: five topics a house publishes written vertically across the top, four subscription filters down the left side, and a filled mark where a filter matches a topic, with the dollar-prefixed topic unmatched by every wildcard row" width="680">
 </picture>
 
-Reading works the way [Chapter 34](34-Listening.md)'s controllers did, because it is the same problem. A reading that keeps coming is read at its latest with `bus.number(topic, default:)`, something that happens once is drained from `bus.messages()` every frame, and `bus.bind("home/dial/level", to: $radius)` puts a dial on a wall onto a parameter. Payloads are just bytes and the protocol says nothing about them, so `MQTTMessage` reads the three things devices actually write: a decimal number, a switch word like `ON` or `offline`, and a small JSON object whose fields come out through `message.number(named: "temperature")`.
+Reading works the way [Chapter 35](35-ControlsAndSignals.md)'s controllers did, because it is the same problem. A reading that keeps coming is read at its latest with `bus.number(topic, default:)`, something that happens once is drained from `bus.messages()` every frame, and `bus.bind("home/dial/level", to: $radius)` puts a dial on a wall onto a parameter. Payloads are just bytes and the protocol says nothing about them, so `MQTTMessage` reads the three things devices actually write: a decimal number, a switch word like `ON` or `offline`, and a small JSON object whose fields come out through `message.number(named: "temperature")`.
 
 The traffic goes both ways, and that is what makes this an installation feature rather than an input one. `bus.publish("home/lamp/set", true)` sends the word a relay expects. Publish with `retains: true` and the broker keeps that as the topic's stored value, so the next thing to subscribe learns it immediately instead of waiting for the next reading: a piece that starts up already knowing the room.
 
@@ -405,7 +405,7 @@ That is a different tool from the `visibleRegion` rectangle earlier in this chap
 
 **One set of parameters.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Change a parameter on any machine and the rest follow within a frame. Two people adjusting one parameter at the same moment is settled by the room's clock: the later turn wins everywhere.
 
-Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 34](34-Listening.md):
+Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 35](35-ControlsAndSignals.md):
 
 ```swift
 room.send("bird", position, reliable: false)      // sent every frame

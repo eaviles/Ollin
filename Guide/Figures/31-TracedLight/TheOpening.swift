@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 25): a highlight is a picture of the opening.
+// Guide diagram (Chapter 31): a highlight is a picture of the opening.
 // The same handful of lights thrown out of focus three times: through a round
 // opening, through a five-bladed iris, and through the same iris with the
 // barrel clipping it toward the corners.

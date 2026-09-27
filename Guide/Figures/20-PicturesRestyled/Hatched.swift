@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): hatching that follows the picture. A sphere and a
+// Guide diagram (Chapter 20): hatching that follows the picture. A sphere and a
 // pot on a table drawn into a layer, then the same layer through `.hatching()`
 // one way and crossed: the strokes wrap each form, and the second direction
 // crosses the first only where one has laid all it may.

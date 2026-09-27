@@ -1,6 +1,6 @@
 // figure: frame=430
 //
-// Guide payoff (Chapter 36): the music box. A piece that plays itself out of
+// Guide payoff (Chapter 37): the music box. A piece that plays itself out of
 // the chapter's parts (a step counter, three Euclidean rhythms, a scale, a
 // chord built from that scale, an arpeggio over it, and a Markov chain that
 // keeps a motif's habits) through three kinds of voice: a modeled steel

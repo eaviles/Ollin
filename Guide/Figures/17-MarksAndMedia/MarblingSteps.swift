@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the four marbling moves. The same bull's-eye
+// Guide diagram (Chapter 17): the four marbling moves. The same bull's-eye
 // of alternating drops, then a single stylus pulled down through it, then a
 // whole comb of teeth, then a stirred vortex. Every panel is vector outlines
 // that were bent, never redrawn.

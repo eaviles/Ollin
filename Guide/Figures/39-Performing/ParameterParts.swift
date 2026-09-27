@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 38): one parameter that holds four numbers, two of them
+// Guide diagram (Chapter 39): one parameter that holds four numbers, two of them
 // under a rule and two left alone. The three outlines are the same rectangle
 // parameter at three moments, all drawn from the corner the rules never touch. The
 // shapes come from the shipped track, so the picture is the real answer rather

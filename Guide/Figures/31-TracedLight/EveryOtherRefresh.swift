@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 30): frame interpolation, refresh by refresh. Twelve
+// Guide diagram (Chapter 31): frame interpolation, refresh by refresh. Twelve
 // refreshes of a 60 Hz display run left to right. The top row is what draw()
 // made: a frame on every other refresh. The bottom row is what the display
 // showed: each drawn frame one refresh after it was drawn, and between two

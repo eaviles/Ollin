@@ -1,6 +1,6 @@
 // figure: frame=127
 //
-// Guide figure (Chapter 30): motion blur. Three spheres orbit a still
+// Guide figure (Chapter 31): motion blur. Three spheres orbit a still
 // colonnade at very different speeds under motionBlur(shutter: 1): the fast
 // one draws a long streak along its path, the middle one a short smear, the
 // slow one stays nearly crisp, and the still columns and floor hold their

@@ -134,7 +134,7 @@ strokeWeight(14)
 drawLSystem(.taperedTree(), iterations: 10, tapered: true)
 ```
 
-Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of [Chapter 15](15-ShapesAsMaterial.md) rather than as plain contours.
+Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of [Chapter 17](17-MarksAndMedia.md) rather than as plain contours.
 
 A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 

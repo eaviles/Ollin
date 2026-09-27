@@ -7,8 +7,8 @@
 Tween one `Shape` into another. A `ShapeMorph` works out once which point of the first outline becomes which point of the second. After that, reading the in-between at any fraction is a straight blend. Every in-between is a vector `Shape`, so you can fill it, stroke it, run it through the [booleans](./Geometry.md), [hatch it](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter), or export it. That is why a morph runs on a pen plotter instead of being a pixel effect.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MorphSteps-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MorphSteps.jpg" alt="Five panels of a solid orange star turning into a ring with a hole, the star's points retracting and the hole opening from nothing in the middle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/MorphSteps-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/MorphSteps.jpg" alt="Five panels of a solid orange star turning into a ring with a hole, the star's points retracting and the hole opening from nothing in the middle" width="680">
 </picture>
 
 ```swift

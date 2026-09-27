@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): how a watercolor blob is built. The base
+// Guide diagram (Chapter 17): how a watercolor blob is built. The base
 // outline, one translucent layer painted from it, and forty of them stacked.
 // Nothing here is a texture or a blur; it is the same polygon deformed over
 // and over and filled at a few percent opacity.

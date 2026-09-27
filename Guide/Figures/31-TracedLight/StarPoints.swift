@@ -1,6 +1,6 @@
 // figure: frame=0 probe
 //
-// Guide figure (Chapter 30): the star on a source. Six blades on the iris throw
+// Guide figure (Chapter 31): the star on a source. Six blades on the iris throw
 // six arms, because the pattern is the far-field diffraction of the opening
 // itself. The arms fan into color at their tips, since a longer wavelength
 // bends further, and the core blows out the way a bright source does.

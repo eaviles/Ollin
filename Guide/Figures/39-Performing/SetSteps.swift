@@ -1,6 +1,6 @@
 // figure: frame=200 themed
 //
-// Guide diagram (Chapter 38): a live-coding set as five evaluations. Each
+// Guide diagram (Chapter 39): a live-coding set as five evaluations. Each
 // thumbnail is the payoff chain truncated at that step and rendered for real,
 // so the strip is the set the way the audience sees it grow: bands, then the
 // fold, then the melt, then the print look, then flight.

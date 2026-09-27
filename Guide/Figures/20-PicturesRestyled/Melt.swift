@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): the luminance melt. A simple painted scene
+// Guide diagram (Chapter 20): the luminance melt. A simple painted scene
 // drawn into a layer, then the same layer filtered. One displacement field
 // both warps the noise the filter draws with and shifts where it samples the
 // picture, which is why the result reads as dyed rather than only smeared.

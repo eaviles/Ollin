@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 30): global illumination. A Cornell-style room whose only
+// Guide figure (Chapter 31): global illumination. A Cornell-style room whose only
 // light is one spot pool on the floor: everything else the picture shows, the lit
 // ceiling, the dyed statue, the filled shadows, is that pool re-delivered by the
 // walls. The colored walls exist to be seen again on the white things between them.

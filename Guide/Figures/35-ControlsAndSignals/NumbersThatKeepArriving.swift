@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 9): what a sketch reads while a feed is asking. One
+// Guide diagram (Chapter 35): what a sketch reads while a feed is asking. One
 // row of requests along a time axis, each labeled with what the server said,
 // and under it the two numbers a sketch actually draws from: the count of
 // answers that differed, which does not move for a request that brought back

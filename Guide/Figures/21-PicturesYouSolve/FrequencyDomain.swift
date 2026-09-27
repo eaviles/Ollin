@@ -1,6 +1,6 @@
 // figure: frame=2
 //
-// Guide diagram (Chapter 19): a picture, the spectrum it is made of, and what
+// Guide diagram (Chapter 21): a picture, the spectrum it is made of, and what
 // comes back when only the slow waves are kept. The third panel is the
 // low-pass: a circle drawn over the spectrum, and the ringing that a hard cut
 // leaves around every edge.

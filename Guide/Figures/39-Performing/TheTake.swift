@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): what a take writes down. Four lanes over
+// Guide diagram (Chapter 39): what a take writes down. Four lanes over
 // twenty-four frames of a run: the seed, rolled once at frame 0; one clock
 // sample per frame, jitter and all; every pointer move and key press, stamped
 // with the frame it preceded; the parameter values at the start and each

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): the same four numerals in two keys. Each chord
+// Guide diagram (Chapter 37): the same four numerals in two keys. Each chord
 // is drawn as the notes a Progression actually hands back, stacked at their
 // own pitches, so the point is visible rather than asserted: I vi IV V comes
 // out major in a major key and minor in a minor one, with nothing changed.

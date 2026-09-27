@@ -11,8 +11,8 @@ The correction does not happen in software. The plate on the page is a real draw
 `Anamorphosis` is that construction. It takes ordinary geometry, `Vector2`, `Contour`, and `Shape`, and hands back the geometry to draw. You can fill it, stroke it, cut it with the [shape booleans](./Geometry.md#shape-booleans), or hatch it. You can also send it to [SVG export](../Output/Export.md), so that you can plot the plate and stand a real mirror on it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MirrorReads-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/MirrorReads-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
 </picture>
 
 <picture>

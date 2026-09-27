@@ -1,6 +1,6 @@
 // figure: frame=0 probe
 //
-// Guide figure (Chapter 30): lens flare. One lamp throws a row of ghosts along
+// Guide figure (Chapter 31): lens flare. One lamp throws a row of ghosts along
 // the line through the middle of the frame, each a hexagon because the iris has
 // six blades, and each a different color because each surface of the lens is
 // coated for a different wavelength. One of them lies across the near black

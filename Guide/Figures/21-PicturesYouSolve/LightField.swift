@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 19): light a flat sketch works out for itself. What was drawn,
+// Guide figure (Chapter 21): light a flat sketch works out for itself. What was drawn,
 // the light that reaches it, and the same light with one bounce off the walls.
 import Ollin
 import OllinDiagram

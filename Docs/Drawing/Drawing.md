@@ -178,8 +178,8 @@ The named profiles cover the common marks:
 The closure form is a `StrokeProfile(_:)` over the path fraction, and `StrokeProfile(directional:)` sees the heading at that point as well, which is how `.nib` knows which way the pen is running. A profile answers one point at a time, so calling it (`profile(0.5)`, or `profile(0.5, heading)`) is how a sketch asks for the `multiplier` at a place along the path.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/MarkWidth-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
 </picture>
 
 ```swift
@@ -229,8 +229,8 @@ drawCurve(points)
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/DashPatterns-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/DashPatterns.jpg" alt="The same S-curve dashed three ways at one stroke weight: an even dash, a row of dots, and a taper whose dashes shrink together toward both ends" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/DashPatterns-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/DashPatterns.jpg" alt="The same S-curve dashed three ways at one stroke weight: an even dash, a row of dots, and a taper whose dashes shrink together toward both ends" width="680">
 </picture>
 
 The cut happens before the path is expanded, so the other stroke tools keep working on the whole path rather than on each dash. A [`strokeProfile`](#strokeProfile) reads its place on the whole, so a taper tapers across the gaps instead of starting over at every dash. A [brush](Marks.md#brushes) stamps each dash and skips the gaps. An along-path gradient runs on through them. On a closed path the pattern starts at the first point and runs the closing segment too, and a dash that crosses that seam is one dash, so the corner there is still a corner.

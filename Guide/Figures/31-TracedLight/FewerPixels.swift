@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 30): temporal upscaling. On the left, why a frame
+// Guide diagram (Chapter 31): temporal upscaling. On the left, why a frame
 // rendered at half size can still rebuild the full canvas: each coarse render
 // pixel covers four canvas pixels, the projection is nudged a different way
 // each frame, and four frames land one sample in every canvas pixel. On the

@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 36): what a scale does to numbers, and what chords
+// Guide diagram (Chapter 37): what a scale does to numbers, and what chords
 // are made of. Left: A minor pentatonic as a ladder over the semitone grid;
 // a wandering whole-number sequence fed through key[step] can only ever land
 // on rungs. Right: triads built from C major by taking every other rung, the

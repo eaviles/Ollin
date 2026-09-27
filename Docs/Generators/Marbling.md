@@ -9,8 +9,8 @@ This page covers paper marbling in closed form. A **`Marbling`** bath holds colo
 Each operation is an exact point transform from the classic marbling equations, the area-preserving drop and the stylus family with exponential falloff. Regions therefore deform without ever tearing or crossing. The finished paper is ordinary geometry, so you can fill it with `drawMarbling`, stroke the outlines, or send them to [SVG/PDF export](../Output/Export.md) as plotter-ready paths.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarblingSteps-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/MarblingSteps-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
 </picture>
 
 ### Contents

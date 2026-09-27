@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 15): the same curve stamped three ways at one
+// Guide diagram (Chapter 17): the same curve stamped three ways at one
 // strokeWeight. Close-packed circles that read as a solid mark, squares that
 // turn with the path, and a loose spray thrown either side of it. Only the
 // brush changes.

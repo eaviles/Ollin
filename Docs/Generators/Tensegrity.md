@@ -125,4 +125,4 @@ Nothing is checked at construction. `addTensegrity` skips a strut whose nodes co
 
 - [3D physics](../Simulation/Physics3D.md), for `World3D`, the joint kinds, and `dragBodies`.
 - [Force-directed layout](ForceLayout.md), the other structure here that finds its own shape.
-- Chapter 24, [Worlds with weight](../../Guide/28-WorldsWithWeight.md#standing-on-cables), which teaches it.
+- Chapter 28, [Worlds with weight](../../Guide/28-WorldsWithWeight.md#standing-on-cables), which teaches it.

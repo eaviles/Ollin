@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): one curve, walked three times by a synthetic hand
+// Guide diagram (Chapter 17): one curve, walked three times by a synthetic hand
 // that is nearly still at the ends and flicks through the middle. The first
 // panel ignores the pace, the second lets it drive width, the third lets it
 // drive opacity. Same path, same strokeWeight, same points.

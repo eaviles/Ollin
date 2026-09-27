@@ -9,8 +9,8 @@ Every other curve in the toolbox is written as a position. A clothoid is written
 That kink is the reason to use one. Put a straight road against a circular curve, and the bend jumps from nothing to `1 / radius` at the join. The wheel then has to be turned instantly. Put a clothoid between them instead, and the bend climbs through every value in between, which is what a hand actually does. Roads, railways, and roller coasters are laid out this way. It is why a motorway curve feels different from a curve drawn with a compass.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ClothoidCorner-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/ClothoidCorner-dark.jpg">
+  <img src="../../Guide/Images/16-CurvesAndFigures/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
 </picture>
 
 The curve is also called the **Euler spiral**, and the **Cornu spiral** when it is drawn whole. Nothing here is random, so the same numbers always produce the same curve. What comes out is ordinary geometry, so it is ready for stroking, filling, the [shape booleans](./Geometry.md#shape-booleans), hatching, and [SVG export](../Output/Export.md) for the pen plotter.

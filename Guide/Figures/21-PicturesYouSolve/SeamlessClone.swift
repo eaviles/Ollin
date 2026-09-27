@@ -3,7 +3,7 @@
 // sketch differ at the pixel level on a quiet machine, so the nondeterminism
 // is in the render itself, not the JPEG encoder. Worth a real diagnosis one day.
 //
-// Guide figure (Chapter 19): a seamless clone. The patch on its own, pasted with
+// Guide figure (Chapter 21): a seamless clone. The patch on its own, pasted with
 // the seam left in, and cloned so the join disappears.
 import Ollin
 

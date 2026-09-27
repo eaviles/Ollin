@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the same corner rounded two ways, each drawn
+// Guide diagram (Chapter 16): the same corner rounded two ways, each drawn
 // over a graph of how hard it is bending as you travel along it. The plain arc
 // steps; the eased corner ramps. Nothing here uses randomness.
 import Ollin

@@ -8,7 +8,7 @@
 
 This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react. Along the way you learn the techniques the field is built on: randomness, noise, forces, flocks, shaders, simulation, and 3D. Each chapter teaches a few ideas through short runnable steps, and it ends with a finished piece you made yourself.
 
-<img src="https://media.ollin.art/heroes/guide-hero.jpg?v=08c6ada7" alt="The sketch each of the guide's thirty-two chapters builds, one per cell, in chapter order" width="880">
+<img src="https://media.ollin.art/heroes/guide-hero.jpg?v=08c6ada7" alt="The sketch each of the guide's forty-one chapters builds, one per cell, in chapter order" width="880">
 
 **Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift, because the guide teaches what you need as it comes up, and [Appendix A](A-JustEnoughSwift.md) is a primer. You don't need a background in math, graphics, or shaders either. If you can write a loop and a function, you can start.
 
@@ -25,7 +25,7 @@ Guides like this tend to fail in known ways. A concept appears out of nowhere an
 3. **Every image is made by the code next to it.** Ollin itself renders every figure and diagram from committed source. You can open any of them, run it, and change it.
 4. **Practice first.** You see something on your canvas within the first page of every chapter. Everything a chapter teaches ends up in one finished piece.
 
-Both kinds of image are already on this page. The grid above is the piece each chapter builds, thirty-two committed figures, one per cell, and the first of them is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift). The [Chapter 1](01-HelloOllin.md) diagram below is a sketch too, [`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift):
+Both kinds of image are already on this page. The grid above is the sketch each chapter builds, forty-one committed figures, one per cell, and the first of them is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift). The [Chapter 1](01-HelloOllin.md) diagram below is a sketch too, [`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift):
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CoordinateSystem-dark.jpg">
@@ -36,13 +36,15 @@ Both kinds of image are already on this page. The grid above is the piece each c
 
 Read the chapters in order the first time, because each one builds only on the ones before it. It also helps to know roughly what each part is going to ask of you. The page counts reckon three hundred words of prose to a page, listings aside.
 
-- **Part I, chapters 1 to 9.** Around 130 pages. It is the base everything else stands on, so it is the one part you cannot skip.
-- **Part II, chapters 10 to 15.** Around 90 pages, the shortest part. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
-- **Part III, chapters 16 to 20.** Around 100 pages. Chapter 18 is its gate, because chapters 19 and 20 write shader code of their own.
-- **Part IV, chapters 21 to 26.** Around 140 pages. Chapter 25 is its gate, and chapter 24 also wants the physics from chapter 11.
-- **Part V, chapters 27 to 32.** Around 180 pages, the longest part, and the loosest. Its chapters barely depend on each other, so read the ones you need in any order.
+- **Part I, chapters 1 to 9.** Around 125 pages. It is the base everything else stands on, so it is the one part you cannot skip.
+- **Part II, chapters 10 to 14.** Around 55 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
+- **Part III, chapters 15 to 17.** Around 35 pages, the shortest part. Read chapter 15 first, because the curves and marks after it come back as the shapes it teaches you to hold.
+- **Part IV, chapters 18 to 24.** Around 105 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
+- **Part V, chapters 25 to 31.** Around 140 pages, the longest part. Chapter 25 is its gate, and chapter 28 also wants the physics from chapter 11.
+- **Part VI, chapters 32 to 35.** Around 70 pages. Its chapters barely depend on each other, so read the ones you need in any order.
+- **Part VII, chapters 36 to 41.** Around 110 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
 
-Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 33](33-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 34](34-Listening.md) a microphone and later a MIDI controller. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
+A few chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 33](33-DepthAndThePhone.md) an iPhone with a LiDAR sensor. [Chapter 34](34-Listening.md) wants a microphone, [Chapter 35](35-ControlsAndSignals.md) a MIDI controller, and [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
 Work along in the live-reload host, `swift run OllinLive path/to/YourSketch.swift`. It recompiles your sketch on save, so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
@@ -60,7 +62,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, transforms that move the paper, symmetry and the kaleidoscope fold, clipping, and divisions that aren't square: hex, triangle, recursive panels, mazes, and circle foam.
 7. **[Tiles that cover the plane](07-Tiles.md).** Patterns that cover the plane by rule: Truchet tiles, hitomezashi stitching, the ten-print maze, kolam and sona, Celtic knotwork, crease patterns, polyominoes, the tilings that never repeat (Penrose, Wang, girih, and the single-shape spectre), hyperbolic tiling on the Poincaré disk, and parquet deformations.
 8. **[Words](08-Words.md).** Drawing text, the three kinds of font, per-glyph motion, letters as geometry you can warp and respace, and typesetting in any script: vertical, justified, and with hanging punctuation.
-9. **[Pictures and data](09-Pictures.md).** Reading a picture as data instead of displaying it: fitting it to a box, marks and halftone, mosaics made of pictures, a shape hidden in an autostereogram, stipple and one unbroken line, thread between pins, sorted pixels, and seam carving. Then numbers from CSV and JSON, feeds that poll a server or hold a stream open, and the weather outside.
+9. **[Pictures and data](09-Pictures.md).** Reading a picture as data instead of displaying it: fitting it to a box, marks and halftone, mosaics made of pictures, a shape hidden in an autostereogram, stipple and one unbroken line, thread between pins, sorted pixels, and seam carving. Then numbers from CSV and JSON.
 
 ### Part II: Systems that come alive
 
@@ -69,32 +71,47 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), chases that trace curves of pursuit, flocking from three local rules and the grid that keeps it cheap, a crowd that makes room, and fireflies falling into step.
 13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars with and without arithmetic, and shape grammars. Then growth by crowding, claiming space, chance, voltage, collision, and wandering: differential growth, space colonization, frost from frozen walkers, dielectric breakdown, cracks, and meanders. Last, Wave Function Collapse, from tiles or from a picture.
 14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: contours where a field equals something, streamlines, evenly spaced flow, particles carried along, and a field you pin down yourself.
-15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data. Curves from Hobby splines and formulas, spirolaterals, envelopes, clothoids, Fourier epicycles, morphs, and mirror anamorphosis. Booleans, offsets, and the questions an outline answers. Then marks and brushes, scatters, Voronoi territories and packing, hulls and skeletons, marbled ink and watercolor pigment, and hatching and SVG for pen plotters, with batches to draw it fast.
 
-### Part III: Pixels and light
+### Part III: Shapes, lines, and marks
 
-19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then scatters, Voronoi territories and packing, hulls and skeletons, and hatching and SVG for pen plotters, with batches to draw it fast.
+16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule: Hobby splines, curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
+17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics from speed, pressure and a stylus, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
+
+### Part IV: Pixels and light
+
 18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+20. **[Pictures restyled](20-PicturesRestyled.md).** Filters that make a photograph into another kind of picture: ink lines, brushwork, flat regions, hatching, a colorist's look, the film look, relighting and dithering, the picture inside itself, chromatic aberration, the design filters, and melt.
+21. **[Pictures you solve](21-PicturesYouSolve.md).** Layers treated as problems to solve: diffusion curves, a seamless paste, the measured distance field, the frequency domain, light worked out in a flat sketch, and local averages at a flat price.
 22. **[Iterated forms](22-IteratedForms.md).** Pictures made by applying one rule over and over: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, a ball bouncing in a room, escape-time fractals, Newton's basins, and domain coloring.
 23. **[Simulations on a grid](23-GridSimulations.md).** Fields that carry their own state on the GPU: cellular automata, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, and watercolor.
 24. **[Simulations made of particles](24-ParticleSimulations.md).** A buffer of individuals updated by one small program: a million grains, slime mold, ant colonies, Particle Life, crowds at scale, SPH fluid and jellies, and evolution.
 
-### Part IV: The third dimension
+### Part V: The third dimension
 
 25. **[3D, gently](25-3DGently.md).** A camera, solids, lights and the shadows they throw, air you can see, materials and matcaps, and the depth buffer's own effects.
 26. **[Meshes, maps, and materials](26-Meshes.md).** Meshes loaded from a file and built from other meshes, pictures that set what a surface is, texel by texel, and finishes you set with numbers: metal and dielectric, environments as the light source, glass, coated paint, cloth, and skin.
 27. **[Landscapes and multitudes](27-Landscapes.md).** Ground grown from noise and weathered by rain, and the rivers read off it. Then ways to draw more copies of something than you could place by hand: a field of particles, instanced meshes, copies scattered over a surface, a world cut down to what the camera sees, and grass that is drawn without ever being built. Last, a sea made from its waves.
 28. **[Worlds with weight](28-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
 29. **[Characters, vehicles, and cloth](29-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
-30. **[Sculpting with fields](30-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals. Then the traced light they deserve: mirrors that see off screen, bounce, caustics, and the flare a lens leaves. Last, the work done across frames: temporal anti-aliasing, highlights that hold still, motion blur, upscaling, and frames drawn in between.
+30. **[Sculpting with fields](30-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals.
+31. **[Traced light](31-TracedLight.md).** Light followed past the first surface: mirrors that see off screen, bounce light, caustics, and the path-traced still. Then the work done across frames and in the lens: temporal anti-aliasing, highlights that hold still, motion blur, lens flare and the shape of a blur, upscaling, and frames drawn in between.
 
-### Part V: Out into the world
+### Part VI: The world coming in
 
-33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
-34. **[Sound and control](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech and sound events. Then the controls in your hands: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, and serial and Bluetooth wires to the physical world.
-36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, instruments built by patching or from recordings, physical models of a string, a struck shape, a bow and a tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
 32. **[Seeing](32-Seeing.md).** The webcam as input, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
-38. **[Sharing and performing](38-FinishingASketch.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
+33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+34. **[Listening](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech, and sound events.
+35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
+
+### Part VII: Out into the world
+
+36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects and a room you can draw, instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
+37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, tunings, playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
+38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, video, GIF, slow motion, SVG for plotters, a page that plays in a browser, G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
+39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, parameters written as rules, and live feeds into other apps.
+40. **[Handing it over](40-HandingItOver.md).** A sketch on your phone, as a screen saver, a wallpaper, a menu-bar companion, or a widget, as an app somebody double-clicks, and as behavior or a package other programmers import.
 41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 
 ### Appendices

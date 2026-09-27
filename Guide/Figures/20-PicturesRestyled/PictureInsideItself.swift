@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): the droste filter. A ring of lit windows on flat
+// Guide diagram (Chapter 20): the droste filter. A ring of lit windows on flat
 // ground, then the same ring put through the filter twice: plain concentric
 // copies, and the copies wound into one spiral by a single turn's worth of twist.
 import Ollin

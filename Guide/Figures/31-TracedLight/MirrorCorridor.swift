@@ -1,6 +1,6 @@
 // figure: gif duration=8 fps=12 width=560
 //
-// Guide figure (Chapter 30): how far a reflection is allowed to travel. One
+// Guide figure (Chapter 31): how far a reflection is allowed to travel. One
 // corridor of two facing mirrors, from a camera that never moves, stepping the
 // reflection chain from the default pair of surfaces up to five. At the pair
 // the far panel is filled with sky, because that is where the chain stops.

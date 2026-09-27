@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): a plate drawn for a mirrored cylinder, beside
+// Guide diagram (Chapter 16): a plate drawn for a mirrored cylinder, beside
 // what the eye standing in the one right place receives. The right-hand panel
 // is worked out from the finished plate rather than from the word that made
 // it, so the two panels are a round trip. Nothing here uses randomness.

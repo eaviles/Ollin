@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 9): what a sketch reads while a pushed feed listens.
+// Guide diagram (Chapter 35): what a sketch reads while a pushed feed listens.
 // One row of messages at the moments the server sent them, under it the
 // connection the feed keeps alive by itself, and under that what the sketch
 // reads: everything the connection was up for at the moment it was said, and

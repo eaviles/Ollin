@@ -285,8 +285,8 @@ The smoothing lives on the parameter, so every source gets it. A MIDI fader, an 
 An [OSCQuery](../Integration/OSCQuery.md) server goes one step further than a binding. It publishes every parameter as a tree a control app browses, so the app builds a control per parameter with the right range, and nobody types an address.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/BindingFlow-dark.jpg">
-  <img src="../../Guide/Images/34-Listening/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-ControlsAndSignals/BindingFlow-dark.jpg">
+  <img src="../../Guide/Images/35-ControlsAndSignals/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
 </picture>
 
 The projected value (`$radius`) is the parameter object itself, and it is what the integration libraries bind to:

@@ -346,7 +346,7 @@ Seeding is drawing, same as before, and it's worth watching what one mark become
   <img src="Images/23-GridSimulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
 </picture>
 
-One more habit belongs here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or [Chapter 19](19-LayersAndEffects.md)'s `.relight` to light it as matter.
+One more habit belongs here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or [Chapter 20](20-PicturesRestyled.md)'s `.relight` to light it as matter.
 
 ## Two species: predator and prey
 
@@ -574,7 +574,7 @@ Two more things round the kit out. A two-channel state reads as a picture throug
 
 ## Putting it together: the organism
 
-The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its maze regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 19](19-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its maze regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 19](19-LayersAndEffects.md) and [Chapter 20](20-PicturesRestyled.md): a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin

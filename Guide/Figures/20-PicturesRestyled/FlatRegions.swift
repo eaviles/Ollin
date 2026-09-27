@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): the coherence-enhancing filter. A photograph
+// Guide diagram (Chapter 20): the coherence-enhancing filter. A photograph
 // (one of the bundled sample photographs) drawn into a layer, then the same
 // layer through `.shock()`: soft shading snapped into flat regions with crisp
 // edges, the lace drawn out along its own flow.

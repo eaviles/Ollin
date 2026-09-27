@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 34): one frame from a tangible surface. The tracker
+// Guide diagram (Chapter 35): one frame from a tangible surface. The tracker
 // sends a set for what moved, then the whole alive list, then the frame number
 // that commits them. The next frame drops a touch by leaving it out of the
 // list, which is the part that surprises people: nothing says "ended".

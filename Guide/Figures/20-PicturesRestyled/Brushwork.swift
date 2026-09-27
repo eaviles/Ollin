@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 19): the anisotropic Kuwahara filter. A photograph
+// Guide diagram (Chapter 20): the anisotropic Kuwahara filter. A photograph
 // (one of the bundled sample photographs) drawn into a layer, then the same
 // layer through `.brushwork()`: each marigold flattened into a dab that
 // follows its own edges, the skin into soft patches, and every edge kept.

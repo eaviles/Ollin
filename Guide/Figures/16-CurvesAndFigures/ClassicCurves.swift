@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): nine curves you can write down. Each panel is
+// Guide diagram (Chapter 16): nine curves you can write down. Each panel is
 // one function call with a couple of numbers, and none of them uses
 // randomness. The last panel is the corner-cutting smoother rather than a
 // curve, shown as the rough polygon it started from.

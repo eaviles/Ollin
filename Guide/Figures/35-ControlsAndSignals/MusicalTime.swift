@@ -1,6 +1,6 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 34): what a tempo clock counts. MIDI clock sends
+// Guide diagram (Chapter 35): what a tempo clock counts. MIDI clock sends
 // twenty-four ticks per beat and nothing else; everything musical is derived
 // from counting them. The strip shows ticks, the beats they group into, the
 // bar those beats fill, and which reader gives you what.

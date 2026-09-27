@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 36): how numbers become notes, and the two decisions
+// Guide diagram (Chapter 37): how numbers become notes, and the two decisions
 // that are easy to get wrong. Every pitch drawn here is read out of a real
 // Sonification through pitch(for:) or its subscript, so the picture cannot
 // drift from what the type does; the hertz row is the counterfactual, computed

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the envelope of a family of lines. On the left the
+// Guide diagram (Chapter 16): the envelope of a family of lines. On the left the
 // tangents of a circle, which lean on that circle and give it back. On the right
 // the rays bounced off the far wall of a cup, crowding onto the caustic.
 import Ollin

@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 41): a sketch in the menu bar. Along the top, where it
+// Guide diagram (Chapter 40): a sketch in the menu bar. Along the top, where it
 // sits: one status item among the others, at the size it really is. Below, the
 // same strip enlarged, with the canvas coordinates written on it, because the
 // surprise is that nothing changes except how much room there is. On the right,

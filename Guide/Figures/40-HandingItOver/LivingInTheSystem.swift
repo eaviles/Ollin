@@ -1,6 +1,6 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 41): the shape of a screen saver. On the left the
+// Guide diagram (Chapter 40): the shape of a screen saver. On the left the
 // folder the script builds, with the one link that has to hold drawn across it:
 // the name in the property list is the name in the code. On the right, what the
 // sketch's own window mode decides once it is on a display that is not the shape

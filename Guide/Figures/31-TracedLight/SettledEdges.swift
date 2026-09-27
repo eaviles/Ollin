@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 30): temporal anti-aliasing, in the exported pixels
+// Guide figure (Chapter 31): temporal anti-aliasing, in the exported pixels
 // themselves. One probe, thin bright rods at shallow tilts under a still
 // camera, is rendered twice through OllinApp.image(of:), once with plain
 // multisampling and once with temporalAntialiasing() on, which a headless

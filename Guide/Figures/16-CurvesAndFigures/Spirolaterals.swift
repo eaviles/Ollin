@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 15): the spirolateral, and what decides whether it
+// Guide diagram (Chapter 16): the spirolateral, and what decides whether it
 // closes. One run on the left, the four runs it takes to come home in the
 // middle, and an order whose runs never come home on the right.
 import Ollin

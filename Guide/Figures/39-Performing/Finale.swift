@@ -1,6 +1,6 @@
 // figure: frame=200
 //
-// Guide payoff (Chapter 38): the live-coded set's final state, the chain all
+// Guide payoff (Chapter 39): the live-coded set's final state, the chain all
 // five evaluations built. Drifting oscillator bands folded five ways, melted
 // by noise, posterized to a screen-print, set slowly spinning through the
 // color wheel. Every value is animated, so the piece never sits still.
