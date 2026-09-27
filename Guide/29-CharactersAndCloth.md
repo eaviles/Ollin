@@ -8,7 +8,7 @@
 
 A rigid body is a good model for a crate and a poor one for almost everything you care about. People do not tumble; they stay upright and walk. Wheels do not slide; they grip, spring, and steer. Cloth has no single position at all, because every point of it moves separately.
 
-So the solver keeps three more kinds of thing, and each is held up differently. The yard above has one of each: a figure standing on its own two feet, a truck whose body rides on four springs, and a banner that is nothing but a mesh with its top corners pinned. By the end of the chapter you'll have built it, and you'll have met the ragdolls, ropes, and water that fill in the rest of the family.
+So the solver keeps three more kinds of thing, and each is held up differently. The yard above has one of each: a figure standing on its own two feet, a truck whose body rides on four springs, and a banner that is nothing but a mesh with its top corners pinned. By the end of the chapter you'll have built it. You'll also have met the ragdolls, the ropes, and the raft that fill in the rest of the family.
 
 ## Someone to be in there
 
@@ -258,6 +258,26 @@ banner.applyForce(Vector3(0, 0, gust))
 
 The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene. There's a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. One thing is worth knowing before you build on this. Soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers.
 
+A cloth is also an ordinary member of the world when something touches it. It turns up in `world.contacts`, the list from [Chapter 28](28-WorldsWithWeight.md#asking-what-hit-what). A crate landing on a sheet reports where it hit and how hard, exactly like a crate landing on the floor.
+
+```swift
+for contact in world.contacts where contact.phase == .began {
+    splash(at: contact.point, size: contact.speed)
+}
+```
+
+The one thing to notice is that a contact names `any Colliding3D`, not `Body3D`. That is deliberate, and it is the type telling you the truth. Either side may be a cloth, and a cloth is not something you can push with an impulse or hang a joint from. When you want to act on what you found, say which kind you were after.
+
+```swift
+if let crate = contact.other(than: cloth) as? Body3D {
+    crate.applyImpulse(Vector3(0, 3, 0))
+}
+```
+
+Everything else about touching works the way it does for a crate. `cloth.touching` is what is lying on it, a sensor sees the cloth pass into it, and `raycast` stops at cloth, so a curtain blocks a sightline.
+
+One difference from the crates is useful to know. A settled *pile of crates* falls asleep and stops reporting its touches, while a settled cloth keeps its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
+
 ## A cape on someone's back
 
 `pinned:` holds a corner of cloth *still*. A cape needs the other thing, held to something that is moving and left to hang off it. Your figure from a page ago already has the moving thing in it, a skeleton. So you can name which joint of it carries which part of the cloth.
@@ -345,67 +365,9 @@ Two things worth knowing before you build something long. `maxStretch: 1` caps h
 
 A rope does not collide with itself, so a coil passes through its own turns. It also has no surface for a ray to hit, so `raycast` and the other queries look straight through one, though the mouse still finds it. And it is a single strand, so a plant with three stems is three ropes. The [`3D/Physics/Rigging`](../Examples/3D/Physics/Rigging/) example has a rope, a chain, and a leafy vine hanging in the same wind.
 
-## Water, and what it holds up
-
-A world can have water the same way it has ground. One property, and nothing has to opt in.
-
-```swift
-world.water = Water(level: 0)
-```
-
-Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it rides. You have already said it, in the `density` you built it with.
-
-```swift
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
-              density: 0.3)   // cork
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
-              density: 3)     // stone
-```
-
-The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer.** A body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancy in one sentence.
-
-Here are four identical crates that differ in nothing but that number.
-
-<img src="Images/29-CharactersAndCloth/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
-
-`Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine and every crate in the scene rides higher, without touching any of them.
-
-The parameter you will actually reach for first is drag.
-
-```swift
-world.water = Water(level: 0, linearDrag: 0.5)   // the default
-```
-
-At `0` a crate dropped in oscillates about its waterline and never stops, which looks less like water than like a trampoline. The default dips, comes back, and settles in about a second. `angularDrag` does the same for turning, which is what stops a long shape rocking all afternoon after it lands.
-
-Give the surface a shape and it carries whatever is riding it:
-
-```swift
-world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
-                                                 wavelength: 8, speed: 1.5))
-```
-
-Now you have a problem you would have had to solve yourself, drawing water that matches the water. `waterMesh` hands back the surface the bodies are floating on, as an ordinary mesh. The swell you can see and the swell they ride are then the same one.
-
-```swift
-if let surface = world.waterMesh(extent: 40) {
-    fill(Color(hex: 0x2C7C96))
-    material(.dielectric(roughness: 0.3))
-    drawMesh(surface)
-}
-```
-
-`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and [Chapter 26](26-Meshes.md) opened the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat gray patches along the troughs. A sea is not a mirror anyway.
-
-Two things worth knowing before you build on this. `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbor is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would.
-
-The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths, a stone anchor sits on the bottom, and a current carries the lot past. Drag one under and let go.
-
 ## A raft made of cloth
 
-The sheet you draped earlier floats too. It is worth a section of its own because it is where the two halves of this chapter meet. The thing with no pose turns out to be an ordinary member of the world.
-
-Floating it is one number.
+The sheet you draped earlier floats too, in the water [Chapter 28](28-WorldsWithWeight.md#water-and-what-it-holds-up) put into the world. Floating it is one number.
 
 ```swift
 raft.density = 0.3           // rides high; above 1 it sinks
@@ -417,27 +379,7 @@ That reads exactly like a crate's `density`, and it means the same thing, how he
 
 Cloth in water behaves like cloth. Its area for its weight is enormous, and drag is what measures that. So a heavy sheet sinks slowly, and a floating one is carried along by a current rather than left standing in it.
 
-The second half is that a cloth turns up in `world.contacts`, the list from "Asking what hit what". A crate landing on the deck reports where it hit and how hard, exactly like a crate landing on the floor.
-
-```swift
-for contact in world.contacts where contact.phase == .began {
-    splash(at: contact.point, size: contact.speed)
-}
-```
-
-The one thing to notice is that a contact names `any Colliding3D`, not `Body3D`. That is deliberate, and it is the type telling you the truth. Either side may be a cloth, and a cloth is not something you can push with an impulse or hang a joint from. When you want to act on what you found, say which kind you were after.
-
-```swift
-if let crate = contact.other(than: raft) as? Body3D {
-    crate.applyImpulse(Vector3(0, 3, 0))
-}
-```
-
-Everything else about touching works the way it did. `raft.touching` is what is aboard, a sensor sees the raft sail into it, and `raycast` stops at cloth. So a curtain blocks a sightline, and a sounding line drops onto a deck.
-
-One asymmetry is worth keeping in mind, because it is useful rather than annoying. A settled *pile of crates* falls asleep and stops reporting its touches, while a settled cloth keeps its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
-
-The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example is the three of them in one scene. A cloth raft rides a swell with cargo on it, a sounding line shortens onto her deck when you sail her under it, and a harbor gate lights when she passes through. Drag the deck to steer.
+The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example puts a cloth raft on a swell with cargo on it. A sounding line shortens onto her deck when you sail her under it, and a harbor gate lights when she passes through. Drag the deck to steer.
 
 ## Putting it together: the yard
 

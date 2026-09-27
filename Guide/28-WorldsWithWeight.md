@@ -8,7 +8,7 @@
 
 That machine has one motor in it. A gear link ties its hinge to a second, and everything after that is contact: the bar swings because it is bolted to a wheel, and the crates move because the bar arrives. Nothing there is animated. Take the motor away and the whole thing coasts to a stop on its own.
 
-[Chapter 25](25-3DGently.md) built a scene you look at. This chapter gives it weight. Bodies fall, stack, and knock each other about; joints tie them into hinges, sliders, gears and ropes; queries let the sketch ask what a body would hit before it hits it; and a snapshot puts a settled arrangement in a file so it comes back exactly as it was. By the end you'll have built the contraption above.
+[Chapter 25](25-3DGently.md) built a scene you look at. This chapter gives it weight. Bodies fall, stack, and knock each other about. Joints tie them into hinges, sliders, gears and ropes. Queries let the sketch ask what a body would hit before it hits it, and water holds up whatever is lighter than it. A snapshot puts a settled arrangement in a file so it comes back exactly as it was. By the end you'll have built the contraption above.
 
 ## Things with weight
 
@@ -359,6 +359,62 @@ None of the three rests on a strut. Each stands on a few strut tips, and the cab
 **Prestress.** A real tensegrity is tightened after it is built. `prestress` does the same, making every cable a little shorter than its drawn length, two percent by default. The struts are rigid, so the cables cannot actually reach that length. They sit taut instead, and the form holds its shape through a landing. Take the prestress to zero and a hard landing can leave a cable loose.
 
 The [`3D/Physics/Tensegrity`](../Examples/3D/Physics/Tensegrity/) example drops all three forms and lets you drag them. Space drops them again.
+
+## Water, and what it holds up
+
+[Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of) built a sea to be looked at. A physics world can have water that bodies float in, the same way it has ground. It takes one property, and nothing has to opt in.
+
+```swift
+world.water = Water(level: 0)
+```
+
+Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it rides. You have already said it, in the `density` you built it with.
+
+```swift
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
+              density: 0.3)   // cork
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
+              density: 3)     // stone
+```
+
+The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is an answer, worked out from the density.** A body sinks until the water it has pushed out of the way weighs the same as it does. That sentence is the whole of buoyancy.
+
+Here are four identical crates that differ in nothing but that number.
+
+<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
+
+`Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine and every crate in the scene rides higher, without touching any of them.
+
+The parameter you will reach for first is drag.
+
+```swift
+world.water = Water(level: 0, linearDrag: 0.5)   // the default
+```
+
+At `0` a crate dropped in oscillates about its waterline and never stops, which looks less like water than like a trampoline. The default dips, comes back, and settles in about a second. `angularDrag` does the same for turning, which is what stops a long shape rocking all afternoon after it lands.
+
+Give the surface a shape and it carries whatever is riding it:
+
+```swift
+world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
+                                                 wavelength: 8, speed: 1.5))
+```
+
+Now you have a problem you would have had to solve yourself, drawing water that matches the water. `waterMesh` hands back the surface the bodies are floating on, as an ordinary mesh. The swell you can see and the swell they ride are then the same one.
+
+```swift
+if let surface = world.waterMesh(extent: 40) {
+    fill(Color(hex: 0x2C7C96))
+    material(.dielectric(roughness: 0.3))
+    drawMesh(surface)
+}
+```
+
+`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and [Chapter 26](26-Meshes.md) opened the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon. That lays flat gray patches along the troughs. A sea is not a mirror anyway.
+
+Two things matter before you build on this. `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbor is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and the walking characters of [Chapter 29](29-CharactersAndCloth.md) go where you put them rather than where the water would.
+
+The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths. A stone anchor sits on the bottom, and a current carries the lot past. Drag one under and let go.
 
 ## Keeping what settled
 

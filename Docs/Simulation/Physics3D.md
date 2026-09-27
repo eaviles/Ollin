@@ -1203,7 +1203,7 @@ world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
 
 The waterline is not something you tune. A body of density `d` settles with fraction `d` of itself submerged. That is the volume it has to displace to hold its own weight up. A barrel at `0.5` floats half under, and one at `0.8` rides low with a fifth of it dry. `Water.density` is the same relative scale bodies use, where `1` is water. Raising it to `1.3` for brine floats every one of them higher, without changing anything on the bodies.
 
-<img src="../../Guide/Images/29-CharactersAndCloth/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
+<img src="../../Guide/Images/28-WorldsWithWeight/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
 
 **The parameters.**
 
