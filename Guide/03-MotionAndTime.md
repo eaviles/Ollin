@@ -133,7 +133,10 @@ let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
 let x = lerp(140, width - 140, back)
 ```
 
-<!-- figure: LoopProgress (Images/03-MotionAndTime/LoopProgress.jpg, themed), waiting on a render: loopProgress(over: 3) and pingPong(over: 3) plotted over nine seconds, with the moment at 7.5 seconds marked on both -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/LoopProgress-dark.jpg">
+  <img src="Images/03-MotionAndTime/LoopProgress.jpg" alt="Two plots over nine seconds: loopProgress climbs from 0 to 1 every three seconds and snaps back, pingPong climbs to 1 by the middle of each lap and comes back to 0, with a dot on each at seven and a half seconds" width="680">
+</picture>
 
 Both come back to the same number every lap, whatever `time` reads. That is the property the finished sketch is built on. A loop that has to end where it began needs every moving part to close its lap at the same moment.
 
