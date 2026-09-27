@@ -12,11 +12,13 @@
 # `Media/media.json` under `heroes`, which is also where what each is made
 # of is written down, so a hero is rebuilt rather than remembered.
 #
-# The guide's cells are the sketch each chapter of the Guide builds. Nothing
-# picks them by eye: every chapter's figure marks itself in source as the
-# chapter's `Guide payoff` or its `finished sketch`, so the list is the book's
-# and there are exactly as many as there are chapters, which the run checks
-# before it films anything. The README's cells are named in the manifest.
+# The guide's cells are sketches the chapters of the Guide build. Every
+# chapter's figure marks itself in source as the chapter's `Guide payoff` or
+# its `finished sketch`, so the book's own list has exactly as many as there
+# are chapters, which the run checks before it films anything. The manifest's
+# `sketches` names the ones the grid shows, in chapter order, and each has to
+# be on that list; with no `sketches` the grid is every chapter. The README's
+# cells are named in the manifest the same way.
 #
 # Each cell is filmed with a running start, or a sketch that accumulates opens
 # on an empty canvas and the grid begins full of holes. Three of the guide's
@@ -70,6 +72,20 @@ film_guide() {
     echo "example-heroes: ${#figures} chapter figures mark themselves the chapter's sketch, but there are ${#chapters} chapters:" >&2
     printf '  %s\n' $figures >&2
     exit 1
+  fi
+  # The manifest may name a subset of them; a name off the book's list is a
+  # figure that moved or was renamed, and stops the run rather than a cell.
+  local chosen=($(python3 -c "
+import json; h = json.load(open('$MANIFEST'))['heroes']['guide']
+print('\n'.join(h.get('sketches', [])))"))
+  if [[ ${#chosen} -gt 0 ]]; then
+    for name in $chosen; do
+      if [[ ${figures[(Ie)$name]} -eq 0 ]]; then
+        echo "example-heroes: the manifest names $name, which is not a chapter's sketch" >&2
+        exit 1
+      fi
+    done
+    figures=($chosen)
   fi
   for figure in $figures; do
     n=$((n+1))
