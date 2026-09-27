@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 18): the complex plane in a shader. Three tiles, each a
+// Guide figure (Chapter 22): the complex plane in a shader. Three tiles, each a
 // user shader through the library's `complex` module: z squared, where the
 // wheel goes round twice because multiplying adds the angles; the ratio of
 // two points with the circles draw() works out laid over it, landing on the

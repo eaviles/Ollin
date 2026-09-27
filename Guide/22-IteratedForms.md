@@ -208,7 +208,7 @@ Every orbit so far has been plotted where it went. The most famous iteration in 
 drawImage(generate(.mandelbrot(phase: time * 0.03)).image, 0, 0)
 ```
 
-Here is the entire method. Every pixel stands for a complex number, and the pixel runs one tiny loop of its own. Square the number you have, add a fixed one, and repeat. Some starting points stay near home forever. Others eventually run away to infinity, and the only thing the fractal records is **how many steps that took**. That count, turned into a color, is the picture. The regions that never escape are the set itself, painted in `interior`.
+Here is the entire method. Every pixel stands for a complex number, which is its position read as one number. [Multiplying turns](#multiplying-turns-the-complex-plane), after domain coloring, shows what squaring one does. The pixel runs one tiny loop of its own. Square the number you have, add a fixed one, and repeat. Some starting points stay near home forever. Others eventually run away to infinity, and the only thing the fractal records is **how many steps that took**. That count, turned into a color, is the picture. The regions that never escape are the set itself, painted in `interior`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/FractalPair-dark.jpg">
@@ -300,9 +300,47 @@ The size you threw away can come back as shading. `.modulus` ramps from dark to 
 
 One parameter is free. `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever.
 
-The generator paints the named functions and a rational one. For a function of your own, write it as a shader with the library's `complex` section, the way [Chapter 18](18-YourFirstShader.md#multiplying-turns-the-complex-plane) does. `domainColor` there gives it the same wheel and the same rulings.
-
 `Examples/Effects/DomainColoring` swims a pair of zeros around a pair of poles. It is the best argument for the technique that exists. The field pours from one arrangement into the next, and nothing was animated except two points.
+
+## Multiplying turns: the complex plane
+
+The generator paints the named functions and a rational one. A function of your own is a shader, and a shader works with `float2` points. Add two points and you add their coordinates. Nothing in a shader says what it means to *multiply* two of them, and there is no single answer. Escape time and Newton's method both lean on one particular answer, and the shader library carries it in its `complex` section.
+
+Read the point as a number, `x + y·i`, where `i` is the square root of minus one. Multiplying two of these multiplies their lengths and **adds their angles**. The rest of this section follows from that one rule. `cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. It also squares the length, so a point outside the unit circle moves farther out and a point inside it moves in. That is the step escape time repeats at every pixel, with a fixed number added each time. `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. The other functions build on the same rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md), so a number you work out in `draw()` means the same thing in a shader.
+
+```metal
+float4 shade(float2 uv, ShaderInfo info) {
+    float2 z = complexPlane(uv, info.resolution, float2(0.0), 3.0);
+    float2 p = cpolar(0.8, info.time), q = cpolar(0.8, info.time + 2.3);
+    float2 f = cdiv(z - p, z - q);
+    return float4(domainColor(f, 2, 0.7), 1.0);
+}
+```
+
+Two helpers do the framing and the coloring. `complexPlane` reads the layer as a piece of the plane, with `center` in the middle and `span` units across the shorter side. The imaginary axis points up, since a `uv` runs down the canvas and mathematics runs up. `domainColor` paints the answer the way the generator did, with the direction picking the hue. The `2` asks for both rulings, the size and the direction drawn as bands, and `0.7` sets how dark they go.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/ComplexPlane-dark.jpg">
+  <img src="Images/22-IteratedForms/ComplexPlane.jpg" alt="Three square tiles. Left: a color wheel that goes round twice, z squared. Middle: a hue field with two marked points p and q, ruled into curved tiles, with white circles drawn over it that follow the rulings, one family nested around each point and one family passing through both. Right: e to the z, ruled both ways into curved squares" width="680">
+</picture>
+
+The left tile is `cmul(z, z)`, the wheel twice around, which is what adding the angles looks like. The right tile is `cexp(z)`, ruled both ways. The middle tile is the shader above, with something drawn over it. The circles come from `draw()`, worked out with `Complex`:
+
+```swift
+let p = Complex(magnitude: 0.8, argument: 0.6)
+let q = Complex(magnitude: 0.8, argument: 2.9)
+let d = (p - q).magnitude
+let scale = width / 3
+for n in [-2, -1, 1, 2] {
+    let k = pow(2.0, Double(n))
+    let center = (p - k * k * q) / (1 - k * k)     // where the ratio has size k
+    let radius = k * d / abs(1 - k * k)
+    drawCircle(center: Vector2(width / 2 + center.real * scale, height / 2 - center.imaginary * scale),
+               radius: radius * scale)
+}
+```
+
+Each of these is a circle of Apollonius, the set of points where the ratio has one size. It is written in the same arithmetic the shader used, and drawn over the layer, each one lands on a ruling. The two halves agree, so you can reason on whichever side is easier and paint on the other. [`Examples/Shaders/ComplexPlane`](../Examples/Shaders/ComplexPlane/Sketch.swift) moves the two points and draws both families of circles. Two more take the same ratio somewhere else. [`ImaginaryLog`](../Examples/Shaders/ImaginaryLog/Sketch.swift) feeds the imaginary part of its `clog` to a cosine palette that never completes a cycle. The branch cut between the points shows as a soft seam. [`Meromorphic`](../Examples/Shaders/Meromorphic/Sketch.swift) builds a ratio of two cubics from six moving roots and turns the palette's frequency up until the bands pile up around the poles.
 
 ## Putting it together: a plate of four orbits
 
@@ -404,7 +442,7 @@ Before moving on, make it yours:
 
 The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992. It ran for years as a distributed screensaver that evolved flames by popular vote. The Buddhabrot is Melinda Green's 1993 discovery, and the three-cap false-color reading is hers too, named after the astronomical plates it resembles. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*. It runs four hundred pages, making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877.
 
-The formula-driven maps come from elsewhere again. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong. Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, and the Ikeda map out of laser optics. Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Robert May's 1976 *Nature* paper "Simple mathematical models with very complicated dynamics" made the logistic map and its bifurcation diagram famous, and the universal rhythm of its forks is Mitchell Feigenbaum's discovery. The double pendulum has been the teaching example for chaos since the field got its name. Ollin integrates the standard equations of motion in the form Erik Neumann documents at myphysicslab, and checks itself against the energy it should be conserving. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. Newton's basins go back further: Arthur Cayley posed the cubic's basins as a problem in 1879, and the color plates in Heinz-Otto Peitgen and Peter Richter's *The Beauty of Fractals* (1986) are where most people first saw the answer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The formula-driven maps come from elsewhere again. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong. Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, and the Ikeda map out of laser optics. Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Robert May's 1976 *Nature* paper "Simple mathematical models with very complicated dynamics" made the logistic map and its bifurcation diagram famous, and the universal rhythm of its forks is Mitchell Feigenbaum's discovery. The double pendulum has been the teaching example for chaos since the field got its name. Ollin integrates the standard equations of motion in the form Erik Neumann documents at myphysicslab, and checks itself against the energy it should be conserving. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. Newton's basins go back further: Arthur Cayley posed the cubic's basins as a problem in 1879, and the color plates in Heinz-Otto Peitgen and Peter Richter's *The Beauty of Fractals* (1986) are where most people first saw the answer. Domain coloring and its name come from Frank A. Farris in 1998, and the ruled forms follow Elias Wegert's phase portraits. Complex arithmetic in a shader, with one function per operation, follows Harley Turan's walkthrough of it in GLSL. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -416,6 +454,7 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 - [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding parameters.
 - [Newton's basins](../Docs/Drawing/Effects.md#generate): `.newton` with its placeable roots, the palette spread around them, the shading by step count, the `relaxation` dial, and the trapped color.
 - [Domain coloring](../Docs/Drawing/Effects.md#generate): `.domainColoring` with its placeable zeros and poles, the named functions, and the modulus and conformal rulings.
+- [Complex numbers](../Docs/Helpers/Complex.md): the CPU value behind the `complex` section, with literals, the polar form, `Complex.exp` and its relatives, and the `Vector2` bridge. The section's own functions are on the [shader library](../Docs/Shaders/ShaderLibrary.md#complex-numbers) page.
 - Appendix B draws the idea underneath all of this, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Where things are](B-JustEnoughMath.md#where-things-are) for the coordinates the orbits live in.
 - Worked examples: [`Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift), [`Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), [`Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift), [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) (the lean swung back and forth), [`Patterns/ChaoticMaps`](../Examples/Patterns/ChaoticMaps/Sketch.swift) (the density bloom, all six presets on a parameter), [`Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift), and [`Effects/EscapeTime`](../Examples/Effects/EscapeTime/Sketch.swift) (the escape-time pair as a shader).
 

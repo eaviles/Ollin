@@ -119,7 +119,7 @@ Splicing the whole library into every shader would make every compile larger tha
 Shader(source, using: [.noise, .sdf])   // keep only these sections
 ```
 
-Leave it off and you get everything, which is the right default while you're exploring. Reach for it when a sketch has many shaders and compiles start to feel slow. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function and which section it lives in.
+Leave it off and you get everything, which is the right default while you're exploring. Reach for it when a sketch has many shaders and compiles start to feel slow. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function and which section it lives in. One section, `.complex`, reads a `float2` as a number you can multiply, and [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) paints with it.
 
 ## The pattern fields
 
@@ -168,46 +168,6 @@ Nothing about `z = info.time` is special either. Reading a 3D field at a moving 
 Two conventions apply across the whole design and pattern-field set. Their palettes blend in **sRGB**, the space design tools work in, so mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer doesn't get a squashed crystal.
 
 So: when a built-in is close to what you want, take it and adjust its parameters. When it isn't, you now know what's inside one.
-
-## Multiplying turns: the complex plane
-
-A `float2` is a point. Add two and you add their coordinates. Nothing in a shader says what it means to *multiply* two points, and for good reason: there is no one answer. There is one answer worth knowing, though. The library carries it under the name `complex`.
-
-Read the point as a number, `x + y·i`, where `i` is the square root of minus one. Multiplying two of these multiplies their lengths and **adds their angles**. That is the whole trick. `cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. Everything else in the section follows from that one rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md). A number you work out in `draw()` means the same thing in a shader.
-
-```metal
-float4 shade(float2 uv, ShaderInfo info) {
-    float2 z = complexPlane(uv, info.resolution, float2(0.0), 3.0);
-    float2 p = cpolar(0.8, info.time), q = cpolar(0.8, info.time + 2.3);
-    float2 f = cdiv(z - p, z - q);
-    return float4(domainColor(f, 2, 0.7), 1.0);
-}
-```
-
-Two helpers do the framing and the coloring. `complexPlane` reads the layer as a piece of the plane: `center` in the middle and `span` units across the shorter side. The imaginary axis points up, since a `uv` runs down the canvas and mathematics runs up. `domainColor` turns the answer into a color the way [Chapter 22](22-IteratedForms.md#a-picture-of-a-function-domain-coloring) explains. The direction picks a hue. The two rulings draw the size and the direction as bands, so the picture reads as a map.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/18-YourFirstShader/ComplexPlane-dark.jpg">
-  <img src="Images/18-YourFirstShader/ComplexPlane.jpg" alt="Three square tiles. Left: a color wheel that goes round twice, z squared. Middle: a hue field with two marked points p and q, ruled into curved tiles, with white circles drawn over it that follow the rulings, one family nested around each point and one family passing through both. Right: e to the z, ruled both ways into curved squares" width="680">
-</picture>
-
-The left tile is `cmul(z, z)`: the wheel twice around, which is what "adds the angles" looks like. The right tile is `cexp(z)`, ruled both ways. The middle tile is the shader above, with something drawn over it. The circles come from `draw()`, worked out with `Complex`:
-
-```swift
-let p = Complex(magnitude: 0.8, argument: 0.6)
-let q = Complex(magnitude: 0.8, argument: 2.9)
-let d = (p - q).magnitude
-let scale = width / 3
-for n in [-2, -1, 1, 2] {
-    let k = pow(2.0, Double(n))
-    let center = (p - k * k * q) / (1 - k * k)     // where the ratio has size k
-    let radius = k * d / abs(1 - k * k)
-    drawCircle(center: Vector2(width / 2 + center.real * scale, height / 2 - center.imaginary * scale),
-               radius: radius * scale)
-}
-```
-
-That is the circle of Apollonius, the set of points where the ratio has one size. It is written in the same arithmetic the shader used. Drawn over the layer, each one lands on a ruling. The formula matters less than the agreement: the two halves match, so you can reason on whichever side is easier and paint on the other. [`Examples/Shaders/ComplexPlane`](../Examples/Shaders/ComplexPlane/Sketch.swift) moves the two points and draws both families of circles. Two more take the same ratio somewhere else. [`ImaginaryLog`](../Examples/Shaders/ImaginaryLog/Sketch.swift) feeds the imaginary part of its `clog` to a cosine palette that never completes a cycle, so the branch cut between the points shows as a soft seam. [`Meromorphic`](../Examples/Shaders/Meromorphic/Sketch.swift) builds a ratio of two cubics from six moving roots and turns the palette's frequency up until the bands pile up around the poles.
 
 ## Chains: patching without typing Metal
 
@@ -428,7 +388,6 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files in one go.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
-- [Complex numbers](../Docs/Helpers/Complex.md): the CPU value behind the `complex` section, with literals, the polar form, `Complex.exp` and its relatives, and the `Vector2` bridge; the section's own functions are on the [shader library](../Docs/Shaders/ShaderLibrary.md#complex-numbers) page.
 - [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the whole pattern-field catalog with every parameter, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 23](23-GridSimulations.md).
