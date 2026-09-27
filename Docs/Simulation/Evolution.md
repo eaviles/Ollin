@@ -116,8 +116,8 @@ Measuring is off by default, because it means reading the whole population back 
 This is the older of the two ideas. It is also the stranger one, because nothing here scores a genome. Sixteen candidates sit on screen, and the only thing that decides which of them have children is that somebody liked looking at them.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/24-ParticleSimulations/PickAndBreed-dark.jpg">
-  <img src="../../Guide/Images/24-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/PickAndBreed-dark.jpg">
+  <img src="../../Guide/Images/04-Randomness/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
 </picture>
 
 ```swift

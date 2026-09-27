@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 24): evolution with no score. Sixteen ornaments
+// Guide diagram (Chapter 4): evolution with no score. Sixteen ornaments
 // drawn straight from sixteen genomes; two get picked (the ringed pair);
 // one breeding later the grid is sixteen variations on the two you liked.
 // The population carries its own seed, so the figure replays identically.

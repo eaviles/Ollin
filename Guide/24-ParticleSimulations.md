@@ -227,38 +227,11 @@ One decision in there is easy to overlook, and it decides whether any of this wo
 
 Mutation is what keeps that going. Each gene, as it is copied into a child, has a small chance of being nudged. And it really is a nudge, a random amount added to what the gene already held rather than a fresh random value. Turn mutation off and a run still improves for a while, on the variety generation 1 happened to contain. Then it stops, because copying can only ever narrow. Selection chooses. It never invents.
 
-## Sixteen things and no opinion about them: interactive evolution
-
-The other half of evolution has no score at all.
-
-`Population` is a handful of genomes, each just a bag of numbers between 0 and 1 that your sketch reads however it likes. You draw them, somebody picks the ones they like, and those breed:
-
-```swift
-pool = population(count: 16, genes: 8)      // in setup()
-
-// a genome, read as a drawing:
-let arms  = g.value(0, in: 3 ... 11)
-let hue   = g.value(1, in: 0.0 ... 1.0)
-let rings = g.value(2, in: 1 ... 4)
-
-// when someone has picked their favorites:
-pool.breed(from: chosen)
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/24-ParticleSimulations/PickAndBreed-dark.jpg">
-  <img src="Images/24-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
-</picture>
-
-Nothing in a `Genome` knows what its numbers mean, which is exactly what lets the framework mate and mutate one without knowing what is being evolved. Sixteen ornaments become sixteen slightly different ornaments, then sixteen variations on the two you liked. After a dozen rounds the grid is full of things you would not have thought to draw.
-
-The mutation rate here defaults far higher than the scored version's, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation, and maybe twenty generations before you get bored. So a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched. One breeding is a big step when a person is doing the judging. The thing you just chose should not vanish the moment you choose it.
-
-The two halves are not the same tool at two sizes. A scored search can only ever find what the score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
+Evolution has a second half with no score at all, where a person picks and the picks breed. [Chapter 4](04-Randomness.md#sixteen-things-and-no-opinion-about-them-interactive-evolution) teaches it beside choosing a keeper among seeds.
 
 ## A rule that spreads by winning arguments: swarm chemistry
 
-Both halves above have generations: everybody flies, everybody is judged, everybody is replaced. **Swarm chemistry** takes the generation away and sees what is left.
+The evolution above has generations: everybody flies, everybody is judged, everybody is replaced. **Swarm chemistry** takes the generation away and sees what is left.
 
 Every particle carries its own copy of the rule it moves by, eight numbers called a recipe. Those are how far it sees, the speed it likes, and the speed it can reach. Then come the strengths of cohesion, alignment, separation, random steering, and pace-keeping. When two particles touch, one recipe overwrites the other. Nothing is scored and nothing is aimed at. A recipe spreads because the particles holding it keep meeting particles holding something else and winning.
 
@@ -355,7 +328,7 @@ Before moving on, make it yours:
 
 GPU particle systems are a demoscene and games inheritance, and the additive light-deposit rendering they power here is as old as long-exposure photography. The systems built on top of them have names attached. Particle Life descends from Jeffrey Ventrella's *Clusters*. The Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. Particle Lenia carries the continuous-automaton idea of Bert Wang-Chak Chan's Lenia onto moving individuals. The ant colony is the Ant System of Marco Dorigo, Vittorio Maniezzo, and Alberto Colorni, from their 1996 paper. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation, and its near-density anti-clumping term is the one Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005. The jellies use Müller's 2005 meshless shape matching.
 
-The breeding half has its own lineage. The genetic algorithm is John Holland's, set out in 1975 in *Adaptation in Natural and Artificial Systems*. David Goldberg's 1989 book made it practical for the rest of us. That book is where crossover, mutation, and the roulette-wheel and tournament ways of choosing parents are all laid out. Breeding pictures by eye is Karl Sims', from his 1991 paper *Artificial Evolution for Computer Graphics*. The *Genetic Images* installation came out of it, where visitors stood in front of the images they liked. Those became the parents of the next generation. The flying-toward-a-target version is the one Daniel Shiffman teaches as smart rockets in *The Nature of Code*. It follows an earlier sketch by Jer Thorp. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The breeding half has its own lineage. The genetic algorithm is John Holland's, set out in 1975 in *Adaptation in Natural and Artificial Systems*. David Goldberg's 1989 book made it practical for the rest of us. That book is where crossover, mutation, and the roulette-wheel and tournament ways of choosing parents are all laid out. Those became the parents of the next generation. The flying-toward-a-target version is the one Daniel Shiffman teaches as smart rockets in *The Nature of Code*. It follows an earlier sketch by Jer Thorp. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

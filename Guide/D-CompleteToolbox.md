@@ -225,7 +225,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Artificial life | `ParticleLife`, `PPS`, `Physarum`, `ParticleLenia`, `SwarmChemistry` on the public `SpatialHash` neighbor search | [Ch 24](24-ParticleSimulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
 | Ant colony | A pheromone-trail colony condensing a web of possibilities onto a short tour | [Ch 24](24-ParticleSimulations.md) | [AntColony](../Docs/Generators/AntColony.md) |
 | Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 24](24-ParticleSimulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
-| Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 24](24-ParticleSimulations.md) | [Evolution](../Docs/Simulation/Evolution.md) |
+| Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 24](24-ParticleSimulations.md), [Ch 4](04-Randomness.md#sixteen-things-and-no-opinion-about-them-interactive-evolution) | [Evolution](../Docs/Simulation/Evolution.md) |
 | Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 24](24-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 | Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 24](24-ParticleSimulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 

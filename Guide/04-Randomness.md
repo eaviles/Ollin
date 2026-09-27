@@ -89,6 +89,35 @@ swift run --package-path Examples Example-Randomness-Variations --export keeper.
 
 One rule makes this pay. A seed is only worth flipping through when it decides something structural: which palette, how dense, how large. Make those choices in `setup()`, where the seeded rolls happen once, and let `draw()` animate what `setup()` decided. Do it in `draw()` instead and every seed gives you the same piece, shaken slightly differently.
 
+## Sixteen things and no opinion about them: interactive evolution
+
+A contact sheet lets you pick a keeper out of many rolls. Your picks can also breed. Each round, the sketch draws a handful of variations, you choose the ones you like, and the next handful is made from those.
+
+`Population` is a handful of genomes, each just a bag of numbers between 0 and 1 that your sketch reads however it likes. You draw them, somebody picks the ones they like, and those breed:
+
+```swift
+pool = population(count: 16, genes: 8)      // in setup()
+
+// a genome, read as a drawing:
+let arms  = g.value(0, in: 3 ... 11)
+let hue   = g.value(1, in: 0.0 ... 1.0)
+let rings = g.value(2, in: 1 ... 4)
+
+// when someone has picked their favorites:
+pool.breed(from: chosen)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/PickAndBreed-dark.jpg">
+  <img src="Images/04-Randomness/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+</picture>
+
+Pick one genome and the next round is made of copies of it, each with a few numbers nudged at random. That nudge is called a **mutation**. Pick two or more and they are mated in pairs, each child taking its numbers from both parents. Nothing in a `Genome` knows what its numbers mean, which is exactly what lets the framework mate and mutate one without knowing what is being evolved. Sixteen ornaments become sixteen slightly different ornaments, then sixteen variations on the two you liked. After a dozen rounds the grid is full of things you would not have thought to draw.
+
+The mutation rate defaults far higher than the scored search of [Chapter 24](24-ParticleSimulations.md#letting-the-sketch-find-it-evolution) uses, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation, and maybe twenty generations before you get bored. So a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched. One breeding is a big step when a person is doing the judging. The thing you just chose should not vanish the moment you choose it.
+
+A scored search can only ever find what its score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
+
 ## Letting chance decide
 
 So far chance has answered "where" and "how big", which are both questions of amount. It can also answer yes-or-no and which-one, and those two turn randomness from decoration into composition:
@@ -328,12 +357,13 @@ Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running 
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s, and both were invented for numerical integration rather than for drawing. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Breeding pictures by eye is Karl Sims', from his 1991 paper *Artificial Evolution for Computer Graphics*. The *Genetic Images* installation came out of it, where visitors stood in front of the images they liked. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s, and both were invented for numerical integration rather than for drawing. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
+- [Breeding by eye](../Docs/Simulation/Evolution.md#population): `Population` and `Genome` in full, the mutation rate, keeping the picks, and why the pool never touches the sketch's `random`.
 - [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the four habits that break a repeat.
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives that each change one rule. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
 - [Blue noise](../Docs/Generators/BlueNoise.md): `poissonDisk` in full, feeding its points to the tessellators, and calling it outside a sketch.
