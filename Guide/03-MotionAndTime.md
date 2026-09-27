@@ -153,7 +153,7 @@ sway(over: 4, in: 100...300, shape: .triangle)
 
 The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are the `pingPong` and `loopProgress` you just met, carried into a range. `.square` does not travel at all: it sits at one end for half the lap and the other end for the rest, which is how you switch something rather than move it.
 
-`.wander` is the one to slow down for. It drifts through the noise field of [Chapter 5](05-Noise.md) rather than following a curve, so it never repeats inside a lap, and it still arrives home at the end of one. That is not free. A drift taken straight off the clock, `signedNoise(time)`, can never come home, because the clock only ever grows. A wander walks a closed circle through the field instead, so the end of the lap is the same place as its start. Every shape here keeps that promise, which is what lets a swaying sketch declare a `loopDuration` and export a loop nobody can see the seam in.
+`.wander` is the fifth path. It drifts through noise rather than following a curve, and [Chapter 5](05-Noise.md#the-third-dimension-is-time) shows how a drift like that can still come home. Every shape here arrives back where it started at the end of a lap. That is what lets a swaying sketch declare a `loopDuration` and export a loop nobody can see the seam in.
 
 ## Shaping time
 
