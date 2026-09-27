@@ -70,7 +70,7 @@ Color.mix(blue, yellow, 0.5, in: .rgb)    // the muddy one, when you want it
 Color.mix(blue, yellow, 0.5, in: .hsb)    // walks the hue wheel between them
 ```
 
-`t` says how far along you are, so 0 gives the first color, 1 gives the second, and 0.5 gives the halfway point. The default space is **OKLab**, which arranges color's numbers so that equal moves *look* equal, meaning a step of a given size changes the appearance by about the same amount wherever you take it. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detour through some other hue. You don't need the math behind it, and this guide doesn't contain any. The practical version is short: mix in OKLab unless you have a reason not to.
+`t` says how far along you are, so 0 gives the first color, 1 gives the second, and 0.5 gives the halfway point. The default space is **OKLab**, which arranges color's numbers so that equal moves *look* equal, meaning a step of a given size changes the appearance by about the same amount wherever you take it. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detour through some other hue. You don't need the math behind it to use it, and [Appendix B](B-JustEnoughMath.md#numeric-vs-perceptual-mixing) has the idea underneath when you're curious. The practical version is short: mix in OKLab unless you have a reason not to.
 
 Try it live on the swinging circle:
 
@@ -103,7 +103,7 @@ Twelve different hues, and none of them shouts over the others, because they gen
 
 ## Blue and yellow make green
 
-Every space above still disagrees with your childhood. Mix blue and yellow in RGB or the OK family and you land on a neutral, never on green. That's not a bug. A screen mixes *light*, and halfway between two opposite lights sits gray. Paint works the other way around: pigment absorbs light, and green is what survives both pigments. Two kinds of mixing, two different answers.
+The spaces above still disagree with your childhood. Mix blue and yellow in RGB or the OK family and you land on a neutral, never on green. HSB finds green only by walking the hue wheel through it. That's not a bug. A screen mixes *light*, and halfway between two opposite lights sits gray. Paint works the other way around: pigment absorbs light, and green is what survives both pigments. Two kinds of mixing, two different answers.
 
 `.paint` is the second kind, in the same call:
 
@@ -296,7 +296,7 @@ The rule underneath all of this is short. Red and green do look alike to a prota
 
 ## A recipe borrowed early: random
 
-[Chapter 1](01-HelloOllin.md) borrowed `sin` from [Chapter 3](03-MotionAndTime.md), and this chapter's finale borrows `random` from [Chapter 4](04-Randomness.md). Three sentences will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. [Chapter 4](04-Randomness.md) tells the whole story, and this is enough to be going on with.
+[Chapter 1](01-HelloOllin.md) borrowed `sin` from [Chapter 3](03-MotionAndTime.md), and this chapter's finale borrows `random` from [Chapter 4](04-Randomness.md). A short version will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. [Chapter 4](04-Randomness.md) tells the whole story, and this is enough to be going on with.
 
 ## Putting it together: a color field
 
