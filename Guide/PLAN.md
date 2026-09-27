@@ -293,8 +293,8 @@ Draws from: `Docs/Drawing/Combinators.md`; `Examples/Shapes/Combinators*`, `Exam
 **31. Traced light.**
 Teaches: light followed past the first surface. Screen-space and ray-traced reflections, glossy floors; global illumination; caustics; the path-traced still and its denoiser; then the frame-level tier: temporal and specular anti-aliasing, motion blur, lens flare and the shape of a blur, temporal upscaling, and frames drawn in between.
 Assumes: Ch 25 (the scene and its depth buffer), Ch 26 (materials and glass), Ch 30 (fields, which take the same light).
-Payoff: a room with bounce light, a glossy floor, glass caustics, a flared lamp, and a moving object (to be drafted).
-Figures: the traced mirror; the corridor and the satin floor; the bounced light; the caustic light; settled edges; held highlights; the motion streak; the ghost chain and star points; the opening; fewer pixels; every other refresh; the traced still; the finished room.
+Payoff: the lamplit room. One lamp swinging on its cord over a waxed floor between a terracotta wall and a teal one, its light bounced by `globalIllumination`, shown in the floor by the traced and glossy reflections, and focused by a glass ball into a caustic spot. A red ball rolls around the glass inside `withMotion`, so the edge average and the motion blur follow it, and the lamp flares through a six-bladed iris. Kept as a movie, with a path-traced still as the step further. Its source is drafted and its render is owed.
+Figures: the traced mirror; the corridor and the satin floor; the bounced light; the caustic light; settled edges; held highlights; the motion streak; the ghost chain and star points; the opening; fewer pixels; every other refresh; the traced still; the lamplit room.
 Draws from: `Docs/3D/3D.md` (the traced and temporal tiers), `Docs/3D/Caustics.md`, `Docs/3D/LensFlare.md`, `Docs/Output/PathTraced.md`, `Docs/Drawing/Effects.md#combined`; `Examples/3D/Effects/`, `Examples/3D/Lighting/`.
 
 ### Part VI: The world coming in

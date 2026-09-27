@@ -4,9 +4,9 @@
 
 # 31. Traced light
 
-<!-- Hook image: the finished sketch, a room with bounce light, a glossy floor, glass caustics, a flared lamp, and a moving object. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the lamplit room (Figures/31-TracedLight/LamplitRoom.swift). Waiting on its render on the Mac. -->
 
-A 3D frame usually stops light at the first thing it hits. This chapter follows it further. Mirrors show what the camera can't see, light bounces from one wall onto the next, and glass focuses bright patterns onto a floor. A still can be traced path by path until it looks photographed. Then come the frames themselves: edges that settle, highlights that hold still, the streak a shutter leaves, and what a real lens adds. Last are the ways to render fewer pixels and fewer frames when a scene gets heavy. Each is a line or two added to a scene you already have.
+A 3D frame usually stops light at the first thing it hits. This chapter follows it further. Mirrors show what the camera can't see, light bounces from one wall onto the next, and glass focuses bright patterns onto a floor. A still can be traced path by path until it looks photographed. Then come the frames themselves: edges that settle, highlights that hold still, the streak a shutter leaves, and what a real lens adds. Last are the ways to render fewer pixels and fewer frames when a scene gets heavy. Each is a line or two added to a scene you already have. The chapter ends in a lamplit room, lit by one swinging lamp. Its light bounces off the walls, shows in the waxed floor, is focused by a glass ball, and flares in the lens.
 
 ## Mirrors that see off screen: ray-traced reflections
 
@@ -310,16 +310,147 @@ Your light rig comes over as you left it. Here the tracer follows the light itse
 
 There is one more thing you can ask for before the file is written. What is left of the error in a traced render is grain. Buying it away costs the square: four times the paths for half the speckle. `--denoise` filters it out instead. The useful trick is that the tracer wrote down what it *hit*, not only what it saw. It kept the first surface's own color, the way it faces, and how far off it is. It also kept how much the pixel's own samples disagreed. The filter divides the light by that color, smooths the light alone, and multiplies the color back. A texture keeps its edges and a silhouette keeps its line, because neither was ever in the part being smoothed. And since the strength comes from the disagreement, a thin render is smoothed hard and a nearly finished one only a little. On the example scene, 64 filtered samples land about where 240 raw ones would have. It holds at the deep end too: even a 2048-sample render comes out closer to the truth, not merely smoother. It is off unless you ask, because a raw render is the honest one to hand you, and a real sparkle reads softer once the filter has been over it.
 
-<!-- Putting it together: the finished sketch goes here: a room with bounce light, a glossy floor, glass caustics, a flared lamp, and a moving object, built from this chapter's steps, with its full listing. -->
+## Putting it together: the lamplit room
+
+The lamplit room is one lamp swinging over a waxed floor. Almost everything in the frame is that lamp's light after it has landed somewhere. It bounces off the floor onto the ceiling and shows in the floor's sheen. A glass ball focuses it into a spot, a red ball rolls through it, and the lamp flares in the lens. Make `MySketches/LamplitRoom.swift`:
+
+```swift
+import Ollin
+
+final class LamplitRoom: Sketch {
+    let bulb = Image(width: 1, height: 1, color: Color(hex: 0xFFF1D6))
+    let pivot = Vector3(-0.9, 4.0, -0.6)
+
+    override func draw() {
+        background(.black)
+        var lens = Camera3D(eye: Vector3(0.2, 1.8, 3.8), target: Vector3(0.4, 1.4, -1),
+                            projection: .perspective(fieldOfView: .pi / 2.8))
+        lens.apertureBlades = 6
+        camera(lens)
+        toneMap(.aces, exposure: 1.2)
+
+        // The lamp swings on its cord, and its light points down the cord.
+        let swing = 0.3 * sin(time * 1.2)
+        let down = Vector3(sin(swing), -cos(swing), 0)
+        let lamp = pivot + down * 1.1
+        spotLight(Color(hex: 0xFFE2B8), at: lamp, direction: down,
+                  coneAngle: 2.0, penumbra: 0.6, intensity: 4)
+
+        // What the light does once it lands.
+        environment(.studio.intensified(to: 0.12))
+        castShadows()
+        globalIllumination()
+        rayTracedReflections()
+        glossyReflections()
+        caustics(dispersion: 0.3)
+
+        // What the camera does with it.
+        temporalAntialiasing()
+        motionBlur()
+        lensFlare(amount: 0.5)
+
+        // The room: a waxed floor, a white ceiling and back wall, one
+        // terracotta wall and one teal one.
+        withState {
+            material(.dielectric(roughness: 0.2))
+            fill(Color(hex: 0x7A5E48))
+            translate(0, -0.1, 0)
+            drawBox(width: 8.4, height: 0.2, depth: 8.4)
+        }
+        fill(Color(white: 0.86))
+        withState { translate(0, 4.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
+        withState { translate(0, 2, -4.3); drawBox(width: 8.4, height: 4.4, depth: 0.2) }
+        withState { fill(Color(hex: 0xC8603A)); translate(-4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
+        withState { fill(Color(hex: 0x2A8C8C)); translate(4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
+
+        // A glass ball on a white plinth, where the lamp's light is focused.
+        withState { translate(1.0, 0.25, 0.2); drawBox(width: 0.7, height: 0.5, depth: 0.7) }
+        withState {
+            material(.glass(thickness: 1.2))
+            fill(.white)
+            translate(1.0, 1.1, 0.2)
+            drawSphere(radius: 0.6)
+        }
+
+        // A red ball rolling around the plinth.
+        withMotion("ball") {
+            withState {
+                material(.dielectric(roughness: 0.35))
+                fill(Color(hex: 0xC8302C))
+                translate(1.0, 0.3, 0.2)
+                rotate(time * 1.8, axis: .unitY)
+                translate(1.5, 0, 0)
+                drawSphere(radius: 0.3)
+            }
+        }
+
+        // The cord and the bulb. The bulb sits a little up the cord from the
+        // light, so it never stands between the light and the room.
+        withMotion("lamp") {
+            withState {
+                fill(Color(white: 0.1))
+                translate(pivot)
+                rotateZ(swing)
+                translate(0, -0.475, 0)
+                drawCylinder(radius: 0.012, height: 0.95)
+            }
+            withState {
+                translate(lamp - down * 0.08)
+                fill(.white)
+                matcap(bulb)
+                drawSphere(radius: 0.07)
+            }
+            matcap(nil)
+        }
+    }
+}
+```
+
+The sketch sets up its light in three groups. The first is the lamp. A spot light hangs from `pivot` and points down the cord. So as `swing` rocks the lamp, its pool of light moves across the floor with it.
+
+The second group is what the light does once it lands. The bounce comes from `globalIllumination()`, so the floor lights the ceiling and the two colored walls tint what faces them. The floor shows the room rather than the sky through `rayTracedReflections()` and `glossyReflections()`, blurred by its roughness of 0.2. The spot comes from `caustics(dispersion: 0.3)`, which sends the lamp's light through the glass ball and lands it on the floor. The dispersion splits a little of the spot's color apart at its edge.
+
+Shadows hold those three together. With `castShadows()` on, the bounce respects the shadows, and the spot lands inside the glass ball's own shadow. With one light in the room, the light that casts the shadows is also the one the photons leave from. The `environment(_:)` is dim on purpose. The reflections need a sky to fall back to, but the room should be lit by its lamp.
+
+The third group is the camera. The edges settle under `temporalAntialiasing()`, what moves streaks under `motionBlur()`, and `lensFlare(amount: 0.5)` puts the lamp's flare in the lens. The ghosts come out as hexagons and the star with six arms, because the camera was given `apertureBlades = 6`. The red ball is drawn inside `withMotion("ball")`, and the cord and bulb inside `withMotion("lamp")`. That is how the average and the blur learn how each one moved. So the ball's edges stay settled while it rolls, and it streaks along its path.
+
+The bulb is drawn a little way up the cord, not where the light is. A shape drawn right where a light sits stands between that light and everything it shines on. With `castShadows()` on, it shades the whole room. Up the cord, the bulb is behind the light, which points down. The flare checks what covers the light from a point a little in front of it, so the bulb doesn't dim the flare either.
+
+The traced parts need a ray-tracing GPU, which every Apple silicon Mac has. Elsewhere those calls do nothing, and the room still draws with its direct light, its shadows, and its flare. If it stutters on your Mac, `temporalUpscaling()` renders fewer pixels and `frameInterpolation()` draws fewer frames. Neither one changes what an export writes.
+
+Then make it yours:
+
+- Color the glass. Give it `material(.glass(thickness: 1.2, attenuationColor: Color(hex: 0xD08A2E), attenuationDistance: 1.2))`, and the ball and the spot it throws both turn amber. Or turn the caustics' `dispersion` up to 1, and the red and blue at the spot's edge spread wider.
+- Stop down the lens. `lensFlare(amount: 0.5, lens: .standard.stopped(to: 16))` shrinks and brightens the ghosts and grows the star. Set `apertureBlades` to 5 as well, and the star has ten arms, since an odd count doubles them.
+- Sway the camera. Build `lens` with `Camera3D.orbiting`, around the glass at a radius of 3.6, and let its `azimuth` follow `sin(time * 0.4) * 0.3`. The motion blur and the edge average read the camera's motion on their own, with no `withMotion` needed.
+
+This one moves, so keep it as a movie. This writes twelve seconds of it:
+
+```sh
+swift run OllinLive MySketches/LamplitRoom.swift --export-video lamplit-room.mp4 --seconds 12
+```
+
+An export doesn't wait for anything to settle. Each frame averages its own jittered passes and gathers its bounce in full. So the first frame is as finished as the last, and the file can't flicker.
+
+A still can go one step further, through "The slow render worth waiting for". Give the camera a real lens with `lens.aperture = 0.05` and `lens.focusDistance = 3.7`, then trace the still:
+
+```sh
+swift run OllinLive MySketches/LamplitRoom.swift --export lamplit-room.png --path-traced 512 --denoise
+```
+
+The traced frame has true depth of field, focused on the glass, and its out-of-focus highlights are hexagons for the same six blades. One thing does not carry over. The focused spot under the glass comes from the live `caustics()`, so in the traced frame the glass throws a plain tinted shadow instead.
 
 ## Where this comes from
 
-The traced light rebuilds published methods, each written from the paper. Global illumination is the dynamic diffuse irradiance field of Zander Majercik, Jean-Philippe Guertin, Derek Nowrouzezahrai, and Morgan McGuire, from 2019. The caustics are Xueqing Yang and Yaobin Ouyang's adaptive anisotropic photon scattering, from 2021. Temporal anti-aliasing is written from Brian Karis's 2014 treatment of temporal supersampling. Specular anti-aliasing is the normal-distribution filtering of Anton Kaplanyan, Stephen Hill, Anjul Patney, and Aaron Lefohn, from 2016. Motion blur is the reconstruction filter of Morgan McGuire, Padraic Hennessy, Michael Bukowski, and Brian Osman, from 2012. The lens flare is written from the matrix formulation of Sungkil Lee and Elmar Eisemann, and the color its coatings leave from the thin-film reflectance of Matthias Hullin and colleagues. Temporal upscaling drives Apple's MetalFX scaler rather than reimplementing one. The path-traced export stands on James Kajiya's rendering equation, from 1986. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The traced light rebuilds published methods, each written from the paper. Global illumination is the dynamic diffuse irradiance field of Zander Majercik, Jean-Philippe Guertin, Derek Nowrouzezahrai, and Morgan McGuire, from 2019. The caustics are Xueqing Yang and Yaobin Ouyang's adaptive anisotropic photon scattering, from 2021. Temporal anti-aliasing is written from Brian Karis's 2014 treatment of temporal supersampling. Specular anti-aliasing is the normal-distribution filtering of Anton Kaplanyan, Stephen Hill, Anjul Patney, and Aaron Lefohn, from 2016. Motion blur is the reconstruction filter of Morgan McGuire, Padraic Hennessy, Michael Bukowski, and Brian Osman, from 2012. The lens flare is written from the matrix formulation of Sungkil Lee and Elmar Eisemann. The color its coatings leave comes from the thin-film reflectance of Matthias Hullin and colleagues. Temporal upscaling drives Apple's MetalFX scaler rather than reimplementing one. The path-traced export stands on James Kajiya's rendering equation, from 1986.
+
+The mirrors follow the hybrid rendering Apple describes for Metal ray tracing. It draws the surfaces as usual and traces one ray from each reflective pixel. The glossy lobe draws each ray with Eric Heitz's sampling of the visible normals, from 2018. It shares the neighbors' rays the way Tomasz Stachowiak's stochastic reflections do, from 2015. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Depth effects](../Docs/Drawing/Effects.md#combined): `.screenSpaceReflections` and `.defocus`, with the iris `blades` and `catsEye` that shape a blur.
 - [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced reflections, the global-illumination probe field, temporal anti-aliasing with `withMotion`, specular anti-aliasing, motion blur, and temporal upscaling, each with what it needs and what it costs.
+- [Lights](../Docs/3D/3D.md#lights) and [which sources flare](../Docs/3D/LensFlare.md#sources): the spot light the room hangs, and a glowing body drawn where a light sits.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality dial, and how the photon chain works.
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of interfaces, writing your own prescription, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
 - [Path-traced export](../Docs/Output/PathTraced.md): what the traced frame adds and what stays raster, the sample count and its timings, the real lens, and the grain filter.
