@@ -36,13 +36,13 @@ Both kinds of image are already on this page. The grid above is the sketch each 
 
 Read the chapters in order the first time, because each one builds only on the ones before it. It also helps to know roughly what each part is going to ask of you. The page counts reckon three hundred words of prose to a page, listings aside.
 
-- **Part I, chapters 1 to 9.** Around 130 pages. It is the base everything else stands on, so it is the one part you cannot skip.
-- **Part II, chapters 10 to 14.** Around 55 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
+- **Part I, chapters 1 to 9.** Around 140 pages. It is the base everything else stands on, so it is the one part you cannot skip.
+- **Part II, chapters 10 to 14.** Around 60 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
 - **Part III, chapters 15 to 17.** Around 45 pages, the shortest part. Read chapter 15 first, because the curves and marks after it come back as the shapes it teaches you to hold.
-- **Part IV, chapters 18 to 24.** Around 110 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
+- **Part IV, chapters 18 to 24.** Around 120 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
 - **Part V, chapters 25 to 31.** Around 150 pages, the longest part. Chapter 25 is its gate, and chapter 28 also wants the physics from chapter 11.
 - **Part VI, chapters 32 to 35.** Around 75 pages. Its chapters barely depend on each other, so read the ones you need in any order.
-- **Part VII, chapters 36 to 41.** Around 120 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
+- **Part VII, chapters 36 to 41.** Around 130 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
 
 A few chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 33](33-DepthAndThePhone.md) an iPhone with a LiDAR sensor. [Chapter 34](34-Listening.md) wants a microphone, [Chapter 35](35-ControlsAndSignals.md) a MIDI controller, and [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
