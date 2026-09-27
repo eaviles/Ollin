@@ -4,7 +4,7 @@
 
 # 16. Curves and figures
 
-<!-- Hook image: the finished sketch, the engraving (Figures/16-CurvesAndFigures/Engraving.swift). Waiting on its render on the Mac. -->
+<img src="Images/16-CurvesAndFigures/Engraving.jpg" alt="A two-ink engraved plate on cream paper: a green guilloche rosette with a red spirograph turning in its eye, a red square knot in each corner, a ribbon of six lines under the rosette, all inside a frame whose corners ease round" width="560">
 
 Some figures come from a rule rather than a hand. Two sine waves at a ratio weave a Lissajous figure, and a wheel rolling inside a ring draws a spirograph. This chapter turns those rules into calls. A spline bends through your points the way a practiced hand would, and the classic curves come from their formulas. A family of lines traces the curve it leans on, and a road engineer's corner eases into its turn. Any outline comes back from spinning circles, one shape turns into another, and a plate reads only in a mirror. Each call hands back a `Contour` or a `Shape` from [Chapter 15](15-ShapesAsMaterial.md), so a figure fills, strokes, and plots like any other outline. The chapter ends by engraving a plate with several of them: a guilloche rosette, corner knots, an eased frame, and a ribbon.
 

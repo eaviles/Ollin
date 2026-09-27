@@ -4,7 +4,7 @@
 
 # 20. Pictures restyled
 
-<!-- Hook image: the finished sketch, the hand-colored print (Figures/20-PicturesRestyled/HandColored.swift). Waiting on its render on the Mac. -->
+<img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
 A photograph is a place to start rather than a place to stop. This chapter's filters make a picture into another kind of picture. Pen and ink finds its edges, brushwork and flat regions follow its flow, and hatching draws it for a pen. A colorist's look grades it, film adds halation and grain, and a warp folds it into itself. Then come chromatic aberration's five pictures and the design filters that ripple, pour, and melt it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, take a `@Param`, and move with `time`. The chapter ends by stacking several of them into a hand-colored print.
 

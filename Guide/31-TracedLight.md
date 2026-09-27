@@ -4,7 +4,7 @@
 
 # 31. Traced light
 
-<!-- Hook image: the finished sketch, the lamplit room (Figures/31-TracedLight/LamplitRoom.swift). Waiting on its render on the Mac. -->
+<img src="Images/31-TracedLight/LamplitRoom.jpg" alt="A room lit by one pendant lamp that flares in the lens: a waxed brown floor, a terracotta wall and a teal one, a glass ball on a white plinth focusing the lamp into a bright spot inside its own shadow, and a red ball beside it" width="560">
 
 A 3D frame usually stops light at the first thing it hits. This chapter follows it further. Mirrors show what the camera can't see, light bounces from one wall onto the next, and glass focuses bright patterns onto a floor. A still can be traced path by path until it looks photographed. Then come the frames themselves: edges that settle, highlights that hold still, the streak a shutter leaves, and what a real lens adds. Last are the ways to render fewer pixels and fewer frames when a scene gets heavy. Each is a line or two added to a scene you already have. The chapter ends in a lamplit room, lit by one swinging lamp. Its light bounces off the walls, shows in the waxed floor, is focused by a glass ball, and flares in the lens.
 
@@ -363,8 +363,10 @@ final class LamplitRoom: Sketch {
         withState { fill(Color(hex: 0xC8603A)); translate(-4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
         withState { fill(Color(hex: 0x2A8C8C)); translate(4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
 
-        // A glass ball on a white plinth, where the lamp's light is focused.
-        withState { translate(1.0, 0.25, 0.2); drawBox(width: 0.7, height: 0.5, depth: 0.7) }
+        // A glass ball on a white plinth, wide enough that the lamp's light
+        // comes to its focus on the plinth's top rather than spreading again
+        // on the floor beyond it.
+        withState { translate(1.1, 0.25, 0.2); drawBox(width: 1.6, height: 0.5, depth: 0.9) }
         withState {
             material(.glass(thickness: 1.2))
             fill(.white)
