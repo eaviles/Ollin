@@ -6,7 +6,7 @@
 
 <!-- Hook image: the marbled heart, from the finished sketch of a brushed monogram over marbling. Waiting on the finished sketch and its render. -->
 
-A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to how fast and how hard it was made, breaks into the prints of a brush tip, or floats on water and spreads into paper. This chapter gives your strokes that life. A profile shapes a finished path's width, dynamics read the hand as it paints, a brush stamps a tip along the path, and a dash pattern cuts it into pieces. Then come two wet media, marbling and watercolor, made from nothing but outlines bent and stacked. All of it stays vector geometry, so a painted mark leaves through `--export-svg` as the region it covers and a plotter can draw it.
+A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to speed and pressure, and breaks into the prints of a brush. This chapter gives your strokes that life. A profile shapes a finished path's width, and dynamics read the hand while it paints. A brush stamps a tip along the path, and a dash pattern cuts it. Then come two wet media, marbling and watercolor, made from outlines bent and stacked. It all stays vector geometry, so a painted mark exports as the region it covers.
 
 ## Marks and brushes
 

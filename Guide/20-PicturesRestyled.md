@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, a photograph made into a graded, grained print or a hatched still life. Waiting on the finished sketch and its render. -->
 
-A photograph is a place to start rather than a place to stop. This chapter runs a picture through the filters that make it into a different kind of picture: pen and ink that finds its edges, brushwork and flat regions that follow its own flow, hatching a pen could draw, a colorist's graded look, the halation and grain of film, a picture that contains itself, the five pictures one chromatic-aberration filter makes, and the design filters that ripple, pour, and melt it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, take a `@Param`, and move with `time` like everything else.
+A photograph is a place to start rather than a place to stop. This chapter's filters make a picture into another kind of picture. Pen and ink finds its edges, brushwork and flat regions follow its flow, and hatching draws it for a pen. A colorist's look grades it, film adds halation and grain, and a warp folds it into itself. Then come chromatic aberration's five pictures and the design filters that ripple, pour, and melt it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, take a `@Param`, and move with `time`.
 
 ## A line where there is an edge: xdog
 
@@ -258,7 +258,7 @@ It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial b
 
 The picture inside itself is named after a Dutch cocoa tin from 1904, whose label showed a nurse holding a tray with the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery, and left a hole in the middle he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in the hole, and the straighten-repeat-curl construction the filter runs is theirs.
 
-The stylizing filters each rebuild a published method. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009, and the flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017, and halation is written from the photographic physics of light reflected back through the emulsion. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The stylizing filters each rebuild a published method. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009. The flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017. Halation is written from the photographic physics of light reflected back through the emulsion. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

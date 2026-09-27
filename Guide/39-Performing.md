@@ -6,7 +6,7 @@
 
 <img src="Images/39-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
 
-A sketch can be performed as well as shown. This chapter puts the code itself on stage: a host where you type over the running picture and evaluate each change without stopping it, looks you save and call back, a take that records what you did and plays the night again through any export, parameters directed by keyframes, by a timeline, or by a rule, and live feeds that carry the picture into a VJ rig or a video call. The sketch above is the last state of a set you'll build in five evaluations.
+Code can be the performance. This chapter puts it on stage, in a host where you type over the running picture and evaluate without stopping it. Looks you save come back on cue, and a take records what you did and plays the night again through any export. Parameters can follow keyframes, a timeline, or a rule. Live feeds carry the picture into a VJ rig or a video call. The sketch above is the last state of a set you'll build in five evaluations.
 
 ## Performing the code itself
 

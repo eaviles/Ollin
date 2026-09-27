@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, still to be designed. Waiting on the finished sketch and its render. -->
 
-A finished sketch doesn't have to stay in the window you wrote it in. This chapter hands it over: onto your phone, where a finger is the mouse; into the Mac itself, as a screen saver, a wallpaper, a menu-bar companion, or a widget; to a friend who has never typed `swift`, as an app to double-click; and to other programmers, as behavior added without editing a sketch and a package they can import. Every route wraps the sketch rather than porting it, so the `.swift` file stays the thing you work on.
+The window you wrote a sketch in is only one place it can live. This chapter hands it over. Your phone takes it, with a finger for the mouse. The Mac takes it as a screen saver, a wallpaper, a menu-bar companion, or a widget. A friend who has never typed `swift` gets an app to double-click. Other programmers get behavior they can add to a sketch, and a package they can import. Every route wraps the sketch rather than porting it, so the `.swift` file stays the thing you work on.
 
 ## In your pocket: the sketch on the phone
 

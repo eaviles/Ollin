@@ -75,15 +75,15 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 ### Part III: Shapes, lines, and marks
 
 15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then scatters, Voronoi territories and packing, hulls and skeletons, and hatching and SVG for pen plotters, with batches to draw it fast.
-16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule: Hobby splines, curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
-17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics from speed, pressure and a stylus, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
+16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule. Hobby splines and the curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), then spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
+17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
 
 ### Part IV: Pixels and light
 
 18. **[Your first shader](18-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
 19. **[Layers and effects](19-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
-20. **[Pictures restyled](20-PicturesRestyled.md).** Filters that make a photograph into another kind of picture: ink lines, brushwork, flat regions, hatching, a colorist's look, the film look, relighting and dithering, the picture inside itself, chromatic aberration, the design filters, and melt.
-21. **[Pictures you solve](21-PicturesYouSolve.md).** Layers treated as problems to solve: diffusion curves, a seamless paste, the measured distance field, the frequency domain, light worked out in a flat sketch, and local averages at a flat price.
+20. **[Pictures restyled](20-PicturesRestyled.md).** Filters that make a photograph into another kind of picture. Ink lines, brushwork, flat regions, and hatching, a colorist's look and the film look, relighting and dithering, the picture inside itself, chromatic aberration, the design filters, and melt.
+21. **[Pictures you solve](21-PicturesYouSolve.md).** Layers treated as problems to solve. Diffusion curves, a seamless paste, the measured distance field, the frequency domain, light worked out in a flat sketch, and local averages.
 22. **[Iterated forms](22-IteratedForms.md).** Pictures made by applying one rule over and over: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, a ball bouncing in a room, escape-time fractals, Newton's basins, and domain coloring.
 23. **[Simulations on a grid](23-GridSimulations.md).** Fields that carry their own state on the GPU: cellular automata, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, and watercolor.
 24. **[Simulations made of particles](24-ParticleSimulations.md).** A buffer of individuals updated by one small program: a million grains, slime mold, ant colonies, Particle Life, crowds at scale, SPH fluid and jellies, and evolution.
@@ -96,22 +96,22 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 28. **[Worlds with weight](28-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
 29. **[Characters, vehicles, and cloth](29-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
 30. **[Sculpting with fields](30-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, turned into meshes, sculpted like clay, or grown as fractals.
-31. **[Traced light](31-TracedLight.md).** Light followed past the first surface: mirrors that see off screen, bounce light, caustics, and the path-traced still. Then the work done across frames and in the lens: temporal anti-aliasing, highlights that hold still, motion blur, lens flare and the shape of a blur, upscaling, and frames drawn in between.
+31. **[Traced light](31-TracedLight.md).** Light followed past the first surface: mirrors that see off screen, bounce light, caustics, and the path-traced still. Then the work done across frames and in the lens. Temporal anti-aliasing, highlights that hold still, motion blur, lens flare, the shape of a blur, upscaling, and frames drawn in between.
 
 ### Part VI: The world coming in
 
 32. **[Seeing](32-Seeing.md).** The webcam as input, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
 33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 34. **[Listening](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech, and sound events.
-35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector: MIDI, timecode, OSC and OSCQuery, a beat shared over Link, MIDI and OSC bound straight to your parameters, TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
+35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector. MIDI, timecode, OSC and OSCQuery, a beat shared over Link, and MIDI and OSC bound straight to your parameters. Then TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
 
 ### Part VII: Out into the world
 
-36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects and a room you can draw, instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
-37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, tunings, playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
-38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, video, GIF, slow motion, SVG for plotters, a page that plays in a browser, G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
+36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects, and a room you can draw. Instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
+37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, and tunings. Then playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
+38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, a show laser, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
 39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, parameters written as rules, and live feeds into other apps.
-40. **[Handing it over](40-HandingItOver.md).** A sketch on your phone, as a screen saver, a wallpaper, a menu-bar companion, or a widget, as an app somebody double-clicks, and as behavior or a package other programmers import.
+40. **[Handing it over](40-HandingItOver.md).** A sketch on your phone, and as a screen saver, a wallpaper, a menu-bar companion, or a widget. Then as an app somebody double-clicks, and as behavior or a package other programmers import.
 41. **[Installations](41-Installations.md).** A piece that stays installed in one place: light instead of pixels through DMX and LED maps, the cost row for when it gets slow, and everything a room does to a sketch left running for weeks.
 
 ### Appendices

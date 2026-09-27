@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, an instrument bound to a controller, an OSC fader, and a data feed. Waiting on the finished sketch and its render. -->
 
-A sketch you tune only from the inspector is a sketch you play alone at a desk. This chapter hands it to everything else that can steer it: a MIDI knob box, a phone fader over OSC, a DAW's clock and timecode, a beat shared across the room, a table of tagged pieces, a game controller, a sensor on a wire or over Bluetooth, and data that arrives on its own from the web or the weather outside. Knobs and faders bind straight to the `@Param` values you already tune, and everything else reads in `draw()` as a level that holds or a moment that fires. The trackpad closes the loop by knocking back under your hand.
+A sketch you tune only from the inspector is a sketch you play alone at a desk. This chapter hands it to everything else that can steer it. MIDI knobs, a phone fader over OSC, a DAW's clock, and a beat shared across the room come first. Then come a table of tagged pieces, a game controller, and sensors on a wire or over Bluetooth. Data arrives on its own too, from the web and from the weather outside. Knobs and faders bind straight to your `@Param` values, and everything else reads in `draw()` as a level or a moment. The trackpad answers back with a knock.
 
 ## Parameters from anywhere
 

@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, one keeper finished as a poster, a loop, and a plot, with its recipe read back. Waiting on the finished sketch and its render. -->
 
-A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one: as a still drawn finer than you save it, a video or a GIF, a render slowed or settled before it is written, a plotter drawing, a page that plays in a browser, the machine's own G-code, embroidery, a shop drawing, a laser show, a print in separate inks proofed before it is printed, something you can hold, walk around, or look into, and a description of what it shows. Every file comes from the same sketch run on a fixed clock, so the same seed and frame make the same file every time, and the recipe that made it brings it back tomorrow.
+A sketch on your screen is a draft until it leaves as something that keeps. This chapter finishes one. A still can be drawn finer than it's saved, and motion leaves as video, a GIF, or a render slowed or settled first. Line work goes to a plotter, a machine's own G-code, embroidery, a shop drawing, or a show laser. A print can be separated into inks and proofed first, and a mesh can be printed, walked around, or looked into. A page can play the sketch in a browser, and a description can say what it shows. Every file comes from the sketch run on a fixed clock, so the same seed and frame make the same file every time. The recipe written into it brings that file back tomorrow.
 
 ## Leaving as files
 

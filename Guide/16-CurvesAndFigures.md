@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, a guilloche or harmonograph plate. Waiting on the finished sketch and its render. -->
 
-Some of the best-loved figures in drawing come from a rule rather than a hand. Two sine waves at a ratio weave a Lissajous figure, a wheel rolling inside a ring draws a spirograph, a walk that turns a quarter turn after every run comes home as a knot, and a family of straight lines traces a curve that none of them is. This chapter teaches those rules as calls: a spline that bends through points the way a practiced hand would, the classic curves you can write down, the curve a moving line leans on, the corner a road engineer draws, any outline rebuilt from spinning circles, one shape turning into another, and a drawing only a mirror can read. Each one hands back the same `Contour` and `Shape` values [Chapter 15](15-ShapesAsMaterial.md) cuts and hatches, so a figure fills, strokes, and leaves for a pen plotter like any other outline.
+Some figures come from a rule rather than a hand. Two sine waves at a ratio weave a Lissajous figure, and a wheel rolling inside a ring draws a spirograph. This chapter turns those rules into calls. A spline bends through your points the way a practiced hand would, and the classic curves come from their formulas. A family of lines traces the curve it leans on, and a road engineer's corner eases into its turn. Any outline comes back from spinning circles, one shape turns into another, and a plate reads only in a mirror. Each call hands back a `Contour` or a `Shape` from [Chapter 15](15-ShapesAsMaterial.md), so a figure fills, strokes, and plots like any other outline.
 
 ## A curve that reads as drawn: Hobby's spline
 

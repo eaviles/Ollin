@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, marks diffused into a sky, lit by .light, outlined from the distance field. Waiting on the finished sketch and its render. -->
 
-Most filters look at a picture and change it. The ones in this chapter treat a layer as a problem to solve. A few colored marks become a smooth painting by spreading their color as evenly as it can go, and a patch pasted into another picture loses its seam. A drawing becomes a measured field of how far every pixel sits from the nearest edge, a picture becomes the waves that add up to it, a scene and some lamps become the light that reaches every pixel, and any window of a picture gives its average at one flat price, however wide. Each is a call on a layer, and each makes a kind of picture no ordinary filter can.
+Most filters look at a picture and change it. The ones in this chapter treat a layer as a problem to solve. A few colored marks spread into a smooth painting, and a pasted patch loses its seam. A drawing becomes a measure of how far every pixel sits from an edge, and a picture becomes the waves that add up to it. A scene and some lamps give back the light that reaches every pixel. Any window's average costs the same, however wide. Each makes a kind of picture no ordinary filter can.
 
 ## A picture made of a few marks: diffusion
 

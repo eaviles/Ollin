@@ -6,7 +6,7 @@
 
 <img src="Images/37-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold bars low down for a plucked string, blue ones through the middle for a bell, and long pink ones across the top for breath, with faint bar lines and a playhead at the right edge" width="560">
 
-A synth answers what a note sounds like and says nothing about which notes there are, or when. This chapter is that other half: music a sketch works out for itself from a count of steps. Rhythms spread their hits evenly, a scale and a key choose the notes, chords and progressions move under them, and a small chain that learned a motif decides where a line wanders next. Then come a sequencer with a feel, tunings other than twelve, playing along with a beat in the room, data you can hear, sound placed around the listener and kept in an export, and a MIDI file written and read back.
+A synth answers what a note sounds like and says nothing about which notes there are, or when. This chapter is that other half, music a sketch works out from a count of steps. Rhythms spread their hits evenly, a scale chooses the notes, and chords move under them. A small chain that learned a motif decides where a line wanders next. Then come a sequencer with a feel, tunings other than twelve, and playing along with the room. The chapter ends on sonification, sound placed around the listener, and MIDI files written and read back.
 
 That picture is a record rather than a design. The piece drew it while playing it, one mark per note, and nobody wrote the notes down anywhere. Three rhythms decide when, a scale decides which, and a small chain that learned an eight-note motif decides where the low line wanders next.
 

@@ -6,7 +6,7 @@
 
 <!-- Hook image: the finished sketch, drawn outlines and strings struck, plucked, and bowed with the mouse, through an effects chain and a drawn room. Waiting on the finished sketch and its render. -->
 
-This chapter gives a sketch a voice of its own. It starts with one note and builds everything a note is made of: an instrument patched from oscillators, envelopes, and filters, the effects that move a sound, hold it, or take it apart, a room you can draw, an instrument somebody recorded, wavetables and grains, the physical models that work a note out from a plucked string, a struck shape, a bow, or a breath, and a note bent under the finger. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md). Nothing here needs a microphone, a controller, or a file. Run it and you will hear it.
+This chapter gives a sketch a voice of its own. It starts with one note and builds everything a note is made of. An instrument is patched from oscillators, envelopes, and filters, and effects move a sound, hold it, or take it apart. A room can be drawn, and an instrument can be somebody's recordings, a wavetable, or a cloud of grains. Physical models work a note out from a plucked string, a struck shape, a bow, or a breath, and a finger can bend it. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md). Nothing here needs a microphone, a controller, or a file, so run it and you will hear it.
 
 ## A sketch that plays
 
