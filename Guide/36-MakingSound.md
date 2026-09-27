@@ -4,9 +4,9 @@
 
 # 36. Making sound
 
-<!-- Hook image: the finished sketch, drawn outlines and strings struck, plucked, and bowed with the mouse, through an effects chain and a drawn room. Waiting on the finished sketch and its render. -->
+<!-- Hook image: the finished sketch, the workbench (Figures/36-MakingSound/Workbench.swift). Waiting on its render on the Mac. -->
 
-This chapter gives a sketch a voice of its own. It starts with one note and builds everything a note is made of. An instrument is patched from oscillators, envelopes, and filters, and effects move a sound, hold it, or take it apart. A room can be drawn, and an instrument can be somebody's recordings, a wavetable, or a cloud of grains. Physical models work a note out from a plucked string, a struck shape, a bow, or a breath, and a finger can bend it. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md). Nothing here needs a microphone, a controller, or a file, so run it and you will hear it.
+This chapter gives a sketch a voice of its own. It starts with one note and builds everything a note is made of. An instrument is patched from oscillators, envelopes, and filters, and effects move a sound, hold it, or take it apart. A room can be drawn, and an instrument can be somebody's recordings, a wavetable, or a cloud of grains. Physical models work a note out from a plucked string, a struck shape, a bow, or a breath, and a finger can bend it. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md). Nothing here needs a microphone, a controller, or a file, so run it and you will hear it. The chapter ends on a workbench you play with the mouse. Drawn outlines are struck there, strings are plucked and bowed, and everything rings in a room drawn from a rule.
 
 ## A sketch that plays
 
@@ -497,7 +497,200 @@ override func draw() {
 
 The same read works on a plain keyboard, where the wheel and the aftertouch belong to every note on the channel. The wiring does not care what is plugged in. [`Examples/Audio/Expression`](../Examples/Audio/Expression/Sketch.swift) is a surface the mouse plays through a virtual MIDI source, so a bend from the mouse crosses Core MIDI the way a controller's does. A real controller plugged in joins the same picture. Switch its `bowed` parameter on, and pressure becomes the bow.
 
-<!-- Putting it together: the finished sketch goes here: drawn outlines and strings struck, plucked, and bowed with the mouse, through an effects chain and a drawn room, built from this chapter's steps, with its full listing. -->
+## Putting it together: the workbench
+
+The workbench is an instrument you play with the mouse. It has three outlines to strike, six strings to pluck, and one more string to bow. All of them play through one effects chain that ends in a room drawn from a rule. Make `MySketches/Workbench.swift`:
+
+```swift
+import Ollin
+import OllinAudio
+
+final class Workbench: Sketch {
+    struct Plate {
+        let outline: Shape
+        let modes: StruckShape
+        let note: Pitch
+    }
+
+    // A room drawn from a rule: noise between two close walls, so the sound
+    // comes back in a burst every eighth of a second as it fades.
+    let room = ImpulseResponse(seconds: 2.5) { t, noise in
+        let slap = t.truncatingRemainder(dividingBy: 0.125) < 0.02 ? 1.0 : 0.3
+        return noise * slap * exp(-2.2 * t)
+    }
+    let hands = Synth(.steel)
+    let bow = Synth(.cello)
+
+    var plates: [Plate] = []
+    let strings: [Pitch] = ["E2", "A2", "D3", "G3", "B3", "E4"]
+    var plucks: [Int: (along: Double, time: Double)] = [:]
+    var ripples: [(at: Vector2, time: Double)] = []
+    var roomOutline: [Double] = []
+    var bowing = false
+    var bowSpeed = 0.0
+
+    let left = 120.0, right = 960.0, bowY = 980.0
+    func stringY(_ i: Int) -> Double { 620 + Double(i) * 56 }
+
+    override func setup() {
+        let chain: [Effect] = [
+            .chorus(Chorus(rate: 0.6, depth: 0.3)),
+            .delay(Delay(time: 0.3, feedback: 0.35, mix: 0.2)),
+            .reverb(Reverb(room, mix: 0.35)),
+            .limiter(Limiter()),
+        ]
+        hands.effects = chain
+        bow.effects = chain
+
+        // Three outlines to strike: a drum, a plate, and a shape drawn by hand.
+        // Measuring each one is the slow part, so it happens once, here.
+        let drum = Shape((0..<48).map { i in
+            Vector2(230, 330) + Vector2(cos(Double(i) / 48 * .tau), sin(Double(i) / 48 * .tau)) * 130
+        }, closed: true)
+        let plate = Shape([Vector2(430, 210), Vector2(660, 230), Vector2(640, 440), Vector2(410, 420)],
+                          closed: true)
+        let blob = Shape(curveThrough: [Vector2(780, 210), Vector2(930, 240), Vector2(960, 380),
+                                        Vector2(840, 450), Vector2(740, 340)], closed: true)
+        for (outline, note) in [(drum, "C3"), (plate, "G3"), (blob, "D4")] as [(Shape, Pitch)] {
+            if let modes = StruckShape(outline) {
+                plates.append(Plate(outline: outline, modes: modes, note: note))
+            }
+        }
+
+        // The room's answer to a click, as one peak per column across the top.
+        let samples = room.channels[0]
+        let step = samples.count / 840
+        roomOutline = (0..<840).map { c in
+            Double(samples[c * step ..< (c + 1) * step].map { abs($0) }.max() ?? 0)
+        }
+        let top = roomOutline.max() ?? 1
+        roomOutline = roomOutline.map { $0 / top }
+    }
+
+    override func mousePressed() {
+        let hand = Vector2(mouseX, mouseY)
+        // An outline rings where you strike it, and that decides which tones answer.
+        for plate in plates where plate.outline.contains(hand) {
+            hands.voice = Voice(struck: plate.modes.body(struckAt: hand))
+            hands.play(plate.note, for: 3)
+            ripples.append((hand, time))
+            return
+        }
+        // A string is plucked where you click along it, and that decides its tone.
+        for (i, note) in strings.enumerated() where abs(mouseY - stringY(i)) < 20 {
+            let along = (mouseX - left) / (right - left)
+            guard along > 0.02, along < 0.98 else { return }
+            var string = PluckedString.steel
+            string.position = along
+            hands.voice = Voice(plucked: string)
+            hands.play(note, for: 4)
+            plucks[i] = (along, time)
+            return
+        }
+        // The last string sounds for as long as you hold it.
+        if abs(mouseY - bowY) < 24 {
+            bow.noteOn("G2")
+            bowing = true
+        }
+    }
+
+    override func mouseReleased() {
+        if bowing { bow.noteOff("G2") }
+        bowing = false
+    }
+
+    override func draw() {
+        background(Color(hex: 0x16141C))
+        let ink = Color(hex: 0xE9DCC4)
+
+        // The bow: how fast you drag is how fast the bow moves.
+        bowSpeed = bowSpeed * 0.85 + abs(mouseX - previousMouse.x) * 0.15
+        bow.pressure = bowing ? min(1, bowSpeed / 10) : 0
+
+        // The room across the top.
+        stroke(ink.withAlpha(0.5))
+        strokeWeight(1)
+        for (c, peak) in roomOutline.enumerated() {
+            let x = left + Double(c)
+            drawLine(x, 90 - peak * 50, x, 90 + peak * 50)
+        }
+
+        // The outlines, each with the tones it rings at drawn below it. The
+        // taller a bar, the more that tone answers a strike at the pointer.
+        for (n, plate) in plates.enumerated() {
+            noFill()
+            stroke(ink)
+            strokeWeight(3)
+            drawShape(plate.outline)
+            let middle = plate.outline.bounds?.center ?? .zero
+            let hand = Vector2(mouseX, mouseY)
+            let at = plate.outline.contains(hand) ? hand : middle
+            let gains = plate.modes.gains(struckAt: at)
+            let x0 = 120 + Double(n) * 310
+            strokeWeight(4)
+            for (ratio, gain) in zip(plate.modes.ratios, gains) where ratio <= 4 {
+                let x = x0 + (ratio - 1) / 3 * 220
+                drawLine(x, 540, x, 540 - gain * 60)
+            }
+        }
+
+        // A strike leaves a ring that spreads and fades.
+        ripples = ripples.filter { time - $0.time < 1.5 }
+        for ripple in ripples {
+            let age = time - ripple.time
+            stroke(ink.withAlpha(1 - age / 1.5))
+            strokeWeight(2)
+            drawCircle(ripple.at.x, ripple.at.y, 10 + age * 120)
+        }
+
+        // The strings. A plucked one keeps the bend of the pluck, shrinking as it rings.
+        for i in strings.indices {
+            let y = stringY(i)
+            var bend = 0.0, along = 0.5
+            if let pluck = plucks[i] {
+                let age = time - pluck.time
+                bend = 16 * exp(-age * 1.4) * cos(age * 40)
+                along = pluck.along
+            }
+            stroke(ink.withAlpha(0.8))
+            strokeWeight(3 - Double(i) * 0.3)
+            let apex = left + along * (right - left)
+            drawLine(left, y, apex, y + bend)
+            drawLine(apex, y + bend, right, y)
+        }
+
+        // The bowed string shakes as long as the bow is moving.
+        let shake = 10 * bow.pressure
+        let bowed = (0...60).map { k -> Vector2 in
+            let a = Double(k) / 60
+            return Vector2(left + a * (right - left), bowY + sin(a * .pi) * shake * sin(time * 70))
+        }
+        stroke(Color(hex: 0xD9A441))
+        strokeWeight(4)
+        drawPolyline(bowed)
+    }
+}
+```
+
+The sketch keeps two instruments. `hands` plays whatever you strike or pluck, and it takes a new `voice` for each note. Assigning a voice leaves the notes already sounding alone, so a struck plate keeps ringing under the string you pluck after it. The other, `bow`, is a cello that plays only the bowed string. A bow's `pressure` is set on its whole synth, so the bow gets a synth of its own.
+
+The outlines come from [A shape you can hit](#a-shape-you-can-hit-modal-synthesis). Each one is measured once in `setup()`, since measuring is the slow part. A click inside one asks for `body(struckAt:)` at that point and plays it, so where you strike decides which tones answer. The bars under each outline show that before you strike. They are its `ratios`, from 1 to 4 across, and each bar's height is what `gains(struckAt:)` gives at the pointer. Move the pointer over the drum, and toward its middle most of the bars fall away.
+
+The strings come from [the plucked string](#a-string-worked-out-rather-than-drawn-the-plucked-string). Where you click along one becomes its `position`. Near the middle the tone goes hollow, and near an end it thins. The drawn string keeps the bend of the pluck and shrinks as it rings. That drawing is only a picture of the pluck, and the sound is worked out by the model.
+
+The bowed string comes from [A note you keep playing](#a-note-you-keep-playing-bowed-and-blown). Pressing on it starts the note, and the speed of your drag becomes `pressure`. The speed is smoothed from frame to frame, so the bow doesn't jump. Hold the mouse still and the note goes quiet, because nothing is being done to the string.
+
+The chain comes from [And the rest of the instrument](#and-the-rest-of-the-instrument), and its order is deliberate. The chorus widens the sound, the echo repeats it, and the room holds the repeats. The limiter is last, so the pile-up of all three can never clip. Both synths get the same chain, and each keeps its own copy, since every `Synth` runs its own engine.
+
+The room comes from [A room you can draw](#a-room-you-can-draw). Its rule is noise fading over two and a half seconds, loud for the first fiftieth of every eighth of a second. That is two walls close together, throwing the sound back and forth. The strip across the top is the same room drawn. Each column is the loudest sample in its slice of the room's answer to one click.
+
+Then make it yours:
+
+- Draw a room that hums. Replace the rule with `ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(.tau * 220 * t) }`. It ignores the noise, so the room rings at A and tunes everything you play into it.
+- Strike a letter. Call `textSize(300)` in `setup()` and use `textToShapes("A", at: Vector2(760, 440))[0]` in place of the blob. Its hole is part of the outline, so it rings differently from a solid shape the same size.
+- Blow instead of bowing. Make `bow` a `Synth(.clarinet)`, and the held line sounds as a tube, with the speed of your drag as the breath.
+
+This one is played, so keep it as a take, sound included. Press ⌘⇧R in the live host to record the window while you play, and again to finish the file. A recording finds the instruments a sketch holds and mixes what they play into the file, both synths here. Chapter 39's [Keeping the take](39-Performing.md#keeping-the-take) has the rest, and [Chapter 37](37-MusicByRule.md) plays instruments like these by rule instead of by hand.
 
 ## Where this comes from
 
@@ -506,6 +699,8 @@ Frequency modulation as a way of making sound is John Chowning's, worked out at 
 Playing a sound through a recorded room is convolution, and it was too slow to be useful until Thomas Stockham showed in 1966 that the fast Fourier transform made it cheap. William Gardner worked out in 1995 how to do it with no delay at all, by running the first stretch of the room directly and the rest through the transform, which is the arrangement Ollin uses. Taking a sound apart into its partials and putting it back moved or held is the phase vocoder, James Flanagan and Roger Golden's at Bell Labs in 1966, which Mark Dolson's 1986 tutorial turned from a laboratory tool into something a musician could run. The way Ollin keeps each partial whole while it moves it is Jean Laroche and Mark Dolson's, from 1999.
 
 Hearing a shape has a mathematical name, from Mark Kac's 1966 question "Can one hear the shape of a drum?". It also has an answer. Not always, since two different outlines can ring identically, but you can certainly hear a great deal of it. Working the frequencies out from the outline is modal synthesis. Jean-Marie Adrien set it out for sound, and Kees van den Doel and Dinesh Pai developed it for struck objects.
+
+The bowed string and the blown tube are digital waveguides, the technique Julius O. Smith III developed. The bow's grip on the string comes from Michael McIntyre, Robert Schumacher, and James Woodhouse, who described how instruments oscillate in 1983. The limiter at the end of the workbench's chain follows the feed-forward design of Dimitrios Giannoulis, Michael Massberg, and Joshua Reiss, from 2012.
 
 Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
@@ -519,8 +714,9 @@ Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
 - [Grains](../Docs/Helpers/Synthesis.md#grains): the whole cloud setting by setting, the six shapes, where a sound can come from, and what a strict clock and a full pile do.
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
+- [Recording](../Docs/Output/Recording.md): keeping a take while you play, with the sound of every instrument the sketch holds mixed into the file.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, and `Bowing`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Rooms` (five rooms drawn from rules), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, and `Bowing`.
 
 ---
 

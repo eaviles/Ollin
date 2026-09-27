@@ -332,8 +332,8 @@ Draws from: `Docs/Integration/MIDI.md`, `OSC.md`, `OSCQuery.md`, `Link.md`, `TUI
 **36. Making sound.**
 Teaches: `Synth` and what a note is made of (voices, envelopes, filters); building an instrument by patching operators rather than picking a preset, and the effects chain after it; an instrument that is a set of recordings; the four physical models (plucked string, struck shape, bowed string, blown tube); expression under the finger. Which notes, and when, is Ch 37's.
 Assumes: Ch 34 (an analyzer to read the playing back, and the mic a beat follower listens to).
-Payoff: drawn outlines and strings struck, plucked, and bowed with the mouse, through an effects chain and a drawn room (to be drafted; the music box moved to Ch 37).
-Figures: the envelope set; modulation measured; the plucked string; the struck shapes; the finished sketch.
+Payoff: the workbench, played with the mouse. Three drawn outlines measured as `StruckShape`s, with the `gains` at the pointer drawn as bars under each; six strings plucked where they are clicked; a bowed string whose `pressure` is the speed of the drag; one chain (chorus, delay, a room drawn from a rule, limiter) on both synths, with the room's answer drawn across the top. Kept as a live take with its sound (Ch 39). The music box moved to Ch 37. Its source is drafted and its render is owed.
+Figures: the envelope set; modulation measured; the plucked string; the struck shapes; the workbench.
 Draws from: `Docs/Helpers/Synthesis.md`; `Examples/Audio/`.
 
 **37. Music by rule.**
