@@ -322,7 +322,11 @@ The generator window from [Chapter 1](01-HelloOllin.md) makes the same package. 
 
 <!-- Putting it together: the finished sketch goes here, still to be designed, built from this chapter's steps, with its full listing. -->
 
-<!-- Where this comes from: the credits for this chapter's surfaces are still to write. -->
+## Where this comes from
+
+Most of this chapter wraps a sketch in something Apple's platforms already provide. A screen saver is a plug-in for the ScreenSaver framework, and the wallpaper is a borderless window at the desktop's own level. The menu-bar strip is a status item, and a widget is a WidgetKit timeline of pictures. An app travels on a Developer ID signature that Apple's notary service has checked. The phone's pictures are HEVC, the video standard ITU-T and ISO published together in 2013. Each machine's media engine does the compressing and the decoding.
+
+Screen savers began as a guard against a still picture burning into a monitor's phosphor. After Dark, from Berkeley Systems in 1989, made them something people chose for fun. The extension seam follows OPENRNDR's `extend`, which lets a program register extensions that run before and after its draw. The `ollinx-` prefix follows the addon naming of openFrameworks. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
