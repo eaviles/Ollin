@@ -408,7 +408,7 @@ The setting to know is `timeHorizon`. It is how far ahead a walker looks, in sec
 
 ### Falling into step: `Kuramoto`
 
-A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* is the book that made it widely known, fireflies and Huygens's clocks included.
+A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* made it widely known, fireflies and Huygens's clocks included.
 
 ```swift
 let sync = Kuramoto(count: 300, coupling: 2, seed: 7)
