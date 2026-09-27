@@ -172,7 +172,7 @@ White stays put in both readings, one convention doing quiet work. A height map'
 
 ## Meshes made from other meshes
 
-Three more ways to get geometry, and all of them start from a mesh you already have.
+These are more ways to get geometry. Cutting, smoothing, and growing start from a mesh you already have, and shadow art starts from the shadows you want a solid to throw.
 
 ### Cutting one solid with another
 
@@ -205,6 +205,26 @@ block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quar
 ```
 
 **Cut once.** This is work your processor does, not your graphics card. Solids of a few thousand triangles take a few tenths of a second, and denser ones take longer. So cut in `setup()`, or when a parameter moves, and keep the mesh for `draw()` to draw. That is the same advice as the cage below, for the same reason.
+
+### One solid, two shadows: shadow art
+
+A cut keeps the part of one solid that lies inside or outside another. Pictures can carve a solid too. Ask for the shadows you want it to throw, and Ollin works out a solid that throws them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/TwoShadowsOneSolid-dark.jpg">
+  <img src="Images/26-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+</picture>
+
+```swift
+let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
+drawMesh(art.mesh)
+```
+
+A lit point casts its shadow along the light's direction. So a point can only be part of the solid if it lands inside the shadow in *every* direction it is lit from. Keep exactly those points, and what is left is the largest solid that could cast them. That is why a shape that looks like neither shadow throws both. The points are tested on a grid of small cubes, `resolution` across. The survivors are turned into a mesh the way [Chapter 30](30-SculptingWithFields.md#the-other-way-out-field-to-mesh) turns a field into one.
+
+**The shadows it really throws are never larger than the ones you asked for, and can be smaller.** The catch is that two views share an axis. The front and the side are seen from either end of the same vertical, so a row that is empty in one empties it in the other. Two silhouettes come out exact when they are solid in the same rows, which is why the classic circle-and-square works. Three agree far less often, and the famous three-shadow sculptures are designed around that rather than in spite of it. `art.shadow(from: .front)` hands back what is really thrown, and where it differs from what you asked for, it is the one that is true.
+
+One practical trap if you show the solid beside flat panels, as the figure does. **Lights are per-frame state, not per-shape.** Calling `noLights()` after drawing the mesh, to keep the panels flat, unlights the mesh you already drew. Draw the flat panels inside `withoutLights { }` instead, which leaves the frame's lights on everything else.
 
 ### Smooth from a cage
 
@@ -813,6 +833,7 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
 - [Cutting solids](../Docs/3D/3D.md#booleans): the four set operations on a `Mesh`, what has to be true of the two solids, what rides along with the result, and the two shapes that come out honestly awkward.
+- [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
 - [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md): both schemes, what happens at an open boundary, and when to pick which.
 - [Mesh growth](../Docs/Generators/MeshGrowth.md): the differential-growth and reaction-diffusion forms, their parameters, and how to keep a growth stable.
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky parameters.

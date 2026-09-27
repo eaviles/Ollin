@@ -23,8 +23,8 @@ A lit point casts its shadow along the direction of the light. A point can there
 What is left is the **visual hull**, the largest solid that could cast those shadows.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/TwoShadowsOneSolid-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-Meshes/TwoShadowsOneSolid-dark.jpg">
+  <img src="../../Guide/Images/26-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
 </picture>
 
 ### Contents

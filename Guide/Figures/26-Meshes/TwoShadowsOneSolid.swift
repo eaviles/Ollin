@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 30): shadow art. The two silhouettes asked for on the
+// Guide diagram (Chapter 26): shadow art. The two silhouettes asked for on the
 // left, the solid they carve in the middle, and the two shadows it really throws
 // on the right.
 import Ollin

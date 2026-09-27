@@ -117,7 +117,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 15](15-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 16](16-CurvesAndFigures.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
-| Shadow art | The solid carved so that it throws the silhouettes you ask for, and the shadows it really casts | [Ch 30](30-SculptingWithFields.md) | [Shadow art](../Docs/Generators/ShadowArt.md) |
+| Shadow art | The solid carved so that it throws the silhouettes you ask for, and the shadows it really casts | [Ch 26](26-Meshes.md) | [Shadow art](../Docs/Generators/ShadowArt.md) |
 | Autostereogram | A depth map hidden in a repeating pattern, so a surface nobody drew stands out of the page | [Ch 9](09-Pictures.md) | [Autostereogram](../Docs/Drawing/Autostereogram.md) |
 | Photo mosaic | A picture rebuilt out of many smaller pictures, each cell taking the nearest by average color | [Ch 9](09-Pictures.md) | [Photo mosaic](../Docs/Drawing/PhotoMosaic.md) |
 | Envelopes and caustics | The curve a moving line leans on, the bright curve reflected or bent light crowds along, and where a wavefront gets to next | [Ch 16](16-CurvesAndFigures.md) | [Envelopes and caustics](../Docs/Drawing/Envelopes.md) |

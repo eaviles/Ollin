@@ -170,26 +170,6 @@ Both blocks come from the same fourteen cells across. Only where the vertices si
 
 So there are two ways out of a field, and they cost differently. `drawSDF3D` shades straight to pixels and pays by the pixel. `isosurface` makes geometry and pays by the volume, cubically in `resolution`. Reach for the mesh when you need a real object, and for the traced field when you just want it on screen.
 
-## One solid, two shadows
-
-Here is a use for a mesh carved out of a volume that has nothing to do with fields, and it is the best argument for paying by the volume rather than by the pixel.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/TwoShadowsOneSolid-dark.jpg">
-  <img src="Images/30-SculptingWithFields/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
-</picture>
-
-```swift
-let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
-drawMesh(art.mesh)
-```
-
-A lit point casts its shadow along the light's direction. So a point can only be part of the solid if it lands inside the shadow in *every* direction it is lit from. Keep exactly those points and what is left is the largest solid that could cast them, which is why a shape that looks like neither shadow throws both.
-
-**The shadows it really throws are never larger than the ones you asked for, and can be smaller.** The catch is that two views share an axis: the front and the side are seen from either end of the same vertical, so a row that is empty in one empties it in the other. Two silhouettes come out exact when they are solid in the same rows, which is why the classic circle-and-square works. Three agree far less often, and the famous three-shadow sculptures are designed around that rather than in spite of it. `art.shadow(from: .front)` hands back what is really thrown, and where it differs from what you asked for, it is the one that is true.
-
-One practical trap if you show the solid beside flat panels, as the figure does. **Lights are per-frame state, not per-shape.** Calling `noLights()` after drawing the mesh, to keep the panels flat, unlights the mesh you already drew. Draw the flat things first, or leave the lights alone.
-
 ## Sculpting like clay
 
 For forms you build up rather than compose, the `sculpt { }` block turns the operators into working state. Shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, and the block reads top to bottom like a session at a potter's wheel:
@@ -309,7 +289,6 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 ## Go deeper
 
 - [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, the fractal leaves, and the quality dials.
-- [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
 - [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge parameters, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
 - Appendix B draws this chapter's math, one picture per idea: [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
