@@ -57,7 +57,7 @@ drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
 
 `quality` is how many samples each output pixel gets, so a few dozen previews and a few hundred makes a clean still. There's also a progressive `Renderer` you feed a slice of samples per frame. That is how flames are meant to be watched, rising out of the noise. Rolling a random flame is genuinely a roll, and some come out muddy. Rerolling until one sings is part of the practice, not a sign you did it wrong.
 
-The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which [Chapter 19](19-GridSimulations.md) zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
+The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which the [escape-time section](#iteration-without-memory-escape-time-fractals) below zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
 
 ```swift
 let plate = Buddhabrot()      // three caps: long orbits red, short ones blue
@@ -82,7 +82,7 @@ drawPoints(inversionLimitSet(of: mirrors, count: 26_000), size: 1.5)
 
 Since the circles are in canvas coordinates, the dust needs no fitting. It lands among the mirrors that produced it, which is what the middle panel shows. Tangent rings give lace, separated circles give scattered dust, and overlapping ones tear the lace apart.
 
-The third has no randomness in it at all. A **Kleinian limit set** comes from two Möbius transformations, which are the maps that send circles to circles. The set is built from the group of everything you can combine out of them. Walking that group systematically traces the boundary its orbits pile up against.
+The **Kleinian limit set** has no randomness in it at all. It comes from two Möbius transformations, which are the maps that send circles to circles. The set is built from the group of everything you can combine out of them. Walking that group systematically traces the boundary its orbits pile up against.
 
 ```swift
 let curve = kleinianLimitSet(.lace)
