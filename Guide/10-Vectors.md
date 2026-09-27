@@ -10,7 +10,7 @@ Part II begins here, and so does a new kind of sketch, one where things *remembe
 
 ## An arrow you can draw
 
-You've been using `Vector2` since [Chapter 6](06-GridsAndRepetition.md) without ceremony, as a pair of coordinates carried as one value that calls like `drawCircle(center:radius:)` accept directly. The new idea is that the same pair has *two readings*. Read `(300, 200)` as a **point** and it's a place on the canvas. Read it as a **vector** and it's an arrow: go 300 right and 200 down, from wherever you are. Nothing in the type changes, and what changes is what you do with it.
+You've been using `Vector2` since [Chapter 1](01-HelloOllin.md) without ceremony, as a pair of coordinates carried as one value that calls like `drawCircle(center:radius:)` accept directly. The new idea is that the same pair has *two readings*. Read `(300, 200)` as a **point** and it's a place on the canvas. Read it as a **vector** and it's an arrow: go 300 right and 200 down, from wherever you are. Nothing in the type changes, and what changes is what you do with it.
 
 ```swift
 let place = Vector2(300, 200)          // a point: somewhere on the canvas
