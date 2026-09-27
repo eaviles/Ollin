@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and left the explanation for here. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the sketch above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
+[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and left the explanation for here. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. The sketch above puts the circle behind `sin`, phase, and a shaping curve into a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
 
 ## The clock
 
@@ -44,7 +44,7 @@ Read across and you can see which of the three properties to trust. `frameRate` 
 
 That is the whole reason for the two habits above. Motion derived from `time`, or stepped by `deltaTime`, keeps its speed as the rate falls. It gets choppier, and it does not get slower.
 
-Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) is what tells you where the time went, and [Chapter 32](32-Installations.md) puts it to work on a real piece.
+Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) shows you where the time went.
 
 ## The circle behind `sin`
 
