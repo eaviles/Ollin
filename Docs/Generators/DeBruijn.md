@@ -91,7 +91,7 @@ Lyndon words are the pieces the de Bruijn sequence is made of. Take the words wh
 - **The length grows fast.** Five symbols with a window of five gives 3,125 beads, and six symbols with a window of six gives 46,656. Choose the window by how many symbols a reader can see at once, not by how long you want the run to be.
 - Nothing here touches `random`, so a sketch built on the sequence reproduces exactly.
 
-Example: `Patterns/DeBruijn`. Guide: [Chapter 7](../../Guide/07-Tiles.md#a-run-that-never-repeats-itself).
+Example: `Patterns/DeBruijn`. Guide: [Chapter 7](../../Guide/07-Tiles.md#every-window-once-de-bruijn-sequences).
 
 ---
 
