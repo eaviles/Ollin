@@ -4,7 +4,7 @@
 
 # 21. Pictures you solve
 
-<!-- Hook image: the finished sketch, the lighthouse (Figures/21-PicturesYouSolve/Lighthouse.swift). Waiting on its render on the Mac. -->
+<img src="Images/21-PicturesYouSolve/Lighthouse.jpg" alt="A lighthouse on a dark headland at dusk, its lamp throwing beams into a violet and orange sky, the sun on the horizon, and a small boat with a lit mast on the water, every silhouette traced in a thin warm outline" width="560">
 
 Most filters look at a picture and change it. The ones in this chapter treat a layer as a problem to solve. A few colored marks spread into a smooth painting, and a pasted patch loses its seam. A drawing becomes a measure of how far every pixel sits from an edge, and a picture becomes the waves that add up to it. A scene and some lamps give back the light that reaches every pixel. Any window's average costs the same, however wide. Each makes a kind of picture no ordinary filter can. The chapter ends on a lighthouse at dusk. Its sky is diffused from a few marks, its beams are worked out by the light, and its outlines are measured.
 
