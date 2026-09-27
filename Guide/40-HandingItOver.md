@@ -67,6 +67,13 @@ final class Pour: Sketch {
 
 That one call asks the phone for its **Sketch** mode. From then on the Mac compresses each frame as video and sends it down the cable, and the phone shows it full screen. The first finger on the picture is the pointer, as it is in the installed app, so the same `mouseX` and `mouseIsPressed` work both ways. The canvas is the phone's own shape, nine across and nineteen and a half down.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/ShowOnPhone-dark.jpg">
+  <img src="Images/40-HandingItOver/ShowOnPhone.jpg" alt="A diagram of a sketch shown on the phone from the Mac: the live window on the left with a trail of paint and a finger's circle in it, each frame compressed as HEVC on the Mac's media engine, a cable carrying pictures to the phone on port 1339 and fingers and tilt back on port 1338, the phone on the right showing the same picture with a fingertip resting on the circle, and the first finger set as mouseX, mouseY, mouseIsPressed, and pressure before the next draw" width="680">
+</picture>
+
+Two connections share the cable. The pictures go down on one of their own, because they are most of what crosses it. On the sensor connection a picture would wait behind a sensor reading. Most pictures carry only what changed since the one before, and a whole picture goes out every second. A whole one also goes out when the phone connects or comes back to Sketch mode. When the cable is still busy, the Mac skips the next frame before it compresses it. A picture already made is never dropped, since every picture after it builds on it. The fingers and the tilt come back on the sensor connection, and the first finger becomes the pointer before the next `draw()`.
+
 The loop is the live window's, not the phone's. Save, and the phone shows the edit as soon as the Mac has compiled it, with nothing built for the phone. The inspector and the console stay where you are working. `Examples/3D/Phone/PhoneCanvas` is the fuller version. A finger paints, and the paint falls the way you tilt the phone. The tilt is the same motion stream Chapter 33 reads.
 
 The two ways answer different questions. The picture tells you how a piece looks and plays in the hand while you are still shaping it. The installed app tells you whether the phone's own GPU keeps up, and that the piece runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
