@@ -71,7 +71,7 @@ Once the pattern is yours, it is also one call. `polar(angle, radius, around: ce
   <img src="../Docs/Images/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the long side of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and a quarter turn taking (3, 0) to (0, 3)" width="680">
 </picture>
 
-The entry above goes from an angle to a point. `atan2(y, x)` goes back, from a point to its angle. Given the two parts of an arrow, it answers the angle the arrow points at, measured from the positive x-axis, between `-.pi` and `.pi`. It takes y first. It needs both parts, because an arrow and its opposite have the same ratio of y to x. (1, 1) and (-1, -1) are one example. A vector's `angle` is this call. [Chapter 10](10-Vectors.md) turns a shape to face where it moves with it, and [Chapter 17](17-MarksAndMedia.md) reads the lean of a pen.
+[An angle and a radius make a point](#an-angle-and-a-radius-make-a-point) goes from an angle to a point. `atan2(y, x)` goes back, from a point to its angle. Given the two parts of an arrow, it answers the angle the arrow points at, measured from the positive x-axis, between `-.pi` and `.pi`. It takes y first. It needs both parts, because an arrow and its opposite have the same ratio of y to x. (1, 1) and (-1, -1) are one example. A vector's `angle` is this call. [Chapter 10](10-Vectors.md) turns a shape to face where it moves with it, and [Chapter 17](17-MarksAndMedia.md) reads the lean of a pen.
 
 ### Sine: a smooth swing
 
@@ -99,13 +99,9 @@ Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau 
 
 ### An angle that never closes: the golden angle
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/GoldenAngle.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes the rosette above. Sometimes you want the opposite: many things placed around a center, none of them behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. It is the angle that fractions of whole numbers match most poorly, so no step ever lands close behind an earlier one. A sunflower's seeds grow this way. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 27](27-Landscapes.md) spreads its lamps the same way.
+Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes [the rosette](#n-copies-close-the-circle). Sometimes you want the opposite, many things placed around a center with none lined up behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. As a fraction of a turn, it is the number that simple fractions like 2/5 or 3/8 come least close to. So no two steps ever line up, and each new one lands in one of the widest gaps left. A sunflower's seeds grow this way. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 27](27-Landscapes.md) spreads its lamps the same way.
 
 ### Numbers that turn: complex multiplication
-
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/MultiplyingTurns.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
 
 A point `(x, y)` can also be read as one number, written `x + y·i`, where `i` is a number whose square is -1. Read that way, the plane is the **complex plane**, and its use here is multiplication. Multiplying two of these numbers multiplies their lengths and adds their angles. So multiplying by `i`, which has length 1 and points a quarter turn around, turns anything a quarter turn. Two quarter turns make half a turn, which is why `i` times `i` is -1. Squaring a point doubles its angle and squares its length. [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) builds escape-time fractals and domain coloring on this.
 
@@ -131,9 +127,7 @@ A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at 
 
 ### Three fractions at once: barycentric coordinates
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Barycentric.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-`lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. The weights 0.5, 0.3, and 0.2 name a point closest to the first corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three, and a corner's weight is the share of the piece opposite it. The same weights mix anything the corners carry, such as a color or a height. [Chapter 27](27-Landscapes.md) reads them off a point scattered over a mesh, to blend what the mesh stores at its corners.
+`lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. A weight of 0.5 on the first corner puts the point halfway from the opposite edge to that corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three, and a corner's weight is the share of the piece opposite it. The same weights mix anything the corners carry, such as a color or a height. [Chapter 27](27-Landscapes.md) reads them off a point scattered over a mesh, to blend what the mesh stores at its corners.
 
 ### Wrapping: remainder, fract, and pingPong
 
@@ -148,7 +142,7 @@ A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps who
   <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
 </picture>
 
-The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 37](37-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
+The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the greatest divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 37](37-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
 
 ### The perfect loop
 
@@ -219,9 +213,7 @@ The **tail** of a distribution is its far end, the values that almost never come
 
 ### Even over a disk: the square root
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/SquareRootSpread.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-To scatter points in a disk, pick an angle and a distance from the center. The obvious distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. [Chapter 27](27-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
+To scatter points in a disk, pick an angle and a distance from the center. A plain distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. [Chapter 27](27-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
 
 ### Chance is lumpy
 
@@ -307,8 +299,6 @@ Repeat "move a little, turn a little, draw" without resetting, and the little mo
 
 ### The plane turned inside out: inversion in a circle
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/CircleInversion.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
 Inversion in a circle moves every point along the line from the circle's center through it. A point at distance d from the center lands at r² / d, where r is the circle's radius. Points on the circle stay where they are, points inside go outside, and points near the center go far away. Inverting twice brings every point back, so the circle works like a mirror. A circle comes out as another circle, or as a straight line when it passes through the center. That is why [Chapter 22](22-IteratedForms.md#circles-used-as-mirrors-inversion-limit-sets)'s limit sets are made of round shapes.
 
 ### Four corners anywhere: corner pinning
@@ -318,7 +308,7 @@ Inversion in a circle moves every point along the line from the circle's center 
   <img src="Images/41-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
-Translate, rotate, and scale keep a square a square. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 41](41-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
+Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 41](41-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
 
 ## Vectors, motion, and forces
 
@@ -360,8 +350,6 @@ A force is a push with a direction, and simultaneous pushes on one body simply a
 
 ### Weaker with distance: the inverse square
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/InverseSquare.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
 Light from a point spreads out as it travels. At twice the distance, the same light covers four times the area, so each part of it gets a quarter as much. At three times the distance, each part gets a ninth. That is the **inverse square**: the strength falls as one over the distance squared. Gravity follows the same rule, and it is how [Chapter 11](11-ForcesAndPhysics.md)'s `NBody` pulls its bodies together. [Chapter 27](27-Landscapes.md) says why its lamps use a gentler curve that ends.
 
 ### Floating: the weight of the water pushed aside
@@ -380,8 +368,6 @@ A body in water sinks until the water it pushes aside weighs as much as the body
 A spring has one opinion, its **rest length**. Longer than that and it pulls its ends together, shorter and it pushes them apart, and at rest length it says nothing at all. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from blobs to bridges, is dots connected by this one rule.
 
 ### Damping: a swing that dies away
-
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Damping.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
 
 A spring on its own would swing forever. **Damping** is a force against the velocity, and it takes a little energy out of every swing. With a little damping the spring rings for a long time. With a lot, it creeps back without swinging at all. Between the two is the amount that settles soonest without passing the rest length. [Chapter 3](03-MotionAndTime.md)'s `@Sprung` sets this with `bounce`, and in [Chapter 11](11-ForcesAndPhysics.md) the world's built-in drag calms the springs.
 
@@ -439,9 +425,7 @@ Distributed systems need a definition of "nearby". That's a perception radius ar
 
 ### Everyone against everyone: counting pairs
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/EveryPair.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-Asking every creature about every other one costs more than it seems. A group of n things has n × (n − 1) / 2 pairs, about half of n squared. So twice the things make about four times the pairs. Growth like this, with the square of the count, is called **quadratic**. With 300 boids each looking at the other 299, a frame makes about 90,000 looks. That is where [Chapter 12](12-FlocksAndSwarms.md) starts before it cuts the plane into cells and asks only the nearby ones.
+Asking every creature about every other one grows fast. A group of n things has n × (n − 1) / 2 pairs, about half of n squared. So twice the things make about four times the pairs. Growth like this, with the square of the count, is called **quadratic**. With 300 boids each looking at the other 299, a frame makes about 90,000 looks, two for each of the 44,850 pairs. That is where [Chapter 12](12-FlocksAndSwarms.md) starts before it cuts the plane into cells and asks only the nearby ones.
 
 ### Emergence: local rules, large patterns
 
@@ -502,12 +486,6 @@ Take a formula, feed it a point, feed it its own answer, and keep going, and the
 
 Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted the set's interior. Everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 22](22-IteratedForms.md) shades both this way.
 
-### Density as tone
-
-<img src="Images/24-ParticleSimulations/MillionGrains.jpg" alt="The same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, a smooth field of light" width="560">
-
-Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone exactly where they crowd. The count is the brush: each tenfold increase trades grain for cream. This is how attractor plates, sandpaintings, and [Chapter 24](24-ParticleSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
-
 ## Shapes as regions
 
 ### Set operations on regions
@@ -560,11 +538,9 @@ Averaging two colors channel by channel gives the numeric midpoint, and your eye
 
 The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 9](09-Pictures.md) meets this the first time it reads pixels.
 
-### The stored number is not the light: linear light
+### Light and the number stored for it: linear light
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/LinearLight.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-A picture file doesn't store the amount of light in each pixel. It stores a number bent toward the dark end, so more of its steps go to dark tones, where the eye notices small changes most. That encoding is **sRGB**. The amount of light itself is called **linear light**, and it is what adds up and averages correctly. Half the light is stored as about 0.74, and a stored 0.5 is only about a fifth of the light. So Ollin mixes and blends in linear light, and turns the result back into stored numbers at the end. [Chapter 9](09-Pictures.md) averages pixels this way, and [Chapter 19](19-LayersAndEffects.md)'s blend modes add light the same way.
+A picture file stores a number for each pixel. That number gives more of its steps to dark tones, where the eye notices small changes most. That encoding is **sRGB**. The amount of light itself is called **linear light**, and it is what adds up and averages correctly. Half the light is stored as about 0.74, and a stored 0.5 is only about a fifth of the light. So Ollin mixes and blends in linear light, and turns the result back into stored numbers at the end. [Chapter 9](09-Pictures.md) averages pixels this way, and [Chapter 19](19-LayersAndEffects.md)'s blend modes add light the same way.
 
 ### What a device can show: gamut
 
@@ -573,7 +549,7 @@ A picture file doesn't store the amount of light in each pixel. It stores a numb
   <img src="Images/38-FinishingASketch/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
 </picture>
 
-The **gamut** of a screen, a printer, or a file format is the range of colors it can make. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. A color outside sRGB stores components slightly past 0 or 1. [Chapter 38](38-FinishingASketch.md)'s gamut check paints gray over what a press cannot print.
+The **gamut** of a screen or a printer is the range of colors it can make. The gamut of a color space is the range it can describe. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. Written in sRGB numbers, the way Ollin's `Color` holds it, a color outside sRGB has components below 0 or above 1. [Chapter 38](38-FinishingASketch.md)'s gamut check paints gray over what a press cannot print.
 
 ### Blend modes are arithmetic
 
@@ -583,6 +559,12 @@ The **gamut** of a screen, a printer, or a file format is the range of colors it
 </picture>
 
 Every blend mode is a small per-channel formula for combining the color being drawn with the color already there. Normal covers. Add sums, so light on light gets brighter. Multiply darkens like stacked filter gels, and screen brightens like layered projections. Lightest and darkest keep the winner. Once you read them as arithmetic, choosing one stops being trial and error. [Chapter 19](19-LayersAndEffects.md) puts the whole row to work.
+
+### Density as tone
+
+<img src="Images/24-ParticleSimulations/MillionGrains.jpg" alt="The same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, a smooth field of light" width="560">
+
+Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone exactly where they crowd. The count is the brush: each tenfold increase trades grain for cream. This is how attractor plates, sandpaintings, and [Chapter 24](24-ParticleSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
 
 ### Light past 1, and bringing it back
 
@@ -639,8 +621,6 @@ Given a distance field, a shape is "all points within r". The edge lives where t
 
 Combine two distance fields and set operations fall out of two tiny functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. Then there is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes neck together and melt like wax instead of merely touching. The k dial in the picture is that radius. At an exact tie the dip is a quarter of `k`, and it shrinks to nothing where the two answers are `k` apart. [Chapter 30](30-SculptingWithFields.md) sculpts with it.
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/SmoothMin.swift (themed). When its image lands, embed it here, below the entry's first picture as a picture tag at width 680, with its dark sibling as the source. -->
-
 ### Sphere tracing: hop by what the field promises
 
 <picture>
@@ -678,9 +658,7 @@ Perspective is one rule, that apparent size falls with distance, so equal sphere
 
 ### Which way a face points: the normal
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/EdgesAndNormal.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both, so `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
+A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both. So `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
 
 ### The pinhole: a pixel plus a depth is a ray
 
@@ -689,7 +667,7 @@ A flat triangle faces one way, and the arrow standing straight out of it is its 
   <img src="Images/33-DepthAndThePhone/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 </picture>
 
-A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. A flat photo plus a flat depth map quietly holds a full 3D scene. [Chapter 33](33-DepthAndThePhone.md) stands its point clouds up with exactly this.
+A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. A flat photo plus a flat depth map quietly holds a full 3D scene. [Chapter 33](33-DepthAndThePhone.md) stands its point clouds up with this recipe.
 
 ### A pose places points in the world
 
@@ -732,11 +710,9 @@ Some amounts are felt by ratio rather than by difference. The step from 220 Hz t
 
 Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 37](37-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
 
-### Loudness in steps: decibels
+### A level in steps: decibels
 
-<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Decibels.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
-
-Loudness is also heard by ratio, and decibels count it that way. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. [Chapter 36](36-MakingSound.md)'s compressor, gate, and limiter set their thresholds in decibels below full scale.
+Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. [Chapter 36](36-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
 
 ### Events, not levels
 
