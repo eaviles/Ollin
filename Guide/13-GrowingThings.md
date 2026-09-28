@@ -187,7 +187,7 @@ final class Veins: Sketch {
 }
 ```
 
-<!-- figure: Images/13-GrowingThings/Veins.jpg, waiting on a render of Figures/13-GrowingThings/Veins.swift -->
+<img src="Images/13-GrowingThings/Veins.jpg" alt="Pale green veins on a dark canvas, grown from one root at the bottom edge: a thick trunk that forks and forks again, every branch thinner than the one it left, until hairline twigs with short side shoots reach into every pocket of the square, with a few dim dots left where nothing has arrived yet" width="560">
 
 Run it and the veins set out from the bottom edge, fork into every open pocket, and slow down as the last attractors are consumed. `poissonDisk` does the scattering. It is the blue-noise scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences), an even sprinkle of points no two closer than the radius you ask for. `bounds.inset(by: .all(90))` keeps it a margin in from the canvas edge, and `drawCircles` draws one dot per point in the list. The scatter needs `seed(7)`, which runs in `setup()`, so the stepper is built there too. That is why the property starts empty and `guard let` unwraps it each frame, as [Chapter 12](12-FlocksAndSwarms.md) did with its flock. The growth itself draws no random numbers at all. Same attractors, same root, same veins, every run.
 
