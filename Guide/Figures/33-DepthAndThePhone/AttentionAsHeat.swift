@@ -107,7 +107,5 @@ final class AttentionAsHeat: Sketch {
             strokeWeight(2)
             drawCircle(center.x, center.y, 14)
         }
-
-        drawCaption("AttentionAsHeat: salience(at:in:) sampled as a dot field, frames on the regions")
     }
 }

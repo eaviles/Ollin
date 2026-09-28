@@ -89,7 +89,5 @@ final class WandAsPointer: Sketch {
                 }
             }
         }
-
-        drawCaption("WandAsPointer: the beam leaves the back of the phone and stops at what it hits")
     }
 }

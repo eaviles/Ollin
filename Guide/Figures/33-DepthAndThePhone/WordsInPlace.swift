@@ -60,8 +60,6 @@ final class WordsInPlace: Sketch {
         }
 
         for line in [wallSign, tablePage] { drawLine(line) }
-
-        drawCaption("WordsInPlace: one worldTransform per line places both panels")
     }
 
     /// The same drawing the PhoneWorldText example does: the panel outline on the

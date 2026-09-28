@@ -1,7 +1,4 @@
-// figure: frame=0 unstable
-//
-// Unstable: two lossless back-to-back renders moved even though the finds are
-// staged by hand; measured but not yet diagnosed.
+// figure: frame=0
 //
 // Guide figure (Chapter 33): two printed pictures the phone knows, each carrying
 // the same little city of columns. One card lies flat on a table, one poster hangs
@@ -49,6 +46,10 @@ final class PrintAsStage: Sketch {
                              outOfTheFace: SIMD3<Float>(0, 0, 1),
                              width: 0.42, height: 0.3)
 
+    override func setup() {
+        seed(11)     // the city's heights are noise, so the city is the same on every run
+    }
+
     override func draw() {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0.02, 1.0, -0.45), radius: 1.95,
@@ -68,8 +69,6 @@ final class PrintAsStage: Sketch {
         }
 
         for marker in [card, poster] { drawCity(on: marker) }
-
-        drawCaption("PrintAsStage: one placement per print, the same city on both")
     }
 
     /// The same drawing the PhoneMarkers example does: work in the marker's frame,

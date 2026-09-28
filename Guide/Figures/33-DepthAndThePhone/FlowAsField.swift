@@ -122,7 +122,5 @@ final class FlowAsField: Sketch {
         noStroke()
         fill(Color(white: 1, alpha: 0.85))
         drawPoints(trails.compactMap(\.last).filter { rect.contains($0) }, size: 4)
-
-        drawCaption("FlowAsField: samples(in:every:) as streaks colored by speed, dust carried by vector(at:in:)")
     }
 }
