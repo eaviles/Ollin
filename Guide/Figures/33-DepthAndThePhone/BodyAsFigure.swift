@@ -4,8 +4,9 @@
 // the joints as dots, the skeleton every slice of the stream could always draw.
 // Right, the same pose worn by solids: capsule bones, a torso that leans, a head
 // that turns, each part stood at its joint by the joint's own orientation. The
-// blue forearm is the honest part: the camera never saw those joints, the rig
-// filled them in, and the stream says so.
+// blue forearm, dotted on the left and solid on the right, is the honest part:
+// the camera never saw those joints, the rig filled them in, and the stream
+// says so.
 //
 // The pose is staged rather than tracked, the way this chapter's other figures
 // stage a depth camera: the same PhoneBody a phone fills in, built by hand from a
@@ -61,7 +62,7 @@ final class BodyAsFigure: Sketch {
         // Left: the joints as dots, the way LiftedPose and the first body slice draw.
         withState {
             translate(xs[0], 0, 0)
-            drawPointCloud(body.cloud(jointSize: 0.045, boneSize: 0.016, color: seenColor))
+            drawPointCloud(dots(jointSize: 0.045, boneSize: 0.016))
         }
         // Right: the same pose worn by solids, each part stood at its joint.
         withState {
@@ -70,6 +71,26 @@ final class BodyAsFigure: Sketch {
         }
 
         drawLabels(at: xs)
+    }
+
+    /// The dots `body.cloud(jointSize:boneSize:color:)` lays down, in the same
+    /// order and spacing, colored by what the camera saw: a joint by its own
+    /// flag, a bone only when both of its ends were seen, as on the mannequin.
+    private func dots(jointSize: Double, boneSize: Double) -> PointCloud {
+        var cloud = PointCloud()
+        for joint in PhoneJoint.allCases {
+            guard let p = body.position(joint) else { continue }
+            cloud.add(p, color: body.isObserved(joint) ? seenColor : filledColor, size: jointSize)
+        }
+        for (a, b) in PhoneBody.skeleton {
+            guard let pa = body.position(a), let pb = body.position(b) else { continue }
+            let color = body.isObserved(a) && body.isObserved(b) ? seenColor : filledColor
+            let steps = max(1, Int((pa.distance(to: pb) / boneSize).rounded()))
+            for s in 1..<steps {
+                cloud.add(pa.lerp(to: pb, Double(s) / Double(steps)), color: color, size: boneSize)
+            }
+        }
+        return cloud
     }
 
     private func drawMannequin() {

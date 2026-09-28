@@ -133,7 +133,7 @@ for (a, b) in body.bones() {            // or: solid bones
 }
 ```
 
-<img src="../../Guide/Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
+<img src="../../Guide/Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
 
 ### Where the person stands
 

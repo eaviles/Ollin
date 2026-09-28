@@ -399,7 +399,7 @@ The ghost room placed its frames in one world, in meters. The phone places peopl
 
 `latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. It is for a figure you dress in solids that follows a person around the room. ARKit's body tracking makes the stream on the phone. `modelTransform(_:)` composes a joint's position and orientation into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light.
 
-<img src="Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
+<img src="Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
 
 In `draw()`:
 
