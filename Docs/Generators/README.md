@@ -6,7 +6,7 @@
 
 - [`Random`](./Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
 - [`Noise`](./Noise.md) - Perlin `noise`, `signedNoise`, and `curlNoise` flow fields
-- [`Blue noise`](./BlueNoise.md) - `poissonDisk`, Poisson-disk sampling: a scatter that is even but still looks natural, with no clumps and no gaps
+- [`Blue noise`](./BlueNoise.md) - `poissonDisk`, Poisson-disk sampling: a scatter that is even but still looks natural, with no clumps and no gaps, over a rectangle or inside a `Shape`
 - [`Low-discrepancy sampling`](./LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream, so raising the count adds points without moving the ones already placed
 - [`Points on a surface`](./SurfaceSampling.md) - `surfacePoints`, points scattered over the surface of a mesh rather than over its vertex list. They are evenly spaced by default, and each point carries the normal, the texture coordinate, and the triangle it landed on
 - [`Stippling`](./Stippling.md) - `stipple`, weighted-Voronoi stippling: dots packed to reproduce the tone of an image, or any density function

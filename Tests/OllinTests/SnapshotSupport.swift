@@ -263,3 +263,29 @@ enum Snapshot {
         guard CGImageDestinationFinalize(dest) else { throw Failure.renderFailed }
     }
 }
+
+/// Mean and max per-channel byte difference between two same-size images, both
+/// drawn into tightly-packed RGBA8 so the comparison ignores each `CGImage`'s
+/// own sample layout.
+@MainActor
+func imageDifference(_ a: CGImage, _ b: CGImage) -> (mean: Double, max: Int)? {
+    func rgba(_ image: CGImage) -> [UInt8]? {
+        let w = image.width, h = image.height
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
+                                  bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let ptr = ctx.data else { return nil }
+        return Array(UnsafeRawBufferPointer(start: ptr, count: w * h * 4))
+    }
+    guard a.width == b.width, a.height == b.height,
+          let ab = rgba(a), let bb = rgba(b) else { return nil }
+    var total = 0, worst = 0
+    for i in ab.indices {
+        let d = abs(Int(ab[i]) - Int(bb[i]))
+        total += d
+        worst = Swift.max(worst, d)
+    }
+    return (Double(total) / Double(ab.count), worst)
+}

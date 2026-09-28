@@ -59,13 +59,13 @@ ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:276  cannot find 'x' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:104  cannot find 'road' in scope
-bac6f70b2c26  Guide/15-ShapesAsMaterial.md:145  cannot find 'circles' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:198  cannot find 'square' in scope
-6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:276  cannot find 'blob' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:299  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:310  value of type '[Contour]' has no member 'maxInset'
-ff3aae35a44a  Guide/15-ShapesAsMaterial.md:360  cannot find 'art' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:493  unary operator cannot be separated from its operand
+bac6f70b2c26  Guide/15-ShapesAsMaterial.md:161  cannot find 'circles' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:214  cannot find 'square' in scope
+6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:292  cannot find 'blob' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:315  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:326  value of type '[Contour]' has no member 'maxInset'
+ff3aae35a44a  Guide/15-ShapesAsMaterial.md:376  cannot find 'art' in scope
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:509  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
@@ -75,17 +75,17 @@ c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
-4467bb8d08b2  Guide/20-PicturesRestyled.md:143  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-1d6986f2d7b4  Guide/20-PicturesRestyled.md:166  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-0979bc9f5047  Guide/20-PicturesRestyled.md:187  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-3ad05523666d  Guide/20-PicturesRestyled.md:210  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-d557820db6d8  Guide/20-PicturesRestyled.md:93  'module' is inaccessible due to 'internal' protection level
-742a059aea91  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
-45ff58c66642  Guide/21-PicturesYouSolve.md:180  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-2c8e3afaeaef  Guide/21-PicturesYouSolve.md:196  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-a1896233ab91  Guide/21-PicturesYouSolve.md:229  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-2065dd8af5c4  Guide/21-PicturesYouSolve.md:48  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
-8f074282df6a  Guide/21-PicturesYouSolve.md:95  cannot find 'bands' in scope
+3ad05523666d  Guide/20-PicturesRestyled.md:236  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+0979bc9f5047  Guide/20-PicturesRestyled.md:268  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+4467bb8d08b2  Guide/20-PicturesRestyled.md:293  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+1d6986f2d7b4  Guide/20-PicturesRestyled.md:316  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+d557820db6d8  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
+45ff58c66642  Guide/21-PicturesYouSolve.md:108  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+2c8e3afaeaef  Guide/21-PicturesYouSolve.md:124  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
+2065dd8af5c4  Guide/21-PicturesYouSolve.md:250  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
+a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 48a71edbd6ce  Guide/22-IteratedForms.md:168  cannot find 'start' in scope
 f396671e3e8e  Guide/22-IteratedForms.md:188  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type 'Contour'
 561972108ab0  Guide/22-IteratedForms.md:308  reference to member 'domainColoring' cannot be resolved without a contextual type
@@ -107,19 +107,19 @@ a0d4c8d842eb  Guide/26-Meshes.md:138  cannot find 'paint' in scope
 a49346a622b2  Guide/26-Meshes.md:154  cannot find 'ribbon' in scope
 3116ee605b52  Guide/26-Meshes.md:168  cannot find 'base' in scope
 371520eae381  Guide/26-Meshes.md:210  cannot find 'block' in scope
-b0c465e3a91b  Guide/26-Meshes.md:226  cannot find 'ring' in scope
-3bb451e5be2a  Guide/26-Meshes.md:260  cannot find 'growth' in scope
-d861efd8d23b  Guide/26-Meshes.md:275  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
-b842f5f92dc5  Guide/26-Meshes.md:303  cannot find 'grown' in scope
-de16d0d4ea1b  Guide/26-Meshes.md:313  cannot find 'u' in scope
-4b1f9e2f920c  Guide/26-Meshes.md:330  cannot find 'boulder' in scope
-4279c6e5416b  Guide/26-Meshes.md:349  cannot find 'dropPoint' in scope
-dba927805441  Guide/26-Meshes.md:412  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
+b0c465e3a91b  Guide/26-Meshes.md:238  cannot find 'ring' in scope
+3bb451e5be2a  Guide/26-Meshes.md:272  cannot find 'growth' in scope
+d861efd8d23b  Guide/26-Meshes.md:287  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
+b842f5f92dc5  Guide/26-Meshes.md:315  cannot find 'grown' in scope
+de16d0d4ea1b  Guide/26-Meshes.md:325  cannot find 'u' in scope
+4b1f9e2f920c  Guide/26-Meshes.md:342  cannot find 'boulder' in scope
+4279c6e5416b  Guide/26-Meshes.md:361  cannot find 'dropPoint' in scope
+dba927805441  Guide/26-Meshes.md:424  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
 12920b7a4e82  Guide/26-Meshes.md:46  cannot find 'stage' in scope
-307ebc159073  Guide/26-Meshes.md:576  expected '}' in class
-7deb4e20fcbe  Guide/26-Meshes.md:655  cannot find 'picture' in scope
+307ebc159073  Guide/26-Meshes.md:588  expected '}' in class
 cd7cc7722169  Guide/26-Meshes.md:66  cannot find 'stage' in scope
-02f7d4dd947d  Guide/26-Meshes.md:739  extraneous '}' at top level
+7deb4e20fcbe  Guide/26-Meshes.md:667  cannot find 'picture' in scope
+02f7d4dd947d  Guide/26-Meshes.md:751  extraneous '}' at top level
 cb73ed16193c  Guide/26-Meshes.md:80  cannot find 'teal' in scope
 db4a3035423c  Guide/26-Meshes.md:92  cannot find 'planks' in scope
 ee027f846921  Guide/27-Landscapes.md:118  cannot find 'island' in scope
@@ -197,8 +197,8 @@ f81e8c4e5b7c  Guide/29-CharactersAndCloth.md:407  cannot find 'world' in scope
 a3caae6b59cd  Guide/29-CharactersAndCloth.md:59  cannot find 'lookout' in scope
 0f4af3908128  Guide/29-CharactersAndCloth.md:69  cannot find 'car' in scope
 5b41db2dc8f2  Guide/29-CharactersAndCloth.md:84  cannot find 'car' in scope
-b07345766984  Guide/30-SculptingWithFields.md:158  cannot find 'box' in scope
-e94f9d5f972b  Guide/30-SculptingWithFields.md:205  cannot find 'cluster' in scope
+b07345766984  Guide/30-SculptingWithFields.md:167  cannot find 'box' in scope
+e94f9d5f972b  Guide/30-SculptingWithFields.md:214  cannot find 'cluster' in scope
 fbd600f5cd66  Guide/30-SculptingWithFields.md:65  cannot find 'a' in scope
 206d2dbd05e7  Guide/31-TracedLight.md:133  cannot find 'ribbon' in scope
 5834d913fb21  Guide/31-TracedLight.md:197  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
@@ -293,7 +293,7 @@ fe0d5ce663bc  Guide/36-MakingSound.md:324  cannot find 'synth' in scope
 31cc68e2d94f  Guide/36-MakingSound.md:36  cannot find 'synth' in scope
 10916390e224  Guide/36-MakingSound.md:366  cannot find 'PluckedString' in scope
 953403ae7b45  Guide/36-MakingSound.md:386  cannot find 'Synth' in scope
-9ecff0cac4c8  Guide/36-MakingSound.md:393  missing argument for parameter 'at' in call
+9ecff0cac4c8  Guide/36-MakingSound.md:393  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
 2a9797c1f713  Guide/36-MakingSound.md:424  cannot find 'Synth' in scope
 62d10742cdf6  Guide/36-MakingSound.md:449  cannot find 'Synth' in scope
 04d0a43694ed  Guide/36-MakingSound.md:473  cannot find 'Synth' in scope

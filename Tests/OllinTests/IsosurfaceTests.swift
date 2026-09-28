@@ -229,6 +229,47 @@ struct IsosurfaceTests {
         #expect(abs(Metaballs.falloff(0.25) - 0.5) < 1e-12)
     }
 
+    /// The curve on its own, in a sketch's terms: a squared distance and a
+    /// radius. For one ball it is the whole field, so it equals
+    /// `Metaballs.value(at:)` at every distance, and it reads 1 at the center,
+    /// a half at the radius, and 0 from twice the radius out.
+    @Test func theCurveOnItsOwnIsOneBallsField() {
+        let center = Vector3(3, -2, 5)
+        var field = Metaballs()
+        field.add(at: center, radius: 20)
+        for d in stride(from: 0.0, through: 50, by: 2.5) {
+            let p = center + Vector3(0.6, 0.8, 0) * d
+            let own = Metaballs.falloff(distanceSquared: (p - center).lengthSquared, radius: 20)
+            #expect(own == field.value(at: p))
+            #expect(own == field.balls[0].value(at: p))
+            #expect(abs(own - Metaballs.falloff(distanceSquared: d * d, radius: 20)) < 1e-12)
+        }
+        #expect(Metaballs.falloff(distanceSquared: 0, radius: 20) == 1)
+        #expect(abs(Metaballs.falloff(distanceSquared: 400, radius: 20) - 0.5) < 1e-12)
+        #expect(Metaballs.falloff(distanceSquared: 1600, radius: 20) == 0)
+        #expect(Metaballs.falloff(distanceSquared: 1e6, radius: 20) == 0)
+        // A radius of nothing has no curve; a negative one is the same.
+        #expect(Metaballs.falloff(distanceSquared: 1, radius: 0) == 0)
+        #expect(Metaballs.falloff(distanceSquared: 1, radius: -5) == 0)
+    }
+
+    /// A ball's own value carries its strength, and the field is the sum of
+    /// every ball's own value, so a sketch shaping its own blobs from the curve
+    /// reproduces `Metaballs` exactly.
+    @Test func aBallsOwnValueCarriesItsStrengthAndTheFieldIsTheirSum() {
+        var field = Metaballs()
+        field.add(at: Vector3(-10, 0, 0), radius: 15, strength: 1.4)
+        field.add(at: Vector3(10, 0, 0), radius: 12, strength: -0.5)
+        field.add(at: Vector3(0, 8, 0), radius: 9)
+        for p in [Vector3.zero, Vector3(-4, 2, 1), Vector3(12, -3, 0), Vector3(40, 40, 40)] {
+            let sum = field.balls.reduce(0) { $0 + $1.value(at: p) }
+            #expect(sum == field.value(at: p))
+            let ball = field.balls[0]
+            let bare = Metaballs.falloff(distanceSquared: (p - ball.center).lengthSquared, radius: ball.radius)
+            #expect(ball.value(at: p) == 1.4 * bare)
+        }
+    }
+
     /// A single ball meshes to a sphere of exactly the radius asked for.
     @Test func aLoneBallReadsAtItsOwnRadius() {
         var field = Metaballs()

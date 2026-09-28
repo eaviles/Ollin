@@ -28,6 +28,7 @@
   - [Asking an outline questions](#contour-questions)
   - [Lighter, reversed, rounded, and cut](#contour-edits)
 - [Shape](#shape)
+  - [Points inside one](#shape-points)
   - [Set operations](#shape-booleans)
   - [Offsetting](#shape-offset)
   - [Stroke as shape](#shape-stroked)
@@ -635,6 +636,30 @@ if let box = shape.bounds {
 ```
 
 **Islands.** `separated()` splits a shape into its separate regions, one `Shape` each, with every hole kept in the island it belongs to. A boolean that cut a bar in two, or a [break](../Generators/Fracture.md) that left a piece in two places, comes back as one value holding both; this is how to treat each region as its own thing. A shape that is already one island comes back alone.
+
+<a name="shape-points"></a>
+
+**Points inside one.** `randomPoints(in:count:)` scatters points evenly over the filled region, holes left out and every island given its share by area. The points are drawn from the same triangles the fill is made of, a triangle picked in proportion to its area and a point inside it, rather than thrown at the box around the shape and thinned, so a thin or sparse shape costs no more than a compact one. `randomPoints(along:count:)` scatters them along the outline instead, evenly by walked length, open contours included. `poissonDisk(in:radius:)` is the [blue-noise](../Generators/BlueNoise.md#shape) form: no two points closer than the radius, none in a hole. All three run on the sketch's seeded `random`, so [`seed`](../Generators/Random.md#seed) makes a layout repeat:
+
+```swift
+let shape = Shape(outer: [Vector2(100, 100), Vector2(600, 140), Vector2(520, 620), Vector2(160, 560)],
+                  holes: [[Vector2(300, 300), Vector2(420, 300), Vector2(420, 420), Vector2(300, 420)]])
+seed(4)
+let inside = randomPoints(in: shape, count: 600)      // even by area, none in a hole
+let rim = randomPoints(along: shape, count: 120)      // even by length
+let spread = poissonDisk(in: shape, radius: 14)       // blue noise, kept inside
+noStroke(); fill(.black)
+drawPoints(inside, size: 3)
+```
+
+Each wraps a free function that takes any random source, for geometry code outside a sketch:
+
+```swift
+let shape = Shape([Vector2(0, 0), Vector2(300, 40), Vector2(260, 320), Vector2(40, 280)])
+var rng = SplitMix64(seed: 4)
+let inside = randomPoints(in: shape, count: 600, using: &rng)
+let rim = randomPoints(along: shape, count: 120, using: &rng)
+```
 
 <a name="shape-booleans"></a>
 

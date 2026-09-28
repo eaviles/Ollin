@@ -163,7 +163,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 
 - [`Random`](./Generators/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
 - [`Noise`](./Generators/Noise.md) - Perlin `noise` / `signedNoise`, seamlessly looping `noise(loop:)`, layered `fbm`, and `curlNoise` flow fields
-- [`Blue noise`](./Generators/BlueNoise.md) - `poissonDisk`, an even but organic scatter with no clumps or gaps (Poisson-disk sampling)
+- [`Blue noise`](./Generators/BlueNoise.md) - `poissonDisk`, an even but organic scatter with no clumps or gaps (Poisson-disk sampling), over a rectangle or inside a `Shape`
 - [`Low-discrepancy sampling`](./Generators/LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points and never moves them
 - [`Points on a surface`](./Generators/SurfaceSampling.md) - `surfacePoints`, points scattered over a mesh's surface rather than its vertex list. They are evenly spaced by default, and each carries the normal, texture coordinate, and triangle it landed on.
 - [`Stippling`](./Generators/Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling) or any density function

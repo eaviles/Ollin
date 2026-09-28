@@ -122,19 +122,4 @@ private extension Mesh {
         turned.normals = normals.map { Vector3($0.x, -$0.y, -$0.z) }
         return turned
     }
-
-    /// One mesh holding all of `meshes`, indices renumbered as they are appended.
-    /// The parts carry no texture coordinates (an extrusion emits none), so
-    /// neither does the result.
-    static func joined(_ meshes: [Mesh]) -> Mesh {
-        guard meshes.count != 1 else { return meshes[0] }
-        var all = Mesh(positions: [], indices: [])
-        for mesh in meshes {
-            let offset = UInt32(all.positions.count)
-            all.positions.append(contentsOf: mesh.positions)
-            all.normals.append(contentsOf: mesh.normals)
-            all.indices.append(contentsOf: mesh.indices.map { $0 + offset })
-        }
-        return all
-    }
 }

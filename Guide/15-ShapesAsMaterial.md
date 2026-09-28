@@ -113,6 +113,22 @@ The middle panel asks a loop about itself with `crossings()`. Walk once round an
 
 The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
 
+### Chance inside an outline: points in a shape
+
+A shape can also be the place chance is confined to. `randomPoints(in:count:)` scatters points evenly over its fill, holes left out and every island given its share, because the points come from the same triangles the fill is made of rather than from the box around the shape. `randomPoints(along:count:)` scatters them along the outline, even by length. And `poissonDisk(in:radius:)` is [Chapter 4](04-Randomness.md#darts-that-keep-their-distance-poissondisk)'s blue noise kept inside a shape, no two points closer than the radius, every island filled:
+
+```swift
+seed(4)
+let letter = textToShapes("O", 540, 700)[0]
+let stipple = poissonDisk(in: letter, radius: 9)     // inside the letter, none in its counter
+let rim = randomPoints(along: letter, count: 80)     // on the outline, even by length
+noStroke(); fill(.black)
+drawPoints(stipple, size: 3)
+drawPoints(rim, size: 6)
+```
+
+Three lines and a glyph is a stipple. The next section scatters the whole canvas; this confines the same scatter to a region, which is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
+
 ## Scatters and territories
 
 So far each shape was one outline. Here the material turns into populations, and the territories start from `poissonDisk(radius:)`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences).

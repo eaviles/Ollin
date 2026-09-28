@@ -16,6 +16,7 @@ A plain [`random`](./Random.md) scatter clumps, so some points land almost on to
 ### Contents
 
 - [poissonDisk](#poissonDisk)
+- [Inside a shape](#shape)
 - [Feeding the tessellators](#feeding)
 - [Standalone (outside a sketch)](#standalone)
 
@@ -40,6 +41,29 @@ drawPoints(dots, size: 4)
 ```
 
 The layout is a pure function of the seed. Compute it once and keep it in a stored property rather than recomputing it every frame. Then animate something visual, such as a dot's size or its color, so the field moves without the points jumping. See the `BlueNoise` example.
+
+<a name="shape"></a>
+
+#### Inside a shape
+
+```swift
+poissonDisk(in shape: Shape,
+            radius: Double,
+            candidates: Int = 30,
+            maxCount: Int? = nil) -> [Vector2]
+```
+
+The same scatter confined to the filled region of a [`Shape`](../Drawing/Geometry.md#shape): no two points closer than `radius`, none in a hole, and every island filled. The darts are the same, with the shape's fill as the place a dart may land. What differs is where the throwing starts. Each seed is drawn from the fill's own triangles rather than from the box around the shape, and when the darts around every placed point have all missed, a fresh seed is drawn the same way and the throwing goes on. So a shape thinner than a dart's reach, where most darts thrown around a point fall outside, still fills end to end, and a shape of several islands fills every island rather than only the one the first seed landed in. The throwing stops when `candidates` fresh seeds in a row find no room.
+
+```swift
+seed(7)
+let letter = textToShapes("O", 540, 700)[0]
+let dots = poissonDisk(in: letter, radius: 9)      // inside the letter, none in its counter
+noStroke(); fill(.black)
+drawPoints(dots, size: 3)
+```
+
+The plain scatter inside a shape, even by area rather than spaced, is `randomPoints(in:count:)`, and the outline's is `randomPoints(along:count:)`; both are on the [geometry page](../Drawing/Geometry.md#shape-points).
 
 <a name="feeding"></a>
 
@@ -66,6 +90,8 @@ The `Sketch` method wraps a free function that takes any random source, so geome
 var rng = SplitMix64(seed: 9)
 let points = poissonDisk(in: bounds, radius: 24, using: &rng)
 ```
+
+The shape form is the same call with a `Shape` in place of the rectangle, `using:` and all.
 
 ---
 

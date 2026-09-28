@@ -149,6 +149,15 @@ drawMesh(blobs.mesh())
 
 `radius` is the size a ball reads at on its own. Put two within reach of each other and the values in the gap add up to more than either one makes there. The surface swells across it, and the pair runs together. Move them apart and the bridge necks down and snaps. `level` is the value the surface is drawn at. Lowering it fattens everything and makes blobs merge from further away, and raising it thins them until they separate. A negative `strength` carves into a neighbor instead of joining it.
 
+The bump one ball is made of is yours to build from too. `Metaballs.falloff(distanceSquared:radius:)` is what a ball of that radius reads at that squared distance from its center: 1 at the center, a half at the radius, nothing from twice the radius out. Feed it a radius that changes with the direction and the ball's rim wobbles. Feed it a distance measured in a squashed space and the ball stretches. The sum of such reads is a field like any other:
+
+```swift
+let wobbly = isosurface(at: 0.5, in: Box3(center: .zero, size: Vector3(3, 3, 3)), resolution: 48) { p in
+    let r = 1 + 0.25 * signedNoise(p.x * 2 + 10, p.y * 2, p.z * 2)
+    return Metaballs.falloff(distanceSquared: p.lengthSquared, radius: r)
+}
+```
+
 The right panel is that same form with `wireframe()` on, marched deliberately coarse so the cells show. The left one is the same coarse mesh, and it still looks smooth. The shading normals come from the field rather than from the flat faces.
 
 Any field works here, not just metaballs. The one thing to know is which side it treats as solid. The surface wraps the region where the field runs *above* the level. So a distance function, which is negative inside, needs a minus sign in front of it.

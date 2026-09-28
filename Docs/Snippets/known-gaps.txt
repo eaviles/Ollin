@@ -13,28 +13,28 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-76ba2c72194a  Docs/3D/3D.md:1345  cannot find 'ribbon' in scope
+59a8691ecc04  Docs/3D/3D.md:1001  overriding declaration requires an 'override' keyword
+76ba2c72194a  Docs/3D/3D.md:1367  cannot find 'ribbon' in scope
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1508  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1531  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1576  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1594  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1621  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1638  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1660  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1676  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1696  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1727  cannot find 'rock' in scope
-5809ee8f07b9  Docs/3D/3D.md:1751  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1797  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1530  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1553  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1598  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1616  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1643  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1660  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1682  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1698  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1718  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1749  cannot find 'rock' in scope
+5809ee8f07b9  Docs/3D/3D.md:1773  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1819  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
-ad56e3965bd1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
-602cc0895e58  Docs/3D/3D.md:423  cannot find 'eye' in scope
+ad56e3965bd1  Docs/3D/3D.md:432  'module' is inaccessible due to 'internal' protection level
+602cc0895e58  Docs/3D/3D.md:445  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this declaration
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
-a5b3460feb06  Docs/3D/3D.md:938  cannot find 'e' in scope
-59a8691ecc04  Docs/3D/3D.md:979  overriding declaration requires an 'override' keyword
+a5b3460feb06  Docs/3D/3D.md:960  cannot find 'e' in scope
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
@@ -318,37 +318,38 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:122  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:91  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-4089dff1acc6  Docs/Drawing/Geometry.md:175  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-0bdba7d24932  Docs/Drawing/Geometry.md:227  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:240  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:253  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:264  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:280  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:290  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:305  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:333  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:342  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:368  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:396  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:419  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:439  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-754645c0ed85  Docs/Drawing/Geometry.md:44  expected ',' separator
-e472a0d6d590  Docs/Drawing/Geometry.md:459  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:503  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:551  expected '{' in body of function declaration
-4fdce137d56e  Docs/Drawing/Geometry.md:587  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:617  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:624  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:630  cannot find 'shape' in scope
-1eb6f12247fb  Docs/Drawing/Geometry.md:643  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:657  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:669  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:675  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:693  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:700  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-eb39bc6e25d9  Docs/Drawing/Geometry.md:713  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:727  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:769  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+4089dff1acc6  Docs/Drawing/Geometry.md:176  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+0bdba7d24932  Docs/Drawing/Geometry.md:228  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:241  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:254  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:265  cannot find 'eye' in scope
+7e1e37f3022c  Docs/Drawing/Geometry.md:281  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:291  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:306  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:334  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:343  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:369  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:397  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:420  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:440  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+754645c0ed85  Docs/Drawing/Geometry.md:45  expected ',' separator
+e472a0d6d590  Docs/Drawing/Geometry.md:460  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:504  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:552  expected '{' in body of function declaration
+4fdce137d56e  Docs/Drawing/Geometry.md:588  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:618  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:625  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:631  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:657  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:668  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:682  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:694  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:700  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:718  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:725  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+eb39bc6e25d9  Docs/Drawing/Geometry.md:738  expected '{' in body of function declaration
+ef0ca3825a40  Docs/Drawing/Geometry.md:752  expected ',' separator
+0551b7294c44  Docs/Drawing/Geometry.md:794  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 336a733604c7  Docs/Drawing/GlyphMosaic.md:29  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:41  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:53  expected ',' separator
@@ -509,8 +510,9 @@ f1346fded59a  Docs/Generators/Billiards.md:28  cannot find 'middle' in scope
 d4a4b3f55830  Docs/Generators/Billiards.md:70  cannot find 'square' in scope
 7e4270ae1ef1  Docs/Generators/Billiards.md:82  cannot find 'room' in scope
 d90095682c33  Docs/Generators/Billiards.md:9  cannot find 'middle' in scope
-768223a43815  Docs/Generators/BlueNoise.md:26  expected expression in list of expressions
-fdb4af4b832e  Docs/Generators/BlueNoise.md:65  use of 'poissonDisk' refers to instance method rather than global function 'poissonDisk(in:radius:candidates:maxCount:using:)' in module 'Ollin'
+768223a43815  Docs/Generators/BlueNoise.md:27  expected expression in list of expressions
+aa1a6eddddb3  Docs/Generators/BlueNoise.md:49  expected expression in list of expressions
+fdb4af4b832e  Docs/Generators/BlueNoise.md:89  use of 'poissonDisk' refers to instance method rather than global function 'poissonDisk(in:radius:candidates:maxCount:using:)' in module 'Ollin'
 cc6b7438423d  Docs/Generators/Boids.md:40  expected expression in list of expressions
 757ee2a591a8  Docs/Generators/Boids.md:48  cannot use instance member 'bounds' within property initializer; property initializers run before 'self' is available
 c82a3099d5c7  Docs/Generators/CellularAutomata.md:30  overriding non-open instance method outside of its defining module
@@ -575,9 +577,9 @@ a42bb468557d  Docs/Generators/Isolines.md:32  expected ',' separator
 cfa396c982fe  Docs/Generators/Isolines.md:65  cannot find 'frame' in scope
 57334afc8b67  Docs/Generators/Isolines.md:77  expected ',' separator
 79e05c7696ff  Docs/Generators/Isolines.md:86  cannot find 'portrait' in scope
-4693d8f4c861  Docs/Generators/Isosurface.md:116  cannot find 'box' in scope
+b5928739b4ba  Docs/Generators/Isosurface.md:106  cannot find 'box' in scope
+4693d8f4c861  Docs/Generators/Isosurface.md:126  cannot find 'box' in scope
 09b4fbca2234  Docs/Generators/Isosurface.md:34  cannot convert value of type 'Vector2' to expected argument type 'Vector3'
-b5928739b4ba  Docs/Generators/Isosurface.md:96  cannot find 'box' in scope
 4861e2f8d5b3  Docs/Generators/LSystem.md:119  cannot convert value of type 'String.Type' to expected argument type 'String'
 6f945fdbe53f  Docs/Generators/LSystem.md:299  cannot infer contextual base in reference to member 'taperedTree'
 f43adb4ee0a9  Docs/Generators/LSystem.md:314  value of type '(UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>) -> Int32') has no member 'modules'

@@ -1905,9 +1905,12 @@ func particleSurface(of: PointCloud, radius: Double, blend: Double = default, re
 func particleSurface(of: [Vector3], radius: Double, blend: Double = default, resolution: Int = default) -> Mesh
 func phyllotaxis(count: Int, spacing: Double, angle: Double = default) -> [Vector2]
 func poissonDisk(in: Rectangle, radius: Double, candidates: Int = default, maxCount: Int? = default, using: R) -> [Vector2]
+func poissonDisk(in: Shape, radius: Double, candidates: Int = default, maxCount: Int? = default, using: R) -> [Vector2]
 func polar(_: Double, _: Double, around: Vector2 = default) -> Vector2
 func powerDiagram(sites: [WeightedSite], in: Rectangle) -> PowerDiagram
 func primes(upTo: Int) -> [Int]
+func randomPoints(along: Shape, count: Int, using: R) -> [Vector2]
+func randomPoints(in: Shape, count: Int, using: R) -> [Vector2]
 func randomWalk(from: Vector2, steps: Int, stepLength: Double, using: R) -> [Vector2]
 func reconstructSurface(of: PointCloud, spacing: Double? = default, resolution: Int = default, orientedToward: [Vector3] = default, maxGap: Double? = default, neighbors: Int = default, fitting: SurfaceFitting = default, keepingLargestComponent: Bool = default) -> Mesh
 func reconstructSurface(of: [Vector3], spacing: Double? = default, resolution: Int = default, orientedToward: [Vector3] = default, maxGap: Double? = default, neighbors: Int = default, fitting: SurfaceFitting = default, keepingLargestComponent: Bool = default) -> Mesh
@@ -2411,6 +2414,7 @@ open class Sketch: Sendable
   func pointMarker(_: PointMarker)
   func pointSize(_: Double)
   func poissonDisk(in: Rectangle? = default, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
+  func poissonDisk(in: Shape, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
   func popState()
   func population(count: Int, genes: Int, seed: Int? = default) -> Population
   func postProcess(_: Filter)
@@ -2425,6 +2429,8 @@ open class Sketch: Sendable
   func randomChoice(_: [T], weights: [Double]) -> T
   func randomGaussian() -> Double
   func randomGaussian(mean: Double, deviation: Double) -> Double
+  func randomPoints(along: Shape, count: Int) -> [Vector2]
+  func randomPoints(in: Shape, count: Int) -> [Vector2]
   func randomSeed(_: Int)
   func randomVector(in: Rectangle) -> Vector2
   func randomVector(innerRadius: Double, outerRadius: Double) -> Vector2
@@ -4853,6 +4859,7 @@ struct Mesh: Sendable
   func normalMapped(_: Image, scale: Double = default) -> Mesh
   func normalized(scale: Double = default) -> Mesh
   func parallaxMapped(_: Image, scale: Double = default) -> Mesh
+  func placed(_: MeshInstance) -> Mesh
   func printCheck(upAxis: UpAxis = default) -> MeshPrintCheck
   func subdivided(_: SubdivisionScheme = default, levels: Int = default) -> Mesh
   func subtracting(_: Mesh) -> Mesh
@@ -4881,6 +4888,7 @@ struct Mesh: Sendable
   static func helix(radius: Double = default, tube: Double = default, turns: Double = default, height: Double = default, segments: Int = default, sides: Int = default) -> Mesh
   static func icosahedron(radius: Double = default) -> Mesh
   static func icosphere(radius: Double = default, subdivisions: Int = default) -> Mesh
+  static func joined(_: [Mesh]) -> Mesh
   static func klein(scale: Double = default, segments: Int = default, sides: Int = default) -> Mesh
   static func lathe(_: [Vector2], segments: Int = default) -> Mesh
   static func mobius(radius: Double = default, width: Double = default, segments: Int = default, sides: Int = default) -> Mesh
@@ -4971,7 +4979,9 @@ struct Metaballs: Equatable, Sendable
   init(centers: [Vector3], radius: Double, strength: Double = default, level: Double = default)
   mutating func add(at: Vector3, radius: Double, strength: Double = default)
   mutating func removeAll()
+  static func falloff(distanceSquared: Double, radius: Double) -> Double
   struct Ball: Equatable, Sendable
+    func value(at: Vector3) -> Double
     init(center: Vector3, radius: Double, strength: Double = default)
     var center: Vector3 { get set }
     var radius: Double { get set }

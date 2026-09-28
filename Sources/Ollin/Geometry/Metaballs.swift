@@ -68,15 +68,11 @@ public struct Metaballs: Sendable, Equatable {
     /// frame from moving positions.
     public mutating func removeAll() { balls.removeAll(keepingCapacity: true) }
 
-    /// The field at a point: every ball's falloff, summed.
+    /// The field at a point: every ball's own value (`Ball.value(at:)`), summed.
     public func value(at point: Vector3) -> Double {
         var total = 0.0
         for ball in balls {
-            let reach = ball.reach
-            guard reach > 0 else { continue }
-            let u = (point - ball.center).lengthSquared / (reach * reach)
-            guard u < 1 else { continue }
-            total += ball.strength * Metaballs.falloff(u)
+            total += ball.value(at: point)
         }
         return total
     }
@@ -122,5 +118,45 @@ public extension Metaballs {
     /// A field built from centers that all share one radius and strength.
     init(centers: [Vector3], radius: Double, strength: Double = 1, level: Double = 0.5) {
         self.init(centers.map { Ball(center: $0, radius: radius, strength: strength) }, level: level)
+    }
+
+    /// The curve one ball is made of, on its own: what a ball of `radius` and
+    /// strength 1 reads at a point `distanceSquared` from its center. It is 1
+    /// at the center, exactly 1/2 at `radius` (the default `level`, which is
+    /// what puts a lone ball's surface on its own radius), and 0 from twice
+    /// the radius outward, flattening out at both ends.
+    ///
+    /// This is the bump to build your own blobs from when `Metaballs` does not
+    /// shape them the way you want: a ball whose radius wobbles round its rim
+    /// reads this with a radius that depends on the direction, a ball
+    /// stretched along an axis feeds it a distance measured in a squashed
+    /// space, and the sum of such reads is a field `isosurface` marches like
+    /// any other. It takes the squared distance because that is what a
+    /// `lengthSquared` gives without a square root; the radius is the ball's
+    /// own, not its reach.
+    ///
+    /// ```swift
+    /// let field = isosurface(at: 0.5, in: box, resolution: 48) { p in
+    ///     let d = p - center
+    ///     let r = 1 + 0.2 * signedNoise(d.x * 3, d.y * 3, d.z * 3)   // a rim that wobbles
+    ///     return Metaballs.falloff(distanceSquared: d.lengthSquared, radius: r)
+    /// }
+    /// ```
+    static func falloff(distanceSquared: Double, radius: Double) -> Double {
+        let reach = max(radius, 0) * 2
+        guard reach > 0 else { return 0 }
+        let u = max(distanceSquared, 0) / (reach * reach)
+        guard u < 1 else { return 0 }
+        return falloff(u)
+    }
+}
+
+public extension Metaballs.Ball {
+    /// This ball's own contribution to the field at `point`: `strength` times
+    /// the falloff (`Metaballs.falloff(distanceSquared:radius:)`) at the
+    /// point's squared distance from `center`, and 0 beyond the ball's reach.
+    /// `Metaballs.value(at:)` is the sum of these over every ball.
+    func value(at point: Vector3) -> Double {
+        strength * Metaballs.falloff(distanceSquared: (point - center).lengthSquared, radius: radius)
     }
 }

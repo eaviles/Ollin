@@ -214,6 +214,18 @@ block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quar
 
 **Cut once.** This is work your processor does, not your graphics card. Solids of a few thousand triangles take a few tenths of a second, and denser ones take longer. So cut in `setup()`, or when a parameter moves, and keep the mesh for `draw()` to draw. That is the same advice as the cage below, for the same reason.
 
+**Not every assembly is a cut.** Parts that only have to draw and cast a shadow together join into one mesh with no boolean at all. `placed(_:)` bakes a placement into a copy of a part, and `Mesh.joined(_:)` lays the parts end to end, so a body and its four wheels become one draw call:
+
+```swift
+let body = Mesh.box(width: 1, height: 0.5, depth: 2)
+let wheel = Mesh.cylinder(radius: 0.25, height: 0.2)
+let spots = [Vector3(0.6, -0.3, 0.7), Vector3(-0.6, -0.3, 0.7), Vector3(0.6, -0.3, -0.7), Vector3(-0.6, -0.3, -0.7)]
+let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $0, rotation: Vector3(0, 0, .pi / 2))) })
+drawMesh(car)
+```
+
+The joined mesh renders as the parts would drawn one by one, and it costs nothing but the copy. Where two parts overlap, both surfaces stay inside, which is fine on screen and not for a printer. A printer wants `union`, which merges the overlap into one closed skin. The [reference](../Docs/3D/3D.md#join) says what rides along, and why a joined mesh wears one material.
+
 ### One solid, two shadows: shadow art
 
 A cut keeps the part of one solid that lies inside or outside another. Pictures can carve a solid too. Ask for the shadows you want it to throw, and Ollin works out a solid that throws them.

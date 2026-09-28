@@ -52,6 +52,16 @@ A ball's influence stops at a finite distance instead of trailing off forever. A
 
 `value(at:)` reads the raw field and `bounds` reports the box, so a sketch can drive something else with them.
 
+**The curve on its own.** `Metaballs.falloff(distanceSquared:radius:)` is the bump one ball is made of, in a sketch's terms: what a ball of that radius reads at a point that squared distance from its center. It is 1 at the center, exactly a half at the radius, and 0 from twice the radius out, flattening at both ends. `Metaballs.Ball.value(at:)` is one ball's own contribution, its `strength` times that curve, and `value(at:)` is the sum over every ball. Build your own blobs from the curve when `Metaballs` does not shape them the way you want. A ball whose radius wobbles round its rim reads it with a radius that depends on the direction, and a ball stretched along an axis feeds it a distance measured in a squashed space. The sum of such reads is a field `isosurface` marches like any other:
+
+```swift
+let box = Box3(center: .zero, size: Vector3(3, 3, 3))
+let wobbly = isosurface(at: 0.5, in: box, resolution: 48) { p in
+    let r = 1 + 0.25 * signedNoise(p.x * 2 + 10, p.y * 2, p.z * 2)   // a rim that wobbles
+    return Metaballs.falloff(distanceSquared: p.lengthSquared, radius: r)
+}
+```
+
 <a name="fields"></a>
 
 #### Any field at all

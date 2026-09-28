@@ -259,8 +259,11 @@ The technique catalog: tilings, fractals, packings, growth, flow, agents, and th
 - ``packShapes(_:in:count:minRadius:maxRadius:padding:rotation:scale:using:)``
 - ``particleSurface(of:radius:blend:resolution:)-(PointCloud,_,_,_)``
 - ``phyllotaxis(count:spacing:angle:)``
-- ``poissonDisk(in:radius:candidates:maxCount:using:)``
+- ``poissonDisk(in:radius:candidates:maxCount:using:)-(Rectangle,_,_,_,_)``
+- ``poissonDisk(in:radius:candidates:maxCount:using:)-(Shape,_,_,_,_)``
 - ``powerDiagram(sites:in:)``
+- ``randomPoints(in:count:using:)``
+- ``randomPoints(along:count:using:)``
 - ``randomWalk(from:steps:stepLength:using:)``
 - ``reconstructSurface(of:spacing:resolution:orientedToward:maxGap:neighbors:fitting:keepingLargestComponent:)-(PointCloud,_,_,_,_,_,_,_)``
 - ``reflectedRays(off:from:closed:)``
