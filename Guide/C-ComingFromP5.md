@@ -161,7 +161,7 @@ One difference changes how vector code reads. p5's vector methods change the vec
 | p5.js | Ollin | Notes |
 |---|---|---|
 | `text("hi", x, y)` | `drawText("hi", x, y)` | |
-| `font.textToPoints("hi", x, y, 96)` | `textSize(96)`, then `textToShapes("hi", x, y)` | one `Shape` per letter, holes kept; `resampled(spacing: 8)` spaces the points evenly along each contour ([Chapter 8](08-Words.md#text-as-geometry-texttoshapes)) |
+| `font.textToPoints("hi", x, y, 96)`, in p5 only | `textSize(96)`, then `textToShapes("hi", x, y)` | one `Shape` per letter, holes kept; `resampled(spacing: 8)` spaces the points evenly along each contour ([Chapter 8](08-Words.md#text-as-geometry-texttoshapes)) |
 | `textSize(32)` / `textWidth(s)` | same names | |
 | `textAlign(CENTER, CENTER)` | `textAlign(.center, .middle)` | the vertical center is `.middle` |
 | `textFont(f)` | `textFont(f)` | three font kinds: outline, bitmap, and stroke ([Chapter 8](08-Words.md)) |
@@ -176,11 +176,11 @@ One difference changes how vector code reads. p5's vector methods change the vec
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
 | `img.loadPixels()`, `img.pixels[i]`, `img.updatePixels()` | `img[x, y]` | no load or update step: a write shows the next time the image is drawn ([Chapter 9](09-Pictures.md#an-image-you-can-ask-imagex-y)) |
-| `loadPixels()` and `pixels[]` on the canvas | no equivalent | per-pixel work is a `shade` function ([Chapter 18](18-YourFirstShader.md)); a layer's `image[x, y]` reads nothing, because its pixels stay on the GPU |
+| `loadPixels()` and `pixels[]` on the canvas | no read-back inside `draw()` | per-pixel work is a `shade` function ([Chapter 18](18-YourFirstShader.md)); a layer's `image[x, y]` reads `.clear`, because its pixels stay on the GPU; a `SketchExtension` can receive each finished frame ([Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension)) |
 | `createImage(w, h)` | `Image(width:height:)` | |
 | `createGraphics(w, h)` | `makeRenderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 19](19-LayersAndEffects.md)) |
-| `loadTable("data.csv", "csv", "header")` | `try? loadTable("data.csv")` | the format and the header row are guessed, or say `format: .csv, hasHeader: true`; read a cell with `row.number("col")`, or `row["col"]` for its text ([Chapter 9](09-Pictures.md#reading-a-table-loadtable)) |
-| `loadJSON("data.json")` | `try? loadJSON("data.json")` | it reads at once rather than through a callback, so call it in `setup()`; walk it with `doc["points"][0]["x"].number` ([Chapter 9](09-Pictures.md#documents-with-a-shape-loadjson)) |
+| `loadTable("data.csv", "csv", "header")`; Processing: `loadTable("data.csv", "header")` | `try? loadTable("data.csv")` | the format and the header row are guessed, or say `format: .csv, hasHeader: true`; read a cell with `row.number("col")`, or `row["col"]` for its text ([Chapter 9](09-Pictures.md#reading-a-table-loadtable)) |
+| `loadJSON("data.json")`; Processing: `loadJSONObject` and `loadJSONArray` | `try? loadJSON("data.json")` | it reads at once rather than through a callback, so call it in `setup()`; walk it with `doc?["points"][0]["x"].number` ([Chapter 9](09-Pictures.md#documents-with-a-shape-loadjson)) |
 
 ### Mouse and keyboard
 
@@ -202,14 +202,14 @@ Each of these gets a chapter, so the table only points.
 |---|---|---|
 | `createSlider`, `createButton`, the DOM | `@Param` parameters in the inspector | [Chapter 1](01-HelloOllin.md) |
 | `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 19](19-LayersAndEffects.md) |
-| `loadShader` / `shader()` | a `Shader` written in Metal, drawn with `generate(_:)` or applied to a layer with `Filter.shader(_:)` | [Chapter 18](18-YourFirstShader.md) |
+| `loadShader` / `shader()` | a `Shader` written in Metal, run over a layer with `generate(_:)` and drawn with `drawImage` | [Chapter 18](18-YourFirstShader.md) |
 | `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 25](25-3DGently.md) |
 | `orbitControl()` | `cameraControl()` | [Chapter 25](25-3DGently.md) |
 | `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 25](25-3DGently.md) |
 | p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands(_:)`, `beat` | [Chapter 34](34-Listening.md) |
-| `createCapture(VIDEO)` | `Camera()` from `OllinVision`, started in `setup()` and drawn with `drawFrame(camera)` | [Chapter 32](32-Seeing.md) |
+| `createCapture(VIDEO)`; Processing: `new Capture(this)` from its video library | `Camera()` from `OllinVision`, started in `setup()` and drawn with `drawFrame(camera)` | [Chapter 32](32-Seeing.md) |
 
-Many people who sketch in p5 learn forces and flocks from Daniel Shiffman's *The Nature of Code*. There you write the code for each system by hand. Chapters 11 to 14 teach the same ground, first by hand and then with Ollin's own types. [Chapter 11](11-ForcesAndPhysics.md) covers forces and a physics world, and [Chapter 12](12-FlocksAndSwarms.md) steering and flocks. [Chapter 13](13-GrowingThings.md) covers recursion and L-systems, and [Chapter 14](14-FieldsAndFlow.md) flow fields.
+Many people who sketch in p5 learn forces and flocks from Daniel Shiffman's *The Nature of Code*. There you write the code for each system by hand. Four chapters here teach the same ground. [Chapter 11](11-ForcesAndPhysics.md) covers forces and a physics world, [Chapter 12](12-FlocksAndSwarms.md) steering and flocks, and [Chapter 13](13-GrowingThings.md) recursion and L-systems. Each starts by hand and moves on to Ollin's own types. [Chapter 14](14-FieldsAndFlow.md) builds flow fields from the `flowField` helper.
 
 ### Saving your work
 
@@ -226,7 +226,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 ## Different on purpose
 
-**`let` means a constant.** JavaScript's `let` is Swift's `var`, and JavaScript's `const` is Swift's `let`. Swift sketches prefer `let`, because most values in `draw()` are computed fresh each frame. The [Swift quick reference](../Docs/Swift.md) covers the rest of the language.
+**`let` means a constant.** JavaScript's `let` is Swift's `var`, and JavaScript's `const` is Swift's `let`. Swift sketches prefer `let`, because most values in `draw()` are computed fresh each frame. The [Swift quick reference](../Docs/Swift.md) covers the rest of what changes.
 
 **Values have types.** Positions are `Vector2`, colors are `Color`, and outlines are `Shape`. These are values you store and pass around, where p5 scatters loose numbers across calls. The compiler checks all of it before the sketch runs. A misspelled name or a wrong type stops at the save, not in the middle of a run.
 
@@ -255,7 +255,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 - [Chapter 1, Hello, Ollin](01-HelloOllin.md): the toolchain, the live-reload loop, and the first sketch, from zero.
 - [The Swift quick reference](../Docs/Swift.md): the language delta (types, optionals, closures) at speed; [Appendix A](A-JustEnoughSwift.md) is its narrative sibling.
 - [Drawing](../Docs/Drawing/Drawing.md): the full shape catalog and ink state.
-- [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each, including what p5 has no call for.
+- [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each, including what p5 has no function for.
 - [`Examples/`](../Examples/README.md): working sketches to read and tweak, including [Recreations](../Examples/Recreations/README.md), homages to works by artists such as Vera Molnár and Bridget Riley.
 
 ---

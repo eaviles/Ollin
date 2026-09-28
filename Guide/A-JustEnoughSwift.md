@@ -4,7 +4,7 @@
 
 # A. Just enough Swift
 
-The guide teaches Swift the way it teaches everything else, with a short note at the moment you first need a construct. Those notes are spread through the chapters. This appendix gathers the same ground into one pass, for people who'd rather meet the language in order. The sections from `let` to strings teach the core a sketch uses on almost every page. After them, [Swift you'll see in listings](#swift-youll-see-in-listings) collects the rest, each piece with the chapter where it first appears.
+The guide teaches Swift the way it teaches everything else, with a short note at the moment you first need a construct. Those notes are spread through the chapters. This appendix gathers the same ground into one pass, for people who'd rather meet the language in order. The sections from `let` to strings teach the core a sketch uses on almost every page. After them, [Swift you'll see in listings](#swift-youll-see-in-listings) collects most of the rest, each piece with the chapter where it first appears.
 
 You don't need to have written Swift before. You do need to have programmed a little in some language. If you know loops and functions, most of this is new spelling for ideas you already have.
 
@@ -115,7 +115,7 @@ The distinctive Swift habit is that arguments carry **labels**, and the labels a
 
 An underscore in the declaration removes a label, which is how APIs offer short positional forms. Ollin uses both on purpose. Everyone knows what the three bare numbers in `drawCircle(x, y, radius)` mean, so labels there would add nothing. The `Vector2` form names its anchor instead: `drawCircle(center: p, radius: r)`.
 
-Arguments can also carry **defaults**, and callers mention only what they want to change. That's why `cameraShowcase(radius: 5)` is a complete call, though the function takes nine parameters. Everything you leave out keeps its default.
+Arguments can also carry **defaults**, and callers mention only what they want to change. That's why `cameraShowcase(radius: 5)` is a complete call, though the function takes many more parameters. Everything you leave out keeps its default.
 
 ## Choosing and repeating
 
@@ -140,7 +140,7 @@ There's no C-style `for (;;)`. When a loop should run until something changes ra
 
 ## Arrays
 
-An array is written `[Element]` and keeps its order. These are the operations a sketch actually uses:
+An array is written `[Element]` and keeps its order. These are the operations a sketch uses most, and the [lists table](#lists-pairs-and-tables) below has the rest:
 
 ```swift
 var trail: [Vector2] = []
@@ -242,7 +242,7 @@ The guide uses five, all from Ollin:
 @Saved var visits = 0                                         // kept when the sketch restarts
 ```
 
-`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 35](35-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value in a checkpoint, so a sketch that restarts picks up where it was, as [Chapter 41](41-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) shows. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
+`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 35](35-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value when the sketch starts again. [Chapter 39](39-Performing.md#performing-the-code-itself-live-coding) uses it to carry state across a live-coding edit, and [Chapter 41](41-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) to carry an installation across a relaunch. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
 
 ## Strings, briefly
 
@@ -260,7 +260,7 @@ The sections above cover the Swift a sketch uses on almost every page. As the sk
 
 ### Numbers, names, and operators
 
-Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The comparisons `==`, `!=`, `<`, and `>=` answer `true` or `false`. Then `!` reverses an answer, `&&` asks for both of two answers, and `||` for either of them.
+Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The comparisons `==`, `!=`, `<`, `<=`, `>`, and `>=` answer `true` or `false`. Then `!` reverses an answer, `&&` asks for both of two answers, and `||` for either of them.
 
 | In a listing | What it does | First in |
 |---|---|---|
@@ -269,6 +269,7 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `x += 1`, `x -= 1`, `x *= 2` | Change a variable by an amount. `x += 1` is short for `x = x + 1`. | [Chapter 2](02-Color.md#putting-it-together-a-color-field) |
 | `.pi`, `-.pi / 2` | π as a `Double`, and a minus sign in front of a name, which makes the value negative. | [Chapter 2](02-Color.md#gradients-as-paint) |
 | `let margin = 70.0, gutter = 7.0` | Two constants in one declaration. `var px = x, py = y` does the same for variables. | [Chapter 2](02-Color.md#putting-it-together-a-color-field) |
+| `print(x)` | Writes a value to the terminal the sketch was started from, for checking a number while you work. | [Chapter 2](02-Color.md#will-everybody-see-it) |
 | `min(a, b)`, `max(a, b)`, `abs(x)`, `pow(x, n)` | The smaller of two values, the larger, the value without its sign, and `x` to the power `n`. | [Chapter 4](04-Randomness.md#the-random-walk-by-hand) |
 | `noStroke(); fill(.white)` | A semicolon lets two statements share a line. | [Chapter 6](06-GridsAndRepetition.md#walking-a-grid-numbers-in-a-spiral) |
 | `let body: Body` | A constant declared without a value. Each branch of the `if` after it gives it one, once. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
@@ -278,26 +279,25 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `60_000` | Underscores group the digits of a long number, and Swift ignores them. | [Chapter 22](22-IteratedForms.md#the-same-fern-played-as-a-game-the-chaos-game) |
 | `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 24](24-ParticleSimulations.md#a-million-grains-gpu-particles) |
 | `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 26](26-Meshes.md#putting-it-together-the-bench) |
-| `x &* y`, `x ^ y`, `x >> 29` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. | The `StageMic` class that [Chapter 34](34-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
+| `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 34](34-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
 | `((step % steps) + steps) % steps` | A remainder that stays between 0 and `steps - 1`. Swift's `%` keeps the sign of the number on its left, so a negative `step` needs the extra `+ steps`. | [Chapter 37](37-MusicByRule.md#putting-it-together-the-music-box) |
 
 ### Loops and choices
 
-The section on choosing and repeating covers `if`, the ternary, and counted `for` loops. The listings add these.
+The section on choosing and repeating covers `if`, the ternary, counted `for` loops, and `while`. The listings add these.
 
 | In a listing | What it does | First in |
 |---|---|---|
 | `for (a, b) in zip(xs, ys)` | `zip` pairs two lists up, first with first, and the loop takes each pair apart into two names. | [Chapter 7](07-Tiles.md#one-coin-per-line-hitomezashi) |
 | `for i in positions.indices` | Every valid index of a list, the same as `0..<positions.count`. | [Chapter 10](10-Vectors.md#steering-the-chase) |
-| `while positions.count < movers { … }` | Repeats the block for as long as the condition holds. | [Chapter 10](10-Vectors.md#putting-it-together-the-swarm) |
 | `continue` | Skips the rest of this pass through the loop and goes on to the next element. | [Chapter 11](11-ForcesAndPhysics.md#breaking-things) |
 | `for body in grabbable where …` | A loop that skips every element the test after `where` rejects. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
-| `guard depth > 0 else { return }` | Leaves the function early unless the condition holds. `guard let` is the same move for an optional. | [Chapter 13](13-GrowingThings.md#a-tree-from-one-rule-recursion) |
+| `guard depth > 0 else { return }` | Leaves early unless the condition holds, with `return` in a function or `continue` in a loop. `guard let` is the same move for an optional. | [Chapter 13](13-GrowingThings.md#a-tree-from-one-rule-recursion) |
 | A function that calls itself | Recursion. `branch` draws a line, then calls `branch` again with a shorter length, until its `guard` stops it. | [Chapter 13](13-GrowingThings.md#a-tree-from-one-rule-recursion) |
 | `stride(from: 0.3, through: 0.75, by: 0.045)` | Counts from one number to another in steps of any size. `through:` includes the last value, and `to:` stops before it. | [Chapter 14](14-FieldsAndFlow.md#where-the-field-equals-something-contours) |
 | `switch index { case 0: … default: … }` | Picks one branch by a value. Each `case` names a value, and `default` catches every other. | [Chapter 22](22-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
 | `while true { … }` | Repeats until something inside leaves the loop, with a `return` or a `break`. | [Chapter 26](26-Meshes.md#putting-it-together-the-bench) |
-| `case .box(let w, let h, let d):` | A case that matches one kind of value and names the parts it carries. | [Chapter 28](28-WorldsWithWeight.md#putting-it-together-the-contraption) |
+| `case .box(let w, let h, let d):` | A `Collider3D` is an enum whose cases carry values, such as a box's three sizes. This case matches a box and names its sizes `w`, `h`, and `d`. | [Chapter 28](28-WorldsWithWeight.md#putting-it-together-the-contraption) |
 | `break` | Leaves a loop or a `switch` at once. | [Chapter 28](28-WorldsWithWeight.md#putting-it-together-the-contraption) |
 | `if case .box(let w, let h, let d) = body.collider` | The same match for a single case, written as an `if`. | [Chapter 29](29-CharactersAndCloth.md#putting-it-together-the-yard) |
 
@@ -314,6 +314,7 @@ Arrays hold most of a sketch's data. The chapters use a few more of their calls,
 | `(picture, mouse)` | A tuple, two values carried together as one. A loop can take a pair apart, as in `for (a, b) in bolt.segments`. | [Chapter 9](09-Pictures.md#a-picture-you-drop-on-the-window) |
 | `[[Vector2]]` | A list of lists, such as one trail of points for each creature. | [Chapter 10](10-Vectors.md#steering-the-chase) |
 | `removeLast(n)`, `removeAll()`, `reversed()`, `prefix(n)` | Drop the last `n` elements, empty the list, read it backward, and read its first `n` elements. | [Chapter 10](10-Vectors.md#putting-it-together-the-swarm) |
+| `bricks.remove(at: i)` | Takes the element at index `i` out of the list and hands it back. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `(0..<40).map { … }` | Runs the closure once for each number in the range and collects the answers into a list. | [Chapter 11](11-ForcesAndPhysics.md#breaking-things) |
 | `reduce(0) { $0 + $1 }` | Combines a list into one value, here a sum. `$1` names the closure's second argument. | [Chapter 15](15-ShapesAsMaterial.md#the-circle-they-were-scattered-around-fitminimize) |
 | `append(contentsOf: other)` | Adds every element of another list to the end. | [Chapter 15](15-ShapesAsMaterial.md#putting-it-together-the-plate) |
@@ -322,6 +323,7 @@ Arrays hold most of a sketch's data. The chapters use a few more of their calls,
 | `[Character: WireworldCell]` | A dictionary, a table from keys to values. `legend[ch]` looks a key up and answers an optional, since the key might be missing. | [Chapter 23](23-GridSimulations.md#a-circuit-made-of-cells-wireworld) |
 | `[UInt8](repeating: 0, count: n)` | A list of `n` copies of one value. `UInt8` is a whole number from 0 to 255, one byte. | [Chapter 26](26-Meshes.md#putting-it-together-the-bench) |
 | `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 27](27-Landscapes.md#putting-it-together-the-valley) |
+| `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 34](34-Listening.md#words-as-they-are-spoken-speechlistener) |
 | `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 35](35-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
 | `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 35](35-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
 | `[(drum, "C3")] as [(Shape, Pitch)]` | `as` gives Swift the type of a literal it cannot work out alone, here that `"C3"` is a `Pitch`. | [Chapter 36](36-MakingSound.md#putting-it-together-the-workbench) |
@@ -334,7 +336,7 @@ The section on optionals shows the four tools the guide uses most. These are the
 | In a listing | What it does | First in |
 |---|---|---|
 | `Color(hex: "#ff0066")!` | A force unwrap. The `!` says the value is there. If it is `nil`, the sketch stops with an error. | [Chapter 2](02-Color.md#naming-a-color) |
-| `OutlineFont(name: "Avenir Next")` | An initializer that can fail answers an optional. Later, `if let modes = StruckShape(outline)` uses one only when it worked. | [Chapter 8](08-Words.md#three-kinds-of-letters-outline-bitmap-and-stroke-fonts) |
+| `OutlineFont(name: "Avenir Next")` | An initializer, the call named after a type that makes a new value of it. One that can fail answers an optional. Later, `if let modes = StruckShape(outline)` uses one only when it worked. | [Chapter 8](08-Words.md#three-kinds-of-letters-outline-bitmap-and-stroke-fonts) |
 | `if let photo { … }` | Short for `if let photo = photo`, when the unwrapped value keeps its name. `guard let source else { return }` is the same for `guard`. | [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) |
 | `guard let lowest = …, let highest = … else { return }` | Unwraps several optionals at once. The code after it runs only if every one has a value. | [Chapter 9](09-Pictures.md#from-numbers-to-marks) |
 | `body.userData as? Look` | Asks whether a value is of a more specific type. The answer is the value as that type, or `nil`. | [Chapter 11](11-ForcesAndPhysics.md#breaking-things) |
@@ -376,13 +378,13 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `hit.body === crate` | Asks whether two names point at the same object. `!==` asks whether they don't. | [Chapter 28](28-WorldsWithWeight.md#what-is-in-the-way-rays-sweeps-and-overlaps) |
 | `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 35](35-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
 | `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 37](37-MusicByRule.md#putting-it-together-the-music-box) |
-| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. The class then writes those methods. | [Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
+| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
 | `extension Sketch { public func drawSpiral(…) }` | Adds methods to a type from outside its declaration. `public` lets code in other packages call them. | [Chapter 40](40-HandingItOver.md#giving-it-to-somebody-else-an-extension-package) |
 | `Codable` | Marks a type that can be written to a file and read back, which is what lets `@Saved` keep it. | [Chapter 41](41-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) |
 
 ### Failures, files, and waiting
 
-A call that can fail is marked `throws` where it is declared, and every call to it is written with `try`. The listings use three forms of `try`, and a few names from Apple's own libraries.
+A call that can fail is marked `throws` where it is declared, and every call to it is written with `try`. The listings write `try` in a few forms, and use a few names from Apple's own libraries.
 
 | In a listing | What it does | First in |
 |---|---|---|
@@ -391,7 +393,8 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 | `in: .module` | The folder the sketch's own files are read from. | [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) |
 | `import Foundation` | Apple's base library. It brings `URL`, the address of a file, and `FileManager`, which asks the disk whether a file exists. | [Chapter 26](26-Meshes.md#putting-it-together-the-bench) |
 | `do { try … } catch { … }` | Runs calls that can fail. A failure jumps to `catch`, where `error` says what went wrong. | [Chapter 28](28-WorldsWithWeight.md#a-world-saved-as-it-stands-snapshot-and-restore) |
-| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 34](34-Listening.md#sounds-with-names-soundclassifier) |
+| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 32](32-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) |
+| `import simd` | Apple's library of small vectors and matrices, the kind the GPU works in. | [Chapter 33](33-DepthAndThePhone.md#putting-it-together-the-ghost-room) |
 | `Date()` | The date and time right now. | [Chapter 35](35-ControlsAndSignals.md#the-weather-outside-weather) |
 
 ### Comments and attributes
@@ -407,7 +410,7 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 
 Swift is a big language, and a working sketch uses a small part of it. The guide never asks you to declare a protocol or an enum whose cases carry values. It doesn't ask you to write a property wrapper or an `async` function of your own either. When you want the rest, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is Apple's book on the language, free to read online.
 
-If a chapter's Swift still gets in your way, that's a bug in this guide, not in you. The same [issue tracker](https://github.com/eaviles/Ollin/issues) that takes confusing math takes confusing Swift.
+If a chapter's Swift still stops you, that's a bug in this guide, not in you. The same [issue tracker](https://github.com/eaviles/Ollin/issues) that takes confusing math takes confusing Swift.
 
 ## Go deeper
 
