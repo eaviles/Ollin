@@ -126,7 +126,7 @@ drawCircle(x, height / 2, 50)
 
 The dot crosses the canvas in three seconds, snaps back, and crosses again. Inside, `loopProgress(over: 3)` is `fract(time / 3)`, where `fract` keeps a number's fractional part. Seven and a half seconds in, that's `fract(2.5)`, which is halfway through the third lap. You can call `fract` yourself whenever you want to wrap something by hand.
 
-When the snap back to the start is not what you want, ask for the fold instead. `pingPong(over:)` runs from 0 up to 1 and back down to 0 over the same period, so the trip retraces itself rather than teleporting home:
+When the snap back to the start is not what you want, ask for the fold instead. The call `pingPong(over:)` runs from 0 up to 1 and back down to 0 over the same period. So the trip retraces itself instead of jumping back to 0:
 
 ```swift
 let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
@@ -165,7 +165,7 @@ drawCircle(x, height / 2, 50)
 
 Same dot, same three seconds, but now it *departs* and *arrives*. Inside, the S is one line of algebra, `t * t * (3 - 2 * t)`, and you never need to write it.
 
-Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top, with a soft shoulder in between". That gives you a way of turning any signal into a smooth spotlight:
+Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top". In between, it rises along a soft shoulder. That gives you a way of turning any signal into a smooth spotlight:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/WindowCutter-dark.jpg">
@@ -187,7 +187,7 @@ The top row stays inside `0...1`, quadratics and cubics that differ mainly in ho
 
 <img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 
-Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the craft of easing: an animation's character lives in the spacing rather than the path. Hand the dot listing `Easing.easeOutBounce(t)` in place of `smoothstep(0, 1, t)` and the trip keeps its start, its end, and its three seconds while feeling completely different. The S itself is in the catalog too, as `Easing.smoothstep`, for anywhere that wants a curve by name.
+Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the craft of easing: an animation's character lives in the spacing rather than the path. Hand the dot listing `Easing.easeOutBounce(t)` in place of `smoothstep(0, 1, t)`. The trip keeps its start, its end, and its three seconds, but it feels different. The S itself is in the catalog too, as `Easing.smoothstep`, for anywhere that wants a curve by name.
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
@@ -204,7 +204,7 @@ That is the reason to want it. A sketch that holds one curve as a parameter can 
 
 ## Putting it together: a loop that never ends
 
-Here's the sketch from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code that means choosing a `loopTime`, then building one beat from it with `loopProgress(over: loopTime) * .tau` so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets cost you nothing here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
+Here's the sketch from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code, you first choose a `loopTime`. Then you build one beat from it with `loopProgress(over: loopTime) * .tau`, so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets cost you nothing here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
 
 That is all the theory the sketch needs. It also offers its curve as a parameter, the way [A catalog of curves](#a-catalog-of-curves) showed. Make `MySketches/RingPulse.swift`:
 
@@ -250,9 +250,9 @@ final class RingPulse: Sketch {
 
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
-- `beat` is the loop's heartbeat. `loopProgress` laps `0...1` once every `loopTime` seconds, so multiplying by `.tau` turns it into exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, which is a whole multiple, so frame 0 and the frame at `loopTime` are identical. The loop rule is enforced by how the sketch is built rather than by checking afterward.
+- `beat` is the loop's heartbeat. `loopProgress` laps `0...1` once every `loopTime` seconds, so multiplying by `.tau` turns it into exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, which is a whole multiple. So frame 0 and the frame at `loopTime` are identical. The loop rule is enforced by how the sketch is built rather than by checking afterward.
 - `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, as the theory above said, and that is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number parameter, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as [Chapter 1](01-HelloOllin.md)'s `Double(i)`.
-- `window` and `lit` are the window cutter from the shaping section, taken apart so that the curve can be a parameter. The wave lives in `-1...1`, and `map` with `clamped: true` carves out its crest as a `0...1`: 0 below the threshold and 1 at the peak. `curve` then shapes that progress, and with `.smoothstep` the pair is the same soft spotlight `smoothstep(1 - pulseWidth * 2, 1, wave)` would give, shoulders and all. The dots swell and fade rather than switching on and off. Widen `Pulse width` and the lower edge drops, which opens the window until the whole ring breathes at once. Pick `easeOutBounce` from the `curve` menu and every pulse lands in hops; pick `easeInQuad` and each stays dim until its last moment.
+- `window` and `lit` are the window cutter from the shaping section, taken apart so that the curve can be a parameter. The wave lives in `-1...1`. Using `map` with `clamped: true` cuts out its crest as a `0...1`, which is 0 below the threshold and 1 at the peak. Then `curve` shapes that progress. With `.smoothstep`, the pair gives the same soft spotlight as `smoothstep(1 - pulseWidth * 2, 1, wave)`, shoulders included. The dots swell and fade rather than switching on and off. Widen `Pulse width` and the lower edge drops, which opens the window until the whole ring breathes at once. Pick `easeOutBounce` from the `curve` menu and every pulse lands in hops; pick `easeInQuad` and each stays dim until its last moment.
 - Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using [Chapter 2](02-Color.md)'s `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
 - `direction` flips alternate rings, so neighboring rings run against each other. Make them all run the same way and see how much of the sketch's character that was.
 
@@ -268,7 +268,7 @@ Then make it yours:
 
 - Set `Waves` to 1 for a slow radar sweep, or 6 for a glitter of small pulses.
 - Add a breath. Make each `radius` line `radius + sin(beat + Double(ring)) * 10`. One whole multiple of the beat, so the loop survives. Check it by re-exporting.
-- Replace `curve(window)` with `step(0.5, window)` and the glow becomes a hard blink that switches on at the middle of the window, with no shoulders. Put the curve back and the shoulders return.
+- Replace `curve(window)` with `step(0.5, window)` and the glow becomes a hard blink. It switches on at the middle of the window, with no shoulders. Put the curve back and the shoulders return.
 - Give the ramp four colors of your own.
 
 ## Motion the framework runs for you
@@ -277,13 +277,13 @@ The ring above drives every motion from the clock by hand: a wrap, a phase, a wi
 
 ### The sway you write over and over: `sway`
 
-`sway` is the wrap, the return trip, and the carry into a range as one call, with the turn at each end rounded off by default. It gives a value that travels smoothly from one end of a range to the other and back, once per lap of so many seconds. It is for the breathing radius, the drifting position, and every other swing you would otherwise write as a `lerp` over a `pingPong`. It is Ollin's own shorthand for what [`map` and `lerp`](#map-and-lerp-moving-between-ranges) built by hand. A breathing circle like the one from there is one line with it:
+One `sway` call does the wrap, the return trip, and the carry into a range. By default, it also rounds off the turn at each end. It gives a value that travels smoothly from one end of a range to the other and back, once per lap of so many seconds. It is for the breathing radius, the drifting position, and every other swing you would otherwise write as a `lerp` over a `pingPong`. It is Ollin's own shorthand for what [`map` and `lerp`](#map-and-lerp-moving-between-ranges) built by hand. A breathing circle like the one from there is one line with it:
 
 ```swift
 drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300))
 ```
 
-The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`. `phase:` gives one sway a head start, as a fraction of its lap, so a row of them with growing phases makes a traveling wave, the way a constant inside `sin` did under [Phase](#phase-the-head-start).
+The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`. The `phase:` argument gives one sway a head start, as a fraction of its lap. So a row of sways with growing phases makes a traveling wave, the way a constant inside `sin` did under [Phase](#phase-the-head-start).
 
 When you would rather keep the raw sine spelling, `wave` names its parts instead. `wave(0.8, amplitude: 40, around: 150)` is `150 + sin(time * 0.8) * 40` with the center and the swing said out loud. `sway` thinks in seconds per lap and always closes one. `wave` thinks in the sine's own rate, the spelling to carry over when you already have one.
 
@@ -295,13 +295,13 @@ What changes between one sway and another is the path it takes between the two e
 sway(over: 4, in: 100...300, shape: .triangle)
 ```
 
-The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are `pingPong` and `loopProgress`, carried into a range. `.square` does not travel at all. It sits at one end for half the lap and the other end for the rest, which is how you switch something rather than move it.
+The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are `pingPong` and `loopProgress`, carried into a range. `.square` does not travel at all. It sits at one end for half the lap and at the other end for the rest. Use it to switch something rather than move it.
 
 `.wander` is the fifth path. It drifts through noise rather than following a curve, and [Chapter 5](05-Noise.md#coming-home-the-loop-parameter) shows how a drift like that can still come home. Every shape here arrives back where it started at the end of a lap. That is what lets a swaying sketch declare a `loopDuration` and export a loop with no visible seam, the way the ring did. [Animation](../Docs/Helpers/Animation.md#sway) has the call in full, and the [`Sway`](../Examples/Motion/Sway/Sketch.swift) example runs the five shapes side by side.
 
 ### Values that chase a target: `@Eased` and `@Sprung`
 
-`@Eased` and `@Sprung` are values that move themselves toward a target you set. They are for the shape that should glide to a click, the shape that should follow a drag, and any value you would rather assign than steer. The first runs a curve from the catalog over a duration, which is how animation tools have moved a value from one setting to the next since Flash. The second runs a spring with friction, the model interfaces settle with. Both are written with the `@` prefix `@Param` wears, which marks a property that does something on its own.
+`@Eased` and `@Sprung` are values that move themselves toward a target you set. They are for the shape that should glide to a click and the shape that should follow a drag. They also suit any value you would rather assign than steer. The first runs a curve from the catalog over a duration. Animation tools have moved a value from one setting to the next that way since Flash. The second runs a spring with friction, the model interfaces settle with. Both are written with the `@` prefix `@Param` wears, which marks a property that does something on its own.
 
 **`@Eased`** is for a value with a *target*. Assign where it should go, read where it is now, and it glides over on its own along a curve and duration you pick once:
 
@@ -331,11 +331,11 @@ Click around and the dot glides to each click, with no progress variable for you
 @Sprung(duration: 0.5, bounce: 0.3) var x = 540.0
 ```
 
-The two parameters are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `$x.kick(200)`, reached through the `$` form of the property, which shoves a spring without moving its target, and that's how you make something recoil in place. Behind the wrapper, `DampedSpring` works out where a spring with friction is at any moment from the formula for one, rather than moving it a little each frame. So any frame rate produces the same motion.
+The two parameters are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `$x.kick(200)`, reached through the `$` form of the property. It pushes the spring without moving its target, which is how you make something recoil in place. Behind the wrapper, `DampedSpring` uses the formula for a spring with friction. It works out where the spring is at any moment rather than moving it a little each frame. So any frame rate produces the same motion.
 
 ### Choreography: `Timeline`
 
-A `Timeline` is a value that follows a script. The script is a sequence of timed keyframes, each segment with its own easing, and you read the result like a plain value. It is for a motion with stages, a rise, a hold, and a fall, and for choreography that has to repeat the same way every time. Keyframes are the animator's own tool, older than software, and every animation program has them. `@Eased` and `@Sprung` each chase one target at a time. When a value should rise over 1.2 seconds, hold, then tumble back down, build a timeline instead:
+A `Timeline` is a value that follows a script. The script is a sequence of timed keyframes, each segment with its own easing, and you read the result like a plain value. It is for a motion with stages, such as a rise, a hold, and a fall. It is also for choreography that has to repeat the same way every time. Keyframes are the animator's own tool, older than software, and every animation program has them. `@Eased` and `@Sprung` each chase one target at a time. When a value should rise over 1.2 seconds, hold, then tumble back down, build a timeline instead:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/TimelineCurve-dark.jpg">
@@ -376,7 +376,7 @@ if after(3) { revealed = true }
 if everyFrames(10) { sim.step() }
 ```
 
-`every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. `phase:` shifts the beat by a fraction of its own length, the same argument `sway` took above, so two rhythms of one period can take turns:
+`every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. The `phase:` argument shifts the beat by a fraction of its own length, as it did for `sway` above. So two rhythms of one period can take turns:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Beats-dark.jpg">
@@ -401,7 +401,7 @@ Nothing changes on its own, and that is deliberate. Only you know which of your 
 
 ## Where this comes from
 
-The named easing curves are Robert Penner's easing equations, published with the 2002 book *Programming Macromedia Flash MX*. They have since been absorbed into most animation systems. Ollin's are written from the formulas cataloged at [easings.net](https://easings.net). The craft behind them is older than software. The animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s, and Frank Thomas and Ollie Johnston wrote them down in *The Illusion of Life* (1981). Their point is that the spacing of the drawings is the motion. Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame. That per-pixel world is taught in [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe. Its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations. It's easier to work with than the physical parameters. The argument order of `map` and `lerp` is Processing's, which p5.js and openFrameworks kept, so a call you already know reads the same here. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The named easing curves are Robert Penner's easing equations, published with the 2002 book *Programming Macromedia Flash MX*. They have since been absorbed into most animation systems. Ollin's are written from the formulas cataloged at [easings.net](https://easings.net). The craft behind them is older than software. The animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s. Frank Thomas and Ollie Johnston wrote them down in *The Illusion of Life* (1981). Their point is that the spacing of the drawings is the motion. Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame. That per-pixel world is taught in [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe. Its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations. It's easier to work with than the physical parameters. The argument order of `map` and `lerp` is Processing's, which p5.js and openFrameworks kept, so a call you already know reads the same here. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
