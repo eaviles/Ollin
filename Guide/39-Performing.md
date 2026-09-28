@@ -166,7 +166,7 @@ Everything you place lands in `Sketch.automation.json` beside the sketch, the sa
 
 ### Following another timeline: timecode
 
-The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to something else: a video deck, a show controller, a lighting desk, or a DAW locked to picture. Each broadcasts where it is rather than how fast it goes. That is *timecode*, hours, minutes, seconds, and frames, sent as MIDI Time Code over the MIDI input from [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere). A `TimecodeClock` reads it, so a sketch can land a cue on the frame the video hits it:
+The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to something else: a video deck, a show controller, a lighting desk, or a DAW locked to picture. Each broadcasts where it is rather than how fast it goes. That is *timecode*, hours, minutes, seconds, and frames, sent as MIDI Time Code over the MIDI input from [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc). A `TimecodeClock` reads it, so a sketch can land a cue on the frame the video hits it:
 
 ```swift
 lazy var timecode = TimecodeClock(from: midi)

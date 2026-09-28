@@ -113,7 +113,7 @@ mic.timeSinceBeat   // seconds of audio since the last one
 
 Look at the timeline. Every kick lands, and so does each quiet hat between the kicks. Onset detection hears sudden changes in the sound. It does not measure loudness, and it does not know "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. To hear fewer beats, raise `beatSensitivity` above its default of 1.5, and a beat then needs a stronger arrival before it fires. A held chord or a drone doesn't set it off, and the same samples always beat in the same places.
 
-The detector says *that* a beat arrived, and it keeps no sense of tempo. Following the tempo of the room, so a sketch can play in time with a record, is `BeatFollower`. [Chapter 37](37-MusicByRule.md#playing-along-with-the-room-tempo-sync) teaches it once the sketch has notes of its own to play. A beat that several programs share over the network is the Link clock in [Chapter 35](35-ControlsAndSignals.md#one-beat-for-the-whole-room).
+The detector says *that* a beat arrived, and it keeps no sense of tempo. Following the tempo of the room, so a sketch can play in time with a record, is `BeatFollower`. [Chapter 37](37-MusicByRule.md#playing-along-with-the-room-tempo-sync) teaches it once the sketch has notes of its own to play. A beat that several programs share over the network is the Link clock in [Chapter 35](35-ControlsAndSignals.md#one-beat-for-the-whole-room-link).
 
 ## From sound to picture: levels, moments, and decay
 
@@ -248,7 +248,7 @@ Then make it yours:
 
 - Give it your ears. Swap `StageMic()` for `AudioInput()`, start it in `setup()`, and delete the `mic.listen()` line. Then play music at your Mac.
 - Give it your music. Use an `AudioPlayer` with a track you like, and tune `beatSensitivity` until the sparks land on the drums.
-- Give it your hands with [Chapter 35](35-ControlsAndSignals.md#one-parameter-three-hands): `midi.bind(controlChange: 7, to: $brightness)`, or bind `/brightness` over OSC and play it from a phone.
+- Give it your hands with [Chapter 35](35-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing): `midi.bind(controlChange: 7, to: $brightness)`, or bind `/brightness` over OSC and play it from a phone.
 
 To keep it, export a video:
 

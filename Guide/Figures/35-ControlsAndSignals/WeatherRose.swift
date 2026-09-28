@@ -1,15 +1,17 @@
 // figure: frame=0 unstable
 //
 // Guide payoff (Chapter 35): the weather rose, an instrument for several
-// hands. A rose of petals throbs on the network beat and turns once every
-// four bars. Its size and how deeply its petals open are parameters bound to
-// two MIDI knobs and two OSC faders, with smoothing so a hand glides rather
-// than steps. The game controller's left stick moves it, the weather over a
-// city blows its trails downwind and picks day or night, and the trackpad
-// knocks on every downbeat. With nothing plugged in and nothing on the
-// network, it plays as a still rose on a calm afternoon. Unstable because the
-// beat runs on the wall clock and the weather is fetched live when the render
-// starts, so both read differently on every run.
+// hands. A rose of petals throbs on the network beat and turns by one petal's
+// width every four bars. Its size and how deeply its petals open are
+// parameters bound to two MIDI knobs and two OSC faders, with smoothing so a
+// hand glides rather than steps. The game controller's left stick moves it,
+// the weather over a city blows its trails downwind and picks day or night,
+// and the trackpad knocks on every downbeat while its button is held. With
+// nothing plugged in and nothing on the network, it turns on its own beat on
+// a calm afternoon. The rose is filled as a Shape, since a triangle fan from
+// one point fills only a convex outline. Unstable because the beat runs on the
+// wall clock and the weather is fetched live when the render starts, so both
+// read differently on every run.
 import Ollin
 import OllinController
 import OllinHaptics
@@ -35,6 +37,7 @@ final class WeatherRose: Sketch {
         try? osc.start()
         link.start()
         sky.start()
+        lastBar = link.bar                  // the first knock waits for the next bar
 
         // Three hands on each of the two parameters that matter most: the
         // inspector, a knob, and a fader.
@@ -79,7 +82,7 @@ final class WeatherRose: Sketch {
         fill(ink.withAlpha(0.12))
         stroke(ink)
         strokeWeight(3)
-        drawPolygon(rose(at: middle, radius: radius * throb, turn: turn))
+        drawShape(Shape(rose(at: middle, radius: radius * throb, turn: turn)))
 
         // A feed that cannot reach its server says so, and keeps its last reading.
         if let problem = sky.problem {

@@ -29,7 +29,7 @@ override func draw() {
 
 It hands back a range rather than a single step. At any real tempo a frame lasts longer than a step, and a step that fell inside the frame still has to be played.
 
-Keeping the clock outside is what makes the rest portable. `tempo.beats(at: time)` today, a beat detected in whatever is playing in the room, or a drum machine's own clock. That one arrives over the MIDI wiring of [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere). None of what follows changes.
+Keeping the clock outside is what makes the rest portable. `tempo.beats(at: time)` today, a beat detected in whatever is playing in the room, or a drum machine's own clock. That one arrives over the MIDI wiring of [Chapter 35](35-ControlsAndSignals.md#musical-time-midi-clock-and-link). None of what follows changes.
 
 **`Tempo` is the one value that knows a second.** Everything else in this chapter counts beats. `tempo.beats(at: time)` is `time * 120 / 60`, written once and named. The same value answers the other question, how long a note lasts. A note's length is a `NoteLength`, in beats, with the names from the stave: `.whole` down to `.thirtySecond`. `.dotted` and `.triplet` derive the rest, and `tempo.seconds(of: .quarter.dotted)` is what to hand a synth's `for:`. Put the tempo on a `@Param` and it is a slider in beats per minute. A MIDI knob or an OSC address drives it like any other number.
 
