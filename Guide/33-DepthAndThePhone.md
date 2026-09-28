@@ -4,42 +4,44 @@
 
 # 33. Depth and the iPhone as a sensor
 
-<img src="Images/33-DepthAndThePhone/GhostRoom.jpg" alt="A room rendered as woven scan-lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
+<img src="Images/33-DepthAndThePhone/GhostRoom.jpg" alt="A room rendered as woven scan lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
 
-A camera flattens the world, while a depth camera keeps one more number per pixel, and that number is enough to un-flatten it. This chapter is about that number. The scan above was made by the chapter's own code, and every figure here runs on any Mac with no phone required. The phone is the upgrade, not the entry fee.
+A camera flattens the world. A depth camera keeps one more number per pixel, the distance to what it sees. That number is enough to stand the picture back up. This chapter teaches what a depth frame is and how one frame becomes a cloud of points you can orbit. Then many frames fuse into one scanned room. All of it runs on any Mac, with a pretend depth camera written in Swift. It ends in the ghost room above, a room that scans itself into being.
 
-The road runs from what a depth frame is, through a flat picture standing up into a point cloud, to many pictures fusing into one scanned room. Then a tethered iPhone becomes a live 3D sensor for your sketches.
+After the room come the techniques it leaves out, still on the Mac. You can draw inside a depth frame, keep a long scan from drifting, and turn a cloud into a surface. Then come the real sensors: a recorded clip, a live stream, and Ollin Capture, the iPhone app. Last are the phone's other streams. They bring the room it builds, the people in front of it, and what its picture shows. They also make the phone in your hand an input.
 
 ## What a depth camera sees
 
-Every depth source hands you the same three things, whatever the hardware. First a color image, then a depth map holding one metric distance per pixel in meters. Last come the **intrinsics**, a handful of numbers describing the lens that took them.
+A **depth camera** measures how far away each point is, as well as its color. The Pro iPhones carry one on the back, a **LiDAR** scanner, which times light as it bounces back from the room. Every iPhone with Face ID carries one on the front, the **TrueDepth** camera, which reads a pattern of dots it projects onto your face. Whatever the hardware, every depth source hands you the same three things. First a color image, then a depth map holding one distance per pixel in meters. Last come the **intrinsics**, a handful of numbers describing the lens that took them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/33-DepthAndThePhone/Anatomy-dark.jpg">
   <img src="Images/33-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
 </picture>
 
-In Ollin that bundle is one value type, `RGBDFrame`, and there's nothing mysterious inside it. This is the entire construction:
+In Ollin that bundle is one value type, `RGBDFrame`, and one call builds it:
 
 ```swift
 RGBDFrame(color: color, depth: depths, confidence: nil,
           depthWidth: 240, depthHeight: 180, intrinsics: intrinsics)
 ```
 
-Where did this chapter's frames come from, with no depth camera attached? We fake one. The committed figure [`Anatomy.swift`](Figures/33-DepthAndThePhone/Anatomy.swift) ends with `StageCamera`, under eighty lines of it. Those lines march rays through a tiny staged room, which is [Chapter 30](30-SculptingWithFields.md)'s sphere tracing run on the CPU. They fill exactly those arrays, colors from the scene and depths from how far each ray flew. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it exactly as it would treat a LiDAR. That's the point of the type. Whatever fills the arrays, the rest of the pipeline doesn't care.
+`confidence` can carry the sensor's own rating of each depth pixel, `.low`, `.medium`, or `.high`. A real sensor is least sure along the edges of things. `nil` means there is no rating, so every pixel counts.
 
-> **Swift note.** `depth` is a plain `[Float]`, row by row from the top left, `0` where the sensor had no answer. Real depth maps are full of those holes, especially along silhouettes, and the API that reads them is built to shrug holes off.
+This chapter's frames come from a pretend depth camera, `StageCamera`. It sits at the end of [`GhostRoom.swift`](Figures/33-DepthAndThePhone/GhostRoom.swift), about ninety lines, and the sketches here bring it along. Those lines march rays through a tiny staged room, [Chapter 30](30-SculptingWithFields.md#how-the-picture-gets-made-sphere-tracing)'s sphere tracing run on the CPU. They fill those arrays, colors from the scene and depths from how far each ray went. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it as it would treat a LiDAR frame. The code does not change when a real one arrives.
+
+> **Swift note.** `depth` is a plain `[Float]`, row by row from the top left, `0` where the sensor had no answer. Real depth maps are full of those holes, especially along silhouettes, and the calls that read them skip the holes.
 
 ## Standing the picture up
 
-One pixel plus one depth is a 3D point. The recipe is small enough to say in a sentence. Slide the pixel off the image center, scale by depth over focal length, and step out along the ray.
+One pixel plus one depth is a 3D point. The recipe fits in a sentence. Slide the pixel off the image center, and scale by depth over the focal length. Then set the point that far out along the camera's forward axis.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/33-DepthAndThePhone/Unproject-dark.jpg">
   <img src="Images/33-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 </picture>
 
-That's called **unprojection**, and the intrinsics (`cx`, `cy` the image center, `fx`, `fy` the focal lengths) are exactly the numbers the recipe needs. You'll rarely do it per pixel yourself, because `RGBDFrame` does it wholesale. `pointCloud()` unprojects *every* valid depth pixel, colors each from the color image, and hands the result back as a `PointCloud`.
+That's called **unprojection**, and the intrinsics are the numbers the recipe needs: `cx` and `cy` the image center, `fx` and `fy` the focal lengths. The depth is measured along the camera's forward axis, so it is the point's `z`, not its distance along the ray. You'll rarely unproject one pixel at a time yourself. `pointCloud()` unprojects every depth pixel it trusts, colors each from the color image, and hands the result back as a `PointCloud`. By default it trusts only pixels rated `.high`, and `minConfidence:` lowers the bar.
 
 ```swift
 let frame = StageCamera.capture(eye: Vector3(0.2, 1.05, 1.7),
@@ -53,81 +55,15 @@ drawPointCloud(cloud)
 
 <img src="Images/33-DepthAndThePhone/CloudLift.jpg" alt="The flat frame stood up into a point cloud, viewed from a different angle: the room as scan-line points, with black voids stretching behind the ball and crate, and the original flat frame inset at the top left" width="560">
 
-Look at what the new viewpoint reveals. The picture has become geometry you can orbit. Behind the ball and the crate hang black voids, the parts of the room the camera never saw. They are shadows cast not by light but by *not knowing*. Every real scan has these, and they're the honest signature of the medium. (For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its metric 3D spot. A median window keeps a stray hole from spoiling it. That's the tool that lifts a tracked 2D skeleton to true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.)
+The picture has become geometry you can orbit. Behind the ball and the crate hang black voids, the parts of the room the camera never saw. Every real scan has them, and the next step fills them from more viewpoints.
 
-## Drawing inside the picture
-
-A depth frame isn't only a source of geometry. It's also a *stage you can draw into*. `drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.intrinsic(...))`, puts your 3D drawing in the same metric space. So the scene occludes what you place behind it:
-
-```swift
-camera(.intrinsic(frame.intrinsics))
-drawDepthScene(frame)
-
-// A run of marbles marching into the room, in meters.
-for i in 0 ..< 6 {
-    withState {
-        translate(-1.3 + Double(i) * 0.44, -0.32, -1.85 - Double(i) * 0.34)
-        fill(Color(hue: 0.09 + Double(i) * 0.035, saturation: 0.75, brightness: 1))
-        specular(0.5); specularSharpness(60)
-        drawSphere(radius: 0.12)
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/Inhabit.jpg" alt="The staged room's color frame with six marbles placed into it in meters: four visible, one sliced in half by the crate's edge, the rest hidden behind it" width="560">
-
-Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery. The marbles are ordinary solids from [Chapter 25](25-3DGently.md), z-tested against depths that came from a camera. That camera is our pretend one here, and the real one with a phone.
-
-Flat drawing can take part too. A label, a tag, or a halo belongs in the scanned room, and [Chapter 25](25-3DGently.md#flat-drawing-that-knows-where-it-is-depth-compositing) taught `depth(at:)`, `project`, and `withBillboard` for putting 2D marks at a depth. A depth *feed* has no world point to hand `depth(at:)`, so `depth(0.5)` takes a fraction of the map's own near-to-far range instead. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
-
-## The real sensors
-
-This is where real hardware comes in, and the reassuring part is that the code stays the same from here on. Only the source of the frames changes.
-
-The gentlest entry is a **recorded clip**. The Record3D iPhone app records LiDAR (or TrueDepth) footage into `.r3d` files, and Ollin opens them directly, every frame an `RGBDFrame`:
-
-```swift
-import Ollin
-import OllinRecord3D
-
-final class Replay: Sketch {
-    var scan: Record3DRecording?
-
-    override func setup() {
-        scan = try? Record3DRecording(path: "/path/to/scan.r3d")
-    }
-
-    override func draw() {
-        background(Color(white: 0.04))
-        guard let scan, scan.frameCount > 0 else { return }
-        let i = Int(time * 30) % scan.frameCount
-        guard let cloud = try? scan.pointCloud(at: i) else { return }
-        camera(.orbiting(radius: 2.5, azimuth: time * 0.3, elevation: 0.2))
-        drawPointCloud(cloud)
-    }
-}
-```
-
-A recorded clip is depth footage you can edit against, re-render, and export deterministically. It's the medium the "volumetric filmmaking" scene works in. The same app also streams **live over USB**. Plug the phone in and `Record3DDevice` delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
-
-The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, up to three **faces**, each a deforming mesh plus 52 expression values, and up to four **hands**, each a 21-joint skeleton. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte (rear camera, or mirrored from the front like a selfie), and **device motion**:
-
-```swift
-import OllinPhone
-
-let device = PhoneDevice()
-device.start()                  // in setup()
-// …in draw():
-device.latestBody               // a skeleton in meters
-device.latestFrame         // an RGBDFrame from the LiDAR
-device.latestPose               // where the phone is, and which way it looks
-```
-
-Everything these produce lands in types you've already used this chapter, and that's the design. The phone is a sensor array, and the sketch never knows or cares which sensor filled the frame. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup (both need only a cable), and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
+For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its 3D spot in meters. It reads a small window of depths around the position and takes their median, so a stray hole doesn't spoil it. That lifts a tracked 2D skeleton to its true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.
 
 ## One world from many frames
 
-A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the heart of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:
+A single frame is a slice of the world, whatever the lens saw plus voids. The way past that needs one more ingredient, the **pose**: where the camera stood and which way it looked, written as a transform. Given a frame's cloud in the camera's own space, and its pose, `transformed(by:)` places the points where they are in the room.
+
+`WorldCloud` gathers those placed points. It divides space into small cubes called **voxels**, `voxelSize` meters on a side, and keeps one point in each cube, the most recent. So frames that overlap don't pile up points where they agree:
 
 ```swift
 var world = WorldCloud(voxelSize: 0.02)
@@ -141,389 +77,11 @@ drawPointCloud(world.cloud)
 
 <img src="Images/33-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
 
-Each capture is tinted coral, green, or blue, so you can see who saw what. Three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose in `device.latestPose`, you sweep the room, and the slices stack into a scan.
-
-### When the camera loses its place
-
-Sweep for a minute and the scan starts to fog. The camera's estimate of where it stands is a little wrong in every frame. Those errors never cancel. They pile up. A wall seen early and seen again late lands in two places.
-
-`add(_:correcting:)` is the answer. It slides and turns each arriving frame onto the surfaces already fused, then merges it:
-
-```swift
-let fix = world.add(cloud, correcting: reportedPose)
-```
-
-<img src="Images/33-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">
-
-Both halves are the same nine captures, seen from the same angle. On the left the ball is drawn several times over. On the right it is drawn once. The corrected scan also holds half as many points. A smeared wall fills twice the space a wall does.
-
-The correction that worked is kept. The next frame starts from it, so the fit only has to find the newest error. That is why it costs so little. Apply `world.correction` to anything else the camera reports in that space.
-
-One thing it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.isApplied` says so.
-
-### Coming back to where you started
-
-There is a second thing it cannot do, and it takes a walk to see. Correcting a frame fixes the newest error. It never revises the poses already laid down. So each frame agrees with the frame before it, the chain of them comes out smooth, and the whole chain can still lean. Go all the way around a room and back to the door, and the far wall is a good way from where it really is.
-
-**`ScanGraph`** is the answer to that one. It fuses and corrects exactly as `WorldCloud` does. It also keeps a **keyframe** every so often: a pose, and a thinned copy of what that frame saw. When a new keyframe lands where an old one stood, the two are matched against each other. That match ties a late pose to an early one, so the chain becomes a loop that does not quite close. The difference is then shared out over every pose in between:
-
-```swift
-var scan = ScanGraph(voxelSize: 0.025)
-
-let update = scan.add(cloud, correcting: reportedPose)
-if let loop = update.loop {
-    print("been here before: the map moved \(loop.moved) m")
-}
-drawPointCloud(scan.cloud)
-```
-
-<img src="Images/33-DepthAndThePhone/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a full circle inside it. On the left the walls are drawn twice, thick and offset, and the ring of camera positions ends short of where it began. On the right the walls are single and clean and the ring closes on itself" width="680">
-
-Both halves are the same walk, seen from straight above, because from overhead a wall is a line and a scan that leaned draws that line twice. The dots are where each half thinks the camera stood; the white ones are the first and the last. On the left the walk closes as a spiral and the walls double. On the right the walk closes as a ring, the walls are single, and the scan holds a quarter fewer points. A smeared wall fills more space than a wall.
-
-What you get from this is a scan that agrees with itself. That is a different thing from a scan that is in exactly the right place, and worth being clear about. One match pulls the two ends of a walk together and shares the difference along everything between them. It earns most of what it earns at the point of return. In a small room, where nearly every frame can see something already fused, the frame-by-frame fit has taken most of the drift out before the walk ever gets back, and there is little left to find.
-
-Two limits are worth knowing. A place is recognized by standing near it, so a scan that has drifted further than `searchRadius` before it comes back is out of its own reach, and the match is refused rather than guessed. And a camera facing one bare wall can slide along that wall and fit it exactly as well every time, so a match made there would record drift as though it had been measured. Neither the overlap nor the leftover error can see that; only the fit's own conditioning can, which is why a room with things standing about in it is easier to scan than an empty corridor.
-
-Run it for yourself with `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan`, which walks a made-up hall twice side by side with the true walls drawn over both.
-
-## From the cloud to a surface
-
-A fused cloud is still dust. It is beautiful, but nothing in it has a face, a shadow, or a material. **`reconstructSurface`** turns the sweep into a solid. It fits a small plane to every point's neighborhood. Then it uses the sweep's own camera positions to decide which side of each plane faces the room. Last it pulls one mesh out of the whole thing:
-
-```swift
-let mesh = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
-                              orientedToward: eyes)
-material(.dielectric(roughness: 0.55))
-drawMesh(mesh)
-```
-
-<img src="Images/33-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
-
-The torn rim is the honest part. Where no camera reached, the surface simply stops, and nothing is guessed. That honesty is the one rule worth carrying to a real scan. **The mesh can only be as complete as the sweep.** A body you only arc in front of keeps an unobserved back, and the rebuilt surface frays just past where its data stops. So walk around the things you care about. When a sweep falls short anyway, `fitting: .robust` swaps the nearest-plane distance for a robust blend of all the nearby samples. That blend re-weights away whatever disagrees with the local consensus. It smooths noise, keeps creases, and trims away nearly all of the fraying that the plane fit sheds at open edges. Doorways and windows stay open either way, which is the truthful shape of a room.
-
-The camera path does double duty here. Every fitted plane has two sides, and the reconstruction turns each toward the cameras that plausibly saw it. So pass the sweep's positions in `orientedToward:` whenever you have them. They are the same `eyes` the capture loop already collects. Without them, orientation propagates point to point across the cloud. That works on a smooth single surface, and struggles exactly where a camera would have known better.
-
-Because the sketch handed over a `PointCloud` rather than bare positions, the colors ride along. Each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill`, which is the texture contract. That is why the default white fill shows them untouched, and `fill(Color(white: 0.5))` dims the whole scan without touching its hues. The same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
-
-What comes back is an ordinary `Mesh`, so everything [Chapter 25](25-3DGently.md) and [Chapter 26](26-Meshes.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
-
-## The phone's other streams
-
-World depth and its pose carried the scan, and they are one entry on Ollin Capture's menu. The rest of the phone's streams land the same way, as typed values in meters read in `draw()`. Take the tour in any order.
-
-### A surface the phone already built
-
-That whole last section rebuilt a surface on the Mac, out of points you swept and fused yourself. A LiDAR phone can hand you one directly. ARKit reconstructs the room as you walk, on the device, and Ollin Capture streams the result. Tap **Room** and what arrives already has faces and normals, and every triangle already knows what it is.
-
-```swift
-var room = Mesh(positions: [], indices: [])
-var built: Int?
-
-override func draw() {
-    if device.sceneMeshVersion != built {      // only when a block changed
-        built = device.sceneMeshVersion
-        room = device.sceneMesh.mesh
-    }
-    drawMesh(room)
-}
-```
-
-That gate is the one thing to get right. The room arrives in **blocks**. ARKit cuts the space into pieces and keeps improving each piece as you look at it again. So a piece turns up many times, and the newest reading replaces the last. `sceneMeshVersion` changes whenever that happens. A scanned room reaches hundreds of thousands of triangles, and `draw()` runs sixty times a second. Rebuilding the mesh every frame is the mistake to avoid here.
-
-Then the labels. Every triangle carries a `PhoneSurface`, one of wall, floor, ceiling, table, seat, window, door, or unclassified. So the same room can be asked for three ways:
-
-<img src="Images/33-DepthAndThePhone/RoomAsSurface.jpg" alt="Three copies of a small scanned room corner side by side: the whole room in one pale material, the same room painted green for floor, blue-gray for walls, tan for a table and red for a seat, and the same room with the walls dropped so only the floor, table and seat slabs float in place" width="680">
-
-```swift
-let scan = device.sceneMesh
-scan.mesh                          // all of it, one mesh
-scan.mesh { $0 == .floor ? .green : .white }    // a color per triangle
-scan.mesh(of: .floor, .table)      // only the labels you ask for
-```
-
-The blocks in that picture are staged rather than scanned, so it renders without a phone, but the calls are the real ones. A real scan has the same shape and far more blocks.
-
-Early in a scan almost everything reads `unclassified`, because ARKit only decides what a surface is once it has seen enough of it. That is the truth of a scan in progress rather than a fault. `foundSurfaces` tells you which labels have appeared so far, so a sketch that keys off labels can say so while the room fills in.
-
-So which do you want, points or a surface? Both come off the same sensor. **Points are what the camera saw; the mesh is what the phone decided was there.** Take the points when you want to scatter, drift, or reconstruct them yourself. Take the mesh when you want something to light, to hide things behind, or to bounce something off. The `3D/Phone/PhoneRoomMesh` example is the room painted by label, with a key to keep only the flat things you could set something down on.
-
-### Somewhere to stand, and the light in the room
-
-The mesh is the whole shape of the room, clutter and all. Most of the time you want far less than that: one flat surface to put something on.
-
-Room mode reports those too. ARKit finds a floor, a table top, or a wall as a single flat patch, and grows it as you look around. This half needs no LiDAR, so it works on any phone that runs the app.
-
-```swift
-if let ground = device.planes.floor {
-    withState {
-        translate(ground.center + ground.normal * 0.15)
-        drawSphere(radius: 0.15)
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
-
-`floor` is the one to reach for, because it answers early. It gives you the labeled floor once ARKit has decided, and the lowest flat surface until then. `largest` picks by real area, measured on the outline rather than on the box around it, so a long thin shelf never wins.
-
-Every surface carries that outline: a convex polygon around everything the phone has seen of it. `plane.mesh` fills it in, and `plane.outline` is the same loop closed, ready for `drawTube`.
-
-Then the light. The phone measures how bright and how warm the room is, in every mode, a few times a second.
-
-```swift
-ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
-```
-
-`ambient` is the room's own white, turned down by how bright the room is. The three swatches under the picture are three readings: a lamp, a working room, a window. Switch a lamp on and the sketch warms with it.
-
-One catch. Only Face mode knows *where* the light comes from, because ARKit works that out from the shading on a face. A world-facing camera has no face to read, so Room mode gives you brightness and color, and you aim your own key light.
-
-### A pose you can dress in solids
-
-`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. `modelTransform(_:)` composes the two into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light:
-
-```swift
-for (a, b) in body.bones() {
-    drawCapsule(from: a, to: b, radius: 0.03)
-}
-if let pose = body.modelTransform(.head) {
-    withState { transform(pose); drawSphere(radius: 0.11) }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
-
-The blue forearm is the stream being honest. The camera never saw those joints, the rig filled them in, and `isObserved(_:)` says so, part by part. Two more readings ride along. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the whole skeleton where the person really is, in the same ARKit world as the swept cloud and the room mesh, so walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example is this section live: a mannequin that follows you around the room.
-
-### A hand you can reach in with
-
-The body stream draws a whole person. The hand stream leans in close. In **Hands** mode the phone finds up to four hands, each as 21 joints: the wrist, then four joints along every finger. On a LiDAR phone every joint also carries a real position in meters. It stands in the same world as the swept cloud and the room mesh. A hand is the part of you that points, pinches, and conducts, so this is the stream gestures come from:
-
-```swift
-for hand in device.latestHands {
-    for (a, b) in hand.bones() {
-        drawCapsule(from: a, to: b, radius: 0.006)
-    }
-    if let pinch = hand.pinchDistance, pinch < 0.02 {
-        // thumb and index are touching: a click, made of air
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
-
-The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. That one number is a whole instrument. A pinch can pluck a note, a spread can stretch a shape, a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
-
-### Where a look lands
-
-The face stream carries more than expression. Each face arrives with its two eyes and one extra point: `lookAtPoint`, where those eyes converge. The head says where you face. The eyes say where you look. Those are different things, and the difference is the interesting part. Every reader has a world twin, so three calls draw the whole idea:
-
-```swift
-if let face = device.latestFace {
-    let target = face.worldLookAtPoint
-    for eye in PhoneEye.allCases {
-        drawCapsule(from: face.worldEyePosition(eye), to: target, radius: 0.002)
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
-
-The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. That point is a cursor you steer without hands. Park a creature there, or steer a brush with a glance. The blink blendshapes pair naturally with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
-
-### The words on the wall
-
-The phone can also read. In **Text** mode it runs the on-device recognizer over the rear camera. It streams every line it can make out: a sign, a book spine, a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry real positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs:
-
-```swift
-for line in device.latestTexts {
-    guard let placement = line.worldTransform else { continue }
-    withState {
-        transform(placement)   // x along the words, y up the line, z off the surface
-        drawCapsule(from: Vector3(-line.worldWidth / 2, -line.worldHeight / 2, 0),
-                    to: Vector3(line.worldWidth / 2, -line.worldHeight / 2, 0),
-                    radius: 0.004)   // an underline, drawn on the world
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
-
-The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
-
-### What draws the eye
-
-The phone can also say where a picture pulls the gaze. In **Attention** mode it runs the on-device attention model over the rear camera, a model trained on where people actually look. Each reading arrives as a `PhoneSaliency`: a coarse heat map of visual attention, and the regions it peaks in. The heat comes ready to draw as a tintable glow, and `salience(at:in:)` reads the pull under any canvas point:
-
-```swift
-if let attention = device.latestSaliency,
-   let heat = device.latestSaliencyHeatMap {
-    tint(Color(red: 1, green: 0.72, blue: 0.3, alpha: 0.75))
-    drawImage(heat, in: rect)          // attention as a warm glow over the frame
-    noTint()
-    for region in attention.regions {
-        drawRect(region.bounds(in: rect), cornerRadius: 10)   // what stood out
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each wearing a rounded teal frame whose weight follows the model's confidence" width="680">
-
-The dots are `salience(at:in:)` sampled on a grid, one query per cell. That is the other way to read the map: not a picture but a field. Big values pull, small values leave alone, so the same surface drives stippling, particle drift, or where a brush is allowed to land. The frames are the model's regions, their line weight following its confidence. On a LiDAR phone each region's center also stands in ARKit world space. The thing being looked at keeps a place beside the room, the hands, and the words. The `3D/Phone/PhoneAttention` example is this section live: point the phone at anything, and a bead wanders the frame to wherever the picture draws the eye.
-
-### How the picture is moving
-
-The phone can also say how its picture is moving. In **Flow** mode it measures optical flow between consecutive frames of the rear camera, on the phone. Each reading arrives as a `PhoneFlow`: a dense field of motion vectors, and the frame it was measured on. [Chapter 32](32-Seeing.md#the-picture-as-a-field-optical-flow) teaches the Mac's own `FlowTracker`, and the phone's field gives you the same reads over the same `MotionField`. A grid of samples, for drawing the motion as arrows, and a vector under any point, for pushing something with it:
-
-```swift
-if let motion = device.latestFlow {
-    for s in motion.samples(in: rect, every: 36) {
-        drawLine(s.position, s.position + s.flow * 3)     // the field as arrows
-    }
-    for i in dust.indices {
-        dust[i] += motion.vector(at: dust[i], in: rect)   // the field as a push
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/FlowAsField.jpg" alt="A staged flow reading on a dark panel: a grid of short streaks, blue where the picture barely moves and yellow to red where it moves fastest, turning in a ring around the left third and running to the right across the right third. White grains of dust with faint trails behind them have been carried by the same field, wound around the ring and streamed off to the right" width="680">
-
-The picture is one staged reading, a vortex and a drift written into the map, read the two ways. The streaks are `samples(in:every:)`, each the motion under one cell, its color following how fast the picture moves there against the reading's fastest motion. The dust is `vector(at:in:)` applied a few times over: every grain read the push under itself and moved, and its trail is where that took it. That is the whole use of a motion field. A hand waved in front of the phone becomes a wind, and anything you draw can be blown by it.
-
-One number the phone has that the Mac's tracker does not is `interval`, the time between the two frames a reading was measured across. The Mac analyzes frames as it can keep up, so its gap breathes with load, and its magnitudes are a signal to scale by a gain of your own. The phone measured both frames and knows how far apart they were, so a vector over `interval` is a speed. The caveat is the same on both: motion is only measurable where the picture has texture, and a blank wall reads as noise, not as stillness. The `3D/Phone/PhoneFlow` example is this section live. The streaks run over the camera frame, and five hundred grains of dust scatter when you wave and settle when you hold still.
-
-### A picture it knows
-
-Reading is one way to recognize something. Knowing it by sight is the other. Give the capture app a picture and it will find that picture in the room. Drop the file into the app's own folder over the cable, in Finder, under Files, then Ollin Capture. Say how wide you printed it in the file's name, `poster@30cm.png`. ARKit places a print by its real width, and no image file carries one. Tap **Markers** and the phone starts looking.
-
-Each find arrives as a `PhoneMarker`, and `placement` is the whole of it. The frame stands at the middle of the print: x runs across the width, y up the height, z straight off the paper toward you. So the drawing code never mentions walls or tables:
-
-```swift
-for marker in device.latestMarkers where marker.isTracked {
-    withState {
-        transform(marker.placement)                 // the print is now the x-y plane
-        drawBox(width: marker.width, height: marker.height, depth: 0.002)
-        translate(0, 0, 0.08)
-        drawBox(size: 0.06)                         // a cube floating off the paper
-    }
-}
-```
-
-<img src="Images/33-DepthAndThePhone/PrintAsStage.jpg" alt="Two printed pictures on a dark ground, each carrying the same little city of pale green columns inside an orange frame: one card lying face up on a table slab, one poster standing on the wall behind it" width="680">
-
-The card lies flat and the poster hangs upright, and one loop drew both cities. `width` and `height` are meters, so a piece written for a business card fits a poster by itself. Two things are worth knowing before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing.
-
-Dropping files into the phone's folder leaves the piece in two halves, the sketch in one place and its pictures on one phone. The sketch can carry them instead. `device.use(.markers)` asks for the mode, and `device.look(for:)` hands over the pictures with the width each was printed at, so the phone rebuilds its library from what arrives. The [phone reference](../Docs/3D/Phone.md#saying-what-to-look-for-from-the-sketch) has both calls and the state the phone sends back, and the `3D/Phone/PhoneMarkers` example sends a bundled photograph this way.
-
-### Pointing at it with the phone
-
-Everything so far has the phone looking at the room and telling you what it saw. Turn that around. The phone knows where it is in the room. So it also knows where it is *pointing*, and that makes it a wand: something you aim at your own sketch. Tap **Wand**. It needs no LiDAR, since plain world tracking is enough to know your own place.
-
-```swift
-guard let wand = device.latestWand, wand.isTracked else { return }
-```
-
-A `PhoneWand` is a place, a direction, and a button. `wand.position` is where the phone is, in the same meters as everything else in this chapter. `wand.ray` is the line out of the back of it, the end you point at things:
-
-```swift
-for (i, ball) in balls.enumerated() {
-    if let distance = wand.ray.hit(sphereAt: ball, radius: 0.13) {
-        aimed = (i, distance)                    // how far along the beam it sits
-    }
-}
-```
-
-That `hit` is a [`Ray3`](../Docs/Drawing/Geometry.md#ray3), the small value type that answers what a line runs into. It knows about a ball, a box standing square to the world, and a flat surface. It counts only what is **in front of** the origin. That is what separates pointing from drawing a line and hoping.
-
-<img src="Images/33-DepthAndThePhone/WandAsPointer.jpg" alt="A pale phone slab at the lower left with a small dot on its screen, a green beam leaving the back of it and stopping at a yellow ball, three blue balls around it untouched" width="680">
-
-The beam stops where it lands, because the hit told it how far to go: `wand.point(at: distance)`. Draw the phone itself through `wand.placement` and it leans in your hand the way the real one does.
-
-The button is the screen, and it arrives twice. `wand.isPressed` is whether a finger is down now, which is what a drag reads. `wand.pressCount` only ever rises, so a tap that landed and left between two `draw()` calls is still there to find:
-
-```swift
-if wand.pressCount > lastPressCount, held == nil { held = aimed?.index }
-lastPressCount = wand.pressCount
-```
-
-Keeping last frame's number and comparing is the habit worth taking from this. Any counter that only rises tells you *something happened* without asking you to be watching at the moment it did.
-
-`wand.touch` is where the thumb sits while it is down, `-1` to `1` across and up. The pad is a few centimeters and the room is not. So read it as a speed rather than a place: `distance += touch.y * 0.8 * deltaTime` pushes a held thing away and pulls it back. The `3D/Phone/PhonePointer` example is this section live, with a ball you can pick up, carry, push out, and drop.
-
-One thing to set up before you build on it. The room's origin is wherever the phone stood when Wand mode began. Lay your scene out in front of that spot, or expect to walk to it.
-
-### What the phone hears
-
-The phone has ears as well as eyes. Switch **Hear** on, under the modes, and it names the sounds around it: a dog, a kettle, applause, a knock at the door. The classifier runs on the phone, so only the names cross the cable, never the audio. It needs no camera, which is why it is a switch and not a mode. It runs beside whichever mode is on.
-
-Chapter 34 teaches the Mac's own [`SoundClassifier`](34-Listening.md#words-and-what-that-noise-was), and the phone's ears give you the same two reads over the same values. A level, for a question that rises and falls:
-
-```swift
-let music = device.sounds.confidence(of: "music")
-```
-
-And a trigger, for a thing that happens once:
-
-```swift
-for event in device.sounds.events() where event.label == "dog_bark" {
-    rings.append(Ring(at: place(for: event.label), born: time))
-}
-```
-
-<img src="Images/33-DepthAndThePhone/HeardAsMarks.jpg" alt="Four rows on a dark panel, one per sound: speech, dog bark, clapping, music. Each row is a stepped, filled curve of the phone's confidence over eight seconds with a dashed threshold line across it. A warm ring sits on the line a moment after each climb over it: one for speech, which then stays up, two for the dog, one for the clap, none for music, which hovers just under" width="680">
-
-The picture is eight seconds of staged readings, one window every three quarters of a second, run through the real `PhoneSounds`. Read the rings. Each sits at the end of the window that crossed, a moment after the curve climbed over the line, because the phone judges a second and a half of audio at a time. Speech climbs over the line once and stays there, and it rings once, not once per window. The dog barks, stops, and barks again, and rings twice. The clap rings once. Music hovers under the line the whole time and never rings at all, though its level is there for the asking.
-
-That is the rule worth keeping: an event is a crossing **from below**. The phone sends its whole judgment, every label with a number, and the Mac decides what counts as loud enough. The threshold is yours, `device.sounds.threshold`, and you can move it while the phone listens. Two sketches reading one phone can disagree about what counts.
-
-`timeSinceHearing(_:)` is the third read, for a mark that fades: it says how long ago a sound last crossed, and it does not drain. The `3D/Phone/PhoneSounds` example is this section live. Every sound that starts rings out in its own place on the canvas, a place found by hashing its name. A room settles into a map of its sounds.
-
-### Playing the glass
-
-Tap **Touch** and the phone stops watching altogether. No camera runs. The screen under the modes becomes the surface, and the phone sends every finger on it.
-
-```swift
-for touch in device.touches.down {
-    drawCircle(center: touch.point(in: pad), radius: 16 + touch.radius * 500)
-}
-```
-
-`down` is the fingers on the glass right now. Each carries `position`, which runs `-1` to `1` across and up with the middle at zero, and `point(in:)` maps that onto a rectangle on your canvas. Each also carries `radius`: how wide the contact is, as a fraction of the screen's width. That is the axis worth reaching for. Every iPhone reports it, and a fingertip and a flat finger are far apart. `force` is `nil` on almost every phone made since the 3D Touch years.
-
-The other read is the one that happens once:
-
-```swift
-for tap in device.touches.taps() { rings.append(Ring(at: tap.point(in: pad), born: time)) }
-```
-
-<img src="Images/33-DepthAndThePhone/GlassAsPad.jpg" alt="Two panels on a dark ground. Left, a phone-shaped outline with two teal discs on it, a small one labelled 1 and a wide one labelled 2, and warm rings expanding from where each landed. Right, a timeline of the same two seconds: three rows labelled id 1, id 2, id 3, each a teal bar while that finger is down with a warm dot marked taps() where it landed. Pale vertical lines mark every draw. The id 3 bar sits entirely between two of them, noted as down and gone between two draws" width="680">
-
-Look at the third row. That finger landed and left inside a quarter of a second, between two of the draws marked along the top, so it was never in `down` when the sketch looked. Its tap is there anyway. The phone sends a message every time the set of fingers changes, and Ollin reads every one of them, while `draw()` only ever sees the latest.
-
-How it knows is worth a sentence, because it is the whole mechanism. A finger keeps one number from the moment it lands until it leaves, and the phone never gives that number to another finger. So a number the Mac has not seen is a landing. That is also why sliding a finger across the glass does not tap on every frame. And it is how you follow a tap into the drag it becomes: keep the `id` the tap gave you, and ask `device.touches.touch(id:)` for it each frame.
-
-`taps()` drains, so read it in one place. If two parts of your sketch need to know, `tapCount` is the same fact without taking it: it only ever rises, and comparing it with last frame's number is the habit from [the wand's button](#pointing-at-it-with-the-phone).
-
-The `3D/Phone/PhoneTouches` example is this section live, with the air below joining in.
-
-### The air it is standing in
-
-The last sensor reads the room without looking at it. Every iPhone since the 6 has a barometer. Switch **Air** on, beside Hear, and it arrives beside whichever mode is running.
-
-```swift
-if let air = device.latestAir {
-    lift += (air.altitude - lift) * min(1, deltaTime * 3)
-}
-```
-
-`altitude` is meters above wherever the phone was when it started measuring, not meters above the sea. That sounds like a limitation and it is the useful half. A barometer knows how the pressure changed far better than it knows where it is, and the change is good to about a tenth of a meter. Lift the phone off the table and the number moves.
-
-So it is a fader you play by standing up, and it costs no camera and no model. `pressure` is the weather's own number, about 101.3 kilopascals at sea level, and a door opening in a sealed room moves it.
+Each capture is tinted coral, green, or blue, so you can see which frame saw what. Three partial views make one room. The small spheres are the three camera positions, and the walls one frame couldn't see are filled in by the frames that could. `StageCamera.pose` knows where the pretend camera stood, with no error. A real phone reports its own pose, as the sensors after the ghost room show.
 
 ## Putting it together: the ghost room
 
-The finished sketch turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/33-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/33-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
+The finished sketch turns the sweep itself into the picture. Nine frames of the staged room join the world one per second, drawn as light that adds up while the camera orbits. It reads as a room scanning itself into being. Make `MySketches/GhostRoom.swift`, and copy `StageCamera` in below it from the end of [`GhostRoom.swift`](Figures/33-DepthAndThePhone/GhostRoom.swift):
 
 ```swift
 import Ollin
@@ -558,30 +116,526 @@ final class GhostRoom: Sketch {
 }
 ```
 
-The woven texture is the scan lines of nine viewpoints interleaving. The solid patches are where many frames agree, and the voids are what no camera reached. Watch it run live and the room knits itself together, then the orbit lets you wander what was scanned.
+The room uses the depth frame, the point cloud each frame stands up into, and the world cloud that places each one by its pose. Every 60 frames, one more viewpoint joins. `due` is how many should have joined by now, `frameCount / 60 + 1` capped at nine, and the `while` loop from [Chapter 10](10-Vectors.md) catches `fused` up to it. The integer division drops the remainder, so `due` steps up once a second. Each eye stands on an arc around the room, `0.29` radians further along than the last, at one of three heights picked by `fused % 3`.
+
+The cloud is drawn with `blendMode(.add)`, [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes)'s additive light, so where frames overlap the points add up and glow. `cameraShowcase` is the draggable orbit of [Chapter 25](25-3DGently.md#a-camera-and-a-sphere). `import simd` is there for `StageCamera`, which builds its poses with Apple's library of vector math.
+
+The woven texture is the scan lines of the viewpoints interleaving. The solid patches are where many frames agree, and the voids are what no camera reached. Watch it run live and the room knits itself together, and the orbit lets you wander what was scanned.
 
 Then make it yours:
 
-- Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this sketch with the pretend camera removed).
-- Restage the set. `StageCamera.scene` is a distance field, so everything [Chapter 30](30-SculptingWithFields.md) taught works in it, and you can melt a blob into the room and scan that.
+- Point it at a real room. With a LiDAR iPhone and [the capture app](#ollins-own-app-ollin-capture), swap `StageCamera` for `device.latestFrame` and `device.latestPose` and sweep your room. The `3D/Phone/PhoneWorldScan` example builds a scan that way.
+- Restage the set. `StageCamera.scene` is a distance function, a plain Swift function from a point to how far it is from the nearest surface. Write [Chapter 30](30-SculptingWithFields.md#melting-the-smooth-minimum)'s smooth minimum into it by hand, and you can melt a blob into the room and scan that.
 - Color by height instead of by image, rebuilding the cloud with each point tinted by its `y`, and the scan becomes a contour map.
-- Slow the reveal to one frame every five seconds and export a video, because the assembly is the piece.
-- Rebuild it solid. Hand the finished world cloud to `reconstructSurface(of:spacing:orientedToward:)` with the nine eyes, and the ghost becomes a room you can light, shadow, and walk a camera through.
+- Slow the reveal to one frame every five seconds, so the assembly takes most of a minute.
+- Rebuild it solid. Hand the finished world cloud to `reconstructSurface(of:spacing:orientedToward:)` with the nine eyes, as [the surface family](#from-the-cloud-to-a-surface-surface-reconstruction) shows. The ghost becomes a room you can light, shadow, and walk a camera through.
+
+The assembly is what this one shows, so keep it as a movie. This writes twelve seconds of it, all nine frames and a few seconds of the finished room:
+
+```sh
+swift run OllinLive MySketches/GhostRoom.swift --export-video ghost-room.mp4 --seconds 12
+```
+
+## Drawing inside the picture: a depth frame as a stage
+
+The ghost room turned each frame into points and let the picture go. A single depth frame can also stay a picture, with a depth at every pixel, and you can draw into it. Solids go behind what the camera saw, and flat marks sit at a depth.
+
+### Solids behind the scene: drawDepthScene
+
+`drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.intrinsic(...))`, puts your 3D drawing in the same metric space. So the scene hides what you place behind it. It is for putting things into a photographed room, a ball behind a real chair or a creature under a real table. It is [Chapter 25](25-3DGently.md#depth-that-hides-things-the-depth-test)'s depth test, fed from a camera's depth map instead of from solids you drew.
+
+<img src="Images/33-DepthAndThePhone/Inhabit.jpg" alt="The staged room's color frame with six marbles placed into it in meters: four visible, one sliced in half by the crate's edge, the rest hidden behind it" width="560">
+
+```swift
+camera(.intrinsic(frame.intrinsics))
+drawDepthScene(frame)
+
+// A run of marbles marching into the room, in meters.
+for i in 0 ..< 6 {
+    withState {
+        translate(-1.3 + Double(i) * 0.44, -0.32, -1.85 - Double(i) * 0.34)
+        fill(Color(hue: 0.09 + Double(i) * 0.035, saturation: 0.75, brightness: 1))
+        specular(0.5); specularSharpness(60)
+        drawSphere(radius: 0.12)
+    }
+}
+```
+
+Count the marbles. Six were drawn, and the crate's depth hides the last ones and slices one in half. The marbles are ordinary solids from Chapter 25, tested against depths that came from a camera. That camera is the pretend one here, and a real one with a phone.
+
+### Flat marks at a depth: depth compositing
+
+Flat drawing can take part too. A label, a tag, or a halo belongs in the scanned room. [Chapter 25](25-3DGently.md#flat-drawing-that-knows-where-it-is-depth-compositing) taught `depth(at:)`, `project`, and `withBillboard` for putting 2D marks at a depth. They work the same in a metric scene like the marbles'. `depth(at:)` takes a point in meters, and `withBillboard` stands a mark at one. A gray depth map with no lens behind it is the other kind of scene. There `drawDepthScene(color:depth:)` draws it, and `depth(0.5)` takes a fraction of the map's own near-to-far range instead. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds side by side.
+
+## Keeping a long scan straight: drift and loop closure
+
+The ghost room placed each frame by an exact pose, because the pretend camera knows where it stood. A real camera only estimates its pose. The two entries here keep a long scan straight when those estimates go wrong.
+
+### When the camera loses its place: correcting drift
+
+Sweep for a minute and the scan starts to fog. The camera's estimate of where it stands is a little wrong in every frame, and the errors pile up instead of canceling. That slow slide is called **drift**. A wall seen early and seen again late lands in two places.
+
+`add(_:correcting:)` corrects it. It slides and turns each arriving frame onto the surfaces already fused, then merges it. It is for any scan that runs longer than a few seconds. The method is the iterative closest point fit of Paul Besl and Neil McKay, from 1992. It measures against surfaces, as Yang Chen and Gérard Medioni did the same year, and it is solved with Kok-Lim Low's linearization:
+
+```swift
+let fix = world.add(cloud, correcting: reportedPose)
+```
+
+<img src="Images/33-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side, each labeled with its point count. On the left, as the camera reported it, 146,248 points, the walls smear into one slanting sheet. On the right, lined up against the scan, 78,256 points, the two walls meet in a clean corner behind the ball and crate" width="680">
+
+Both halves are the same nine captures, seen from the same angle. On the left the walls smear into one slanting sheet. On the right they meet in a clean corner. The corrected scan also holds about half as many points, because a smeared wall fills more space than a wall does.
+
+The correction that worked is kept. The next frame starts from it, so the fit only has to find the newest error. That is why it costs so little. Apply `world.correction` to anything else the camera reports in that space.
+
+It has one limit. A frame that finds too little to match gets no new correction of its own. It is merged at the correction carried from before, and `fix.isApplied` says so.
+
+### Coming back to where you started: closing the loop
+
+There is a second thing it cannot do, and it takes a walk to see. Correcting a frame fixes the newest error. It never revises the poses already laid down. So each frame agrees with the frame before it, the chain of them comes out smooth, and the whole chain can still lean. Go all the way around a room and back to the door, and the far wall is a good way from where it really is.
+
+**`ScanGraph`** handles that one. It fuses and corrects as `WorldCloud` does. It also keeps a **keyframe** every so often, a saved frame of the scan rather than an animation key. A keyframe is a pose and a thinned copy of what that frame saw. When a new keyframe lands where an old one stood, the two are matched against each other. That match ties a late pose to an early one, so the chain becomes a loop that does not quite close. The difference is then shared out over every pose in between. That sharing is pose-graph optimization, written from the tutorial of Giorgio Grisetti and colleagues, from 2010:
+
+```swift
+var scan = ScanGraph(voxelSize: 0.025)
+
+let update = scan.add(cloud, correcting: reportedPose)
+if let loop = update.loop {
+    print("been here before: the map moved \(loop.moved) m")
+}
+drawPointCloud(scan.cloud)
+```
+
+<img src="Images/33-DepthAndThePhone/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a little more than one circle inside it, its positions dotted in orange with white dots at the first and the last. On the left, lined up frame by frame, 19,746 points, the bottom wall is drawn twice, thick and offset. On the right, which knows where it began, 15,229 points and 6 places met, the walls are single and thin" width="680">
+
+Both halves are the same walk, seen from straight above. From overhead a wall is a line, and a scan that leaned draws that line twice. The dots are where each half thinks the camera stood, and the white ones are the first and the last. The walk goes round a little more than once, so its second lap passes the walls its first lap saw. On the left, the second lap lands off the first, and the bottom wall is drawn twice. On the right the laps agree, the walls are single, and the scan holds a quarter fewer points.
+
+What you get from this is a scan that agrees with itself, which is not the same as a scan in the right place. One match pulls the two ends of a walk together and shares the difference along everything between them. It does most of its work at the point of return. In a small room, nearly every frame can see something already fused. There the frame-by-frame fit has taken most of the drift out before the walk gets back, and there is little left to find.
+
+It has two limits. A place is recognized by standing near it. A scan that has drifted further than `searchRadius` before it comes back is out of its own reach. The match is then refused rather than guessed. And a camera facing one bare wall can slide along that wall and fit it as well at every spot. A match made there would record drift as though it had been measured. Only the fit's own sense of how well it is pinned down can catch that. So a room with things standing about in it is easier to scan than an empty corridor.
+
+Run it for yourself with `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan`, which walks a made-up hall twice side by side with the true walls drawn over both.
+
+## From the cloud to a surface: surface reconstruction
+
+The ghost room stays a cloud of points. That is its look, but nothing in it has a face, a shadow, or a material. A surface built from the points does.
+
+### A solid from a sweep: reconstructSurface
+
+**`reconstructSurface`** turns a sweep into a solid. It fits a small plane to every point's neighborhood. Then it uses the sweep's own camera positions to decide which side of each plane faces the room. Last it pulls one mesh out of the whole thing. It is for a scan you want to light and shade, and it is the surface reconstruction of Hugues Hoppe and colleagues, from 1992.
+
+```swift
+let mesh = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
+                              orientedToward: eyes)
+material(.dielectric(roughness: 0.55))
+drawMesh(mesh)
+```
+
+<img src="Images/33-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim" width="680">
+
+The corner in the figure was cut out of a larger scan, and its rim is torn where the data stops. Where no camera reached, the surface stops, and nothing is guessed. So the mesh can only be as complete as the sweep. A body you only arc in front of keeps an unseen back, and the rebuilt surface frays just past where its data stops. So walk around the things you care about.
+
+When a sweep falls short anyway, `fitting: .robust` swaps the nearest-plane distance for a blend of all the nearby samples. The blend gives less weight to whatever disagrees with its neighbors. It is the robust fit of Cengiz Öztireli, Gaël Guennebaud, and Markus Gross, from 2009. It smooths noise, keeps creases, and trims away nearly all of the fraying that the plane fit leaves at open edges. Doorways and windows stay open either way, which is the shape a room has.
+
+The camera path does double duty here. Every fitted plane has two sides, and the reconstruction turns each toward the cameras that plausibly saw it. So pass the sweep's positions in `orientedToward:` whenever you have them. They are the same `eyes` the capture loop already collects. Without them, orientation propagates point to point across the cloud. That works on a smooth single surface, and struggles where a camera would have known better.
+
+The figure hands over bare positions and draws its corner in one plaster color. Hand over the `PointCloud` itself, as the block does, and the colors come along. Each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill`, which is the texture contract. That is why the default white fill shows them untouched, and `fill(Color(white: 0.5))` dims the whole scan without touching its hues. The same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
+
+What comes back is an ordinary `Mesh`, so everything [Chapter 25](25-3DGently.md) and [Chapter 26](26-Meshes.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan.
+
+### Points as their own material: particleSurface
+
+Sometimes points are their own material rather than a scan, a splash, say, or a swarm dense enough to read as a body. `particleSurface` skins them as one blended form, with no cameras involved. It is the blended particle surface of Yongning Zhu and Robert Bridson, from 2005, written for sand that flows like a fluid. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both calls, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
+
+## The real sensors: a recorded clip, a live stream, and the capture app
+
+The ghost room ran on a pretend camera. Every call it made takes a real depth frame as well. So the code stays the same from here on, and only the source of the frames changes.
+
+### Depth footage: Record3D clips and the live stream
+
+The gentlest start is a **recorded clip**. Record3D, Marek Šimoník's iPhone app, records LiDAR or TrueDepth footage into `.r3d` files. Ollin opens them directly, every frame an `RGBDFrame`. A clip is for depth footage you edit against, re-render, and export the same way every time:
+
+```swift
+import Ollin
+import OllinRecord3D
+
+final class Replay: Sketch {
+    var scan: Record3DRecording?
+
+    override func setup() {
+        scan = try? Record3DRecording(path: "/path/to/scan.r3d")
+    }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        guard let scan, scan.frameCount > 0 else { return }
+        let i = Int(time * 30) % scan.frameCount
+        guard let cloud = try? scan.pointCloud(at: i) else { return }
+        camera(.orbiting(radius: 2.5, azimuth: time * 0.3, elevation: 0.2))
+        drawPointCloud(cloud)
+    }
+}
+```
+
+Depth footage like this is what volumetric filmmaking works with. The same app also streams **live over USB**. Turn on USB streaming in the app's settings and plug the phone in. `Record3DDevice` then delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
+
+### Ollin's own app: Ollin Capture
+
+**Ollin Capture** is Ollin's own iPhone app. It runs **ARKit** on the phone, Apple's framework for placing a phone in the room it sees. It streams typed results the sketch reads like any other input. ARKit's **world tracking** follows where the phone is and which way it points as you move it, which is the pose a scan needs. The app is for the live phone as a whole sensor array. It sends a 3D **body skeleton** and up to three **faces**, each a deforming mesh plus 52 expression values called **blendshapes**. It sends up to four **hands**, each a 21-joint skeleton. There is also rear-LiDAR **world depth** with the camera's own pose, and **device motion**. A **person segmentation** matte comes from the rear camera, or mirrored from the front like a selfie:
+
+```swift
+import OllinPhone
+
+let device = PhoneDevice()
+device.start()                  // in setup()
+// …in draw():
+device.latestBody               // a skeleton in meters
+device.latestFrame         // an RGBDFrame from the LiDAR
+device.latestPose               // where the phone is, and which way it looks
+```
+
+Everything these produce lands in types you've already used this chapter, and the sketch never knows which sensor filled the frame. The `3D/Phone/PhoneWorldScan` example sweeps a room with `latestFrame` and `latestPose` in place of the pretend camera.
+
+The app is built onto the phone from its Xcode project, since an iOS app cannot run from `swift run`. It needs an iPhone with an A12 chip or later on iOS 17 or later. The LiDAR streams need a Pro model, and the face and gaze streams the front TrueDepth camera. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup, and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
+
+## The room from the phone: its mesh, its surfaces, and its light
+
+The ghost room built a room out of points you fused yourself. A LiDAR phone builds the room on the device as you walk, and streams it. The flat surfaces in it and the light it is lit by come along.
+
+### A surface the phone already built: the room mesh
+
+[From the cloud to a surface](#from-the-cloud-to-a-surface-surface-reconstruction) rebuilt a surface on the Mac, out of points you swept and fused yourself. A LiDAR phone can hand you one directly. ARKit reconstructs the room as you walk, on the device, and Ollin Capture streams the result. It is for a room to light, to hide things behind, or to bounce something off. Tap **Room** and what arrives already has faces and normals, and every triangle already knows what it is.
+
+```swift
+var room = Mesh(positions: [], indices: [])
+var built: Int?
+
+override func draw() {
+    if device.sceneMeshVersion != built {      // only when a block changed
+        built = device.sceneMeshVersion
+        room = device.sceneMesh.mesh
+    }
+    drawMesh(room)
+}
+```
+
+That gate is the one thing to get right. The room arrives in **blocks**. ARKit cuts the space into pieces and keeps improving each piece as you look at it again. So a piece turns up many times, and the newest reading replaces the last. `sceneMeshVersion` changes whenever that happens. A scanned room reaches hundreds of thousands of triangles, and `draw()` runs sixty times a second. Rebuilding the mesh every frame is the mistake to avoid here.
+
+Then the labels. Every triangle carries a `PhoneSurface`, one of wall, floor, ceiling, table, seat, window, door, or unclassified. So the same room can be asked for three ways:
+
+<img src="Images/33-DepthAndThePhone/RoomAsSurface.jpg" alt="Three copies of a small scanned room corner side by side: the whole room in one pale material, the same room painted green for floor, blue-gray for walls, tan for a table and red for a seat, and the same room with the walls dropped so only the floor, table and seat slabs float in place" width="680">
+
+```swift
+let scan = device.sceneMesh
+scan.mesh                          // all of it, one mesh
+scan.mesh { $0 == .floor ? .green : .white }    // a color per triangle
+scan.mesh(of: .floor, .table)      // only the labels you ask for
+```
+
+The blocks in that picture are staged rather than scanned, so it renders without a phone, but the calls are the real ones. A real scan has the same shape and far more blocks.
+
+Early in a scan almost everything reads `unclassified`, because ARKit decides what a surface is only once it has seen enough of it. `foundSurfaces` tells you which labels have appeared so far, so a sketch that keys off labels can say so while the room fills in.
+
+So which do you want, points or a surface? Both come off the same sensor. The points are what the camera saw, and the mesh is what the phone decided was there. Take the points when you want to scatter, drift, or reconstruct them yourself. Take the mesh when you want something to light, to hide things behind, or to bounce something off. The `3D/Phone/PhoneRoomMesh` example is the room painted by label, with a key to keep only the flat things you could set something down on.
+
+### Somewhere to stand: flat surfaces
+
+The mesh is the whole shape of the room, clutter and all. Most of the time you want far less than that, one flat surface to put something on. Room mode reports those too. ARKit finds a floor, a table top, or a wall as a single flat patch, and grows it as you look around. This needs no LiDAR, so it works on any phone that runs the app.
+
+```swift
+if let table = device.planes.largest(of: .table) {
+    withState {
+        translate(table.center + table.normal * 0.15)
+        drawSphere(radius: 0.15)
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
+
+`largest(of:)` picks by real area, measured on the outline rather than on the box around it, so a long thin shelf never wins. For the ground, `floor` is the one to reach for, because it answers early. It gives you the labeled floor once ARKit has decided, and the lowest flat surface until then.
+
+Every surface carries that outline: a convex polygon around everything the phone has seen of it. `plane.mesh` fills it in, and `plane.outline` is the same loop closed, ready for `drawTube`.
+
+### The light in the room: PhoneLight
+
+The phone also measures how bright and how warm the room is, a few times a second. It does this in every mode that runs the camera through ARKit, which leaves out Selfie and Touch. It is for a sketch whose light follows the room's.
+
+```swift
+ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
+```
+
+`ambient` is the room's own white, turned down by how bright the room is. The three swatches under the picture are three readings: a lamp, a working room, a window. Switch a lamp on and the sketch warms with it.
+
+Only Face mode knows where the light comes from, because ARKit works that out from the shading on a face. A world-facing camera has no face to read, so Room mode gives you brightness and color, and you aim your own key light.
+
+## People from the phone: a body, hands, and a gaze
+
+[Chapter 32](32-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) read hands, faces, and bodies from a webcam, flat on the canvas. The phone reads them too, and on a LiDAR phone it places them in meters, in the same world as the scan and the room.
+
+### A pose you can dress in solids: the body
+
+`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. It is for a figure you dress in solids that follows a person around the room. `modelTransform(_:)` composes the two into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light:
+
+```swift
+for (a, b) in body.bones() {
+    drawCapsule(from: a, to: b, radius: 0.03)
+}
+if let pose = body.modelTransform(.head) {
+    withState { transform(pose); drawSphere(radius: 0.11) }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
+
+The camera never saw the blue forearm's joints. The rig filled them in, and `isObserved(_:)` says so, part by part. Two more readings ride along. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the whole skeleton where the person is, in the same ARKit world as the swept cloud and the room mesh. Walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example is this section live: a mannequin that follows you around the room.
+
+### A hand you can reach in with: hands
+
+The body stream draws a whole person, and the hand stream comes in close. Chapter 32's `HandTracker` reads the same 21 joints from a webcam. In **Hands** mode the phone finds up to four hands, each as 21 joints: the wrist, then four joints along every finger. On a LiDAR phone every joint also carries a real position in meters. It stands in the same world as the swept cloud and the room mesh. A hand is the part of you that points, pinches, and conducts, so this is the stream gestures come from:
+
+```swift
+for hand in device.latestHands {
+    for (a, b) in hand.bones() {
+        drawCapsule(from: a, to: b, radius: 0.006)
+    }
+    if let pinch = hand.pinchDistance, pinch < 0.02 {
+        // thumb and index are touching: a click, made of air
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
+
+The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. A pinch can pluck a note, a spread can stretch a shape, and a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
+
+### Where a look lands: gaze
+
+The face stream carries more than expression. Each face arrives with its two eyes and one extra point: `lookAtPoint`, where those eyes converge. The head says where you face, and the eyes say where you look. Chapter 32's `FaceTracker` reads the head's pose from a webcam, and the gaze is what the phone adds. It is for a cursor you steer with your eyes. The face stream needs the front TrueDepth camera. Every reader has a world twin, so three calls draw it:
+
+```swift
+if let face = device.latestFace {
+    let target = face.worldLookAtPoint
+    for eye in PhoneEye.allCases {
+        drawCapsule(from: face.worldEyePosition(eye), to: target, radius: 0.002)
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
+
+The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. Park a creature at that point, or steer a brush with a glance. The blink blendshapes pair with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
+
+## The picture from the phone: words, attention, motion, and a known print
+
+[Chapter 32](32-Seeing.md#reading-outlines-and-print-contours-rectangles-text-and-codes)'s families read text, attention, and motion from the Mac's own camera. The phone runs the same kinds of reading over its rear camera. On a LiDAR phone it also stands what it finds in the room, and it can find a printed picture you gave it.
+
+### The words on the wall: text
+
+The phone can also read, as [Chapter 32](32-Seeing.md#words-off-a-page-textrecognizer)'s `TextRecognizer` does. In **Text** mode it runs the on-device recognizer over the rear camera. It streams every line it can make out: a sign, a book spine, a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry real positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs:
+
+```swift
+for line in device.latestTexts {
+    guard let placement = line.worldTransform else { continue }
+    withState {
+        transform(placement)   // x along the words, y up the line, z off the surface
+        drawCapsule(from: Vector3(-line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    to: Vector3(line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    radius: 0.004)   // an underline, drawn on the world
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
+
+The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
+
+### What draws the eye: attention
+
+The phone can also say where a picture pulls the gaze, as [Chapter 32](32-Seeing.md#where-an-eye-would-go-saliencytracker)'s `SaliencyTracker` does. In **Attention** mode it runs the on-device attention model over the rear camera, a model trained on where people look. Each reading arrives as a `PhoneSaliency`: a coarse heat map of visual attention, and the regions it peaks in. The heat comes ready to draw as a tintable glow, and `salience(at:in:)` reads the pull under any canvas point:
+
+```swift
+if let attention = device.latestSaliency,
+   let heat = device.latestSaliencyHeatMap {
+    tint(Color(red: 1, green: 0.72, blue: 0.3, alpha: 0.75))
+    drawImage(heat, in: rect)          // attention as a warm glow over the frame
+    noTint()
+    for region in attention.regions {
+        drawRect(region.bounds(in: rect), cornerRadius: 10)   // what stood out
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each wearing a rounded teal frame whose weight follows the model's confidence" width="680">
+
+The dots are `salience(at:in:)` sampled on a grid, one query per cell. That is the other way to read the map, as a field. Big values pull, and small values leave alone, so the same surface drives stippling, particle drift, or where a brush is allowed to land. The frames are the model's regions, their line weight following its confidence. On a LiDAR phone each region's center also stands in ARKit world space. The thing being looked at keeps a place beside the room, the hands, and the words. The `3D/Phone/PhoneAttention` example is this section live: point the phone at anything, and a bead wanders the frame to wherever the picture draws the eye.
+
+### How the picture is moving: flow
+
+The phone can also say how its picture is moving. In **Flow** mode it measures optical flow between consecutive frames of the rear camera, on the phone. Each reading arrives as a `PhoneFlow`: a dense field of motion vectors, and the frame it was measured on. [Chapter 32](32-Seeing.md#the-picture-as-a-field-optical-flow) teaches the Mac's own `FlowTracker`, and the phone's field gives you the same reads over the same `MotionField`. A grid of samples, for drawing the motion as arrows, and a vector under any point, for pushing something with it:
+
+```swift
+if let motion = device.latestFlow {
+    for s in motion.samples(in: rect, every: 36) {
+        drawLine(s.position, s.position + s.flow * 3)     // the field as arrows
+    }
+    for i in dust.indices {
+        dust[i] += motion.vector(at: dust[i], in: rect)   // the field as a push
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/FlowAsField.jpg" alt="A staged flow reading on a dark panel: a grid of short streaks, blue where the picture barely moves and yellow to red where it moves fastest, turning in a ring around the left third and running to the right across the right third. White grains of dust with faint trails behind them have been carried by the same field, wound around the ring and streamed off to the right" width="680">
+
+The figure is one staged reading, a vortex and a drift written into the map, read the two ways. The streaks are `samples(in:every:)`, each the motion under one cell, its color following how fast the picture moves there against the reading's fastest motion. The dust is `vector(at:in:)` applied a few times over. Every grain read the push under itself and moved, and its trail is where that took it. That is what a motion field is for. A hand waved in front of the phone becomes a wind, and anything you draw can be blown by it.
+
+One number the phone has that the Mac's tracker does not is `interval`, the time between the two frames a reading was measured across. The Mac analyzes frames as fast as it can keep up, so its gap changes with load. Its vectors are a signal to scale by a gain of your own. The phone measured both frames and knows how far apart they were, so a vector over `interval` is a speed. On both, motion can be measured only where the picture has texture, and a blank wall reads as noise rather than stillness. The `3D/Phone/PhoneFlow` example is this section live. The streaks run over the camera frame, and five hundred grains of dust scatter when you wave and settle when you hold still.
+
+### A picture it knows: markers
+
+Reading is one way to recognize something. Knowing it by sight is the other. Give the capture app a picture and it will find that picture in the room, through ARKit's image tracking. It is for a print that becomes a stage, a card on a table or a poster on a wall. Drop the file into the app's own folder over the cable, in Finder, under Files, then Ollin Capture. Say how wide you printed it in the file's name, `poster@30cm.png`. ARKit places a print by its real width, and no image file carries one. Tap **Markers** and the phone starts looking.
+
+Each find arrives as a `PhoneMarker`, and `placement` is the whole of it. The frame stands at the middle of the print: x runs across the width, y up the height, z straight off the paper toward you. So the drawing code never mentions walls or tables:
+
+```swift
+for marker in device.latestMarkers where marker.isTracked {
+    withState {
+        transform(marker.placement)                 // the print is now the x-y plane
+        drawBox(width: marker.width, height: marker.height, depth: 0.002)
+        translate(0, 0, 0.08)
+        drawBox(size: 0.06)                         // a cube floating off the paper
+    }
+}
+```
+
+<img src="Images/33-DepthAndThePhone/PrintAsStage.jpg" alt="Two printed pictures on a dark ground, each carrying the same little city of pale green columns inside an orange frame: one card lying face up on a table slab, one poster standing on the wall behind it" width="680">
+
+The card lies flat and the poster hangs upright. One loop over `latestMarkers` draws on both, whatever each print's angle, because `placement` carries it. `width` and `height` are meters, so a sketch written for a business card fits a poster by itself. Two things matter before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing.
+
+Dropping files into the phone's folder leaves the sketch in two halves, the sketch in one place and its pictures on one phone. The sketch can carry them instead. `device.use(.markers)` asks for the mode. `device.look(for:)` hands over the pictures with the width each was printed at, and the phone rebuilds its library from what arrives. The [phone reference](../Docs/3D/Phone.md#saying-what-to-look-for-from-the-sketch) has both calls and the state the phone sends back, and the `3D/Phone/PhoneMarkers` example sends a bundled photograph this way.
+
+## The phone in your hand: a wand, its ears, the glass, and the air
+
+The streams so far point the phone at the room. These four use the phone itself as the input, its place in the room, its microphone, its screen, and its barometer. None of them needs LiDAR.
+
+### Pointing at it with the phone: the wand
+
+Everything so far has the phone looking at the room and telling you what it saw. Turn that around. The phone knows where it is in the room. So it also knows where it is *pointing*, and that makes it a wand: something you aim at your own sketch. Tap **Wand**. It needs no LiDAR, since plain world tracking is enough to know your own place.
+
+```swift
+guard let wand = device.latestWand, wand.isTracked else { return }
+```
+
+A `PhoneWand` is a place, a direction, and a button. `wand.position` is where the phone is, in the same meters as everything else in this chapter. `wand.ray` is the line out of the back of it, the end you point at things:
+
+```swift
+for (i, ball) in balls.enumerated() {
+    if let distance = wand.ray.hit(sphereAt: ball, radius: 0.13) {
+        aimed = (i, distance)                    // how far along the beam it sits
+    }
+}
+```
+
+That `hit` is a [`Ray3`](../Docs/Drawing/Geometry.md#ray3), the small value type that answers what a line runs into. It knows about a ball, a box standing square to the world, and a flat surface. It counts only what is **in front of** the origin. That is what separates pointing from drawing a line and hoping.
+
+<img src="Images/33-DepthAndThePhone/WandAsPointer.jpg" alt="A pale phone slab at the lower left with a small dot on its screen, a green beam leaving the back of it and stopping at a yellow ball, three blue balls around it untouched" width="680">
+
+The beam stops where it lands, because the hit told it how far to go: `wand.point(at: distance)`. Draw the phone itself through `wand.placement` and it leans in your hand the way the real one does.
+
+The button is the screen, and it arrives twice. `wand.isPressed` is whether a finger is down now, which is what a drag reads. `wand.pressCount` only ever rises, so a tap that landed and left between two `draw()` calls is still there to find:
+
+```swift
+if wand.pressCount > lastPressCount, held == nil { held = aimed?.index }
+lastPressCount = wand.pressCount
+```
+
+Keep last frame's number and compare. A counter that only rises tells you something happened, without asking you to be watching at the moment it did.
+
+`wand.touch` is where the thumb sits while it is down, `-1` to `1` across and up, and `nil` while no thumb is on the glass. The pad is a few centimeters and the room is not. So read it as a speed rather than a place. `distance += (wand.touch?.y ?? 0) * 0.8 * deltaTime` pushes a held thing away and pulls it back. The `3D/Phone/PhonePointer` example is this section live, with a ball you can pick up, carry, push out, and drop.
+
+Set one thing up before you build on it. The room's origin is wherever the phone stood when Wand mode began. Lay your scene out in front of that spot, or expect to walk to it.
+
+### What the phone hears: sound events
+
+The phone has ears as well as eyes. Switch **Hear** on, under the modes, and it names the sounds around it: a dog, a kettle, applause, a knock at the door. The classifier runs on the phone, so only the names cross the cable, never the audio. It needs no camera, which is why it is a switch and not a mode. It runs beside whichever mode is on.
+
+Chapter 34 teaches the Mac's own [`SoundClassifier`](34-Listening.md#words-and-what-that-noise-was), and the phone's ears give you the same two reads over the same values. A level, for a question that rises and falls:
+
+```swift
+let music = device.sounds.confidence(of: "music")
+```
+
+And a trigger, for a thing that happens once:
+
+```swift
+for event in device.sounds.events() where event.label == "dog_bark" {
+    rings.append(Ring(at: place(for: event.label), born: time))
+}
+```
+
+<img src="Images/33-DepthAndThePhone/HeardAsMarks.jpg" alt="Four rows on a dark panel, one per sound: speech, dog bark, clapping, music. Each row is a stepped, filled curve of the phone's confidence over eight seconds with a dashed threshold line across it. A warm ring sits on the line a moment after each climb over it: one for speech, which then stays up, two for the dog, one for the clap, none for music, which hovers just under" width="680">
+
+The figure is eight seconds of staged readings, one window every three quarters of a second, run through the real `PhoneSounds`. A real phone sends about two a second. Read the rings. Each sits at the end of the window that crossed, a moment after the curve climbed over the line. The phone judges a second and a half of audio at a time. Speech climbs over the line once and stays there, and it rings once, not once per window. The dog barks, stops, and barks again, and rings twice. The clap rings once. Music hovers under the line the whole time and never rings at all, though its level is there for the asking.
+
+An event is a crossing **from below**. The phone sends its whole judgment, every label with a number, and the Mac decides what counts as loud enough. The threshold is yours, `device.sounds.threshold`, and you can move it while the phone listens. Two sketches reading one phone can disagree about what counts.
+
+`timeSinceHearing(_:)` is the third read, for a mark that fades. It says how long ago a sound was last at or over the threshold, so a sound that keeps going reads near zero. It does not drain. The `3D/Phone/PhoneSounds` example is this section live. Every sound that starts rings out in its own place on the canvas, a place found by hashing its name. A room settles into a map of its sounds.
+
+### Playing the glass: touches
+
+Tap **Touch** and the phone stops watching altogether. No camera runs, so no light readings arrive either. The screen under the modes becomes the surface, and the phone sends every finger on it.
+
+```swift
+for touch in device.touches.down {
+    drawCircle(center: touch.point(in: pad), radius: 16 + touch.radius * 500)
+}
+```
+
+`down` is the fingers on the glass right now. Each carries `position`, which runs `-1` to `1` across and up with the middle at zero. `point(in:)` maps that onto a rectangle on your canvas. Each also carries `radius`: how wide the contact is, as a fraction of the screen's width. Reach for that one first. Every iPhone reports it, and a fingertip and a flat finger are far apart. `force` is `nil` on almost every phone made since the 3D Touch years.
+
+The other read is the one that happens once:
+
+```swift
+for tap in device.touches.taps() { rings.append(Ring(at: tap.point(in: pad), born: time)) }
+```
+
+<img src="Images/33-DepthAndThePhone/GlassAsPad.jpg" alt="Two panels on a dark ground. Left, a phone-shaped outline with two teal discs on it, a small one labelled 1 and a wide one labelled 2, and warm rings expanding from where each landed. Right, a timeline of the same two seconds: three rows labelled id 1, id 2, id 3, each a teal bar while that finger is down with a warm dot marked taps() where it landed. Pale vertical lines mark every draw. The id 3 bar sits entirely between two of them, noted as down and gone between two draws" width="680">
+
+Look at the third row. That finger landed and left inside a quarter of a second, between two of the draws marked along the top. So it was never in `down` when the sketch looked, and its tap is there anyway. The phone sends a message every time the set of fingers changes. Ollin reads every one of them, while `draw()` sees only the latest.
+
+Here is how it knows. A finger keeps one number from the moment it lands until it leaves, and the phone never gives that number to another finger. So a number the Mac has not seen is a landing. That is also why sliding a finger across the glass does not tap on every frame. It is also how you follow a tap into the drag it becomes. Keep the `id` the tap gave you, and ask `device.touches.touch(id:)` for it each frame.
+
+`taps()` drains, so read it in one place. If two parts of your sketch need to know, `tapCount` is the same fact without taking it. It only ever rises, so compare it with last frame's number, as with [the wand's button](#pointing-at-it-with-the-phone-the-wand).
+
+The `3D/Phone/PhoneTouches` example is this section live, with the air below joining in.
+
+### The air it is standing in: the barometer
+
+The last sensor reads the room without looking at it. Every iPhone since the 6 has a barometer. Switch **Air** on, beside Hear, and it arrives beside whichever mode is running.
+
+```swift
+if let air = device.latestAir {
+    lift += (air.altitude - lift) * min(1, deltaTime * 3)
+}
+```
+
+`altitude` is meters above wherever the phone was when it started measuring, not meters above the sea. A barometer knows how the pressure changed far better than it knows the pressure itself. The change is good to about a tenth of a meter. Lift the phone off the table and the number moves.
+
+So it is a fader you play by standing up, and it costs no camera and no model. `pressure` is the weather's own number, about 101.3 kilopascals at sea level, and a door opening in a sealed room moves it.
 
 ## Where this comes from
 
-Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and was promptly opened up by hackers. The point-cloud look it popularized was seeded two years earlier by Radiohead's *House of Cards* video. James Frost directed it with the data artist Aaron Koblin, and it was shot entirely with lidar and structured light. Tools like the RGBDToolkit, by James George and Jonathan Minard, and the volumetric-film work that followed turned depth footage into an editable medium. That is the spirit of the `.r3d` clip workflow here, and Record3D is Marek Šimoník's iPhone app. The unprojection math is the pinhole camera model, the foundation stone of photogrammetry and computer vision. Fusing posed depth frames into one model descends from SLAM research and KinectFusion, by Newcombe and colleagues in 2011. `WorldCloud`'s voxel accumulation is the gentlest possible relative of it. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and was quickly opened up by hackers. The point-cloud look it spread was seeded two years earlier by Radiohead's *House of Cards* video. James Frost directed it with the data artist Aaron Koblin. It was shot with lidar and with structured light, patterns of light projected onto the scene, rather than with a camera. The RGBDToolkit, by James George and Jonathan Minard, and the volumetric films that followed turned depth footage into a medium you could edit. The unprojection math is the pinhole camera model, the base of photogrammetry and computer vision. Fusing posed depth frames into one model comes from SLAM research. There a moving camera builds a map while it finds its own place in it. It also comes from KinectFusion, by Richard Newcombe and colleagues in 2011. `WorldCloud`'s grid of voxels is the simplest relative of it. The entries after the ghost room name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type, unprojection, depth-lifted pose (a 2D-tracked skeleton placed at its true depth).
 - [3D](../Docs/3D/3D.md#point-clouds): `PointCloud` itself, its point sizing and colors, and how it sits beside the rest of the 3D path.
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
-- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, how the picture is moving, motion, what the phone hears, and world fusion.
+- [The iPhone capture app](../Docs/3D/Phone.md): setup, body, faces and gaze, hands, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, text, attention, flow, markers, the wand, what the phone hears, touches, the air, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`PhoneBodyFigure`](../Examples/3D/Phone/PhoneBodyFigure/Sketch.swift), [`PhoneHands`](../Examples/3D/Phone/PhoneHands/Sketch.swift), [`PhoneGaze`](../Examples/3D/Phone/PhoneGaze/Sketch.swift), [`PhoneWorldText`](../Examples/3D/Phone/PhoneWorldText/Sketch.swift), [`PhoneAttention`](../Examples/3D/Phone/PhoneAttention/Sketch.swift), [`PhoneMarkers`](../Examples/3D/Phone/PhoneMarkers/Sketch.swift), [`PhonePointer`](../Examples/3D/Phone/PhonePointer/Sketch.swift), [`PhoneTouches`](../Examples/3D/Phone/PhoneTouches/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

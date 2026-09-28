@@ -2,7 +2,7 @@
 //
 // Guide diagram (Chapter 33): unprojection. A pixel plus its depth becomes a
 // 3D point: slide off the image center, scale by depth over focal length,
-// and step out along the ray.
+// and set it that far out along the lens axis.
 import Ollin
 import OllinDiagram
 
@@ -47,12 +47,12 @@ final class Unproject: Sketch {
         drawCircle(center: pixel, radius: 7)
         drawCircle(center: point, radius: 10)
 
-        // Depth: the stretch of ray past the image plane.
+        // Depth: measured along the lens axis, labeled beside the ray.
         let mid = pixel + (point - pixel) * 0.5
         fill(ink)
         textSize(26)
         textAlign(.center, .middle)
-        drawText("depth: how far along the ray", mid.x, mid.y + 52)
+        drawText("depth: how far along the axis", mid.x, mid.y + 52)
         textAlign(.left, .middle)
         drawText("the 3D point", point.x - 60, point.y - 38)
         drawText("the lens", lens.x - 44, lens.y + 44)

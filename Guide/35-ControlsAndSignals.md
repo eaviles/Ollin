@@ -278,7 +278,7 @@ Several people can play. `controller(2)` is player two, and a controller keeps i
 
 Because a controller is live input, an export reads it as centered and says so, the same way the microphone did in [Chapter 34](34-Listening.md). The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` parameter draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
 
-An iPhone can be held the same way. [Chapter 33](33-DepthAndThePhone.md#pointing-at-it-with-the-phone) turns it into a wand you aim at a 3D sketch, with the screen as its button. [Its glass](33-DepthAndThePhone.md#playing-the-glass) becomes a pad that reports every finger on it.
+An iPhone can be held the same way. [Chapter 33](33-DepthAndThePhone.md#pointing-at-it-with-the-phone-the-wand) turns it into a wand you aim at a 3D sketch, with the screen as its button. [Its glass](33-DepthAndThePhone.md#playing-the-glass-touches) becomes a pad that reports every finger on it.
 
 ## A wire to the physical world: serial
 

@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 33): world fusion. Five frames of the same room,
+// Guide figure (Chapter 33): world fusion. Three frames of the same room,
 // captured from an arc of camera positions (each tinted its own color),
 // placed by their poses into one shared world cloud. The small spheres mark
 // where each frame was taken from.

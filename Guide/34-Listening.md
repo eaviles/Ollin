@@ -177,7 +177,7 @@ for event in ears.events() where event.label == "clapping" { // happens once
 }
 ```
 
-An event fires when a label crosses the threshold from below. A sound that goes on is one event, not one per moment it is still going. `timeSinceHearing("clapping")` is the read for a mark that fades, since draining is destructive and fading is not. An iPhone can listen the same way from across the room, and [Chapter 33](33-DepthAndThePhone.md#what-the-phone-hears) reads its sounds with the same three reads.
+An event fires when a label crosses the threshold from below. A sound that goes on is one event, not one per moment it is still going. `timeSinceHearing("clapping")` is the read for a mark that fades, since draining is destructive and fading is not. An iPhone can listen the same way from across the room, and [Chapter 33](33-DepthAndThePhone.md#what-the-phone-hears-sound-events) reads its sounds with the same three reads.
 
 The right half of the figure is the caution. Those three sounds are arithmetic, not recordings. They are a sine wave, a tap every quarter second, and bursts of noise. The classifier called them a tuning fork, a click, and a hammer, which is fair enough. But it always answers, whatever it hears, so a small number means very little. Read the top label, keep a threshold, and treat the rest as opinion.
 

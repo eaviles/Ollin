@@ -128,7 +128,7 @@ The three calls divide the job, and each does one part of it:
 
 The rings keep their size. All three have the same 96-point radius, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually what you want from a label, readable at any distance and correctly occluded. It also means a sprite drawn this way stays the same size at any distance.
 
-Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera. Without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 33](33-DepthAndThePhone.md#drawing-inside-the-picture) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
+Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera. Without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 33](33-DepthAndThePhone.md#drawing-inside-the-picture-a-depth-frame-as-a-stage) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
 
 ## A catalog of solids
 
