@@ -36,9 +36,9 @@ struct TUIOTests {
 
     @Test func aFrameOfTouchesArrives() {
         let surface = TUIOReceiver()
-        send(surface, [set(7, 0.25, 0.75, velocity: Vector2(0.1, -0.2), acceleration: 0.03),
+        send(surface, [alive([7, 3]),
+                       set(7, 0.25, 0.75, velocity: Vector2(0.1, -0.2), acceleration: 0.03),
                        set(3, 0.5, 0.5),
-                       alive([7, 3]),
                        fseq(1)])
 
         // Ordered by session id, so one frame draws the same way twice.
@@ -53,11 +53,11 @@ struct TUIOTests {
 
     @Test func nothingIsSeenUntilTheFrameNumber() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.1, 0.1), alive([1]), fseq(1)])
+        send(surface, [alive([1]), set(1, 0.1, 0.1), fseq(1)])
 
         // Half of the next frame has arrived: the surface still reads the last
         // whole one, so a sketch never draws a torn frame.
-        send(surface, [set(1, 0.9, 0.9), set(2, 0.5, 0.5), alive([1, 2])])
+        send(surface, [alive([1, 2]), set(1, 0.9, 0.9), set(2, 0.5, 0.5)])
         #expect(surface.cursors.count == 1)
         #expect(abs(surface.cursors[0].point.x - 0.1) < 1e-6)
 
@@ -68,7 +68,7 @@ struct TUIOTests {
 
     @Test func aTouchThatIsNoLongerAliveLeaves() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.2, 0.2), set(2, 0.8, 0.8), alive([1, 2]), fseq(1)])
+        send(surface, [alive([1, 2]), set(1, 0.2, 0.2), set(2, 0.8, 0.8), fseq(1)])
         #expect(surface.cursors.count == 2)
 
         // The tracker sends no "remove": the finger is simply missing from the
@@ -84,44 +84,89 @@ struct TUIOTests {
 
     @Test func aSetForSomethingNotAliveIsNotInvented() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.2, 0.2), set(9, 0.4, 0.4), alive([1]), fseq(1)])
+        send(surface, [alive([1]), set(1, 0.2, 0.2), set(9, 0.4, 0.4), fseq(1)])
         #expect(surface.cursors.map(\.id) == [1])
+    }
+
+    // MARK: The order on the wire
+
+    @Test func aFrameInTheSpecificationsOrderIsTakenOnce() {
+        let surface = TUIOReceiver()
+        // TUIO 1.1 opens a frame with its alive list, then the sets, then the
+        // frame number, and that is the order trackers send.
+        send(surface, [alive([1, 2]), set(1, 0.2, 0.2), set(2, 0.8, 0.8), fseq(1)])
+        #expect(surface.cursors.map(\.id) == [1, 2])
+        #expect(surface.framesReceived == 1)
+    }
+
+    @Test func halfAFrameInTheSpecificationsOrderIsNotSeen() {
+        let surface = TUIOReceiver()
+        send(surface, [alive([1, 2]), set(1, 0.2, 0.2), set(2, 0.8, 0.8), fseq(1)])
+
+        // The next frame lifts one finger and moves the other, and has not
+        // closed yet: both still read where the last whole frame left them.
+        send(surface, [alive([2]), set(2, 0.6, 0.6)])
+        #expect(surface.cursors.map(\.id) == [1, 2])
+
+        send(surface, [fseq(2)])
+        #expect(surface.cursors.map(\.id) == [2])
+        #expect(abs(surface.cursors[0].point.x - 0.6) < 1e-6)
+    }
+
+    @Test func aFrameWithItsSetsFirstIsTakenToo() {
+        let surface = TUIOReceiver()
+        // Not the specification's order, but the frame number still closes
+        // the frame, so nothing is lost by reading it.
+        send(surface, [set(1, 0.2, 0.2), set(2, 0.8, 0.8), alive([1, 2]), fseq(1)])
+        #expect(surface.cursors.map(\.id) == [1, 2])
+        #expect(surface.framesReceived == 1)
+    }
+
+    @Test func aLateFramesAliveListIsThrownAwayToo() {
+        let surface = TUIOReceiver()
+        send(surface, [alive([1, 2]), set(1, 0.2, 0.2), set(2, 0.8, 0.8), fseq(10)])
+
+        // An older frame, from before the second finger landed. Its alive list
+        // goes with the rest of it, or the second finger blinks out.
+        send(surface, [alive([1]), set(1, 0.1, 0.1), fseq(9)])
+        #expect(surface.cursors.map(\.id) == [1, 2])
+        #expect(abs(surface.cursors[0].point.x - 0.2) < 1e-6)
     }
 
     // MARK: Datagrams out of order
 
     @Test func aLateFrameIsThrownAway() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.5, 0.5), alive([1]), fseq(10)])
+        send(surface, [alive([1]), set(1, 0.5, 0.5), fseq(10)])
 
         // A datagram that overtook another on the way carries an older frame
         // number. Taking it would drag the touch back to where it was.
-        send(surface, [set(1, 0.1, 0.1), alive([1]), fseq(9)])
+        send(surface, [alive([1]), set(1, 0.1, 0.1), fseq(9)])
         #expect(abs(surface.cursors[0].point.x - 0.5) < 1e-6)
 
-        send(surface, [set(1, 0.2, 0.2), alive([1]), fseq(11)])
+        send(surface, [alive([1]), set(1, 0.2, 0.2), fseq(11)])
         #expect(abs(surface.cursors[0].point.x - 0.2) < 1e-6)
     }
 
     @Test func aTrackerThatStartsOverIsTaken() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.5, 0.5), alive([1]), fseq(5000)])
+        send(surface, [alive([1]), set(1, 0.5, 0.5), fseq(5000)])
         // Far below the last number is a tracker whose count began again, not a
         // datagram that arrived late.
-        send(surface, [set(1, 0.1, 0.1), alive([1]), fseq(3)])
+        send(surface, [alive([1]), set(1, 0.1, 0.1), fseq(3)])
         #expect(abs(surface.cursors[0].point.x - 0.1) < 1e-6)
     }
 
     @Test func aTrackerWithNoFrameNumberCommitsOnTheNextFrame() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.3, 0.3), alive([1])])
+        send(surface, [alive([1]), set(1, 0.3, 0.3)])
         #expect(surface.cursors.isEmpty)
 
-        // The next frame opening is what closes this one, so such a tracker
-        // reads one frame late rather than not at all.
-        send(surface, [set(1, 0.4, 0.4), alive([1])])
+        // The next frame's alive list is what closes this one, so such a
+        // tracker reads one frame late rather than not at all.
+        send(surface, [alive([1]), set(1, 0.4, 0.4)])
         #expect(abs(surface.cursors[0].point.x - 0.3) < 1e-6)
-        send(surface, [set(1, 0.5, 0.5), alive([1])])
+        send(surface, [alive([1]), set(1, 0.5, 0.5)])
         #expect(abs(surface.cursors[0].point.x - 0.4) < 1e-6)
     }
 
@@ -129,10 +174,10 @@ struct TUIOTests {
 
     @Test func piecesCarryTheirSymbolAndTurn() {
         let surface = TUIOReceiver()
+        surface.receive(OSCMessage("/tuio/2Dobj", arguments: [.string("alive"), .int(4)]))
         surface.receive(OSCMessage("/tuio/2Dobj", .string("set"), .int(4), .int(17),
                                    .float(0.5), .float(0.25), .float(1.5),
                                    .float(0), .float(0), .float(0.2), .float(0), .float(0)))
-        surface.receive(OSCMessage("/tuio/2Dobj", arguments: [.string("alive"), .int(4)]))
         surface.receive(OSCMessage("/tuio/2Dobj", .string("fseq"), .int(1)))
 
         let piece = try! #require(surface.objects.first)
@@ -146,11 +191,11 @@ struct TUIOTests {
 
     @Test func shapesCarryTheirSizeAndArea() {
         let surface = TUIOReceiver()
+        surface.receive(OSCMessage("/tuio/2Dblb", arguments: [.string("alive"), .int(2)]))
         surface.receive(OSCMessage("/tuio/2Dblb", .string("set"), .int(2),
                                    .float(0.5), .float(0.5), .float(0),
                                    .float(0.2), .float(0.1), .float(0.016),
                                    .float(0), .float(0), .float(0), .float(0), .float(0)))
-        surface.receive(OSCMessage("/tuio/2Dblb", arguments: [.string("alive"), .int(2)]))
         surface.receive(OSCMessage("/tuio/2Dblb", .string("fseq"), .int(1)))
 
         let shape = try! #require(surface.blobs.first)
@@ -170,8 +215,8 @@ struct TUIOTests {
 
     @Test func theSurfaceLandsOnTheCanvasWithNothingFlipped() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0, 0), set(2, 1, 1), set(3, 0.25, 0.5),
-                       alive([1, 2, 3]), fseq(1)])
+        send(surface, [alive([1, 2, 3]),
+                       set(1, 0, 0), set(2, 1, 1), set(3, 0.25, 0.5), fseq(1)])
 
         // TUIO measures from the top left and so does the canvas, so a touch at
         // the surface's origin belongs at the canvas's own.
@@ -185,7 +230,7 @@ struct TUIOTests {
 
     @Test func aTrackerNamesItselfWithoutDisturbingTheSurface() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.5, 0.5), alive([1]), fseq(1)])
+        send(surface, [alive([1]), set(1, 0.5, 0.5), fseq(1)])
         #expect(surface.sourceName == nil)
 
         surface.receive(OSCMessage("/tuio/2Dcur", .string("source"), .string("tracker@10.0.0.2")))
@@ -195,7 +240,7 @@ struct TUIOTests {
 
     @Test func messagesThatAreNotTUIOAreIgnored() {
         let surface = TUIOReceiver()
-        send(surface, [set(1, 0.5, 0.5), alive([1]), fseq(1)])
+        send(surface, [alive([1]), set(1, 0.5, 0.5), fseq(1)])
 
         surface.receive(OSCMessage("/level", 0.5))
         surface.receive(OSCMessage("/tuio2/frm", .int(1)))
@@ -207,7 +252,7 @@ struct TUIOTests {
 
     @Test func aBundleIsTakenInOrder() {
         let surface = TUIOReceiver()
-        let frame = OSCBundle(.immediate, messages: [set(5, 0.6, 0.4), alive([5]), fseq(1)])
+        let frame = OSCBundle(.immediate, messages: [alive([5]), set(5, 0.6, 0.4), fseq(1)])
         surface.receive(.bundle(frame))
         #expect(surface.cursors.map(\.id) == [5])
         #expect(abs(surface.cursors[0].point.y - 0.4) < 1e-6)
@@ -241,7 +286,7 @@ struct TUIOTests {
         let touch = try await waitFor { () -> TUIOCursor? in
             frame += 1
             sender.send(OSCBundle(.immediate, messages: [
-                set(21, 0.75, 0.25), alive([21]), fseq(frame),
+                alive([21]), set(21, 0.75, 0.25), fseq(frame),
             ]))
             return surface.cursors.first
         }

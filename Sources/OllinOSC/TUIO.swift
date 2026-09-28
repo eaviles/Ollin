@@ -7,11 +7,12 @@ import os
 // it lives here beside the receiver it decodes from, and a sketch reaches it with
 // the same `import OllinOSC`.
 //
-// The wire shape is three messages per surface frame, all at one address:
+// The wire shape is three kinds of message per surface frame, all at one
+// address, in this order:
 //
-//   /tuio/2Dcur set 12 0.5 0.25 0.0 0.1 0.02   one item, this is its state now
 //   /tuio/2Dcur alive 12 13                    everything on the surface, by id
-//   /tuio/2Dcur fseq 4218                      the frame those two belong to
+//   /tuio/2Dcur set 12 0.5 0.25 0.0 0.1 0.02   one item, this is its state now
+//   /tuio/2Dcur fseq 4218                      the frame those belong to
 //
 // The set messages are only sent for what moved, so the alive list is what says
 // a touch has left, and the frame number is what says a datagram overtook
@@ -208,11 +209,14 @@ struct TUIOProfile<Item: TUIOTracked>: Sendable {
         guard let command = arguments.first?.text else { return }
         switch command {
         case "set":
-            // A tracker that leaves the frame number out ends its frame here,
-            // where the next one starts.
-            if alive != nil { commit(frame: nil) }
+            // A set never closes a frame: the sets follow their frame's alive
+            // list, so closing here would take the alive list before its frame
+            // number could turn a late one away.
             if let item = Item(setArguments: Array(arguments.dropFirst())) { pending[item.id] = item }
         case "alive":
+            // Every frame opens with its alive list, so a second one before any
+            // frame number is a tracker that leaves the number out, and its
+            // last frame ends here.
             if alive != nil { commit(frame: nil) }
             alive = Set(arguments.dropFirst().compactMap(\.int))
         case "fseq":

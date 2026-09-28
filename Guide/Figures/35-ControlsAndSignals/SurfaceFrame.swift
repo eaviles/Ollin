@@ -1,7 +1,7 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 35): one frame from a tangible surface. The tracker
-// sends a set for what moved, then the whole alive list, then the frame number
+// sends the whole alive list, then a set for what moved, then the frame number
 // that commits them. The next frame drops a touch by leaving it out of the
 // list, which is the part that surprises people: nothing says "ended".
 import Ollin
@@ -24,9 +24,9 @@ final class SurfaceFrame: Sketch {
         background(paper)
 
         messages(x: 46, y: 56, w: 400, h: 178, title: "one frame, sent many times a second",
-                 lines: ["/tuio/2Dcur set 12 0.30 0.35 …",
+                 lines: ["/tuio/2Dcur alive 12 13",
+                         "/tuio/2Dcur set 12 0.30 0.35 …",
                          "/tuio/2Dcur set 13 0.70 0.70 …",
-                         "/tuio/2Dcur alive 12 13",
                          "/tuio/2Dcur fseq 4218"])
         surface(x: 546, y: 46, size: 200, touches: [(12, Vector2(0.30, 0.35)), (13, Vector2(0.70, 0.70))],
                 gone: nil)

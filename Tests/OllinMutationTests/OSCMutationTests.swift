@@ -31,17 +31,17 @@ import OllinMutation
     static func tuioSeeds() -> [[UInt8]] {
         let frame: [OSCMessage] = [
             OSCMessage("/tuio/2Dcur", .string("source"), .string("Probe@10.0.0.1")),
+            OSCMessage("/tuio/2Dcur", .string("alive"), .int(12), .int(13)),
             OSCMessage("/tuio/2Dcur", .string("set"), .int(12), .float(0.5), .float(0.25), .float(0), .float(0.1), .float(0.02)),
             OSCMessage("/tuio/2Dcur", .string("set"), .int(13), .float(0.75), .float(0.5)),
-            OSCMessage("/tuio/2Dcur", .string("alive"), .int(12), .int(13)),
             OSCMessage("/tuio/2Dcur", .string("fseq"), .int(4218)),
+            OSCMessage("/tuio/2Dobj", .string("alive"), .int(3)),
             OSCMessage("/tuio/2Dobj", .string("set"), .int(3), .int(7), .float(0.5), .float(0.5), .float(1.2),
                        .float(0), .float(0), .float(0), .float(0), .float(0)),
-            OSCMessage("/tuio/2Dobj", .string("alive"), .int(3)),
             OSCMessage("/tuio/2Dobj", .string("fseq"), .int(4218)),
+            OSCMessage("/tuio/2Dblb", .string("alive"), .int(5)),
             OSCMessage("/tuio/2Dblb", .string("set"), .int(5), .float(0.2), .float(0.3), .float(0.1),
                        .float(0.05), .float(0.08), .float(0.004)),
-            OSCMessage("/tuio/2Dblb", .string("alive"), .int(5)),
             OSCMessage("/tuio/2Dblb", .string("fseq"), .int(4219)),
         ]
         var seeds = frame.map { [UInt8]($0.encode()) }

@@ -8,12 +8,12 @@ TUIO is the protocol tangible surfaces speak. A table with a camera under it rea
 
 TUIO rides on [OSC](./OSC.md), so it lives in the same library. Add `import OllinOSC` beside `import Ollin` to reach it, and nothing else changes.
 
-A surface sends three messages per frame, all at one address:
+A surface sends three kinds of message per frame, all at one address, in this order:
 
 ```text
-  /tuio/2Dcur set 12 0.5 0.25 0.0 0.1 0.02    one item, this is its state now
   /tuio/2Dcur alive 12 13                     everything on the surface, by id
-  /tuio/2Dcur fseq 4218                       the frame those two belong to
+  /tuio/2Dcur set 12 0.5 0.25 0.0 0.1 0.02    one item, this is its state now
+  /tuio/2Dcur fseq 4218                       the frame those belong to
 ```
 
 Only what moved gets a `set`, so the alive list is what says a touch has left. Ollin reads that frame for you and hands back three lists.
@@ -169,7 +169,7 @@ Ollin reads the three 2D profiles of TUIO 1.1: `/tuio/2Dcur`, `/tuio/2Dobj`, and
 Two details of the protocol are worth knowing, because they are what keeps a surface steady:
 
 - **A frame is taken whole.** The `set` messages and the alive list are held aside until the frame number arrives, so a sketch never reads half a frame with one finger moved and another not.
-- **A late datagram is dropped.** UDP can deliver out of order, and a frame numbered below the last one would drag a touch back to where it was. A number far below the last one is a tracker that started counting again, and that one is taken. A tracker that sends no frame numbers still works, one frame behind, because the next frame opening is what closes the last one.
+- **A late datagram is dropped.** UDP can deliver out of order, and a frame numbered below the last one would drag a touch back to where it was. A number far below the last one is a tracker that started counting again, and that one is taken. A tracker that sends no frame numbers still works, one frame behind, because the next frame's alive list is what closes the last one.
 
 A tracker that names itself with a `source` message sets `sourceName`. Ollin does not separate two trackers sending to one port, so point them at different ports if you run more than one.
 

@@ -93,8 +93,8 @@ final class TUIOSurface: Sketch {
 
     // MARK: The stand-in tracker
 
-    /// Sends one surface frame the way a tracker would: a `set` for everything
-    /// that moved, the `alive` list, then the frame number that commits them.
+    /// Sends one surface frame the way a tracker would: the `alive` list, a
+    /// `set` for everything that moved, then the frame number that commits them.
     private func sendAFrame() {
         frame += 1
         let touches = (0..<3).map { index -> (id: Int, point: Vector2) in
@@ -102,7 +102,9 @@ final class TUIOSurface: Sketch {
             return (id: 11 + index,
                     point: Vector2(0.5 + 0.34 * sin(phase), 0.5 + 0.34 * sin(phase * 1.37 + 0.8)))
         }
-        var cursorFrame: [OSCMessage] = touches.map { touch in
+        let alive = OSCMessage("/tuio/2Dcur",
+                               arguments: [.string("alive")] + touches.map { .int(Int32($0.id)) })
+        let sets: [OSCMessage] = touches.map { touch in
             // Velocity in surface widths per second, which is what the whisker reads.
             let ahead = Vector2(0.34 * 0.6 * cos(time * 0.6 + Double(touch.id - 11) * 2.1),
                                 0.34 * 0.6 * 1.37 * cos((time * 0.6 + Double(touch.id - 11) * 2.1) * 1.37 + 0.8))
@@ -110,29 +112,27 @@ final class TUIOSurface: Sketch {
                               .float(Float(touch.point.x)), .float(Float(touch.point.y)),
                               .float(Float(ahead.x)), .float(Float(ahead.y)), .float(0))
         }
-        cursorFrame.append(OSCMessage("/tuio/2Dcur",
-                                      arguments: [.string("alive")] + touches.map { .int(Int32($0.id)) }))
-        cursorFrame.append(OSCMessage("/tuio/2Dcur", .string("fseq"), .int(Int32(frame))))
-        tracker.send(OSCBundle(.immediate, messages: cursorFrame))
+        let fseq = OSCMessage("/tuio/2Dcur", .string("fseq"), .int(Int32(frame)))
+        tracker.send(OSCBundle(.immediate, messages: [alive] + sets + [fseq]))
 
         let turn = time * 0.5
         tracker.send(OSCBundle(.immediate, messages: [
+            OSCMessage("/tuio/2Dobj", arguments: [.string("alive"), .int(41)]),
             OSCMessage("/tuio/2Dobj", .string("set"), .int(41), .int(7),
                        .float(Float(0.5 + 0.18 * cos(time * 0.35))),
                        .float(Float(0.5 + 0.18 * sin(time * 0.35))),
                        .float(Float(turn)), .float(0), .float(0), .float(0.5), .float(0), .float(0)),
-            OSCMessage("/tuio/2Dobj", arguments: [.string("alive"), .int(41)]),
             OSCMessage("/tuio/2Dobj", .string("fseq"), .int(Int32(frame))),
         ]))
 
         let breath = 0.22 + 0.06 * sin(time * 1.1)
         tracker.send(OSCBundle(.immediate, messages: [
+            OSCMessage("/tuio/2Dblb", arguments: [.string("alive"), .int(61)]),
             OSCMessage("/tuio/2Dblb", .string("set"), .int(61),
                        .float(0.33), .float(0.4), .float(Float(sin(time * 0.2))),
                        .float(Float(breath)), .float(Float(breath * 0.6)),
                        .float(Float(breath * breath * 0.6)),
                        .float(0), .float(0), .float(0), .float(0), .float(0)),
-            OSCMessage("/tuio/2Dblb", arguments: [.string("alive"), .int(61)]),
             OSCMessage("/tuio/2Dblb", .string("fseq"), .int(Int32(frame))),
         ]))
     }
