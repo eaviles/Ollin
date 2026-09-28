@@ -6,11 +6,11 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-Every sketch so far has drawn onto one surface. This chapter adds more of them, off-screen layers you can hold, blur, glow, feed back into themselves, and stack like sheets of film. By the end, [Chapter 12](12-FlocksAndSwarms.md)'s flock comes back rebuilt out of light. Along the way the canvas learns three tricks a single surface can't do. It remembers, it accumulates, and it goes brighter than the screen.
+A layer is a second canvas that lives off screen. This chapter teaches how to draw into one, filter it, and composite it back with a blend mode. Then it declares a whole stack of layers in one `compose` block. After that it turns to what a canvas can keep from one frame to the next: every mark, a running mean, or its own past, warped and fed back in. Light brighter than the screen comes with that, and so does the tone map that rolls it off. The finished sketch is [Chapter 12](12-FlocksAndSwarms.md)'s flock rebuilt as comets, drawn into a feedback layer that comes back bloomed and added as light. After it, one family says what to do when a frame gets slow. It reads the inspector's cost row, and it records drawing that never changes into a batch.
 
-## A drawing you can hold
+## A drawing you can hold: render targets
 
-A layer is a second canvas that lives off screen. You make one, aim your drawing at it, and nothing appears, because the drawing is *held*, waiting for you to decide what happens to it. Make `MySketches/FirstLayer.swift`:
+[Chapter 18](18-YourFirstShader.md) handed you a layer that a shader had filled, and `.image` put it on the canvas. Here you draw into a layer yourself, with the same calls you have used since [Chapter 1](01-HelloOllin.md). You make one and aim your drawing at it. Nothing appears yet, because the drawing is *held*, waiting for you to decide what happens to it. Make `MySketches/FirstLayer.swift`:
 
 ```swift
 import Ollin
@@ -39,11 +39,11 @@ final class FirstLayer: Sketch {
 
 <img src="Images/19-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the whole idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
+Three calls carry the idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` sends everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. So the same drawing can appear twice, once blurred across the whole canvas and once sharp in a card in front of its own blur. One drawing, held and then used, is what every section of this chapter builds on.
 
-Two habits to form now. A `makeRenderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
+Two habits follow from that. A `makeRenderTarget()` is a per-frame handle, so make it fresh inside `draw()` rather than storing it. The texture behind it is pooled and reused, so making one each frame costs nothing. And a layer that is never drawn back stays invisible, because `withTarget` only records the drawing, and `drawImage` is what puts it on screen.
 
-Here's the same idea as a picture, one thumbnail per stage:
+Here is the same idea as a picture, one thumbnail per stage. Two drawings each land in a layer, and each layer goes through a filter. The second filter is the glow the Filters section names. Then the canvas composites the results:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/Layers-dark.jpg">
@@ -52,25 +52,23 @@ Here's the same idea as a picture, one thumbnail per stage:
 
 ## Filters
 
-That `.filtered(.gaussianBlur(radius: 45))` in the first listing was a **filter**. A filter reads a layer and hands back a new, transformed layer, with the original untouched. Filters run on the GPU, so they cost almost nothing you'd notice, and they chain:
+That `.filtered(.gaussianBlur(radius: 45))` in the first listing was a **filter**. A filter reads a layer and hands back a new, transformed layer, with the original untouched. Each one is a pass or a few over the layer's pixels on the GPU. So a filter costs by the pixel and never by the number of marks. Filters also chain:
 
 ```swift
 let moody = art.filtered(.posterize(levels: 5)).filtered(.vignette())
 ```
 
-Ollin ships fifty-some of them, grouped into families. The families are blur and glow, color and tone, stylize, retro, and the warps that bend an image's coordinates. Here is one photograph, a young woman in a lace headdress, through a sample, one tile per family:
+Ollin ships dozens of them, in six families. The families are blur and glow, color and tone, stylize, retro, distortion (the warps that bend an image's coordinates), and design. Here is one photograph, a young woman in a lace headdress, through eleven of them:
 
 <img src="Images/19-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one portrait of a young woman in a lace headdress shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
-A sheet like that is itself one call: `drawSheet` lays a list of labeled items into a near-square grid of tiles, drawing each through a closure and setting each label on its plate, so comparing a family is a list and a line.
+A sheet like this can be one call. `drawSheet` takes a list of labeled items and lays them into a near-square grid of tiles. It draws each one through a closure you give it, and sets each label on its tile. So comparing a family of filters is a list and a line. [Chapter 20](20-PicturesRestyled.md) turns photographs into other kinds of picture with the stylize and design families.
 
-The one to meet properly is **bloom**, because it's the chapter's workhorse. `.bloom(threshold:amount:radius:)` finds the parts of the image brighter than `threshold`, blurs them, and adds the blur back. Bright marks then bleed light into their surroundings the way a streetlight bleeds into fog. It's the difference between a white dot and a *glowing* dot, and you'll reach for it constantly.
+The one to meet properly now is **bloom**, because the finished sketch rests on it. `.bloom(threshold:amount:radius:)` finds the parts of the image brighter than `threshold`, blurs them, and adds the blur back. A bright mark then bleeds light into its surroundings the way a streetlight bleeds into fog. That is the difference between a white dot and a glowing dot.
 
-A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope. `postProcess(.bloom())` applies a filter to the whole finished frame with no layer needed. That is the quick way to glow everything.
+Filters are also values, so you can keep several in a `[Filter]` array and pick one by index from a `@Param`. And `postProcess(.bloom())` applies a filter to the whole finished frame with no layer at all, which is the quick way to make everything glow.
 
-## Layers from nowhere
-
-A layer doesn't have to start from your drawing. [Chapter 18](18-YourFirstShader.md) used `generate(_:)` to run a shader over a whole layer, your own or one of the design generators Ollin ships. What comes back is an ordinary layer, so you can filter and composite it like one you drew:
+A filter does not care where its layer came from. [Chapter 18](18-YourFirstShader.md)'s `generate(_:)` ran a shader over a whole layer, your own or one of the design generators Ollin ships. What came back was this same kind of layer. So a generated sky filters and composites like one you drew:
 
 ```swift
 let sky = generate(.meshGradient(colors: [Color(hex: 0xE4572E), Color(hex: 0x2B6C8C),
@@ -81,24 +79,24 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 
 <img src="Images/19-LayersAndEffects/Generated.jpg" alt="A poster-like wash of terracotta, teal, and amber blobs melting into each other, laid onto textured paper with visible grain and crumple creases" width="560">
 
-Three lines, and the canvas is a printed poster. It is a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all.
+One generator and one filter, and the canvas is a printed poster. The generator makes a mesh gradient of soft color blobs melting into each other. Then `.paperTexture()` lays it onto a sheet of paper it synthesizes, with its crumples.
 
-## How new paint meets old
+## How new paint meets old: blend modes
 
-So far every mark has simply covered what was under it. `blendMode(_:)` changes the arithmetic of that meeting, and it's ordinary drawing state like `fill`, saved by `withState { }`, applying to shapes and composited layers alike:
+So far every mark, on the canvas or in a layer, has covered what was under it. That is one way for new paint to meet old, and there are others. `blendMode(_:)` changes the arithmetic of that meeting. It is ordinary drawing state like `fill`, saved by `withState { }`, and it applies to shapes and to composited layers alike:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/BlendModes-dark.jpg">
   <img src="Images/19-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
 </picture>
 
-The one that changes how you think is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker, and the figure is the honest catalog.
+The one to learn first is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Ollin blends color as physical amounts of light, in the linear space [Chapter 9](09-Pictures.md) met when it averaged pixels. So the sum behaves like lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as light. `.multiply` does the opposite. It stacks color like layered ink or gels, and it works on light backgrounds. The rest are variations on lighter and darker, and the figure shows each of the seven on the same two discs.
 
-Here's the pairing to remember. Bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished sketch uses exactly that.
+One pairing comes back through the chapter. A bloomed layer drawn with `blendMode(.add)` reads as added light rather than as a sticker laid over the scene. The finished sketch composites its comets that way.
 
-## The whole stack in one block
+## The whole stack in one block: compose
 
-By now a frame might go like this. Draw a backdrop layer, blur it, draw a lights layer, bloom it, then composite one normally and one additively. You can wire that by hand, or declare it as one `compose { }` block where each `layer { }` carries its own filters and blend mode:
+By now a frame might go like this. Draw a backdrop layer, blur it, draw a lights layer, bloom it, then composite one normally and one additively. You can wire that by hand with the calls above. Or you can declare it as one `compose { }` block, where each `layer { }` carries its own filters and blend mode:
 
 ```swift
 import Ollin
@@ -135,11 +133,11 @@ final class ComposeStack: Sketch {
 
 <img src="Images/19-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
 
-Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution. That is free money for a layer a blur will soften anyway. It's pure shorthand, since everything `compose` does, the calls you already know can do by hand. When an effect needs *two* layers, a mask or a displacement map, the same block takes an `aside { }`. That is a helper layer drawn only to feed another one. That's a rabbit hole for another day, and the [effects reference](../Docs/Drawing/Effects.md#aside) goes all the way down.
+Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution, which a layer about to be blurred can afford. All of it is shorthand, since everything `compose` does, the calls you already know can do by hand. What the block adds is that it holds the in-between layers for you. Some effects need *two* layers, a mask or a displacement map. For those the same block takes an `aside { }`, a helper layer drawn only to feed another one. The [effects reference](../Docs/Drawing/Effects.md#aside) covers it.
 
-## The canvas that keeps everything
+## The canvas that keeps everything: noClear
 
-[Chapter 12](12-FlocksAndSwarms.md) sneaked a preview of this: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
+Every layer so far was made for one frame and thrown away with it. The rest of the chapter is about what a canvas can keep from one frame to the next. The plainest case is the canvas itself. [Chapter 12](12-FlocksAndSwarms.md) gave a first look: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
 
 ```swift
 import Ollin
@@ -178,13 +176,15 @@ final class Sandpainting: Sketch {
 
 <img src="Images/19-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
 
-Each frame draws only 2,600 dots at 4% opacity, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, advecting grains exactly as [Chapter 14](14-FieldsAndFlow.md) advected walkers. Nothing here is drawn as a line. The lines are simply where light kept landing.
+Each frame draws only 2,600 dots, each at an alpha of 0.045, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, with `advected` carrying the grains the way it carried [Chapter 14](14-FieldsAndFlow.md)'s riders. Nothing here is drawn as a line. The lines are where light kept landing.
 
-Two practical notes. While accumulating, `background(_:)` becomes the reset, so call it on the frame you want to wipe, or never. And a perfectly still additive scene just brightens toward white forever, so keep something moving. The glow finds its level when light flows across the canvas instead of parking.
+> **Swift note.** `grains.isEmpty` is true while the list has nothing in it, so the scatter is rolled on the first frame only. `continue` skips the rest of the loop body for this grain and goes on to the next one. [Chapter 11](11-ForcesAndPhysics.md)'s `guard` used it the same way.
+
+While accumulating, `background(_:)` is the reset, so call it on the frame you want to wipe, or never. And a still additive scene only brightens, toward white, for as long as it runs, so keep something moving.
 
 ## Converging instead of brightening: the running mean
 
-That second note is a limit of the pile, not of the idea. A `noClear` canvas holds a *sum*, and a sum only grows. What a still scene wants is the *mean*: the sum divided by how many passes went into it, which settles at the same brightness however long it runs and only gets smoother. `makeAccumulator()` keeps that for you. Draw each frame's samples into it with `withAccumulator`, and read `image` for the average so far:
+That second note is a limit of the pile. A `noClear` canvas holds a *sum*, and a sum only grows. What a still scene wants is the *mean*: the sum divided by how many passes went into it. A mean settles at one brightness however long it runs, and only gets smoother. `makeAccumulator()` keeps that for you. Draw each frame's samples into it with `withAccumulator`, and read `image` for the average so far:
 
 ```swift
 var light: Accumulator!
@@ -209,35 +209,37 @@ override func draw() {
 }
 ```
 
-The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes, and `developed(exposure:ground:)` prints the mean the way a photograph is printed, with an exposure, a Reinhard roll-off, and the paper's own tone added after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a real lens. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera.
+The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed, with an exposure, a Reinhard roll-off, and the paper's own tone added after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!` again, a property filled in `setup()` before anything reads it.
 
 ## Brighter than the screen: toneMap
 
-That `toneMap(.aces, exposure: 1.5)` line needs its own moment, because it solves a problem you now have. Additive light doesn't stop at "full brightness", because three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values. `toneMap(_:)` decides what happens when the frame finally meets the screen. The default rounds every too-bright value to white, which is honest and abrupt:
+That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, because it solves a problem you now have. Additive light does not stop at full brightness. Three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values, and `toneMap(_:)` decides what happens when the frame finally meets the screen. The default clips every too-bright value to white, which is simple and abrupt:
 
 <img src="Images/19-LayersAndEffects/ToneClamp.jpg" alt="Three overlapping tinted lamps under the default clamp tone map: the entire overlapping middle blows out to a flat white slab with hard seams" width="680">
 
 <img src="Images/19-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
 
-Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive sketch, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md). Some displays can show a little light above white, and [Chapter 38](38-FinishingASketch.md#brighter-than-white-hdr-output) keeps it in the files a sketch leaves as.
+Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive sketch, set `toneMap(.aces)` first, because without it the bright cores flatten to white. The details live in the [HDR reference](../Docs/Drawing/HDR.md). Some displays can show a little light above white, and [Chapter 38](38-FinishingASketch.md#brighter-than-white-hdr-output) keeps it in the files a sketch exports.
 
-## The canvas that remembers itself
+## The canvas that remembers itself: feedback
 
-Accumulation piles new marks onto a canvas that otherwise sits still. **Feedback** is stranger and livelier. Each frame you get last frame's *finished picture* back as an image. Transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. Point a camera at its own monitor and you've built one out of hardware. The fade-zoom-rotate you choose is the whole personality of the effect:
+Accumulation and the running mean both add new marks to a picture that otherwise sits still. **Feedback** hands you the picture itself. Each frame you get the layer's last picture back as an image. You transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. The transform you choose, a fade, a zoom, a turn, or all three, decides what the effect looks like:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/FeedbackSteps-dark.jpg">
   <img src="Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 </picture>
 
-A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame:
+A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame. The layer itself starts every frame cleared, so if you never draw `prev` back, the past is gone:
 
 ```swift
-var trail: Feedback?
+var trail: Feedback!
 override func setup() { trail = makeFeedback() }
 ```
 
-Then each frame runs the loop. It reads, transforms, redraws, and adds. This is the heart of the finished sketch below:
+The `!` is the same promise as the `Accumulator!` above. The finished sketch uses `Feedback?` with a `guard let` instead.
+
+Then each frame runs the loop. It reads the past, transforms it, draws it back, and adds the new marks. This is the heart of the finished sketch below:
 
 ```swift
 withFeedback(trail) { prev in                 // prev = last frame, as an image
@@ -255,13 +257,13 @@ withFeedback(trail) { prev in                 // prev = last frame, as an image
 drawImage(trail.image, 0, 0)                  // composite the result
 ```
 
-The `tint` alpha is the decay. At 0.93 each pass keeps 93% of the past, so marks take dozens of frames to melt away. The tiny zoom and rotation mean the past doesn't just fade, it *drifts*, and moving things leave wakes that curve. How is this different from `noClear`? Accumulation adds to a fixed canvas, while feedback hands you the past as an image to warp first. The warp is the difference between a long exposure and a hall of mirrors.
+The `tint` alpha is the decay ([Chapter 9](09-Pictures.md) used `tint` to fade a picture the same way). At 0.93 each pass keeps 93% of the past, so marks take dozens of frames to melt away. The small zoom and rotation mean the past does not only fade, it *drifts*, and moving things leave wakes that curve. The difference from `noClear` is where the past goes. Accumulation adds to a fixed canvas, while feedback hands you the past as an image to warp first. The warp is the difference between a long exposure and a hall of mirrors.
 
 ## Putting it together: comets
 
-[Chapter 12](12-FlocksAndSwarms.md) ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit. The boids draw as bright dots into a feedback layer, giving wakes that drift and curl. The layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, here is the before:
+[Chapter 12](12-FlocksAndSwarms.md) ended with a flock of triangles trailing fading paint. Here is the same flock rebuilt from four of this chapter's steps. They are the feedback loop, the bloom filter, the `.add` blend mode, and the ACES tone map. The boids draw as bright dots into a feedback layer, which gives them wakes that drift and curl. The layer comes back bloomed and added as light, and the tone map rolls the hot cores off like film. For contrast, here is the before:
 
-<img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="[Chapter 12](12-FlocksAndSwarms.md)'s flock: colored triangles with short painted trails on a flat dark canvas" width="480">
+<img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 12's flock: colored triangles with short painted trails on a flat dark canvas" width="480">
 
 Make `MySketches/Comets.swift`:
 
@@ -314,55 +316,63 @@ final class Comets: Sketch {
 }
 ```
 
-Read it as three acts. The flock is untouched [Chapter 12](12-FlocksAndSwarms.md), still steering by the same three rules. The middle act is the feedback loop from the last section. The boids are drawn inside it, so their light lands *in* the layer that remembers. And the final act is one line of compositing. The trail layer comes back bloomed, added as light, and rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
+Read it in three parts. The flock is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids`, retuned for comets with fewer birds that see further, and still steering by the same three rules. The middle part is the feedback loop, as the feedback section wrote it. The boids are drawn inside it, so their light lands *in* the layer that remembers. The last part is one line of compositing. The trail layer comes back bloomed, added as light, and rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
+
+> **Swift note.** `guard let flock, let trail else { return }` unwraps two optionals in one `guard`, the way [Chapter 16](16-CurvesAndFigures.md)'s `if let` bound two at once. `flock.heading(i)` is the boid's direction in radians, from `-.pi` to `.pi`, so `(heading + .pi) / .tau` turns it into a hue from 0 to 1.
 
 Then make it yours:
 
-- Adjust the feedback parameters. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
+- Adjust the feedback. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of spreading outward.
 - Put a `@Param` on the bloom's `amount` and the tone map's `exposure` and grade the sketch live, like color-timing film.
-- Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected particles, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
+- Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected riders, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Draw a dim `generate(.meshGradient(...))` layer where the flat `background` is, and the comets fly over weather.
+
+The comets are motion, so keep them as a few seconds of video:
+
+```sh
+swift run OllinLive MySketches/Comets.swift --export-video comets.mp4 --seconds 8
+```
 
 ## When it gets slow
 
-The comets fit in a frame with room to spare. Sooner or later a sketch will not. Then the useful question is which half of the frame is behind, the drawing your code does or the pixels the card fills. The inspector's cost row answers that, and batches are the usual fix when the drawing is the slow half.
+The comets add passes to the frame, one for the feedback layer and a few for the bloom, and still fit with room to spare. Sooner or later a sketch will not. A chapter that just added layers, filters, and more passes over every pixel is the place to say what to do then. The useful question is which half of the frame is behind, the drawing your code does or the pixels the card fills. The inspector's cost row answers that, and a batch is the usual fix when the drawing is the slow half.
 
 ### Which half is slow: the cost row
 
-Press **⌘/** for the inspector. The cell grid ends with three counts, and two bars sit under it.
+The cost row is the last row of the inspector, and it measures one frame. Press **⌘/** for the inspector. The cell grid ends with three counts, and two bars sit under it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/CostRow-dark.jpg">
   <img src="Images/19-LayersAndEffects/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
 </picture>
 
-The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there: every fill and every stroke is cut into triangles before the GPU sees it. The **GPU** bar is what the card spent on the frame, taken from its own clock.
+The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there. A polygon, a curve, or a stroke is cut into triangles before the GPU sees it, while a closed shape like a circle or a rectangle is one instance. The **GPU** bar is what the card spent on the frame, taken from its own clock.
 
 Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
 
 The bars are kept apart on purpose. The CPU is already building the next frame while the GPU draws this one, so the two overlap in time rather than adding up.
 
-The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, texture, or clip changes.
+The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, the texture, the clip, or the kind of drawing changes.
 
 The batch count is the one to watch. Ten thousand circles in a row cost one draw call. Ten circles that each change the blend mode cost ten. If the batch count is close to the shape count, group the shapes that share a state.
 
 The rest of the reading is short:
 
-- **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a batch, recorded once and replayed from the card, which the next section shows.
+- **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a batch, recorded once and replayed from the card, which the batches entry shows.
 - **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `makeRenderTarget(scale:)`.
 - **Both short and still slow?** Something outside the drawing is holding the frame, like a file read in the middle of `draw()`.
 
 When you need to know which pass, hand the frame to Xcode:
 
 ```sh
-MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
+MTL_CAPTURE_ENABLED=1 swift run OllinLive MySketches/Comets.swift
 ```
 
-Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order on the way past. Often that printed list is the whole answer.
+Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order as it writes the file. Often that printed list answers it.
 
 ### Record it once: batches
 
-A long CPU bar on a picture that never changes is the easiest one to fix. [Chapter 15](15-ShapesAsMaterial.md)'s habit was to build the geometry once, hold it, and let `draw()` only replay it. Even the replaying costs something. `draw()` still walks your arrays and re-issues every line to the GPU, sixty times a second, for a picture that never changes.
+A **batch** is a recording of drawing calls, kept on the graphics card and replayed on demand. It is for a picture that does not change between frames, which is where a long CPU bar is easiest to fix. Every sketch so far has been immediate-mode drawing, the model Processing, p5.js, and openFrameworks share, where every frame re-issues every mark. [Chapter 15](15-ShapesAsMaterial.md)'s habit was to build the geometry once, hold it, and let `draw()` only replay it. Even the replaying costs something. `draw()` still walks your arrays and re-issues every line to the GPU, sixty times a second, for a picture that never changes. A batch is the retained exception to that model:
 
 ```swift
 var drawing: Batch?
@@ -379,32 +389,32 @@ override func draw() {
 }
 ```
 
-`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is large. A hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way, and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
+`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is large. A hundred and fifty thousand circles cost about 13.5 ms of CPU a frame drawn the ordinary way, and about 0.003 ms replayed. The [`Rendering/RetainedBatch`](../Examples/Rendering/RetainedBatch/Sketch.swift) example has a parameter that switches between the two paths, so you can watch the difference in the inspector. The transform in force when you call `drawBatch` still applies to the whole recording, so one batch can be stamped at several positions or sizes.
 
-The rule of thumb is simple. If the drawing doesn't change between frames, it belongs in a batch. If it does change, leave it alone. A few things can't be recorded, namely 3D meshes, particles, layer blocks, and clipping. Rather than silently dropping them, Ollin refuses at the point you draw them and tells you why.
+The rule of thumb: if the drawing does not change between frames, it belongs in a batch, and if it does change, leave it alone. A few things are per-frame by nature and cannot be recorded, namely 3D meshes and fields, GPU particles, layer blocks like `withTarget`, clipping, and `background`. The recording leaves them out, and Ollin prints a note once, at the call inside `makeBatch`, saying where to draw them instead.
 
 ## Where this comes from
 
-Off-screen layers are as old as computer graphics has had memory to spare. The shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding.
+The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*. The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
 
-The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*. Image editors standardized the everyday blend-mode vocabulary of multiply, screen, and friends in the decades after.
+Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Peter Shirley, and James Ferwerda's 2002 *Photographic Tone Reproduction for Digital Images*. The film-like curve behind `.aces` is the Academy Color Encoding System's response, in Krzysztof Narkowicz's fitted approximation.
 
-Tone mapping comes from photography by way of Erik Reinhard and colleagues' 2002 *Photographic Tone Reproduction for Digital Images*. The film-like curve Ollin uses is the Academy's ACES, in Krzysztof Narkowicz's widely used approximation.
+The filter catalog reimplements published image-processing techniques, each written from its method. The menu was cross-read against OPENRNDR's orx-fx, openFrameworks' ofxFX, and AsyncGraphics for which effects exist and how they are approached. The running mean and its print follow Anders Hoff's depth-of-field essays and Domenico Bruzzese's Blurry, read for approach and written independently.
 
-Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at its own monitor, as Nam June Paik and the Vasulkas did in the 1960s and 70s. The transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Video feedback is the analog ancestor of the `Feedback` layer. Video artists pointed a camera at its own monitor from the late 1960s on, Nam June Paik and Steina and Woody Vasulka among them. There the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar.
 - [Layers](../Docs/Concepts/Layers.md): one screen on what a layer is, what one costs, and when you do not need one.
-- [What survives a frame](../Docs/Concepts/Persistence.md): the whole list of what carries into the next frame, from the ink state to a checkpoint on disk.
+- [What survives a frame](../Docs/Concepts/Persistence.md): the list of what carries into the next frame, from the ink state to a checkpoint on disk.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): the `develop` print filter, and the lens built on the running mean.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift), and [`Examples/Rendering/RetainedBatch`](../Examples/Rendering/RetainedBatch/Sketch.swift) (the same field drawn directly or replayed, on a switch).
 
 ---
 
