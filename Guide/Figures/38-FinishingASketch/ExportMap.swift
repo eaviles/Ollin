@@ -19,6 +19,11 @@ final class ExportMap: Sketch {
     var soft: Color { theme.ink(0.6) }
     var accent: Color { theme.accent }
 
+    // Wide enough for the longest detail line, the virtual camera's.
+    let nodeWidth = 230.0
+    let fileX = 30.0
+    let feedX = 620.0
+
     override func draw() {
         background(paper)
 
@@ -39,7 +44,7 @@ final class ExportMap: Sketch {
         drawText("one draw(), many outputs", hub.center.x, hub.center.y + 8)
 
         // Files, on the left.
-        columnTitle("files", x: 138)
+        columnTitle("files", x: fileX + nodeWidth / 2)
         file(y: 105, name: "still", detail: "--export frame.png")
         file(y: 175, name: "sequence", detail: "--export-sequence, for an edit")
         file(y: 245, name: "video", detail: "--export-video clip.mp4")
@@ -47,7 +52,7 @@ final class ExportMap: Sketch {
         file(y: 385, name: "SVG", detail: "--export-svg, for a plotter")
 
         // Live feeds, on the right.
-        columnTitle("live feeds", x: 742)
+        columnTitle("live feeds", x: feedX + nodeWidth / 2)
         feed(y: 140, name: "the window", detail: "fullscreen on a projector")
         feed(y: 230, name: "Syphon", detail: "into VJ apps, in real time")
         feed(y: 320, name: "virtual camera", detail: "into anything with a webcam menu")
@@ -61,29 +66,29 @@ final class ExportMap: Sketch {
     }
 
     func file(y: Double, name: String, detail: String) {
-        node(x: 40, y: y, name: name, detail: detail)
-        arrow(from: Vector2(340, 266), to: Vector2(238, y + 26))
+        node(x: fileX, y: y, name: name, detail: detail)
+        arrow(from: Vector2(340, 266), to: Vector2(fileX + nodeWidth + 2, y + 26))
     }
 
     func feed(y: Double, name: String, detail: String) {
-        node(x: 645, y: y, name: name, detail: detail)
-        arrow(from: Vector2(540, 266), to: Vector2(643, y + 26))
+        node(x: feedX, y: y, name: name, detail: detail)
+        arrow(from: Vector2(540, 266), to: Vector2(feedX - 2, y + 26))
     }
 
     func node(x: Double, y: Double, name: String, detail: String) {
         fill(darkTheme ? Color(hex: 0x2A2724) : .white)
         stroke(faint)
         strokeWeight(1.5)
-        drawRect(x, y, 196, 52, cornerRadius: 9)
+        drawRect(x, y, nodeWidth, 52, cornerRadius: 9)
         noStroke()
         fill(ink)
         textSize(18)
         textAlign(.center, .bottom)
-        drawText(name, x + 98, y + 27)
+        drawText(name, x + nodeWidth / 2, y + 27)
         fill(soft)
-        textSize(13)
+        textSize(12)
         textAlign(.center, .top)
-        drawText(detail, x + 98, y + 30)
+        drawText(detail, x + nodeWidth / 2, y + 30)
     }
 
     func columnTitle(_ text: String, x: Double) {

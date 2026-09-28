@@ -112,12 +112,13 @@ final class SonificationFigure: Sketch {
     }
 
     /// The octave marks, which are what make the crush visible: they are evenly
-    /// spaced by ear, so a mapping that bunches against them is bunching.
+    /// spaced by ear, so a mapping that bunches against them is bunching. Their
+    /// names sit past the right end, clear of the row titles on the left.
     private func drawOctaveLines(in frame: Rectangle) {
         stroke(faint)
         strokeWeight(1)
         textSize(11)
-        textAlign(.right)
+        textAlign(.left)
         for octave in 0...3 {
             let midi = low.midi + Double(octave) * 12
             let t = (midi - low.midi) / (high.midi - low.midi)
@@ -125,7 +126,7 @@ final class SonificationFigure: Sketch {
             drawLine(frame.x, y, frame.x + frame.width, y)
             noStroke()
             fill(soft)
-            drawText("C\(3 + octave)", at: Vector2(frame.x - 10, y + 4))
+            drawText("C\(3 + octave)", at: Vector2(frame.x + frame.width + 10, y + 4))
             stroke(faint)
         }
         noStroke()

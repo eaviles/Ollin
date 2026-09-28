@@ -27,11 +27,13 @@ final class SetSteps: Sketch {
         let printed = melted.posterized(levels: 6, gamma: 0.75)
         let flying = printed.rotated(time * 0.03).colorCycled(time * 0.04)
 
-        thumb(bands, index: 0, note: "the oscillator")
-        thumb(folded, index: 1, note: ".kaleidoscope(segments: 5)")
-        thumb(melted, index: 2, note: ".displaced(by: noise)")
-        thumb(printed, index: 3, note: ".posterized(levels: 6)")
-        thumb(flying, index: 4, note: ".rotated .colorCycled")
+        // Each call on two lines, the method over its arguments, so the
+        // labels keep to the width of their panels.
+        thumb(bands, index: 0, note: ["the oscillator"])
+        thumb(folded, index: 1, note: [".kaleidoscope", "(segments: 5)"])
+        thumb(melted, index: 2, note: [".displaced", "(by: noise)"])
+        thumb(printed, index: 3, note: [".posterized", "(levels: 6)"])
+        thumb(flying, index: 4, note: [".rotated", ".colorCycled"])
 
         noStroke()
         fill(soft)
@@ -41,7 +43,7 @@ final class SetSteps: Sketch {
                  width / 2, 400)
     }
 
-    func thumb(_ chain: Visual, index: Int, note: String) {
+    func thumb(_ chain: Visual, index: Int, note: [String]) {
         let w = 152.0
         let x = 30 + Double(index) * (w + 15)
         let panel = Rectangle(x: x, y: 150, width: w, height: w)
@@ -56,6 +58,8 @@ final class SetSteps: Sketch {
         textAlign(.center, .top)
         drawText("\(index + 1)", panel.center.x, 120)
         fill(soft)
-        drawText(note, panel.center.x, 312)
+        for (line, text) in note.enumerated() {
+            drawText(text, panel.center.x, 312 + Double(line) * 20)
+        }
     }
 }
