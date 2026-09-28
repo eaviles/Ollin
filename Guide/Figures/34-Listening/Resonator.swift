@@ -107,11 +107,10 @@ final class Resonator: Sketch {
     }
 }
 
-/// A pretend microphone. It synthesizes a little band (a kick drum every half
-/// second, a hat between the kicks, a held bass note, a slow arpeggio, a
-/// whisper of hiss) and feeds the samples into a real `AudioAnalyzer`,
-/// exactly the way a live source would. Every audio read in this chapter comes out of the analyzer
-/// itself; only the air has been replaced.
+/// A stand-in microphone. It works out a little band as numbers (a kick drum
+/// every half second, a hat between the kicks, a held bass note, a slow
+/// four-note melody, a little hiss) and feeds them into an `AudioAnalyzer`,
+/// the way a live source feeds its own. It makes no sound you can hear.
 final class StageMic {
     let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: 44100)
     private var sample = 0
