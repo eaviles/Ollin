@@ -297,7 +297,7 @@ The `squish` property sets how firmly a body pulls back toward its remembered sh
 
 ## Searches you can watch: ant colony optimization, evolution, and swarm chemistry
 
-Every system so far made a picture and nothing else. Three more use a crowd of particles to look for something. Ant colony optimization looks for a short tour of a set of cities, and evolution for a path to a target. Swarm chemistry looks for a rule that outlives the others. Two run on the GPU, and the first runs on the CPU and finishes.
+Every system so far made a picture and nothing else. Three more use a crowd of particles to look for something. Ant colony optimization looks for a short tour of a set of cities, and evolution for a path to a target. Swarm chemistry looks for a rule that outlives the others. Evolution and swarm chemistry run on the GPU, and the ant colony runs on the CPU and finishes.
 
 ### A search you can watch: ant colony optimization
 
@@ -416,7 +416,7 @@ The [compute reference](../Docs/Shaders/Compute.md#simulation) lists every name 
 
 ## Where this comes from
 
-GPU particle systems come from the demoscene and from games. The additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go. The attractor flow draws on Lorenz and the collection at dynamicmath.xyz. The neighbor systems and their sort draw on Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, and Hoetzlein. Particle Lenia draws on Chan with Mordvintsev and Niklasson and Randazzo. The fluid and the jellies draw on Müller and his co-authors with Clavet and Beaudoin and Poulin. The searches draw on Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, and Sayama. The grid step draws on Harris with Coombe, Scheuermann, and Lastra. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+GPU particle systems come from the demoscene and from games. The additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go. The attractor flow draws on Lorenz, Saltzman before him, and the collection at dynamicmath.xyz. The neighbor systems and their sort draw on Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, and Hoetzlein. Particle Lenia draws on Chan with Mordvintsev and Niklasson and Randazzo. The fluid and the jellies draw on Müller and his co-authors with Clavet and Beaudoin and Poulin. The searches draw on Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, and Sayama. The grid step draws on Harris with Coombe, Scheuermann, and Lastra. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
