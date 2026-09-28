@@ -6,7 +6,7 @@
 
 Ollin learned from both of these. openFrameworks showed how plain a creative-coding app can be, and OPENRNDR showed what a typed core with layers you compose looks like. So if you've worked in either one, the ideas here won't be new. What you need is where each thing went.
 
-This appendix is shorter than [Appendix C](C-ComingFromP5.md) on purpose, and it covers the big moves only. Each one says what you reach for there and how Ollin does it, in two short listings, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
+This appendix is shorter than [Appendix C](C-ComingFromP5.md) on purpose, and it covers the big moves only. Each one says what you reach for there and how Ollin does it, usually in two short listings, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
 
 ## From openFrameworks
 
@@ -102,7 +102,7 @@ strokeWeight(6)
 drawCircle(540, 540, 200)
 ```
 
-A stroke is on by default, a thin black one, which an openFrameworks shape drawn under `ofFill` does not have. Call `noStroke()` when you want the fill alone.
+Ollin also strokes every shape by default, with a thin black line. A shape drawn under `ofFill` has no outline, so call `noStroke()` when you want the fill alone.
 
 Three openFrameworks settings have no counterpart in Ollin. Antialiasing is always on, and so is alpha blending. There's no circle resolution either, because a circle isn't built from straight sides. Its edge is worked out at every pixel, so it stays round at any size.
 
@@ -232,7 +232,7 @@ override func draw() {
 }
 ```
 
-`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, the common formats ofxAssimpModelLoader also opens, though not FBX, Collada, or 3DS. [Chapter 26](26-Meshes.md) starts there.
+`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, STL, and PLY files, as ofxAssimpModelLoader does, and USD files too. It doesn't read FBX, Collada, or 3DS. [Chapter 26](26-Meshes.md) starts there.
 
 ### C++ habits that change
 
@@ -271,7 +271,7 @@ Most of the addons that sketches reach for, and a few core classes, have counter
 | ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md) |
 | ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md) |
 | ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md) |
-| ofSoundPlayer, ofSoundStream | `AudioPlayer`, `AudioInput`, and `AudioAnalyzer` for sound in, and `Synth` for sound out, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md) |
+| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md) |
 
 Here is ofxGui beside its Ollin form, which has no panel code at all:
 
@@ -393,7 +393,7 @@ The `draw` prefix is the house rule for any call that puts geometry on the canva
 |---|---|---|
 | `ColorRGBa(1.0, 0.4, 0.0)` | `Color(linear: 1, green: 0.4, blue: 0)` | channels run `0...1`, read as linear light in both; `Color(red:green:blue:)` reads them as sRGB |
 | `ColorRGBa.fromHex("#ff6600")` | `Color(hex: "#ff6600")` | optional, `nil` for a bad string; `Color(hex: 0xFF6600)` is not |
-| `Vector2(3.0, 4.0)`, `Vector3` | `Vector2(3, 4)`, `Vector3` | the same names; the operators match except `*` and `/` between two vectors |
+| `Vector2(3.0, 4.0)`, `Vector3` | `Vector2(3, 4)`, `Vector3` | the same names; Ollin has no `*` or `/` between two vectors, and no `+` or `-` with a number |
 | `a.distanceTo(b)` | `a.distance(to: b)` | |
 | `Rectangle` | `Rectangle` | |
 | `ShapeContour`, `Shape` | `Contour`, `Shape` | a `Contour` holds points, so curves are flattened into it |
@@ -419,7 +419,7 @@ drawer.isolated {
 }
 ```
 
-Ported line by line, one call keeps compiling and changes meaning. OPENRNDR's `rotate` takes degrees. Ollin's `rotate` takes radians, so `rotate(30)` turns almost five times around and gives no error. Write `rotate(.pi / 6)`, or think in turns, where `.tau` is one.
+Ported line by line, one call keeps compiling and changes meaning. OPENRNDR's `rotate` takes degrees. Ollin's `rotate` takes radians, so `rotate(30)` turns almost five times around and gives no error. Write `rotate(.pi / 6)` or `rotate(.degrees(30))`, or think in turns, where `.tau` is one.
 
 ### Render targets and the compositor
 
@@ -461,7 +461,7 @@ override func draw() {
 
 Declaring it every frame makes no new textures, since Ollin keeps the ones underneath and reuses them. To animate a setting, you pass a new value each frame rather than changing a property on the filter. A layer's blend is a modifier, `.blended(.add)`. A helper layer that feeds another layer's effect is `aside { }`, as in the compositor.
 
-The calls under `compose` have matches too. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames is a `Feedback`, made once in `setup()` with `makeFeedback()`. And `extend(NoClear())` becomes `noClear()`. [Chapter 19](19-LayersAndEffects.md) teaches the whole stack.
+The calls under `compose` have matches too. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames becomes a `Feedback`, made once in `setup()` with `makeFeedback()`. It keeps them as the last frame's picture, which `withFeedback` hands you to draw back in. And `extend(NoClear())` becomes `noClear()`. [Chapter 19](19-LayersAndEffects.md) teaches the whole stack.
 
 ### Shade styles
 
@@ -483,7 +483,7 @@ drawCircle(center: center, radius: 200)
 
 The gradient's two ends are canvas points, so you place them where the shape is. `.radial(center:radius:_:)`, `.conic(center:startAngle:_:)`, and `stroke(.alongPath(_:))` are the other three geometries.
 
-Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn in white in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 18](18-YourFirstShader.md) the shader.
+Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn white in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 18](18-YourFirstShader.md) the shader.
 
 ### The orx modules
 
@@ -508,7 +508,7 @@ orx-olive and `OllinLive` both keep the window open while you edit. Olive evalua
 swift run OllinLive Pulse.swift
 ```
 
-`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. It has no hook for when the program shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
+`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
 
 ```kotlin
 extend(SyphonServer("Pulse"))
@@ -526,7 +526,7 @@ The OPENRNDR template is a Gradle build, and it's where you name the orx modules
 
 ## What stays behind
 
-Both frameworks run on Windows and Linux, and both draw through OpenGL. They can also run in a browser, openFrameworks through Emscripten and OPENRNDR through its experimental Kotlin/JS target. Ollin draws through Metal and runs on Apple platforms only, by design. The [README](../README.md#why-apple-only) gives the reasons. In short, it lets Ollin use Metal and Apple's own frameworks for vision, audio, and the iPhone's sensors directly. That choice has a cost. A sketch here won't build on a Linux box or a Raspberry Pi, and it won't run in a browser. For sharing, `--export-web` records what the sketch draws and writes a page that plays it back, with its shaders still running live. A sketch with 3D meshes in it exports as a video instead.
+Both frameworks run on Windows and Linux, and both draw through OpenGL. They can also run in a browser, openFrameworks through Emscripten and OPENRNDR through its experimental Kotlin/JS target. Ollin draws through Metal and runs on Apple platforms only, by design. The [README](../README.md#why-apple-only) gives the reasons. In short, it lets Ollin use Metal and Apple's own frameworks for vision, audio, and the iPhone's sensors directly. That choice has a cost. A sketch here won't build on a Linux box or a Raspberry Pi, and it won't run in a browser. For sharing, `--export-web` records what the sketch draws and writes a page that plays it back, with its shaders still running live. On a sketch with 3D meshes in it, the export stops and points you to `--export-video` instead.
 
 The other thing that stays behind is years of community work. The `ofx` and `orx` ecosystems hold addons for hardware and techniques that Ollin doesn't have yet. When you miss one, check [Appendix D](D-CompleteToolbox.md) first, since it may go by another name. If it isn't there, the [roadmap](../ROADMAP.md) says what's planned, and [Writing an extension](../Docs/Tools/Extensions.md) shows how to build it yourself.
 
