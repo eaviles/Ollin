@@ -12,19 +12,16 @@ import OllinSamplePhotos
 
 final class HandColored: Sketch {
     var photo = Image(width: 1, height: 1)
-    var scene: RenderTarget?
 
     override func setup() {
         photo = SamplePhoto.city.load()
-        scene = makeRenderTarget()
     }
 
     override func draw() {
-        guard let scene else { return }
-
         // The view drifts across the photograph, which is drawn a little wider
         // than the canvas so the drift never shows an edge.
         let drift = Vector2(sin(time * 0.07) * 40, cos(time * 0.05) * 20)
+        let scene = makeRenderTarget()
         withTarget(scene) {
             drawImage(photo, in: Rectangle(center: center + drift, width: width * 1.1,
                                            height: height * 1.1), fit: .cover)

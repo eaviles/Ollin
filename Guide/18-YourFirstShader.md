@@ -201,7 +201,7 @@ drawImage(generate(.godRays()).image, 0, 0)
 
 <img src="Images/18-YourFirstShader/DesignGenerators.jpg" alt="Ten labeled tiles, each a design generator at its defaults: a violet mesh gradient, blue filaments, a white smoke ring, stacked color panels, a spiral, yellow waves, orbiting dots, a grainy gradient, a pulsing border, and god rays" width="680">
 
-The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters) meets those.
+The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters-paper-glass-water-and-a-material-from-a-silhouette) meets those.
 
 Each of them takes a **`phase`**, and so do the pattern fields in the next entry. They have no clock of their own, so nothing moves until you feed one in:
 
