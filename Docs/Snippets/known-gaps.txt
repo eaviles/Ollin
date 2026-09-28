@@ -35,7 +35,6 @@ a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this decl
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
 a5b3460feb06  Docs/3D/3D.md:938  cannot find 'e' in scope
 59a8691ecc04  Docs/3D/3D.md:979  overriding declaration requires an 'override' keyword
-03e5bc13e5b1  Docs/3D/3D.md:996  cannot call value of non-function type 'Double'
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
