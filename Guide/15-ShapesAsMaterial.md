@@ -262,7 +262,7 @@ The closure is the whole of it. You never say how to search, only how to score. 
 
 It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each parameter a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
 
-The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself) is this call, a circle fitted through the middle of a ring of pale marks.
+The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself-radial-basis-functions) is this call, a circle fitted through the middle of a ring of pale marks.
 
 ### The skeleton inside: the medial axis
 

@@ -9,9 +9,8 @@ let v = 0.5
 let frame = Rectangle(x: 0, y: 0, width: 1080, height: 1080)
 let terrain: (Vector2) -> Double = { p in p.x * 0.001 }
 
-// The flow field, and the crowd it carries.
+// The flow field the streamline fragments trace.
 let field = FlowField { p in p.x * 0.002 }
-var particles: [Vector2] = []
 
 // The scattered readings the interpolation section fits a surface through.
 let anchors: [Vector2] = [.zero, Vector2(10, 10)]
