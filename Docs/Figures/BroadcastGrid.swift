@@ -1,10 +1,10 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 38): the named frame rates, and the grid a broadcast
-// asks for. Every number here is read from `FrameRate` itself: the fraction a
+// Figure for Docs/Output/Export.md (frame rates): the named frame rates, and
+// the grid a broadcast asks for. Every number here is read from `FrameRate` itself: the fraction a
 // name keeps, the decimal it is said as, and the frames a ten-second export
 // writes. Under the table, one second of a clip at three rates with a tick per
-// frame, and a loupe on the second mark, where the thirtieth NTSC frame lands a
+// frame, and a loupe on the second mark, where NTSC frame 30 lands a
 // millisecond past the second because that is where the fraction puts it. At
 // the foot, an hour of frames written at a plain 30 against the same frames on
 // the exact fraction, worked out from the two rates.

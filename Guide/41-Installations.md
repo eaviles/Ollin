@@ -61,7 +61,7 @@ After `extend(leds)` you draw as if the wall didn't exist. Whatever lands under 
 
 DMX lights a room one fixture at a time, and the picture is spread over the lamps. A show laser draws the picture itself, in light, with one moving dot. Two mirrors steer the beam. A fixed clock decides how often they are told where to point, and at each of those points the beam is lit or dark. Nothing in a laser holds a picture. What you see is one dot going round a loop fast enough that your eye keeps the whole shape.
 
-That makes the line geometry from [Chapter 15](15-ShapesAsMaterial.md) the right material, the same lines a plotter takes in [Chapter 38](38-FinishingASketch.md#vector-the-plotter-path). `import OllinLaser` sends it:
+That makes the line geometry from [Chapter 15](15-ShapesAsMaterial.md) the right material, the same lines a plotter takes in [Chapter 38](38-FinishingASketch.md#lines-for-a-pen-svg-and-pdf). `import OllinLaser` sends it:
 
 ```swift
 import OllinLaser

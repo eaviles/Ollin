@@ -212,6 +212,13 @@ Every export that takes `--fps` takes a number, a broadcast name, or a fraction:
 
 A named rate is the exact fraction, not its decimal. The video writers put every frame on it. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. That is the grid a broadcast timeline expects. `FrameRate(30000, per: 1001)` spells any other fraction. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. `rate.frameDuration` is one frame's length in seconds, and `rate.frames(in: 10)` is the count a ten-second export writes.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/BroadcastGrid-dark.jpg">
+  <img src="../Images/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where NTSC frame 30 lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
+</picture>
+
+The loupe shows NTSC frame 30 landing a millisecond past the one-second mark, because that is where the fraction puts it. A broadcast timeline has the same grid. The foot shows the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 frames a second then drifts off its timeline. By the end of an hour it is 3.6 seconds, or 108 frames, off. The decimal rate, `FrameRate(29.97)`, differs from `.ntsc` by a tenth of a frame an hour. It is a different rate, so name the broadcast rate when that is the one you mean.
+
 ```swift
 try OllinApp.exportVideo(sketch, to: "spot.mp4", frames: FrameRate.ntsc.frames(in: 30), fps: .ntsc)
 try OllinApp.exportVideo(sketch, to: "reel.mp4", frames: 240, fps: .film)
