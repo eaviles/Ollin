@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 31): the same scene of lines through three lenses. One
 // probe, the ring sphere of the LineSpray example, is rendered three times

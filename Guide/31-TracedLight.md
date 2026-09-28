@@ -445,7 +445,10 @@ Leave `blades` out, and a scene defocused by its own depth takes the count from 
 
 The lens is a `Bokeh`, with a `focalDistance`, where things are sharp, and a `strength`, how fast the blur grows with distance from that plane. Here is a sphere of rings through three of them:
 
-<img src="Images/31-TracedLight/ThroughALens.jpg" alt="Three dark square panels of the same sphere made of rings of light, with a burst of bright spokes at its center. Left, labeled strength 0, every ring is crisp near and far and the sphere reads as a wire model. Middle, at the example's setting, the near rim stays sharp while the far side melts into pale fog. Right, wide open, the sphere is a soft glowing ball with only a faint rim and the central burst still readable" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-TracedLight/ThroughALens-dark.jpg">
+  <img src="Images/31-TracedLight/ThroughALens.jpg" alt="Three dark square panels of the same sphere made of rings of light, with a burst of bright spokes at its center. Left, labeled strength 0, every ring is crisp near and far and the sphere reads as a wire model. Middle, at the example's setting, the near rim stays sharp while the far side melts into pale fog. Right, wide open, the sphere is a soft glowing ball with only a faint rim and the central burst still readable" width="680">
+</picture>
 
 With the strength at zero every ring is sharp, near and far, and the sphere reads as a wire model. At the example's own setting, the near rim stays crisp while the far side dissolves, as it would in a photograph. Opened wide, only the plane of focus stays sharp. Each sample lands in a disc sized by its own distance from the plane of focus. The running mean adds those discs up until the bokeh appears. So a print takes a few hundred passes to settle, and an exported frame wants `--settle`, which [Chapter 38](38-FinishingASketch.md#settled-then-written) explains.
 
