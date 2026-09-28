@@ -1,11 +1,11 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 35): what a sketch reads while a pushed feed listens.
-// One row of messages at the moments the server sent them, under it the
-// connection the feed keeps alive by itself, and under that what the sketch
-// reads: everything the connection was up for at the moment it was said, and
-// the message from the blink arriving right after the redial rather than
-// being lost.
+// Guide diagram (Chapter 35): what a sketch reads while a pushed feed listens
+// to a stream of server-sent events. One row of messages at the moments the
+// server sent them, under it the connection the feed keeps alive by itself,
+// and under that what the sketch reads: everything the connection was up for
+// at the moment it was said, and the message from the blink arriving right
+// after the redial, which asked to resume from the last id it had seen.
 import Ollin
 import OllinDiagram
 
@@ -100,7 +100,7 @@ final class MessagesThatPushThemselves: Sketch {
 
     func drawConnection(labelAt labelY: Double, axis y: Double) {
         label("the connection", at: labelY,
-              note: "the feed redials on its own; the sketch never has to")
+              note: "a stream of server-sent events; the feed redials on its own")
 
         stroke(faint)
         strokeWeight(1)
@@ -137,19 +137,17 @@ final class MessagesThatPushThemselves: Sketch {
             }
         }
 
-        // The greeting rides every open, which is what keeps a subscription
-        // alive across the blink.
-        for at in [0.0, reopenAt] {
-            stroke(quiet)
-            strokeWeight(1.5)
-            drawLine(x(at), y - 22, x(at), y - 8)
-            withState {
-                noStroke()
-                fill(quiet)
-                textSize(11)
-                textAlign(at == 0 ? .left : .center, .baseline)
-                drawText("greeting", at == 0 ? x(at) - 2 : x(at), y - 28)
-            }
+        // The redial that works names the last id the feed saw, which is how
+        // the server knows what the blink missed.
+        stroke(quiet)
+        strokeWeight(1.5)
+        drawLine(x(reopenAt), y - 22, x(reopenAt), y - 8)
+        withState {
+            noStroke()
+            fill(quiet)
+            textSize(11)
+            textAlign(.center, .baseline)
+            drawText("from the last id seen", x(reopenAt), y - 28)
         }
     }
 

@@ -602,7 +602,7 @@ A `PushFeed` holds one connection open, and each message arrives the moment the 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/35-ControlsAndSignals/MessagesThatPushThemselves-dark.jpg">
-  <img src="Images/35-ControlsAndSignals/MessagesThatPushThemselves.jpg" alt="A diagram on white. A top row of message dots at irregular moments, one marked as said into the blink. Below it a connection band that drops, shows two red crosses with widening waits marked wait, twice, four times, then resumes, with a greeting tick at each open. A bottom row shows the messages the sketch reads, with the blink's message arriving right after the redial, labeled resumed by its id, late but not lost, and a problem band covering the outage" width="680">
+  <img src="Images/35-ControlsAndSignals/MessagesThatPushThemselves.jpg" alt="A diagram on white. A top row of message dots at irregular moments, one marked as said into the blink. Below it a connection band that drops, shows two red crosses with widening waits marked wait, twice, four times, then resumes, with a tick at the reopen marked from the last id seen. A bottom row shows the messages the sketch reads, with the blink's message arriving right after the redial, labeled resumed by its id, late but not lost, and a problem band covering the outage" width="680">
 </picture>
 
 You write the same code for either kind:
