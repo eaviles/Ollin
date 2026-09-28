@@ -598,7 +598,7 @@ Ask a server every ten minutes and most answers are ones you already have, so on
 
 ### Messages that arrive on their own: PushFeed
 
-A `PushFeed` holds one connection open, and each message arrives the moment the other end sends it. Use it for sources that tell rather than wait to be asked, such as every edit to an encyclopedia or every move in a game being played right now. A `DataFeed` asking those on a schedule either asks too often or hears too late. The address decides how the connection is made. `ws://` and `wss://` open a *web socket*, a connection both ends can send on. Anything else is read as a stream of *server-sent events*, the plain-web way a server pushes, which the WHATWG's HTML standard describes.
+A `PushFeed` holds one connection open, and each message arrives the moment the other end sends it. Use it for sources that tell rather than wait to be asked, such as an encyclopedia's edits or a game's moves. A `DataFeed` asking those on a schedule either asks too often or hears too late. The address decides how the connection is made. `ws://` and `wss://` open a *web socket*, a connection both ends can send on. Anything else is read as a stream of *server-sent events*, the plain-web way a server pushes, which the WHATWG's HTML standard describes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/35-ControlsAndSignals/MessagesThatPushThemselves-dark.jpg">
