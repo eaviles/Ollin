@@ -66,7 +66,7 @@ bac6f70b2c26  Guide/15-ShapesAsMaterial.md:145  cannot find 'circles' in scope
 3152d9b01a08  Guide/15-ShapesAsMaterial.md:299  cannot find 'island' in scope
 941d99f289b2  Guide/15-ShapesAsMaterial.md:310  value of type '[Contour]' has no member 'maxInset'
 ff3aae35a44a  Guide/15-ShapesAsMaterial.md:360  cannot find 'art' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:475  unary operator cannot be separated from its operand
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:493  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
