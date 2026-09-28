@@ -6,11 +6,11 @@
 
 <img src="Images/41-Installations/WallPiece.jpg" alt="A wide dark screen carrying a slow field of vertical bars in dusk colors, orange at a peak left of center, deep plum in a dip right of center, and red-orange again at the right edge, with a separate band of the same colors running along the bottom" width="680">
 
-This chapter keeps a finished sketch running in one place for days, with nobody watching it. The steps declare what a room needs, from a screen that stays on to opening hours, and then send light to lamps over DMX. They end on the wall of bars above, whose bottom band lights a strip of lamps under the screen. After it come a lighting console and a show laser, projectors and many screens, and ways to keep watch from the floor. The guide ends with where to go next.
+This chapter keeps a finished sketch running in one place for days, with nobody watching it, and lets it light the room around it. The steps end on the wall of bars above, whose bottom band lights a strip of lamps under the screen. After it come a lighting console and a show laser, projectors and many screens, and ways to keep watch from the floor. The guide closes with where to go next.
 
 ## Leaving it running: `Installation`
 
-[Chapter 40](40-HandingItOver.md#an-app-to-hand-somebody-signing-and-notarizing) made a sketch into an app that a gallery machine can run. On a wall, or in a shop window, that app runs for a week with nobody watching it. Different things end a run there than at a desk. A frame that takes too long is one, and [Chapter 19](19-LayersAndEffects.md#which-half-is-slow-the-cost-row)'s cost row says which half of the frame is behind. The rest have nothing to do with speed. The screen saver comes on at midnight, the display sleeps, or somebody unplugs the monitor to borrow it. Any of them stops the sketch.
+[Chapter 40](40-HandingItOver.md#an-app-to-hand-somebody-signing-and-notarizing) made a sketch into an app that a gallery machine can run. On a wall, or in a shop window, that app runs for a week with nobody watching it. Different things end a run there than at a desk. A crash is one, and a frame that never finishes is another. The rest have nothing to do with your code. The screen saver comes on at midnight, the display sleeps, or somebody unplugs the monitor to borrow it. Any of them stops the sketch.
 
 One line asks Ollin to prevent them:
 
@@ -27,13 +27,13 @@ swift run --package-path Examples Example-Motion-Orbits --installation          
 swift run --package-path Examples Example-Installation-Unattended --no-installation    # back to a window to work in
 ```
 
-A sketch of your own goes up through `OllinRun`, the host that gives a single file its own window. The live host keeps its window for itself, so it runs a sketch as an ordinary one, whatever the sketch declares:
+A sketch of your own goes up through `OllinRun`, the host that gives a single file its own window:
 
 ```sh
 swift run OllinRun MySketches/YourSketch.swift --installation
 ```
 
-`OllinRun` does not reload on save, so the wall runs the code you started it with. Keep working on the sketch in `swift run OllinLive`, and put it up with `OllinRun` when it is ready. A sketch that declares its own installation needs no flag. For the gallery machine, wrap the sketch in an app as Chapter 40 did, and the installation travels inside it.
+The live host keeps its window for itself, so it runs a sketch as an ordinary one, whatever the sketch declares. `OllinRun` does not reload on save, so the wall runs the code you started it with. Keep working on the sketch in `swift run OllinLive`, and put it up with `OllinRun` when it is ready. A sketch that declares its own installation needs no flag. For the gallery machine, wrap the sketch in an app as Chapter 40 did, and the installation travels inside it.
 
 ## The clock over a long run: gaps and precision
 
@@ -61,7 +61,7 @@ The shader clock then starts over after a whole number of laps, as many as fit i
 
 ## Picking up where it left off: checkpoints and `@Saved`
 
-A sketch that draws only from the clock and the seed is the same after a relaunch, as long as it gets its clock back. A **checkpoint** is a file the sketch writes every so often, holding what it needs to carry on.
+A sketch that draws only from the clock and the seed is the same after a relaunch, as long as it gets its clock back. A **checkpoint** gives it back. It is a file the sketch writes every so often, holding what it needs to carry on.
 
 Other sketches grow. A wall that fills in one tile at a time is one, and so is a drawing that builds up over days. Three days in, such a sketch cannot be rebuilt from its seed. Getting back there would mean running the three days again.
 
@@ -75,14 +75,14 @@ So write the state down. A checkpoint needs two lines, one for how often and one
 ```swift
 override var installation: Installation { Installation(checkpoint: .every(seconds: 60)) }
 
-@Saved var tiles: [Tile] = []
+@Saved var tiles: [Tile] = []            // Tile is a struct of yours, marked Codable
 ```
 
 `@Saved` marks a property for the checkpoint. Every `@Saved` property goes into the file on that cadence, along with the seed, the clock, and every `@Param` value. A relaunch puts them all back before your first frame draws, and the sketch carries on.
 
 A saved property has to be `Codable`, which is Swift's name for a type that can be written to a file and read back. Numbers, text, colors, and lists of them already are. Your own struct becomes one when you add `: Codable` to its declaration, as long as everything inside it is `Codable` too. What cannot be saved is anything that lives on the GPU: an accumulated canvas, a feedback layer, or a simulation field. Those are textures the framework owns, and the checkpoint does not reach them.
 
-You will edit the sketch while an old file still sits beside it, so a mismatch costs only itself. Rename a property, and the old value finds nothing. Change its type, and that property fails alone, named in the log, while everything else restores. Damage the file, and it is ignored. A sketch on a wall that refuses to start is worse than one that starts over.
+You will often edit the sketch while an old checkpoint is still on disk, so a mismatch loses only the value that changed. Rename a property, and the old value finds nothing. Change its type, and that property fails alone, named in the log, while everything else restores. Damage the file, and it is ignored. A sketch on a wall that refuses to start is worse than one that starts over.
 
 `--fresh` ignores the saved state for one run without deleting it. Use it when a sketch comes back in a state you do not want.
 
@@ -96,7 +96,7 @@ override var installation: Installation {
 }
 ```
 
-The process you start becomes a small **watch** with no window of its own, and your sketch runs inside it as a child process. When a run ends badly, the watch starts another one. Pair it with a checkpoint, or the sketch comes back at its beginning every time. Restarting is off until you ask for it, even under `.on`. So a sketch that crashes at your desk stays crashed, and you can read the error. The watch runs wherever the sketch owns its window, which means under `OllinRun` or in an app.
+The process you start becomes a small **watch** with no window of its own, and your sketch runs under it as a child process. When a run ends badly, the watch starts another one. Pair it with a checkpoint, or the sketch comes back at its beginning every time. Restarting is off until you ask for it, even under `.on`. So a sketch that crashes at your desk stays crashed, and you can read the error. The watch runs wherever the sketch owns its window: under `OllinRun`, under `swift run` of an example or a package, and in an app.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/BackUp-dark.jpg">
@@ -117,7 +117,7 @@ A sketch on a wall is in a building, and buildings have opening hours:
 Installation(schedule: .open(from: 10, to: 18))
 ```
 
-Outside those hours, the screen goes dark and the display is allowed to sleep. The frames stop, and the clock stops with them. In the morning, the sketch carries on from where it stopped, not from where the day got to.
+Outside those hours, the screen goes dark and the display is allowed to sleep. The frames stop, and the clock stops with them. In the morning, the sketch carries on from where it stopped, not from the time the clock now reads.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/GalleryHours-dark.jpg">
@@ -138,7 +138,7 @@ override func draw() {
 }
 ```
 
-Each part lasts until the next one starts, and the last part lasts until the first one comes around again. That is how a night crosses midnight. `.dark(from: 23)` is a part with nothing on screen. So this schedule is the one in the figure, dark from eleven at night until six. `scheduledProgress` says how far through the current part you are, from 0 to 1, for a sketch that changes gradually rather than all at once.
+Each part lasts until the next one starts, and the last part lasts until the first one comes around again. So a night can cross midnight. `.dark(from: 23)` is a part with nothing on screen. So this schedule is the one in the figure, dark from eleven at night until six. `scheduledProgress` says how far through the current part you are, from 0 to 1, for a sketch that changes gradually rather than all at once.
 
 Both readings work at your desk as well as on a wall. So you can build a sketch that changes at dusk without waiting for dusk. Going dark is the one part that needs the installation, since only a sketch that owns its window can take the screen away.
 
@@ -148,7 +148,7 @@ Everything so far keeps a screen running. An installation can also light the roo
 
 Stage lighting speaks **DMX**, a protocol that has told dimmers, colored lamps, and moving lights what to do since 1986. DMX itself runs over a cable from one light to the next. **Art-Net** and **sACN** carry the same data over an ordinary network, which is how a Mac sends it. A **node** is the small box on that network that turns it back into a DMX cable for the lights.
 
-The model is small. A **universe** is 512 channels of one byte each. A **fixture** is one light, and it listens at an address and reads a few channels from there. The fixture's manual says what each channel means, such as red, green, blue, a dimmer, or a pan motor. The sketch fills 512 bytes and sends them, and the lights change.
+The model is small. A **universe** is 512 channels of one byte each. A **fixture** is one light, such as a **par**, the round can of a stage light. A fixture listens at an address and reads a few channels from there. The fixture's manual says what each channel means, such as red, green, blue, a dimmer, or a pan motor. The sketch fills 512 bytes and sends them, and the lights change.
 
 ```swift
 import OllinDMX
@@ -163,7 +163,7 @@ override func draw() {
 }
 ```
 
-`DMXSender()` with no address sends sACN to the whole network, and any listening node picks it up with no setup. `DMXSender(artNet: "192.168.1.60")` sends Art-Net to the one node at that address instead. Either way, you send every frame, like a second `draw()` aimed at the room. The sender paces the network itself. It sends data only when it changes, and it caps the rate near DMX's own refresh rate. While nothing moves, it repeats the last state now and then. `DMXFixture` keeps the addressing in one place. Patch one per light with the roles its manual lists, and chain them with `nextAddress`. Then `rig.set(par, color:)` lands on whatever channels the layout names.
+`DMXSender()` with no address sends sACN to the whole network, and any listening node picks it up with no setup. `DMXSender(artNet: "192.168.1.60")` sends Art-Net to the one node at that address instead. Either way, you send every frame, like a second `draw()` aimed at the room. The sender paces the network itself. It sends data only when it changes, and it caps the rate near DMX's own refresh rate. While nothing moves, it repeats the last state now and then. `DMXFixture` keeps the addressing in one place. To **patch** a light, in lighting terms, is to give it its start address, and you patch one `DMXFixture` per light. A second light can start right after the first, with `DMXFixture.rgbw(at: par.nextAddress)`. A light the presets do not cover lists its channels' roles from the manual, as in `DMXFixture(at: 4, .dimmer, .red, .green, .blue)`. Then `rig.set(par, color:)` lands on whatever channels the fixture names.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/LampsAndBytes-dark.jpg">
@@ -188,7 +188,7 @@ override func setup() {
 }
 ```
 
-After `extend(leds)`, draw as if the LEDs were not there, and whatever lands under the mapped points is what they show. `extend` is the call that registered [Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension)'s crosshair, because an `LEDMap` is a sketch extension. Each LED averages the patch of canvas it stands for, so a strip over fine detail glows steadily instead of flickering. On the network, the map packs whole LEDs into universes, 170 RGB LEDs to a universe, and a longer run continues on the next universe. A **pixel controller**, the node an LED strip plugs into, expects that layout. Patch yours to the numbers `leds.universes` reports. [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift) runs it all on one Mac, with a drawn strip and panel lit from what a receiver reads back.
+After `extend(leds)`, draw as if the LEDs were not there, and whatever lands under the mapped points is what they show. An `LEDMap` is a sketch extension, so `extend` registers it, the way it registered [Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension)'s crosshair. Each LED averages the patch of canvas it stands for, so a strip over fine detail glows steadily instead of flickering. On the network, the map packs whole LEDs into universes, 170 RGB LEDs to a universe, and a longer run continues on the next universe. A **pixel controller**, the node an LED strip plugs into, expects that layout. Patch yours to the numbers `leds.universes` reports. [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift) runs it all on one Mac, with a drawn strip and panel lit from what a receiver reads back.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/LEDWall-dark.jpg">
@@ -246,7 +246,7 @@ final class WallPiece: Sketch {
 
 ```
 
-The second part is the drawing, and it keeps nothing between frames. Every bar's height comes from where it stands and how far along the lap the sketch is. So a restart in the small hours puts it back where the checkpoint left it, and nothing drifts over a week.
+The second part is the drawing, and it keeps nothing between frames. Every bar's height comes from where it stands and how far along the lap the sketch is. So a restart at any hour puts it back where the checkpoint left it, and nothing drifts over a week.
 
 ```swift
     override func draw() {
@@ -287,28 +287,27 @@ The second part is the drawing, and it keeps nothing between frames. Every bar's
 The sketch composes the chapter's steps:
 
 - **The declaration** is [Leaving it running](#leaving-it-running-installation)'s `Installation`, filled in. `Installation(...)` fills the screen and keeps the display awake by default, so only the checkpoint, the restart, and the schedule are written out.
-- **The lap** is the long-run clock. `loopDuration` of 180 seconds lets the shader clock start over on a whole lap, and `loopProgress(over: 180)` turns the time into the angle `lap`. Three waves share that lap, so their sum repeats with it.
-- **The checkpoint** has no `@Saved` property to write here, since the drawing keeps nothing. It saves the seed and the clock, and after a power cut the sketch comes back at most a minute behind.
+- **The lap** is the long-run clock. `loopDuration` of 180 seconds lets the shader clock start over on a whole lap. `loopProgress(over: 180)` goes from 0 to 1 over each lap, and `* .tau` turns it into the angle `lap`. Three waves share that lap, so their sum repeats with it.
+- **The checkpoint** has no `@Saved` property to write here, since the drawing keeps nothing. It saves the seed and the clock. So when the sketch is started again after a power cut, it comes back at most a minute behind.
 - **The restart** starts it again after a crash, and after a stall of 30 seconds.
 - **The schedule** picks the palette through `scheduledPeriod`, and its dark part turns the screen off at eleven. `showing` holds dusk while you work, and `period` falls back to the schedule when `showing` is nil.
 - **The light** is the `LEDMap`. One strip of 96 LEDs runs across the bottom of the canvas, and the drawing leaves a plain band there for it to read. So the lamps under the screen take the same colors as the bars above them.
 
-> **Swift note.** `let showing: String? = "dusk"` is a constant that may hold a name or nothing. `??` picks the next choice when it holds nothing, as in [Chapter 8](08-Words.md). A dictionary answers with an optional even when the key is there. So `palettes["day"]!` unwraps the answer with the `!` of [Chapter 14](14-FieldsAndFlow.md).
+> **Swift note.** `let showing: String? = "dusk"` is a constant that may hold a name or nothing. `??` picks the next choice when it holds nothing, as in [Chapter 8](08-Words.md). A dictionary lookup answers with an optional, as [Chapter 23](23-GridSimulations.md) showed, so `palettes["day"]!` unwraps it with `!`.
 
 Then make it yours:
 
-- Set `showing` to nil, and the sketch follows the real clock. Set it to `"dawn"` to see the morning at any hour.
+- Set `showing` to `"dawn"` to see the morning at any hour.
 - Press Command-K on the running sketch, and drag the corners onto a wall that is not square to the projector. [Fitting a projector: corner pinning](#fitting-a-projector-corner-pinning) shows how.
 - Give it a second display with `displays: .spanning` and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
-- Put the strip on a curve instead of a line, or add a matrix over the middle of the canvas.
 
-Work on it with `swift run OllinLive MySketches/WallPiece.swift`, which runs it as an ordinary sketch whatever it declares. Put it up with `OllinRun`, which reads the declaration, and send its log to a file as [The log](#the-log) shows:
+Work on it with `swift run OllinLive MySketches/WallPiece.swift`, which runs it as an ordinary sketch whatever it declares. Before it goes up, set `showing` to nil, so the palette follows the real clock. Then put it up with `OllinRun`, which reads the declaration, and send its log to a file as [The log](#the-log) shows:
 
 ```sh
 swift run OllinRun MySketches/WallPiece.swift
 ```
 
-For the gallery machine, make it an app with `--kind mac-app`, as [Chapter 40](40-HandingItOver.md#an-app-to-hand-somebody-signing-and-notarizing) did. The installation, the checkpoint, and the watch all travel inside the app.
+For the gallery machine, make it an app with `--kind mac-app`, as [Chapter 40](40-HandingItOver.md#an-app-to-hand-somebody-signing-and-notarizing) did. The installation, the checkpoint, and the watch all travel inside the app. Add the app to Login Items, as Chapter 40 did for the wallpaper, so it starts again whenever the Mac does.
 
 ## More light instead of pixels: a console and a show laser
 
@@ -379,9 +378,9 @@ override func draw() {
 
 A frame holds paths in canvas coordinates, the same numbers every drawing call takes. A `Shape` adds its outlines. A laser has no fills, so shade a region with `Hatching`, the way the plotter does.
 
-Time is the budget. The point rate divided by the frame rate is every point a frame can hold. At the default 20,000 points a second and 30 frames a second, that is 666 points. Past it, the frame still plays whole but repeats more slowly, and the eye sees it flicker. `laser.stream?.isOverBudget` says when you are past it. Draw less, or set `laser.optimizer.spacing` wider so the points sit farther apart.
+Time is the budget. The point rate divided by the laser's refresh rate is every point a frame can hold. At the default 20,000 points a second and the laser's default 30 frames a second, that is 666 points. Past it, the frame still plays whole but repeats more slowly, and the eye sees it flicker. `laser.stream?.isOverBudget` says when you are past it. Draw less, or set `laser.optimizer.spacing` wider so the points sit farther apart.
 
-A projector puts real power into its beam, and only the moving mirrors spread it out. So **a `LaserProjector` gives no light until you call `arm()`**. Once armed, the brightness starts at half. A beam that stops moving is turned off, and so is a frame the sketch stopped sending. Treat the first run like a machine that cuts: low power, pointed at a wall, and nobody in the beam.
+A projector puts real power into its beam, and only the moving mirrors spread it out. So **a `LaserProjector` gives no light until you call `arm()`**. Once armed, the brightness is capped at half, and `laser.safety.maxBrightness` raises the cap. A beam that stops moving is turned off, and so is a frame the sketch stopped sending. Treat the first run like a machine that cuts: low power, pointed at a wall, and nobody in the beam.
 
 [`Examples/Integration/LaserPreview`](../Examples/Integration/LaserPreview/Sketch.swift) is that preview with parameters attached, and it runs with no hardware at all. [Laser](../Docs/Integration/Laser.md) has the rest, including the ILDA file for a laser system this library does not drive directly.
 
@@ -412,9 +411,14 @@ Installation(projection: .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, 
 
 `visibleRegion` is measured in fractions of the canvas, so this machine shows the left 0.6 of it. `blend` is the band where it fades, the right 0.2. The machine on the right declares the mirror of that: `visibleRegion` starting at 0.4, and the same 0.2 fading in from its left. Both describe the same band with the same numbers, so their fades add up to one coat. None of this reaches an export, since a file has no wall to fit.
 
-### Several displays, one machine
+### Several displays, one machine: `.spanning`
 
-Two projectors do not need two machines. A Mac with two outputs can drive both, and one sketch can span every display it has. It is for a wall of screens or projectors run from one computer, where one drawing has to cross from screen to screen. Using several displays as one desk goes back to the Macintosh II in 1987.
+Two projectors do not need two machines. A Mac with two outputs can drive both, and one sketch can span every display it has. It is for a wall of screens or projectors run from one computer, where one drawing has to cross from screen to screen. Using several displays as one desktop goes back to the Macintosh II in 1987.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/ManyDisplays-dark.jpg">
+  <img src="Images/41-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding an evening sky, a low sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+</picture>
 
 ```swift
 override var installation: Installation {
@@ -422,12 +426,7 @@ override var installation: Installation {
 }
 ```
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/ManyDisplays-dark.jpg">
-  <img src="Images/41-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
-</picture>
-
-That spreads one canvas over every display the machine has, in the arrangement they are in. Two monitors side by side carry a half each, and one above the other carries a band each. You declare no numbers, because the desk already knows them.
+That spreads one canvas over every display the machine has, in the arrangement they are in. Two monitors side by side carry a half each, and one above the other carries a band each. You declare no numbers, because macOS already knows how the displays are arranged.
 
 The sketch draws one canvas, and the wall decides which part of it each display carries. It is the same split as the two-machine wall, with both parts on one machine. For a wall that is not a plain row of monitors, declare the parts yourself. Two projectors overlapping in the middle look like this:
 
@@ -450,16 +449,16 @@ That opens one window per part, side by side, each carrying its own part. It sho
 
 The sketch is drawn once a frame however many displays it goes on. What grows is the size it is drawn at, since each display wants its own part at its own resolution.
 
-### Several windows, one world
+### Several windows, one world: `canvasOnScreen`
 
-A sketch can also run as several separate windows that look into one scene. Run it three times, and the three windows on one desk each show their own part of the same world. It is for a desk or a shop window of separate screens that should read as one picture. The windows never talk to each other. Each one reads the time of day, the same trick [Chapter 40](40-HandingItOver.md#a-widgets-clock-the-time-of-day)'s widget used, so they cannot disagree.
+A sketch can also run as several separate windows that look into one scene. Run it three times, and the three windows each show their own part of the same world. It is for a desk or a shop window of separate screens that should read as one picture. It is the idea of a desktop spread over several displays, done by the sketch itself. The windows never talk to each other. Each one reads the time of day, the same trick [Chapter 40](40-HandingItOver.md#a-widgets-clock-the-time-of-day)'s widget used, so they cannot disagree.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/OneWorldManyWindows-dark.jpg">
   <img src="Images/41-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
 </picture>
 
-Each window needs to know where it is. `canvasOnScreen` says where this canvas sits on the desk, in screen points, measured from the top left of the main screen. So all three windows describe the same desk in the same numbers:
+Each window needs to know where it is. `canvasOnScreen` says where this canvas sits on the desk, the space all your screens share. It is in screen points, measured from the top left of the main screen. So all three windows describe the same desk in the same numbers:
 
 ```swift
 guard let mine = canvasOnScreen else { return }
@@ -474,12 +473,12 @@ Windows on one machine can share a clock that way, because they read the same ma
 
 The two-machine wall told each machine which part of the canvas it shows, but not what time it is. Each sketch starts its clock when it starts. Switch on the machine at the left of the wall, walk to the one at the right, and switch that one on. The two are now seconds apart, and everything that moves shows it.
 
+A **room** puts several machines on one sketch. They find each other by a name you make up, with no server and no address to configure. It is for a wall or a space where several machines have to move together. The shared clock uses Flaviu Cristian's method from 1989. A machine asks the one that keeps the time, and allows for half the time the question and its answer took.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/OneRoom-dark.jpg">
   <img src="Images/41-Installations/OneRoom.jpg" alt="Two rows, each with two screens showing a bead on a ring. In the top row, labeled each machine's own clock, the beads sit in different places and two timelines below start at different points, one reading 7.0 s and the other 4.6 s. In the bottom row, labeled the room's clock, both beads sit in the same place over one shared timeline reading now, 7.0 s on both" width="680">
 </picture>
-
-A **room** puts several machines on one sketch. They find each other by a name you make up, with no server and no address to configure. It is for a wall or a space where several machines have to move together. The shared clock uses Flaviu Cristian's method from 1989. A machine asks the one that keeps the time, and allows for half the time the answer took to arrive.
 
 ```swift
 import OllinRoom
@@ -512,19 +511,19 @@ withState {
 }
 ```
 
-A seat differs from the `visibleRegion` of the two-machine wall. `visibleRegion` cuts a finished canvas for a projector that is hung where it is hung. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same part.
+A seat differs from the `visibleRegion` of the two-machine wall. `visibleRegion` cuts a finished canvas for a projector in a fixed place. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same part.
 
-**The parameters.** `room.shareAll()` makes every `@Param` travel, and `room.share("speed", "hue")` picks some. Change a parameter on any machine, and the others follow within a frame. If two people move one parameter at the same moment, the room's clock settles it, and the later change wins everywhere.
+**The parameters.** `room.shareAll()` makes every `@Param` travel, and `room.share("speed", "hue")` picks some. Change a parameter on any machine, and the others take the change on their next frame after it arrives. If two people move one parameter at the same moment, the room's clock settles it, and the later change wins everywhere.
 
 Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc):
 
 ```swift
-room.send("bird", position, reliable: false)      // sent every frame
+room.send("bird", position, reliable: false)      // your bird's Vector2, every frame
 let bird = room.point("bird", default: center)     // the latest one
 for message in room.messages() { }                 // or every one that arrived
 ```
 
-The first time a sketch opens a room, the system asks to use the local network. A sketch run from a terminal gets the terminal's answer, so grant it once at the desk before the show. Anyone on that network who knows the room name can join. That suits a show network, and on a network you do not control, give the room a `passcode:`.
+`reliable: false` sends it the quick way, which suits a value sent every frame, since the next one matters more than one that goes missing. The first time a sketch opens a room, the system asks to use the local network. A sketch run from a terminal gets the terminal's answer, so grant it once at the desk before the show. Anyone on that network who knows the room name can join. That suits a show network, and on a network you do not control, give the room a `passcode:`.
 
 You do not need a second machine to see it work. `RoomLoopback` puts two rooms in one sketch. The left panel sends where the pointer is, the right panel draws only what arrived, and holding the space bar cuts the connection.
 
@@ -538,7 +537,7 @@ Once the wall of bars is up, you are no longer in front of it. Three things repo
 
 ### The log
 
-An unattended run writes a line when it starts, when it resumes, and when the machine wakes or the displays change. The schedule and the watch write their own lines. It is for finding out on Monday what happened over the weekend. Every server keeps a log for the same reason, a habit Unix made standard with syslog, which Eric Allman wrote in the 1980s. Send the wall's log to a file:
+An unattended run writes a line when it starts, when it resumes, and when the machine wakes or the displays change. The schedule and the watch write their own lines. It is for finding out on Monday what happened over the weekend. Servers keep logs for the same reason, a habit Unix made standard with syslog, which Eric Allman wrote in the 1980s. Send the wall's log to a file:
 
 ```sh
 swift run OllinRun MySketches/WallPiece.swift >> ~/wall.log 2>&1
@@ -549,13 +548,18 @@ swift run OllinRun MySketches/WallPiece.swift >> ~/wall.log 2>&1
 ```
 Ollin installation [2026-08-15 08:41:45]: running unattended; Command-K lines it up, Command-Q quits
 Ollin installation [2026-08-15 08:41:45]: resumed the run saved at 2026-08-15 08:40:12 (frame 4098, 68s in)
-Ollin installation [2026-08-15 23:00:00]: dark until 06:00
-Ollin installation [2026-08-16 06:00:00]: on screen until 23:00
+Ollin installation [2026-08-15 23:00:05]: dark until 06:00
+Ollin installation [2026-08-16 06:00:05]: on screen until 10:00
 ```
 
 ### Tuning it from the floor: `RemoteInspector`
 
-The sketch is on the wall and the Mac is behind it. The place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. A `RemoteInspector` serves every parameter the sketch declares to a web page, so your phone becomes the inspector. It is the same inspector as the Mac's, with each control drawn for a touch screen.
+The sketch is on the wall and the Mac is behind it. The place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. A `RemoteInspector` serves every parameter the sketch declares to a web page, so your phone becomes the inspector. It is the same inspector as the Mac's, with each control drawn for a touch screen. It works like the settings page a network printer or a lighting console serves, which any browser on the network can open.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/TuningFromTheFloor-dark.jpg">
+  <img src="Images/41-Installations/TuningFromTheFloor.jpg" alt="On the left a card of parameter declarations; on the right a phone holding the page they become, with a frame rate strip at the top and a slider, a switch, a color well, a menu, an XY pad and a stepper below it; two arrows between them, one each way" width="680">
+</picture>
 
 ```swift
 import OllinRemote
@@ -568,16 +572,11 @@ override func setup() {
 }
 ```
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/TuningFromTheFloor-dark.jpg">
-  <img src="Images/41-Installations/TuningFromTheFloor.jpg" alt="On the left a card of parameter declarations; on the right a phone holding the page they become, with a frame rate strip at the top and a slider, a switch, a color well, a menu, an XY pad and a stepper below it; two arrows between them, one each way" width="680">
-</picture>
-
 On launch, the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control, and the kind of control follows the property's type, as it does in the inspector. Sliders take the width of the screen, a `style: .pad` vector becomes an XY pad, and switches, menus, and a color picker cover the rest. The groups match the inspector's. A strip at the top carries the frame rate, the clock, and the frame count. So you can read the sketch's health from the floor.
 
 Changes go both ways. Drag a slider on the phone, and the value lands before the next frame, where the inspector's own changes land. Change a parameter on the Mac, and the phone follows. So you can stand in front of the wall, look at the sketch, and turn the speed until it looks right.
 
-Anyone on the same network who has the address can move the parameters. On your studio Wi-Fi or a private show network, that is what you want. On a network you do not control, turn it off before you leave.
+Anyone on the same network who has the address can move the parameters. On your studio Wi-Fi or a private show network, that is what you want. On a network you do not control, remove the `extend(RemoteInspector())` line before you leave the sketch running.
 
 [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift) serves a tunable aurora with every kind of control. It draws its own address at the bottom of the canvas, so the sketch tells you how to reach it:
 
@@ -605,9 +604,9 @@ override func draw() {
 }
 ```
 
-You need a broker somewhere. A house that runs a home automation system already has one, and its address is what goes in `host:`. On your own Mac, install one with Homebrew, as [Chapter 40](40-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) did for `xcodegen`. `brew install mosquitto` and then `mosquitto -v` start a broker, which is enough to build against.
+You need a broker somewhere. A house that runs a home automation system already has one, and its address is what goes in `host:`. On your own Mac, install one with Homebrew, as [Chapter 40](40-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) did for `xcodegen`. `brew install mosquitto` and then `mosquitto -v` start a broker, which is enough to build against. The sketch then reaches it with `MQTTClient(host: "localhost")`.
 
-A subscription is a filter that can match many topics, through two wildcards. `+` stands for exactly one level of the topic, and `#` for every level from there down. So `home/+/temperature` matches the kitchen and the hall. A trailing `#` also matches its own parent, so `home/#` matches `home` itself. No wildcard reaches a topic that starts with `$`, which is where a broker keeps its own statistics.
+A subscription is a filter that can match many topics, through two wildcards. `+` stands for a single level of the topic, and `#` for every level from there down. So `home/+/temperature` matches the kitchen and the hall. A trailing `#` also matches its own parent, so `home/#` matches `home` itself. No wildcard reaches a topic that starts with `$`, which is where a broker keeps its own statistics.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/TopicsAndFilters-dark.jpg">
@@ -626,13 +625,13 @@ let bus = MQTTClient(host: "192.168.1.20",
                                     text: "gone", retains: true))
 ```
 
-If the machine loses power, the broker notices the silence within 45 seconds and publishes `gone` to `gallery/wall/status`, everywhere on the network. Call `disconnect()` on the way out, and the broker throws the will away instead, because the sketch left on purpose. So the building can tell whether your sketch is alive without anyone walking to the wall.
+If the machine loses power, the broker notices the silence within 45 seconds of the last message. The wait is one and a half times the keep-alive, a check the client sends every 30 seconds by default. The broker then publishes `gone` to every device subscribed to `gallery/wall/status`. Call `disconnect()` on the way out, and the broker throws the will away instead, because the sketch left on purpose. So the building can tell whether your sketch is alive without anyone walking to the wall.
 
 The second is what happens when the network drops for a moment. The client reconnects on its own. It waits a quarter of a second at first and doubles the wait each time, up to eight seconds. So a broker that is restarting is not flooded with attempts. It puts every subscription back when it returns, and sends again anything at `.atLeastOnce` that was never confirmed. `bus.connectionCount` counts how many times the broker has accepted the client. A log that watches that number sees a dropped connection, even one that lasted less than a frame.
 
 ## Where this comes from
 
-DMX512 was standardized by the United States Institute for Theatre Technology in 1986, and it is still what a lighting console speaks. It has lasted by being simple: 512 numbers, sent over and over, with nothing to negotiate. The two ways this chapter puts it on a network came later: Art-Net from Artistic Licence, and sACN as ANSI E1.31. The rest of the chapter uses the usual answers for software that runs unattended. Bound the step, write down what you can lose, and restart when you stop. The families' entries name their own sources, and full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+DMX512 was standardized by the United States Institute for Theatre Technology in 1986, and it is still what a lighting console speaks. It has lasted by being simple: 512 numbers, sent over and over, with nothing to negotiate. The two ways this chapter puts it on a network came later: Art-Net from Artistic Licence, and sACN as ANSI E1.31. The rest of the chapter uses the usual answers for software that runs unattended. Bound the step, write down what you can lose, and start again when it stops. The families' entries name their own sources, and full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -643,7 +642,7 @@ DMX512 was standardized by the United States Institute for Theatre Technology in
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what devices write in a payload, the two service levels, retained values, the last will, and reconnecting.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and who else can reach them.
 - [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared parameters, the clock they agree on and what it costs, seats, and who can join.
-- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/MQTTRoom`](../Examples/Integration/MQTTRoom/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
+- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/LaserPreview`](../Examples/Integration/LaserPreview/Sketch.swift), [`Examples/Integration/MQTTRoom`](../Examples/Integration/MQTTRoom/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
 
 ## Where to go from here
 

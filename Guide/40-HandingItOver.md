@@ -64,7 +64,7 @@ ollin Sources/Ripple/Sketch.swift     # the same file, reloading as you save
 
 The script signs the saver for this machine. A **signature** is a seal that says who built a program and that nobody changed it since. Another Mac refuses a saver signed only for yours. Handing one to somebody else needs a Developer ID and notarization, the same as an app, which [An app to hand somebody](#an-app-to-hand-somebody-signing-and-notarizing) explains. [The reference page](../Docs/Output/ScreenSaver.md) has the commands for a saver.
 
-The system also makes a separate saver for each display. Two screens run two copies of your sketch, each from its own first frame, and they share nothing. A sketch that has to line up across two screens belongs in an installation, and [Chapter 41](41-Installations.md#several-displays-one-machine) spreads one canvas over every display.
+The system also makes a separate saver for each display. Two screens run two copies of your sketch, each from its own first frame, and they share nothing. A sketch that has to line up across two screens belongs in an installation, and [Chapter 41](41-Installations.md#several-displays-one-machine-spanning) spreads one canvas over every display.
 
 ## Wallpaper and a menu-bar strip
 
