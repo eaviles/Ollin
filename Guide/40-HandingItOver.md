@@ -117,7 +117,7 @@ Open the app once, so the system sees the widget inside it. Then Control-click t
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/AQuarterHourApart-dark.jpg">
-  <img src="Images/40-HandingItOver/AQuarterHourApart.jpg" alt="Four square tiles in a row, each a dark disc with a colored ring filled to a different amount, labeled 14:00, 14:15, 14:30 and 14:45, with arrows between them marked 15 min and nothing runs here; below, two cards, one listing what time, deltaTime and date mean here, the other explaining why the clock is the day" width="680">
+  <img src="Images/40-HandingItOver/AQuarterHourApart.jpg" alt="Four dark square tiles in a row, labeled 14:00, 14:15, 14:30 and 14:45, each holding a ring that fills clockwise a quarter more than the last, with a hand pointing to where the fill ends, and arrows between them marked 15 min and nothing runs here; below, two cards, one with the widgetTimeline line and what time, deltaTime and date mean here, the other explaining why the clock is the day and not a stopwatch" width="680">
 </picture>
 
 A widget draws a handful of pictures ahead of time. The system keeps them and puts each one up when its moment comes, and nothing runs in between. In the figure that is four pictures an hour. A person sees the difference between two pictures rather than any motion between them.
@@ -435,7 +435,7 @@ An **extension package** is a Swift package that depends on Ollin and adds calls
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/40-HandingItOver/ExtensionShape-dark.jpg">
-  <img src="Images/40-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone holding one file that adds drawSpiral to Sketch, on the right a sketch that imports it and calls drawSpiral, with the spiral it draws underneath. An arrow between them is labeled import" width="680">
+  <img src="Images/40-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone whose Sources folder adds drawSpiral to Sketch, on the right somebody else's sketch that imports it and calls drawSpiral, with the spiral it draws underneath. A line between them is labeled import above and nothing registers below" width="680">
 </picture>
 
 This works because `drawCircle` is a method on `Sketch`, and yours can be one too:
