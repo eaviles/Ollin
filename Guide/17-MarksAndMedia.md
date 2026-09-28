@@ -6,7 +6,7 @@
 
 <img src="Images/17-MarksAndMedia/Monogram.jpg" alt="The initials OL in navy ink over a spray of gold, inside the pale core of a heart of marbled rings in navy, red, gold, and green, on a combed and feathered marbled sheet framed by a dotted rule" width="560">
 
-This chapter teaches strokes with a hand in them. A line from a machine is one width from end to end. A mark from a hand swells and thins, answers to speed and pressure, and breaks into the prints of a brush. You shape a finished path's width with a profile, and you read the hand while it paints with stroke dynamics. You stamp a tip along the path with a brush, and you cut a line into dashes. Then you pour a marbled sheet, ink floated on water and raked, built from outlines that exact transforms bend. All of it stays vector geometry, so a painted mark exports as the region it covers. The sketch at the end writes your initials into the pale heart of a marbled sheet. The pen is a broad nib over a spray of gold, and a dotted rule frames the sheet. After it comes one more medium the monogram does not use: watercolor, pigment made from one polygon deformed and stacked.
+Machines draw a line one width from end to end, while a hand swells, thins, and answers to speed and pressure. This chapter teaches strokes with a hand in them, from width profiles to brushes and dashes, and a marbled sheet poured from bent outlines. The monogram above writes your initials in a broad nib into the pale heart of that sheet. After it comes watercolor, pigment made from one polygon deformed and stacked.
 
 ## A width that changes along the path: strokeProfile
 
