@@ -86,10 +86,7 @@ cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'Ren
 2065dd8af5c4  Guide/21-PicturesYouSolve.md:250  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
 a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
-48a71edbd6ce  Guide/22-IteratedForms.md:168  cannot find 'start' in scope
-f396671e3e8e  Guide/22-IteratedForms.md:188  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type 'Contour'
-561972108ab0  Guide/22-IteratedForms.md:308  reference to member 'domainColoring' cannot be resolved without a contextual type
-43995cc53f0c  Guide/22-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
+70e92ab22ab8  Guide/22-IteratedForms.md:455  reference to member 'domainColoring' cannot be resolved without a contextual type
 cb9b9aef4027  Guide/24-ParticleSimulations.md:110  cannot assign value of type 'Physarum' to type 'Particles'
 06dc0b77369e  Guide/24-ParticleSimulations.md:128  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
 40985baa20ae  Guide/24-ParticleSimulations.md:150  cannot assign value of type 'ParticleLenia' to type 'SimField'

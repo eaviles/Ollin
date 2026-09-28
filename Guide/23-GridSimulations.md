@@ -248,7 +248,7 @@ let circuit = ["#tH######.........",
                "#.......##########",
                "#.......#.........",
                "#########........."]
-let key: [Character: WireworldCell] = [".": .empty, "#": .conductor, "t": .tail, "H": .head]
+let legend: [Character: WireworldCell] = [".": .empty, "#": .conductor, "t": .tail, "H": .head]
 
 override func setup() {
     board = makeSimField(.wireworld(), scale: 0.1)   // ten canvas pixels to a cell
@@ -261,7 +261,7 @@ override func draw() {
         if frameCount == 1 {                          // stamp the circuit once
             for (y, row) in circuit.enumerated() {
                 for (x, ch) in row.enumerated() where ch != "." {
-                    fill(key[ch]!.color)
+                    fill(legend[ch]!.color)
                     drawRect(Double(x) * 10, Double(y) * 10, 10, 10)
                 }
             }
@@ -271,7 +271,7 @@ override func draw() {
 }
 ```
 
-> **Swift note.** `key` is a dictionary, a table from one value to another, written as pairs in brackets. Its keys are `Character` values, and `row.enumerated()` walks a string one character at a time, so `key[ch]` looks the cell up by the letter. The lookup answers an optional, since a letter might be missing, and the `!` takes the answer as [Chapter 14](14-FieldsAndFlow.md) did. `where ch != "."` on the loop is [Chapter 11](11-ForcesAndPhysics.md)'s filter, and `SimField!` is the same shape as [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!`.
+> **Swift note.** `legend` is a dictionary, a table from one value to another, written as pairs in brackets. Its keys are `Character` values, and `row.enumerated()` walks a string one character at a time, so `legend[ch]` looks the cell up by the letter. It is not called `key` because every sketch already has a `key`, the last key pressed, and a stored property of that name would collide with it. The lookup answers an optional, since a letter might be missing, and the `!` takes the answer as [Chapter 14](14-FieldsAndFlow.md) did. `where ch != "."` on the loop is [Chapter 11](11-ForcesAndPhysics.md)'s filter, and `SimField!` is the same shape as [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!`.
 
 The field starts empty and you draw the circuit. The usual way in is text, one character per cell, which is how these circuits have been shared since the 1980s. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around, and the electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
 
