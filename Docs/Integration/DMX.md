@@ -107,7 +107,7 @@ The first time a sketch sends to hardware on the local network, macOS asks for *
 
 ```swift
 let dmx = DMXSender()                            // or unicast to your controller
-let leds = LEDMap(sender: dmx)
+lazy var leds = LEDMap(sender: dmx)              // lazy, because it reads dmx
 
 override func setup() {
     leds.addStrip(from: Vector2(100, 540), to: Vector2(980, 540), leds: 144)

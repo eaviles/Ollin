@@ -178,7 +178,7 @@ A wall of LEDs has too many lights to fill by hand. An `LEDMap` lays the LEDs ov
 import OllinDMX
 
 let dmx = DMXSender()                     // or DMXSender(artNet:) for one controller
-let leds = LEDMap(sender: dmx)
+lazy var leds = LEDMap(sender: dmx)       // lazy, because it reads dmx
 
 override func setup() {
     leds.addStrip(from: Vector2(100, 540), to: Vector2(980, 540), leds: 144)

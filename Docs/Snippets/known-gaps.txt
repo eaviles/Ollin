@@ -902,7 +902,7 @@ d850fab201e9  Docs/Integration/Controller.md:171  cannot find 'controller' in sc
 340c677a7fe1  Docs/Integration/Controller.md:225  cannot find 'controller' in scope
 9ba26d0ee7f0  Docs/Integration/Controller.md:7  '@main' attribute cannot be applied to this declaration
 d9384dec8a99  Docs/Integration/Controller.md:80  cannot find 'position' in scope
-a951ba918dc4  Docs/Integration/DMX.md:108  cannot find 'DMXSender' in scope
+56c3e2b77c51  Docs/Integration/DMX.md:108  cannot find 'LEDMap' in scope
 7a4ee38fcdce  Docs/Integration/DMX.md:127  expected parameter name followed by ':'
 9d02aa38e111  Docs/Integration/DMX.md:159  cannot find type 'DMXUniverse' in scope
 1d000be35de5  Docs/Integration/DMX.md:175  cannot find 'DMXReceiver' in scope
