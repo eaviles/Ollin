@@ -3,14 +3,14 @@
 // Guide payoff (Chapter 29): the yard. A truck on four sprung wheels, a figure
 // on its feet, and a banner strung between two posts, all in the same world as
 // the crates they knock about. None of the three is a rigid body, and each is
-// held up by a different solver.
+// held up by a different solver. The arrows drive the truck and W, A, S and D
+// walk the figure, so a render with no keys held shows both standing where
+// they settled while the wind works the banner.
 import Foundation
 import Ollin
 import OllinPhysics
 
 final class Yard: Sketch {
-    @Param("Throttle", 0.0...1.0) var throttle = 0.55
-    @Param("Steering", -1.0...1.0) var steering = -0.35
     @Param("Wind", 0.0...14.0) var wind = 7.0
 
     let world = World3D()
@@ -27,21 +27,22 @@ final class Yard: Sketch {
     override func setup() {
         world.ground = 0
 
-        // A real floor body, not just `world.ground`. A character walks on
-        // geometry rather than on the implicit plane, so without this one it
-        // falls forever and never appears.
+        // A floor body for the drawing loop to draw. `world.ground` already
+        // holds everything up, but it stays out of `world.bodies`, so the
+        // loop below would never see it.
         let floor = world.addBody(.box(width: 34, height: 0.4, depth: 34),
                                   at: Vector3(0, -0.2, 0), kind: .static)
         floor.userData = Color(hex: 0x2C3340)
 
-        // Four wheels: the front pair steers, the back pair is driven. The
-        // spring is shorter than the default so the body sits down on its
-        // wheels rather than up on stilts.
+        // Four wheels: the front pair steers, the back pair is driven and
+        // takes the hand brake. The spring is shorter than the default so the
+        // body sits down on its wheels rather than up on stilts.
         let wheels = [Vector3(0.85, -0.28, 1.2), Vector3(-0.85, -0.28, 1.2),
                       Vector3(0.85, -0.28, -1.2), Vector3(-0.85, -0.28, -1.2)]
             .enumerated().map { index, mount -> Wheel3D in
                 let wheel = Wheel3D.wheel(at: mount, radius: 0.38, width: 0.28,
-                                          steers: index < 2, driven: index >= 2)
+                                          steers: index < 2, driven: index >= 2,
+                                          handBrake: index >= 2)
                 wheel.suspensionLength = 0.26
                 wheel.suspensionTravel = 0.2
                 return wheel
@@ -84,16 +85,20 @@ final class Yard: Sketch {
         perspective(eye: Vector3(7.4, 5.2, 10.4), target: Vector3(-1.1, 1.3, -0.8),
                     fieldOfView: 0.86)
 
-        truck?.throttle = throttle
-        truck?.steering = steering
+        // The arrows drive the truck, and space pulls its hand brake.
+        if let truck {
+            truck.throttle = isKeyDown(.upArrow) ? 1 : (isKeyDown(.downArrow) ? -1 : 0)
+            truck.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
+            truck.handBrake = isKeyDown(" ") ? 1 : 0
+        }
 
-        // `move` takes a velocity and the character keeps it, so a figure told
-        // to walk one way walks that way until something stops it. Steering it
-        // back toward a home point is what keeps this one in the yard.
+        // W, A, S and D walk the figure. `walk(at:)` keeps the velocity it is
+        // given, so letting go of the keys has to hand it zero.
         if let pacer {
-            let home = Vector3(-4.4, pacer.position.y, 0.4)
-            let back = home - pacer.position
-            pacer.walk(at: Vector3(back.x * 0.9, 0, back.z * 0.9 + sin(time * 0.8) * 0.9))
+            let ahead = (isKeyDown("w") ? 1.0 : 0) - (isKeyDown("s") ? 1.0 : 0)
+            let across = (isKeyDown("d") ? 1.0 : 0) - (isKeyDown("a") ? 1.0 : 0)
+            let heading = Vector3(across, 0, -ahead)
+            pacer.walk(at: heading.length > 0 ? heading.normalized * 2.5 : .zero)
         }
         banner?.applyForce(Vector3(sin(time * 1.3) * wind, 0, wind * 0.4))
         world.advance(by: deltaTime)
