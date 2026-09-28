@@ -226,14 +226,14 @@ swift run OllinLive Examples/Motion/Automation/Sketch.swift
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/39-Performing/DirectingByHand-dark.jpg">
-  <img src="Images/39-Performing/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles around the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane that names its rule and draws no keys, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
+  <img src="Images/39-Performing/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve through three keys, with two yellow handles shaping the curve that leaves the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane that names its rule and draws no keys, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
 </picture>
 
-Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. In the figure, Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it shows a function mark instead. [Writing the parameter as a rule](#writing-the-parameter-as-a-rule-formulas) explains rules.
+The sketch in the figure has four parameters, Radius, Hue, Ground, and Lit, and the inspector shows them beside the panel. Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it shows a function mark instead. [Writing the parameter as a rule](#writing-the-parameter-as-a-rule-formulas) explains rules.
 
 Placing a key takes three moves. Drag the playhead along the ruler, or step a frame at a time, and the picture follows. Set a parameter in the inspector until the frame looks right. Then click the diamond in that parameter's row, and a key lands at the playhead holding that value. A hollow diamond starts a track. Clicking the diamond while the playhead stands on a key takes that key away.
 
-The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click a key to select it and pick the curve that leaves it, and a Bezier grows two handles you shape by eye. Double-click a key to remove it. Option-drag the ruler to choose a stretch of time, and the loop button repeats it while you work. That stretch belongs to the transport alone, the tinted band in the figure, and it never changes the tracks.
+The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch lane steps between its two values. A lane worked out from a rule, like Lit's, names the rule and draws no keys. Drag a key to move it in time. Click a key to select it and pick the curve that leaves it, and a Bezier grows two handles you shape by eye. Double-click a key to remove it. Option-drag the ruler to choose a stretch of time, and the loop button repeats it while you work. That stretch belongs to the transport alone, the tinted band in the figure, and it never changes the tracks.
 
 Everything you place lands in a file beside the sketch, named after it, such as `Finale.automation.json`. `--automation` reads that file, and so do OllinLive's own exports. The live host reads it back on launch and across every reload, so the keys survive the edit loop. If your `setup()` writes a track for the same parameter, the code's track wins, because the code is the source of truth. [The parameter timeline](../Docs/Tools/Timeline.md) has the full tour.
 
@@ -314,7 +314,8 @@ Two spellings differ from what you might write first. In a formula `^` raises to
 A point holds two numbers, and a color holds four. A rectangle holds four of its own. Each part can take its own rule, named where you write it. Use it to move one part by rule and keep the others by hand. Here `box` is a `Rectangle` parameter and `eye` a point parameter:
 
 ```swift
-drive($box, width: "620 + sin(time * tau / 7) * 220")
+drive($box, width: "620 + sin(time * tau / 7) * 220",
+            height: "400 + cos(time * tau / 7) * 120")
 drive($eye, x: "box.x + box.width / 2", y: "height / 2")
 ```
 
@@ -323,7 +324,7 @@ drive($eye, x: "box.x + box.width / 2", y: "height / 2")
   <img src="Images/39-Performing/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
-The parts you leave out keep their values. The figure's rectangle changes its width and height, while its `x` and `y` stay where they were set. You can go on dragging them while the size plays.
+The parts you leave out keep their values. Here `x` and `y` have no rule, so the corner stays where it was set while the width and height play, as in the figure. You can still drag the corner by hand.
 
 One part of a parameter is a name too, spelled `parameter.part`, and `eye` above follows the rectangle it sits in that way. The name works whether keys carry that part or another rule works it out.
 

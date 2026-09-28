@@ -66,7 +66,7 @@ A sketch that moves leaves as video or as a GIF, encoded straight from the frame
 
 ```sh
 swift run OllinLive MySketches/YourSketch.swift --export-video clip.mp4 --seconds 12
-swift run OllinLive MySketches/YourSketch.swift --export-gif clip.gif --seconds 4 --gif-width 540
+swift run OllinLive MySketches/YourSketch.swift --export-gif loop.gif --seconds 4 --gif-width 540
 ```
 
 Reach for video first. A **codec** is the method a video file is compressed with, and `h264`, `hevc`, and ProRes are three of them. The default, `h264`, plays everywhere. `--codec hevc` gives better quality for the same size when the file needs to be smaller. The two ProRes codecs are for editing programs rather than for sharing. `--bitrate`, in megabits a second, sets the file size, and a 1080-pixel square looks clean at about 10 to 15 in `h264`.
@@ -300,14 +300,14 @@ Here `MySketch` stands for your own sketch's class. `OllinApp.image(of:frame:)` 
 
 ### Drawing finer than you save: supersampling
 
-`--render-scale` sets quality the other way from `--render-quality`. `--render-scale 2` draws the frame at twice the width and twice the height, then averages every block of four samples back into one pixel. The file is the size it always was, and more samples went into each pixel. Drawing more samples than pixels and averaging them is called **supersampling**, one of the oldest ways to smooth edges in computer graphics.
+`--render-scale` sets quality the other way from `--render-quality`. `--render-scale 2` draws the frame at twice the width and twice the height, then averages every block of four drawn pixels back into one. The file is the size it always was, and each of its pixels is the average of four. Drawing a picture larger than you keep it and averaging it down is called **supersampling**. It is one of the oldest ways to smooth edges in computer graphics.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SamplingFiner-dark.png">
   <img src="Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one drawn pixel each and render scale 4 with sixteen drawn pixels averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
 </picture>
 
-The difference shows along the edges of filled shapes and the letters of outline text. Those reach the screen as triangles, and every pixel along an edge decides how much of one it covers. More samples make a finer decision. Circles, rectangles, arcs, and every stroked line work out their coverage by formula instead. They are already as sharp as they get, so the setting does nothing for them, and the contour chart's poster gains nothing from it.
+The difference shows along the edges of filled shapes and the letters of outline text. Those reach the screen as triangles, and every pixel along an edge decides how much of one it covers. A drawn pixel already takes several samples of the triangles, and a larger drawing multiplies them, so the decision gets finer. Circles, rectangles, most arcs, and every stroked line work out their coverage by formula instead. They are already as sharp as they get, so the setting does nothing for them, and the contour chart's poster gains nothing from it.
 
 The cost is four times the pixels at 2 and sixteen times at 4, the highest setting. It is too slow for a window that owes you a frame every sixteen milliseconds, and cheap for a poster:
 
@@ -480,21 +480,21 @@ The chart's SVG goes to a plotter's own software, which plans the moves. Other m
 
 ### Driving the machine itself: G-code
 
-**G-code** is a program of moves in millimeters, the language many hobby plotters, laser cutters, and CNC routers run. A CNC router is a cutter a computer drives. G-code grew out of the numerical control of machine tools in the 1950s and was standardized as RS-274. Use it to drive the machine without its own software in between. It comes from the numerical control of machine tools, and nearly every such machine reads a version of it. `--export-gcode` writes one from the same recorded frame as the SVG:
+**G-code** is a program of moves in millimeters, the language many hobby plotters, laser cutters, and CNC routers run. A CNC router is a cutter a computer drives. G-code grew out of the numerical control of machine tools in the 1950s and was standardized as RS-274. Nearly every such machine reads a version of it. Use it to drive the machine without its own software in between. `--export-gcode` writes one from the same recorded frame as the SVG:
 
 ```sh
 swift run OllinLive MySketches/Plate.swift --export-gcode plot.gcode
 swift run OllinLive MySketches/Plate.swift --export-gcode cut.gcode --gcode-machine laser
 ```
 
-A machine needs real units, so the export asks for a physical width. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer settings: the pen lift, a laser's power and passes, a router's depth per pass. A named sheet saves the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side, and `--gcode-paper a4` does the same from the command line. Only line work travels. A stroke is drawn along its centerline, and a fill gives its outline, with `--hatch` shading fills as it does for SVG.
+A machine needs real units, so the export asks for a physical width. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer settings: the pen lift, a laser's power and passes, a router's depth per pass. A named sheet saves the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side. On the command line, `--gcode-paper a4` does the same. Only line work travels. A stroke is drawn along its centerline, and a fill gives its outline, with `--hatch` shading fills as it does for SVG.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/OnTheSheet-dark.jpg">
   <img src="Images/38-FinishingASketch/OnTheSheet.jpg" alt="Four sheets of paper drawn to one scale, A3 lying wide, A4, A4 again with a tall canvas holding two roses, and US letter, each with its rose curves planned inside its margin and the millimeters they came to printed under it: 267 by 267, 190 by 190, 156 by 277, and 196 by 196" width="680">
 </picture>
 
-The figure plans a drawing of rose curves onto four sheets and prints the size each came to. On A4 with the default margin, the drawing is 190 millimeters square, the sheet's width less ten on each side. The drawing is held to the sheet's height as well as its width. So a canvas much taller than it is wide, 1080 by 1920 here, scales down to the 277 millimeters an A4 leaves for height. It comes out 156 wide. The drawing starts at the margin's corner, so a narrower fit sits at the left of the page. The [G-code reference](../Docs/Output/GCode.md) lists every named sheet, and `DXF(paper:)` sizes a shop drawing the same way.
+The figure plans a drawing of rose curves onto four sheets and prints the size each came to. On A4 with the default margin, the drawing is 190 millimeters square, the sheet's width less ten on each side. The A3 sheet lies wide with a 15-millimeter margin, which `margin: 15` sets in code and `--gcode-margin 15` sets on the command line. The drawing is held to the sheet's height as well as its width. So a canvas much taller than it is wide, 1080 by 1920 here, scales down to the 277 millimeters an A4 leaves for height. It comes out 156 wide. The drawing starts from the margin's lower-left corner, the corner a machine counts from. So a narrower fit sits at the left of the sheet, and a shorter one sits at the bottom. The [G-code reference](../Docs/Output/GCode.md) lists every named sheet, and `DXF(paper:)` sizes a shop drawing the same way.
 
 The exporter plans the route before it writes a move. Open paths whose ends touch merge, so the pen stays down across them. Then the paths are reordered, each one starting near where the last one ended, to keep the moves with the pen up short:
 
