@@ -42,11 +42,15 @@ final class Decibels: Sketch {
             fill(marked ? theme.accent : theme.ink)
             textSize(16)
             textAlign(.right, .middle)
-            drawText(row == 0 ? "0 dB" : "\(Int(db)) dB", left - 24, y + rowHeight / 2)
+            drawText(row == 0 ? "0 dB" : "−\(Int(-db)) dB", left - 24, y + rowHeight / 2)
             textAlign(.left, .middle)
             fill(theme.muted)
             textSize(14)
             drawText("\((level * 1000).rounded() / 1000)", left + full * level + 10, y + rowHeight / 2)
+            if marked {
+                fill(theme.accent)
+                drawText("a mix usually sits below this", left + full * level + 80, y + rowHeight / 2)
+            }
         }
 
         diagramCaption("each step of 6 decibels down halves the level, near enough", at: 488, theme: theme)

@@ -65,18 +65,20 @@ final class LinearLight: Sketch {
         fill(theme.ink)
         drawCircle(center: point(fifth, 0.5), radius: 5)
 
-        textSize(14)
-        fill(theme.accent)
-        textAlign(.left, .bottom)
-        drawText("half the light is stored as 0.74", point(0.5, half).x + 10, point(0.5, half).y - 6)
-        fill(theme.muted)
-        textAlign(.left, .top)
-        drawText("a stored 0.5 is a fifth of the light", point(fifth, 0.5).x + 10, point(fifth, 0.5).y + 6)
-
         fill(theme.muted)
         textSize(13)
         textAlign(.center, .top)
         drawText("light", r.x + r.width / 2, r.y + r.height + 8)
+
+        // A key under the panel, so no note sits on the curve or the guides.
+        textSize(14)
+        textAlign(.left, .middle)
+        fill(theme.accent)
+        drawCircle(r.x + 6, r.y + r.height + 42, 5)
+        drawText("half the light is stored as 0.74", r.x + 20, r.y + r.height + 42)
+        fill(theme.ink)
+        drawCircle(r.x + 6, r.y + r.height + 64, 5)
+        drawText("a stored 0.5 is a fifth of the light", r.x + 20, r.y + r.height + 64)
     }
 
     func stripsPanel(_ r: Rectangle) {
@@ -95,6 +97,14 @@ final class LinearLight: Sketch {
             fill(Color(white: encoded(t)))
             drawRect(x, top2, cell, 70)
         }
+
+        // An outline, so the white end shows on light paper and the black on dark.
+        noFill()
+        stroke(theme.border)
+        strokeWeight(1)
+        drawRect(r.x + 20, top1, cell * Double(steps), 70)
+        drawRect(r.x + 20, top2, cell * Double(steps), 70)
+        noStroke()
 
         fill(theme.ink)
         textSize(15)

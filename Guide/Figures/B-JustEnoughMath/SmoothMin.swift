@@ -81,7 +81,7 @@ final class SmoothMin: Sketch {
         textSize(14)
         fill(theme.accent)
         textAlign(.left, .middle)
-        drawText("k / 4", tie.x + 8, (tie.y + dipped.y) / 2)
+        drawText("k / 4", tie.x + 8, dipped.y - 20)
         textSize(15)
         fill(theme.ink)
         textAlign(.center, .bottom)

@@ -6,7 +6,7 @@
 // pulls back in proportion to the stretch, and the damping pushes against
 // the velocity. A little damping rings for a long time, the right amount
 // settles without overshooting, and a lot crawls back slowly. The line
-// through each panel is the rest length.
+// through each panel is the rest length, labeled in the middle panel.
 import Ollin
 import OllinDiagram
 
@@ -62,10 +62,12 @@ final class Damping: Sketch {
         strokeWeight(3)
         drawPolyline(points)
 
-        noStroke()
-        fill(theme.muted)
-        textSize(13)
-        textAlign(.right, .bottom)
-        drawText("rest", r.x + r.width - 6, rest - 4)
+        if accent {
+            noStroke()
+            fill(theme.muted)
+            textSize(13)
+            textAlign(.left, .top)
+            drawText("rest length", r.x + 6, rest + 4)
+        }
     }
 }

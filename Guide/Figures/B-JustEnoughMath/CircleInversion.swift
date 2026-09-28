@@ -14,13 +14,13 @@ final class CircleInversion: Sketch {
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    let center = Vector2(330, 255)
+    let mirrorCenter = Vector2(330, 255)
     let radius = 110.0
 
     /// Inversion in the mirror circle: same direction, distance r² / d.
     func inverted(_ p: Vector2) -> Vector2 {
-        let offset = p - center
-        return center + offset * (radius * radius / offset.lengthSquared)
+        let offset = p - mirrorCenter
+        return mirrorCenter + offset * (radius * radius / offset.lengthSquared)
     }
 
     override func draw() {
@@ -30,10 +30,10 @@ final class CircleInversion: Sketch {
         noFill()
         stroke(theme.accent)
         strokeWeight(3)
-        drawCircle(center: center, radius: radius)
+        drawCircle(center: mirrorCenter, radius: radius)
         noStroke()
         fill(theme.ink)
-        drawCircle(center: center, radius: 4)
+        drawCircle(center: mirrorCenter, radius: 4)
 
         pointPair()
         squarePair()
@@ -43,13 +43,13 @@ final class CircleInversion: Sketch {
     }
 
     func pointPair() {
-        let p = center + Vector2(angle: -.pi / 6, length: 62)
+        let p = mirrorCenter + Vector2(angle: -.pi / 6, length: 62)
         let image = inverted(p)
 
         stroke(theme.ink(0.35))
         strokeWeight(1.5)
         strokeDash([6, 5])
-        drawLine(center, image + (image - center).normalized * 30)
+        drawLine(mirrorCenter, image)
         noStrokeDash()
 
         noStroke()
@@ -63,12 +63,12 @@ final class CircleInversion: Sketch {
         textAlign(.right, .bottom)
         drawText("P, at distance d", p.x - 8, p.y - 8)
         fill(theme.accent)
-        textAlign(.left, .bottom)
-        drawText("its image, at r² / d", image.x + 10, image.y - 6)
+        textAlign(.left, .top)
+        drawText("its image, at r² / d", image.x + 10, image.y + 8)
     }
 
     func squarePair() {
-        let squareCenter = center + Vector2(angle: .pi * 0.8, length: 74)
+        let squareCenter = mirrorCenter + Vector2(angle: .pi * 0.8, length: 74)
         let half = 16.0
         let corners = [Vector2(-half, -half), Vector2(half, -half),
                        Vector2(half, half), Vector2(-half, half)].map { squareCenter + $0 }

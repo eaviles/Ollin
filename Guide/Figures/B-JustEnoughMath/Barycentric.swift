@@ -67,7 +67,7 @@ final class Barycentric: Sketch {
         textSize(15)
         fill(theme.muted)
         label("\(weights.a) of a", at: (p + t.b + t.c) / 3)
-        label("\(weights.b) of b", at: (p + t.c + t.a) / 3)
+        label("\(weights.b) of b", at: (p + t.c + t.a) / 3 + Vector2(10, 0))
         label("\(weights.c) of c", at: (p + t.a + t.b) / 3 + Vector2(0, 10))
     }
 

@@ -18,7 +18,7 @@ final class InverseSquare: Sketch {
     let source = Vector2(70, 250)
     let step = 140.0      // screen distance from one unit of distance to the next
     let unit = 38.0       // side of one cell at distance 1
-    let slant = 0.42      // how far the depth axis leans in the oblique view
+    let slant = 0.6       // how far the depth axis leans in the oblique view
 
     /// A point in the beam: `d` along the axis, `y` up, `z` toward the viewer.
     func screen(_ d: Double, _ y: Double, _ z: Double) -> Vector2 {
