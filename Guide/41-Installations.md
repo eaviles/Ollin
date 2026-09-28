@@ -452,7 +452,7 @@ The sketch is drawn once a frame however many displays it goes on. What grows is
 
 ### Several windows, one world
 
-A sketch can also run as several separate windows that look into one scene. Run it three times, and the three windows on one desk each show their own part of the same world. It is for a desk or a shop window of separate screens that should read as one picture. The windows never talk to each other. Each one reads the time of day, the same trick [Chapter 40](40-HandingItOver.md#the-clock-is-the-time-of-day)'s widget used, so they cannot disagree.
+A sketch can also run as several separate windows that look into one scene. Run it three times, and the three windows on one desk each show their own part of the same world. It is for a desk or a shop window of separate screens that should read as one picture. The windows never talk to each other. Each one reads the time of day, the same trick [Chapter 40](40-HandingItOver.md#a-widgets-clock-the-time-of-day)'s widget used, so they cannot disagree.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/OneWorldManyWindows-dark.jpg">

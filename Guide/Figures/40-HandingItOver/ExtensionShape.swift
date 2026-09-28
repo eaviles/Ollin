@@ -40,8 +40,8 @@ final class ExtensionShape: Sketch {
             "Sources/OllinxHalftone/",
             "",
             "extension Sketch {",
-            "  func drawSpiral(center: Vector2,",
-            "                  radius: Double) {",
+            "  public func drawSpiral(center: Vector2,",
+            "                         radius: Double) {",
             "    drawPolyline(points)",
             "  }",
             "}",
@@ -84,7 +84,7 @@ final class ExtensionShape: Sketch {
         fill(soft)
         textSize(18)
         textAlign(.center, .top)
-        drawText("An extension is a package that depends on Ollin. There is no plug-in format.",
+        drawText("An extension package depends on Ollin, and nothing registers it.",
                  width / 2, 400)
     }
 

@@ -146,7 +146,7 @@ final class AQuarterHourApart: Sketch {
                  box.x + 16, box.y + 58, size: 12, color: theme.ink, align: .left, .top)
         drawText("from zero would jump back every time.",
                  box.x + 16, box.y + 76, size: 12, color: theme.ink, align: .left, .top)
-        drawText("Reading the day, 14:15 draws the same picture today and tomorrow.",
+        drawText("Reading the day, 14:15 draws the same picture every day.",
                  box.x + 16, box.y + 96, size: 11, color: theme.muted, align: .left, .top)
     }
 
