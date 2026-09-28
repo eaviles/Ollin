@@ -12,7 +12,7 @@ final class Distortions: Sketch {
     override func draw() {
         background(Color(hex: 0x0D1017))
         camera(.perspective(eye: Vector3(0, 2.3, 8.6), target: Vector3(0, 0.05, 0),
-                            fieldOfView: .pi / 4.6))
+                            fieldOfView: .pi / 5.5))
         directionalLight(.white, direction: Vector3(-0.45, -0.8, -0.4),
                          intensity: 1.2, softness: 0.25)
         ambientLight(Color(white: 0.16))

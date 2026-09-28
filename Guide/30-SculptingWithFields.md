@@ -103,7 +103,7 @@ You get all of this without writing any of it. The setting to know is `raymarchQ
 
 Every field so far is a shape you could build from parts. A distortion bends a whole field at once. It is for a column that twists as it rises, a bar that curls, and a surface that ripples or turns to rock. Three of them reimplement Inigo Quilez's twist, bend, and displacement operators, and the fourth adds a noise relief.
 
-<!-- figure: Distortions, waiting on a render. A twisted column, a bent bar, a rippled sphere, and a roughened sphere in a row, from Guide/Figures/30-SculptingWithFields/Distortions.swift. -->
+<img src="Images/30-SculptingWithFields/Distortions.jpg" alt="Four forms in a row on a dark background: a blue square column whose faces spiral as it rises, an amber bar bent into an arch, a coral sphere covered in regular bumps, and a gray sphere roughened into a lumpy rock" width="680">
 
 Each one is a method on the field, like `.at`:
 
