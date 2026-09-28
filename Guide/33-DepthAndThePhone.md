@@ -374,7 +374,7 @@ The dots are `salience(at:in:)` sampled on a grid, one query per cell. That is t
 
 ### How the picture is moving
 
-The phone can also say how its picture is moving. In **Flow** mode it measures optical flow between consecutive frames of the rear camera, on the phone. Each reading arrives as a `PhoneFlow`: a dense field of motion vectors, and the frame it was measured on. [Chapter 32](32-Seeing.md#edges-and-motion) teaches the Mac's own `FlowTracker`, and the phone's field gives you the same reads over the same `MotionField`. A grid of samples, for drawing the motion as arrows, and a vector under any point, for pushing something with it:
+The phone can also say how its picture is moving. In **Flow** mode it measures optical flow between consecutive frames of the rear camera, on the phone. Each reading arrives as a `PhoneFlow`: a dense field of motion vectors, and the frame it was measured on. [Chapter 32](32-Seeing.md#the-picture-as-a-field-optical-flow) teaches the Mac's own `FlowTracker`, and the phone's field gives you the same reads over the same `MotionField`. A grid of samples, for drawing the motion as arrows, and a vector under any point, for pushing something with it:
 
 ```swift
 if let motion = device.latestFlow {

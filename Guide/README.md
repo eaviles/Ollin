@@ -100,7 +100,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part VI: The world coming in
 
-32. **[Seeing](32-Seeing.md).** The webcam as input and as the light in a 3D scene, then faces, hands, bodies, the lifted subject, edges, motion, printed text, a followed object, and labels and saliency as typed values. Then models of your own, footage as material, the screen as a source, and slit scan.
+32. **[Seeing](32-Seeing.md).** The webcam as a picture, with a still or a film standing in, and trackers that read it as typed values: hands, faces, and bodies to steer by, the person lifted out as pixels, and the picture's motion as a field, composed into a brush that paints with motion. Then outlines and print, one thing followed, labels and saliency, models of your own, the camera frame as the light and the surface of a 3D scene, the screen as a source, and slit scan.
 33. **[Depth and the iPhone as a sensor](33-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 34. **[Listening](34-Listening.md).** Hearing loudness, spectrum, beats, pitch, speech, and sound events.
 35. **[Controls and signals](35-ControlsAndSignals.md).** Everything that steers a sketch from outside the inspector. MIDI, OSC and OSCQuery, a beat shared over Link, and MIDI and OSC bound straight to your parameters. Then TUIO tables, game controllers, serial and Bluetooth wires, feeds that poll a server or hold a stream open, the weather outside, and the trackpad's knock.
