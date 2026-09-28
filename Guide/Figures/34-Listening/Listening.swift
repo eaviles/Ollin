@@ -1,4 +1,4 @@
-// figure: frame=0 unstable
+// figure: frame=0 unstable themed
 //
 // Guide diagram (Chapter 34): the two ways a sketch can listen, and the one
 // thing about speech that shapes the whole API.
@@ -16,16 +16,21 @@
 import AVFoundation
 import Ollin
 import OllinAudio
+import OllinDiagram
 
 final class ListeningFigure: Sketch {
-    override var canvasSize: CanvasSize { .size(880, 660) }
+    override var canvasSize: CanvasSize { .size(880, 610) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.14)
-    let accent = Color(hex: 0xE4572E)
-    let cool = Color(hex: 0x3A6EA5)
+    @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
+
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.muted }
+    var faint: Color { theme.ink(0.14) }
+    var accent: Color { theme.accent }
+    /// The guesses the recognizer can still take back, and the sounds' waves.
+    var cool: Color { Color(hex: darkTheme ? 0x5E96C8 : 0x2E6B9E) }
 
     let sentence = "the quick brown fox jumps over the lazy dog"
 
@@ -38,8 +43,10 @@ final class ListeningFigure: Sketch {
 
     override func setup() {
         noLoop()
-        listenToSpeech()
-        listenToSounds()
+        // The dark render runs setup again on the same sketch, and both themes
+        // should show what one pass of the models heard.
+        if wave.isEmpty { listenToSpeech() }
+        if sounds.isEmpty { listenToSounds() }
     }
 
     private func listenToSpeech() {
@@ -92,14 +99,6 @@ final class ListeningFigure: Sketch {
 
         drawSpeechColumn(x: 48, top: 118, width: 400)
         drawSoundColumn(x: 496, top: 118, width: 336)
-
-        noStroke()
-        fill(soft)
-        textSize(13)
-        textAlign(.left)
-        drawText("Both halves of this page are real: the sentence is spoken into a buffer by the "
-                 + "system voice, and the three sounds are arithmetic.",
-                 in: Rectangle(x: 48, y: 612, width: 784, height: 42))
     }
 
     // MARK: Speech
@@ -191,7 +190,7 @@ final class ListeningFigure: Sketch {
                 drawText(entry.label.replacingOccurrences(of: "_", with: " "),
                          at: Vector2(x + 6, row + 9))
                 textAlign(.right)
-                fill(soft)
+                fill(theme.ink(0.7))
                 drawText(String(format: "%.2f", entry.confidence), at: Vector2(x + width - 6, row + 9))
                 row += 17
             }

@@ -43,7 +43,10 @@ Everything here runs on the Mac itself, so nothing is uploaded. Speech recogniti
 
 The split comes from how recognition works. The recognizer guesses early and corrects itself as it hears more. So the words on screen a moment ago may not be the words it settles on.
 
-<img src="../../Guide/Images/34-Listening/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/Listening-dark.jpg">
+  <img src="../../Guide/Images/34-Listening/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
+</picture>
 
 So there are three reads:
 

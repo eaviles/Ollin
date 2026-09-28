@@ -332,7 +332,10 @@ Two listeners on one microphone is fine. The source is tapped once, and the audi
 
 `SpeechListener` turns talking into text as it is spoken. Use it for captions a performer speaks into being, or for words that change the picture ("red", "stop", "again"). It runs Apple's on-device speech recognizer, the `SpeechAnalyzer` framework, so nothing is uploaded, and it asks for no permission beyond the microphone's. The first use of a language may download its model, which takes a moment and needs the network once. Until the model is in place, `unavailableReason` says so.
 
-<img src="Images/34-Listening/Listening.jpg" alt="Two columns. On the left, a spoken sentence transcribed from growing parts of its audio: 'The quick brown.', 'The quick brown fox jumps over.', 'The quick brown fox jumps over the lace.', and at last 'The quick brown fox jumps over the lazy dog.' On the right, three sounds made of arithmetic, a steady tone, taps every quarter second, and bursts of noise, with the classifier's top three labels for each: tuning fork, click, and hammer first" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/Listening-dark.jpg">
+  <img src="Images/34-Listening/Listening.jpg" alt="Two columns. On the left, a spoken sentence transcribed from growing parts of its audio: 'The quick brown.', 'The quick brown fox jumps over.', 'The quick brown fox jumps over the lace.', and at last 'The quick brown fox jumps over the lazy dog.' On the right, three sounds made of arithmetic, a steady tone, taps every quarter second, and bursts of noise, with the classifier's top three labels for each: tuning fork, click, and hammer first" width="680">
+</picture>
 
 Recognition guesses early and corrects itself as it hears more. Each line on the left of the figure is the same recognizer handed a little more of one sentence. Four fifths of the way through, its best guess was that the fox jumped over the lace, which fit what it had heard so far. So a listener gives you two reads, one for each job. In this fragment, `ink` is a `Color` property of your sketch that the word "red" changes:
 
