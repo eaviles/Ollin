@@ -52,11 +52,11 @@ final class Unproject: Sketch {
         fill(ink)
         textSize(26)
         textAlign(.center, .middle)
-        drawText("depth: how far along the axis", mid.x, mid.y + 52)
+        drawText("depth: how far along the axis", mid.x + 40, mid.y + 72)
         textAlign(.left, .middle)
         drawText("the 3D point", point.x - 60, point.y - 38)
         drawText("the lens", lens.x - 44, lens.y + 44)
-        drawText("a pixel (u, v)", pixel.x - 16, pixel.y + 40)
+        drawText("a pixel (u, v)", pixel.x + 14, pixel.y + 40)
         fill(ink.withAlpha(0.6))
         drawText("the image", 208, 152)
 
