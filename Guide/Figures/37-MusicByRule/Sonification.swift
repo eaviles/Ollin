@@ -47,7 +47,7 @@ final class SonificationFigure: Sketch {
                     byFrequency: false)
         drawMapping(top: 396, reading: chromatic,
                     label: "spread evenly in hertz",
-                    note: "the obvious thing, and wrong: the low half is crushed",
+                    note: "the obvious thing, and wrong: the high end crowds together",
                     byFrequency: true)
         drawSnapped(top: 560, reading: snapped)
     }

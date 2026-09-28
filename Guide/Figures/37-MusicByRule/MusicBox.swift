@@ -1,8 +1,8 @@
 // figure: frame=430
 //
-// Guide payoff (Chapter 37): the music box. A piece that plays itself out of
+// Guide payoff (Chapter 37): the music box. A sketch that plays itself out of
 // the chapter's parts (a step counter, three Euclidean rhythms, a scale, a
-// chord built from that scale, an arpeggio over it, and a Markov chain that
+// seventh chord on the scale's root, an arpeggio over it, and a Markov chain that
 // keeps a motif's habits) through three kinds of voice: a modeled steel
 // string, an FM bell patched by hand, and a breath pad. What it draws is its
 // own score scrolling past, so the picture is a record of what you can hear.
@@ -22,7 +22,7 @@ final class MusicBox: Sketch {
     var counter = StepCounter(perBeat: 4)
     var motif = MarkovChain<Int>(seed: 4)
 
-    /// Every note the piece has played: when it started, in beats, how long it
+    /// Every note the sketch has played: when it started, in beats, how long it
     /// holds, which voice sang it, and how hard.
     struct Played {
         var beat: Double
@@ -50,7 +50,7 @@ final class MusicBox: Sketch {
         motif.start(at: 0)
     }
 
-    // MARK: the piece
+    // MARK: the music
 
     override func draw() {
         background(Color(hex: 0x0B0C10))
