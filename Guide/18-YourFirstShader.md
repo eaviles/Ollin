@@ -381,7 +381,7 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature, and the `using:` option that splices in only the sections you name.
 - [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the pattern-field catalog with every parameter, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
-- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 23](23-GridSimulations.md).
+- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 24](24-ParticleSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift), and [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) (the heaviest shader in the set, split across two files).
 
