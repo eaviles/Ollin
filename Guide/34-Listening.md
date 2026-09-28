@@ -48,7 +48,7 @@ lazy var sound = Soundtrack(of: player)                        // a video's soun
 
 `Tone` plays a steady wave at one pitch and feeds it to the analyzer as it sounds. It starts with `play()` too, and it lets a sketch hear itself with no permission and no file. On a `Tone`, `amplitude` is the volume you set, so its measured loudness is `tone.analyzer.amplitude`. The `Audio/Spectrum` example keeps a gliding `Tone` ready and draws its spectrum until the microphone is allowed. `Soundtrack` reads the sound of a playing video, so footage can drive the picture with its own music. An audio file you ship with a sketch needs the same license care as any other asset, so credit what you use.
 
-The sources behave differently under an export. `AudioPlayer` follows the export's clock through its file, so a sketch driven by a file writes the same frames on every run. A video's sound reads as silence there. The microphone hears the room live while the frames render, so it never gives the same video twice. [Chapter 38](38-FinishingASketch.md#motion-video-and-gif) covers exporting in full.
+The sources behave differently under an export. `AudioPlayer` follows the export's clock through its file, so a sketch driven by a file writes the same frames on every run. A video's sound reads as silence there. The microphone hears the room live while the frames render, so it never gives the same video twice. [Chapter 38](38-FinishingASketch.md#every-export-runs-without-a-window) covers exporting in full.
 
 ### A band that plays the same every run: `StageMic`
 

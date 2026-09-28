@@ -217,14 +217,14 @@ A named rate is the exact fraction, not its decimal. The video writers put every
   <img src="../Images/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where NTSC frame 30 lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
 </picture>
 
-The loupe shows NTSC frame 30 landing a millisecond past the one-second mark, because that is where the fraction puts it. A broadcast timeline has the same grid. The foot shows the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 frames a second then drifts off its timeline. By the end of an hour it is 3.6 seconds, or 108 frames, off. The decimal rate, `FrameRate(29.97)`, differs from `.ntsc` by a tenth of a frame an hour. It is a different rate, so name the broadcast rate when that is the one you mean.
+The loupe shows NTSC frame 30 landing a millisecond past the one-second mark, because that is where the fraction puts it. A broadcast timeline has the same grid. The foot shows what goes wrong when a writer is not told the fraction. It rounds the frames onto a plain 30, and a clip meant to run at 29.97 frames a second drifts off its timeline. By the end of an hour it is 3.6 seconds, or 108 frames, off. The decimal rate, `FrameRate(29.97)`, is much closer, a tenth of a frame an hour away from `.ntsc`. It is still a different rate, so name the broadcast rate when that is the one you mean.
 
 ```swift
 try OllinApp.exportVideo(sketch, to: "spot.mp4", frames: FrameRate.ntsc.frames(in: 30), fps: .ntsc)
 try OllinApp.exportVideo(sketch, to: "reel.mp4", frames: 240, fps: .film)
 ```
 
-The rate a live window runs at is the display's, not one of these; `frameRate` on the sketch reads what it measured.
+The rate a live window runs at is the display's, not one of these. `frameRate` on the sketch reads what it measured.
 
 ### Transparent output
 

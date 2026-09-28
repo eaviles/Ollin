@@ -42,7 +42,7 @@ final class ExportMap: Sketch {
         columnTitle("files", x: 138)
         file(y: 105, name: "still", detail: "--export frame.png")
         file(y: 175, name: "sequence", detail: "--export-sequence, for an edit")
-        file(y: 245, name: "video", detail: "--export-video piece.mp4")
+        file(y: 245, name: "video", detail: "--export-video clip.mp4")
         file(y: 315, name: "GIF", detail: "--export-gif loop.gif")
         file(y: 385, name: "SVG", detail: "--export-svg, for a plotter")
 
@@ -56,7 +56,7 @@ final class ExportMap: Sketch {
         fill(soft)
         textSize(19)
         textAlign(.center, .top)
-        drawText("the same frames every way: exports are pixel-identical to the window",
+        drawText("every file export draws the sketch on the same fixed clock",
                  width / 2, 505)
     }
 
