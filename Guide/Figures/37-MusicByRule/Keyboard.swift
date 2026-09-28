@@ -151,7 +151,7 @@ final class Keyboard: Sketch {
         textAlign(.center, .top)
         for i in 1 ..< pitches.count {
             let step = Int((pitches[i].midi - pitches[i - 1].midi).rounded())
-            drawText("\(step)", (xs[i - 1] + xs[i]) / 2, y + 8)
+            drawText("\(step)", (xs[i - 1] + xs[i]) / 2, y + 17)
         }
 
         // Root to fifth, bracketed under the triad.
@@ -159,14 +159,14 @@ final class Keyboard: Sketch {
             let span = Int((pitches[pitches.count - 1].midi - pitches[0].midi).rounded())
             stroke(theme.ink(0.5))
             strokeWeight(1.5)
-            drawLine(first, y + 34, last, y + 34)
-            drawLine(first, y + 28, first, y + 40)
-            drawLine(last, y + 28, last, y + 40)
+            drawLine(first, y + 42, last, y + 42)
+            drawLine(first, y + 36, first, y + 48)
+            drawLine(last, y + 36, last, y + 48)
             noStroke()
             fill(theme.ink)
             textSize(13)
             textAlign(.left, .middle)
-            drawText("\(span) semitones: a fifth", last + 14, y + 34)
+            drawText("\(span) semitones: a fifth", last + 14, y + 42)
         }
     }
 }

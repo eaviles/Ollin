@@ -72,7 +72,10 @@ let clave: Rhythm = "x..x..x...x.x..."
 
 A rhythm says when. The next steps choose which note, and that needs a few words from music. [Chapter 34](34-Listening.md#one-note-at-a-time-pitch) met some of them while it listened to a violin. This step lays them out on a keyboard.
 
-<!-- Figure: Keyboard (Guide/Figures/37-MusicByRule/Keyboard.swift), waiting on a render. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Keyboard-dark.jpg">
+  <img src="Images/37-MusicByRule/Keyboard.jpg" alt="Two octaves of a keyboard from C3 to C5 with each key's MIDI number, the octave from C3 to C4 bracketed as twelve semitones, and under it four rows of dots lined up with the keys: C major from C4 and A minor pentatonic from A3 numbered by degree with the semitones between neighbors, then a C major triad and an A minor triad, each dot named by its note, with their steps of four and three, three and four, each spanning seven semitones, a fifth" width="680">
+</picture>
 
 A **semitone** is the step from one key of a piano to the next, black keys included. Twelve semitones make an **octave**, where the frequency doubles. MIDI numbers count semitones, 60 for middle C and one more for each key up. So a pitch is a number you can add to. 72 is the C an octave above middle C, and 67 is the G seven keys above it.
 
@@ -434,7 +437,10 @@ Every step up to here divides the octave into twelve equal semitones, which is c
 
 A tuning is easiest to see as ratios of frequency. An octave is the ratio 2, the upper note at twice the frequency of the lower. A fifth tuned by ratio is 3/2, and a major third 5/4. In equal temperament every semitone is the same ratio, the twelfth root of 2. Twelve of them make exactly 2, and no other interval comes out as a whole-number ratio. Tuning every note by whole-number ratios is called **just intonation**. Measured in cents, a hundred to a semitone as in [Chapter 34](34-Listening.md#one-note-at-a-time-pitch), `Tuning.just` reads 0, 204, 386, 498, 702, 884, and 1088. Equal temperament reads round hundreds.
 
-<!-- Figure: Tunings (Guide/Figures/37-MusicByRule/Tunings.swift), waiting on a render. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Tunings-dark.jpg">
+  <img src="Images/37-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
+</picture>
 
 A `Tuning` is a list of frequency ratios and the interval they repeat over. It has the same shape as a `Scale`, so reading a degree and snapping a stray pitch work the same way. `degree` here is any whole number, as with a scale:
 
