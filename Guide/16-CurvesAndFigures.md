@@ -342,7 +342,7 @@ Then make it yours:
 - Hang a harmonograph in the eye in place of the spirograph. Build a `Harmonograph` in `setup()` with near-unison frequencies, and fit its `contour(duration: 60).points` into `Rectangle(center: .zero, width: 150, height: 150)`. It turns just as the spirograph did.
 - Change the knots. An order of 6 comes home in two runs rather than four, so each corner holds a figure with two-fold symmetry.
 
-An engraving is line work, so keep it as line work. `swift run OllinLive MySketches/Engraving.swift --export-svg engraving.svg --frame 600` writes the plate as it stands ten seconds in. Each ink is its own stroke color in the file. A two-pen plot is then the green lines, a pen change, and the red. [Chapter 15](15-ShapesAsMaterial.md#toward-the-pen) covers the plotter's side of that trip.
+An engraving is line work, so keep it as line work. `swift run OllinLive MySketches/Engraving.swift --export-svg engraving.svg --frame 600` writes the plate as it stands ten seconds in. Each ink is its own stroke color in the file. A two-pen plot is then the green lines, a pen change, and the red. [Chapter 15](15-ShapesAsMaterial.md#toward-the-pen-hatching-and-svg-import) covers the plotter's side of that trip.
 
 ## Where this comes from
 
