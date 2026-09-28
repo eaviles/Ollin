@@ -133,56 +133,27 @@ b8fd98ac7549  Guide/29-CharactersAndCloth.md:491  errors thrown from here are no
 81fc652fd104  Guide/29-CharactersAndCloth.md:72  errors thrown from here are not handled
 8185674df358  Guide/30-SculptingWithFields.md:202  cannot find 'a' in scope
 9b80f0c8f3bd  Guide/30-SculptingWithFields.md:270  cannot find 'cluster' in scope
-206d2dbd05e7  Guide/31-TracedLight.md:133  cannot find 'ribbon' in scope
-5834d913fb21  Guide/31-TracedLight.md:197  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
-c1b390558596  Guide/32-Seeing.md:142  cannot find 'BodyTracker3D' in scope
-46df4d27e4c7  Guide/32-Seeing.md:161  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-54b0ded2c3af  Guide/32-Seeing.md:199  cannot find 'FlowTracker' in scope
-28a499225d8d  Guide/32-Seeing.md:222  cannot find 'RectangleDetector' in scope
-873be3e41ecd  Guide/32-Seeing.md:244  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-85406df5d4a0  Guide/32-Seeing.md:270  cannot find 'tracker' in scope
-bd0a016c4f07  Guide/32-Seeing.md:295  cannot find 'ImageClassifier' in scope
-2a80728c8212  Guide/32-Seeing.md:37  cannot find 'Camera' in scope
-6c349f05e6a5  Guide/32-Seeing.md:378  value of type '@MainActor (Camera3D) -> ()' has no member 'fittedRectangle'
-bbef0b2a77e4  Guide/32-Seeing.md:405  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-3696583136ff  Guide/32-Seeing.md:424  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-3264783de5ff  Guide/32-Seeing.md:445  cannot find type 'DepthClip' in scope
-cf77654750d2  Guide/32-Seeing.md:467  cannot find 'ConceptTracker' in scope
-1bd010311fa1  Guide/32-Seeing.md:490  call can throw, but errors cannot be thrown out of a property initializer
-09cdb84809fc  Guide/32-Seeing.md:517  cannot find 'ScreenCapture' in scope
-7d54a23fa0c7  Guide/32-Seeing.md:527  cannot find 'ScreenCapture' in scope
-a231a89505b5  Guide/32-Seeing.md:536  cannot find 'screen' in scope
-6c123c48bf65  Guide/32-Seeing.md:557  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
-37c636d25506  Guide/32-Seeing.md:56  cannot find 'Camera' in scope
-d912ae6ac469  Guide/32-Seeing.md:75  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-6e817aba8f81  Guide/32-Seeing.md:95  cannot find 'FaceTracker' in scope
-6e82d6b4e253  Guide/33-DepthAndThePhone.md:132  cannot find 'StageCamera' in scope
-1cf4d5e2322f  Guide/33-DepthAndThePhone.md:152  cannot find 'world' in scope
-c23407544548  Guide/33-DepthAndThePhone.md:170  cannot find 'cloud' in scope
-5056d3bce553  Guide/33-DepthAndThePhone.md:194  cannot find 'world' in scope
-f89e2bb21e25  Guide/33-DepthAndThePhone.md:219  cannot find 'device' in scope
-6770d95f3af3  Guide/33-DepthAndThePhone.md:238  cannot find 'device' in scope
-71e0f30b01f3  Guide/33-DepthAndThePhone.md:24  cannot find 'color' in scope
-390e8a2b0aad  Guide/33-DepthAndThePhone.md:257  cannot find 'device' in scope
-d84c17c58252  Guide/33-DepthAndThePhone.md:274  cannot find 'device' in scope
-5f50cf871a66  Guide/33-DepthAndThePhone.md:286  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'bones'
-00063c072b0a  Guide/33-DepthAndThePhone.md:303  cannot find 'device' in scope
-ae2815cc4365  Guide/33-DepthAndThePhone.md:322  cannot find 'device' in scope
-130e8337e1fa  Guide/33-DepthAndThePhone.md:339  cannot find 'device' in scope
-f29c9287bef8  Guide/33-DepthAndThePhone.md:359  cannot find 'device' in scope
-42d57560d458  Guide/33-DepthAndThePhone.md:379  cannot find 'device' in scope
-4748aaf78c92  Guide/33-DepthAndThePhone.md:402  cannot find 'device' in scope
-4f23858766b2  Guide/33-DepthAndThePhone.md:423  cannot find 'device' in scope
-2383fb6a9964  Guide/33-DepthAndThePhone.md:429  cannot find 'balls' in scope
-8eb59d5f3c14  Guide/33-DepthAndThePhone.md:44  cannot find 'StageCamera' in scope
-52c48254f203  Guide/33-DepthAndThePhone.md:445  cannot find 'wand' in scope
-2abaf44fb47b  Guide/33-DepthAndThePhone.md:462  cannot find 'device' in scope
-1e73acad6155  Guide/33-DepthAndThePhone.md:468  cannot find 'device' in scope
-9ae37ce1fb4c  Guide/33-DepthAndThePhone.md:486  cannot find 'device' in scope
-af14457ef5bd  Guide/33-DepthAndThePhone.md:496  cannot find 'device' in scope
-651b790aad9f  Guide/33-DepthAndThePhone.md:514  cannot find 'device' in scope
-eb8ec8e87e31  Guide/33-DepthAndThePhone.md:528  cannot find 'StageCamera' in scope
-be12f7bbc0b7  Guide/33-DepthAndThePhone.md:62  cannot find 'frame' in scope
+c1b390558596  Guide/32-Seeing.md:137  cannot find 'BodyTracker3D' in scope
+827b2487d61b  Guide/32-Seeing.md:156  cannot find 'PersonSegmenter' in scope
+2dac7c699df3  Guide/32-Seeing.md:181  cannot find 'FlowTracker' in scope
+ecd64ca99939  Guide/32-Seeing.md:276  cannot find 'ContourDetector' in scope
+28a499225d8d  Guide/32-Seeing.md:297  cannot find 'RectangleDetector' in scope
+f6bb7ff022cf  Guide/32-Seeing.md:311  cannot find 'TextRecognizer' in scope
+4b69f6605063  Guide/32-Seeing.md:325  cannot find 'BarcodeScanner' in scope
+873be3e41ecd  Guide/32-Seeing.md:340  cannot find 'ObjectTracker' in scope
+6073eb09d33e  Guide/32-Seeing.md:368  cannot find 'TrajectoryTracker' in scope
+2a80728c8212  Guide/32-Seeing.md:39  cannot find 'Camera' in scope
+b214f2b91857  Guide/32-Seeing.md:402  cannot find 'ImageClassifier' in scope
+73aee52fc967  Guide/32-Seeing.md:417  cannot find 'SaliencyTracker' in scope
+0d38e3be4cb8  Guide/32-Seeing.md:440  cannot find 'PointSegmenter' in scope
+bbef0b2a77e4  Guide/32-Seeing.md:471  cannot find 'ModelTracker' in scope
+3696583136ff  Guide/32-Seeing.md:490  cannot find 'DepthTracker' in scope
+3264783de5ff  Guide/32-Seeing.md:513  cannot find type 'DepthClip' in scope
+1f5c0dd6140f  Guide/32-Seeing.md:535  cannot find 'ConceptTracker' in scope
+ddc10c3c2c06  Guide/32-Seeing.md:562  cannot find 'Camera' in scope
+a43bc3b3351c  Guide/32-Seeing.md:582  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+09cdb84809fc  Guide/32-Seeing.md:613  cannot find 'TextRecognizer' in scope
+62b423f43b64  Guide/32-Seeing.md:654  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 017c452a6271  Guide/34-Listening.md:114  cannot find 'source' in scope
 1619227774c6  Guide/34-Listening.md:127  cannot find 'AudioInput' in scope
 36c1984f3958  Guide/34-Listening.md:140  cannot find 'AudioInput' in scope
