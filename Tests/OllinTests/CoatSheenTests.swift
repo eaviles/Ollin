@@ -54,8 +54,8 @@ struct CoatSheenRenderProbes {
         // A fully rough near-black dielectric shows only a broad dim sheen; the same
         // sphere under a polished coat must gain a sharp highlight (the film's second
         // lobe), far brighter at its peak than anything the bare surface makes.
-        let coated = try #require(OllinApp.image(of: CoatProbe.make(kind: .coatPoint), frame: 1))
-        let bare = try #require(OllinApp.image(of: CoatProbe.make(kind: .barePoint), frame: 1))
+        let coated = try OllinApp.image(of: CoatProbe.make(kind: .coatPoint), frame: 1)
+        let bare = try OllinApp.image(of: CoatProbe.make(kind: .barePoint), frame: 1)
         let a = peak(coated), b = peak(bare)
         #expect(a - b > 40, "expected the coat's sharp highlight: coated \(a), bare \(b)")
     }
@@ -65,8 +65,8 @@ struct CoatSheenRenderProbes {
         // Under a rect area light alone the coat runs its own LTC fetch at the coat
         // roughness, so the panel's sharp reflection must appear on a coated rough
         // black sphere where the bare one shows only a broad wash.
-        let coated = try #require(OllinApp.image(of: CoatProbe.make(kind: .coatPanel), frame: 1))
-        let bare = try #require(OllinApp.image(of: CoatProbe.make(kind: .barePanel), frame: 1))
+        let coated = try OllinApp.image(of: CoatProbe.make(kind: .coatPanel), frame: 1)
+        let bare = try OllinApp.image(of: CoatProbe.make(kind: .barePanel), frame: 1)
         let a = peak(coated), b = peak(bare)
         #expect(a - b > 40, "expected the panel in the coat: coated \(a), bare \(b)")
     }
@@ -76,8 +76,8 @@ struct CoatSheenRenderProbes {
         // Under an environment alone, a fully rough black dielectric gathers only the
         // flat broad average; the coat's smooth gather must bring the environment's
         // bright features back as a distinct peak.
-        let coated = try #require(OllinApp.image(of: CoatProbe.make(kind: .coatEnv), frame: 1))
-        let bare = try #require(OllinApp.image(of: CoatProbe.make(kind: .bareEnv), frame: 1))
+        let coated = try OllinApp.image(of: CoatProbe.make(kind: .coatEnv), frame: 1)
+        let bare = try OllinApp.image(of: CoatProbe.make(kind: .bareEnv), frame: 1)
         let a = peak(coated), b = peak(bare)
         #expect(a - b > 40, "expected the environment in the coat: coated \(a), bare \(b)")
     }
@@ -87,8 +87,8 @@ struct CoatSheenRenderProbes {
         // Sheen is fabric fuzz at grazing angles: a white-sheen cloth sphere must
         // brighten in a band just inside its silhouette relative to the same sphere
         // without sheen (the lobe peaks where the view grazes the surface).
-        let sheen = try #require(OllinApp.image(of: CoatProbe.make(kind: .sheen), frame: 1))
-        let plain = try #require(OllinApp.image(of: CoatProbe.make(kind: .plainCloth), frame: 1))
+        let sheen = try OllinApp.image(of: CoatProbe.make(kind: .sheen), frame: 1)
+        let plain = try OllinApp.image(of: CoatProbe.make(kind: .plainCloth), frame: 1)
         let dS = pixels(of: sheen), dP = pixels(of: plain)
         func rim(_ d: [UInt8], _ img: CGImage) -> Double {
             // A vertical band crossing the sphere's left rim at mid-height.

@@ -23,8 +23,8 @@ struct FourierTests {
     /// level.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aRoundTripReturnsThePicture() throws {
-        let plain = try #require(OllinApp.image(of: PatternProbe.make(.none), frame: 1))
-        let back = try #require(OllinApp.image(of: PatternProbe.make(.roundTrip), frame: 1))
+        let plain = try OllinApp.image(of: PatternProbe.make(.none), frame: 1)
+        let back = try OllinApp.image(of: PatternProbe.make(.roundTrip), frame: 1)
         #expect(maxDifference(plain, back) <= 2,
                 "the round trip strayed by \(maxDifference(plain, back)) levels")
     }
@@ -34,8 +34,8 @@ struct FourierTests {
     /// asks for one gets its picture and a note, not a black rectangle.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLayerThatIsNotAPowerOfTwoComesBackUntouched() throws {
-        let plain = try #require(OllinApp.image(of: OddSizeProbe.make(.none), frame: 1))
-        let back = try #require(OllinApp.image(of: OddSizeProbe.make(.roundTrip), frame: 1))
+        let plain = try OllinApp.image(of: OddSizeProbe.make(.none), frame: 1)
+        let back = try OllinApp.image(of: OddSizeProbe.make(.roundTrip), frame: 1)
         #expect(maxDifference(plain, back) == 0)
     }
 
@@ -47,8 +47,8 @@ struct FourierTests {
     /// wrong and the peaks move.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aGratingLandsAtItsOwnFrequency() throws {
-        let image = try #require(OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 8),
-                                                frame: 1))
+        let image = try OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 8),
+                                                frame: 1)
         let px = pixels(of: image)
         let center = px.width / 2
         let peaks = brightestOffCenter(px, count: 2, center: center)
@@ -65,8 +65,8 @@ struct FourierTests {
     /// the column ladder runs as well as the row one.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTurnedGratingLandsOnTheOtherAxis() throws {
-        let image = try #require(OllinApp.image(
-            of: PatternProbe.make(.spectrum, cycles: 8, vertical: true), frame: 1))
+        let image = try OllinApp.image(
+            of: PatternProbe.make(.spectrum, cycles: 8, vertical: true), frame: 1)
         let px = pixels(of: image)
         let center = px.width / 2
         for peak in brightestOffCenter(px, count: 2, center: center) {
@@ -81,8 +81,8 @@ struct FourierTests {
     /// is empty.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatFieldIsOneSpotInTheMiddle() throws {
-        let image = try #require(OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 0),
-                                                frame: 1))
+        let image = try OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 0),
+                                                frame: 1)
         let px = pixels(of: image)
         let center = px.width / 2
         let middle = gray(px, x: center, y: center)

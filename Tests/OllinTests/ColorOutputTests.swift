@@ -66,7 +66,7 @@ struct ColorOutputTests {
     private func render(_ output: ColorOutput) throws -> CGImage {
         let sketch = Swatches()
         sketch.output = output
-        return try #require(OllinApp.image(of: sketch))
+        return try OllinApp.image(of: sketch)
     }
 
     // MARK: The color math

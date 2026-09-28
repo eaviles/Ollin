@@ -109,9 +109,9 @@ struct TAATests {
     func theJitterAverageMatchesItsAnalyticConstruction() throws {
         let size = 96
         let factor = 8
-        let reference = try #require(OllinApp.image(of: TAAEdgeProbe.make(taa: false,
+        let reference = try OllinApp.image(of: TAAEdgeProbe.make(taa: false,
                                                                           size: size * factor),
-                                                    frame: 1))
+                                                    frame: 1)
         let big = linearRGB(reference)
         let boxTruth = boxDownsampledLinearRGB(big, bigWidth: size * factor, factor: factor)
         // The jitter-set truth: a jitter of j pixels shifts the rendered image by
@@ -129,10 +129,8 @@ struct TAATests {
                                                   factor: factor, shift: shift)
             for i in taaTruth.indices { taaTruth[i] += shifted[i] / Double(samples) }
         }
-        let off = linearRGB(try #require(
-            OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: size), frame: 1)))
-        let on = linearRGB(try #require(
-            OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: size), frame: 1)))
+        let off = linearRGB(try OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: size), frame: 1))
+        let on = linearRGB(try OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: size), frame: 1))
         let onVsTaa = meanAbsDiff(on, taaTruth, width: size, margin: 2)
         let onVsBox = meanAbsDiff(on, boxTruth, width: size, margin: 2)
         let offVsBox = meanAbsDiff(off, boxTruth, width: size, margin: 2)
@@ -155,8 +153,8 @@ struct TAATests {
     /// wrong 1/N shows up as a brightness shift far past the 1-step tolerance.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theAverageConservesAFlatInterior() throws {
-        let on = try #require(OllinApp.image(of: TAAFlatProbe.make(taa: true), frame: 1))
-        let off = try #require(OllinApp.image(of: TAAFlatProbe.make(taa: false), frame: 1))
+        let on = try OllinApp.image(of: TAAFlatProbe.make(taa: true), frame: 1)
+        let off = try OllinApp.image(of: TAAFlatProbe.make(taa: false), frame: 1)
         let (a, w, h) = pixels(on)
         let (b, _, _) = pixels(off)
         var worst = 0
@@ -175,9 +173,9 @@ struct TAATests {
     /// and the single-sample path all in one equality.
     @Test(.enabled(if: Snapshot.hasMetal))
     func turningItOffIsTheDefaultAgain() throws {
-        let off = try #require(OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: 192), frame: 1))
-        let toggled = try #require(OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: 192,
-                                                                        toggle: true), frame: 1))
+        let off = try OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: 192), frame: 1)
+        let toggled = try OllinApp.image(of: TAAEdgeProbe.make(taa: false, size: 192,
+                                                                        toggle: true), frame: 1)
         #expect(pixels(off).data == pixels(toggled).data,
                 "an on-then-off frame must be byte-identical to never-on")
     }
@@ -187,8 +185,8 @@ struct TAATests {
     /// export stands on; the live accumulation never runs headless).
     @Test(.enabled(if: Snapshot.hasMetal))
     func anExportIsAPureFunctionOfTheFrame() throws {
-        let first = try #require(OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: 192), frame: 1))
-        let second = try #require(OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: 192), frame: 1))
+        let first = try OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: 192), frame: 1)
+        let second = try OllinApp.image(of: TAAEdgeProbe.make(taa: true, size: 192), frame: 1)
         #expect(pixels(first).data == pixels(second).data,
                 "two renders of one TAA frame must be byte-identical")
     }
@@ -198,8 +196,8 @@ struct TAATests {
     /// AA already), and the ask is answered with a note, not a broken frame.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTwoDFrameIsUntouched() throws {
-        let plain = try #require(OllinApp.image(of: TAAFlat2DProbe.make(taa: false), frame: 1))
-        let asked = try #require(OllinApp.image(of: TAAFlat2DProbe.make(taa: true), frame: 1))
+        let plain = try OllinApp.image(of: TAAFlat2DProbe.make(taa: false), frame: 1)
+        let asked = try OllinApp.image(of: TAAFlat2DProbe.make(taa: true), frame: 1)
         #expect(pixels(plain).data == pixels(asked).data,
                 "a 2D frame must ignore the TAA ask byte-identically")
     }

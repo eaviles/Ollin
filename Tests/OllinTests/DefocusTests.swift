@@ -20,7 +20,7 @@ struct DefocusTests {
     /// near spread.
     @Test(.enabled(if: Snapshot.hasMetal))
     func nearSpreadInventsNoColour() throws {
-        let image = try #require(OllinApp.image(of: NearSpreadProbe(), frame: 1))
+        let image = try OllinApp.image(of: NearSpreadProbe(), frame: 1)
         let px = pixels(of: image)
         var darkest = 255
         for i in stride(from: 0, to: px.bytes.count, by: 4) {
@@ -35,7 +35,7 @@ struct DefocusTests {
     /// onto it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func sharpSubjectRejectsTheBackdrop() throws {
-        let image = try #require(OllinApp.image(of: MidgroundProbe.make(depth: 0.30), frame: 1))
+        let image = try OllinApp.image(of: MidgroundProbe.make(depth: 0.30), frame: 1)
         // 20px inside the silhouette, the square is its own color and nothing else.
         #expect(redRun(of: image, y: 300, from: 170, to: 280).min ?? 0 >= 250)
     }
@@ -47,7 +47,7 @@ struct DefocusTests {
     /// than a rack.
     @Test(.enabled(if: Snapshot.hasMetal))
     func midgroundKeepsItsEdgeAgainstAFarBackdrop() throws {
-        let image = try #require(OllinApp.image(of: MidgroundProbe.make(depth: 0.52), frame: 1))
+        let image = try OllinApp.image(of: MidgroundProbe.make(depth: 0.52), frame: 1)
         // Depth 0.52 gives the square a 4.8px circle of confusion against the backdrop's
         // 48px, so it must be back to its own color within a few px of its edge.
         // (Measured: 5px with the clamp, 30px without.)
@@ -64,7 +64,7 @@ struct DefocusTests {
     /// the way to the background in a single pixel.
     @Test(.enabled(if: Snapshot.hasMetal))
     func nearEdgeSoftensOnBothSides() throws {
-        let image = try #require(OllinApp.image(of: NearEdgeProbe(), frame: 1))
+        let image = try OllinApp.image(of: NearEdgeProbe(), frame: 1)
         // The disc's silhouette is at x = 390 and its blur is 60px, so the walk covers
         // the whole ramp it should occupy.
         let run = redRun(of: image, y: 300, from: 318, to: 462).values
@@ -81,7 +81,7 @@ struct DefocusTests {
     /// much blur was asked for.
     @Test(.enabled(if: Snapshot.hasMetal))
     func transparentLayerBlursItsCoverageToo() throws {
-        let image = try #require(OllinApp.image(of: TransparentEdgeProbe(), frame: 1))
+        let image = try OllinApp.image(of: TransparentEdgeProbe(), frame: 1)
         // Walk across the disc's edge over white, reading green (the red channel is 255
         // for both the red disc and the white page). A blurred coverage gives a wide,
         // graded ramp; a hard alpha edge gives a jump inside a pixel or two.
@@ -93,7 +93,7 @@ struct DefocusTests {
     /// `maxBlur` 0 is a pass-through, so the op is free to leave in a sketch.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroBlurPassesThrough() throws {
-        let blurred = try #require(OllinApp.image(of: MidgroundProbe.make(depth: 0.55, maxBlur: 0), frame: 1))
+        let blurred = try OllinApp.image(of: MidgroundProbe.make(depth: 0.55, maxBlur: 0), frame: 1)
         let run = redRun(of: blurred, y: 300, from: 140, to: 160)
         // The silhouette is where the sketch drew it, with no ramp either side.
         #expect(run.values.filter { $0 > 20 && $0 < 235 }.count <= 2)

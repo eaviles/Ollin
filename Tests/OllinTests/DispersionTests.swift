@@ -27,13 +27,13 @@ struct DispersionTests {
             .magnify, .lens(), .lens(radius: 0, falloff: 1), .offset(angle: 0.7), .edges, .axial,
         ]
         for mode in modes {
-            let filtered = try #require(OllinApp.image(
-                of: DiscProbe.make(.chromaticAberration(amount: 0, mode: mode)), frame: 1))
+            let filtered = try OllinApp.image(
+                of: DiscProbe.make(.chromaticAberration(amount: 0, mode: mode)), frame: 1)
             #expect(maxDifference(plain, filtered) == 0, "\(mode) moved at amount 0")
         }
         // The spectral path normalizes its own weights, so it has to be identity too.
-        let spectral = try #require(OllinApp.image(
-            of: DiscProbe.make(.chromaticAberration(amount: 0, spectral: true)), frame: 1))
+        let spectral = try OllinApp.image(
+            of: DiscProbe.make(.chromaticAberration(amount: 0, spectral: true)), frame: 1)
         #expect(maxDifference(plain, spectral) == 0)
     }
 
@@ -44,9 +44,9 @@ struct DispersionTests {
     /// un-normalized loop would tint every flat area in the frame green.
     @Test(.enabled(if: Snapshot.hasMetal))
     func spectralTapsDoNotTintAFlatField() throws {
-        let image = try #require(OllinApp.image(
+        let image = try OllinApp.image(
             of: FlatProbe.make(.chromaticAberration(amount: 0.05, spectral: true,
-                                                    quality: .detail)), frame: 1))
+                                                    quality: .detail)), frame: 1)
         let px = pixels(of: image)
         // Read well inside the field, away from the frame edge the sampler clamps at.
         let (r, g, b) = channels(px, x: 128, y: 128)
@@ -60,8 +60,8 @@ struct DispersionTests {
     /// than blue does, everywhere.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theDefaultModeFringesRadially() throws {
-        let image = try #require(OllinApp.image(
-            of: DiscProbe.make(.chromaticAberration(amount: 0.03)), frame: 1))
+        let image = try OllinApp.image(
+            of: DiscProbe.make(.chromaticAberration(amount: 0.03)), frame: 1)
         // The disc sits above the frame center, so its top rim is the far side.
         #expect(strongestBlueOverRed(image, x: 128, y: 30 ... 50) > 40)
         #expect(strongestRedOverBlue(image, x: 128, y: 105 ... 125) > 40)
@@ -76,13 +76,13 @@ struct DispersionTests {
     /// nothing whatsoever.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatOffsetSplitsTheCenterWhereARadialModeCannot() throws {
-        let flat = try #require(OllinApp.image(
+        let flat = try OllinApp.image(
             of: HalfPlaneProbe.make(.chromaticAberration(amount: 0.03,
-                                                         mode: .offset(angle: .pi / 2))), frame: 1))
-        let radial = try #require(OllinApp.image(
-            of: HalfPlaneProbe.make(.chromaticAberration(amount: 0.03)), frame: 1))
-        let lens = try #require(OllinApp.image(
-            of: HalfPlaneProbe.make(.chromaticAberration(amount: 0.03, mode: .lens())), frame: 1))
+                                                         mode: .offset(angle: .pi / 2))), frame: 1)
+        let radial = try OllinApp.image(
+            of: HalfPlaneProbe.make(.chromaticAberration(amount: 0.03)), frame: 1)
+        let lens = try OllinApp.image(
+            of: HalfPlaneProbe.make(.chromaticAberration(amount: 0.03, mode: .lens())), frame: 1)
         #expect(fringeWidthDown(flat, x: 128, from: 118, to: 138) > 10)
         #expect(fringeWidthDown(radial, x: 128, from: 118, to: 138) <= 2)
         #expect(fringeWidthDown(lens, x: 128, from: 118, to: 138) == 0)
@@ -95,12 +95,12 @@ struct DispersionTests {
     /// filter carried (the square default hid it).
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSplitIsTheSameSizeBothWaysOnAWideCanvas() throws {
-        let across = try #require(OllinApp.image(
+        let across = try OllinApp.image(
             of: WideBarProbe.make(.chromaticAberration(amount: 0.05,
-                                                       mode: .offset(angle: 0))), frame: 1))
-        let down = try #require(OllinApp.image(
+                                                       mode: .offset(angle: 0))), frame: 1)
+        let down = try OllinApp.image(
             of: WideBarProbe.make(.chromaticAberration(amount: 0.05,
-                                                       mode: .offset(angle: .pi / 2))), frame: 1))
+                                                       mode: .offset(angle: .pi / 2))), frame: 1)
         let horizontal = fringeWidthAcross(across, y: 90, from: 60, to: 130)
         let vertical = fringeWidthDown(down, x: 160, from: 30, to: 100)
         #expect(horizontal > 4, "no horizontal split measured")
@@ -114,8 +114,8 @@ struct DispersionTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func edgesLeaveFlatRegionsAlone() throws {
         let plain = try plainDiscFrame()
-        let fringed = try #require(OllinApp.image(
-            of: DiscProbe.make(.chromaticAberration(amount: 0.03, mode: .edges)), frame: 1))
+        let fringed = try OllinApp.image(
+            of: DiscProbe.make(.chromaticAberration(amount: 0.03, mode: .edges)), frame: 1)
         // Deep inside the disc, and deep in the background: both untouched.
         #expect(differenceAt(plain, fringed, x: 128, y: 77) == 0)
         #expect(differenceAt(plain, fringed, x: 40, y: 210) == 0)
@@ -129,14 +129,14 @@ struct DispersionTests {
     /// is what an out-of-focus highlight does on the other side of focus.
     @Test(.enabled(if: Snapshot.hasMetal))
     func axialPutsOneEndOfTheSpectrumOutOfFocus() throws {
-        let warm = try #require(OllinApp.image(
-            of: DiscProbe.make(.chromaticAberration(amount: 0.03, mode: .axial)), frame: 1))
+        let warm = try OllinApp.image(
+            of: DiscProbe.make(.chromaticAberration(amount: 0.03, mode: .axial)), frame: 1)
         let redEdge = transitionWidth(warm, channel: 0, x: 128, from: 100, to: 130)
         let blueEdge = transitionWidth(warm, channel: 2, x: 128, from: 100, to: 130)
         #expect(blueEdge > redEdge * 2, "red \(redEdge)px, blue \(blueEdge)px")
 
-        let cool = try #require(OllinApp.image(
-            of: DiscProbe.make(.chromaticAberration(amount: -0.03, mode: .axial)), frame: 1))
+        let cool = try OllinApp.image(
+            of: DiscProbe.make(.chromaticAberration(amount: -0.03, mode: .axial)), frame: 1)
         #expect(transitionWidth(cool, channel: 0, x: 128, from: 100, to: 130)
                 > transitionWidth(cool, channel: 2, x: 128, from: 100, to: 130) * 2)
     }
@@ -155,9 +155,9 @@ struct DispersionTests {
     /// nothing to bring back. That is a property of the layer, not of the split.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLayerWhoseAlphaVariesKeepsItsColor() throws {
-        let plain = try #require(OllinApp.image(of: SoftEdgeProbe.make(nil), frame: 1))
-        let split = try #require(OllinApp.image(
-            of: SoftEdgeProbe.make(.chromaticAberration(amount: 0.04)), frame: 1))
+        let plain = try OllinApp.image(of: SoftEdgeProbe.make(nil), frame: 1)
+        let split = try OllinApp.image(
+            of: SoftEdgeProbe.make(.chromaticAberration(amount: 0.04)), frame: 1)
         #expect(maxDifference(plain, split) <= 1)
     }
 
@@ -166,7 +166,7 @@ struct DispersionTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theDriveLayerDecidesWhereTheSplitHappens() throws {
         let plain = try undrivenLinesFrame()
-        let driven = try #require(OllinApp.image(of: DrivenProbe.make(driven: true), frame: 1))
+        let driven = try OllinApp.image(of: DrivenProbe.make(driven: true), frame: 1)
         // Left half: the aux is black, so nothing may move.
         for y in stride(from: 20, to: 240, by: 20) {
             #expect(differenceAt(plain, driven, x: 40, y: y) == 0)
@@ -181,7 +181,7 @@ struct DispersionTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theComposeModifierResolvesToTheSameOp() throws {
         let plain = try undrivenLinesFrame()
-        let composed = try #require(OllinApp.image(of: ComposedDriveProbe(), frame: 1))
+        let composed = try OllinApp.image(of: ComposedDriveProbe(), frame: 1)
         for y in stride(from: 20, to: 240, by: 20) {
             #expect(differenceAt(plain, composed, x: 40, y: y) == 0)
         }
@@ -197,14 +197,14 @@ struct DispersionTests {
 
     private func plainDiscFrame() throws -> CGImage {
         if let known = Self.plainDisc { return known }
-        let image = try #require(OllinApp.image(of: DiscProbe.make(nil), frame: 1))
+        let image = try OllinApp.image(of: DiscProbe.make(nil), frame: 1)
         Self.plainDisc = image
         return image
     }
 
     private func undrivenLinesFrame() throws -> CGImage {
         if let known = Self.undrivenLines { return known }
-        let image = try #require(OllinApp.image(of: DrivenProbe.make(driven: false), frame: 1))
+        let image = try OllinApp.image(of: DrivenProbe.make(driven: false), frame: 1)
         Self.undrivenLines = image
         return image
     }

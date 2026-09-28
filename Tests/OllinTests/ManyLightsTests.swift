@@ -172,7 +172,7 @@ struct ManyLightsTests {
     func cullingIsTheSamePictureAsShadingEveryLamp() throws {
         let culled = LampScene(); culled.count = 64; culled.culls = true
         let plain = LampScene(); plain.count = 64; plain.culls = false
-        guard let a = OllinApp.image(of: culled), let b = OllinApp.image(of: plain) else {
+        guard let a = try? OllinApp.image(of: culled), let b = try? OllinApp.image(of: plain) else {
             Issue.record("headless render failed"); return
         }
         let x = rgba(of: a), y = rgba(of: b)
@@ -189,7 +189,7 @@ struct ManyLightsTests {
     func everyLampInTheFrameShades() throws {
         let many = LampScene(); many.count = 64
         let few = LampScene(); few.count = 8
-        guard let a = OllinApp.image(of: many), let b = OllinApp.image(of: few) else {
+        guard let a = try? OllinApp.image(of: many), let b = try? OllinApp.image(of: few) else {
             Issue.record("headless render failed"); return
         }
         func litChannels(_ bytes: [UInt8]) -> Int {
@@ -234,7 +234,7 @@ struct ManyLightsTests {
             }
         }
         func litChannels(_ sketch: Sketch) -> Int {
-            guard let image = OllinApp.image(of: sketch) else { return 0 }
+            guard let image = try? OllinApp.image(of: sketch) else { return 0 }
             let bytes = rgba(of: image)
             var n = 0
             for i in bytes.indices where i % 4 != 3 && bytes[i] > 24 { n += 1 }
@@ -275,7 +275,7 @@ struct ManyLightsTests {
         }
         func litChannels(_ lamps: Int) -> Int {
             let scene = FieldScene(); scene.lamps = lamps; scene.quality = quality
-            guard let image = OllinApp.image(of: scene) else { return 0 }
+            guard let image = try? OllinApp.image(of: scene) else { return 0 }
             let bytes = rgba(of: image)
             var n = 0
             for i in bytes.indices where i % 4 != 3 && bytes[i] > 24 { n += 1 }
@@ -373,7 +373,7 @@ struct ManyLightsTests {
 
     private func boundedLampFrame() -> CGImage? {
         if let known = Self.boundedLamp { return known }
-        let image = OllinApp.image(of: OneLampScene())
+        let image = try? OllinApp.image(of: OneLampScene())
         Self.boundedLamp = image
         return image
     }
@@ -400,7 +400,7 @@ struct ManyLightsTests {
         #expect(beyond == (0, 0, 0), "light arrived past the reach (\(beyond))")
         // And it really is the reach doing it: the same scene unbounded lights there.
         let unbounded = OneLampScene(); unbounded.reach = nil
-        guard let far = OllinApp.image(of: unbounded) else {
+        guard let far = try? OllinApp.image(of: unbounded) else {
             Issue.record("headless render failed"); return
         }
         let lit = pixel(rgba(of: far), w, mid, 8)

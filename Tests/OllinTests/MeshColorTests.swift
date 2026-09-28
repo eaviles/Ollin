@@ -107,14 +107,14 @@ struct MeshColorTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func vertexColorsShowUntouchedOverAWhiteFill() throws {
-        let image = try #require(OllinApp.image(of: VertexColorProbe.make(.redOnWhite), frame: 1))
+        let image = try OllinApp.image(of: VertexColorProbe.make(.redOnWhite), frame: 1)
         let c = pixel(of: image, x: 128, y: 128)
         #expect(c.r >= 230 && c.g <= 15 && c.b <= 15, "expected pure red, got \(c)")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFillMultipliesAsAWholeMeshTint() throws {
-        let image = try #require(OllinApp.image(of: VertexColorProbe.make(.redOnGray), frame: 1))
+        let image = try OllinApp.image(of: VertexColorProbe.make(.redOnGray), frame: 1)
         let c = pixel(of: image, x: 128, y: 128)
         #expect(c.r >= 115 && c.r <= 140 && c.g <= 15 && c.b <= 15,
                 "expected half red, got \(c)")
@@ -122,7 +122,7 @@ struct MeshColorTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func perVertexVariationReachesTheSurface() throws {
-        let image = try #require(OllinApp.image(of: VertexColorProbe.make(.split), frame: 1))
+        let image = try OllinApp.image(of: VertexColorProbe.make(.split), frame: 1)
         let left = pixel(of: image, x: 64, y: 128)
         let right = pixel(of: image, x: 192, y: 128)
         #expect(left.r > 150 && left.b < 100, "left half not red: \(left)")

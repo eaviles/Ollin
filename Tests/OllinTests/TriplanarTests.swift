@@ -80,7 +80,7 @@ struct TriplanarTests {
 
     private func render(_ mode: TriplanarProbe.Mode) throws -> CGImage {
         if let known = Self.frames[mode] { return known }
-        let image = try #require(OllinApp.image(of: TriplanarProbe.make(mode), frame: 1))
+        let image = try OllinApp.image(of: TriplanarProbe.make(mode), frame: 1)
         Self.frames[mode] = image
         return image
     }
@@ -132,7 +132,7 @@ struct TriplanarTests {
         // red stays above blue. A dropped sign flip mirrors the back view and
         // fails it.
         for mode in [TriplanarProbe.Mode.wallFront, .wallBack] {
-            let shot = try #require(OllinApp.image(of: TriplanarProbe.make(mode), frame: 1))
+            let shot = try OllinApp.image(of: TriplanarProbe.make(mode), frame: 1)
             let red = try #require(channelCentroid(of: shot, channel: 0), "\(mode)")
             let green = try #require(channelCentroid(of: shot, channel: 1), "\(mode)")
             let blue = try #require(channelCentroid(of: shot, channel: 2), "\(mode)")
@@ -147,7 +147,7 @@ struct TriplanarTests {
         // v runs +z (image north is -z), so from a camera on the +z side
         // looking down, the image reads upright: red far-left, green
         // far-right, blue near-left.
-        let shot = try #require(OllinApp.image(of: TriplanarProbe.make(.floorAbove), frame: 1))
+        let shot = try OllinApp.image(of: TriplanarProbe.make(.floorAbove), frame: 1)
         let red = try #require(channelCentroid(of: shot, channel: 0))
         let green = try #require(channelCentroid(of: shot, channel: 1))
         let blue = try #require(channelCentroid(of: shot, channel: 2))
@@ -162,7 +162,7 @@ struct TriplanarTests {
         // other green: every center pixel must hold *both* channels (the
         // blend), not one or the other (a hard pick). The control camera faces
         // +z, where the weight is all z's and pixels stay pure.
-        let seam = try #require(OllinApp.image(of: TriplanarProbe.make(.sphereSeam), frame: 1))
+        let seam = try OllinApp.image(of: TriplanarProbe.make(.sphereSeam), frame: 1)
         let bytes = imageBytes(seam)
         let w = seam.width
         var minMix = 255
@@ -184,13 +184,13 @@ struct TriplanarTests {
         // u axis), and a green-up map reads brighter under light from above
         // than its green-down twin (the green-up convention on the projected
         // frame). Each sign carries one comparison.
-        let right = try #require(OllinApp.image(of: TriplanarProbe.make(.bumpRight), frame: 1))
-        let left = try #require(OllinApp.image(of: TriplanarProbe.make(.bumpLeft), frame: 1))
+        let right = try OllinApp.image(of: TriplanarProbe.make(.bumpRight), frame: 1)
+        let left = try OllinApp.image(of: TriplanarProbe.make(.bumpLeft), frame: 1)
         #expect(centerMean(of: right) - centerMean(of: left) > 20,
                 "an image-right tilt must catch the +x light, got \(centerMean(of: right)) vs \(centerMean(of: left))")
 
-        let up = try #require(OllinApp.image(of: TriplanarProbe.make(.bumpUp), frame: 1))
-        let down = try #require(OllinApp.image(of: TriplanarProbe.make(.bumpDown), frame: 1))
+        let up = try OllinApp.image(of: TriplanarProbe.make(.bumpUp), frame: 1)
+        let down = try OllinApp.image(of: TriplanarProbe.make(.bumpDown), frame: 1)
         #expect(centerMean(of: up) - centerMean(of: down) > 20,
                 "green must mean image-up on the projected frame, got \(centerMean(of: up)) vs \(centerMean(of: down))")
     }
@@ -201,8 +201,8 @@ struct TriplanarTests {
         // so a translated mesh slides through it. Where both renders cover a
         // pixel with the same flat quadrant, the color is identical even
         // though the mesh underneath moved half a tile.
-        let still = try #require(OllinApp.image(of: TriplanarProbe.make(.anchorStill), frame: 1))
-        let moved = try #require(OllinApp.image(of: TriplanarProbe.make(.anchorMoved), frame: 1))
+        let still = try OllinApp.image(of: TriplanarProbe.make(.anchorStill), frame: 1)
+        let moved = try OllinApp.image(of: TriplanarProbe.make(.anchorMoved), frame: 1)
         let a = imageBytes(still), b = imageBytes(moved)
         let w = still.width
         // A block inside the red quadrant, away from every boundary.
@@ -239,7 +239,7 @@ struct TriplanarTests {
         // The kept blob against a fresh render of it: two renders, never the kept
         // frame compared with itself.
         let a = try render(.blob)
-        let b = try #require(OllinApp.image(of: TriplanarProbe.make(.blob), frame: 1))
+        let b = try OllinApp.image(of: TriplanarProbe.make(.blob), frame: 1)
         #expect(imageBytes(a) == imageBytes(b))
     }
 }

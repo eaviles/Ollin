@@ -143,7 +143,7 @@ struct BlackHoleLensTests {
             // Frame the ring at 80 pixels from the center.
             let spread = tan(ring) * Double(side / 2) / 80
             let picture = LensPicture(side: side, r0: r0, spread: spread)
-            let image = try #require(OllinApp.image(of: picture, frame: 0))
+            let image = try OllinApp.image(of: picture, frame: 0)
             let pixels = try #require(Pixels(image))
             var sum = 0.0, weighted = 0.0
             for y in 0 ..< side {
@@ -441,7 +441,7 @@ private final class LensProbe: Sketch {
     }
 
     private func run() -> [[SIMD4<Double>]]? {
-        guard OllinApp.image(of: self, frame: 0) != nil else { return nil }
+        guard (try? OllinApp.image(of: self, frame: 0)) != nil else { return nil }
         var out: [[SIMD4<Double>]] = []
         for job in jobs {
             guard let floats = job.out.snapshot() else { return nil }

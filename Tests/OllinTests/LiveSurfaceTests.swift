@@ -57,8 +57,8 @@ struct LiveSurfaceTests {
         // A texture held against the mesh or the material from the first draw
         // would keep it red.
         let probe = Probe()
-        let first = try #require(OllinApp.image(of: probe, frame: 0))
-        let later = try #require(OllinApp.image(of: probe, frame: 0))
+        let first = try OllinApp.image(of: probe, frame: 0)
+        let later = try OllinApp.image(of: probe, frame: 0)
         let a = center(first), b = center(later)
         #expect(a.r > 150 && a.b < 60, "the first frame should wear the red room: \(a)")
         #expect(b.b > 150 && b.r < 60, "a later frame should wear the blue room, not a stale texture: \(b)")

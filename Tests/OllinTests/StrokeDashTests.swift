@@ -291,7 +291,7 @@ struct StrokeDashTests {
     /// says, with butt caps ending each dash on its own point.
     @Test(.enabled(if: Snapshot.hasMetal))
     func gapsStayBlankAndDashesInk() throws {
-        let image = try #require(OllinApp.image(of: DashedLineProbe()))
+        let image = try OllinApp.image(of: DashedLineProbe())
         let px = pixels(of: image)
         // Dashes of 40 with gaps of 20 from x = 20: ink on 20...60, 80...120, 140...180, 200...220.
         for x in [30, 50, 90, 110, 150, 170, 210] { #expect(px.gray(x, 64) <= 12, "ink at \(x)") }
@@ -302,7 +302,7 @@ struct StrokeDashTests {
     /// rather than the continuous band the instance draws.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aDashedCircleIsARingWithGaps() throws {
-        let image = try #require(OllinApp.image(of: DashedCircleProbe()))
+        let image = try OllinApp.image(of: DashedCircleProbe())
         let px = pixels(of: image)
         var ink = 0, paper = 0
         for k in 0..<360 {
@@ -318,7 +318,7 @@ struct StrokeDashTests {
     /// last is thin, rather than every dash starting the ramp over.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aProfileTapersAcrossTheGaps() throws {
-        let image = try #require(OllinApp.image(of: TaperedDashesProbe()))
+        let image = try OllinApp.image(of: TaperedDashesProbe())
         let px = pixels(of: image)
         func ink(_ x: Int) -> Int { (30..<98).reduce(0) { $0 + 255 - px.gray(x, $1) } }
         #expect(ink(40) > ink(100))

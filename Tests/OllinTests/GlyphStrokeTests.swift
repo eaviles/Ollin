@@ -46,7 +46,7 @@ struct GlyphStrokeTests {
         for join in [StrokeJoin.round, .miter, .bevel] {
             let letter = Letter()
             letter.join = join
-            let ink = InkProbe(try #require(OllinApp.image(of: letter)), inkDarkerThan: 250)
+            let ink = InkProbe(try OllinApp.image(of: letter), inkDarkerThan: 250)
             #expect(ink.coatArea > 5_000, "\(join): probe missed the glyph")
             #expect(ink.paintedTwice == 0,
                     "\(join): \(ink.paintedTwice) pixels painted twice (coat \(ink.coat))")

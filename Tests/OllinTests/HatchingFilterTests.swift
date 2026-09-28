@@ -38,7 +38,7 @@ struct HatchingFilterTests {
     }
 
     private func render(_ subject: HatchProbe.Subject, filter: Filter?, size: Int = 160) throws -> CGImage {
-        try #require(OllinApp.image(of: HatchProbe.make(subject, filter: filter, size: size), frame: 1))
+        try OllinApp.image(of: HatchProbe.make(subject, filter: filter, size: size), frame: 1)
     }
 
     private func linear(_ byte: UInt8) -> Double {

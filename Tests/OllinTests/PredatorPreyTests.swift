@@ -109,7 +109,7 @@ struct PredatorPreyTests {
     /// The rendered field decoded back to linear prey (red) and predator (green)
     /// levels, one per texel.
     private func channels(of sketch: Sketch, frame: Int) throws -> (prey: [[Double]], predators: [[Double]]) {
-        channels(in: try #require(OllinApp.image(of: sketch, frame: frame)))
+        channels(in: try OllinApp.image(of: sketch, frame: frame))
     }
 
     /// The same readout at several frames of one headless run. The run goes once

@@ -56,11 +56,11 @@ struct GlobalIlluminationTests {
         let key = RoomKey(gi: gi, redWall: redWall, intensity: intensity, toggle: toggle,
                           quality: quality, cascades: MetalRenderer.giCascadesEnabledForTesting)
         if let known = Self.rooms[key] { return known }
-        let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: gi, redWall: redWall,
+        let image = try OllinApp.image(of: GIRoomProbe.make(gi: gi, redWall: redWall,
                                                                       intensity: intensity,
                                                                       toggle: toggle,
                                                                       quality: quality),
-                                                frame: 1))
+                                                frame: 1)
         Self.rooms[key] = image
         return image
     }
@@ -106,8 +106,8 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func lightDoesNotLeakIntoASealedBox() throws {
         func interior(lightInside: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: GISealedBoxProbe.make(lightInside: lightInside),
-                                                    frame: 1))
+            let image = try OllinApp.image(of: GISealedBoxProbe.make(lightInside: lightInside),
+                                                    frame: 1)
             let m = bandMean(image, x: 0.3...0.7, y: 0.3...0.7)
             return (m.r + m.g + m.b) / 3
         }
@@ -153,7 +153,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aMirrorInteriorCarriesTheBounce() throws {
         func strip(gi: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: gi), frame: 1))
+            let image = try OllinApp.image(of: GIMirrorProbe.make(gi: gi), frame: 1)
             let m = bandMean(image, x: 0.35...0.65, y: 0.90...0.98)
             return (m.r + m.g + m.b) / 3
         }
@@ -169,7 +169,7 @@ struct GlobalIlluminationTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aRenderTargetGathersTheField() throws {
         func ceiling(gi: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: GITargetProbe.make(gi: gi), frame: 1))
+            let image = try OllinApp.image(of: GITargetProbe.make(gi: gi), frame: 1)
             let m = bandMean(image, x: 0.35...0.65, y: 0.16...0.26)
             return (m.r + m.g + m.b) / 3
         }
@@ -207,7 +207,7 @@ struct GlobalIlluminationTests {
         func wallFace(cascades: Bool) throws -> Double {
             MetalRenderer.giCascadesEnabledForTesting = cascades
             defer { MetalRenderer.giCascadesEnabledForTesting = true }
-            let image = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
+            let image = try OllinApp.image(of: GIVastProbe.make(), frame: 1)
             let m = bandMean(image, x: 0.20...0.27, y: 0.36...0.44)
             return (m.r + m.g + m.b) / 3
         }
@@ -245,8 +245,8 @@ struct GlobalIlluminationTests {
     /// of the vast scene are byte-identical (the promise every export stands on).
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aCascadedExportIsAPureFunctionOfTheFrame() throws {
-        let first = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
-        let second = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
+        let first = try OllinApp.image(of: GIVastProbe.make(), frame: 1)
+        let second = try OllinApp.image(of: GIVastProbe.make(), frame: 1)
         #expect(pixels(first).data == pixels(second).data,
                 "two renders of one cascaded GI frame must be byte-identical")
     }
@@ -361,12 +361,12 @@ struct GlobalIlluminationTests {
     /// frame (GI + an effect layer) are byte-identical.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func theNewPathsExportDeterministically() throws {
-        let mirrorA = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1))
-        let mirrorB = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1))
+        let mirrorA = try OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1)
+        let mirrorB = try OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1)
         #expect(pixels(mirrorA).data == pixels(mirrorB).data,
                 "two renders of the mirror frame must be byte-identical")
-        let targetA = try #require(OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1))
-        let targetB = try #require(OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1))
+        let targetA = try OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1)
+        let targetB = try OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1)
         #expect(pixels(targetA).data == pixels(targetB).data,
                 "two renders of the target frame must be byte-identical")
     }

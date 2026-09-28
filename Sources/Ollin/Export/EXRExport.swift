@@ -215,11 +215,7 @@ extension OllinApp {
     /// written.
     public static func exportEXR(_ sketch: Sketch, to path: String, frame: Int = 0,
                                  fps: FrameRate = 60, quality: RenderQuality = .detail) throws {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let renderer = headlessRenderer(for: sketch, device: device) else {
-            throw ExportError(.unrendered, path: path, frame: 0,
-                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
-        }
+        let renderer = try headlessRenderer(for: sketch, path: path)
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         renderer.automaticQuality = quality

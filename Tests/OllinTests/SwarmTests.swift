@@ -212,7 +212,7 @@ struct SwarmTests {
         probe.perception = perception
         probe.target = target
         probe.configure = configure
-        _ = OllinApp.image(of: probe, frame: frames)
+        _ = try OllinApp.image(of: probe, frame: frames)
         guard let ps = probe.swarm.current.snapshot() else {
             Issue.record("swarm never realized")
             return []

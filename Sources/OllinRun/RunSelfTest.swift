@@ -91,8 +91,10 @@ enum RunSelfTest {
         // The loaded sketch draws through this binary's own Metal path, which
         // is what a window would ask of it a moment later.
         print("OllinRun selftest: the loaded sketch renders a frame …")
-        guard OllinApp.image(of: wall) != nil else {
-            fail("the loaded sketch rendered nothing")
+        do {
+            _ = try OllinApp.image(of: wall)
+        } catch {
+            fail("the loaded sketch rendered nothing: \(error)")
         }
 
         print("OllinRun selftest: PASS: the declaration survived the compile, the sketch "

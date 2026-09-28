@@ -16,7 +16,7 @@ struct LensDistortionTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroCoefficientsChangeNoByte() throws {
-        let plain = try #require(OllinApp.image(of: DotsProbe.make(nil), frame: 1))
+        let plain = try OllinApp.image(of: DotsProbe.make(nil), frame: 1)
         let zeros: [Filter] = [
             .lensDistortion(amount: 0),
             .lensDistortion(amount: 0, quartic: 0, fillsFrame: true),
@@ -24,11 +24,11 @@ struct LensDistortionTests {
             .lensDistortion(amount: 0, center: Vector2(0.3, 0.7), fillsFrame: true),
         ]
         for filter in zeros {
-            let filtered = try #require(OllinApp.image(of: DotsProbe.make(filter), frame: 1))
+            let filtered = try OllinApp.image(of: DotsProbe.make(filter), frame: 1)
             #expect(maxDifference(plain, filtered) == 0, "\(filter.kind) moved at zero")
         }
         // The gate can fail: a real barrel moves the dots.
-        let bent = try #require(OllinApp.image(of: DotsProbe.make(.lensDistortion(amount: 0.3)), frame: 1))
+        let bent = try OllinApp.image(of: DotsProbe.make(.lensDistortion(amount: 0.3)), frame: 1)
         #expect(maxDifference(plain, bent) > 100)
     }
 
@@ -45,7 +45,7 @@ struct LensDistortionTests {
         ]
         for c in cases {
             let filter = Filter.lensDistortion(amount: c.amount, quartic: c.quartic, fillsFrame: c.fills)
-            let image = try #require(OllinApp.image(of: DotsProbe.make(filter), frame: 1))
+            let image = try OllinApp.image(of: DotsProbe.make(filter), frame: 1)
             let px = pixels(of: image)
             // The scale the pass worked out, read off the same packing the GPU got.
             let pass = try #require(filter.singlePass(width: 256, height: 256, resolve: { $0 }))
@@ -94,12 +94,12 @@ struct LensDistortionTests {
     func aBarrelLeavesTheCornersEmptyUntilAskedToFill() throws {
         let field = Int((0.6 * 255).rounded())   // the field's green, as drawn
         func cornerIsEmpty(_ filter: Filter) throws -> Bool {
-            let image = try #require(OllinApp.image(of: FieldProbe.make(filter), frame: 1))
+            let image = try OllinApp.image(of: FieldProbe.make(filter), frame: 1)
             // The present pass dithers, so a black pixel reads 0 or 1.
             return green(pixels(of: image), x: 1, y: 1) <= 1
         }
         func borderIsWhole(_ filter: Filter) throws -> Bool {
-            let px = pixels(of: try #require(OllinApp.image(of: FieldProbe.make(filter), frame: 1)))
+            let px = pixels(of: try OllinApp.image(of: FieldProbe.make(filter), frame: 1))
             for i in 0 ..< 128 {
                 for (x, y) in [(i, 0), (i, 127), (0, i), (127, i)]
                 where abs(green(px, x: x, y: y) - field) > 2 {
@@ -117,8 +117,8 @@ struct LensDistortionTests {
         #expect(try borderIsWhole(.lensDistortion(amount: 0, quartic: 0.4, fillsFrame: true)))
         // The filled barrel keeps the middle of the picture: the fill is a
         // scale, not a crop to nothing.
-        let filled = pixels(of: try #require(OllinApp.image(
-            of: FieldProbe.make(.lensDistortion(amount: 0.3, fillsFrame: true)), frame: 1)))
+        let filled = pixels(of: try OllinApp.image(
+            of: FieldProbe.make(.lensDistortion(amount: 0.3, fillsFrame: true)), frame: 1))
         #expect(abs(green(filled, x: 64, y: 64) - field) <= 2)
     }
 

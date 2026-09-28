@@ -291,12 +291,15 @@ The export flags wrap one function, and you can call it yourself. Use it to rend
 </picture>
 
 ```swift
-if let frame = OllinApp.image(of: MySketch(), frame: 200) {
+do {
+    let frame = try OllinApp.image(of: MySketch(), frame: 200)
     // a CGImage, rendered with no window anywhere in sight
+} catch {
+    print(error)   // why the frame did not draw
 }
 ```
 
-Here `MySketch` stands for your own sketch's class. `OllinApp.image(of:frame:)` takes the sketch you pass it, runs `setup()`, and advances the clock to the frame you asked for. Then it renders and hands back a `CGImage`, the platform's type for a picture in memory. `OllinApp.export` is that call with a file writer after it, which is all `--export` is. Each job is a loop around this one call, and none of them needs a window.
+Here `MySketch` stands for your own sketch's class. `OllinApp.image(of:frame:)` takes the sketch you pass it, runs `setup()`, and advances the clock to the frame you asked for. Then it renders and hands back a `CGImage`, the platform's type for a picture in memory. When the frame does not draw, the call throws an `ExportError` instead, and `catch` prints its sentence. The usual cause is a shader that stopped compiling, and the sentence says so. `OllinApp.export` is that call with a file writer after it, which is all `--export` is. Each job is a loop around this one call, and none of them needs a window.
 
 ### Drawing finer than you save: supersampling
 

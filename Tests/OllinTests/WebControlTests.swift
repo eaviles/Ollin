@@ -379,7 +379,7 @@ import OllinWebGate
         let saved = OllinApp.paramOverrides
         defer { OllinApp.paramOverrides = saved }
         OllinApp.paramOverrides = overrides.sorted { $0.key < $1.key }.map { ParamOverride(name: $0.key, text: $0.value) }
-        return try #require(OllinApp.image(of: make(), frame: frame, fps: FrameRate(fps)))
+        return try OllinApp.image(of: make(), frame: frame, fps: FrameRate(fps))
     }
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
@@ -424,7 +424,7 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Dial(), frames: 4, fps: 10)
         let page = try OllinApp.webPage(of: recording, form: .inline)
         let moved = try await Self.pagePixels(page, frame: 1, settings: "player.set('radius', 140);")
-        let recorded = try #require(OllinApp.image(of: Dial(), frame: 1, fps: 10))
+        let recorded = try OllinApp.image(of: Dial(), frame: 1, fps: 10)
         let difference = try WebExportTests.meanDifference(moved, recorded)
         #expect(difference > Snapshot.tolerance, "mean difference \(difference)")
     }

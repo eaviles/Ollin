@@ -837,8 +837,11 @@ enum GuideFigures {
     /// encoded as JPEG at quality 0.85 (see the type comment for why).
     @MainActor
     private static func exportJPEG(_ sketch: Sketch, to path: String, frame: Int) {
-        guard let cgImage = OllinApp.image(of: sketch, frame: frame) else {
-            warn("render produced no image (no Metal device?)")
+        let cgImage: CGImage
+        do {
+            cgImage = try OllinApp.image(of: sketch, frame: frame)
+        } catch {
+            warn("the render did not draw: \(error)")
             return
         }
         let rep = NSBitmapImageRep(cgImage: cgImage)

@@ -320,7 +320,7 @@ private final class PlanetMaps: Sketch {
         let sketch = PlanetMaps()
         sketch.world = world
         sketch.cover = cover
-        guard OllinApp.image(of: sketch, frame: 0) != nil else { return nil }
+        guard (try? OllinApp.image(of: sketch, frame: 0)) != nil else { return nil }
         return sketch
     }
 

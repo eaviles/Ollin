@@ -80,7 +80,7 @@ struct SandpileTests {
     /// 188, 224; anything at or above 240 is a cell holding four or more (mid
     /// avalanche), reported as 4 so `isStable` can see it.
     private func grains(_ sketch: Sketch, frame: Int) throws -> [[Int]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        let image = try OllinApp.image(of: sketch, frame: frame)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

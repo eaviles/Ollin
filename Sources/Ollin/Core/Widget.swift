@@ -145,7 +145,6 @@ extension OllinApp {
         if let count { timeline.count = max(1, count) }
 
         return autoreleasepool { () -> [WidgetFrame] in
-            guard let device = MTLCreateSystemDefaultDevice() else { return [] }
             // One renderer for the whole run, the way a contact sheet reuses
             // one across its tiles: the shader library is compiled once rather
             // than once per picture, which on this surface is most of the cost.
@@ -158,7 +157,9 @@ extension OllinApp {
                 autoreleasepool {
                     let sketch = makeSketch()
                     if renderer == nil {
-                        renderer = headlessRenderer(for: sketch, device: device)
+                        // The system shows nothing for an empty run, which is
+                        // the one answer this surface has for a failure.
+                        renderer = try? headlessRenderer(for: sketch)
                         renderer?.automaticQuality = .detail
                     }
                     guard let renderer else { return }
@@ -206,8 +207,8 @@ extension OllinApp {
     /// one stands for. Behind `--export-widget <dir>`.
     ///
     /// Returns the files written. Throws `ExportError` when the folder cannot
-    /// be made or a picture cannot be written; the pictures written before it
-    /// stay in the folder.
+    /// be made, no picture draws, or a picture cannot be written; the pictures
+    /// written before it stay in the folder.
     @discardableResult
     public static func exportWidget(to directory: String, from start: Date = Date(),
                                     size: CanvasSize? = nil, count: Int? = nil,
@@ -222,8 +223,13 @@ extension OllinApp {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "HHmmss"
+        let frames = widgetFrames(from: start, size: size, count: count, of: makeSketch)
+        guard !frames.isEmpty else {
+            throw ExportError(.unrendered, path: directory,
+                              problem: "no picture drew (no Metal device, or a renderer that would not start)")
+        }
         var written: [String] = []
-        for frame in widgetFrames(from: start, size: size, count: count, of: makeSketch) {
+        for frame in frames {
             let path = folder.appendingPathComponent("widget-\(formatter.string(from: frame.date)).png").path
             guard writePNG(frame.image, to: path, recipe: nil) else {
                 throw ExportError(.unwritable, path: path, frame: written.count,

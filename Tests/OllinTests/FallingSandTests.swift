@@ -119,7 +119,7 @@ struct FallingSandTests {
     /// linear 0, 1/3, 2/3, 1, which the present pass encodes to sRGB bytes of about
     /// 0, 155, 213, 255.
     private func materials(_ sketch: Sketch, frame: Int) throws -> [[Int]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        let image = try OllinApp.image(of: sketch, frame: frame)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

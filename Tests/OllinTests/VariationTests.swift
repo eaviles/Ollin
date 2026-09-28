@@ -71,8 +71,8 @@ struct VariationTests {
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func contactSheetTilesEverySeed() throws {
         let tile = 100
-        let sheet = try #require(OllinApp.contactSheet(of: { Rolls() }, seeds: [1, 2, 3, 4],
-                                                       columns: 2, tileWidth: tile))
+        let sheet = try OllinApp.contactSheet(of: { Rolls() }, seeds: [1, 2, 3, 4],
+                                                       columns: 2, tileWidth: tile)
         // The sheet is sized from the grid, not the canvas: a 2×2 of square
         // tiles (the sketch's canvas is square), each under a label strip,
         // plus the outer margin and one gutter each way.
@@ -86,23 +86,26 @@ struct VariationTests {
     /// too small to judge.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func tinyTilesClampToAReadableSize() throws {
-        let sheet = try #require(OllinApp.contactSheet(of: { Rolls() }, seeds: [1],
-                                                       columns: 1, tileWidth: 8))
+        let sheet = try OllinApp.contactSheet(of: { Rolls() }, seeds: [1],
+                                                       columns: 1, tileWidth: 8)
         #expect(sheet.width == 10 * 2 + 64)   // clamped to the 64px floor
     }
 
     /// A tile is a fresh instance per seed, so a stateful sketch can't leak its
     /// accumulation into the next tile (the reused renderer is reset per tile).
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
-    func contactSheetBuildsOneSketchPerSeed() {
+    func contactSheetBuildsOneSketchPerSeed() throws {
         var built = 0
-        _ = OllinApp.contactSheet(of: { built += 1; return Rolls() }, seeds: [7, 8, 9],
+        _ = try OllinApp.contactSheet(of: { built += 1; return Rolls() }, seeds: [7, 8, 9],
                                   columns: 3, tileWidth: 40)
         #expect(built == 3)
     }
 
     @Test func anEmptySeedListMakesNoSheet() {
-        #expect(OllinApp.contactSheet(of: { Rolls() }, seeds: []) == nil)
+        let error = #expect(throws: ExportError.self) {
+            try OllinApp.contactSheet(of: { Rolls() }, seeds: [])
+        }
+        #expect(error?.kind == .unsupported)
     }
 
     // MARK: - Parameter sweeps
@@ -140,42 +143,45 @@ struct VariationTests {
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func sweepingByKeyPathIsTheNamedSweep() throws {
         Parameterized.seen = []
-        let byName = OllinApp.contactSheet(of: { Parameterized() },
-                                           sweeping: "radius", values: [40, 120, 360],
-                                           seed: 55, tileWidth: 64)
-        #expect(byName != nil)
+        let named = try OllinApp.contactSheet(of: { Parameterized() },
+                                              sweeping: "radius", values: [40, 120, 360],
+                                              seed: 55, tileWidth: 64)
         #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
         #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
 
         Parameterized.seen = []
-        let byPath = try #require(OllinApp.contactSheet(of: { Parameterized() },
+        let byPath = try OllinApp.contactSheet(of: { Parameterized() },
                                                         sweeping: \.$radius, values: [40, 120, 360],
-                                                        seed: 55, tileWidth: 64))
+                                                        seed: 55, tileWidth: 64)
         #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
         #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
-        let named = try #require(byName)
         #expect(byPath.width == named.width && byPath.height == named.height)
 
         Ringed.seen = []
-        #expect(OllinApp.contactSheet(of: { Ringed() }, sweeping: \.$rings, values: [2, 5, 8],
-                                      seed: 7, tileWidth: 64) != nil)
+        _ = try OllinApp.contactSheet(of: { Ringed() }, sweeping: \.$rings, values: [2, 5, 8],
+                                      seed: 7, tileWidth: 64)
         #expect(Ringed.seen == [2, 5, 8])
     }
 
-    /// An unknown parameter name returns nil rather than rendering a sheet of
-    /// defaults that silently ignores the ask.
+    /// An unknown parameter name throws, naming the parameters the sketch
+    /// does declare, rather than rendering a sheet of defaults that silently
+    /// ignores the ask.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func sweepingAnUnknownParameterMakesNoSheet() {
-        #expect(OllinApp.contactSheet(of: { Parameterized() },
-                                      sweeping: "nosuch", values: [1, 2]) == nil)
+        let error = #expect(throws: ExportError.self) {
+            try OllinApp.contactSheet(of: { Parameterized() },
+                                      sweeping: "nosuch", values: [1, 2])
+        }
+        #expect(error?.kind == .unsupported)
+        #expect(error?.problem.contains("radius") == true)
     }
 
     /// A sweep with no seed given rolls one and pins every tile to it, so an
     /// unseeded sweep still isolates the parameter.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
-    func unseededSweepStillPinsOneSeed() {
+    func unseededSweepStillPinsOneSeed() throws {
         Parameterized.seen = []
-        _ = OllinApp.contactSheet(of: { Parameterized() },
+        _ = try OllinApp.contactSheet(of: { Parameterized() },
                                   sweeping: "radius", values: [10, 20, 30],
                                   tileWidth: 64)
         #expect(Set(Parameterized.seen.map(\.variation)).count == 1)

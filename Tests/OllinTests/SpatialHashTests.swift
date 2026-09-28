@@ -67,7 +67,7 @@ struct SpatialHashTests {
         sketch.probeBounds = Rectangle(x: 0, y: 0, width: side, height: side)
         sketch.radius = radius
         sketch.positions = positions
-        _ = OllinApp.image(of: sketch, frame: 0)   // runs the build on the GPU
+        _ = try OllinApp.image(of: sketch, frame: 0)   // runs the build on the GPU
 
         guard let counts = sketch.hash.cellCount.snapshot(),
               let starts = sketch.hash.cellStart.snapshot(),
@@ -162,7 +162,7 @@ struct SpatialHashTests {
         sketch.probeBounds = Rectangle(x: 0, y: 0, width: 400, height: 400)
         sketch.radius = 50
         sketch.positions = positions
-        _ = OllinApp.image(of: sketch, frame: 0)
+        _ = try OllinApp.image(of: sketch, frame: 0)
         let counts = try #require(sketch.hash.cellCount.snapshot())
         let starts = try #require(sketch.hash.cellStart.snapshot())
         let sorted = try #require(sketch.hash.sortedIndices.snapshot())
@@ -220,7 +220,7 @@ struct SpatialHashTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func particleLifeAndPPSStayFinite() throws {
         let life = ParticleLifeProbe()
-        _ = OllinApp.image(of: life, frame: 4)
+        _ = try OllinApp.image(of: life, frame: 4)
         guard let ps = life.life.current.snapshot() else {
             Issue.record("ParticleLife never realized"); return
         }
@@ -228,7 +228,7 @@ struct SpatialHashTests {
         #expect(!ps.allSatisfy { $0.position == ps[0].position })   // not collapsed to a point
 
         let pps = PPSProbe()
-        _ = OllinApp.image(of: pps, frame: 4)
+        _ = try OllinApp.image(of: pps, frame: 4)
         guard let qs = pps.pps.current.snapshot() else {
             Issue.record("PPS never realized"); return
         }
@@ -238,7 +238,7 @@ struct SpatialHashTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func physarumGrowsATrail() throws {
         let sketch = PhysarumProbe()
-        guard let image = OllinApp.image(of: sketch, frame: 12) else {
+        guard let image = try? OllinApp.image(of: sketch, frame: 12) else {
             Issue.record("render failed"); return
         }
         #expect(maxLuma(of: image) > 0.1)   // the trail lit the canvas

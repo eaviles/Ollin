@@ -99,7 +99,7 @@ struct ComplexPlaneFramingTests {
     }
 
     private func render(_ generator: Generator) throws -> CGImage {
-        try #require(OllinApp.image(of: FramingProbe.make(generator), frame: 1))
+        try OllinApp.image(of: FramingProbe.make(generator), frame: 1)
     }
 
     /// The pixel a number lands on, through the generator's own plane, and the

@@ -73,8 +73,8 @@ struct PhysicsConvenienceTests {
     @Test func drawBodyEqualsTheHandWrittenSwitch() throws {
         let one = BodyScene()
         let switched = BodyScene(); switched.oneCall = false
-        #expect(bytes(of: try #require(OllinApp.image(of: one)))
-             == bytes(of: try #require(OllinApp.image(of: switched))))
+        #expect(bytes(of: try OllinApp.image(of: one))
+             == bytes(of: try OllinApp.image(of: switched)))
     }
 
     // MARK: every collider case draws
@@ -109,10 +109,10 @@ struct PhysicsConvenienceTests {
         // A sketch that draws no collider never reads the one it holds, so the
         // empty frame is the same for every case: render it once.
         let without = OneCollider(); without.draws = false
-        let empty = bytes(of: try #require(OllinApp.image(of: without)))
+        let empty = bytes(of: try OllinApp.image(of: without))
         for (name, collider) in exotic {
             let with = OneCollider(); with.collider = collider
-            let inked = bytes(of: try #require(OllinApp.image(of: with)))
+            let inked = bytes(of: try OllinApp.image(of: with))
             #expect(inked != empty, "\(name) must leave some ink on the frame")
         }
     }

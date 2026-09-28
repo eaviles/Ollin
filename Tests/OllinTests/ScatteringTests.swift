@@ -103,7 +103,7 @@ struct ScatteringRenderProbes {
 
     private func render(_ kind: ScatterProbe.Kind) throws -> CGImage {
         if let known = Self.frames[kind] { return known }
-        let image = try #require(OllinApp.image(of: ScatterProbe.make(kind: kind), frame: 1))
+        let image = try OllinApp.image(of: ScatterProbe.make(kind: kind), frame: 1)
         Self.frames[kind] = image
         return image
     }
@@ -145,8 +145,8 @@ struct ScatteringRenderProbes {
         // the same scene with its scattering off: the mask pass is depth-tested, so
         // hidden surfaces mark no pixels, and unmarked pixels pass through the blur
         // bit-exact.
-        let hidden = try #require(OllinApp.image(of: ScatterProbe.make(kind: .hiddenSkin), frame: 1))
-        let plain = try #require(OllinApp.image(of: ScatterProbe.make(kind: .hiddenBare), frame: 1))
+        let hidden = try OllinApp.image(of: ScatterProbe.make(kind: .hiddenSkin), frame: 1)
+        let plain = try OllinApp.image(of: ScatterProbe.make(kind: .hiddenBare), frame: 1)
         #expect(pixels(of: hidden) == pixels(of: plain))
     }
 
@@ -179,7 +179,7 @@ struct ScatteringRenderProbes {
         // two renders of the same sketch are byte-identical (the export promise).
         // The second is drawn fresh here, never taken from the frames kept above.
         let a = try render(.skin)
-        let b = try #require(OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1))
+        let b = try OllinApp.image(of: ScatterProbe.make(kind: .skin), frame: 1)
         #expect(pixels(of: a) == pixels(of: b))
     }
 }
@@ -219,8 +219,8 @@ struct TransmittanceRenderProbes {
         // The term's signature: the caster's depth says how far the light traveled
         // inside the body, so a slab thinner than a couple of scattering radii
         // glows on its dark side while a deep one blocks.
-        let thin = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1))
-        let thick = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thick), frame: 1))
+        let thin = try OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1)
+        let thick = try OllinApp.image(of: TransmitProbe.make(kind: .thick), frame: 1)
         let a = face(thin), b = face(thick)
         #expect(a - b > 15, "expected a transmitted glow: thin \(a), thick \(b)")
         #expect(b < 10, "the thick body's face must stay dark, got \(b)")
@@ -237,7 +237,7 @@ struct TransmittanceRenderProbes {
         // backlit slab with shadows off keeps a black face (the scene carries no
         // ambient): the documented envelope, and the gate that keeps a
         // shadow-less scattering frame byte-identical to before the term existed.
-        let off = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thinNoCaster), frame: 1))
+        let off = try OllinApp.image(of: TransmitProbe.make(kind: .thinNoCaster), frame: 1)
         let a = face(off)
         #expect(a < 3, "expected a dark face with no caster, got \(a)")
     }
@@ -247,8 +247,8 @@ struct TransmittanceRenderProbes {
         // The spot map's depth is non-linear, so this pins the perspective
         // linearization: a wrong constant reads a wild thickness and the thin
         // slab's glow either dies or floods the thick twin too.
-        let thin = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thinSpot), frame: 1))
-        let thick = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thickSpot), frame: 1))
+        let thin = try OllinApp.image(of: TransmitProbe.make(kind: .thinSpot), frame: 1)
+        let thick = try OllinApp.image(of: TransmitProbe.make(kind: .thickSpot), frame: 1)
         let a = face(thin), b = face(thick)
         #expect(a - b > 15, "expected a spot-lit glow: thin \(a), thick \(b)")
         #expect(b < 10, "the thick body under a spot must stay dark, got \(b)")
@@ -259,8 +259,8 @@ struct TransmittanceRenderProbes {
         // A point caster measures thickness by closest-hit ray on a ray-tracing
         // device and from the cube's stored linear distance elsewhere; the probe is
         // path-agnostic, so it covers whichever this machine runs.
-        let thin = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thinPoint), frame: 1))
-        let thick = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thickPoint), frame: 1))
+        let thin = try OllinApp.image(of: TransmitProbe.make(kind: .thinPoint), frame: 1)
+        let thick = try OllinApp.image(of: TransmitProbe.make(kind: .thickPoint), frame: 1)
         let a = face(thin), b = face(thick)
         #expect(a - b > 15, "expected a point-lit glow: thin \(a), thick \(b)")
     }
@@ -270,8 +270,8 @@ struct TransmittanceRenderProbes {
         // At scattering 0 the branch is never taken, so a material that differs
         // only in its (inert) scatter fields renders the identical frame: the gate
         // that keeps existing scenes untouched.
-        let zero = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thinZeroStrength), frame: 1))
-        let plain = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thinPlain), frame: 1))
+        let zero = try OllinApp.image(of: TransmitProbe.make(kind: .thinZeroStrength), frame: 1)
+        let plain = try OllinApp.image(of: TransmitProbe.make(kind: .thinPlain), frame: 1)
         #expect(pixels(of: zero) == pixels(of: plain))
     }
 
@@ -279,8 +279,8 @@ struct TransmittanceRenderProbes {
     func aTransmittingRenderReproduces() throws {
         // Thickness comes from the same deterministic maps and rays the shadows
         // use, so two renders are byte-identical (the export promise).
-        let a = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1))
-        let b = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1))
+        let a = try OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1)
+        let b = try OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1)
         #expect(pixels(of: a) == pixels(of: b))
     }
 
@@ -294,7 +294,7 @@ struct TransmittanceRenderProbes {
         // The pin: row means across the glow band, detrended by a running mean;
         // banding shows as residual (measured 1.36 mean / 3.8 peak striped
         // against 0.44 / 1.6 gathered, with a 96x48 sphere at 0.15 / 0.5).
-        let img = try #require(OllinApp.image(of: GrazingTransmitProbe(), frame: 1))
+        let img = try OllinApp.image(of: GrazingTransmitProbe(), frame: 1)
         let data = pixels(of: img)
         let w = img.width
         let x0 = 112, x1 = 148, y0 = 215, y1 = 305

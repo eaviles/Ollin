@@ -335,7 +335,7 @@ import OllinWebGate
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)
             let page = try OllinApp.webPage(of: recording, form: .inline)
             let played = try await WebExportTests.pagePixels(page, frame: c.probe)
-            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: 30))
+            let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: 30)
             let difference = try WebExportTests.meanDifference(played, reference)
             let far = Self.farFraction(played, reference)
             print("web page against the Mac: \(c.name) frame \(c.probe), mean difference \(String(format: "%.3f", difference)), \(String(format: "%.3f", far * 100))% of the pixels past 32 levels")
@@ -351,7 +351,7 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Growing(), frames: 6, fps: 30)
         let page = try OllinApp.webPage(of: recording, form: .inline)
         let played = try await WebExportTests.pagePixels(page, frame: 0)
-        let elsewhere = try #require(OllinApp.image(of: Growing(), frame: 5, fps: 30))
+        let elsewhere = try OllinApp.image(of: Growing(), frame: 5, fps: 30)
         let difference = try WebExportTests.meanDifference(played, elsewhere)
         #expect(difference > Snapshot.tolerance, "mean difference \(difference)")
     }

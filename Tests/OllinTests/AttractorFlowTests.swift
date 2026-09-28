@@ -137,7 +137,7 @@ struct AttractorFlowTests {
             let probe = FlowProbe()
             probe.system = system
             probe.particles = 20_000
-            _ = OllinApp.image(of: probe, frame: 90)
+            _ = try OllinApp.image(of: probe, frame: 90)
             guard let points = probe.flow.current.snapshot() else {
                 Issue.record("\(name): the flow buffer was never realized")
                 continue
@@ -164,8 +164,8 @@ struct AttractorFlowTests {
         // about twenty units; Aizawa's shell about one and a half.
         let lorenz = FlowProbe(); lorenz.system = .lorenz(); lorenz.particles = 10_000
         let aizawa = FlowProbe(); aizawa.system = .aizawa(); aizawa.particles = 10_000
-        _ = OllinApp.image(of: lorenz, frame: 60)
-        _ = OllinApp.image(of: aizawa, frame: 60)
+        _ = try OllinApp.image(of: lorenz, frame: 60)
+        _ = try OllinApp.image(of: aizawa, frame: 60)
         guard let a = lorenz.flow.current.snapshot(), let b = aizawa.flow.current.snapshot()
         else { return }
         let (_, ra) = Self.region(of: a), (_, rb) = Self.region(of: b)
@@ -181,7 +181,7 @@ struct AttractorFlowTests {
         let probe = FlowProbe()
         probe.system = .chen(alpha: 40, beta: -60, delta: 4)   // well outside the published set
         probe.particles = 8_000
-        _ = OllinApp.image(of: probe, frame: 45)
+        _ = try OllinApp.image(of: probe, frame: 45)
         guard let points = probe.flow.current.snapshot() else { return }
         #expect(points.allSatisfy { $0.position.x.isFinite && $0.position.y.isFinite
                                     && $0.position.z.isFinite })
@@ -203,14 +203,14 @@ struct AttractorFlowTests {
         let flat = FlowProbe()
         flat.system = .lorenz(); flat.particles = 4_000
         flat.colors = [Color.red]
-        _ = OllinApp.image(of: flat, frame: 30)
+        _ = try OllinApp.image(of: flat, frame: 30)
         guard let flatPoints = flat.flow.current.snapshot() else { return }
         #expect(flatPoints.allSatisfy { abs($0.color.x - 1) < 1e-5 && $0.color.y < 1e-5 })
 
         let graded = FlowProbe()
         graded.system = .lorenz(); graded.particles = 4_000
         graded.colors = [Color.red, Color.green]
-        _ = OllinApp.image(of: graded, frame: 30)
+        _ = try OllinApp.image(of: graded, frame: 30)
         guard let gradedPoints = graded.flow.current.snapshot() else { return }
         let greens = gradedPoints.map(\.color.y)
         #expect(greens.max()! - greens.min()! > 0.3, "the ramp should spread across the cloud")
@@ -224,8 +224,8 @@ struct AttractorFlowTests {
         let sane = FlowProbe(); sane.system = .halvorsen(); sane.particles = 8_000
         let greedy = FlowProbe(); greedy.system = .halvorsen(); greedy.particles = 8_000
         greedy.speed = 400
-        _ = OllinApp.image(of: sane, frame: 60)
-        _ = OllinApp.image(of: greedy, frame: 60)
+        _ = try OllinApp.image(of: sane, frame: 60)
+        _ = try OllinApp.image(of: greedy, frame: 60)
         guard let a = sane.flow.current.snapshot(), let b = greedy.flow.current.snapshot()
         else { return }
         let (_, ra) = Self.region(of: a), (_, rb) = Self.region(of: b)

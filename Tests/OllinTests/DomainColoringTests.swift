@@ -86,7 +86,7 @@ struct DomainColoringTests {
         if let image = Self.phasePortraitOfZFrame { return image }
         let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
                                                      shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         Self.phasePortraitOfZFrame = image
         return image
     }
@@ -98,7 +98,7 @@ struct DomainColoringTests {
         let probe = DomainProbe.make(.domainColoring(
             .rational(zeros: [Vector2(-0.6, 0)], poles: [Vector2(0.6, 0)]),
             colors: Self.wheel, shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         #expect(lap(image, around: Vector2(-0.6, 0), radius: 0.2) == 3,
                 "a simple zero must show one full turn of the wheel, counter-clockwise")
         #expect(lap(image, around: Vector2(0.6, 0), radius: 0.2) == -3,
@@ -111,7 +111,7 @@ struct DomainColoringTests {
         let probe = DomainProbe.make(.domainColoring(
             .rational(zeros: [Vector2(-0.5, 0), Vector2(-0.5, 0)], poles: []),
             colors: Self.wheel, shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         #expect(lap(image, around: Vector2(-0.5, 0), radius: 0.25) == 6,
                 "a double zero must show two turns")
     }
@@ -120,7 +120,7 @@ struct DomainColoringTests {
     func thePowerFunctionWindsItsExponentTimes() throws {
         let probe = DomainProbe.make(.domainColoring(.power(3), colors: Self.wheel,
                                                      shading: .phase))
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         #expect(lap(image, around: .zero, radius: 0.7) == 9, "z cubed winds three times")
     }
 
@@ -171,7 +171,7 @@ struct DomainColoringTests {
             } else {
                 let probe = DomainProbe.make(.domainColoring(.power(1), colors: Self.wheel,
                                                              shading: shading, strength: 1))
-                image = try #require(OllinApp.image(of: probe, frame: 1))
+                image = try OllinApp.image(of: probe, frame: 1)
             }
             let data = pixels(of: image)
             let half = image.width / 2

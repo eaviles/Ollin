@@ -42,7 +42,7 @@ struct XDoGTests {
     }
 
     private func render(_ subject: XDoGProbe.Subject, size: Int = 128) throws -> CGImage {
-        try #require(OllinApp.image(of: XDoGProbe.make(subject, size: size), frame: 1))
+        try OllinApp.image(of: XDoGProbe.make(subject, size: size), frame: 1)
     }
 
     /// A linear-light value as the byte a display shows it at.

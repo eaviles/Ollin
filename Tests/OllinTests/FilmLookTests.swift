@@ -43,7 +43,7 @@ struct FilmLookTests {
     }
 
     private func render(_ scene: FilmProbe.Scene, _ filter: Filter?) throws -> [UInt8] {
-        pixels(of: try #require(OllinApp.image(of: FilmProbe.make(scene, filter: filter), frame: 1)))
+        pixels(of: try OllinApp.image(of: FilmProbe.make(scene, filter: filter), frame: 1))
     }
 
     private func rgb(_ data: [UInt8], _ x: Int, _ y: Int) -> (r: Int, g: Int, b: Int) {

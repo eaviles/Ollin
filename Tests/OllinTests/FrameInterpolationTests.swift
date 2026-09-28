@@ -295,8 +295,8 @@ struct FrameInterpolationTests {
         // Every export path renders the sketch's own frames; the interpolator
         // belongs to the live window alone. So asking for it must change an
         // exported frame not at all.
-        let asked = try #require(OllinApp.image(of: InterpolationProbe.make(interpolating: true), frame: 3))
-        let plain = try #require(OllinApp.image(of: InterpolationProbe.make(interpolating: false), frame: 3))
+        let asked = try OllinApp.image(of: InterpolationProbe.make(interpolating: true), frame: 3)
+        let plain = try OllinApp.image(of: InterpolationProbe.make(interpolating: false), frame: 3)
         #expect(bytes(asked) == bytes(plain),
                 "frameInterpolation() must leave an export untouched")
     }

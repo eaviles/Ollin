@@ -80,7 +80,7 @@ struct FringeStrokeTests {
                 for weight in [14.0, 26.0, 33.7] {
                     let ring = Ring()
                     ring.join = join; ring.points = points; ring.weight = weight
-                    let image = try #require(OllinApp.image(of: ring))
+                    let image = try OllinApp.image(of: ring)
                     let holes = pinholes(of: image)
                     #expect(holes == 0, "\(holes) pinholes: \(join) join, \(points) points, weight \(weight)")
                 }
@@ -147,7 +147,7 @@ struct FringeStrokeTests {
             for angle in [45.0, 90.0, 140.0] {
                 let vee = Vee()
                 vee.join = join; vee.angle = angle
-                let (_, _, gray) = grays(of: try #require(OllinApp.image(of: vee)))
+                let (_, _, gray) = grays(of: try OllinApp.image(of: vee))
                 // One coat, read mid-arm where nothing but the one segment covers.
                 let half = angle / 2 * .pi / 180
                 let arm = Vector2(256, 380) + Vector2(-sin(half), -cos(half)) * 110
@@ -173,7 +173,7 @@ struct FringeStrokeTests {
         for points in [40, 120, 360] {
             let turn = Turn()
             turn.points = points
-            let (_, _, gray) = grays(of: try #require(OllinApp.image(of: turn)))
+            let (_, _, gray) = grays(of: try OllinApp.image(of: turn))
             // Mean and darkest at each radius across the 40pt band, sampled all
             // along the arc so an isolated speck at one join is not stepped over.
             var means: [Double] = []
@@ -220,7 +220,7 @@ struct FringeStrokeTests {
         for mode in [ArcMode.open, .chord, .pie] {
             let arc = Ellipse()
             arc.mode = mode
-            let ink = InkProbe(try #require(OllinApp.image(of: arc)), inkDarkerThan: 250)
+            let ink = InkProbe(try OllinApp.image(of: arc), inkDarkerThan: 250)
             // A closed arc folds where its straight edge meets the finely
             // sampled curve, so those corners are left out of the count.
             var folds: [(center: Vector2, radius: Double)] = []

@@ -223,8 +223,8 @@ struct StrokeDynamicsTests {
     func aNeutralMarkDrawsExactlyLikeAPolyline() throws {
         let markProbe = NeutralMarkProbe(), lineProbe = NeutralMarkProbe()
         lineProbe.drawsMark = false
-        let mark = try #require(OllinApp.image(of: markProbe))
-        let line = try #require(OllinApp.image(of: lineProbe))
+        let mark = try OllinApp.image(of: markProbe)
+        let line = try OllinApp.image(of: lineProbe)
         #expect(pixels(of: mark).bytes == pixels(of: line).bytes)
     }
 
@@ -234,7 +234,7 @@ struct StrokeDynamicsTests {
     /// are the same all the way across.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFastStrokeLaysDownLessInk() throws {
-        let image = try #require(OllinApp.image(of: PacedMarkProbe()))
+        let image = try OllinApp.image(of: PacedMarkProbe())
         let px = pixels(of: image)
         // Ink in a column, summed: a thick mark is saturated in the middle, so a
         // peak reading cannot see it thinning.
@@ -253,7 +253,7 @@ struct StrokeDynamicsTests {
     func opacityDynamicsFadeWithoutThinning() throws {
         let probe = PacedMarkProbe()
         probe.fadesOpacity = true
-        let image = try #require(OllinApp.image(of: probe))
+        let image = try OllinApp.image(of: probe)
         let px = pixels(of: image)
         func darkest(_ x: Int) -> Int { (0..<128).map { px.gray(x, $0) }.min() ?? 255 }
         /// The mark's width at a column, measured at half its own darkness. A

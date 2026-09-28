@@ -241,8 +241,8 @@ struct TextureFilteringTests {
     /// the chain reads as the flat grey the checker actually is.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTiledPlaneStopsBoiling() throws {
-        let smooth = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1)))
-        let noisy = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1)))
+        let smooth = spread(try OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1))
+        let noisy = spread(try OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1))
         #expect(smooth.sd < 2, "the filtered plane should be flat: \(smooth)")
         #expect(abs(smooth.mean - 188) < 3, "and hold the checker's own tone: \(smooth)")
         #expect(noisy.sd > 100, "one level is noise, or this probe proves nothing: \(noisy)")
@@ -256,7 +256,7 @@ struct TextureFilteringTests {
     func whatIsNotShrunkIsUntouched() throws {
         func render(_ picture: Image) throws -> [UInt8] {
             let s = Wall(); s.texture = picture; s.tiles = 0.5   // one texel over eight pixels
-            return pixels(of: try #require(OllinApp.image(of: s, frame: 1)))
+            return pixels(of: try OllinApp.image(of: s, frame: 1))
         }
         #expect(try render(Self.loaded()) == render(Self.authored()))
     }
@@ -273,7 +273,7 @@ struct TextureFilteringTests {
             var frames: [[UInt8]] = []
             for f in 1...2 {
                 let s = Floor(); s.texture = picture; s.drift = 0.03
-                frames.append(pixels(of: try #require(OllinApp.image(of: s, frame: f))))
+                frames.append(pixels(of: try OllinApp.image(of: s, frame: f)))
             }
             var sum = 0.0, n = 0.0
             for py in 128..<166 {
@@ -299,7 +299,7 @@ struct TextureFilteringTests {
     func aFilteredFloorRendersTheSameTwice() throws {
         func render() throws -> [UInt8] {
             let s = Floor(); s.texture = Self.loaded()
-            return pixels(of: try #require(OllinApp.image(of: s, frame: 1)))
+            return pixels(of: try OllinApp.image(of: s, frame: 1))
         }
         // The kept floor against a fresh render of it: two renders, never the kept
         // frame compared with itself.
@@ -313,7 +313,7 @@ struct TextureFilteringTests {
     private func loadedFloorFrame() throws -> CGImage {
         if let known = Self.loadedFloor { return known }
         let s = Floor(); s.texture = Self.loaded()
-        let image = try #require(OllinApp.image(of: s, frame: 1))
+        let image = try OllinApp.image(of: s, frame: 1)
         Self.loadedFloor = image
         return image
     }
@@ -342,8 +342,8 @@ struct TextureFilteringTests {
     func theTracedExportReadsTheSameLevels() throws {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 16, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        let smooth = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1)))
-        let noisy = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1)))
+        let smooth = spread(try OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1))
+        let noisy = spread(try OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1))
         #expect(smooth.sd < 2, "the traced plane should be flat: \(smooth)")
         #expect(noisy.sd > 10, "sixteen samples hide some of it, never all: \(noisy)")
     }
@@ -359,7 +359,7 @@ struct TextureFilteringTests {
     func aProjectedFloorReadsTheSameLevels() throws {
         func band(_ picture: Image) throws -> (mean: Double, sd: Double) {
             let s = TriplanarFloor(); s.texture = picture
-            return spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+            return spread(try OllinApp.image(of: s, frame: 1), y0: 0.52, y1: 0.62)
         }
         let smooth = try band(Self.loaded()), noisy = try band(Self.authored())
         #expect(smooth.sd < 3, "the projected floor should be flat: \(smooth)")
@@ -377,7 +377,7 @@ struct TextureFilteringTests {
     func aDetailMapReadsTheSameLevels() throws {
         func band(_ picture: Image) throws -> (mean: Double, sd: Double) {
             let s = DetailFloor(); s.texture = picture
-            return spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+            return spread(try OllinApp.image(of: s, frame: 1), y0: 0.52, y1: 0.62)
         }
         let smooth = try band(Self.loaded()), noisy = try band(Self.authored())
         #expect(smooth.sd < 5, "the detail has broken up: \(smooth)")

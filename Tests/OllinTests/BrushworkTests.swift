@@ -41,8 +41,8 @@ struct BrushworkTests {
 
     private func render(_ subject: BrushworkProbe.Subject, _ filter: Filter?,
                         size: Int = 96) throws -> CGImage {
-        try #require(OllinApp.image(of: BrushworkProbe.make(subject, filter: filter, size: size),
-                                    frame: 1))
+        try OllinApp.image(of: BrushworkProbe.make(subject, filter: filter, size: size),
+                                    frame: 1)
     }
 
     /// The byte a `Color(white:)` value shows as: the components are already the

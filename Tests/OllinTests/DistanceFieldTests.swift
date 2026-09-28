@@ -66,7 +66,7 @@ struct DistanceFieldTests {
     }
 
     private func render(_ subject: FieldProbe.Subject) throws -> CGImage {
-        try #require(OllinApp.image(of: FieldProbe.make(subject), frame: 1))
+        try OllinApp.image(of: FieldProbe.make(subject), frame: 1)
     }
 
     /// The soft radius of the shape grown by `offset` with no cap on the flood, kept

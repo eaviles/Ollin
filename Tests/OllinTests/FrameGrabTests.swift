@@ -201,7 +201,7 @@ struct FrameGrabTests {
         #expect(sink.textureSizes.first.map { $0 == (256, 256) } == true)
         #expect(sink.passes.last == plainPasses + 1,
                 "a grab adds one present pass, never a second render")
-        let reference = try #require(OllinApp.image(of: Rosette(), frame: 0))
+        let reference = try OllinApp.image(of: Rosette(), frame: 0)
         let mean = try meanDifference(image, reference)
         #expect(mean == 0, "the grab must be the on-screen render itself (mean \(mean))")
     }
@@ -224,7 +224,7 @@ struct FrameGrabTests {
         // A 2.5x picture averaged down is the same picture with softer edges,
         // not another one: close to the 1x render everywhere, and the ring's
         // stroke still lands where it was drawn.
-        let reference = try #require(OllinApp.image(of: Rosette(), frame: 0))
+        let reference = try OllinApp.image(of: Rosette(), frame: 0)
         let mean = try meanDifference(image, reference)
         #expect(mean < 4, "a minified grab must still be the same picture (mean \(mean))")
         #expect(try brightness(image, x: 128, y: 18) > 120, "the ring's stroke survives the minification")
@@ -248,7 +248,7 @@ struct FrameGrabTests {
         // The window is smaller than the canvas, so the frame was drawn at the
         // canvas size and the window shows it scaled: the grab is the full
         // render, not a blown-up 96-pixel picture.
-        let reference = try #require(OllinApp.image(of: Rosette(), frame: 0))
+        let reference = try OllinApp.image(of: Rosette(), frame: 0)
         let mean = try meanDifference(image, reference)
         #expect(mean == 0, "a small window must not decide how sharp the take is (mean \(mean))")
     }
@@ -331,7 +331,7 @@ struct FrameGrabTests {
         let image = try #require(sink.images.first)
         // The grid is host chrome. With the grab armed it leaves the window, so
         // the take matches the headless render, which never had it.
-        let reference = try #require(OllinApp.image(of: LitBox(), frame: 0))
+        let reference = try OllinApp.image(of: LitBox(), frame: 0)
         let mean = try meanDifference(image, reference)
         #expect(mean < 0.5, "the ground grid must not reach a recorded frame (mean \(mean))")
     }

@@ -13,10 +13,14 @@ import os
 /// crisp under magnification (the classic alpha-tested-magnification trick).
 ///
 /// A reference type, lazily filled and shared across value copies of an
-/// `OutlineFont` (like its outline/geometry caches). It's touched only from the
-/// single draw thread — `slot(for:font:)` while recording a frame (no device),
-/// `texture(for:)` while the renderer encodes — so it carries no locking and is
-/// `@unchecked Sendable` to satisfy the `Sendable` `OutlineFont` that holds it.
+/// `OutlineFont` (like its outline/geometry caches). The glyphs live on a
+/// `Page`, and a slot names the page it was placed on. When the page fills,
+/// the atlas starts a fresh one and leaves the full page as it was: a glyph
+/// placed earlier in the same frame, or baked into a retained batch, keeps
+/// sampling the page that holds it, and a batch holds its page alive for as
+/// long as it draws. The atlas is `@unchecked Sendable` to satisfy the
+/// `Sendable` `OutlineFont` that holds it; its lock and each page's own guard
+/// the mutable state.
 ///
 /// The single-channel field rounds *very sharp* corners only at extreme
 /// magnification (invisible for the body/volume text this path targets); a
@@ -28,6 +32,7 @@ final class GlyphAtlas: @unchecked Sendable {
     /// em units (font space, y-up, pen at the origin). The drawer scales the em
     /// rect by `textSize`, offsets by the pen origin, and flips y to place it.
     struct Slot {
+        let page: Page                       // the page the glyph was placed on
         let u0, v0, u1, v1: Float            // atlas UVs: top-left … bottom-right
         let emLeft, emRight, emTop, emBottom: Double   // covering quad, em units, y-up
     }
@@ -48,64 +53,63 @@ final class GlyphAtlas: @unchecked Sendable {
     /// A guard texel between packed cells.
     private static let gutter = 1
 
-    // MARK: Page state
+    // MARK: Atlas state
 
-    /// The atlas page, row-major, one byte per texel: the normalized signed
-    /// distance, `0.5` = edge, `> 0.5` inside.
-    private var page = [UInt8](repeating: 0, count: pageSize * pageSize)
+    /// The page new glyphs are placed on. A full page is never cleared: the
+    /// atlas moves on to a fresh one, so every slot handed out stays true.
+    private var page = Page()
     /// Cached slots, keyed by run font (fallback puts glyphs from several faces on
     /// one line) then glyph id — mirrors `GlyphPathCache`. A cached `nil` records a
     /// glyph that draws nothing (a space), so it's not re-rasterized every frame.
+    /// Emptied when the atlas moves to a fresh page, so a glyph asked for again
+    /// is placed on the page that is current then.
     private var fonts: [(font: CTFont, slots: [CGGlyph: Slot?])] = []
 
-    /// Shelf packer cursor: current row origin and the tallest cell on the row.
-    private var penX = GlyphAtlas.gutter
-    private var penY = GlyphAtlas.gutter
-    private var rowHeight = 0
-
-    /// The page changed since the last upload, so `texture(for:)` must re-blit.
-    private var dirty = true
-    private var cachedTexture: MTLTexture?
-    private var cachedDeviceID: ObjectIdentifier?
-    /// Counts the page rebuilds (`reset`). A slot handed out before a rebuild
-    /// points into a page that no longer holds its glyph, so a reader carrying
-    /// the page elsewhere (the web recorder) compares this against the value it
-    /// saw when it first took a slot.
+    /// Counts the fresh pages started because the current one filled. A reader
+    /// that wants to know whether a long run of text moved on (`SoakTests`)
+    /// compares it against an earlier value.
     private(set) var generation = 0
 
     /// The page's texel width (and height), for a reader that carries the page.
     static var webPageSize: Int { pageSize }
 
-    /// Guards all the mutable page/packer/cache state above. `slot(for:)`
-    /// (recording) and `texture(for:)` (encoding) both run on the main draw thread
-    /// in normal use, but `OutlineFont` is a public `Sendable` reachable from the
-    /// `.system` globals, so a sketch could reach the atlas off the main actor; the
-    /// lock keeps the shared `page`/packer/cache from corrupting. A cache hit holds
-    /// it only briefly; the one-time rasterize-and-pack runs under it during warm-up.
+    /// Guards the current page and the slot cache. `slot(for:)` runs on the main
+    /// draw thread in normal use, but `OutlineFont` is a public `Sendable`
+    /// reachable from the `.system` globals, so a sketch could reach the atlas
+    /// off the main actor; the lock keeps the cache from corrupting. A cache hit
+    /// holds it only briefly; the one-time rasterize-and-pack runs under it
+    /// during warm-up.
     private let lock = OSAllocatedUnfairLock()
 
-    /// How many glyphs the page holds a slot for, across every face on it. The
-    /// page is rebuilt when it fills, so this is bounded by what one page fits
+    /// How many glyphs the current page holds a slot for, across every face on
+    /// it. A full page is left behind, so this is bounded by what one page fits
     /// however much text a long run feeds it (`SoakTests`).
     var glyphCount: Int {
         lock.lock(); defer { lock.unlock() }
         return fonts.reduce(0) { $0 + $1.slots.count }
     }
 
+    /// The page new glyphs go on, for a test that reads which page a slot
+    /// landed on.
+    var currentPage: Page {
+        lock.lock(); defer { lock.unlock() }
+        return page
+    }
+
     // MARK: Slots
 
     /// The atlas slot for `glyph` in `font`, built on first use. `nil` for a glyph
-    /// with no contours (a space) or one that can't be placed (oversized, or the
-    /// page is full after a rebuild) — the caller simply draws nothing for it.
+    /// with no contours (a space) or one that can't be placed (larger than a
+    /// page); the caller draws nothing for it.
     func slot(for glyph: CGGlyph, font: CTFont) -> Slot? {
         lock.lock(); defer { lock.unlock() }
         if let index = fonts.firstIndex(where: { CFEqual($0.font, font) }),
            let hit = fonts[index].slots[glyph] {
             return hit
         }
-        // Making a slot can fill the page and rebuild it, which forgets every
-        // face on it, so the face is found again afterwards: an index taken
-        // before would point past the end of the emptied list.
+        // Making a slot can fill the page and move on to a fresh one, which
+        // forgets every face, so the face is found again afterwards: an index
+        // taken before would point past the end of the emptied list.
         let made = make(glyph, font)
         if let index = fonts.firstIndex(where: { CFEqual($0.font, font) }) {
             fonts[index].slots[glyph] = made
@@ -139,18 +143,19 @@ final class GlyphAtlas: @unchecked Sendable {
 
         guard let cell = rasterizeSDF(path: path, cellW: cellW, cellH: cellH,
                                       emLeft: emLeft, emBottom: emBottom) else { return nil }
-        guard let (px, py) = pack(width: cellW, height: cellH) else { return nil }
-
-        // Blit the cell (row 0 = top) into the page at (px, py).
-        for r in 0..<cellH {
-            let src = r * cellW
-            let dst = (py + r) * GlyphAtlas.pageSize + px
-            page.replaceSubrange(dst..<(dst + cellW), with: cell[src..<(src + cellW)])
+        // A full page is left as it is and the glyph goes on a fresh one, so
+        // every slot handed out before still names bytes that hold its glyph.
+        var placed = page.place(cell, width: cellW, height: cellH)
+        if placed == nil {
+            page = Page()
+            fonts.removeAll(keepingCapacity: true)
+            generation += 1
+            placed = page.place(cell, width: cellW, height: cellH)
         }
-        dirty = true
+        guard let (px, py) = placed else { return nil }
 
         let p = Float(GlyphAtlas.pageSize)
-        return Slot(u0: Float(px) / p, v0: Float(py) / p,
+        return Slot(page: page, u0: Float(px) / p, v0: Float(py) / p,
                     u1: Float(px + cellW) / p, v1: Float(py + cellH) / p,
                     emLeft: emLeft, emRight: emRight, emTop: emTop, emBottom: emBottom)
     }
@@ -264,88 +269,95 @@ final class GlyphAtlas: @unchecked Sendable {
         return d
     }
 
-    // MARK: Packing
+    // MARK: Pages
 
-    /// Reserve a `width`×`height` cell with a shelf packer, returning its top-left
-    /// origin. Rebuilds the page (clearing every cached slot) if it overflows — a
-    /// blunt bound, like the geometry cache's, fine because a font's glyph set is
-    /// small and stable after warm-up. `nil` only if the cell can't fit a fresh
-    /// page (caught earlier by the oversize guard).
-    private func pack(width: Int, height: Int) -> (Int, Int)? {
-        let size = GlyphAtlas.pageSize
-        let gutter = GlyphAtlas.gutter
-        if penX + width + gutter > size {            // wrap to the next shelf
-            penX = gutter
-            penY += rowHeight + gutter
-            rowHeight = 0
+    /// One `pageSize`² page of distance fields, filled by a shelf packer and
+    /// never cleared: a page only gains cells, so the bytes under a slot never
+    /// change once it is handed out. A draw batch holds the page its glyphs
+    /// sample, which keeps a full page alive for as long as something draws
+    /// through it.
+    final class Page: @unchecked Sendable {
+
+        /// Row-major, one byte per texel: the normalized signed distance,
+        /// `0.5` = edge, `> 0.5` inside.
+        private var bytes = [UInt8](repeating: 0, count: GlyphAtlas.pageSize * GlyphAtlas.pageSize)
+
+        /// Shelf packer cursor: current row origin and the tallest cell on the row.
+        private var penX = GlyphAtlas.gutter
+        private var penY = GlyphAtlas.gutter
+        private var rowHeight = 0
+
+        /// The bytes changed since the last upload.
+        private var dirty = true
+        private var cachedTexture: MTLTexture?
+        private var cachedDeviceID: ObjectIdentifier?
+
+        /// Guards the bytes, the packer, and the texture: the atlas places cells
+        /// while a frame records, and the renderer uploads while it encodes.
+        private let lock = OSAllocatedUnfairLock()
+
+        /// Reserve a `width`×`height` cell with a shelf packer and copy `cell`
+        /// (row 0 = top) into it, returning its top-left origin, or `nil` when
+        /// the page has no room left for it.
+        func place(_ cell: [UInt8], width: Int, height: Int) -> (Int, Int)? {
+            lock.lock(); defer { lock.unlock() }
+            let size = GlyphAtlas.pageSize
+            let gutter = GlyphAtlas.gutter
+            var x = penX, y = penY, row = rowHeight
+            if x + width + gutter > size {           // wrap to the next shelf
+                x = gutter
+                y += row + gutter
+                row = 0
+            }
+            guard x + width <= size, y + height + gutter <= size else { return nil }
+            for r in 0..<height {
+                let src = r * width
+                let dst = (y + r) * size + x
+                bytes.replaceSubrange(dst..<(dst + width), with: cell[src..<(src + width)])
+            }
+            penX = x + width + gutter
+            penY = y
+            rowHeight = max(row, height)
+            dirty = true
+            return (x, y)
         }
-        if penY + height + gutter > size {           // page full → rebuild
-            reset()
+
+        /// The page's bytes down to the last packed shelf: the rows a reader must
+        /// carry to reproduce every slot on it (the rest of the page is zero), one
+        /// byte per texel, row 0 at the top, `webPageSize` wide. What the web
+        /// recorder writes into the page as an atlas asset.
+        func webPage() -> (bytes: [UInt8], rows: Int) {
+            lock.lock(); defer { lock.unlock() }
+            let rows = min(GlyphAtlas.pageSize, max(1, penY + rowHeight + GlyphAtlas.gutter))
+            return (Array(bytes[0 ..< rows * GlyphAtlas.pageSize]), rows)
         }
-        guard penX + width <= size, penY + height <= size else { return nil }
-        let origin = (penX, penY)
-        penX += width + gutter
-        rowHeight = max(rowHeight, height)
-        return origin
-    }
 
-    /// Clear the page and every cached slot (a packer overflow). Glyphs re-cache on
-    /// next use.
-    private func reset() {
-        for i in page.indices { page[i] = 0 }
-        fonts.removeAll(keepingCapacity: true)
-        penX = GlyphAtlas.gutter
-        penY = GlyphAtlas.gutter
-        rowHeight = 0
-        dirty = true
-        cachedTexture = nil
-        cachedDeviceID = nil
-        generation += 1
-    }
+        /// The page as a Metal texture on `device`. `r8Unorm` and **not** sRGB: it
+        /// stores distance, not color, so the sample must stay raw (the fragment
+        /// linearizes the fill color separately). A page that gained cells since
+        /// the last upload gets a fresh texture rather than an upload into the
+        /// old one, which a frame still in flight may be reading. Built on the
+        /// main thread during encoding, mirroring `Image.texture(for:)`.
+        func texture(for device: MTLDevice) -> MTLTexture? {
+            lock.lock(); defer { lock.unlock() }
+            let id = ObjectIdentifier(device)
+            if let cachedTexture, cachedDeviceID == id, !dirty { return cachedTexture }
 
-    /// The page's bytes down to the last packed shelf: the rows a reader must
-    /// carry to reproduce every slot handed out so far (the rest of the page is
-    /// zero), one byte per texel, row 0 at the top, `webPageSize` wide. What the
-    /// web recorder writes into the page as the atlas asset.
-    func webPage() -> (bytes: [UInt8], rows: Int) {
-        lock.lock(); defer { lock.unlock() }
-        let rows = min(GlyphAtlas.pageSize, max(1, penY + rowHeight + GlyphAtlas.gutter))
-        return (Array(page[0 ..< rows * GlyphAtlas.pageSize]), rows)
-    }
-
-    // MARK: GPU texture
-
-    /// The atlas page as a Metal texture on `device`, (re)uploaded when the page
-    /// changed. `r8Unorm` and **not** sRGB: it stores distance, not color, so the
-    /// sample must stay raw (the fragment linearizes the fill color separately).
-    /// Built and updated on the main thread during encoding, mirroring
-    /// `Image.texture(for:)`.
-    func texture(for device: MTLDevice) -> MTLTexture? {
-        lock.lock(); defer { lock.unlock() }
-        let id = ObjectIdentifier(device)
-        if let cachedTexture, cachedDeviceID == id, !dirty { return cachedTexture }
-
-        let texture: MTLTexture
-        if let cachedTexture, cachedDeviceID == id {
-            texture = cachedTexture          // same device, just re-upload the page
-        } else {
+            let size = GlyphAtlas.pageSize
             let desc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .r8Unorm, width: GlyphAtlas.pageSize, height: GlyphAtlas.pageSize,
-                mipmapped: false)
+                pixelFormat: .r8Unorm, width: size, height: size, mipmapped: false)
             desc.usage = .shaderRead
             desc.storageMode = ollinUploadStorageMode
-            guard let made = device.makeTexture(descriptor: desc) else { return nil }
-            texture = made
+            guard let texture = device.makeTexture(descriptor: desc) else { return nil }
+            let region = MTLRegionMake2D(0, 0, size, size)
+            bytes.withUnsafeBytes { raw in
+                texture.replace(region: region, mipmapLevel: 0,
+                                withBytes: raw.baseAddress!, bytesPerRow: size)
+            }
+            cachedTexture = texture
+            cachedDeviceID = id
+            dirty = false
+            return texture
         }
-
-        let region = MTLRegionMake2D(0, 0, GlyphAtlas.pageSize, GlyphAtlas.pageSize)
-        page.withUnsafeBytes { raw in
-            texture.replace(region: region, mipmapLevel: 0,
-                            withBytes: raw.baseAddress!, bytesPerRow: GlyphAtlas.pageSize)
-        }
-        cachedTexture = texture
-        cachedDeviceID = id
-        dirty = false
-        return texture
     }
 }

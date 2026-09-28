@@ -33,7 +33,7 @@ final class SaveToPhone: Sketch {
             screens = [0.55, 0.05].map { hue in
                 let probe = PhoneProbe()
                 probe.hue = hue
-                guard let exported = OllinApp.image(of: probe, frame: 40) else { return Image(width: 1, height: 1) }
+                guard let exported = try? OllinApp.image(of: probe, frame: 40) else { return Image(width: 1, height: 1) }
                 return Image(cgImage: exported)
             }
         }

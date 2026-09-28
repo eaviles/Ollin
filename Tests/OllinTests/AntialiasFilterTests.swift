@@ -24,7 +24,7 @@ struct AntialiasFilterTests {
 
     private func unfilteredStaircase() throws -> CGImage {
         if let image = Self.unfilteredStaircaseFrame { return image }
-        let image = try #require(OllinApp.image(of: StaircaseProbe.make(nil), frame: 1))
+        let image = try OllinApp.image(of: StaircaseProbe.make(nil), frame: 1)
         Self.unfilteredStaircaseFrame = image
         return image
     }
@@ -37,8 +37,8 @@ struct AntialiasFilterTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroAmountIsIdentity() throws {
         let plain = try unfilteredStaircase()
-        let zero = try #require(OllinApp.image(
-            of: StaircaseProbe.make(.antialias(amount: 0)), frame: 1))
+        let zero = try OllinApp.image(
+            of: StaircaseProbe.make(.antialias(amount: 0)), frame: 1)
         #expect(maxDifference(plain, zero) == 0)
     }
 
@@ -46,9 +46,9 @@ struct AntialiasFilterTests {
     /// the pass off the rest of a frame, and a flat field is the whole of that case.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatLayerComesBackUntouched() throws {
-        let plain = try #require(OllinApp.image(of: FlatFieldProbe.make(nil), frame: 1))
-        let filtered = try #require(OllinApp.image(
-            of: FlatFieldProbe.make(.antialias()), frame: 1))
+        let plain = try OllinApp.image(of: FlatFieldProbe.make(nil), frame: 1)
+        let filtered = try OllinApp.image(
+            of: FlatFieldProbe.make(.antialias()), frame: 1)
         #expect(maxDifference(plain, filtered) == 0)
     }
 
@@ -63,8 +63,8 @@ struct AntialiasFilterTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aStairSteppedEdgeBecomesARamp() throws {
         let plain = try unfilteredStaircase()
-        let smoothed = try #require(OllinApp.image(
-            of: StaircaseProbe.make(.antialias()), frame: 1))
+        let smoothed = try OllinApp.image(
+            of: StaircaseProbe.make(.antialias()), frame: 1)
         let before = edgeWander(plain), after = edgeWander(smoothed)
         #expect(before > 0.2, "the unfiltered edge should be a staircase (\(before) px)")
         #expect(after < before * 0.5,
@@ -76,9 +76,9 @@ struct AntialiasFilterTests {
     /// of the run-across / run-down test, and it has to improve too.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSteepEdgeIsSmoothedByTheOtherBranch() throws {
-        let plain = try #require(OllinApp.image(of: SteepEdgeProbe.make(nil), frame: 1))
-        let smoothed = try #require(OllinApp.image(
-            of: SteepEdgeProbe.make(.antialias()), frame: 1))
+        let plain = try OllinApp.image(of: SteepEdgeProbe.make(nil), frame: 1)
+        let smoothed = try OllinApp.image(
+            of: SteepEdgeProbe.make(.antialias()), frame: 1)
         let before = columnWander(plain), after = columnWander(smoothed)
         #expect(before > 0.2, "the unfiltered edge should be a staircase (\(before) px)")
         #expect(after < before * 0.5,
@@ -91,14 +91,14 @@ struct AntialiasFilterTests {
     /// 0.250 px of wander on the short look against 0.112 px on the long one.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLongerLookHelpsAShallowerEdge() throws {
-        let plain = try #require(OllinApp.image(
-            of: StaircaseProbe.make(nil, slope: 1.0 / 24.0), frame: 1))
-        let short = try #require(OllinApp.image(
+        let plain = try OllinApp.image(
+            of: StaircaseProbe.make(nil, slope: 1.0 / 24.0), frame: 1)
+        let short = try OllinApp.image(
             of: StaircaseProbe.make(.antialias(quality: .performance), slope: 1.0 / 24.0),
-            frame: 1))
-        let long = try #require(OllinApp.image(
+            frame: 1)
+        let long = try OllinApp.image(
             of: StaircaseProbe.make(.antialias(quality: .detail), slope: 1.0 / 24.0),
-            frame: 1))
+            frame: 1)
         let (raw, near, far) = (edgeWander(plain), edgeWander(short), edgeWander(long))
         #expect(far < near, "the long look (\(far) px) should beat the short one (\(near) px)")
         #expect(far < raw * 0.5, "\(far) px against \(raw) px unfiltered")
@@ -117,13 +117,13 @@ struct AntialiasFilterTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aThresholdAboveTheEdgeLeavesItAlone() throws {
         let faint = { (f: Filter?) in StaircaseProbe.make(f, high: 0.55, low: 0.45) }
-        let plain = try #require(OllinApp.image(of: faint(nil), frame: 1))
-        let ignored = try #require(OllinApp.image(
-            of: faint(.antialias(threshold: 0.5)), frame: 1))
+        let plain = try OllinApp.image(of: faint(nil), frame: 1)
+        let ignored = try OllinApp.image(
+            of: faint(.antialias(threshold: 0.5)), frame: 1)
         #expect(maxDifference(plain, ignored) == 0)
 
-        let reached = try #require(OllinApp.image(
-            of: faint(.antialias(threshold: 0.02)), frame: 1))
+        let reached = try OllinApp.image(
+            of: faint(.antialias(threshold: 0.02)), frame: 1)
         let before = inBetweenTones(plain), after = inBetweenTones(reached)
         #expect(before < 40, "a hard edge should have almost no in-between tones (\(before))")
         #expect(after > before * 4, "\(after) in-between pixels against \(before)")
@@ -137,9 +137,9 @@ struct AntialiasFilterTests {
     /// step a brightness step, and this is the test that fails without it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aBlackSilhouetteOnAClearLayerIsFound() throws {
-        let plain = try #require(OllinApp.image(of: ClearLayerProbe.make(nil), frame: 1))
-        let smoothed = try #require(OllinApp.image(
-            of: ClearLayerProbe.make(.antialias()), frame: 1))
+        let plain = try OllinApp.image(of: ClearLayerProbe.make(nil), frame: 1)
+        let smoothed = try OllinApp.image(
+            of: ClearLayerProbe.make(.antialias()), frame: 1)
         let before = edgeWander(plain), after = edgeWander(smoothed)
         #expect(before > 0.2, "the unfiltered silhouette should be a staircase (\(before) px)")
         #expect(after < before * 0.6,
@@ -152,9 +152,9 @@ struct AntialiasFilterTests {
     /// layer above 1, smoothing it there, and bringing it back down to look.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anEdgeAboveWhiteIsStillAnEdge() throws {
-        let plain = try #require(OllinApp.image(of: OverbrightProbe.make(nil), frame: 1))
-        let smoothed = try #require(OllinApp.image(
-            of: OverbrightProbe.make(.antialias()), frame: 1))
+        let plain = try OllinApp.image(of: OverbrightProbe.make(nil), frame: 1)
+        let smoothed = try OllinApp.image(
+            of: OverbrightProbe.make(.antialias()), frame: 1)
         let before = edgeWander(plain), after = edgeWander(smoothed)
         #expect(before > 0.2, "the unfiltered edge should be a staircase (\(before) px)")
         #expect(after < before * 0.6,

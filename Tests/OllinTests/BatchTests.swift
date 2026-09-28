@@ -200,8 +200,8 @@ struct BatchRenderTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func identityReplayMatchesThePerFrameDrawing() throws {
-        let retained = try #require(OllinApp.image(of: BatchABSketch(useBatch: true)))
-        let dynamic = try #require(OllinApp.image(of: BatchABSketch(useBatch: false)))
+        let retained = try OllinApp.image(of: BatchABSketch(useBatch: true))
+        let dynamic = try OllinApp.image(of: BatchABSketch(useBatch: false))
         // Both come off the same readback path, so equal drawings mean equal bytes.
         let retainedBytes = try #require(retained.dataProvider?.data as Data?)
         let dynamicBytes = try #require(dynamic.dataProvider?.data as Data?)

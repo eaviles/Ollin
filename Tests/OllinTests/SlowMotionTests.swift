@@ -89,13 +89,13 @@ struct SlowMotionTests {
         // its own through the still path at the finer rate.
         for k in [0, 7, 23] {
             let written = try image(at: dir, frame: k + 1)
-            let alone = try #require(OllinApp.image(of: MovingDot(), frame: k, fps: 120))
+            let alone = try OllinApp.image(of: MovingDot(), frame: k, fps: 120)
             #expect(maxDifference(written, alone) == 0,
                     "written frame \(k) is not the sketch at frame \(k) of a 120 fps clock")
         }
 
         let second = try image(at: dir, frame: 2)
-        let atTheOldRate = try #require(OllinApp.image(of: MovingDot(), frame: 1, fps: 30))
+        let atTheOldRate = try OllinApp.image(of: MovingDot(), frame: 1, fps: 30)
         #expect(maxDifference(second, atTheOldRate) > 0)
 
         let recipe = try recipeJSON(at: dir, frame: 3)
@@ -156,7 +156,7 @@ struct SlowMotionTests {
         // Half a second at 120 fps is 60 frames of warmup, so the first written
         // frame is the sketch at frame 60 of that clock.
         let written = try image(at: dir, frame: 1)
-        let alone = try #require(OllinApp.image(of: MovingDot(), frame: 60, fps: 120))
+        let alone = try OllinApp.image(of: MovingDot(), frame: 60, fps: 120)
         #expect(maxDifference(written, alone) == 0)
     }
 
@@ -201,7 +201,7 @@ struct SlowMotionTests {
 
         for k in [0, 2, 8] {                       // the drawn ones, 0-based
             let written = try image(at: dir, frame: k + 1)
-            let alone = try #require(OllinApp.image(of: MovingBar(), frame: k / 2, fps: 30))
+            let alone = try OllinApp.image(of: MovingBar(), frame: k / 2, fps: 30)
             #expect(maxDifference(written, alone) == 0,
                     "written frame \(k) is not the sketch's own frame \(k / 2)")
         }

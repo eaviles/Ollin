@@ -68,7 +68,7 @@ struct DataLayerReadTests {
 
     /// The linear value each quarter of the strip reads, from the middle of the quarter.
     private func quarters(_ sketch: DataStrip) throws -> [Double] {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let d = pixels(of: image)
         return (0 ..< 4).map { q in
             let x = q * 100 + 50, y = 50

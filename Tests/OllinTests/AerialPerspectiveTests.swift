@@ -138,7 +138,7 @@ struct AerialStateTests {
 struct AerialRenderProbes {
 
     private func pixels(_ sketch: Sketch) throws -> (data: [UInt8], width: Int, height: Int) {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

@@ -102,7 +102,7 @@ struct PathTraceTests {
     private func pathTraced(_ kind: Probe.Kind, samples: Int = 96) -> CGImage? {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        return OllinApp.image(of: Probe.make(kind), frame: 1)
+        return try? OllinApp.image(of: Probe.make(kind), frame: 1)
     }
 
     /// The furnace: a white Lambert sphere in a uniform field must render the field
@@ -167,7 +167,7 @@ struct PathTraceTests {
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func aSimpleSceneReadsTheSameThroughBothPipelines() throws {
         let traced = try #require(pathTraced(.parityDirectional))
-        let raster = try #require(OllinApp.image(of: Probe.make(.parityDirectional), frame: 1))
+        let raster = try OllinApp.image(of: Probe.make(.parityDirectional), frame: 1)
         let a = centerMean(traced), b = centerMean(raster)
         #expect(abs(a - b) < 6.0, "path traced \(a) vs raster \(b)")
     }
@@ -405,7 +405,7 @@ struct PathTraceTests {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
                                                 denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        return OllinApp.image(of: SliceProbe.make(kind), frame: 1)
+        return try? OllinApp.image(of: SliceProbe.make(kind), frame: 1)
     }
 
     /// The glass furnace: a solid clear glass sphere in the uniform field must
@@ -447,7 +447,7 @@ struct PathTraceTests {
     func aTexturedMeshKeepsItsPictureThroughTheTrace() throws {
         let traced = try #require(pathTracedSlice(.texturedSphere))
         OllinApp.pathTracedExport = nil
-        let raster = try #require(OllinApp.image(of: SliceProbe.make(.texturedSphere), frame: 1))
+        let raster = try OllinApp.image(of: SliceProbe.make(.texturedSphere), frame: 1)
         for channel in [0, 2] {
             let tl = regionMean(traced, x0: 0.34, x1: 0.44, y0: 0.44, y1: 0.56, channel: channel)
             let rl = regionMean(raster, x0: 0.34, x1: 0.44, y0: 0.44, y1: 0.56, channel: channel)
@@ -699,7 +699,7 @@ struct PathTraceTests {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
                                                 denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        return OllinApp.image(of: MapsProbe.make(kind), frame: 1)
+        return try? OllinApp.image(of: MapsProbe.make(kind), frame: 1)
     }
 
     /// The normal map through the trace: the half-tilted face must shade its two
@@ -710,7 +710,7 @@ struct PathTraceTests {
     func aNormalMapBendsTheTracedLight() throws {
         let traced = try #require(pathTracedMaps(.normalMapped))
         OllinApp.pathTracedExport = nil
-        let raster = try #require(OllinApp.image(of: MapsProbe.make(.normalMapped), frame: 1))
+        let raster = try OllinApp.image(of: MapsProbe.make(.normalMapped), frame: 1)
         let tl = regionMean(traced, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58)
         let tr = regionMean(traced, x0: 0.58, x1: 0.70, y0: 0.42, y1: 0.58)
         #expect(abs(tl - tr) > 40.0, "the tilted halves read \(tl) vs \(tr); the bend is missing")
@@ -779,7 +779,7 @@ struct PathTraceTests {
     func aTriplanarMeshKeepsItsProjectionThroughTheTrace() throws {
         let traced = try #require(pathTracedMaps(.triplanarFace))
         OllinApp.pathTracedExport = nil
-        let raster = try #require(OllinApp.image(of: MapsProbe.make(.triplanarFace), frame: 1))
+        let raster = try OllinApp.image(of: MapsProbe.make(.triplanarFace), frame: 1)
         var apart = 0.0
         for channel in [0, 2] {
             let tl = regionMean(traced, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58, channel: channel)
@@ -873,7 +873,7 @@ struct PathTraceTests {
                                  denoises: Bool) -> CGImage? {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: denoises)
         defer { OllinApp.pathTracedExport = nil }
-        return OllinApp.image(of: GrainProbe.make(kind), frame: 1)
+        return try? OllinApp.image(of: GrainProbe.make(kind), frame: 1)
     }
 
     /// How far two renders of the same frame sit apart, in 8-bit levels.
@@ -899,10 +899,10 @@ struct PathTraceTests {
     func theFilterIsOffUnlessAskedFor() throws {
         #expect(PathTracing(samplesPerPixel: 8).denoises == false)
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 8)
-        let byDefault = OllinApp.image(of: GrainProbe.make(.room), frame: 1)
+        let byDefault = Result { try OllinApp.image(of: GrainProbe.make(.room), frame: 1) }
         OllinApp.pathTracedExport = nil
         let named = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
-        #expect(pixels(of: try #require(byDefault)) == pixels(of: named))
+        #expect(pixels(of: try byDefault.get()) == pixels(of: named))
     }
 
     /// The headline claim, measured against the truth rather than against taste: a
@@ -966,7 +966,7 @@ struct PathTraceTests {
     func theFurnaceSurvivesTheFilter() throws {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 96, denoises: true)
         defer { OllinApp.pathTracedExport = nil }
-        let image = try #require(OllinApp.image(of: Probe.make(.furnaceMatte), frame: 1))
+        let image = try OllinApp.image(of: Probe.make(.furnaceMatte), frame: 1)
         let m = centerMean(image)
         #expect(abs(m - 127.5) < 3.0, "filtered furnace mean \(m), expected ~127.5")
     }
@@ -1026,7 +1026,7 @@ struct PathTraceTests {
     private func casterProbe(_ throwsShadow: Bool, samples: Int = 24) -> CGImage? {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        return OllinApp.image(of: CasterProbe.make(throwsShadow), frame: 1)
+        return try? OllinApp.image(of: CasterProbe.make(throwsShadow), frame: 1)
     }
 
     /// The ruling: `castsShadow: false` reaches the traced export. The tracer keeps

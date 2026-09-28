@@ -324,7 +324,7 @@ struct PrintColorTests {
     /// The color at the middle of band `index`.
     @MainActor
     private func bandColors(_ sketch: ProofProbeSketch) throws -> [Color] {
-        let rendered = Image(cgImage: try #require(OllinApp.image(of: sketch, frame: 0)))
+        let rendered = Image(cgImage: try OllinApp.image(of: sketch, frame: 0))
         let band = rendered.height / ProofProbeSketch.bands.count
         return (0 ..< ProofProbeSketch.bands.count).map {
             rendered[rendered.width / 2, $0 * band + band / 2]

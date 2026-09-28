@@ -3607,8 +3607,8 @@ extension MetalRenderer {
             case .glyphAtlas:
                 let end = next?.glyphStart ?? glyphVertices.count
                 let count = end - batch.glyphStart
-                guard count > 0, let glyphBuffer, let atlas = batch.atlas,
-                      let texture = atlas.texture(for: device) else { continue }
+                guard count > 0, let glyphBuffer, let page = batch.atlas,
+                      let texture = page.texture(for: device) else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(glyphBuffer, offset: batch.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
@@ -4088,8 +4088,8 @@ extension MetalRenderer {
             case .glyphAtlas:
                 let end = next?.glyphStart ?? handle.glyphVertices.count
                 let count = end - run.glyphStart
-                guard count > 0, let buffer = resources.glyph, let atlas = run.atlas,
-                      let texture = atlas.texture(for: device) else { continue }
+                guard count > 0, let buffer = resources.glyph, let page = run.atlas,
+                      let texture = page.texture(for: device) else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: run.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)

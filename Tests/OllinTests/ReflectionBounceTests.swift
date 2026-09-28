@@ -28,7 +28,7 @@ struct ReflectionBounceTests {
     /// longer chain fills it with the corridor, which is darker.
     private func panelMean(_ bounces: Int?) throws -> Double {
         if let known = Self.panels[bounces] { return known }
-        let image = try #require(OllinApp.image(of: MirrorTunnelProbe.make(bounces), frame: 1))
+        let image = try OllinApp.image(of: MirrorTunnelProbe.make(bounces), frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

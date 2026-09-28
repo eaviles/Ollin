@@ -162,7 +162,7 @@ struct StrokeProfileTests {
     /// stretch, and nothing is drawn past the end of the path.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTaperThinsTowardItsEnd() throws {
-        let image = try #require(OllinApp.image(of: TaperTipProbe()))
+        let image = try OllinApp.image(of: TaperTipProbe())
         let px = pixels(of: image)
         // The mark runs along y = 64 from x = 20, tapering to nothing at x = 200.
         #expect(px.gray(128, 64) <= 12)                  // middle: solid
@@ -185,7 +185,7 @@ struct StrokeProfileTests {
     /// ink scaling does not dim it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aUniformStrokeIsUnchangedByTheProfilePath() throws {
-        let a = try #require(OllinApp.image(of: UniformStrokeProbe()))
+        let a = try OllinApp.image(of: UniformStrokeProbe())
         // A 6px stroke covers its full width: the center is solid ink.
         #expect(pixels(of: a).gray(128, 64) <= 12)
     }

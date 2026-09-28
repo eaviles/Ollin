@@ -70,8 +70,8 @@ struct PersistentLayerExportTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func everyTileOfAContactSheetDrawsItsFeedbackLayer() throws {
-        let sheet = try #require(OllinApp.contactSheet(of: { RedPile() }, seeds: Array(1...6),
-                                                       columns: 6, tileWidth: 32))
+        let sheet = try OllinApp.contactSheet(of: { RedPile() }, seeds: Array(1...6),
+                                                       columns: 6, tileWidth: 32)
         let bytes = try #require(Self.rgba(sheet))
         var red = 0
         for i in stride(from: 0, to: bytes.count, by: 4)

@@ -98,8 +98,8 @@ struct EnergyConservationTests {
     @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.05, 0.5, 1.0])
     func aWhiteMetalKeepsTheFurnaceLevel(rough: Double) throws {
         let env = try makeGrayEnvironment()
-        let image = try #require(OllinApp.image(of: FurnaceProbe.make(rough: rough, envURL: env),
-                                                frame: 1))
+        let image = try OllinApp.image(of: FurnaceProbe.make(rough: rough, envURL: env),
+                                                frame: 1)
         let (disc, bg) = furnaceMeans(image)
         #expect(bg > 0.1, "expected the environment as the background, read \(bg)")
         let kept = disc / bg

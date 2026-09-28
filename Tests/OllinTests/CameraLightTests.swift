@@ -142,7 +142,7 @@ struct CameraLightTests {
     // MARK: In pixels
 
     private func frame(_ sketch: Sketch) throws -> (width: Int, height: Int, data: [UInt8]) {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

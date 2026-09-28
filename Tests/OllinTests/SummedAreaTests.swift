@@ -53,7 +53,7 @@ struct SummedAreaTests {
     }
 
     private func render(_ subject: SumProbe.Subject, size: Int = 256) throws -> CGImage {
-        try #require(OllinApp.image(of: SumProbe.make(subject, size: size), frame: 1))
+        try OllinApp.image(of: SumProbe.make(subject, size: size), frame: 1)
     }
 
     private struct FlatKey: Hashable {

@@ -59,7 +59,7 @@ struct ArrowsFilterTests {
     private func measuredInk(vector: SIMD4<Float>) throws -> Ink {
         let sketch = ArrowProbe()
         sketch.vector = vector
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

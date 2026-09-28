@@ -40,7 +40,7 @@ struct GlassRenderProbes {
 
     private func render(_ kind: GlassProbe.Kind) throws -> CGImage {
         if let known = Self.frames[kind] { return known }
-        let image = try #require(OllinApp.image(of: GlassProbe.make(kind: kind), frame: 1))
+        let image = try OllinApp.image(of: GlassProbe.make(kind: kind), frame: 1)
         Self.frames[kind] = image
         return image
     }
@@ -50,8 +50,8 @@ struct GlassRenderProbes {
         // No environment means nothing to transmit: the glass sphere must render
         // byte-identical to the same sphere as an opaque dielectric (the documented
         // gate; the transmission block and the direct-light diffKeep never engage).
-        let glass = try #require(OllinApp.image(of: GlassProbe.make(kind: .noEnvGlass), frame: 1))
-        let plain = try #require(OllinApp.image(of: GlassProbe.make(kind: .noEnvDielectric), frame: 1))
+        let glass = try OllinApp.image(of: GlassProbe.make(kind: .noEnvGlass), frame: 1)
+        let plain = try OllinApp.image(of: GlassProbe.make(kind: .noEnvDielectric), frame: 1)
         #expect(pixels(of: glass) == pixels(of: plain))
     }
 
@@ -59,8 +59,8 @@ struct GlassRenderProbes {
     func absorptionDeepensWithTheInteriorSpan() throws {
         // Two green-attenuated solid spheres differing only in thickness: the thicker
         // body's interior span is longer, so its center must come out darker.
-        let thin = try #require(OllinApp.image(of: GlassProbe.make(kind: .attenuationThin), frame: 1))
-        let thick = try #require(OllinApp.image(of: GlassProbe.make(kind: .attenuationThick), frame: 1))
+        let thin = try OllinApp.image(of: GlassProbe.make(kind: .attenuationThin), frame: 1)
+        let thick = try OllinApp.image(of: GlassProbe.make(kind: .attenuationThick), frame: 1)
         let dThin = pixels(of: thin), dThick = pixels(of: thick)
         func luma(_ d: [UInt8], _ img: CGImage) -> Double {
             mean(d, width: img.width, height: img.height, channel: 1,
@@ -76,8 +76,8 @@ struct GlassRenderProbes {
         // The environment-refraction base path can only show the studio behind the
         // pane; the traced walk passes through the pane's own shell and hits the wall,
         // so the pane's interior must go red only when rayTracedReflections() is on.
-        let traced = try #require(OllinApp.image(of: GlassProbe.make(kind: .paneTraced), frame: 1))
-        let envOnly = try #require(OllinApp.image(of: GlassProbe.make(kind: .paneEnvOnly), frame: 1))
+        let traced = try OllinApp.image(of: GlassProbe.make(kind: .paneTraced), frame: 1)
+        let envOnly = try OllinApp.image(of: GlassProbe.make(kind: .paneEnvOnly), frame: 1)
         let dT = pixels(of: traced), dE = pixels(of: envOnly)
         func redness(_ d: [UInt8], _ img: CGImage) -> Double {
             mean(d, width: img.width, height: img.height, channel: 0,
@@ -314,7 +314,7 @@ struct SceneThroughGlassProbes {
     }
 
     private func render(_ kind: SceneThroughGlassProbe.Kind) throws -> CGImage {
-        try #require(OllinApp.image(of: SceneThroughGlassProbe.make(kind: kind), frame: 1))
+        try OllinApp.image(of: SceneThroughGlassProbe.make(kind: kind), frame: 1)
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

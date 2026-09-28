@@ -159,7 +159,7 @@ struct ImageFitTests {
     }
 
     private func render(_ fit: ImageFit) -> CGImage? {
-        OllinApp.image(of: Probe.make(fit), frame: 1)
+        try? OllinApp.image(of: Probe.make(fit), frame: 1)
     }
 
     /// The old behavior, and still the default: every band lands, each a quarter

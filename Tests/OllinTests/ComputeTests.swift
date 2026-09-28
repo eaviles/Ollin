@@ -139,7 +139,7 @@ struct ComputeTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func kernelRendersParticles() throws {
         let sketch = ComputeProbeSketch()
-        guard let image = OllinApp.image(of: sketch, frame: 1) else {
+        guard let image = try? OllinApp.image(of: sketch, frame: 1) else {
             Issue.record("render failed")
             return
         }
@@ -152,7 +152,7 @@ struct ComputeTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func textureKernelWrites() throws {
         let sketch = TextureProbeSketch()
-        _ = OllinApp.image(of: sketch, frame: 0)        // runs the seed dispatch + render
+        _ = try OllinApp.image(of: sketch, frame: 0)        // runs the seed dispatch + render
         guard let data = sketch.field.snapshot() else {
             Issue.record("no snapshot — texture never realized")
             return
@@ -171,7 +171,7 @@ struct ComputeTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func simulationEvolvesAcrossFrames() throws {
         let sketch = SimProbeSketch()
-        _ = OllinApp.image(of: sketch, frame: 5)        // 6 frames → 6 steps
+        _ = try OllinApp.image(of: sketch, frame: 5)        // 6 frames → 6 steps
         guard let data = sketch.sim.current.snapshot() else {
             Issue.record("no snapshot — simulation never realized")
             return
@@ -191,7 +191,7 @@ struct ComputeTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func shaderCurl3DIsDivergenceFree() throws {
         let sketch = CurlProbeSketch()
-        _ = OllinApp.image(of: sketch, frame: 0)
+        _ = try OllinApp.image(of: sketch, frame: 0)
         let readings = try #require(sketch.out.snapshot())
         let divergence = readings.map { Double(abs($0.x)) }
         let flows = readings.map { SIMD3<Double>(Double($0.y), Double($0.z), Double($0.w)) }

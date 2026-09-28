@@ -55,9 +55,9 @@ struct MotionBlurTests {
         let key = MoverKey(blur: blur, shutter: shutter, velocity: velocity, mover: mover,
                            toggle: toggle, frame: frame)
         if let known = Self.moverFrames[key] { return known }
-        let p = pixels(try #require(OllinApp.image(
+        let p = pixels(try OllinApp.image(
             of: MBMoverProbe.make(blur: blur, shutter: shutter, velocity: velocity,
-                                  mover: mover, toggle: toggle), frame: frame)))
+                                  mover: mover, toggle: toggle), frame: frame))
         Self.moverFrames[key] = p
         return p
     }
@@ -65,7 +65,7 @@ struct MotionBlurTests {
     private func cameraFrame(blur: Bool, frame: Int) throws -> (data: [UInt8], w: Int, h: Int) {
         let key = CameraKey(blur: blur, frame: frame)
         if let known = Self.cameraFrames[key] { return known }
-        let p = pixels(try #require(OllinApp.image(of: MBCameraProbe.make(blur: blur), frame: frame)))
+        let p = pixels(try OllinApp.image(of: MBCameraProbe.make(blur: blur), frame: frame))
         Self.cameraFrames[key] = p
         return p
     }
@@ -101,9 +101,9 @@ struct MotionBlurTests {
     /// horizontally. A velocity-axis swap anywhere in the chain reads red here.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theStreakFollowsTheMotionDirection() throws {
-        let on = pixels(try #require(OllinApp.image(
+        let on = pixels(try OllinApp.image(
             of: MBMoverProbe.make(blur: true, shutter: 1,
-                                  velocity: Vector3(0, 20, 0)), frame: 2)))
+                                  velocity: Vector3(0, 20, 0)), frame: 2))
         // World +y is screen up: drawn with frameCount 3, the box centers at
         // pixel (96, 36), edges at y 24/48 and x 84/108.
         let along = max(ink(on, 96, 18), ink(on, 96, 54))     // 6 px past either edge
@@ -134,10 +134,10 @@ struct MotionBlurTests {
     /// Dropping the neighbor-max pass (or the tile max under it) reads red.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theStreakReachesAcrossTileBounds() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBTileProbe.make(blur: true), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBTileProbe.make(blur: false), frame: 2)))
+        let on = pixels(try OllinApp.image(
+            of: MBTileProbe.make(blur: true), frame: 2))
+        let off = pixels(try OllinApp.image(
+            of: MBTileProbe.make(blur: false), frame: 2))
         // k is 16 at 192 tall, so tiles split at x = 112: the 8 px box centered
         // at pixel (104, 96) spans x 100...108, inside tile [96, 112); moving
         // 30 px per frame at shutter 1 its streak spreads 15 px, reaching x 123.
@@ -166,10 +166,10 @@ struct MotionBlurTests {
     /// recorded) and the frame never even pays the passes.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aStillFrameIsByteIdentical() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, velocity: .zero, mover: false), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false, velocity: .zero, mover: false), frame: 2)))
+        let on = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: true, velocity: .zero, mover: false), frame: 2))
+        let off = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: false, velocity: .zero, mover: false), frame: 2))
         #expect(on.data == off.data, "a still frame must be byte-identical under the blur")
     }
 
@@ -179,10 +179,10 @@ struct MotionBlurTests {
     /// early-out copies every pixel through untouched.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aStillMoverPassesThroughUntouched() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, velocity: .zero), frame: 2)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false, velocity: .zero), frame: 2)))
+        let on = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: true, velocity: .zero), frame: 2))
+        let off = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: false, velocity: .zero), frame: 2))
         #expect(on.data == off.data, "a still mover must pass through byte-identically")
     }
 
@@ -190,10 +190,10 @@ struct MotionBlurTests {
     /// first frame renders byte-identically with the blur on.
     @Test(.enabled(if: Snapshot.hasMetal))
     func frameZeroHasNothingToBlur() throws {
-        let on = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 0)))
-        let off = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: false), frame: 0)))
+        let on = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 0))
+        let off = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: false), frame: 0))
         #expect(on.data == off.data, "frame zero must be byte-identical under the blur")
     }
 
@@ -215,8 +215,8 @@ struct MotionBlurTests {
     func anExportIsAPureFunctionOfTheFrame() throws {
         // The second render is drawn fresh here, never taken from the frames kept above.
         let first = try moverFrame(blur: true, shutter: 1, frame: 2)
-        let second = pixels(try #require(OllinApp.image(
-            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2)))
+        let second = pixels(try OllinApp.image(
+            of: MBMoverProbe.make(blur: true, shutter: 1), frame: 2))
         #expect(first.data == second.data,
                 "two renders of one blurred frame must be byte-identical")
     }
@@ -225,8 +225,8 @@ struct MotionBlurTests {
     /// byte-identically to one that never did, answered with a note.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTwoDFrameIsUntouched() throws {
-        let plain = pixels(try #require(OllinApp.image(of: MB2DProbe.make(blur: false), frame: 2)))
-        let asked = pixels(try #require(OllinApp.image(of: MB2DProbe.make(blur: true), frame: 2)))
+        let plain = pixels(try OllinApp.image(of: MB2DProbe.make(blur: false), frame: 2))
+        let asked = pixels(try OllinApp.image(of: MB2DProbe.make(blur: true), frame: 2))
         #expect(plain.data == asked.data, "a 2D frame must ignore the blur ask byte-identically")
     }
 

@@ -50,8 +50,10 @@ enum DragTest {
             switch SketchLoader(sketchPath: file).load() {
             case .success(let sketch):
                 sketch.tracksSourceSites = true
-                guard OllinApp.image(of: sketch, frame: 0) != nil else {
-                    fail("the frame did not render")
+                do {
+                    _ = try OllinApp.image(of: sketch, frame: 0)
+                } catch {
+                    fail("the frame did not render: \(error)")
                 }
                 return sketch
             case .failure(let error):

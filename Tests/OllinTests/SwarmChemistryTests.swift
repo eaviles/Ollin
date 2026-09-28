@@ -171,7 +171,7 @@ struct SwarmChemistryTests {
     private func run(_ configure: @escaping (SwarmChemistry) -> Void) throws -> Outcome {
         let probe = ChemistryProbe()
         probe.configure = configure
-        _ = OllinApp.image(of: probe, frame: probe.steps)
+        _ = try OllinApp.image(of: probe, frame: probe.steps)
         let sim = try #require(probe.chem)
         return Outcome(tally: sim.snapshotLineageCounts(), recipes: sim.snapshotRecipes(),
                        opening: sim.openingRecipes)

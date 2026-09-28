@@ -114,7 +114,7 @@ struct SmoothLifeTests {
 
     /// The rendered field decoded back to linear values, one per texel.
     private func field(of sketch: Sketch, generations: Int) throws -> [[Double]] {
-        values(in: try #require(OllinApp.image(of: sketch, frame: generations - 1)))
+        values(in: try OllinApp.image(of: sketch, frame: generations - 1))
     }
 
     /// The same readout after each of several generation counts, from one run to

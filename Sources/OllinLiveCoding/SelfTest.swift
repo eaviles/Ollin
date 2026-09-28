@@ -252,7 +252,7 @@ enum SelfTest {
         // recipe with the parameter values, and `build` reads differently on
         // purpose, so the two files would differ while the pictures do not.
         func render(_ sketch: Sketch) -> [UInt8] {
-            guard let image = OllinApp.image(of: sketch) else { return [] }
+            guard let image = try? OllinApp.image(of: sketch) else { return [] }
             let width = image.width, height = image.height
             var pixels = [UInt8](repeating: 0, count: width * height * 4)
             guard let space = CGColorSpace(name: CGColorSpace.sRGB),

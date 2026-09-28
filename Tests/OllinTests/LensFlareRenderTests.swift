@@ -29,8 +29,8 @@ struct LensFlareRenderProbes {
 
     private func unflared(_ occluder: FlareProbe.Occluder) throws -> [UInt8] {
         if let known = Self.withoutFlare[occluder] { return known }
-        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: false),
-                                              frame: 1))
+        let off = try OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: false),
+                                              frame: 1)
         let bytes = pixels(of: off)
         Self.withoutFlare[occluder] = bytes
         return bytes
@@ -51,9 +51,9 @@ struct LensFlareRenderProbes {
     /// over only the patch the source sits in.
     private func flareRises(_ occluder: FlareProbe.Occluder,
                             fStop: Double = 4.5, star: Double = 0) throws -> (whole: Double, near: Double) {
-        let on = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: true,
+        let on = try OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: true,
                                                                 fStop: fStop, star: star),
-                                             frame: 1))
+                                             frame: 1)
         let a = pixels(of: on), b = try unflared(occluder)
         return (rise(a, over: b, width: on.width, height: on.height, near: false),
                 rise(a, over: b, width: on.width, height: on.height, near: true))
@@ -90,9 +90,9 @@ struct LensFlareRenderProbes {
         throws -> (total: Double, peak: Double, covered: Int, steepest: Double,
                    steepestAcross: Double, steepestUp: Double) {
         let stopped = fStop.map { lens.stopped(to: $0) } ?? lens
-        let on = try #require(OllinApp.image(of: FlareProbe.make(
+        let on = try OllinApp.image(of: FlareProbe.make(
             occluder: .none, flare: true, sourceSize: sourceSize, amount: 0.12,
-            lens: stopped), frame: 1))
+            lens: stopped), frame: 1)
         let a = pixels(of: on), b = try unflared(.none)
         func linear(_ byte: UInt8) -> Double {
             let v = Double(byte) / 255
@@ -184,11 +184,11 @@ struct LensFlareRenderProbes {
                             occluder: FlareProbe.Occluder = .none, haloSize: Double = 0.38,
                             lens: Lens? = nil)
         throws -> (rise: [Double], width: Int, height: Int) {
-        let with = try #require(OllinApp.image(of: FlareProbe.make(
+        let with = try OllinApp.image(of: FlareProbe.make(
             occluder: occluder, flare: true, lens: lens, streak: streak, halo: halo, dirt: dirt,
-            haloSize: haloSize), frame: 1))
-        let without = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: occluder, flare: true, lens: lens), frame: 1))
+            haloSize: haloSize), frame: 1)
+        let without = try OllinApp.image(of: FlareProbe.make(
+            occluder: occluder, flare: true, lens: lens), frame: 1)
         let a = pixels(of: with), b = pixels(of: without)
         func linear(_ byte: UInt8) -> Double {
             let v = Double(byte) / 255
@@ -204,8 +204,8 @@ struct LensFlareRenderProbes {
     /// How far the ghosts' light is spread each way about its own middle, as the
     /// variance of where it falls, weighted by how much falls there.
     private func ghostSpread(_ lens: Lens) throws -> (across: Double, up: Double) {
-        let on = try #require(OllinApp.image(of: FlareProbe.make(
-            occluder: .none, flare: true, sourceSize: 0.004, amount: 0.12, lens: lens), frame: 1))
+        let on = try OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: true, sourceSize: 0.004, amount: 0.12, lens: lens), frame: 1)
         let a = pixels(of: on), b = try unflared(.none)
         var total = 0.0, sumX = 0.0, sumY = 0.0, sumXX = 0.0, sumYY = 0.0
         for y in 0..<on.height {
@@ -342,8 +342,8 @@ struct LensFlareRenderProbes {
         for lens in [Lens.doubleGauss.multicoated().stopped(to: 11),
                      Lens.doubleGauss.multicoated().stopped(to: 11).anamorphic(squeeze: 2),
                      Lens.heliar.multicoated()] {
-            let on = try #require(OllinApp.image(of: FlareProbe.make(
-                occluder: .none, flare: true, sourceSize: 0.02, amount: 2, lens: lens), frame: 1))
+            let on = try OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, sourceSize: 0.02, amount: 2, lens: lens), frame: 1)
             let a = pixels(of: on), b = try unflared(.none)
             for i in stride(from: 0, to: a.count, by: 4) {
                 // Two levels of room for the present pass's dither.
@@ -397,10 +397,10 @@ struct LensFlareRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theBladesShapeTheStar() throws {
         func spread(star: Double) throws -> Int {
-            let round = try #require(OllinApp.image(of: FlareProbe.make(
-                occluder: .none, flare: true, star: star, blades: 0), frame: 1))
-            let bladed = try #require(OllinApp.image(of: FlareProbe.make(
-                occluder: .none, flare: true, star: star, blades: 6), frame: 1))
+            let round = try OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, star: star, blades: 0), frame: 1)
+            let bladed = try OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, star: star, blades: 6), frame: 1)
             let a = pixels(of: round), b = pixels(of: bladed)
             let width = round.width, height = round.height
             var differing = 0
@@ -421,9 +421,9 @@ struct LensFlareRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func askingForNoFlareLeavesTheFrameUntouched() throws {
         let never = try unflared(.none)
-        let cancelled = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none,
+        let cancelled = try OllinApp.image(of: FlareProbe.make(occluder: .none,
                                                                        flare: true, cancel: true),
-                                                    frame: 1))
+                                                    frame: 1)
         #expect(never == pixels(of: cancelled))
     }
 }

@@ -19,19 +19,33 @@ extension OllinApp {
     /// stateful sketch must start clean for every seed); each instance is
     /// seeded before `setup()` runs, so a sketch that pins its own seed there
     /// renders the same tile every time. One renderer is reused across the
-    /// whole sheet. Returns `nil` with no Metal device, a failed render, or
-    /// empty `seeds`.
+    /// whole sheet.
     ///
     /// `columns` defaults to the squarest grid; `tileWidth` is each thumbnail's
     /// width in pixels (height follows the canvas aspect).
+    ///
+    /// Throws `ExportError`: `.unsupported` for empty `seeds`, `.unrendered`
+    /// when a tile does not draw (no Metal device, a renderer that would not
+    /// start, or a frame that did not come back from the GPU).
     public static func contactSheet(of make: () -> Sketch, seeds: [Int],
                                     frame: Int = 0, fps: FrameRate = 60,
                                     columns: Int? = nil, tileWidth: Int = 320,
-                                    quality: RenderQuality = .detail) -> CGImage? {
-        renderSheet(of: make,
-                    tiles: seeds.map { seed in ("\(seed)", { $0.seed(seed) }) },
-                    frame: frame, fps: fps.framesPerSecond, columns: columns,
-                    tileWidth: tileWidth, quality: quality)
+                                    quality: RenderQuality = .detail) throws -> CGImage {
+        try seedSheet(of: make, seeds: seeds, frame: frame, fps: fps, columns: columns,
+                      tileWidth: tileWidth, quality: quality, for: "")
+    }
+
+    /// The seed sheet for a caller writing `path`, so a failure names the file.
+    static func seedSheet(of make: () -> Sketch, seeds: [Int], frame: Int, fps: FrameRate,
+                          columns: Int?, tileWidth: Int, quality: RenderQuality,
+                          for path: String) throws -> CGImage {
+        guard !seeds.isEmpty else {
+            throw ExportError(.unsupported, path: path, problem: "no seeds to lay out on the sheet")
+        }
+        return try renderSheet(of: make,
+                               tiles: seeds.map { seed in ("\(seed)", { $0.seed(seed) }) },
+                               frame: frame, fps: fps.framesPerSecond, columns: columns,
+                               tileWidth: tileWidth, quality: quality, for: path)
     }
 
     /// Render `frame` of the sketch at each value of a named `@Param` and tile
@@ -44,27 +58,39 @@ extension OllinApp {
     /// numeric values apply to `Double` and `Int` parameters through the same
     /// restore path the live hosts use to carry parameters across reloads, so a
     /// value lands exactly as if the parameter had been dragged there. Every tile
-    /// runs at the same `seed` (one is rolled and recorded when not given), so
-    /// the parameter is the only thing changing across the sheet. Returns
-    /// `nil` when the sketch has no parameter by that name, listing what it
-    /// does have on standard error.
+    /// runs at the same `seed` (one is rolled when not given), so the parameter
+    /// is the only thing changing across the sheet.
+    ///
+    /// Throws `ExportError`: `.unsupported` for empty `values` or a name the
+    /// sketch does not declare (the error lists the names it does), and
+    /// `.unrendered` when a tile does not draw.
     public static func contactSheet(of make: () -> Sketch,
                                     sweeping name: String, values: [Double],
                                     seed: Int? = nil,
                                     frame: Int = 0, fps: FrameRate = 60,
                                     columns: Int? = nil, tileWidth: Int = 320,
-                                    quality: RenderQuality = .detail) -> CGImage? {
-        guard !values.isEmpty else { return nil }
-        let probe = make()
-        let handles = probe.parameters()
-        guard handles.contains(where: { $0.name == name }) else {
-            let available = handles.map(\.name).sorted().joined(separator: ", ")
-            FileHandle.standardError.write(Data(
-                "Ollin: no @Param named '\(name)'; this sketch has: \(available.isEmpty ? "none" : available)\n".utf8))
-            return nil
+                                    quality: RenderQuality = .detail) throws -> CGImage {
+        try sweepSheet(of: make, sweeping: name, values: values,
+                       seed: seed ?? Int.random(in: 1 ... 99_999), frame: frame, fps: fps,
+                       columns: columns, tileWidth: tileWidth, quality: quality, for: "")
+    }
+
+    /// The sweep sheet at a pinned seed, for a caller writing `path`, so a
+    /// failure names the file.
+    static func sweepSheet(of make: () -> Sketch, sweeping name: String, values: [Double],
+                           seed pinned: Int, frame: Int, fps: FrameRate, columns: Int?,
+                           tileWidth: Int, quality: RenderQuality,
+                           for path: String) throws -> CGImage {
+        guard !values.isEmpty else {
+            throw ExportError(.unsupported, path: path, problem: "no values to sweep '\(name)' over")
         }
-        let pinned = seed ?? Int.random(in: 1 ... 99_999)
-        return renderSheet(of: make,
+        let declared = make().parameters().map(\.name)
+        guard declared.contains(name) else {
+            let available = declared.sorted().joined(separator: ", ")
+            throw ExportError(.unsupported, path: path,
+                              problem: "the sketch has no @Param named '\(name)'; it has: \(available.isEmpty ? "none" : available)")
+        }
+        return try renderSheet(of: make,
                            tiles: values.map { value in
                                (sheetNumber(value), { sketch in
                                    sketch.seed(pinned)
@@ -74,7 +100,7 @@ extension OllinApp {
                                })
                            },
                            frame: frame, fps: fps.framesPerSecond, columns: columns,
-                           tileWidth: tileWidth, quality: quality)
+                           tileWidth: tileWidth, quality: quality, for: path)
     }
 
     /// The same sweep, naming the parameter by its own handle rather than a
@@ -89,11 +115,11 @@ extension OllinApp {
                                                values: [Double], seed: Int? = nil,
                                                frame: Int = 0, fps: FrameRate = 60,
                                                columns: Int? = nil, tileWidth: Int = 320,
-                                               quality: RenderQuality = .detail) -> CGImage? {
-        guard let name = parameterName(of: make, at: parameter) else { return nil }
-        return contactSheet(of: { make() }, sweeping: name, values: values, seed: seed,
-                            frame: frame, fps: fps, columns: columns,
-                            tileWidth: tileWidth, quality: quality)
+                                               quality: RenderQuality = .detail) throws -> CGImage {
+        let name = try parameterName(of: make, at: parameter, for: "")
+        return try contactSheet(of: { make() }, sweeping: name, values: values, seed: seed,
+                                frame: frame, fps: fps, columns: columns,
+                                tileWidth: tileWidth, quality: quality)
     }
 
     /// The same sweep over an `Int` parameter, its values whole.
@@ -102,24 +128,25 @@ extension OllinApp {
                                                values: [Int], seed: Int? = nil,
                                                frame: Int = 0, fps: FrameRate = 60,
                                                columns: Int? = nil, tileWidth: Int = 320,
-                                               quality: RenderQuality = .detail) -> CGImage? {
-        guard let name = parameterName(of: make, at: parameter) else { return nil }
-        return contactSheet(of: { make() }, sweeping: name, values: values.map(Double.init),
-                            seed: seed, frame: frame, fps: fps, columns: columns,
-                            tileWidth: tileWidth, quality: quality)
+                                               quality: RenderQuality = .detail) throws -> CGImage {
+        let name = try parameterName(of: make, at: parameter, for: "")
+        return try contactSheet(of: { make() }, sweeping: name, values: values.map(Double.init),
+                                seed: seed, frame: frame, fps: fps, columns: columns,
+                                tileWidth: tileWidth, quality: quality)
     }
 
     /// The property name a parameter handle was declared under, found by
     /// identity among the sketch's own parameters: a `Param` is a reference,
-    /// so the box the key path reaches is the box the registry lists.
+    /// so the box the key path reaches is the box the registry lists. Throws
+    /// `.unsupported` for a parameter the sketch does not register.
     static func parameterName<S: Sketch, V: ParamValue>(of make: () -> S,
-                                                        at parameter: KeyPath<S, Param<V>>) -> String? {
+                                                        at parameter: KeyPath<S, Param<V>>,
+                                                        for path: String) throws -> String {
         let probe = make()
         let box = probe[keyPath: parameter]
         guard let handle = probe.parameters().first(where: { ($0.param as AnyObject) === box }) else {
-            FileHandle.standardError.write(Data(
-                "Ollin: that parameter is not one this sketch declares with @Param\n".utf8))
-            return nil
+            throw ExportError(.unsupported, path: path,
+                              problem: "the swept parameter is not one the sketch declares with @Param")
         }
         return handle.name
     }
@@ -130,8 +157,8 @@ extension OllinApp {
     private static func renderSheet(of make: () -> Sketch,
                                     tiles: [(label: String, prepare: (Sketch) -> Void)],
                                     frame: Int, fps: Double, columns: Int?,
-                                    tileWidth: Int, quality: RenderQuality) -> CGImage? {
-        guard !tiles.isEmpty, let device = MTLCreateSystemDefaultDevice() else { return nil }
+                                    tileWidth: Int, quality: RenderQuality,
+                                    for path: String) throws -> CGImage {
 
         // The first tile's instance doubles as the probe for everything the
         // sheet needs to know up front: its canvas aspect and its declared
@@ -140,12 +167,7 @@ extension OllinApp {
         // is expected to run exactly once per tile.
         let first = make()
         let output = first.colorOutput
-        guard let renderer = try? MetalRenderer(device: device,
-                                                pixelFormat: output.drawablePixelFormat,
-                                                sampleCount: ollinPreferredSampleCount(device),
-                                                encoding: output.presentEncoding) else {
-            return nil
-        }
+        let renderer = try headlessRenderer(for: first, path: path)
         renderer.automaticQuality = quality
         renderer.renderScale = OllinApp.exportRenderScale
         isRenderingHeadless = true
@@ -169,7 +191,8 @@ extension OllinApp {
               let context = CGContext(data: nil, width: sheetWidth, height: sheetHeight,
                                       bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
-            return nil
+            throw ExportError(.unrendered, path: path,
+                              problem: "the sheet's \(sheetWidth)×\(sheetHeight) bitmap could not be made")
         }
         context.setFillColor(CGColor(srgbRed: 0.09, green: 0.09, blue: 0.10, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: sheetWidth, height: sheetHeight))
@@ -185,7 +208,6 @@ extension OllinApp {
                 tile.prepare(sketch)
                 renderer.resetAccumulation()   // a `noClear()` pile must not leak across tiles
                 guard let image = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
-                    FileHandle.standardError.write(Data("\nOllin: failed to render tile '\(tile.label)'\n".utf8))
                     return false
                 }
                 let column = index % cols, row = index / cols
@@ -203,10 +225,17 @@ extension OllinApp {
                 FileHandle.standardError.write(Data(line.utf8))
                 return true
             }
-            guard drawn else { return nil }
+            guard drawn else {
+                FileHandle.standardError.write(Data("\n".utf8))
+                throw ExportError(.unrendered, path: path,
+                                  problem: "tile '\(tile.label)' did not come back from the GPU")
+            }
         }
         FileHandle.standardError.write(Data("\n".utf8))
-        return context.makeImage()
+        guard let sheet = context.makeImage() else {
+            throw ExportError(.unrendered, path: path, problem: "the sheet's bitmap could not be read back")
+        }
+        return sheet
     }
 
     /// Render a contact sheet (see `contactSheet(of:seeds:)`) and write it as a
@@ -219,15 +248,9 @@ extension OllinApp {
                                           frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
                                           quality: RenderQuality = .detail) throws {
-        guard !seeds.isEmpty else {
-            throw ExportError(.unsupported, path: path, problem: "no seeds to lay out on the sheet")
-        }
         print("Ollin: rendering a contact sheet of \(seeds.count) seeds")
-        guard let sheet = contactSheet(of: make, seeds: seeds, frame: frame, fps: fps,
-                                       columns: columns, tileWidth: tileWidth, quality: quality) else {
-            throw ExportError(.unrendered, path: path,
-                              problem: "the sheet did not draw (no Metal device, or a tile that did not render)")
-        }
+        let sheet = try seedSheet(of: make, seeds: seeds, frame: frame, fps: fps, columns: columns,
+                                  tileWidth: tileWidth, quality: quality, for: path)
         let recipe = ExportMetadata.sheetRecipe(seeds: seeds, frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
             throw ExportError(.unwritable, path: path, problem: "the PNG could not be written")
@@ -249,23 +272,11 @@ extension OllinApp {
                                           frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
                                           quality: RenderQuality = .detail) throws {
-        guard !values.isEmpty else {
-            throw ExportError(.unsupported, path: path, problem: "no values to sweep '\(name)' over")
-        }
-        let declared = make().parameters().map(\.name)
-        guard declared.contains(name) else {
-            let available = declared.sorted().joined(separator: ", ")
-            throw ExportError(.unsupported, path: path,
-                              problem: "the sketch has no @Param named '\(name)'; it has: \(available.isEmpty ? "none" : available)")
-        }
         let pinned = seed ?? Int.random(in: 1 ... 99_999)
         print("Ollin: rendering a sweep of '\(name)' over \(values.count) values at seed \(pinned)")
-        guard let sheet = contactSheet(of: make, sweeping: name, values: values,
-                                       seed: pinned, frame: frame, fps: fps,
-                                       columns: columns, tileWidth: tileWidth, quality: quality) else {
-            throw ExportError(.unrendered, path: path,
-                              problem: "the sweep did not draw (no Metal device, or a tile that did not render)")
-        }
+        let sheet = try sweepSheet(of: make, sweeping: name, values: values, seed: pinned,
+                                   frame: frame, fps: fps, columns: columns,
+                                   tileWidth: tileWidth, quality: quality, for: path)
         let recipe = ExportMetadata.sheetRecipe(sweep: name, values: values, seed: pinned,
                                                 frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
@@ -282,9 +293,7 @@ extension OllinApp {
                                                      frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
                                                      quality: RenderQuality = .detail) throws {
-        guard let name = parameterName(of: make, at: parameter) else {
-            throw ExportError(.unsupported, path: path, problem: "the swept parameter is not one the sketch declares")
-        }
+        let name = try parameterName(of: make, at: parameter, for: path)
         try exportContactSheet({ make() }, to: path, sweeping: name, values: values, seed: seed,
                            frame: frame, fps: fps, columns: columns, tileWidth: tileWidth,
                            quality: quality)
@@ -297,9 +306,7 @@ extension OllinApp {
                                                      frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
                                                      quality: RenderQuality = .detail) throws {
-        guard let name = parameterName(of: make, at: parameter) else {
-            throw ExportError(.unsupported, path: path, problem: "the swept parameter is not one the sketch declares")
-        }
+        let name = try parameterName(of: make, at: parameter, for: path)
         try exportContactSheet({ make() }, to: path, sweeping: name, values: values.map(Double.init),
                            seed: seed, frame: frame, fps: fps, columns: columns,
                            tileWidth: tileWidth, quality: quality)

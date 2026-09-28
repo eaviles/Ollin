@@ -34,11 +34,11 @@ struct ChannelMixerTests {
     /// round trip is proven exact, not only the multiply.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theIdentityMatrixChangesNoByte() throws {
-        let plain = try #require(OllinApp.image(of: DiscsProbe.make(nil), frame: 1))
-        let filtered = try #require(OllinApp.image(of: DiscsProbe.make(.channelMixer(.identity)), frame: 1))
+        let plain = try OllinApp.image(of: DiscsProbe.make(nil), frame: 1)
+        let filtered = try OllinApp.image(of: DiscsProbe.make(.channelMixer(.identity)), frame: 1)
         #expect(maxDifference(plain, filtered) == 0)
         // The gate can fail: a swap over the same discs moves bytes.
-        let swapped = try #require(OllinApp.image(of: DiscsProbe.make(.channelMixer(.swapping(.red, .blue))), frame: 1))
+        let swapped = try OllinApp.image(of: DiscsProbe.make(.channelMixer(.swapping(.red, .blue))), frame: 1)
         #expect(maxDifference(plain, swapped) > 60)
     }
 
@@ -50,8 +50,8 @@ struct ChannelMixerTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theGrayMixIsTheLuminance() throws {
         let patch = (r: 0.88, g: 0.44, b: 0.23)
-        let image = try #require(OllinApp.image(
-            of: PatchProbe.make(patch, .channelMixer(.gray)), frame: 1))
+        let image = try OllinApp.image(
+            of: PatchProbe.make(patch, .channelMixer(.gray)), frame: 1)
         let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)
         #expect(abs(r - g) <= 1 && abs(g - b) <= 1, "the gray came back \(r),\(g),\(b)")
         let luma = 0.2126 * Color.srgbToLinear(patch.r) + 0.7152 * Color.srgbToLinear(patch.g)
@@ -59,8 +59,8 @@ struct ChannelMixerTests {
         let expected = Int((Color.linearToSrgb(luma) * 255).rounded())
         #expect(abs(r - expected) <= 2, "gray \(r) against the CPU's \(expected)")
         // A recipe that is not the display's: all red is the red channel's own value.
-        let redFilter = try #require(OllinApp.image(
-            of: PatchProbe.make(patch, .channelMixer(.gray(red: 1, green: 0, blue: 0))), frame: 1))
+        let redFilter = try OllinApp.image(
+            of: PatchProbe.make(patch, .channelMixer(.gray(red: 1, green: 0, blue: 0))), frame: 1)
         let (fr, fg, fb) = channels(pixels(of: redFilter), x: 64, y: 64)
         let red = Int((patch.r * 255).rounded())
         #expect(abs(fr - red) <= 1 && abs(fg - red) <= 1 && abs(fb - red) <= 1,
@@ -71,9 +71,9 @@ struct ChannelMixerTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func swappingTradesTwoChannels() throws {
         let patch = (r: 0.80, g: 0.30, b: 0.12)
-        let plain = try #require(OllinApp.image(of: PatchProbe.make(patch, nil), frame: 1))
-        let swapped = try #require(OllinApp.image(
-            of: PatchProbe.make(patch, .channelMixer(.swapping(.red, .blue))), frame: 1))
+        let plain = try OllinApp.image(of: PatchProbe.make(patch, nil), frame: 1)
+        let swapped = try OllinApp.image(
+            of: PatchProbe.make(patch, .channelMixer(.swapping(.red, .blue))), frame: 1)
         let (r, g, b) = channels(pixels(of: plain), x: 64, y: 64)
         let (sr, sg, sb) = channels(pixels(of: swapped), x: 64, y: 64)
         #expect(abs(sr - b) <= 1 && abs(sg - g) <= 1 && abs(sb - r) <= 1,
@@ -84,8 +84,8 @@ struct ChannelMixerTests {
     /// to about 137, not to a quarter of 255.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anOffsetAddsInLinearLight() throws {
-        let image = try #require(OllinApp.image(
-            of: PatchProbe.make((r: 0, g: 0, b: 0), .channelMixer(ColorMatrix(red: [1, 0, 0, 0, 0.25]))), frame: 1))
+        let image = try OllinApp.image(
+            of: PatchProbe.make((r: 0, g: 0, b: 0), .channelMixer(ColorMatrix(red: [1, 0, 0, 0, 0.25]))), frame: 1)
         let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)
         let expected = Int((Color.linearToSrgb(0.25) * 255).rounded())
         #expect(abs(r - expected) <= 2 && g <= 1 && b <= 1, "an offset of 0.25 came back \(r),\(g),\(b)")
@@ -95,8 +95,8 @@ struct ChannelMixerTests {
     /// on black shows the disc at half its light.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theAlphaRowScalesCoverage() throws {
-        let image = try #require(OllinApp.image(
-            of: DiscsProbe.make(.channelMixer(ColorMatrix(alpha: [0, 0, 0, 0.5]))), frame: 1))
+        let image = try OllinApp.image(
+            of: DiscsProbe.make(.channelMixer(ColorMatrix(alpha: [0, 0, 0, 0.5]))), frame: 1)
         let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)   // inside the opaque white disc
         let expected = Int((Color.linearToSrgb(0.5) * 255).rounded())
         #expect(abs(r - expected) <= 2 && abs(g - expected) <= 2 && abs(b - expected) <= 2,

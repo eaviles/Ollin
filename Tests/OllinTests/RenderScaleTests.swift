@@ -34,7 +34,7 @@ struct RenderScaleTests {
         let previous = OllinApp.exportRenderScale
         defer { OllinApp.exportRenderScale = previous }
         OllinApp.exportRenderScale = scale
-        return pixels(try #require(OllinApp.image(of: make())))
+        return pixels(try OllinApp.image(of: make()))
     }
 
     /// The mean difference between two frames over the whole canvas, in bytes.

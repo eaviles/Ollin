@@ -124,7 +124,7 @@ struct HeavyPassTests {
         for intoLayer in [false, true] {
             let sketch = Heavy()
             sketch.intoLayer = intoLayer
-            let image = try #require(OllinApp.image(of: sketch, frame: 0))
+            let image = try OllinApp.image(of: sketch, frame: 0)
             let (left, right) = try #require(HeavyPassTests.halves(image))
             // Half a million pixels under ten million marks: the left half is
             // covered, the right half never drawn on.

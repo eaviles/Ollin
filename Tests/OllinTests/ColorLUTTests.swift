@@ -320,13 +320,13 @@ struct ColorLUTTests {
 
     @MainActor
     private func pixels(_ sketch: Sketch) throws -> [UInt8] {
-        let rendered = Image(cgImage: try #require(OllinApp.image(of: sketch, frame: 0)))
+        let rendered = Image(cgImage: try OllinApp.image(of: sketch, frame: 0))
         return try #require(rendered.premultipliedPixels())
     }
 
     @MainActor
     private func patchColors(_ sketch: PatchSketch) throws -> [Color] {
-        let rendered = Image(cgImage: try #require(OllinApp.image(of: sketch, frame: 0)))
+        let rendered = Image(cgImage: try OllinApp.image(of: sketch, frame: 0))
         return (0 ..< PatchSketch.patches.count).map { rendered[($0 % 4) * 16 + 8, ($0 / 4) * 32 + 16] }
     }
 
@@ -393,7 +393,7 @@ struct ColorLUTTests {
         for table in [ColorLUT.warmPrint, try ColorLUT(text: Self.curves)] {
             let sketch = BandSketch()
             sketch.filter = .lut(table, amount: 0.7)
-            let rendered = Image(cgImage: try #require(OllinApp.image(of: sketch, frame: 0)))
+            let rendered = Image(cgImage: try OllinApp.image(of: sketch, frame: 0))
             for (index, source) in BandSketch.bands.enumerated() {
                 let looked = table.color(for: source)
                 let got = rendered[32, index * 16 + 8]

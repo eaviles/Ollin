@@ -76,7 +76,7 @@ final class SettledEdges: Sketch {
 
     /// Render the probe headless and read the crop back as rows of colors.
     private func pixels(of probe: Sketch) -> [[Color]] {
-        guard let rendered = OllinApp.image(of: probe) else { return [] }
+        guard let rendered = try? OllinApp.image(of: probe) else { return [] }
         let image = Image(cgImage: rendered)
         return (0..<crop.height).map { row in
             (0..<crop.width).map { column in image[crop.x + column, crop.y + row] }

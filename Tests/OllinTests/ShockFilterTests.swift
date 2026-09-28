@@ -42,7 +42,7 @@ struct ShockFilterTests {
     }
 
     private func render(_ subject: ShockProbe.Subject, filter: Filter?, size: Int = 128) throws -> CGImage {
-        try #require(OllinApp.image(of: ShockProbe.make(subject, filter: filter, size: size), frame: 1))
+        try OllinApp.image(of: ShockProbe.make(subject, filter: filter, size: size), frame: 1)
     }
 
     /// The width, in columns, of the 10%…90% transition on one row of a picture that

@@ -223,15 +223,15 @@ struct ParallaxTests {
         // This is the sign contract for the tangent-frame projection: u
         // against the eye, v with the opposite sign (the bitangent points up
         // the image, v grows down it). A flipped component fails one axis.
-        let flat = try #require(OllinApp.image(of: ParallaxProbe.make(.dotFlatSide), frame: 1))
-        let shifted = try #require(OllinApp.image(of: ParallaxProbe.make(.dotDeepSide), frame: 1))
+        let flat = try OllinApp.image(of: ParallaxProbe.make(.dotFlatSide), frame: 1)
+        let shifted = try OllinApp.image(of: ParallaxProbe.make(.dotDeepSide), frame: 1)
         let c0 = try #require(brightCentroid(of: flat))
         let c1 = try #require(brightCentroid(of: shifted))
         #expect(c1.x - c0.x > 4,
                 "camera on +x: the recessed dot must shift toward it, got \(c0) vs \(c1)")
 
-        let flatUp = try #require(OllinApp.image(of: ParallaxProbe.make(.dotFlatAbove), frame: 1))
-        let shiftedUp = try #require(OllinApp.image(of: ParallaxProbe.make(.dotDeepAbove), frame: 1))
+        let flatUp = try OllinApp.image(of: ParallaxProbe.make(.dotFlatAbove), frame: 1)
+        let shiftedUp = try OllinApp.image(of: ParallaxProbe.make(.dotDeepAbove), frame: 1)
         let u0 = try #require(brightCentroid(of: flatUp))
         let u1 = try #require(brightCentroid(of: shiftedUp))
         #expect(u0.y - u1.y > 4,
@@ -244,8 +244,8 @@ struct ParallaxTests {
         // and its flat control cover exactly the same pixels. Parallax shifts
         // shading only; the outline is the geometry's, and only
         // displaced(by:scale:) changes that.
-        let mapped = try #require(OllinApp.image(of: ParallaxProbe.make(.sphereMapped), frame: 1))
-        let control = try #require(OllinApp.image(of: ParallaxProbe.make(.sphereControl), frame: 1))
+        let mapped = try OllinApp.image(of: ParallaxProbe.make(.sphereMapped), frame: 1)
+        let control = try OllinApp.image(of: ParallaxProbe.make(.sphereControl), frame: 1)
         let a = imageBytes(mapped), b = imageBytes(control)
         var maskDiffers = 0
         for i in stride(from: 0, to: min(a.count, b.count), by: 4) {
@@ -265,8 +265,8 @@ struct ParallaxTests {
         // renders byte-identically to the gate down. (Both probes carry a
         // white occlusion map so both ride the surface-mapped pipeline; only
         // the parallax gate differs.)
-        let on = try #require(OllinApp.image(of: ParallaxProbe.make(.whiteHeight), frame: 1))
-        let off = try #require(OllinApp.image(of: ParallaxProbe.make(.whiteHeightScaleZero), frame: 1))
+        let on = try OllinApp.image(of: ParallaxProbe.make(.whiteHeight), frame: 1)
+        let off = try OllinApp.image(of: ParallaxProbe.make(.whiteHeightScaleZero), frame: 1)
         #expect(imageBytes(on) == imageBytes(off))
     }
 
@@ -275,8 +275,8 @@ struct ParallaxTests {
         // heightScale 0 is the off switch: the drawer never raises the gate,
         // so the frame is byte-identical to the same mesh with no height map
         // attached at all (the plain textured pipeline).
-        let off = try #require(OllinApp.image(of: ParallaxProbe.make(.scaleZero), frame: 1))
-        let none = try #require(OllinApp.image(of: ParallaxProbe.make(.texturedOnly), frame: 1))
+        let off = try OllinApp.image(of: ParallaxProbe.make(.scaleZero), frame: 1)
+        let none = try OllinApp.image(of: ParallaxProbe.make(.texturedOnly), frame: 1)
         #expect(imageBytes(off) == imageBytes(none))
     }
 }

@@ -152,6 +152,56 @@ struct ExportErrorTests {
         #expect(refused.path == path)
     }
 
+    // MARK: - The headless calls that hand back a picture
+
+    /// A renderer that will not start (in a real run, a shader that stopped
+    /// compiling) stops every headless call with the one shape: an
+    /// `.unrendered` error carrying the renderer's own message, where the
+    /// calls that hand back a picture used to answer `nil` and print a line.
+    /// Those have no file, so their `path` is empty; the export beside them
+    /// names its file. Nothing is left marked as rendering headless.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aRendererThatWillNotStartStopsEveryHeadlessCallTheSameWay() throws {
+        OllinApp.plantedRendererRefusal = "a planted shader error"
+        defer { OllinApp.plantedRendererRefusal = nil }
+        let path = ollinTempPath("ollin-refused-still.png")
+        let failures: [(String, ExportError?)] = [
+            ("image(of:)", error { _ = try OllinApp.image(of: Tick()) }),
+            ("contactSheet(of:seeds:)", error { _ = try OllinApp.contactSheet(of: { Tick() }, seeds: [1, 2]) }),
+            ("contactSheet(of:sweeping:)", error {
+                _ = try OllinApp.contactSheet(of: { Swept() }, sweeping: \.$radius, values: [4, 8])
+            }),
+            ("plates(of:)", error { _ = try OllinApp.plates(of: Tick(), profile: .genericCMYK) }),
+            ("separations(of:)", error { _ = try OllinApp.separations(of: Tick(), inks: [.blue]) }),
+            ("export", error { try OllinApp.export(Tick(), to: path) }),
+        ]
+        for (call, refused) in failures {
+            #expect(refused?.kind == .unrendered, "\(call)")
+            #expect(refused?.problem.contains("a planted shader error") == true, "\(call)")
+            #expect(refused?.path == (call == "export" ? path : ""), "\(call)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: path))
+        #expect(!OllinApp.isRenderingHeadless)
+    }
+
+    /// The separations ask for what they separate into before anything draws,
+    /// and say how to name it.
+    @Test func separationsWithNothingToSeparateIntoAreRefused() throws {
+        let plates = try #require(error { _ = try OllinApp.plates(of: Tick()) })
+        #expect(plates.kind == .unsupported)
+        #expect(plates.problem.contains("printProfile"))
+        let spots = try #require(error { _ = try OllinApp.separations(of: Tick()) })
+        #expect(spots.kind == .unsupported)
+        #expect(spots.problem.contains("printInks"))
+    }
+
+    /// A sweep over a parameter the sketch declares.
+    final class Swept: Sketch {
+        @Param(1 ... 20) var radius = 6.0
+        override var canvasSize: CanvasSize { .square(32) }
+        override func draw() { background(.black); drawCircle(16, 16, radius) }
+    }
+
     /// The one-frame exports report a file they cannot write the same way.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theStillsReportAFileTheyCannotWrite() throws {

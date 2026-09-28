@@ -77,7 +77,7 @@ final class SamplingFiner: Sketch {
     private func pixels(atScale scale: Int) -> [[Color]] {
         let previous = OllinApp.exportRenderScale
         OllinApp.exportRenderScale = scale
-        let exported = OllinApp.image(of: EdgeProbe())
+        let exported = try? OllinApp.image(of: EdgeProbe())
         OllinApp.exportRenderScale = previous
         guard let exported else { return [] }
 

@@ -25,29 +25,29 @@ struct TextDefaultStrokeTests {
     }
 
     /// The distinct vertex colors the frame recorded.
-    private func vertexColors(_ prepare: @escaping (Label) -> Void) -> Set<SIMD4<Float>> {
+    private func vertexColors(_ prepare: @escaping (Label) -> Void) throws -> Set<SIMD4<Float>> {
         let sketch = Label()
         sketch.prepare = prepare
-        _ = OllinApp.image(of: sketch, frame: 0)
+        _ = try OllinApp.image(of: sketch, frame: 0)
         return Set(sketch.drawer.vertices.map(\.color))
     }
 
-    @Test func defaultStateTextCarriesNoStroke() {
-        let colors = vertexColors { _ in }
+    @Test func defaultStateTextCarriesNoStroke() throws {
+        let colors = try vertexColors { _ in }
         #expect(!colors.contains(SIMD4<Float>(0, 0, 0, 1)))
         #expect(colors.count == 1)   // the fill alone
     }
 
-    @Test func anExplicitStrokeStillDecorates() {
+    @Test func anExplicitStrokeStillDecorates() throws {
         let red = SIMD4<Float>(1, 0, 0, 1)
-        let colors = vertexColors { $0.stroke(Color(red: 1, green: 0, blue: 0)) }
+        let colors = try vertexColors { $0.stroke(Color(red: 1, green: 0, blue: 0)) }
         #expect(colors.contains(red))
     }
 
     /// A stroke set inside `withState` must not leak its "set" mark past the
     /// pop: the restored default is back to never decorating text.
-    @Test func popStateRestoresTheUnsetDefault() {
-        let colors = vertexColors { sketch in
+    @Test func popStateRestoresTheUnsetDefault() throws {
+        let colors = try vertexColors { sketch in
             sketch.withState { sketch.stroke(.black) }
         }
         #expect(!colors.contains(SIMD4<Float>(0, 0, 0, 1)))

@@ -99,7 +99,7 @@ final class ParametersBackIn: Sketch {
         if let radius = run.radius { probe.radius = radius }
         if let rings = run.rings { probe.rings = rings }
         if let paper = run.paper { probe.paper = paper }
-        guard let exported = OllinApp.image(of: probe) else { return Image(width: 1, height: 1) }
+        guard let exported = try? OllinApp.image(of: probe) else { return Image(width: 1, height: 1) }
         return Image(cgImage: exported)
     }
 }

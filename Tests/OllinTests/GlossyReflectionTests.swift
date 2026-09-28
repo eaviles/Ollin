@@ -49,7 +49,7 @@ struct GlossyReflectionTests {
 
     private func tracedStrip(gloss: Bool, roughness: Double) throws -> Reading {
         let scene = GlossyProbe.make(gloss: gloss, roughness: roughness)
-        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let image = try OllinApp.image(of: scene, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

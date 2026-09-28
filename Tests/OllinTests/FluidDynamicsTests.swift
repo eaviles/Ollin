@@ -53,7 +53,7 @@ struct FluidDynamicsTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func fluidStaysFiniteAndBoxed() throws {
         let probe = FluidProbe()
-        _ = OllinApp.image(of: probe, frame: 40)
+        _ = try OllinApp.image(of: probe, frame: 40)
         guard let ps = probe.fluid.current.snapshot() else {
             Issue.record("fluid never realized"); return
         }
@@ -77,7 +77,7 @@ struct FluidDynamicsTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func softBodiesCohere() throws {
         let probe = SoftBodyProbe()
-        _ = OllinApp.image(of: probe, frame: 60)
+        _ = try OllinApp.image(of: probe, frame: 60)
         guard let ps = probe.blobs.current.snapshot() else {
             Issue.record("soft bodies never realized"); return
         }
@@ -103,7 +103,7 @@ struct FluidDynamicsTests {
         // rest-offset centering: offsets taken about anything but the rest
         // centroid give the body a permanent self-thrust.)
         let probe = DriftProbe()
-        _ = OllinApp.image(of: probe, frame: 60)
+        _ = try OllinApp.image(of: probe, frame: 60)
         guard let ps = probe.blobs.current.snapshot() else {
             Issue.record("soft bodies never realized"); return
         }

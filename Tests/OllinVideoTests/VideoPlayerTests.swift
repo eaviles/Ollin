@@ -213,7 +213,7 @@ import os
         func exportedBlue(atFrame frame: Int) -> Double? {
             let sketch = VideoExportProbeSketch()
             sketch.player = try? VideoPlayer(url: url)
-            guard let cgImage = OllinApp.image(of: sketch, frame: frame, fps: 60) else { return nil }
+            guard let cgImage = try? OllinApp.image(of: sketch, frame: frame, fps: 60) else { return nil }
             return Image(cgImage: cgImage)[32, 32].blue
         }
 

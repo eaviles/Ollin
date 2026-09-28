@@ -70,7 +70,7 @@ final class TracedLight: Sketch {
     private func render(_ tracing: PathTracing?) -> Image {
         let previous = OllinApp.pathTracedExport
         OllinApp.pathTracedExport = tracing
-        let exported = OllinApp.image(of: SetProbe())
+        let exported = try? OllinApp.image(of: SetProbe())
         OllinApp.pathTracedExport = previous
         guard let exported else { return Image(width: 1, height: 1) }
         return Image(cgImage: exported)

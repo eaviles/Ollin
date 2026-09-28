@@ -46,7 +46,7 @@ struct LineIntegralConvolutionTests {
 
     private func plainBase() throws -> CGImage {
         if let image = Self.plainFrame { return image }
-        let image = try #require(OllinApp.image(of: StreakProbe.make(.plain), frame: 0))
+        let image = try OllinApp.image(of: StreakProbe.make(.plain), frame: 0)
         Self.plainFrame = image
         return image
     }
@@ -56,7 +56,7 @@ struct LineIntegralConvolutionTests {
         // A vector field pointing right, over a vertical stripe: the stripe leaks
         // into the black on both sides and loses brightness, and nothing changes
         // from row to row.
-        let image = try #require(OllinApp.image(of: StreakProbe.make(.acrossTheStripe), frame: 0))
+        let image = try OllinApp.image(of: StreakProbe.make(.acrossTheStripe), frame: 0)
         let data = pixels(of: image)
         #expect(gray(data, 100, 128) > 40, "the stripe did not leak to its left")
         #expect(gray(data, 156, 128) > 40, "the stripe did not leak to its right")
@@ -73,7 +73,7 @@ struct LineIntegralConvolutionTests {
         // The angle reading, a quarter turn: every walk runs up and down its own
         // column, where the base is one value throughout, so the average is that
         // value and the stripe keeps its edges.
-        let streaked = try #require(OllinApp.image(of: StreakProbe.make(.alongTheStripe), frame: 0))
+        let streaked = try OllinApp.image(of: StreakProbe.make(.alongTheStripe), frame: 0)
         let plain = try plainBase()
         let w = worst(streaked, plain)
         #expect(w <= 1, "a field along the stripe moved it by \(w)/255")
@@ -83,7 +83,7 @@ struct LineIntegralConvolutionTests {
     func aStillFieldGivesTheBaseBack() throws {
         // The contour reading of a flat field has no gradient anywhere, so the
         // walk stops at once and the pixel is its own only sample.
-        let streaked = try #require(OllinApp.image(of: StreakProbe.make(.still), frame: 0))
+        let streaked = try OllinApp.image(of: StreakProbe.make(.still), frame: 0)
         let plain = try plainBase()
         let w = worst(streaked, plain)
         #expect(w <= 1, "a still field changed the base by \(w)/255")
@@ -94,7 +94,7 @@ struct LineIntegralConvolutionTests {
         // A dot at (188, 128) beside a gradient centered at (128, 128): the
         // contours are circles about the center, so the dot smears up and down
         // along its circle and not outward along the radius.
-        let image = try #require(OllinApp.image(of: StreakProbe.make(.aroundTheCenter), frame: 0))
+        let image = try OllinApp.image(of: StreakProbe.make(.aroundTheCenter), frame: 0)
         let data = pixels(of: image)
         #expect(gray(data, 188, 140) > 40, "the dot did not smear along its contour")
         #expect(gray(data, 188, 116) > 40, "the dot did not smear the other way along its contour")
@@ -111,7 +111,7 @@ struct LineIntegralConvolutionTests {
         // the walk bounces between the two sides of the seam and never arrives.
         // The seam is cut hard, since a half-covered edge texel reads as a quarter
         // turn in an angle field, a wall along the seam that no walk can cross.
-        let image = try #require(OllinApp.image(of: StreakProbe.make(.acrossASeam), frame: 0))
+        let image = try OllinApp.image(of: StreakProbe.make(.acrossASeam), frame: 0)
         let data = pixels(of: image)
         #expect(gray(data, 160, 128) > 40, "the walk turned back at the seam and never reached the stripe")
         #expect(gray(data, 100, 128) > 40, "the stripe did not leak to its left")

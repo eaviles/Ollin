@@ -126,8 +126,8 @@ struct MeshInstanceRenderTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func instancedFieldMatchesThePerMeshLoop() throws {
-        let instanced = try #require(OllinApp.image(of: InstancedABSketch(instanced: true)))
-        let looped = try #require(OllinApp.image(of: InstancedABSketch(instanced: false)))
+        let instanced = try OllinApp.image(of: InstancedABSketch(instanced: true))
+        let looped = try OllinApp.image(of: InstancedABSketch(instanced: false))
         let diff = try #require(imageDifference(instanced, looped))
         #expect(diff.mean < 0.5,
                 "instanced vs per-mesh mean difference \(diff.mean) (max \(diff.max))")

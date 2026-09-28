@@ -60,7 +60,7 @@ final class WhatTheStillKeeps: Sketch {
     /// Render the probe and read its float pixels, linear Display P3 with the
     /// highlights still above 1, the way the still export receives them.
     private func readBack() {
-        guard let exported = OllinApp.image(of: LampProbe()),
+        guard let exported = try? OllinApp.image(of: LampProbe()),
               let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3) else { return }
         let w = exported.width, h = exported.height
         var floats = [Float](repeating: 0, count: w * h * 4)

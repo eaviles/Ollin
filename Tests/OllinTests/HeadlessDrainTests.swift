@@ -18,9 +18,9 @@ import Testing
 struct HeadlessDrainTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theSingleFrameDriveDrainsEachFrame() {
+    func theSingleFrameDriveDrainsEachFrame() throws {
         PoolCount.start()
-        #expect(OllinApp.image(of: WitnessSketch(), frame: 5) != nil)
+        _ = try OllinApp.image(of: WitnessSketch(), frame: 5)
         #expect(PoolCount.drawn > 5)
         #expect(PoolCount.deepest == 1)
     }
@@ -49,10 +49,9 @@ struct HeadlessDrainTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theContactSheetDrainsEachTile() {
+    func theContactSheetDrainsEachTile() throws {
         PoolCount.start()
-        #expect(OllinApp.contactSheet(of: { WitnessSketch() }, seeds: [1, 2, 3],
-                                      tileWidth: 64) != nil)
+        _ = try OllinApp.contactSheet(of: { WitnessSketch() }, seeds: [1, 2, 3], tileWidth: 64)
         #expect(PoolCount.drawn == 3)
         #expect(PoolCount.deepest == 1)
     }

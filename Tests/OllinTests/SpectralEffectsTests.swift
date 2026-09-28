@@ -20,7 +20,7 @@ struct SpectralEffectsTests {
 
     private func paintMix(_ mode: PaintMixProbe.Mode) throws -> CGImage {
         if let image = Self.paintMixFrames[mode] { return image }
-        let image = try #require(OllinApp.image(of: PaintMixProbe.make(mode), frame: 1))
+        let image = try OllinApp.image(of: PaintMixProbe.make(mode), frame: 1)
         Self.paintMixFrames[mode] = image
         return image
     }
@@ -31,9 +31,9 @@ struct SpectralEffectsTests {
     /// only honest if an A/B costs nothing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroAmountIsIdentity() throws {
-        let plain = try #require(OllinApp.image(of: FilterProbe.make(nil), frame: 1))
+        let plain = try OllinApp.image(of: FilterProbe.make(nil), frame: 1)
         for filter in [Filter.thinFilm(amount: 0), .diffraction(amount: 0)] {
-            let filtered = try #require(OllinApp.image(of: FilterProbe.make(filter), frame: 1))
+            let filtered = try OllinApp.image(of: FilterProbe.make(filter), frame: 1)
             #expect(maxDifference(plain, filtered) == 0)
         }
     }
@@ -82,7 +82,7 @@ struct SpectralEffectsTests {
     func aThinnerFilmIsDarkerAndGrayer() throws {
         func film(_ nm: Double) throws -> (brightness: Int, saturation: Int) {
             let filter = Filter.thinFilm(amount: 1, thickness: nm, variation: 0)
-            let image = try #require(OllinApp.image(of: FlatFieldProbe.make(filter), frame: 1))
+            let image = try OllinApp.image(of: FlatFieldProbe.make(filter), frame: 1)
             let (r, g, b) = pixel(image, x: 128, y: 128)
             return (max(r, g, b), max(r, g, b) - min(r, g, b))
         }
@@ -100,7 +100,7 @@ struct SpectralEffectsTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatFieldDoesNotTint() throws {
         let filter = Filter.diffraction(amount: 0.1)
-        let image = try #require(OllinApp.image(of: FlatFieldProbe.make(filter), frame: 1))
+        let image = try OllinApp.image(of: FlatFieldProbe.make(filter), frame: 1)
         let (r, g, b) = pixel(image, x: 128, y: 128)
         #expect(abs(r - b) <= 1 && abs(r - g) <= 1)
     }
@@ -110,7 +110,7 @@ struct SpectralEffectsTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func redReachesFartherThanBlue() throws {
         let filter = Filter.diffraction(amount: 0.15, angle: 0, orders: 1)
-        let image = try #require(OllinApp.image(of: DotProbe.make(filter), frame: 1))
+        let image = try OllinApp.image(of: DotProbe.make(filter), frame: 1)
         // The dot sits at x = 128; first-order offsets are amount * 256 * (lambda / 550):
         // about 31 px at 450 nm, about 45 px at 650 nm.
         let near = pixel(image, x: 128 + 31, y: 128)

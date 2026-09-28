@@ -33,7 +33,7 @@ struct DiffusionCurveTests {
 
     private func twoDots() throws -> CGImage {
         if let image = Self.twoDotsFrame { return image }
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1))
+        let image = try OllinApp.image(of: DiffusionProbe.make(.twoDots), frame: 1)
         Self.twoDotsFrame = image
         return image
     }
@@ -95,7 +95,7 @@ struct DiffusionCurveTests {
         // A closed mark holds its whole interior, since every path inward from
         // the boundary carries the same value. This is the harmonic maximum
         // principle again, seen from the inside.
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.ring), frame: 1))
+        let image = try OllinApp.image(of: DiffusionProbe.make(.ring), frame: 1)
         let data = pixels(of: image)
         let middle = rgb(data, image, 128, 128)
         #expect(middle.1 > 170 && middle.0 < 90,
@@ -106,7 +106,7 @@ struct DiffusionCurveTests {
     func aCurveCarriesADifferentColorOnEachSide() throws {
         // What the technique is named for: the field jumps across the curve and
         // is smooth everywhere else.
-        let image = try #require(OllinApp.image(of: DiffusionProbe.make(.curve), frame: 1))
+        let image = try OllinApp.image(of: DiffusionProbe.make(.curve), frame: 1)
         let data = pixels(of: image)
         let above = rgb(data, image, 128, 96), below = rgb(data, image, 128, 160)
         #expect(above.0 > 150 && above.2 < 110, "above the curve is the warm side: \(above)")

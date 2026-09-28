@@ -250,10 +250,10 @@ struct SceneSkinningTests {
         // must render byte-identically, and the bend must actually move pixels.
         let offset = try #require(try loadScene(skinnedJSON(barTranslation: [5, 0, 0])))
         let centered = try #require(try loadScene(skinnedJSON(barTranslation: [0, 0, 0])))
-        let a = try #require(OllinApp.image(of: SkinnedBarProbe.make(offset, bend: 1), frame: 1))
-        let b = try #require(OllinApp.image(of: SkinnedBarProbe.make(centered, bend: 1), frame: 1))
+        let a = try OllinApp.image(of: SkinnedBarProbe.make(offset, bend: 1), frame: 1)
+        let b = try OllinApp.image(of: SkinnedBarProbe.make(centered, bend: 1), frame: 1)
         #expect(rgba(a) == rgba(b))
-        let unbent = try #require(OllinApp.image(of: SkinnedBarProbe.make(centered, bend: 0), frame: 1))
+        let unbent = try OllinApp.image(of: SkinnedBarProbe.make(centered, bend: 0), frame: 1)
         #expect(rgba(b) != rgba(unbent))
     }
 

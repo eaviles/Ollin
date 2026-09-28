@@ -86,7 +86,7 @@ final class HeldHighlights: Sketch {
     private func pixels(of probe: Sketch, scale: Int) -> [[Color]] {
         let previous = OllinApp.exportRenderScale
         OllinApp.exportRenderScale = scale
-        let rendered = OllinApp.image(of: probe)
+        let rendered = try? OllinApp.image(of: probe)
         OllinApp.exportRenderScale = previous
         guard let rendered else { return [] }
         let image = Image(cgImage: rendered)

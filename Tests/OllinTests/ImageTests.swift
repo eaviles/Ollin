@@ -88,7 +88,7 @@ struct ImageTests {
     @Test(.enabled(if: Snapshot.hasMetal)) @MainActor
     func contextMadeImageRendersAtFaceValue() throws {
         let sketch = ContextImageSketch()
-        let rendered = try #require(OllinApp.image(of: sketch))
+        let rendered = try OllinApp.image(of: sketch)
         let center = Image(cgImage: rendered)[32, 32]
 
         // The source color comes back as itself, not its washed-out (linear →
@@ -105,7 +105,7 @@ struct ImageTests {
     @Test(.enabled(if: Snapshot.hasMetal)) @MainActor
     func bytesBackedImageRendersAtFaceValue() throws {
         let sketch = BytesImageSketch()
-        let rendered = try #require(OllinApp.image(of: sketch))
+        let rendered = try OllinApp.image(of: sketch)
         let center = Image(cgImage: rendered)[32, 32]
 
         // Same separation as the context-made test: the color comes back as

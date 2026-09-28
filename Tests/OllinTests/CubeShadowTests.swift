@@ -64,7 +64,7 @@ struct CubeShadowTests {
         // the camera looks straight down. So its shadow belongs in the right half of the
         // frame and the left half must stay lit. A face stored upside down puts the whole
         // shadow in the left half instead, which is exactly as wrong as it can be.
-        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.pillar), frame: 1))
+        let image = try OllinApp.image(of: CubeShadowScene.make(.pillar), frame: 1)
         let shadowed = mean(image, x: 0.62...0.95, y: 0.40...0.60)
         let opposite = mean(image, x: 0.05...0.38, y: 0.40...0.60)
         #expect(opposite - shadowed > 40,
@@ -78,7 +78,7 @@ struct CubeShadowTests {
         // the light. The old far plane was the light's distance to that target plus the
         // camera's own radius, so the pillar fell outside the cube entirely: it lit up and
         // threw nothing. Read the wedge of floor it shadows against the lit floor beside it.
-        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.distantPillar), frame: 1))
+        let image = try OllinApp.image(of: CubeShadowScene.make(.distantPillar), frame: 1)
         let shadow = mean(image, x: 0.46...0.60, y: 0.500...0.545)
         let beside = mean(image, x: 0.10...0.30, y: 0.500...0.545)
         #expect(beside - shadow > 40,
@@ -92,7 +92,7 @@ struct CubeShadowTests {
         // vertices the frame scans, so fitting the far plane to the scanned vertices alone
         // left this frame nothing to fit to: it kept the camera's own framing radius, and
         // the pillar stood well outside the cube and threw nothing.
-        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.distantCopies), frame: 1))
+        let image = try OllinApp.image(of: CubeShadowScene.make(.distantCopies), frame: 1)
         let shadow = mean(image, x: 0.46...0.60, y: 0.500...0.545)
         let beside = mean(image, x: 0.10...0.30, y: 0.500...0.545)
         #expect(beside - shadow > 40,
@@ -104,7 +104,7 @@ struct CubeShadowTests {
         // The same again from a `MeshField`, whose copies live in the field's own retained
         // buffers. The field answers for them with its own bound, which is the only way a
         // frame drawn by one call can say how far its casters reach.
-        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.distantField), frame: 1))
+        let image = try OllinApp.image(of: CubeShadowScene.make(.distantField), frame: 1)
         let shadow = mean(image, x: 0.46...0.60, y: 0.500...0.545)
         let beside = mean(image, x: 0.10...0.30, y: 0.500...0.545)
         #expect(beside - shadow > 40,
@@ -120,7 +120,7 @@ struct CubeShadowTests {
         // holding dark for a stretch and then jumping. So the probe reads how much the
         // climb bends from one step to the next, which says nothing about how bright the
         // floor is or how fast it brightens, only that neither changes abruptly.
-        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.grazedFloor), frame: 1))
+        let image = try OllinApp.image(of: CubeShadowScene.make(.grazedFloor), frame: 1)
         var rows: [Double] = []
         for step in 0..<26 {
             let y = 0.42 + Double(step) * 0.020

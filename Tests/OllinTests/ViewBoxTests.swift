@@ -86,7 +86,7 @@ struct ViewBoxTests {
 
     private func contained() throws -> CGImage {
         if let frame = Self.containedFrame { return frame }
-        let frame = try #require(OllinApp.image(of: Probe.make(.contain), frame: 1))
+        let frame = try OllinApp.image(of: Probe.make(.contain), frame: 1)
         Self.containedFrame = frame
         return frame
     }
@@ -138,7 +138,7 @@ struct ViewBoxTests {
     /// top to bottom and the letterbox bands are gone.
     @Test(.enabled(if: Snapshot.hasMetal))
     func stretchFillsTheWholeBox() throws {
-        let frame = try #require(OllinApp.image(of: Probe.make(.stretch), frame: 1))
+        let frame = try OllinApp.image(of: Probe.make(.stretch), frame: 1)
         let top = rgb(frame, x0: 0.1, x1: 0.4, y0: 0.02, y1: 0.08)
         #expect(top.r > 200 && top.b < 60, "a stretched box reaches the top: \(top)")
     }

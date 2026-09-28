@@ -180,8 +180,8 @@ struct MeshJoinRenderTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func aJoinedMeshRendersAsItsPartsDrawnApart() throws {
-        let joined = try #require(OllinApp.image(of: JoinedABSketch(joined: true)))
-        let apart = try #require(OllinApp.image(of: JoinedABSketch(joined: false)))
+        let joined = try OllinApp.image(of: JoinedABSketch(joined: true))
+        let apart = try OllinApp.image(of: JoinedABSketch(joined: false))
         let diff = try #require(imageDifference(joined, apart))
         #expect(diff.max <= 1, "joined vs apart max difference \(diff.max) (mean \(diff.mean))")
         #expect(diff.mean < 0.01, "joined vs apart mean difference \(diff.mean)")

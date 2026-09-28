@@ -173,9 +173,9 @@ struct ThinFilmRenderProbes {
     func withoutAFilmTheSurfaceIsUntouched() throws {
         // Two ways of asking for nothing: no film, and a film of no thickness. Both
         // must land on the exact pixels the material had before the finish existed.
-        let plain = try #require(OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1))
-        let none = try #require(OllinApp.image(of: FilmProbe.make(.filmStrengthZero), frame: 1))
-        let flat = try #require(OllinApp.image(of: FilmProbe.make(.filmThicknessZero), frame: 1))
+        let plain = try OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1)
+        let none = try OllinApp.image(of: FilmProbe.make(.filmStrengthZero), frame: 1)
+        let flat = try OllinApp.image(of: FilmProbe.make(.filmThicknessZero), frame: 1)
         #expect(pixels(of: none) == pixels(of: plain))
         #expect(pixels(of: flat) == pixels(of: plain))
     }
@@ -184,8 +184,8 @@ struct ThinFilmRenderProbes {
     func theFilmColorsWhatTheSurfaceReflects() throws {
         // The same gray metal under a white light: with a film it must come back
         // colored, and colored means the channels separate, not that it dimmed.
-        let plain = try #require(OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1))
-        let filmed = try #require(OllinApp.image(of: FilmProbe.make(.film(550)), frame: 1))
+        let plain = try OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1)
+        let filmed = try OllinApp.image(of: FilmProbe.make(.film(550)), frame: 1)
         let a = mean(plain, radius: 0.12), b = mean(filmed, radius: 0.12)
         let spreadPlain = a.max() - a.min(), spreadFilmed = b.max() - b.min()
         #expect(spreadPlain < 6, "the gray reference is not gray: \(a)")
@@ -201,7 +201,7 @@ struct ThinFilmRenderProbes {
         // around, so two thicknesses can honestly share a color).
         var seen: [SIMD3<Double>] = []
         for t in [280.0, 360, 600] {
-            let image = try #require(OllinApp.image(of: FilmProbe.make(.film(t)), frame: 1))
+            let image = try OllinApp.image(of: FilmProbe.make(.film(t)), frame: 1)
             seen.append(mean(image, radius: 0.12))
         }
         for i in 0..<seen.count {
@@ -218,8 +218,8 @@ struct ThinFilmRenderProbes {
         // A film of one thickness still makes many colors on a curved body, because
         // the light's path through it lengthens as the surface turns away. Straight-on
         // and three-quarters-out must not read as the same color.
-        let image = try #require(OllinApp.image(of: FilmProbe.make(.filmOnASphere(480)),
-                                                frame: 1))
+        let image = try OllinApp.image(of: FilmProbe.make(.filmOnASphere(480)),
+                                                frame: 1)
         let middle = mean(image, radius: 0.05)
         let outer = mean(image, radius: 0.035, at: (0.5, 0.5 - 0.155))
         let d = middle - outer
@@ -245,8 +245,8 @@ struct ThinFilmRenderProbes {
         let baseF0 = Color.srgbToLinear(FilmProbe.metalWhite)
         var checked = 0
         for thickness in stride(from: 220.0, through: 820, by: 60) {
-            let image = try #require(OllinApp.image(of: FilmProbe.make(.film(thickness)),
-                                                   frame: 1))
+            let image = try OllinApp.image(of: FilmProbe.make(.film(thickness)),
+                                                   frame: 1)
             let rendered = mean(image, radius: 0.06)
             #expect(rendered.max() < 250,
                     "thickness \(thickness) clipped, so a channel order says nothing: \(rendered)")
@@ -272,8 +272,8 @@ struct ThinFilmRenderProbes {
         // too, or an export would quietly drop the color the window shows.
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 24, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        let plain = try #require(OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1))
-        let filmed = try #require(OllinApp.image(of: FilmProbe.make(.film(550)), frame: 1))
+        let plain = try OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1)
+        let filmed = try OllinApp.image(of: FilmProbe.make(.film(550)), frame: 1)
         let a = mean(plain, radius: 0.12), b = mean(filmed, radius: 0.12)
         #expect(a.max() - a.min() < 8, "the traced reference is not gray: \(a)")
         #expect(b.max() - b.min() > 12, "the traced film left the surface gray: \(b)")

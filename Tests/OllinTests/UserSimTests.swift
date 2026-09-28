@@ -101,7 +101,7 @@ struct UserSimTests {
         let pictured = try grid(probe(.shader(UserSimTests.lifeKernel), stamps: soup), generations: 8)
         let reader = probe(.shader(UserSimTests.lifeKernel), stamps: soup)
         reader.snapshotAtFrameCount = 9
-        _ = try #require(OllinApp.image(of: reader, frame: 8))
+        _ = try OllinApp.image(of: reader, frame: 8)
         let snap = try #require(reader.captured)
         #expect(snap.width == 48 && snap.height == 48)
         let read = (0 ..< 48).map { y in (0 ..< 48).map { x in snap[x, y].x > 0.5 ? 1 : 0 } }
@@ -121,7 +121,7 @@ struct UserSimTests {
         let sketch = InputProbe()
         sketch.probeSim = .shader(copy)
         sketch.snapshotAtFrameCount = 3
-        _ = try #require(OllinApp.image(of: sketch, frame: 2))
+        _ = try OllinApp.image(of: sketch, frame: 2)
         let snap = try #require(sketch.captured)
         #expect(snap[5, 24].x == 1 && snap[5, 24].w == 1)
         #expect(snap[40, 24].x == 0 && snap[40, 24].w == 0)
@@ -144,14 +144,14 @@ struct UserSimTests {
         let wide = probe(.shader(identity, inject: adder), stamps: [(x: 5, y: 5, white: 1.0)],
                          precision: .float32, stampEveryFrame: true)
         wide.snapshotAtFrameCount = 3
-        _ = try #require(OllinApp.image(of: wide, frame: 2))
+        _ = try OllinApp.image(of: wide, frame: 2)
         let exact = try #require(wide.captured)
         #expect(exact[5, 5].x == 8194)
         #expect(exact[6, 5].x == 0)          // the mark covered its own cell only
         let half = probe(.shader(identity, inject: adder), stamps: [(x: 5, y: 5, white: 1.0)],
                          stampEveryFrame: true)
         half.snapshotAtFrameCount = 3
-        _ = try #require(OllinApp.image(of: half, frame: 2))
+        _ = try OllinApp.image(of: half, frame: 2)
         let rounded = try #require(half.captured)
         #expect(rounded[5, 5].x != 8194)
         #expect(abs(rounded[5, 5].x - 8194) <= 8)
@@ -169,7 +169,7 @@ struct UserSimTests {
         """)
         let sketch = probe(.shader(counting, substeps: 3, rest: SIMD4(0, 0, 0, 0.25)), stamps: [])
         sketch.snapshotAtFrameCount = 3
-        _ = try #require(OllinApp.image(of: sketch, frame: 2))
+        _ = try OllinApp.image(of: sketch, frame: 2)
         let snap = try #require(sketch.captured)
         #expect(snap[10, 10].x == 6)      // two frames of three substeps
         #expect(snap[10, 10].y == 2)      // the last pass of each frame
@@ -223,7 +223,7 @@ struct UserSimTests {
     private func counts(edge: FieldEdge, stamps: [(x: Int, y: Int, white: Double)]) throws -> [[Int]] {
         let sketch = probe(.shader(UserSimTests.countKernel), stamps: stamps, edge: edge)
         sketch.snapshotAtFrameCount = 2
-        _ = try #require(OllinApp.image(of: sketch, frame: 1))
+        _ = try OllinApp.image(of: sketch, frame: 1)
         let snap = try #require(sketch.captured)
         return (0 ..< 48).map { y in (0 ..< 48).map { x in Int(snap[x, y].x.rounded()) } }
     }
@@ -232,7 +232,7 @@ struct UserSimTests {
     /// frames 0...frame and the sim steps once per draw, so a read at `frame: g - 1`
     /// holds `g` generations past the frame-1 stamp.
     private func grid(_ sketch: Sketch, generations: Int) throws -> [[Int]] {
-        let image = try #require(OllinApp.image(of: sketch, frame: generations - 1))
+        let image = try OllinApp.image(of: sketch, frame: generations - 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let info = CGImageAlphaInfo.premultipliedLast.rawValue

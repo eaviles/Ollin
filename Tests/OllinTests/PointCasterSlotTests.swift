@@ -53,8 +53,8 @@ struct PointCasterSlotTests {
         // box belongs on the right-hand band of floor. Before a point light could cast from
         // any slot, that light lit the scene and threw nothing, so the band read the same
         // with the box as without it.
-        let withBox = try #require(OllinApp.image(of: PointSlotScene.make(.keyAndPoint, box: true), frame: 1))
-        let without = try #require(OllinApp.image(of: PointSlotScene.make(.keyAndPoint, box: false), frame: 1))
+        let withBox = try OllinApp.image(of: PointSlotScene.make(.keyAndPoint, box: true), frame: 1)
+        let without = try OllinApp.image(of: PointSlotScene.make(.keyAndPoint, box: false), frame: 1)
         let shadowed = mean(withBox, x: right.x, y: right.y)
         let lit = mean(without, x: right.x, y: right.y)
         #expect(lit - shadowed > 25,
@@ -66,8 +66,8 @@ struct PointCasterSlotTests {
         // Two point lights, one to the left and one beyond the box, so each throws the box
         // its own way: the first onto the right-hand band, the second onto the lower one.
         // On a ray-tracing GPU both trace; elsewhere they hold a cube of the array each.
-        let withBox = try #require(OllinApp.image(of: PointSlotScene.make(.twoPoints, box: true), frame: 1))
-        let without = try #require(OllinApp.image(of: PointSlotScene.make(.twoPoints, box: false), frame: 1))
+        let withBox = try OllinApp.image(of: PointSlotScene.make(.twoPoints, box: true), frame: 1)
+        let without = try OllinApp.image(of: PointSlotScene.make(.twoPoints, box: false), frame: 1)
         let firstShadow = mean(withBox, x: right.x, y: right.y)
         let firstLit = mean(without, x: right.x, y: right.y)
         let secondShadow = mean(withBox, x: lower.x, y: lower.y)
@@ -82,8 +82,8 @@ struct PointCasterSlotTests {
     func theKeyKeepsItsOwnShadowBesideThem() throws {
         // The extra caster must not cost slot 0 its own map: the key comes in low from the
         // left instead, so it throws the box onto the right-hand band by itself.
-        let withBox = try #require(OllinApp.image(of: PointSlotScene.make(.lowKeyAndPoint, box: true), frame: 1))
-        let without = try #require(OllinApp.image(of: PointSlotScene.make(.lowKeyAndPoint, box: false), frame: 1))
+        let withBox = try OllinApp.image(of: PointSlotScene.make(.lowKeyAndPoint, box: true), frame: 1)
+        let without = try OllinApp.image(of: PointSlotScene.make(.lowKeyAndPoint, box: false), frame: 1)
         let shadowed = mean(withBox, x: right.x, y: right.y)
         let lit = mean(without, x: right.x, y: right.y)
         #expect(lit - shadowed > 25,

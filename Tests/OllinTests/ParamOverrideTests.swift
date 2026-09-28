@@ -272,7 +272,7 @@ struct ParamOverrideTests {
         func ink(_ overrides: [ParamOverride]) -> Int {
             var covered = 0
             withOverrides(overrides) {
-                guard let image = OllinApp.image(of: ParamSketch(), frame: 0, fps: 60) else { return }
+                guard let image = try? OllinApp.image(of: ParamSketch(), frame: 0, fps: 60) else { return }
                 covered = inkedPixels(of: image)
             }
             return covered
@@ -295,7 +295,7 @@ struct ParamOverrideTests {
         func size(_ overrides: [ParamOverride]) -> (Int, Int) {
             var found = (0, 0)
             withOverrides(overrides) {
-                guard let image = OllinApp.image(of: CanvasPicker(), frame: 0, fps: 60) else { return }
+                guard let image = try? OllinApp.image(of: CanvasPicker(), frame: 0, fps: 60) else { return }
                 found = (image.width, image.height)
             }
             return found

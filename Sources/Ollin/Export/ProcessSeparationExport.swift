@@ -14,20 +14,33 @@ import Foundation
 extension OllinApp {
 
     /// Render `frame` of `sketch` headlessly and separate it into process
-    /// plates. `profile` falls back to the sketch's declared `printProfile`;
-    /// returns `nil` with no profile to separate through, no Metal device, or
-    /// a failed render.
+    /// plates. `profile` falls back to the sketch's declared `printProfile`.
+    ///
+    /// Throws `ExportError`: `.unsupported` when neither the call nor the
+    /// sketch names a printing condition, `.unrendered` when the frame does
+    /// not draw.
     @MainActor
     public static func plates(of sketch: Sketch, profile: ICCProfile? = nil,
                               intent: RenderingIntent = .relative,
                               frame: Int = 0, fps: FrameRate = 60,
-                              quality: RenderQuality = .detail) -> ProcessSeparation? {
-        guard let press = profile ?? sketch.printProfile else { return nil }
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            return nil
-        }
+                              quality: RenderQuality = .detail) throws -> ProcessSeparation {
+        let press = try pressProfile(profile ?? sketch.printProfile, for: "")
+        let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: "")
         let proof = SoftProof(press, from: ICCProfile.canvas(sketch.colorOutput), intent: intent)
         return Image(cgImage: cgImage).separated(into: proof)
+    }
+
+    /// The printing condition plates are separated for, or the error that says
+    /// how to name one.
+    static func pressProfile(_ profile: ICCProfile?, for path: String) throws -> ICCProfile {
+        guard let press = profile else {
+            throw ExportError(.unsupported, path: path, problem: """
+                no printing condition to separate for. Declare one in the sketch \
+                (override var printProfile: ICCProfile? { .genericCMYK }) or name a profile \
+                (--profile "US Web Coated (SWOP) v2", or a path to an .icc file, on the command line)
+                """)
+        }
+        return press
     }
 
     /// Render one frame, separate it through a printer profile, and write the
@@ -59,18 +72,9 @@ extension OllinApp {
                                     drawsRegistrationMarks: Bool = true,
                                     quality: RenderQuality = .detail,
                                     screen: (ProcessSeparation) -> ProcessSeparation = { $0 }) throws {
-        guard let press = profile ?? sketch.printProfile else {
-            throw ExportError(.unsupported, path: path, problem: """
-                no printing condition to separate for. Declare one in the sketch \
-                (override var printProfile: ICCProfile? { .genericCMYK }) or name a profile \
-                (--profile "US Web Coated (SWOP) v2", or a path to an .icc file, on the command line)
-                """)
-        }
+        let press = try pressProfile(profile ?? sketch.printProfile, for: path)
         print("Ollin: rendering plates for \(press.name) (\(press.channelCount) channels, \(intent.rawValue))")
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            throw ExportError(.unrendered, path: path, frame: 0,
-                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
-        }
+        let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: path)
         var proof = SoftProof(press, from: ICCProfile.canvas(sketch.colorOutput), intent: intent)
         proof.simulatesPaper = simulatesPaper
         let separation = screen(Image(cgImage: cgImage).separated(into: proof))

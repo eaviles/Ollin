@@ -115,8 +115,8 @@ struct SpecularAntialiasRenderTests {
     /// as the ripples, so the only difference is the surface.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatSurfaceIsLeftAlone() throws {
-        let plain = try #require(OllinApp.image(of: FlatSheetProbe.make(strength: nil), frame: 0))
-        let filtered = try #require(OllinApp.image(of: FlatSheetProbe.make(strength: 1), frame: 0))
+        let plain = try OllinApp.image(of: FlatSheetProbe.make(strength: nil), frame: 0)
+        let filtered = try OllinApp.image(of: FlatSheetProbe.make(strength: 1), frame: 0)
         #expect(maxDifference(plain, filtered) == 0)
     }
 
@@ -125,8 +125,8 @@ struct SpecularAntialiasRenderTests {
     /// feature and know that what it sees is the feature.
     @Test(.enabled(if: Snapshot.hasMetal))
     func turningItOffChangesNothing() throws {
-        let never = try #require(OllinApp.image(of: RippleProbe.make(strength: nil), frame: 0))
-        let asked = try #require(OllinApp.image(of: RippleProbe.make(strength: 0), frame: 0))
+        let never = try OllinApp.image(of: RippleProbe.make(strength: nil), frame: 0)
+        let asked = try OllinApp.image(of: RippleProbe.make(strength: 0), frame: 0)
         #expect(maxDifference(never, asked) == 0)
     }
 
@@ -135,10 +135,10 @@ struct SpecularAntialiasRenderTests {
     /// while the frame asks for it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anUnlitFrameIsUntouched() throws {
-        let plain = try #require(OllinApp.image(of: RippleProbe.make(strength: nil, unlit: true),
-                                                frame: 0))
-        let filtered = try #require(OllinApp.image(of: RippleProbe.make(strength: 1, unlit: true),
-                                                   frame: 0))
+        let plain = try OllinApp.image(of: RippleProbe.make(strength: nil, unlit: true),
+                                                frame: 0)
+        let filtered = try OllinApp.image(of: RippleProbe.make(strength: 1, unlit: true),
+                                                   frame: 0)
         #expect(maxDifference(plain, filtered) == 0)
     }
 
@@ -155,7 +155,7 @@ struct SpecularAntialiasRenderTests {
         return try (0 ..< 5).map { step in
             let probe = RippleProbe.make(strength: strength, azimuth: Double(step) * 0.004,
                                          converged: converged)
-            return luminance(of: try #require(OllinApp.image(of: probe, frame: 0)))
+            return luminance(of: try OllinApp.image(of: probe, frame: 0))
         }
     }
 

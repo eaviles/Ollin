@@ -50,7 +50,7 @@ struct TransparentOutputTests {
         sketch.ground = ground
         sketch.ink = ink
         sketch.map = map
-        return OllinApp.image(of: sketch)
+        return try? OllinApp.image(of: sketch)
     }
 
     // MARK: Stills
@@ -146,7 +146,7 @@ struct TransparentOutputTests {
     @Test func aBlurredFrameKeepsItsCoverage() throws {
         let sketch = Disk()
         sketch.blur = 6
-        let image = try #require(OllinApp.image(of: sketch))
+        let image = try OllinApp.image(of: sketch)
         #expect(image.alphaInfo == .premultipliedFirst)
         #expect(stored(image, x: 4, y: 4).a == 0)
         #expect(stored(image, x: 64, y: 64).a == 255)

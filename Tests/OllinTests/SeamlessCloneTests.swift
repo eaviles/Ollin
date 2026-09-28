@@ -48,16 +48,16 @@ struct SeamlessCloneTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFlatBackdropComesBackUnchanged() throws {
-        let cloned = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0))
-        let plain = try #require(OllinApp.image(of: ClonesProbe.make(patch: nil), frame: 0))
+        let cloned = try OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0)
+        let plain = try OllinApp.image(of: ClonesProbe.make(patch: nil), frame: 0)
         let worst = worstInsideDisc(cloned, plain, radius: 140)
         #expect(worst <= 2, "the backdrop's own color came back \(worst)/255 off under the patch")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func thePatchesOwnColorLeavesNoTrace() throws {
-        let dark = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.05), frame: 0))
-        let light = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0))
+        let dark = try OllinApp.image(of: ClonesProbe.make(patch: 0.05), frame: 0)
+        let light = try OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0)
         let worst = worstInsideDisc(dark, light, radius: 140)
         #expect(worst <= 2, "two patches 0.9 apart in gray cloned \(worst)/255 differently")
     }
@@ -66,9 +66,9 @@ struct SeamlessCloneTests {
     func theMiddleOfAWidePatchIsAsRightAsTheEdge() throws {
         // A wide patch puts its middle many levels of the pyramid away from the only
         // values it is held to. That distance is what the solver has to survive.
-        let cloned = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.95, radius: 240),
-                                                 frame: 0))
-        let plain = try #require(OllinApp.image(of: ClonesProbe.make(patch: nil), frame: 0))
+        let cloned = try OllinApp.image(of: ClonesProbe.make(patch: 0.95, radius: 240),
+                                                 frame: 0)
+        let plain = try OllinApp.image(of: ClonesProbe.make(patch: nil), frame: 0)
         let worst = worstInsideDisc(cloned, plain, radius: 230)
         #expect(worst <= 2, "deep inside a wide patch the answer was \(worst)/255 off")
     }
@@ -76,9 +76,9 @@ struct SeamlessCloneTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func anAmountOfZeroLeavesTheSeamIn() throws {
         // The before picture has to actually differ, or nothing above proves anything.
-        let seamless = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0))
-        let pasted = try #require(OllinApp.image(of: ClonesProbe.make(patch: 0.95, amount: 0),
-                                                 frame: 0))
+        let seamless = try OllinApp.image(of: ClonesProbe.make(patch: 0.95), frame: 0)
+        let pasted = try OllinApp.image(of: ClonesProbe.make(patch: 0.95, amount: 0),
+                                                 frame: 0)
         let worst = worstInsideDisc(seamless, pasted, radius: 140)
         #expect(worst > 60, "a plain paste differed from a seamless one by only \(worst)/255")
     }

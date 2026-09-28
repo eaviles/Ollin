@@ -49,7 +49,7 @@ struct BlackHolePageTests {
         let recording = try OllinApp.recordWebFrames(of: Lensed(), frames: 4, fps: 30)
         let page = try OllinApp.webPage(of: recording, form: .inline)
         let played = try await WebExportTests.pagePixels(page, frame: 2)
-        let reference = try #require(OllinApp.image(of: Lensed(), frame: 2, fps: 30))
+        let reference = try OllinApp.image(of: Lensed(), frame: 2, fps: 30)
         let difference = try WebExportTests.meanDifference(played, reference)
         print("web page against the Mac: the black hole, frame 2, mean difference \(String(format: "%.3f", difference))")
         #expect(difference < Snapshot.tolerance, "mean difference \(difference)")
@@ -58,7 +58,7 @@ struct BlackHolePageTests {
         // camera two degrees higher must read as a different picture.
         let raised = Lensed()
         raised.elevation = 9
-        let moved = try #require(OllinApp.image(of: raised, frame: 2, fps: 30))
+        let moved = try OllinApp.image(of: raised, frame: 2, fps: 30)
         let apart = try WebExportTests.meanDifference(played, moved)
         #expect(apart > Snapshot.tolerance, "two degrees apart reads as \(apart)")
     }

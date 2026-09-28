@@ -362,13 +362,13 @@ struct ComplexTextRenderProbes {
     /// rendered once and read for both claims.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anEmojiDrawsItsOwnColors() throws {
-        let outline = try #require(OllinApp.image(of: EmojiProbe.make("👋"), frame: 1))
+        let outline = try OllinApp.image(of: EmojiProbe.make("👋"), frame: 1)
         let a = EmojiProbe.tally(outline)
         #expect(a.ink > 500, "the emoji left \(a.ink) marked pixels")
         #expect(a.colored > a.ink / 4,
                 "only \(a.colored) of \(a.ink) marked pixels carry their own color")
 
-        let atlas = try #require(OllinApp.image(of: EmojiProbe.make("👋", mode: .atlas), frame: 1))
+        let atlas = try OllinApp.image(of: EmojiProbe.make("👋", mode: .atlas), frame: 1)
         let b = EmojiProbe.tally(atlas)
         #expect(b.ink > 500)
         #expect(a.ink == b.ink)
@@ -380,7 +380,7 @@ struct ComplexTextRenderProbes {
     /// path rather than anything the text path does in general.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aLetterDrawsInTheFillColor() throws {
-        let image = try #require(OllinApp.image(of: EmojiProbe.make("O"), frame: 1))
+        let image = try OllinApp.image(of: EmojiProbe.make("O"), frame: 1)
         let counts = EmojiProbe.tally(image)
         #expect(counts.ink > 500)
         #expect(counts.colored < counts.ink / 20)

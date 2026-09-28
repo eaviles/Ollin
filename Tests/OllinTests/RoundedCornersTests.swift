@@ -143,8 +143,8 @@ struct RoundedCornersTests {
         fan.tessellated = true
         let exact = SeamSquare()
         exact.tessellated = false
-        let a = try #require(OllinApp.image(of: fan))
-        let b = try #require(OllinApp.image(of: exact))
+        let a = try OllinApp.image(of: fan)
+        let b = try OllinApp.image(of: exact)
         // Per-vertex shading only approximates a sweep, so the two are never
         // equal; but the seam is a line in both. Without the cut, the two
         // triangles that straddle it shade backwards through the whole ramp

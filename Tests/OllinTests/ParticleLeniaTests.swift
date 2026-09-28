@@ -148,7 +148,7 @@ struct ParticleLeniaTests {
     private func measure(_ configure: @escaping (ParticleLenia) -> Void) throws -> Shape {
         let probe = LeniaProbe()
         probe.configure = configure
-        _ = OllinApp.image(of: probe, frame: probe.steps)
+        _ = try OllinApp.image(of: probe, frame: probe.steps)
         let final = try #require(probe.finalPositions)
         #expect(final.count == LeniaProbe.population)
         #expect(final.allSatisfy { $0.x.isFinite && $0.y.isFinite })

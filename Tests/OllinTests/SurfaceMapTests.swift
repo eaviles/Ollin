@@ -454,11 +454,11 @@ struct SurfaceMapTests {
         // single-scatter lobe drops), so the split is a clear step rather
         // than a cliff (measured 120 vs 95). The mapless control (the same
         // finish) shades both halves equal.
-        let mapped = try #require(OllinApp.image(of: SurfaceMapProbe.make(.metalSplit), frame: 1))
+        let mapped = try OllinApp.image(of: SurfaceMapProbe.make(.metalSplit), frame: 1)
         let left = pixel(of: mapped, x: 64, y: 128).r
         let right = pixel(of: mapped, x: 192, y: 128).r
         #expect(left - right > 12, "expected the metal half darker, got \(left) vs \(right)")
-        let control = try #require(OllinApp.image(of: SurfaceMapProbe.make(.metalControl), frame: 1))
+        let control = try OllinApp.image(of: SurfaceMapProbe.make(.metalControl), frame: 1)
         let cl = pixel(of: control, x: 64, y: 128).r
         let cr = pixel(of: control, x: 192, y: 128).r
         #expect(abs(cl - cr) <= 2, "the control must shade evenly, got \(cl) vs \(cr)")
@@ -470,7 +470,7 @@ struct SurfaceMapTests {
         // specular peak sits at the quad's center: away from the peak the
         // rough half's wide lobe holds more energy than the polished half's
         // tight one, measured at mirrored off-peak points.
-        let img = try #require(OllinApp.image(of: SurfaceMapProbe.make(.roughSplit), frame: 1))
+        let img = try OllinApp.image(of: SurfaceMapProbe.make(.roughSplit), frame: 1)
         let rough = pixel(of: img, x: 64, y: 128).r
         let smooth = pixel(of: img, x: 192, y: 128).r
         #expect(rough - smooth > 15,
@@ -482,11 +482,11 @@ struct SurfaceMapTests {
         // Under ambient light alone, the occluded (black-map) half darkens;
         // under a direct light alone the same map must change nothing at all,
         // because baked occlusion is an indirect-light fact (the glTF rule).
-        let ambient = try #require(OllinApp.image(of: SurfaceMapProbe.make(.aoAmbient), frame: 1))
+        let ambient = try OllinApp.image(of: SurfaceMapProbe.make(.aoAmbient), frame: 1)
         let dark = pixel(of: ambient, x: 64, y: 128).r
         let open = pixel(of: ambient, x: 192, y: 128).r
         #expect(open - dark > 40, "occlusion must dim the ambient, got \(dark) vs \(open)")
-        let direct = try #require(OllinApp.image(of: SurfaceMapProbe.make(.aoDirect), frame: 1))
+        let direct = try OllinApp.image(of: SurfaceMapProbe.make(.aoDirect), frame: 1)
         let dl = pixel(of: direct, x: 64, y: 128).r
         let dr = pixel(of: direct, x: 192, y: 128).r
         #expect(abs(dl - dr) <= 2, "occlusion must not touch direct light, got \(dl) vs \(dr)")
@@ -497,11 +497,11 @@ struct SurfaceMapTests {
         // No lights at all: a black surface with an emissive map still shows
         // the map's color times the factor; with the factor black (the
         // format's default) the same map emits nothing.
-        let lit = try #require(OllinApp.image(of: SurfaceMapProbe.make(.emissive), frame: 1))
+        let lit = try OllinApp.image(of: SurfaceMapProbe.make(.emissive), frame: 1)
         let p = pixel(of: lit, x: 128, y: 128)
         #expect(p.b > 100, "the emissive map must show unlit, got \(p)")
         #expect(p.b > p.r + 40, "the emission carries the map's color, got \(p)")
-        let off = try #require(OllinApp.image(of: SurfaceMapProbe.make(.emissiveBlackFactor), frame: 1))
+        let off = try OllinApp.image(of: SurfaceMapProbe.make(.emissiveBlackFactor), frame: 1)
         let q = pixel(of: off, x: 128, y: 128)
         #expect(q.b < 20, "a black factor emits nothing (the format's default), got \(q)")
     }
@@ -512,12 +512,12 @@ struct SurfaceMapTests {
         // `emissiveIntensity` each side glows in its own hue, where an
         // `emissiveColor` would have washed both toward one color; without it
         // the same quad reads black.
-        let lit = try #require(OllinApp.image(of: SurfaceMapProbe.make(.selfGlow), frame: 1))
+        let lit = try OllinApp.image(of: SurfaceMapProbe.make(.selfGlow), frame: 1)
         let left = pixel(of: lit, x: 64, y: 128)      // the quad spans about pixels 54…202
         let right = pixel(of: lit, x: 192, y: 128)
         #expect(left.r > 120 && left.r > left.b + 60, "the left glows red, got \(left)")
         #expect(right.b > 120 && right.b > right.r + 60, "the right glows blue, got \(right)")
-        let dark = try #require(OllinApp.image(of: SurfaceMapProbe.make(.selfGlowControl), frame: 1))
+        let dark = try OllinApp.image(of: SurfaceMapProbe.make(.selfGlowControl), frame: 1)
         let l = pixel(of: dark, x: 64, y: 128), r = pixel(of: dark, x: 192, y: 128)
         #expect(max(l.r, l.g, l.b) < 30 && max(r.r, r.g, r.b) < 30,
                 "the unlit control must stay dark, got \(l) and \(r)")
@@ -527,8 +527,8 @@ struct SurfaceMapTests {
     func aZeroIntensityLeavesTheBytesAlone() throws {
         // `glowing(0)` is the documented off switch: the mesh keeps the plain
         // textured routing and renders the bytes it always did.
-        let plain = try #require(OllinApp.image(of: SurfaceMapProbe.make(.texturedOnly), frame: 1))
-        let zero = try #require(OllinApp.image(of: SurfaceMapProbe.make(.zeroIntensityTextured), frame: 1))
+        let plain = try OllinApp.image(of: SurfaceMapProbe.make(.texturedOnly), frame: 1)
+        let zero = try OllinApp.image(of: SurfaceMapProbe.make(.zeroIntensityTextured), frame: 1)
         #expect(imageBytes(plain) == imageBytes(zero), "intensity 0 must be byte-identical to no glow")
     }
 
@@ -537,8 +537,8 @@ struct SurfaceMapTests {
         // Metallic factor 0: a full-metal map and a no-metal map must render
         // byte-identically, because the factor multiplies the sample. This is
         // the composition order pin; it fails if the map replaced the factor.
-        let white = try #require(OllinApp.image(of: SurfaceMapProbe.make(.factorZeroMetalMap), frame: 1))
-        let black = try #require(OllinApp.image(of: SurfaceMapProbe.make(.factorZeroDielectricMap), frame: 1))
+        let white = try OllinApp.image(of: SurfaceMapProbe.make(.factorZeroMetalMap), frame: 1)
+        let black = try OllinApp.image(of: SurfaceMapProbe.make(.factorZeroDielectricMap), frame: 1)
         #expect(imageBytes(white) == imageBytes(black))
     }
 
@@ -547,8 +547,8 @@ struct SurfaceMapTests {
         // occlusionStrength 0 is the off switch: the drawer never raises the
         // surface-map gates, so the frame is byte-identical to the same mesh
         // with no occlusion map attached at all.
-        let off = try #require(OllinApp.image(of: SurfaceMapProbe.make(.aoStrengthZero), frame: 1))
-        let none = try #require(OllinApp.image(of: SurfaceMapProbe.make(.texturedOnly), frame: 1))
+        let off = try OllinApp.image(of: SurfaceMapProbe.make(.aoStrengthZero), frame: 1)
+        let none = try OllinApp.image(of: SurfaceMapProbe.make(.texturedOnly), frame: 1)
         #expect(imageBytes(off) == imageBytes(none))
     }
 }

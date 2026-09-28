@@ -96,7 +96,7 @@ struct LightAccumulationTests {
         let alpha: Float = 0.25
         func total(size: Float, style: ParticleStyle) throws -> Double {
             let sketch = ParticleDepositSketch(count: count, size: size, alpha: alpha, style: style)
-            let image = try #require(OllinApp.image(of: sketch, frame: 0))
+            let image = try OllinApp.image(of: sketch, frame: 0)
             return linearSum(of: image)
         }
         let expected = Double(count) * Double.pi / 4 * Double(alpha)
@@ -116,7 +116,7 @@ struct LightAccumulationTests {
     func oneLightPixelLightsOnePixel() throws {
         let sketch = ParticleDepositSketch(count: 1, size: 1, alpha: 1, style: .light,
                                            fixed: SIMD2<Float>(100.3, 200.7))
-        let image = try #require(OllinApp.image(of: sketch, frame: 0))
+        let image = try OllinApp.image(of: sketch, frame: 0)
         let lit = litPixels(of: image)
         #expect(lit.count >= 1 && lit.count <= 4, "lit texels: \(lit.count)")
         #expect(lit.allSatisfy { abs($0.x - 100) <= 1 && abs($0.y - 200) <= 1 })
@@ -129,25 +129,25 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func accumulatorHoldsTheMean() throws {
         let one = AccumulatorSketch()
-        let first = try #require(OllinApp.image(of: one, frame: 0))
+        let first = try OllinApp.image(of: one, frame: 0)
         #expect(abs(centerLinear(of: first) - 0.2) < 0.02)
         #expect(one.light.passes == 1)
 
         let six = AccumulatorSketch()
-        let sixth = try #require(OllinApp.image(of: six, frame: 5))
+        let sixth = try OllinApp.image(of: six, frame: 5)
         #expect(abs(centerLinear(of: sixth) - 0.2) < 0.02, "six passes should still read 0.2, not their sum")
         #expect(six.light.passes == 6)
 
         let doubled = AccumulatorSketch()
         doubled.passesPerBlock = 2
-        let half = try #require(OllinApp.image(of: doubled, frame: 2))
+        let half = try OllinApp.image(of: doubled, frame: 2)
         #expect(abs(centerLinear(of: half) - 0.1) < 0.02, "two passes per block halve the mean")
 
         // `frameCount` is 1 on the first draw, so frame 5 is the sixth draw and a
         // reset at the start of the third leaves the third through sixth: four.
         let restarted = AccumulatorSketch()
         restarted.resetAtFrame = 3
-        _ = OllinApp.image(of: restarted, frame: 5)
+        _ = try OllinApp.image(of: restarted, frame: 5)
         #expect(restarted.light.passes == 4)
     }
 
@@ -156,9 +156,9 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func singlePrecisionFeedbackKeepsAdding() throws {
         let half = FeedbackSumSketch(precision: .float16)
-        let halfImage = try #require(OllinApp.image(of: half, frame: 199))
+        let halfImage = try OllinApp.image(of: half, frame: 199)
         let single = FeedbackSumSketch(precision: .float32)
-        let singleImage = try #require(OllinApp.image(of: single, frame: 199))
+        let singleImage = try OllinApp.image(of: single, frame: 199)
         let stalled = centerLinear(of: halfImage)
         let climbed = centerLinear(of: singleImage)
         #expect(abs(stalled - 0.5) < 0.01, "half float should hold 0.5, read \(stalled)")
@@ -170,7 +170,7 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func developPrintsTheRecipe() throws {
         let sketch = DevelopSketch()
-        let image = try #require(OllinApp.image(of: sketch, frame: 0))
+        let image = try OllinApp.image(of: sketch, frame: 0)
         // Linear 0.5 × exposure 2 = 1 → 1 / (1 + 1) = 0.5, plus a 0.1 ground → 0.6 display.
         let byte = centerByte(of: image)
         #expect(abs(Double(byte) - 0.6 * 255) <= 2, "printed \(byte)")
@@ -181,7 +181,7 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func kernelProjectsLikeTheSketch() throws {
         let sketch = ProjectionSketch()
-        _ = OllinApp.image(of: sketch, frame: 0)
+        _ = try OllinApp.image(of: sketch, frame: 0)
         let particles = try #require(sketch.out.snapshot())
         for (i, world) in sketch.points.enumerated() {
             let expected = try #require(sketch.expected[i])
@@ -199,7 +199,7 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func ballSampleIsUniform() throws {
         let sketch = BallSampleSketch()
-        _ = OllinApp.image(of: sketch, frame: 0)
+        _ = try OllinApp.image(of: sketch, frame: 0)
         let samples = try #require(sketch.out.snapshot())
         let radii = samples.map { Double(simd_length(SIMD3($0.x, $0.y, $0.z))) }
         #expect(radii.allSatisfy { $0 <= 1.0001 })
@@ -218,13 +218,13 @@ struct LightAccumulationTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func lineSprayConvergesAndResets() throws {
         let sketch = SpraySketch()
-        let early = try #require(OllinApp.image(of: sketch, frame: 1))
+        let early = try OllinApp.image(of: sketch, frame: 1)
         #expect(sketch.spray.passes == 2 * sketch.spray.passesPerFrame)
         let earlyMean = meanLinear(of: early)
         #expect(earlyMean > 0.001, "the spray should have drawn something: \(earlyMean)")
 
         let late = SpraySketch()
-        let lateImage = try #require(OllinApp.image(of: late, frame: 11))
+        let lateImage = try OllinApp.image(of: late, frame: 11)
         #expect(late.spray.passes == 12 * late.spray.passesPerFrame)
         let lateMean = meanLinear(of: lateImage)
         #expect(abs(lateMean - earlyMean) / earlyMean < 0.1, "mean drifted: \(earlyMean) → \(lateMean)")
@@ -233,7 +233,7 @@ struct LightAccumulationTests {
         // sixth are all the average holds.
         let moved = SpraySketch()
         moved.refocusAtFrame = 4
-        _ = OllinApp.image(of: moved, frame: 5)
+        _ = try OllinApp.image(of: moved, frame: 5)
         #expect(moved.spray.passes == 3 * moved.spray.passesPerFrame, "a lens change restarts the average")
     }
 
@@ -296,7 +296,7 @@ struct LightAccumulationTests {
             let sketch = QuadSpraySketch()
             sketch.wantsLines = lines
             sketch.wantsQuads = quads
-            let image = try #require(OllinApp.image(of: sketch, frame: 3))
+            let image = try OllinApp.image(of: sketch, frame: 3)
             return linearSum(of: image)
         }
         let linesOnly = try ink(lines: true, quads: false)
@@ -346,10 +346,10 @@ struct LightAccumulationTests {
     /// without moving a single committed image.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theRoundApertureDrawsWhatItAlwaysDrew() throws {
-        let plain = try #require(OllinApp.image(of: MovingSpraySketch(), frame: 3))
+        let plain = try OllinApp.image(of: MovingSpraySketch(), frame: 3)
         let asked = MovingSpraySketch()
         asked.aperture = .round
-        let same = try #require(OllinApp.image(of: asked, frame: 3))
+        let same = try OllinApp.image(of: asked, frame: 3)
         #expect(pixelsEqual(plain, same), "asking for round must draw what asking for nothing draws")
     }
 
@@ -364,7 +364,7 @@ struct LightAccumulationTests {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
             sketch.printExposure = 1.2
-            return linearSum(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+            return linearSum(of: try OllinApp.image(of: sketch, frame: 6))
         }
         let round = try ink(.round)
         let six = try ink(.blades(6))
@@ -381,7 +381,7 @@ struct LightAccumulationTests {
         func lean(_ aperture: Aperture) throws -> Double {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
-            return horizontalLean(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+            return horizontalLean(of: try OllinApp.image(of: sketch, frame: 6))
         }
         let round = try lean(.round)
         let straight = try lean(.blades(3))
@@ -417,12 +417,12 @@ struct LightAccumulationTests {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
             sketch.printExposure = 1.2
-            return linearSum(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+            return linearSum(of: try OllinApp.image(of: sketch, frame: 6))
         }
         func lean(_ aperture: Aperture) throws -> Double {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
-            return horizontalLean(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+            return horizontalLean(of: try OllinApp.image(of: sketch, frame: 6))
         }
 
         // A hole stopped all the way down passes nothing, which is also what
@@ -444,7 +444,7 @@ struct LightAccumulationTests {
         func center(_ aperture: Aperture) throws -> Double {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
-            return centroidX(of: try #require(OllinApp.image(of: sketch, frame: 6)))
+            return centroidX(of: try OllinApp.image(of: sketch, frame: 6))
         }
         let openRight = try center(.picture(try mask { $0 >= side / 2 }))
         let openLeft = try center(.picture(try mask { $0 < side / 2 }))
@@ -462,13 +462,13 @@ struct LightAccumulationTests {
     func setLinesEveryFrameKeepsOrRestartsTheAverageAsTheLinesAsk() throws {
         let still = MovingSpraySketch()
         still.shift = { _ in 0 }
-        _ = try #require(OllinApp.image(of: still, frame: 5))
+        _ = try OllinApp.image(of: still, frame: 5)
         #expect(still.spray.passes == 6 * still.spray.passesPerFrame, "the same lines again keep the average")
         #expect(still.spray.ringDepth == 1, "nothing was rewritten")
 
         let moving = MovingSpraySketch()
         moving.shift = { frame in Double(frame) * 0.2 }
-        let image = try #require(OllinApp.image(of: moving, frame: 5))
+        let image = try OllinApp.image(of: moving, frame: 5)
         #expect(moving.spray.passes == moving.spray.passesPerFrame, "moved lines restart the average")
         #expect(moving.spray.ringDepth <= MetalRenderer.maxFramesInFlight && moving.spray.ringDepth >= 2,
                 "the records ride a ring: \(moving.spray.ringDepth) buffers")
@@ -479,7 +479,7 @@ struct LightAccumulationTests {
         // write never reached would still hold a frame from three draws back, at
         // most 0.4 units (6 px), which is why the bar sits at 10 and not merely
         // above zero.
-        let stillImage = try #require(OllinApp.image(of: MovingSpraySketch(), frame: 5))
+        let stillImage = try OllinApp.image(of: MovingSpraySketch(), frame: 5)
         let movedX = centroidX(of: image), stillX = centroidX(of: stillImage)
         #expect(movedX > stillX + 10, "centroid moved from \(stillX) to \(movedX)")
 
@@ -487,7 +487,7 @@ struct LightAccumulationTests {
         let stretching = MovingSpraySketch()
         stretching.sampling = .byLength(pointsPerPass: 2000)
         stretching.stretch = { frame in 1 + Double(frame) * 0.5 }
-        _ = try #require(OllinApp.image(of: stretching, frame: 2))
+        _ = try OllinApp.image(of: stretching, frame: 2)
         #expect(stretching.spray.pointTable !== stretching.tableAtFirstDraw, "changed shares rebuild the point table")
         // The particles are another matter. Shares that move change the total by
         // a point or two every frame, and the buffer all of them land in is kept
@@ -523,12 +523,12 @@ struct LightAccumulationTests {
         defer { OllinApp.exportSettle = 1 }
 
         let still = AccumulatorSketch()
-        let image = try #require(OllinApp.image(of: still, frame: 0))
+        let image = try OllinApp.image(of: still, frame: 0)
         #expect(still.light.passes == 6, "one advance plus five held draws")
         #expect(abs(centerLinear(of: image) - 0.2) < 0.02, "the mean is still the mean")
 
         let later = AccumulatorSketch()
-        _ = OllinApp.image(of: later, frame: 2)
+        _ = try OllinApp.image(of: later, frame: 2)
         #expect(later.light.passes == 8, "two run-up frames drawn once, the captured one six times")
         #expect(later.frameCount == 8)
         #expect(abs(later.time - 2.0 / 60) < 1e-9, "the clock held at the captured frame")

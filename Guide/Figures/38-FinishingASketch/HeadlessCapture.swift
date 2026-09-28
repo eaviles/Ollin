@@ -33,7 +33,7 @@ final class HeadlessCapture: Sketch {
         for (index, frame) in frames.enumerated() {
             let x = left + Double(index) * (tile + gap)
             // A fresh sketch per capture, so each render starts from setup().
-            if let captured = OllinApp.image(of: Pulse(), frame: frame) {
+            if let captured = try? OllinApp.image(of: Pulse(), frame: frame) {
                 drawImage(Image(cgImage: captured),
                           in: Rectangle(x: x, y: 34, width: tile, height: tile))
             }

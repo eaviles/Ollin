@@ -28,7 +28,7 @@ final class LeavingTheBackground: Sketch {
     override func draw() {
         background(theme.paper)
         textFont(.system)
-        if cutout == nil, let exported = OllinApp.image(of: CutoutProbe()) {
+        if cutout == nil, let exported = try? OllinApp.image(of: CutoutProbe()) {
             cutout = Image(cgImage: exported)
         }
 

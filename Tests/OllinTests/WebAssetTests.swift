@@ -315,6 +315,37 @@ import OllinWebGate
         #expect(WebTrack(recording).stable)
     }
 
+    /// A font that fills its atlas page during the recording crosses as more
+    /// than one page, each its own asset, and every glyph run names a page the
+    /// recording carries. A full page is never cleared, so the runs recorded
+    /// before it filled still address the glyphs they were drawn with.
+    @Test func aFontThatFillsItsPageCrossesAsSeveralPages() throws {
+        let recording = try OllinApp.recordWebFrames(of: FillingPage(), frames: 2, fps: 30)
+        #expect(recording.atlases.count >= 2)
+        let named = Set(recording.frames.flatMap { frame in
+            frame.graph.canvas.compactMap { item -> Int? in
+                if case let .glyphs(atlas, _, _, _) = item { return atlas }
+                return nil
+            }
+        })
+        #expect(named == Set(0 ..< recording.atlases.count))
+        #expect(recording.atlases.allSatisfy { $0.rows > 0 && $0.size == GlyphAtlas.webPageSize })
+    }
+
+    /// More ideographs than one atlas page holds, in a font of its own.
+    final class FillingPage: Sketch {
+        let font = OutlineFont(name: "Helvetica Neue")!
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(.white)
+            fill(.black)
+            textFont(font)
+            textMode(.atlas)
+            textSize(10)
+            drawText(String(String.UnicodeScalarView((0 ..< 700).compactMap { UnicodeScalar(0x4E00 + $0) })), 4, 20)
+        }
+    }
+
     @Test func aGradientOnAShapeCrossesWithItsRow() throws {
         let recording = try OllinApp.recordWebFrames(of: Graded(), frames: 3, fps: 30)
         // Five ramps, each baked once into the recording's strip.
@@ -437,7 +468,7 @@ import OllinWebGate
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)
             let page = try OllinApp.webPage(of: recording, form: .inline)
             let played = try await WebExportTests.pagePixels(page, frame: c.probe)
-            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: 30))
+            let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: 30)
             if let dump = ProcessInfo.processInfo.environment["OLLIN_WEB_DUMP"] {
                 // The two pictures on disk, for a look at a difference.
                 Self.dump(played, to: "\(dump)/case\(k)-page.png")
@@ -465,7 +496,7 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Pictured(), frames: 1, fps: 30)
         let page = try OllinApp.webPage(of: recording, form: .inline)
         let played = try await WebExportTests.pagePixels(page, frame: 0)
-        let paper = try #require(OllinApp.image(of: Paper(), frame: 0, fps: 30))
+        let paper = try OllinApp.image(of: Paper(), frame: 0, fps: 30)
         let difference = try WebExportTests.meanDifference(played, paper)
         #expect(difference > Snapshot.tolerance, "mean difference \(difference)")
         #expect(WebTriangleTests.farFraction(played, paper) > WebTriangleTests.farTolerance)

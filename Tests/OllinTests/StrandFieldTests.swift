@@ -60,16 +60,16 @@ struct StrandFieldRenderTests {
     // keeps the plain Metal gate because building is all it asks for.
     @Test(.enabled(if: Snapshot.hasMeshShaders))
     func aFieldRendersDeterministically() throws {
-        let first = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
-        let second = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
+        let first = try OllinApp.image(of: StrandABSketch(culling: true))
+        let second = try OllinApp.image(of: StrandABSketch(culling: true))
         let diff = try #require(strandImageDifference(first, second))
         #expect(diff.max == 0, "same field, same frame, different pixels (max \(diff.max))")
     }
 
     @Test(.enabled(if: Snapshot.hasMeshShaders))
     func tileCullingChangesNothingInThePicture() throws {
-        let culled = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
-        let unculled = try #require(OllinApp.image(of: StrandABSketch(culling: false)))
+        let culled = try OllinApp.image(of: StrandABSketch(culling: true))
+        let unculled = try OllinApp.image(of: StrandABSketch(culling: false))
         let diff = try #require(strandImageDifference(culled, unculled))
         #expect(diff.mean < 0.05,
                 "tile culling changed the picture: mean \(diff.mean) (max \(diff.max))")

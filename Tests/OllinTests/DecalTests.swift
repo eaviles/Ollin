@@ -138,8 +138,8 @@ struct DecalTests {
         // projection puts that position (which catches a mirrored or shifted
         // world-to-box transform without hand-deriving camera conventions),
         // and the two stamps must sit apart.
-        let left = try #require(OllinApp.image(of: DecalProbe.make(.stampLeft), frame: 1))
-        let right = try #require(OllinApp.image(of: DecalProbe.make(.stampRight), frame: 1))
+        let left = try OllinApp.image(of: DecalProbe.make(.stampLeft), frame: 1)
+        let right = try OllinApp.image(of: DecalProbe.make(.stampRight), frame: 1)
         let cl = try #require(redCentroid(of: left), "the left stamp must land")
         let cr = try #require(redCentroid(of: right), "the right stamp must land")
         let ml = try #require(greenCentroid(of: left), "the left marker must draw")
@@ -158,7 +158,7 @@ struct DecalTests {
     func theBoxDepthBoundsTheStamp() throws {
         // The same placement with the box's depth range hovering above the
         // floor: the floor sits outside |z| <= 0.5, so nothing stamps.
-        let hover = try #require(OllinApp.image(of: DecalProbe.make(.stampHovering), frame: 1))
+        let hover = try OllinApp.image(of: DecalProbe.make(.stampHovering), frame: 1)
         #expect(redCentroid(of: hover) == nil, "a box that doesn't reach the surface stamps nothing")
     }
 
@@ -167,7 +167,7 @@ struct DecalTests {
         // A wall parallel to the projection axis sits edge-on to the stamp:
         // the facing fade must drop it to nothing rather than smear the
         // picture down the wall.
-        let wall = try #require(OllinApp.image(of: DecalProbe.make(.stampOnEdgeOnWall), frame: 1))
+        let wall = try OllinApp.image(of: DecalProbe.make(.stampOnEdgeOnWall), frame: 1)
         #expect(redCentroid(of: wall) == nil, "an edge-on surface must fade the stamp out")
     }
 
@@ -175,8 +175,8 @@ struct DecalTests {
     func laterDecalsCompositeOverEarlierOnes() throws {
         // Red then blue at the same spot: blue wins where they overlap. The
         // reversed order hands it back to red.
-        let blueOver = try #require(OllinApp.image(of: DecalProbe.make(.redThenBlue), frame: 1))
-        let redOver = try #require(OllinApp.image(of: DecalProbe.make(.blueThenRed), frame: 1))
+        let blueOver = try OllinApp.image(of: DecalProbe.make(.redThenBlue), frame: 1)
+        let redOver = try OllinApp.image(of: DecalProbe.make(.blueThenRed), frame: 1)
         #expect(bluePixels(of: blueOver) > 40, "the later blue must cover the red")
         #expect(redCentroid(of: blueOver) == nil, "no red may remain under the covering blue")
         #expect(redCentroid(of: redOver) != nil, "reversed, the red covers")
@@ -186,7 +186,7 @@ struct DecalTests {
     func aPlainSolidMeshReceivesADecal() throws {
         // The floor here carries no texture and no maps at all: the routed
         // pipeline must still land the stamp on it.
-        let solid = try #require(OllinApp.image(of: DecalProbe.make(.stampOnSolid), frame: 1))
+        let solid = try OllinApp.image(of: DecalProbe.make(.stampOnSolid), frame: 1)
         let c = try #require(redCentroid(of: solid), "a solid mesh must receive the stamp")
         #expect(c.count > 40)
     }
@@ -196,8 +196,8 @@ struct DecalTests {
         // A sticker with a transparent border: outside the ink the floor keeps
         // its own color, byte for byte, against the same frame stamped with a
         // fully transparent image (which paints nothing anywhere).
-        let inked = try #require(OllinApp.image(of: DecalProbe.make(.transparentBorder), frame: 1))
-        let clear = try #require(OllinApp.image(of: DecalProbe.make(.fullyTransparent), frame: 1))
+        let inked = try OllinApp.image(of: DecalProbe.make(.transparentBorder), frame: 1)
+        let clear = try OllinApp.image(of: DecalProbe.make(.fullyTransparent), frame: 1)
         let c = try #require(redCentroid(of: inked), "the ink must stamp")
         #expect(c.count > 10)
         // The fully transparent stamp leaves the floor untouched everywhere.

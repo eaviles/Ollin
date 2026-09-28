@@ -218,7 +218,7 @@ struct ComplexShaderTests {
                                _ function: (Complex) -> Complex) throws -> [String] {
         let probe = Probe()
         probe.expression = expression
-        let image = try #require(OllinApp.image(of: probe))
+        let image = try OllinApp.image(of: probe)
         let size = image.width
         #expect(size == 32)
         let data = bytes(of: image)
@@ -290,7 +290,7 @@ struct ComplexShaderTests {
                 drawImage(generate(shader).image, 0, 0)
             }
         }
-        let image = try #require(OllinApp.image(of: Wheel()))
+        let image = try OllinApp.image(of: Wheel())
         let data = bytes(of: image)
         var lightness: [Double] = []
         var hues: [Double] = []

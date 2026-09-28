@@ -235,7 +235,7 @@ struct ViewControlTests {
         sketch.advance(time: 1.0 / 60, deltaTime: 1.0 / 60, frameRate: 60)
         sketch.performDraw()
 
-        let frame = try #require(OllinApp.image(of: sketch, frame: 1))
+        let frame = try OllinApp.image(of: sketch, frame: 1)
         let found = center(ofLit: frame)
         let due = sketch.view2D.screenPoint(Vector2(60, 60), canvasCenter: Vector2(120, 120))
         #expect(abs(found.x - due.x) < 3 && abs(found.y - due.y) < 3,

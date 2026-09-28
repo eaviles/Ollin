@@ -38,7 +38,7 @@ struct StylizedReflectionTests {
 
     private func mirrored(_ finish: StylizedReflectionProbe.Finish) throws -> Reading {
         let scene = StylizedReflectionProbe.make(finish)
-        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let image = try OllinApp.image(of: scene, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

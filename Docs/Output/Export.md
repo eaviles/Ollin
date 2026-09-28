@@ -76,7 +76,7 @@ Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 swift run --package-path Examples Example-Basic-HelloCircle --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
-Both render through Metal off-screen, with MSAA and then a resolve, so the pixels match the live window. The same capability is available in code as `OllinApp.image(of:frame:)`, `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. The first of these returns a `CGImage`. For a *reproducible* sequence, seed the sketch with `seed(…)` in `setup()`. Sources that follow the export clock stay reproducible too. A [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock, so frame `k` shows the clip at `k / fps`. An [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame. So an audio-reactive piece exports with its beats in the same places every run.
+Both render through Metal off-screen, with MSAA and then a resolve, so the pixels match the live window. The same capability is available in code as `OllinApp.image(of:frame:)`, `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. The first of these returns a `CGImage`, and all three are called with `try` (see [When an export fails](#when-an-export-fails)). For a *reproducible* sequence, seed the sketch with `seed(…)` in `setup()`. Sources that follow the export clock stay reproducible too. A [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock, so frame `k` shows the clip at `k / fps`. An [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame. So an audio-reactive piece exports with its beats in the same places every run.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-FinishingASketch/HeadlessCapture-dark.jpg">
@@ -495,7 +495,7 @@ for line in Hatching(spacing: 8, penWidth: 0.5).lines(filling: someShape) {
 
 ### When an export fails
 
-Every export call on `OllinApp` throws an `ExportError` when it cannot finish, so a call in code is written with `try`. The process keeps running, and nothing half-written is left at the path: a video, a GIF, or a spatial video stopped partway is removed. A sequence keeps the frames it wrote before the one that failed.
+Every export call on `OllinApp` throws an `ExportError` when it cannot finish, so a call in code is written with `try`. The process keeps running, and nothing half-written is left at the path: a video, a GIF, or a spatial video stopped partway is removed. A sequence keeps the frames it wrote before the one that failed. The calls that hand back a picture instead of writing one, `image(of:)`, `contactSheet(of:)`, `plates(of:)`, and `separations(of:)`, throw the same error with an empty `path`.
 
 ```swift
 do {
@@ -696,7 +696,7 @@ From code:
 
 ```swift
 try OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
-let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92], columns: 3)
+let sheet: CGImage = try OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92], columns: 3)
 ```
 
 Pick a tile you like, then render it at full size with `--export … --seed N`. The whole loop, including the live inspector half of it, is in [Variations](../Core/Variations.md).

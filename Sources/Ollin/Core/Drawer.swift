@@ -131,11 +131,12 @@ struct GeometryBatch {
     /// its own batch (one texture per draw call), so it never merges with a
     /// neighbor.
     var image: Image?
-    /// SDF atlas for a `.glyphAtlas` batch, `nil` otherwise. A run of `drawText`
-    /// calls with nothing drawn between them and the same atlas and pass state is
-    /// one batch (every glyph samples the same atlas, and each quad carries its own
-    /// color and size).
-    var atlas: GlyphAtlas?
+    /// The SDF atlas page a `.glyphAtlas` batch samples, `nil` otherwise. A run of
+    /// `drawText` calls with nothing drawn between them and the same page and pass
+    /// state is one batch (every glyph samples the same page, and each quad
+    /// carries its own color and size). Holding the page keeps it alive after
+    /// its atlas has moved on to a fresh one.
+    var atlas: GlyphAtlas.Page?
     /// The GPU particle buffer for a `.particles` batch — `nil` otherwise. Each
     /// `drawParticles` call is its own batch carrying its buffer.
     var particleBuffer: ComputeBindable?
@@ -1577,12 +1578,13 @@ final class Drawer {
         }
     }
 
-    /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
-    /// `drawText` call opens one batch (all its glyphs sample the same atlas);
-    /// resets `currentKind` so a following primitive reopens its own batch.
-    func beginGlyphBatch(_ atlas: GlyphAtlas) {
+    /// Open a fresh `.glyphAtlas` batch carrying the atlas page `atlas` as its
+    /// texture. One `drawText` call opens one batch per page its glyphs landed
+    /// on (a call that fills a page opens a second); resets `currentKind` so a
+    /// following primitive reopens its own batch.
+    func beginGlyphBatch(_ atlas: GlyphAtlas.Page) {
         // Text set a character at a time shares one draw call: the quads carry
-        // their own color and size, so only the atlas and the pass state split the
+        // their own color and size, so only the page and the pass state split the
         // run, and a run ends where the next batch starts.
         if currentKind == .glyphAtlas, let last = batches.last, last.kind == .glyphAtlas,
            last.atlas === atlas, last.blendMode == currentBlend, last.depth == currentDepth,

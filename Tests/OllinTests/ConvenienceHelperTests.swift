@@ -239,8 +239,8 @@ struct ConvenienceHelperTests {
     @Test func styledTextEqualsThePreambleItReplaces() throws {
         let one = StyledLabel()
         let block = StyledLabel(); block.oneCall = false
-        let a = bytes(of: try #require(OllinApp.image(of: one)))
-        let b = bytes(of: try #require(OllinApp.image(of: block)))
+        let a = bytes(of: try OllinApp.image(of: one))
+        let b = bytes(of: try OllinApp.image(of: block))
         #expect(a == b)
     }
 
@@ -286,8 +286,8 @@ struct ConvenienceHelperTests {
     @Test func withStateAtEqualsTheSpelledOutBlock() throws {
         let one = Placed()
         let block = Placed(); block.oneCall = false
-        #expect(bytes(of: try #require(OllinApp.image(of: one)))
-             == bytes(of: try #require(OllinApp.image(of: block))))
+        #expect(bytes(of: try OllinApp.image(of: one))
+             == bytes(of: try OllinApp.image(of: block)))
     }
 
     private final class Arrow: Sketch {
@@ -320,8 +320,8 @@ struct ConvenienceHelperTests {
     @Test func arrowEqualsItsSpelledOutParts() throws {
         let one = Arrow()
         let parts = Arrow(); parts.oneCall = false
-        #expect(bytes(of: try #require(OllinApp.image(of: one)))
-             == bytes(of: try #require(OllinApp.image(of: parts))))
+        #expect(bytes(of: try OllinApp.image(of: one))
+             == bytes(of: try OllinApp.image(of: parts)))
     }
 
     private final class NoStrokeArrow: Sketch {
@@ -338,7 +338,7 @@ struct ConvenienceHelperTests {
     @Test func arrowWithNoStrokeDrawsNothing() throws {
         let with = NoStrokeArrow()
         let without = NoStrokeArrow(); without.drawsArrow = false
-        #expect(bytes(of: try #require(OllinApp.image(of: with)))
-             == bytes(of: try #require(OllinApp.image(of: without))))
+        #expect(bytes(of: try OllinApp.image(of: with))
+             == bytes(of: try OllinApp.image(of: without)))
     }
 }

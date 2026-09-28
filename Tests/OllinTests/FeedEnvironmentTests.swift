@@ -50,8 +50,8 @@ struct FeedEnvironmentRenderProbes {
         // chain: the registry, the resolve, the wrap shader, and the bake.
         let redFeed = StubFeed(color: Color(hex: 0xcc2020))
         let blueFeed = StubFeed(color: Color(hex: 0x2020cc))
-        let red = try #require(OllinApp.image(of: FeedProbe.make(.feed(redFeed)), frame: 1))
-        let blue = try #require(OllinApp.image(of: FeedProbe.make(.feed(blueFeed)), frame: 1))
+        let red = try OllinApp.image(of: FeedProbe.make(.feed(redFeed)), frame: 1)
+        let blue = try OllinApp.image(of: FeedProbe.make(.feed(blueFeed)), frame: 1)
         let dR = pixels(of: red), dB = pixels(of: blue)
         func redMinusBlue(_ d: [UInt8], _ img: CGImage) -> Double {
             mean(d, width: img.width, height: img.height, channel: 0,

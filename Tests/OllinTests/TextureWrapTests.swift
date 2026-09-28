@@ -82,7 +82,7 @@ struct TextureWrapTests {
     }
 
     private func render(_ wrap: TextureWrap) -> CGImage? {
-        OllinApp.image(of: Probe.make(wrap), frame: 1)
+        try? OllinApp.image(of: Probe.make(wrap), frame: 1)
     }
 
     /// The default: the edge pixel holds, so the picture is drawn once and its
@@ -141,7 +141,7 @@ struct TextureWrapTests {
         }
         func frame(_ wrap: TextureWrap) -> [UInt8]? {
             let s = InRange(); s.wrap = wrap
-            return OllinApp.image(of: s, frame: 1).map(pixels(of:))
+            return (try? OllinApp.image(of: s, frame: 1)).map(pixels(of:))
         }
         let clamped = try #require(frame(.clamp))
         #expect(try #require(frame(.tile)) == clamped)

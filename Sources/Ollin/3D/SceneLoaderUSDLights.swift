@@ -35,30 +35,6 @@ extension Scene {
     static let usdLightTypeNames: Set<String> = ["SphereLight", "DistantLight", "RectLight",
                                                 "DiskLight", "CylinderLight"]
 
-    /// The authored UsdLux lights of `stage`, resolved through their prims'
-    /// world transforms. (The scene walk attaches node-riding specs instead,
-    /// so hidden prims stay dark; this whole-stage form reads every light
-    /// prim.)
-    static func resolveUSDLights(_ stage: USDStage) -> [Light] {
-        var refs: [(spec: SceneLightSpec, world: simd_float4x4)] = []
-        stage.visitPrims { prim, world in
-            if usdLightTypeNames.contains(prim.typeName), let spec = usdLightSpec(prim) {
-                refs.append((spec, f4x4(world)))
-            }
-        }
-        guard !refs.isEmpty else { return [] }
-
-        // Per-kind normalization: the brightest of each kind becomes 1.
-        var kindMax: [Light.Kind: Double] = [:]
-        for r in refs { kindMax[r.spec.kind] = Swift.max(kindMax[r.spec.kind] ?? 0, r.spec.intensity) }
-        return refs.map { r in
-            var spec = r.spec
-            let peak = kindMax[spec.kind] ?? 0
-            spec.intensity = peak > 0 ? spec.intensity / peak : 1
-            return spec.resolve(world: r.world)
-        }
-    }
-
     /// One light prim as a node-local spec, intensity still the raw physical
     /// brightness (`normalizeLightSpecs` rescales once the tree is built), or
     /// nil for a kind this doesn't map.

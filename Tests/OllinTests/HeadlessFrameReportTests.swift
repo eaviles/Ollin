@@ -35,9 +35,9 @@ struct HeadlessFrameReportTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aStillReportsTheFrameItRendered() {
+    func aStillReportsTheFrameItRendered() throws {
         let sketch = Dots()
-        #expect(OllinApp.image(of: sketch, frame: 5, fps: 10) != nil)
+        _ = try OllinApp.image(of: sketch, frame: 5, fps: 10)
         // Frames 0 to 4 are advanced and stepped, never rendered; frame 5 is.
         #expect(sketch.report.infos.count == 1)
         guard let info = sketch.report.infos.first else { return }
@@ -77,7 +77,7 @@ struct HeadlessFrameReportTests {
         #expect(sketch.report.infos.count == 5)
 
         let still = Pile()
-        #expect(OllinApp.image(of: still, frame: 3) != nil)
+        _ = try OllinApp.image(of: still, frame: 3)
         #expect(still.report.infos.count == 4)
     }
 
@@ -85,12 +85,12 @@ struct HeadlessFrameReportTests {
     /// The first draw is the moment's state and is not rendered; every settle
     /// draw after it renders, and each render reports, with no clock step.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aSettledFrameReportsEachDraw() {
+    func aSettledFrameReportsEachDraw() throws {
         let previous = OllinApp.exportSettle
         OllinApp.exportSettle = 3
         defer { OllinApp.exportSettle = previous }
         let sketch = Dots()
-        #expect(OllinApp.image(of: sketch, frame: 0, fps: 60) != nil)
+        _ = try OllinApp.image(of: sketch, frame: 0, fps: 60)
         #expect(sketch.report.infos.map(\.deltaTime) == [0, 0])
     }
 }

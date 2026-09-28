@@ -32,7 +32,7 @@ final class ThroughALens: Sketch {
             for strength in strengths {
                 let probe = RingProbe()
                 probe.strength = strength
-                if let print = OllinApp.image(of: probe, frame: 40) {
+                if let print = try? OllinApp.image(of: probe, frame: 40) {
                     prints.append(Image(cgImage: print))
                 }
             }

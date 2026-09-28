@@ -51,7 +51,7 @@ private final class PictureProbe: Sketch {
     private func renderFrames(_ count: Int) throws -> [Bytes] {
         let sketch = PictureProbe()
         return try (0..<count).map { frame in
-            let image = try #require(OllinApp.image(of: sketch, frame: frame))
+            let image = try OllinApp.image(of: sketch, frame: frame)
             return try #require(Bytes(image))
         }
     }

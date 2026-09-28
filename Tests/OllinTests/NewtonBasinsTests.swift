@@ -40,7 +40,7 @@ struct NewtonBasinsTests {
 
     /// Which stop (or -1 for the trapped black) each pixel is nearest.
     private func basins(_ probe: NewtonProbe) throws -> (map: [Int], n: Int, rgb: [UInt8]) {
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         let bytes = pixels(of: image)
         let n = image.width
         let stops = Self.stops.prefix(max(probe.roots.count, 1)).map { c -> SIMD3<Double> in

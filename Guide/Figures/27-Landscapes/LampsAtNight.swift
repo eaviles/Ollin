@@ -57,7 +57,7 @@ final class LampsAtNight: Sketch {
         let scene = Courtyard()
         scene.lamps = lamps
         scene.reach = reach
-        guard let rendered = OllinApp.image(of: scene) else { return nil }
+        guard let rendered = try? OllinApp.image(of: scene) else { return nil }
         return Image(cgImage: rendered)
     }
 

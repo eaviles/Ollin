@@ -120,7 +120,7 @@ struct MultiScaleTuringTests {
 
     /// The rendered field as a 0…1 luminance grid.
     private func grid(_ sketch: Sketch, frame: Int) throws -> [[Double]] {
-        luminance(in: try #require(OllinApp.image(of: sketch, frame: frame)))
+        luminance(in: try OllinApp.image(of: sketch, frame: frame))
     }
 
     /// The same grid at several frames of one run to the last of them: frame `k`

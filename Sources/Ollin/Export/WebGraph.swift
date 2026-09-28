@@ -458,9 +458,10 @@ final class WebGraphRecorder {
     }
     private var pictureEntries: [ObjectIdentifier: PictureEntry] = [:]
 
-    /// The atlases the frames draw through, in first-use order, with the page
-    /// generation each was first seen at.
-    private var atlasList: [(atlas: GlyphAtlas, generation: Int)] = []
+    /// The atlas pages the frames draw through, in first-use order. A page only
+    /// gains glyphs, and the list holds each one alive, so a page read at the
+    /// end still holds every glyph an earlier frame placed on it.
+    private var atlasList: [GlyphAtlas.Page] = []
     private var atlasIndex: [ObjectIdentifier: Int] = [:]
 
     /// The gradient rows the frames' shapes read, each once: a frame's own row
@@ -478,14 +479,11 @@ final class WebGraphRecorder {
     static func exportQuality(_ q: RenderQuality) -> RenderQuality { q == .default ? .detail : q }
 
     /// The atlas assets, read once the frames are all recorded, so each page
-    /// holds every glyph they drew. Throws when a page was rebuilt during the
-    /// recording (an earlier frame's quads then address glyphs that moved).
+    /// holds every glyph they drew. A font that filled a page during the
+    /// recording has two pages here, each its own asset.
     func finish(frame: Int) throws -> [WebAtlas] {
-        try atlasList.map { entry in
-            guard entry.atlas.generation == entry.generation else {
-                throw WebExportRefusal(call: "drawText through a glyph atlas that filled up and was rebuilt during the recording", frame: frame)
-            }
-            let page = entry.atlas.webPage()
+        try atlasList.map { atlas in
+            let page = atlas.webPage()
             guard let asset = WebAssetEncoder.atlas(page: page.bytes, size: GlyphAtlas.webPageSize, rows: page.rows) else {
                 throw WebExportRefusal(call: "drawText (the glyph atlas could not be encoded)", frame: frame)
             }
@@ -508,10 +506,10 @@ final class WebGraphRecorder {
         return index
     }
 
-    private func atlasIndex(_ atlas: GlyphAtlas) -> Int {
+    private func atlasIndex(_ atlas: GlyphAtlas.Page) -> Int {
         let id = ObjectIdentifier(atlas)
         if let i = atlasIndex[id] { return i }
-        atlasList.append((atlas, atlas.generation))
+        atlasList.append(atlas)
         atlasIndex[id] = atlasList.count - 1
         return atlasList.count - 1
     }

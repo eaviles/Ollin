@@ -66,7 +66,7 @@ struct FogTests {
     }
 
     private func bytes(_ sketch: Sketch) throws -> [UInt8] {
-        let image = try #require(OllinApp.image(of: sketch))
+        let image = try OllinApp.image(of: sketch)
         let data = try #require(image.dataProvider?.data as Data?)
         return Array(data)
     }

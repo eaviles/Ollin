@@ -40,8 +40,8 @@ struct CausticRenderProbes {
         // caustics() with only matte surfaces in the frame must not encode anything:
         // the frame renders byte-identical to the same frame without the call (the
         // whole chain is gated on a transmitting or mirror-polished material existing).
-        let with = try #require(OllinApp.image(of: CausticProbe.make(kind: .matteOn), frame: 1))
-        let without = try #require(OllinApp.image(of: CausticProbe.make(kind: .matteOff), frame: 1))
+        let with = try OllinApp.image(of: CausticProbe.make(kind: .matteOn), frame: 1)
+        let without = try OllinApp.image(of: CausticProbe.make(kind: .matteOff), frame: 1)
         #expect(pixels(of: with) == pixels(of: without))
     }
 
@@ -52,9 +52,9 @@ struct CausticRenderProbes {
     /// eighth second); every trace thread now writes its own slot.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func anExportedCausticRepeats() throws {
-        let first = pixels(of: try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1)))
+        let first = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1))
         for _ in 0 ..< 3 {
-            let again = pixels(of: try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1)))
+            let again = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1))
             #expect(again == first, "the caustic drew differently")
         }
     }
@@ -65,8 +65,8 @@ struct CausticRenderProbes {
         // the floor under it, so with caustics off the patch is plain shadow. The
         // photons refracted through the lens must brighten that patch, and must not
         // touch a far corner the lens never focuses onto.
-        let on = try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1))
-        let off = try #require(OllinApp.image(of: CausticProbe.make(kind: .lensOff), frame: 1))
+        let on = try OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1)
+        let off = try OllinApp.image(of: CausticProbe.make(kind: .lensOff), frame: 1)
         let dOn = pixels(of: on), dOff = pixels(of: off)
         func luma(_ d: [UInt8], x: ClosedRange<Double>, y: ClosedRange<Double>) -> Double {
             mean(d, width: on.width, height: on.height, channel: 1, x: x, y: y)
@@ -86,8 +86,8 @@ struct CausticRenderProbes {
         // The same lens in absorbing green glass: what the photons add to the focus
         // patch must lean green (the Beer-Lambert tint rides the photon), where the
         // clear lens's addition is neutral.
-        let green = try #require(OllinApp.image(of: CausticProbe.make(kind: .greenLensOn), frame: 1))
-        let off = try #require(OllinApp.image(of: CausticProbe.make(kind: .greenLensOff), frame: 1))
+        let green = try OllinApp.image(of: CausticProbe.make(kind: .greenLensOn), frame: 1)
+        let off = try OllinApp.image(of: CausticProbe.make(kind: .greenLensOff), frame: 1)
         let dG = pixels(of: green), dOff = pixels(of: off)
         func channelMean(_ d: [UInt8], _ c: Int) -> Double {
             mean(d, width: green.width, height: green.height, channel: c,

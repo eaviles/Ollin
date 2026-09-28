@@ -17,12 +17,12 @@ struct GlyphAtlasTests {
 
     // MARK: A full page
 
-    /// A page that fills while its face is already on it is rebuilt, and the
-    /// glyph that filled it is kept on the new page. The lookup used to hold an
-    /// index into the faces from before the rebuild, which the rebuild had
+    /// A page that fills while its face is already on it moves the atlas to a
+    /// fresh page, and the glyph that filled it goes on the new one. The lookup
+    /// used to hold an index into the faces from before, which moving on had
     /// emptied: a crash the first time a long run of text filled a page, which
     /// `SoakTests` found.
-    @Test func aPageThatFillsIsRebuiltUnderTheFaceThatFilledIt() throws {
+    @Test func aPageThatFillsMovesOnUnderTheFaceThatFilledIt() throws {
         let atlas = GlyphAtlas()
         let font = CTFontCreateUIFontForLanguage(.system, 1, nil)!
         let glyphs = CTFontGetGlyphCount(font)
@@ -33,9 +33,96 @@ struct GlyphAtlasTests {
         }
         try #require(atlas.generation == 1, "the system face holds more glyphs than one page")
         let filler = glyph - 1
-        #expect(atlas.glyphCount == 1, "the rebuilt page holds the glyph that filled the old one")
+        #expect(atlas.glyphCount == 1, "the fresh page holds the glyph that filled the old one")
         #expect(atlas.slot(for: filler, font: font) != nil)
         #expect(atlas.glyphCount == 1 && atlas.generation == 1, "and a second ask finds it rather than making it again")
+    }
+
+    /// A full page is left as it was: a slot handed out before the atlas moved
+    /// on still names the page it was placed on, and that page still holds its
+    /// glyph. Clearing the page instead is what drew the wrong glyphs for text
+    /// placed earlier in the frame that filled it.
+    @Test func aFullPageKeepsTheGlyphsPlacedOnIt() throws {
+        let atlas = GlyphAtlas()
+        let font = CTFontCreateUIFontForLanguage(.system, 1, nil)!
+        let letterA = try #require(Self.glyph("A", in: font))
+        let first = try #require(atlas.slot(for: letterA, font: font))
+        let before = first.page.webPage()
+        var glyph: CGGlyph = 1
+        while atlas.generation == 0, Int(glyph) < CTFontGetGlyphCount(font) {
+            _ = atlas.slot(for: glyph, font: font)
+            glyph += 1
+        }
+        try #require(atlas.generation == 1)
+        #expect(first.page !== atlas.currentPage)
+        let after = first.page.webPage()
+        let size = GlyphAtlas.webPageSize
+        let x0 = Int(first.u0 * Float(size)), x1 = Int(first.u1 * Float(size))
+        let y0 = Int(first.v0 * Float(size)), y1 = Int(first.v1 * Float(size))
+        var same = true, inked = false
+        for y in y0 ..< y1 {
+            for x in x0 ..< x1 {
+                same = same && before.bytes[y * size + x] == after.bytes[y * size + x]
+                inked = inked || after.bytes[y * size + x] > 128
+            }
+        }
+        #expect(same, "the cell under the first slot is unchanged")
+        #expect(inked, "and it still holds the glyph")
+        // The fresh page asks again for the glyph that was on the old one.
+        let again = try #require(atlas.slot(for: letterA, font: font))
+        #expect(again.page === atlas.currentPage)
+    }
+
+    /// A `drawText` call whose glyphs fill the page draws the glyphs placed
+    /// before on the full page and the rest on the fresh one: two batches,
+    /// each sampling its own page. Under symmetry every copy stays in the batch
+    /// of the run it copies, so it samples the page that run does.
+    @Test @MainActor
+    func aCallThatFillsThePageSplitsItsRunByPage() throws {
+        /// The glyph vertices each atlas batch holds, and the pages they sample.
+        func runs(folds: Int) throws -> (counts: [Int], pages: [GlyphAtlas.Page?]) {
+            let drawer = Drawer()
+            drawer.beginFrame()
+            drawer.textFont(try #require(OutlineFont(name: "Helvetica Neue")))   // a fresh atlas
+            drawer.textSize(12)
+            drawer.textRenderMode = .atlas
+            if folds > 1 { drawer.symmetry(folds, mirrored: false) }
+            drawer.drawText(FillingText.ideographs, 0, 0)
+            let batches = drawer.batches.filter { $0.kind == .glyphAtlas }
+            let ends = batches.dropFirst().map(\.glyphStart) + [drawer.glyphVertices.count]
+            return (zip(batches, ends).map { $1 - $0.glyphStart }, batches.map(\.atlas))
+        }
+        let plain = try runs(folds: 1)
+        try #require(plain.counts.count >= 2, "700 ideographs fill more than one page")
+        #expect(plain.pages[0] !== plain.pages[1])
+        // Under three folds each batch holds its own run three times over. A
+        // copy appended after the whole call would land in the last batch
+        // and sample the fresh page for glyphs placed on the full one.
+        let folded = try runs(folds: 3)
+        #expect(folded.counts == plain.counts.map { $0 * 3 })
+    }
+
+    /// The frame that fills the page draws every glyph right: text placed
+    /// before the page filled renders as it does when nothing fills it. The
+    /// filling run is drawn off the canvas, so the two frames should match
+    /// to the byte.
+    @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
+    @MainActor
+    func theFrameThatFillsThePageDrawsItsEarlierTextRight() throws {
+        let plain = FillingText()
+        let filled = FillingText(); filled.fillsThePage = true
+        let reference = try OllinApp.image(of: plain)
+        let frame = try OllinApp.image(of: filled)
+        try #require(filled.font.atlas.generation >= 1, "the run filled the page")
+        let diff = try #require(GlyphAtlasTests.meanDifference(reference, frame))
+        #expect(diff == 0, "the line drawn before the page filled differs by \(diff)")
+    }
+
+    private static func glyph(_ character: Character, in font: CTFont) -> CGGlyph? {
+        var units = Array(String(character).utf16)
+        var glyphs = [CGGlyph](repeating: 0, count: units.count)
+        guard CTFontGetGlyphsForCharacters(font, &units, &glyphs, units.count) else { return nil }
+        return glyphs[0]
     }
 
     // MARK: Signed distance field (deterministic, no GPU)
@@ -84,9 +171,8 @@ struct GlyphAtlasTests {
     func atlasTextMatchesOutlineText() throws {
         let outline = ParityText(); outline.useAtlas = false
         let atlas = ParityText(); atlas.useAtlas = true
-        guard let o = OllinApp.image(of: outline), let a = OllinApp.image(of: atlas) else {
-            Issue.record("off-screen render failed"); return
-        }
+        let o = try OllinApp.image(of: outline)
+        let a = try OllinApp.image(of: atlas)
         let diff = try #require(GlyphAtlasTests.meanDifference(o, a))
         #expect(diff < 6.0, "atlas vs outline mean per-channel difference \(diff)")
     }
@@ -131,9 +217,8 @@ struct GlyphAtlasTests {
     func mergedRunsRenderAsTheyDidOneByOne() throws {
         let apart = CellText(); apart.oneCallPerCharacter = true
         let whole = CellText(); whole.oneCallPerCharacter = false
-        guard let a = OllinApp.image(of: apart), let w = OllinApp.image(of: whole) else {
-            Issue.record("off-screen render failed"); return
-        }
+        let a = try OllinApp.image(of: apart)
+        let w = try OllinApp.image(of: whole)
         let diff = try #require(GlyphAtlasTests.meanDifference(a, w))
         #expect(diff < 0.05, "one call per character vs one string, mean difference \(diff)")
     }
@@ -160,6 +245,27 @@ struct GlyphAtlasTests {
 
 /// Black text on white, drawn through whichever path `useAtlas` selects, so the
 /// two renders can be diffed for parity.
+/// A line of text, and optionally, drawn after it in the same frame and off
+/// the canvas, a run of ideographs long enough to fill an atlas page.
+private final class FillingText: Sketch {
+    /// A font of its own, so the atlas starts empty in every sketch.
+    let font = OutlineFont(name: "Helvetica Neue")!
+    var fillsThePage = false
+    override var canvasSize: CanvasSize { .size(360, 72) }
+
+    static let ideographs = String(String.UnicodeScalarView((0 ..< 700).compactMap { UnicodeScalar(0x4E00 + $0) }))
+
+    override func draw() {
+        background(.black)
+        fill(.white)
+        textFont(font)
+        textMode(.atlas)
+        textSize(32)
+        drawText("Every glyph 0123", 12, 48)
+        if fillsThePage { drawText(Self.ideographs, -40_000, 48) }
+    }
+}
+
 private final class ParityText: Sketch {
     var useAtlas = false
     override var canvasSize: CanvasSize { .square(256) }

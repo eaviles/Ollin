@@ -570,15 +570,11 @@ struct SceneLoaderTests {
         try Self.storedZip([("stage.usda", Data(lightsUSDA.utf8))]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let lights = Scene.resolveUSDLights(try USDStage.load(contentsOf: url))
-        #expect(lights.count == 7)
-        #expect(lights[1].kind == .spot)
-        #expect(lights[4].kind == .rectangle)
-
-        // The whole scene read agrees: structure, meshes, and lights all
-        // resolve from the one package parse.
+        // Structure, meshes, and lights all resolve from the one package parse.
         let scene = try Scene(contentsOf: url)
         #expect(scene.lights.count == 7)
+        #expect(scene.lights[1].kind == .spot)
+        #expect(scene.lights[4].kind == .rectangle)
         #expect(scene.node("part")?.mesh != nil)
     }
 
@@ -1148,8 +1144,8 @@ struct SceneLoaderTests {
     /// order, so the frames are byte-identical.
     @Test(.enabled(if: Snapshot.hasMetal))
     func drawSceneMatchesManualTransforms() throws {
-        let viaScene = try #require(OllinApp.image(of: DrawScenePlacement.make(.scene), frame: 1))
-        let manual = try #require(OllinApp.image(of: DrawScenePlacement.make(.manual), frame: 1))
+        let viaScene = try OllinApp.image(of: DrawScenePlacement.make(.scene), frame: 1)
+        let manual = try OllinApp.image(of: DrawScenePlacement.make(.manual), frame: 1)
         #expect(rgba(viaScene) == rgba(manual))
     }
 
@@ -1158,8 +1154,8 @@ struct SceneLoaderTests {
     /// genuinely reach the frame.
     @Test(.enabled(if: Snapshot.hasMetal))
     func drawSceneDrawsEachMaterialPart() throws {
-        let viaScene = try #require(OllinApp.image(of: DrawMaterialParts.make(.scene), frame: 1))
-        let manual = try #require(OllinApp.image(of: DrawMaterialParts.make(.manual), frame: 1))
+        let viaScene = try OllinApp.image(of: DrawMaterialParts.make(.scene), frame: 1)
+        let manual = try OllinApp.image(of: DrawMaterialParts.make(.manual), frame: 1)
         let scenePixels = rgba(viaScene)
         #expect(scenePixels == rgba(manual))
 
@@ -1177,8 +1173,8 @@ struct SceneLoaderTests {
     /// draw whole with its own material, never through the stale slices.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSwappedMeshDrawsWholeThroughItsOwnMaterial() throws {
-        let swapped = try #require(OllinApp.image(of: DrawMaterialParts.make(.swapped), frame: 1))
-        let plain = try #require(OllinApp.image(of: DrawMaterialParts.make(.swappedManual), frame: 1))
+        let swapped = try OllinApp.image(of: DrawMaterialParts.make(.swapped), frame: 1)
+        let plain = try OllinApp.image(of: DrawMaterialParts.make(.swappedManual), frame: 1)
         #expect(rgba(swapped) == rgba(plain))
     }
 

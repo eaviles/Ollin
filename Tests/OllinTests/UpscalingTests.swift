@@ -141,8 +141,8 @@ struct UpscalingTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTwoDFrameIsUntouched() throws {
-        let plain = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .off, flat2D: true), frame: 1))
-        let asked = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .upscaling, flat2D: true), frame: 1))
+        let plain = try OllinApp.image(of: UpscaleProbe.make(mode: .off, flat2D: true), frame: 1)
+        let asked = try OllinApp.image(of: UpscaleProbe.make(mode: .upscaling, flat2D: true), frame: 1)
         #expect(bytes(plain) == bytes(asked),
                 "without a 3D camera the upscaler must change nothing")
     }
@@ -154,11 +154,11 @@ struct UpscalingTests {
         // byte-identical to asking for temporal AA. The two are independent renders
         // through that one supersample, so the equality also says an upscaling frame
         // renders twice identically.
-        let upscaled = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .upscaling), frame: 1))
-        let taa = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .taa), frame: 1))
+        let upscaled = try OllinApp.image(of: UpscaleProbe.make(mode: .upscaling), frame: 1)
+        let taa = try OllinApp.image(of: UpscaleProbe.make(mode: .taa), frame: 1)
         #expect(bytes(upscaled) == bytes(taa))
         // And it genuinely engages: the supersample differs from the plain render.
-        let off = try #require(OllinApp.image(of: UpscaleProbe.make(mode: .off), frame: 1))
+        let off = try OllinApp.image(of: UpscaleProbe.make(mode: .off), frame: 1)
         #expect(bytes(upscaled) != bytes(off))
     }
 }

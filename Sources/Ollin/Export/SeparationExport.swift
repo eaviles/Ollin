@@ -14,19 +14,31 @@ import Metal
 extension OllinApp {
 
     /// Render `frame` of `sketch` headlessly and separate it into per-ink
-    /// masters. `inks` falls back to the sketch's declared `printInks`; returns
-    /// `nil` with no inks to separate into, no Metal device, or a failed
-    /// render. The separation itself is `Image.separated(into:paper:)`.
+    /// masters. `inks` falls back to the sketch's declared `printInks`. The
+    /// separation itself is `Image.separated(into:paper:)`.
+    ///
+    /// Throws `ExportError`: `.unsupported` when neither the call nor the
+    /// sketch names any inks, `.unrendered` when the frame does not draw.
     @MainActor
     public static func separations(of sketch: Sketch, inks: [Ink]? = nil,
                                    paper: Color = .white,
                                    frame: Int = 0, fps: FrameRate = 60,
-                                   quality: RenderQuality = .detail) -> PrintSeparation? {
-        guard let inkSet = inks ?? sketch.printInks, !inkSet.isEmpty else { return nil }
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            return nil
-        }
+                                   quality: RenderQuality = .detail) throws -> PrintSeparation {
+        let inkSet = try separationInks(inks ?? sketch.printInks, for: "")
+        let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: "")
         return Image(cgImage: cgImage).separated(into: inkSet, paper: paper)
+    }
+
+    /// The inks a separation uses, or the error that says how to name some.
+    static func separationInks(_ inks: [Ink]?, for path: String) throws -> [Ink] {
+        guard let inkSet = inks, !inkSet.isEmpty else {
+            throw ExportError(.unsupported, path: path, problem: """
+                no inks to separate into. Declare them in the sketch \
+                (override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }) \
+                or name them (--inks "fluorescent pink, blue, yellow" on the command line)
+                """)
+        }
+        return inkSet
     }
 
     /// Render one frame, separate it, and write the print files: one grayscale
@@ -53,18 +65,9 @@ extension OllinApp {
                                          drawsRegistrationMarks: Bool = true,
                                          quality: RenderQuality = .detail,
                                          screen: (PrintSeparation) -> PrintSeparation = { $0 }) throws {
-        guard let inkSet = inks ?? sketch.printInks, !inkSet.isEmpty else {
-            throw ExportError(.unsupported, path: path, problem: """
-                no inks to separate into. Declare them in the sketch \
-                (override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }) \
-                or name them (--inks "fluorescent pink, blue, yellow" on the command line)
-                """)
-        }
+        let inkSet = try separationInks(inks ?? sketch.printInks, for: path)
         print("Ollin: rendering separations into \(inkSet.count) inks (\(inkSet.map(\.name).joined(separator: ", ")))")
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            throw ExportError(.unrendered, path: path, frame: 0,
-                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
-        }
+        let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: path)
         let separation = screen(Image(cgImage: cgImage).separated(into: inkSet, paper: paper))
         guard !separation.layers.isEmpty else {
             throw ExportError(.unrendered, path: path, frame: 0, problem: "the separation produced no layers")

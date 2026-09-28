@@ -43,7 +43,7 @@ struct AreaShadowTests {
         if let known = Self.renders[setting] { return known }
         let sketch = SoftboxSet()
         sketch.setting = setting
-        let bytes = pixels(of: try #require(OllinApp.image(of: sketch, frame: 1)))
+        let bytes = pixels(of: try OllinApp.image(of: sketch, frame: 1))
         Self.renders[setting] = bytes
         return bytes
     }

@@ -152,8 +152,8 @@ struct DrosteTests {
                             showSource: Bool = false) throws -> CGImage {
         let key = RenderKey(twist: twist, zoom: zoom, rotation: rotation, showSource: showSource)
         if let image = Self.renders[key] { return image }
-        let image = try #require(OllinApp.image(of: DrosteProbe.make(twist: twist, zoom: zoom, rotation: rotation,
-                                                                     showSource: showSource), frame: 1))
+        let image = try OllinApp.image(of: DrosteProbe.make(twist: twist, zoom: zoom, rotation: rotation,
+                                                                     showSource: showSource), frame: 1)
         Self.renders[key] = image
         return image
     }

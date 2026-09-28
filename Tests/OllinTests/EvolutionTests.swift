@@ -179,7 +179,7 @@ struct EvolutionTests {
         let probe = EvolutionProbe()
         probe.generations = 10
         probe.targetRadius = 60
-        _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
+        _ = try OllinApp.image(of: probe, frame: probe.framesNeeded)
         let state = try #require(probe.run.current.snapshot())
         let arrived = state.filter { $0.seedB >= 2 }
         let missed = state.filter { $0.seedB < 2 }
@@ -198,7 +198,7 @@ struct EvolutionTests {
         // gaps between breedings are all one length, and that length is the trial.
         let probe = EvolutionProbe()
         probe.generations = 5
-        _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
+        _ = try OllinApp.image(of: probe, frame: probe.framesNeeded)
         let bred = probe.bredAtFrame
         #expect(bred.count >= 4, "only \(bred.count) generations in \(probe.framesNeeded) frames")
         let gaps = Set(zip(bred.dropFirst(), bred).map { $0 - $1 })
@@ -218,7 +218,7 @@ struct EvolutionTests {
         let probe = EvolutionProbe()
         probe.generations = 12
         probe.configure = { $0.mutationRate = 1; $0.mutationAmount = 2 }
-        _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
+        _ = try OllinApp.image(of: probe, frame: probe.framesNeeded)
         let genes = try #require(probe.run.currentGenes.snapshot())
         #expect(genes.allSatisfy { $0.x >= -1 && $0.x <= 1 && $0.y >= -1 && $0.y <= 1 },
                 "a gene escaped the range genes are defined over")
@@ -265,7 +265,7 @@ struct EvolutionTests {
         probe.generations = generations
         probe.seed = seed
         probe.configure = configure
-        _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
+        _ = try OllinApp.image(of: probe, frame: probe.framesNeeded)
         return (try #require(probe.run.currentGenes.snapshot()), probe.reports)
     }
 
@@ -279,7 +279,7 @@ struct EvolutionTests {
         probe.generations = generations
         probe.seed = seed
         probe.configure = configure
-        _ = OllinApp.image(of: probe, frame: probe.framesNeeded)
+        _ = try OllinApp.image(of: probe, frame: probe.framesNeeded)
         return probe.reports
     }
 }

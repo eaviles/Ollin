@@ -603,7 +603,7 @@ struct AreaLightRenderProbes {
 
     private func centerPixel(_ mode: AreaLightProbe.Mode) throws -> Int {
         if let known = Self.centers[mode] { return known }
-        let image = try #require(OllinApp.image(of: AreaLightProbe.make(mode), frame: 1))
+        let image = try OllinApp.image(of: AreaLightProbe.make(mode), frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -692,7 +692,7 @@ private final class AreaLightProbe: Sketch {
 struct AreaShadowRenderProbes {
 
     private func pixels(_ sketch: Sketch) throws -> [UInt8] {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -787,8 +787,8 @@ struct AreaReflectionRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aPanelLitWallStaysLitInAMirror() throws {
         func mirroredMean(panelOn: Bool) throws -> Double {
-            let image = try #require(OllinApp.image(of: AreaReflectionProbe.make(panelOn: panelOn),
-                                                    frame: 1))
+            let image = try OllinApp.image(of: AreaReflectionProbe.make(panelOn: panelOn),
+                                                    frame: 1)
             let w = image.width, h = image.height
             var data = [UInt8](repeating: 0, count: w * h * 4)
             let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -864,7 +864,7 @@ struct ReflectionRoughnessProbes {
     /// Mean red over the band of the mirror floor holding the wall's reflected image.
     private func mirroredWallMean(roughness: Double, blocked: Bool) throws -> Double {
         let scene = ReflectionRoughnessProbe.make(roughness: roughness, blocked: blocked)
-        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let image = try OllinApp.image(of: scene, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -982,7 +982,7 @@ struct LightingPresetFacadeTests {
 struct LightShapingRenderProbes {
 
     private func pixels(_ sketch: Sketch) throws -> (data: [UInt8], w: Int, h: Int) {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -1098,7 +1098,7 @@ private final class LightShapingProbe: Sketch {
 struct ContactShadowRenderProbes {
 
     private func pixels(_ sketch: Sketch) throws -> [UInt8] {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -1244,7 +1244,7 @@ private final class ContactShadowProbe: Sketch {
 struct MultipleCasterRenderProbes {
 
     private func pixels(_ sketch: Sketch) throws -> [UInt8] {
-        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let image = try OllinApp.image(of: sketch, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

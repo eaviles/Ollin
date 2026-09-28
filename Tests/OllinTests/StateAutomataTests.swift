@@ -571,7 +571,7 @@ struct StateAutomataTests {
     /// per draw, so a probe read at `frame: g - 1` holds exactly `g` generations
     /// past its frame-1 stamp.
     private func grid(_ sketch: Sketch, generations: Int, levels: Int) throws -> [[Int]] {
-        states(in: try #require(OllinApp.image(of: sketch, frame: generations - 1)), levels: levels)
+        states(in: try OllinApp.image(of: sketch, frame: generations - 1), levels: levels)
     }
 
     /// The same readout after each of several generation counts, from one run to

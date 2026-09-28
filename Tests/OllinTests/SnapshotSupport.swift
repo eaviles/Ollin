@@ -114,7 +114,7 @@ enum Snapshot {
     /// reference instead and returns `0`. Throws on a render or load failure.
     @MainActor
     static func meanDifference(of sketch: Sketch, against name: String, frame: Int = 0) throws -> Double {
-        guard let actual = OllinApp.image(of: sketch, frame: frame) else { throw Failure.renderFailed }
+        let actual = try OllinApp.image(of: sketch, frame: frame)
 
         if shouldRecord(name) {
             try writeReference(actual, named: name)

@@ -34,7 +34,7 @@ final class PageFromRecords: Sketch {
         background(theme.paper)
         textFont(.system)
         if frame == nil {
-            if let exported = OllinApp.image(of: RingProbe(), frame: 30, fps: 30) {
+            if let exported = try? OllinApp.image(of: RingProbe(), frame: 30, fps: 30) {
                 frame = Image(cgImage: exported)
             }
             let frames = FrameRate(30).frames(in: RingProbe().loopDuration ?? 4)

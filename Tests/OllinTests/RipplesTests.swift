@@ -15,7 +15,7 @@ struct RipplesTests {
     func stillPoolStaysStill() throws {
         let sketch = RipplesProbeSketch()
         sketch.dropFrame = -1   // never drop
-        let image = try #require(OllinApp.image(of: sketch, frame: 40))
+        let image = try OllinApp.image(of: sketch, frame: 40)
         let stats = channelStats(of: image)
         // Within the present pass's output dither (±1 LSB), the pool is flat.
         #expect(stats.peakRed < 0.02)

@@ -202,7 +202,7 @@ struct GaborNoiseTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theGeneratorPaintsTheFieldTheCPUComputes() throws {
         let probe = GaborProbe()
-        let image = try #require(OllinApp.image(of: probe, frame: 1))
+        let image = try OllinApp.image(of: probe, frame: 1)
         let painted = linearField(of: image)
         let computed = field(probe.noise, n: 256)
         var total: Float = 0, far = 0

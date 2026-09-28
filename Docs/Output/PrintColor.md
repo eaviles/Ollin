@@ -138,7 +138,7 @@ Every file carries a white margin band with **registration targets** at the four
 The same work is available from code:
 
 ```swift
-OllinApp.plates(of: sketch, profile: press, frame: 30)        // -> ProcessSeparation?
+try OllinApp.plates(of: sketch, profile: press, frame: 30)    // -> ProcessSeparation
 try OllinApp.exportPlates(sketch, to: "poster.png") { $0.halftoned(pitch: 8) }
 ```
 

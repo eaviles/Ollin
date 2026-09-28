@@ -33,7 +33,7 @@ final class ShowOnPhone: Sketch {
         if picture == nil {
             let probe = PourProbe()
             probe.finger = finger
-            if let exported = OllinApp.image(of: probe, frame: 0) {
+            if let exported = try? OllinApp.image(of: probe, frame: 0) {
                 picture = Image(cgImage: exported)
             }
         }

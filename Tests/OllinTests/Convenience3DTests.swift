@@ -117,8 +117,8 @@ struct Convenience3DTests {
     @Test func groundEqualsTheSpelledOutSlab() throws {
         let one = Ground()
         let block = Ground(); block.oneCall = false
-        #expect(bytes(of: try #require(OllinApp.image(of: one)))
-             == bytes(of: try #require(OllinApp.image(of: block))))
+        #expect(bytes(of: try OllinApp.image(of: one))
+             == bytes(of: try OllinApp.image(of: block)))
     }
 
     private final class WorldLabel: Sketch {
@@ -143,8 +143,8 @@ struct Convenience3DTests {
     @Test func worldLabelEqualsProjectPlusText() throws {
         let one = WorldLabel()
         let manual = WorldLabel(); manual.oneCall = false
-        #expect(bytes(of: try #require(OllinApp.image(of: one)))
-             == bytes(of: try #require(OllinApp.image(of: manual))))
+        #expect(bytes(of: try OllinApp.image(of: one))
+             == bytes(of: try OllinApp.image(of: manual)))
     }
 
     // MARK: Point-cloud measurements

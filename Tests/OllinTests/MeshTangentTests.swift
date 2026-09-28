@@ -155,11 +155,11 @@ struct MeshTangentTests {
         // The split map tilts the left half's normals toward -x and the right
         // half's toward +x; under a light from the right the two halves must
         // shade apart, while the mapless counterfactual shades them equal.
-        let mapped = try #require(OllinApp.image(of: TangentProbe.make(.split), frame: 1))
+        let mapped = try OllinApp.image(of: TangentProbe.make(.split), frame: 1)
         let left = pixel(of: mapped, x: 64, y: 128).r
         let right = pixel(of: mapped, x: 192, y: 128).r
         #expect(right - left > 40, "expected the +x-tilted half far brighter, got \(left) vs \(right)")
-        let control = try #require(OllinApp.image(of: TangentProbe.make(.mapless), frame: 1))
+        let control = try OllinApp.image(of: TangentProbe.make(.mapless), frame: 1)
         let cl = pixel(of: control, x: 64, y: 128).r
         let cr = pixel(of: control, x: 192, y: 128).r
         #expect(abs(cl - cr) <= 2, "the flat control must shade evenly, got \(cl) vs \(cr)")
@@ -173,9 +173,9 @@ struct MeshTangentTests {
         // bracketing the flat map. This is what pins the whole basis chain:
         // MikkTSpace handedness, the packed vertex tangent, and the shader's
         // sign * cross(N, T) bitangent agreeing end to end.
-        let up = try #require(OllinApp.image(of: TangentProbe.make(.greenHigh), frame: 1))
-        let flat = try #require(OllinApp.image(of: TangentProbe.make(.flat), frame: 1))
-        let down = try #require(OllinApp.image(of: TangentProbe.make(.greenLow), frame: 1))
+        let up = try OllinApp.image(of: TangentProbe.make(.greenHigh), frame: 1)
+        let flat = try OllinApp.image(of: TangentProbe.make(.flat), frame: 1)
+        let down = try OllinApp.image(of: TangentProbe.make(.greenLow), frame: 1)
         let bUp = pixel(of: up, x: 128, y: 128).r
         let bFlat = pixel(of: flat, x: 128, y: 128).r
         let bDown = pixel(of: down, x: 128, y: 128).r
@@ -189,7 +189,7 @@ struct MeshTangentTests {
         // correctly baked tangent keeps the bright side on the right; only the
         // failure this pins (tangents left in mesh space while the geometry
         // rotates) flips it to the left. Verified red by exactly that sabotage.
-        let turned = try #require(OllinApp.image(of: TangentProbe.make(.splitTurned), frame: 1))
+        let turned = try OllinApp.image(of: TangentProbe.make(.splitTurned), frame: 1)
         #expect(pixel(of: turned, x: 192, y: 128).r - pixel(of: turned, x: 64, y: 128).r > 40,
                 "the turned quad must stay bright on the right")
     }
@@ -199,8 +199,8 @@ struct MeshTangentTests {
         // normalScale 0 is the off switch: the drawer routes the mesh down the
         // plain textured pipeline, so the frame is byte-identical to the same
         // mesh with no normal map attached at all.
-        let off = try #require(OllinApp.image(of: TangentProbe.make(.scaleZero), frame: 1))
-        let none = try #require(OllinApp.image(of: TangentProbe.make(.texturedOnly), frame: 1))
+        let off = try OllinApp.image(of: TangentProbe.make(.scaleZero), frame: 1)
+        let none = try OllinApp.image(of: TangentProbe.make(.texturedOnly), frame: 1)
         #expect(imageBytes(off) == imageBytes(none))
     }
 }

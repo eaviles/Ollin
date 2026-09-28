@@ -328,8 +328,8 @@ struct ColorVisionRenderProbes {
         let patch = Color(hex: 0xC8321E)
         for kind in ColorVision.Kind.allCases {
             let vision = ColorVision(kind)
-            let image = try #require(OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: vision),
-                                                    frame: 1))
+            let image = try OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: vision),
+                                                    frame: 1)
             #expect(apart(center(of: image), patch.simulated(vision)) < 0.01)
         }
     }
@@ -339,8 +339,8 @@ struct ColorVisionRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func withoutTheFilterThePatchIsItself() throws {
         let patch = Color(hex: 0xC8321E)
-        let image = try #require(OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: nil),
-                                                frame: 1))
+        let image = try OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: nil),
+                                                frame: 1)
         #expect(apart(center(of: image), patch) < 0.01)
     }
 
@@ -348,8 +348,8 @@ struct ColorVisionRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func severityZeroThroughTheFilterChangesNothing() throws {
         let patch = Color(hex: 0x2E9B57)
-        let image = try #require(OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: .normal),
-                                                frame: 1))
+        let image = try OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: .normal),
+                                                frame: 1)
         #expect(apart(center(of: image), patch) < 0.01)
     }
 
@@ -358,7 +358,7 @@ struct ColorVisionRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aHeadlessRenderNeverPrefersReducedMotion() throws {
         let sketch = ReducedMotionProbe()
-        _ = try #require(OllinApp.image(of: sketch, frame: 1))
+        _ = try OllinApp.image(of: sketch, frame: 1)
         #expect(sketch.seen == false)
     }
 }

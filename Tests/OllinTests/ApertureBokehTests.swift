@@ -62,9 +62,9 @@ struct ApertureBokehTests {
     /// leaves the camera in charge.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSceneTakesItsBladesFromItsOwnCamera() throws {
-        let round = try #require(OllinApp.image(of: SceneProbe.make(blades: 0), frame: 1))
-        let six = try #require(OllinApp.image(of: SceneProbe.make(blades: 6), frame: 1))
-        let again = try #require(OllinApp.image(of: SceneProbe.make(blades: 6), frame: 1))
+        let round = try OllinApp.image(of: SceneProbe.make(blades: 0), frame: 1)
+        let six = try OllinApp.image(of: SceneProbe.make(blades: 6), frame: 1)
+        let again = try OllinApp.image(of: SceneProbe.make(blades: 6), frame: 1)
         #expect(difference(round, six) > 12)
         // Two runs of the same lens differ only by the present pass's own dither.
         #expect(difference(six, again) <= 2)
@@ -128,7 +128,7 @@ struct ApertureBokehTests {
         let key = EdgeKey(blades: probe.blades, irisAngle: probe.irisAngle, catsEye: probe.catsEye,
                           edgeAt: probe.edgeAt, horizontal: probe.horizontal)
         if let known = Self.edges[key] { return known }
-        let px = pixels(of: try #require(OllinApp.image(of: probe, frame: 1)))
+        let px = pixels(of: try OllinApp.image(of: probe, frame: 1))
         Self.edges[key] = px
         return px
     }

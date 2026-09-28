@@ -5202,11 +5202,10 @@ stage's camera ops itself, and `USDXformTests` pins our matrix against its
 The evaluator's first customer was **UsdLux lights** (stage 2 of the arc):
 light prims don't survive the platform importer at all, so
 `SceneLoaderUSDLights.swift` reads them from the raw tree into ordinary
-`Light` values on `Scene.lights` (today as node-riding `SceneLightSpec`s the
+`Light` values on `Scene.lights`, as node-riding `SceneLightSpec`s the
 scene walk attaches where it builds each light prim's node, so visibility
 and purpose gate them and the pose resolves through the tree's current
-transforms on every read; the whole-stage `resolveUSDLights(_:)` form reads
-every light prim directly). The mapping is complete over Ollin's light
+transforms on every read. The mapping is complete over Ollin's light
 kinds:
 
 | UsdLux prim | Ollin light |

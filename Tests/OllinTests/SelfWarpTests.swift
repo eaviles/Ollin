@@ -99,7 +99,7 @@ struct SelfWarpTests {
     func theGhostIsThrownAlongTheMotion() throws {
         let sketch = MovingDot()
         let frame = 20
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        let image = try OllinApp.image(of: sketch, frame: frame)
         let dotX = 40 + (frame + 1) * 6
         let ahead = bandMean(image, dotX: dotX, dx: 20...48)
         let behind = bandMean(image, dotX: dotX, dx: -48...(-20))
@@ -114,7 +114,7 @@ struct SelfWarpTests {
         let sketch = MovingDot()
         sketch.strength = -3
         let frame = 20
-        let image = try #require(OllinApp.image(of: sketch, frame: frame))
+        let image = try OllinApp.image(of: sketch, frame: frame)
         let dotX = 40 + (frame + 1) * 6
         let ahead = bandMean(image, dotX: dotX, dx: 20...48)
         let behind = bandMean(image, dotX: dotX, dx: -48...(-20))
@@ -131,8 +131,8 @@ struct SelfWarpTests {
         let warped = StillScene()
         let direct = StillScene()
         direct.warped = false
-        let a = try #require(OllinApp.image(of: warped, frame: 60))
-        let b = try #require(OllinApp.image(of: direct, frame: 60))
+        let a = try OllinApp.image(of: warped, frame: 60)
+        let b = try OllinApp.image(of: direct, frame: 60)
         let (w, h, ga) = grays(of: a)
         let (_, _, gb) = grays(of: b)
         var total = 0

@@ -5,8 +5,11 @@ import Foundation
 ///
 /// Every `OllinApp.export…` call throws one rather than stopping the process,
 /// so a sketch, a test, or a build step that exports can say what happened
-/// and carry on. From the command line the export flags print the sentence
-/// and exit with status 1, which is what a script running the export sees.
+/// and carry on. The headless calls that hand back a picture instead of
+/// writing one (`OllinApp.image(of:)`, `contactSheet(of:)`, `plates(of:)`,
+/// `separations(of:)`) throw it too, with an empty `path`. From the command
+/// line the export flags print the sentence and exit with status 1, which is
+/// what a script running the export sees.
 ///
 /// ```swift
 /// do {

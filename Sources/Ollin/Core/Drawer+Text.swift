@@ -224,7 +224,9 @@ extension Drawer {
     /// the font's SDF atlas, so a paragraph costs a handful of vertex writes per
     /// glyph instead of a flatten + triangulation. Fill-only (the volume case is
     /// filled body text); the outline path keeps fill + stroke. The whole call is
-    /// one batch — all glyphs share the atlas texture.
+    /// one batch while its glyphs share one atlas page; a call that fills the page
+    /// draws the glyphs placed before on the full page and the rest on the fresh
+    /// one.
     private func drawAtlasText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
         guard let fill = fillPaint else { return }
         let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
@@ -250,29 +252,44 @@ extension Drawer {
         // The tint carries the fill: per-corner for a gradient (glyph quads are
         // small, so corner interpolation tracks the paint), constant for a color.
         let vp = vertexPaint(fill, anchor: Vector2(x, y))
-        beginGlyphBatch(font.atlas)
-        replicated {
-            for (index, g) in placed.enumerated() {
-                guard let slot = slots[index] else { continue }   // space / picture / unplaced
-                // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
-                // em-y rises (font y-up vs Ollin y-down). Where the column turns its
-                // glyphs, each corner takes the same quarter turn clockwise about the
-                // pen. A quarter turn keeps the quad a quad, and it carries each
-                // corner's own patch of the atlas with it, so the picture turns too.
-                func corner(_ emX: Double, _ emY: Double, _ u: Float, _ v: Float) -> OllinImageVertex {
-                    let lx = emX * textPixelSize, ly = -emY * textPixelSize
-                    let px = Float(g.turned ? g.origin.x - ly : g.origin.x + lx)
-                    let py = Float(g.turned ? g.origin.y + lx : g.origin.y + ly)
-                    // The paint is sampled at the vertex the GPU will see, which is
-                    // the rounded one.
-                    return imageVertex(px, py, u, v,
-                                       vp.color(at: Vector2(Double(px), Double(py))))
+        // The glyphs go out a page at a time, each run under its own batch and
+        // its own replication: a symmetry copy lands right after the run it
+        // copies, so it samples the page that run does.
+        var runs: [(page: GlyphAtlas.Page, indices: [Int])] = []
+        for (index, slot) in slots.enumerated() {
+            guard let slot else { continue }                      // space / picture / unplaced
+            if let last = runs.last, last.page === slot.page {
+                runs[runs.count - 1].indices.append(index)
+            } else {
+                runs.append((slot.page, [index]))
+            }
+        }
+        for run in runs {
+            beginGlyphBatch(run.page)
+            replicated {
+                for index in run.indices {
+                    guard let slot = slots[index] else { continue }
+                    let g = placed[index]
+                    // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
+                    // em-y rises (font y-up vs Ollin y-down). Where the column turns its
+                    // glyphs, each corner takes the same quarter turn clockwise about the
+                    // pen. A quarter turn keeps the quad a quad, and it carries each
+                    // corner's own patch of the atlas with it, so the picture turns too.
+                    func corner(_ emX: Double, _ emY: Double, _ u: Float, _ v: Float) -> OllinImageVertex {
+                        let lx = emX * textPixelSize, ly = -emY * textPixelSize
+                        let px = Float(g.turned ? g.origin.x - ly : g.origin.x + lx)
+                        let py = Float(g.turned ? g.origin.y + lx : g.origin.y + ly)
+                        // The paint is sampled at the vertex the GPU will see, which is
+                        // the rounded one.
+                        return imageVertex(px, py, u, v,
+                                           vp.color(at: Vector2(Double(px), Double(py))))
+                    }
+                    let tl = corner(slot.emLeft, slot.emTop, slot.u0, slot.v0)
+                    let tr = corner(slot.emRight, slot.emTop, slot.u1, slot.v0)
+                    let br = corner(slot.emRight, slot.emBottom, slot.u1, slot.v1)
+                    let bl = corner(slot.emLeft, slot.emBottom, slot.u0, slot.v1)
+                    glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
                 }
-                let tl = corner(slot.emLeft, slot.emTop, slot.u0, slot.v0)
-                let tr = corner(slot.emRight, slot.emTop, slot.u1, slot.v0)
-                let br = corner(slot.emRight, slot.emBottom, slot.u1, slot.v1)
-                let bl = corner(slot.emLeft, slot.emBottom, slot.u0, slot.v1)
-                glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
             }
         }
     }

@@ -83,7 +83,7 @@ The remaining flags control the details of the export. `--inks` overrides the de
 The same work is available programmatically:
 
 ```swift
-OllinApp.separations(of: sketch, frame: 30)                   // -> PrintSeparation?
+try OllinApp.separations(of: sketch, frame: 30)               // -> PrintSeparation
 try OllinApp.exportSeparations(sketch, to: "poster.png") { $0.dithered() }
 ```
 

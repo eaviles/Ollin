@@ -66,7 +66,7 @@ struct WatercolorSimTests {
     func untouchedFieldStaysBarePaper() throws {
         let sketch = WatercolorProbeSketch()
         sketch.script = []
-        let image = try #require(OllinApp.image(of: sketch, frame: 30))
+        let image = try OllinApp.image(of: sketch, frame: 30)
         let lum = luminances(of: image)
         // No pigment anywhere: the whole sheet reads as the near-white paper.
         #expect(lum.min()! > 0.85)
@@ -76,7 +76,7 @@ struct WatercolorSimTests {
     func aWashDriesWithADarkenedEdge() throws {
         let sketch = WatercolorProbeSketch()
         sketch.script = [.paint(frame: 1, at: Vector2(64, 64), radius: 34, pigment: 0, load: 0.5, water: 1)]
-        let image = try #require(OllinApp.image(of: sketch, frame: 220))
+        let image = try OllinApp.image(of: sketch, frame: 220)
         let lum = luminances(of: image)
         let w = 128
         var rim = 0.0, rimCount = 0.0, core = 0.0, coreCount = 0.0
@@ -97,7 +97,7 @@ struct WatercolorSimTests {
             let sketch = WatercolorProbeSketch()
             sketch.dryBrush = dryBrush
             sketch.script = [.paint(frame: 1, at: Vector2(64, 64), radius: 40, pigment: 0, load: 0.6, water: 1)]
-            let image = try #require(OllinApp.image(of: sketch, frame: 30))
+            let image = try OllinApp.image(of: sketch, frame: 30)
             let lum = luminances(of: image)
             let inked = lum.filter { $0 < 0.88 }.count
             return Double(inked) / Double(lum.count)
@@ -114,7 +114,7 @@ struct WatercolorSimTests {
             let sketch = WatercolorProbeSketch()
             sketch.script = [.paint(frame: 1, at: Vector2(64, 64), radius: 30, pigment: 0, load: 0.5, water: 1),
                              .dry(frame: 40)]
-            return bytes(of: try #require(OllinApp.image(of: sketch, frame: frame))).bytes
+            return bytes(of: try OllinApp.image(of: sketch, frame: frame)).bytes
         }
         let just = try frameBytes(50)
         let later = try frameBytes(140)
@@ -142,7 +142,7 @@ struct WatercolorSimTests {
                              .blot(frame: 60),
                              .paint(frames: 66 ... 96, at: Vector2(64, 64), radius: 8,
                                     pigment: -1, load: 0, water: 0.8)]
-            let image = try #require(OllinApp.image(of: sketch, frame: 200))
+            let image = try OllinApp.image(of: sketch, frame: 200)
             let lum = luminances(of: image)
             var cleared = 0.0, clearedN = 0.0, ridge = 0.0, ridgeN = 0.0
             for y in 0 ..< 128 {
@@ -166,7 +166,7 @@ struct WatercolorSimTests {
             let sketch = WatercolorProbeSketch()
             sketch.script = [.paint(frame: 1, at: Vector2(50, 60), radius: 28, pigment: 0, load: 0.5, water: 1),
                              .paint(frame: 20, at: Vector2(80, 70), radius: 16, pigment: 1, load: 0.6, water: 0.8)]
-            return bytes(of: try #require(OllinApp.image(of: sketch, frame: 90))).bytes
+            return bytes(of: try OllinApp.image(of: sketch, frame: 90)).bytes
         }
         #expect(try run() == run())
     }

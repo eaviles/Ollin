@@ -76,18 +76,18 @@ struct OceanTests {
     /// of the sideways shift, and with no shift it is exactly 1 everywhere.
     @Test(.enabled(if: Snapshot.hasMetal))
     func flatWaterNeverFoams() throws {
-        let image = try #require(OllinApp.image(
+        let image = try OllinApp.image(
             of: SeaProbe.make(Ocean(waveHeight: 4, choppiness: 0, seed: 2),
-                              channel: 3, scale: 0.25, bias: 0), frame: 1))
+                              channel: 3, scale: 0.25, bias: 0), frame: 1)
         #expect(brightest(image) <= 3, "a sea with no chop should show no fold at all")
     }
 
     /// Pointed waves do fold, which is where foam belongs.
     @Test(.enabled(if: Snapshot.hasMetal))
     func pointedWavesFold() throws {
-        let image = try #require(OllinApp.image(
+        let image = try OllinApp.image(
             of: SeaProbe.make(Ocean(waveHeight: 5, choppiness: 1.5, seed: 2),
-                              channel: 3, scale: 0.25, bias: 0), frame: 1))
+                              channel: 3, scale: 0.25, bias: 0), frame: 1)
         #expect(brightest(image) > 40, "steep crests should fold somewhere")
     }
 
@@ -95,10 +95,10 @@ struct OceanTests {
     /// sketch reproduce.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSameSeedIsTheSameSea() throws {
-        let first = try #require(OllinApp.image(of: SeaProbe.make(Ocean(seed: 4)), frame: 1))
-        let again = try #require(OllinApp.image(of: SeaProbe.make(Ocean(seed: 4)), frame: 1))
+        let first = try OllinApp.image(of: SeaProbe.make(Ocean(seed: 4)), frame: 1)
+        let again = try OllinApp.image(of: SeaProbe.make(Ocean(seed: 4)), frame: 1)
         #expect(maxDifference(first, again) == 0)
-        let other = try #require(OllinApp.image(of: SeaProbe.make(Ocean(seed: 5)), frame: 1))
+        let other = try OllinApp.image(of: SeaProbe.make(Ocean(seed: 5)), frame: 1)
         #expect(maxDifference(first, other) > 20, "a different seed should be different water")
     }
 
@@ -108,9 +108,9 @@ struct OceanTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSeaRepeatsOnItsLoop() throws {
         let sea = Ocean(waveHeight: 3, loopSeconds: 6, seed: 8)
-        let start = try #require(OllinApp.image(of: SeaProbe.make(sea, at: 0), frame: 1))
-        let round = try #require(OllinApp.image(of: SeaProbe.make(sea, at: 6), frame: 1))
-        let halfway = try #require(OllinApp.image(of: SeaProbe.make(sea, at: 3), frame: 1))
+        let start = try OllinApp.image(of: SeaProbe.make(sea, at: 0), frame: 1)
+        let round = try OllinApp.image(of: SeaProbe.make(sea, at: 6), frame: 1)
+        let halfway = try OllinApp.image(of: SeaProbe.make(sea, at: 3), frame: 1)
         #expect(maxDifference(start, round) <= 2, "the loop should close")
         #expect(maxDifference(start, halfway) > 20, "and the water should move in between")
     }
@@ -121,8 +121,8 @@ struct OceanTests {
     /// this is the one check that the vertex stage really reads the field.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theWaterDrawsAndMoves() throws {
-        let first = try #require(OllinApp.image(of: DrawnSeaProbe(), frame: 1))
-        let later = try #require(OllinApp.image(of: DrawnSeaProbe(), frame: 40))
+        let first = try OllinApp.image(of: DrawnSeaProbe(), frame: 1)
+        let later = try OllinApp.image(of: DrawnSeaProbe(), frame: 40)
         #expect(maxDifference(first, later) > 12, "the water should not stand still")
     }
 
@@ -164,8 +164,8 @@ struct OceanTests {
 
     private func heightField(of ocean: Ocean, resolution: Int = 128) throws -> HeightField {
         let scale = 0.4 / max(0.001, ocean.waveHeight)
-        let image = try #require(OllinApp.image(
-            of: SeaProbe.make(ocean, channel: 1, scale: scale, resolution: resolution), frame: 1))
+        let image = try OllinApp.image(
+            of: SeaProbe.make(ocean, channel: 1, scale: scale, resolution: resolution), frame: 1)
         let px = pixels(of: image)
         return HeightField(bytes: px.bytes, width: px.width, height: px.height, scale: scale)
     }

@@ -90,7 +90,7 @@ struct MeshFieldRenderTests {
 
     private func culledFieldFrame() throws -> CGImage {
         if let known = Self.culledField { return known }
-        let image = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+        let image = try OllinApp.image(of: FieldABSketch(mode: .field))
         Self.culledField = image
         return image
     }
@@ -98,7 +98,7 @@ struct MeshFieldRenderTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFieldMatchesTheEquivalentInstancedDraws() throws {
         let field = try culledFieldFrame()
-        let instanced = try #require(OllinApp.image(of: FieldABSketch(mode: .instanced)))
+        let instanced = try OllinApp.image(of: FieldABSketch(mode: .instanced))
         let diff = try #require(fieldImageDifference(field, instanced))
         #expect(diff.mean < 0.5,
                 "field vs instanced mean difference \(diff.mean) (max \(diff.max))")
@@ -114,7 +114,7 @@ struct MeshFieldRenderTests {
         // order the unculled field draws them in, so copies meeting at equal
         // depth resolve the same way in both.
         let culled = try culledFieldFrame()
-        let unculled = try #require(OllinApp.image(of: FieldABSketch(mode: .fieldUnculled)))
+        let unculled = try OllinApp.image(of: FieldABSketch(mode: .fieldUnculled))
         let diff = try #require(fieldImageDifference(culled, unculled))
         #expect(diff.max == 0,
                 "culling changed the picture: max \(diff.max) (mean \(diff.mean))")
@@ -128,7 +128,7 @@ struct MeshFieldRenderTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func anExportCompactsEachEntryInCopyOrder() throws {
         let sketch = FieldOrderProbe()
-        _ = try #require(OllinApp.image(of: sketch))
+        _ = try OllinApp.image(of: sketch)
         let device = try #require(MTLCreateSystemDefaultDevice())
         let gpu = try #require(sketch.field.gpuResources(for: device))
         // The compacted indices live in private storage, so copy them out.
@@ -166,7 +166,7 @@ struct MeshFieldRenderTests {
     func anExportedFieldRepeats() throws {
         let first = try culledFieldFrame()
         for _ in 0 ..< 3 {
-            let again = try #require(OllinApp.image(of: FieldABSketch(mode: .field)))
+            let again = try OllinApp.image(of: FieldABSketch(mode: .field))
             let diff = try #require(fieldImageDifference(first, again))
             #expect(diff.max == 0, "the field drew differently: max \(diff.max)")
         }

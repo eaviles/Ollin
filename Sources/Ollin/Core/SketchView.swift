@@ -2608,21 +2608,6 @@ public enum OllinApp {
 
     #endif
 
-    /// Render one frame of `sketch` off-screen and return it as a `CGImage` — no
-    /// window, no display loop. Drives the sketch headlessly: `setup()`, then
-    /// `draw()` advanced to `frame` at `fps` (so an animated or stateful sketch
-    /// renders the right moment). Same pipeline, MSAA, and blending as the live
-    /// view and `--export`, so the pixels match.
-    ///
-    /// This is the headless frame-grab: `export` is this plus a PNG write, and
-    /// snapshot tests compare its result against a committed reference. Returns
-    /// `nil` if there's no Metal device or the render fails (a library-friendly
-    /// soft failure, unlike `export`'s hard exit).
-    ///
-    /// `quality` is the **automatic** render-quality fallback for features the sketch left at
-    /// `.default`: it defaults to `.detail` (best quality; export has no frame-rate pressure),
-    /// the `--render-quality` flag overrides it, and a feature the sketch dialed explicitly is
-    /// always honored regardless.
     /// The offline path-traced render mode for the export paths (the `--path-traced`
     /// flag sets it; a host may set it directly before `image(of:)` / `export`).
     /// nil (the default) keeps every export on the raster pipeline. Stills and the
@@ -2656,38 +2641,78 @@ public enum OllinApp {
     /// adding through the held draws, so it brightens N times faster there.
     public static var exportSettle = 1
 
-    /// The renderer a headless render draws through. A failure is said out loud, since the
-    /// usual cause is a shader that stopped compiling and the export would otherwise die
-    /// with a "no Metal device" that hides the compiler's message.
-    static func headlessRenderer(for sketch: Sketch, device: MTLDevice) -> MetalRenderer? {
+    /// The renderer a headless render draws through, on the system's GPU. Its
+    /// failure carries the renderer's own message, since the usual cause is a
+    /// shader that stopped compiling, and "no Metal device" would hide it.
+    /// `path` is the file the caller is writing, for the error; empty for a
+    /// drive that writes none.
+    static func headlessRenderer(for sketch: Sketch, path: String = "") throws -> MetalRenderer {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExportError(.unrendered, path: path, problem: "no Metal device to draw with")
+        }
+        if let planted = plantedRendererRefusal {
+            throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(planted)")
+        }
         do {
             return try MetalRenderer(device: device,
                                      pixelFormat: sketch.colorOutput.drawablePixelFormat,
                                      sampleCount: ollinPreferredSampleCount(device),
                                      encoding: sketch.colorOutput.presentEncoding)
         } catch {
-            print("Ollin: the renderer failed to start: \(error)")
-            return nil
+            throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(error)")
         }
     }
 
+    /// Render one frame of `sketch` off-screen and return it as a `CGImage`, with
+    /// no window and no display loop. Drives the sketch headlessly: `setup()`,
+    /// then `draw()` advanced to `frame` at `fps` (so an animated or stateful
+    /// sketch renders the right moment). Same pipeline, MSAA, and blending as the
+    /// live view and `--export`, so the pixels match.
+    ///
+    /// This is the headless frame-grab: `export` is this plus a file write, and
+    /// snapshot tests compare its result against a committed reference.
+    ///
+    /// `quality` is the **automatic** render-quality fallback for features the sketch left at
+    /// `.default`: it defaults to `.detail` (best quality; export has no frame-rate pressure),
+    /// the `--render-quality` flag overrides it, and a feature the sketch dialed explicitly is
+    /// always honored regardless.
+    ///
+    /// Throws `ExportError` of kind `.unrendered` when the frame does not draw:
+    /// no Metal device, a renderer that would not start (its message says why,
+    /// which is usually a shader that stopped compiling), or a frame that did
+    /// not come back from the GPU. The error's `path` is empty, since nothing
+    /// is written.
     public static func image(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
-                             quality: RenderQuality = .detail) -> CGImage? {
+                             quality: RenderQuality = .detail) throws -> CGImage {
+        try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: "")
+    }
+
+    /// The message a headless renderer refuses to start with, when a test
+    /// plants one: the failure a shader that stopped compiling hands every
+    /// headless call, made to happen without breaking a shader. Nothing is
+    /// planted in a normal run.
+    package nonisolated(unsafe) static var plantedRendererRefusal: String?
+
+    /// `image(of:)` for a caller writing `path`, so a failure names the file.
+    static func renderStill(_ sketch: Sketch, frame: Int, fps: FrameRate,
+                            quality: RenderQuality, for path: String) throws -> CGImage {
         // The pool holds the renderer as well as the frames: a device resource
         // arrives autoreleased, so the textures this renderer builds are freed
         // only once something drains, and a caller taking many stills in a row
         // (a figure run, a test suite) never returns to a run loop that would.
-        autoreleasepool { () -> CGImage? in
-            guard let device = MTLCreateSystemDefaultDevice(),
-                  let renderer = headlessRenderer(for: sketch, device: device) else {
-                return nil
-            }
+        try autoreleasepool { () throws -> CGImage in
+            let renderer = try headlessRenderer(for: sketch, path: path)
             isRenderingHeadless = true
             defer { isRenderingHeadless = false }
             renderer.automaticQuality = quality
             renderer.pathTracing = pathTracedExport
             renderer.renderScale = exportRenderScale
-            return renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
+            guard let image = renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond,
+                                          renderer: renderer) else {
+                throw ExportError(.unrendered, path: path, frame: 0,
+                                  problem: "frame \(max(0, frame)) did not come back from the GPU")
+            }
+            return image
         }
     }
 
@@ -2794,10 +2819,7 @@ public enum OllinApp {
     /// written.
     public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                               quality: RenderQuality = .detail) throws {
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
-            throw ExportError(.unrendered, path: path, frame: 0,
-                              problem: "the frame did not draw (no Metal device, or a renderer that would not start)")
-        }
+        let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: path)
         let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
         let size = "\(cgImage.width)×\(cgImage.height)"
         switch URL(fileURLWithPath: path).pathExtension.lowercased() {

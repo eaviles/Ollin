@@ -89,7 +89,7 @@ struct DetailMapTests {
 
     private func render(_ mode: DetailProbe.Mode) throws -> CGImage {
         if let known = Self.frames[mode] { return known }
-        let image = try #require(OllinApp.image(of: DetailProbe.make(mode), frame: 1))
+        let image = try OllinApp.image(of: DetailProbe.make(mode), frame: 1)
         Self.frames[mode] = image
         return image
     }
@@ -120,8 +120,8 @@ struct DetailMapTests {
         // control crosses none. Pins both the tiling and the repeat sampler
         // (a clamping sampler would show one stripe and a smear).
         let none = try render(.plain)
-        let coarse = try #require(OllinApp.image(of: DetailProbe.make(.stripesScale3), frame: 1))
-        let fine = try #require(OllinApp.image(of: DetailProbe.make(.stripesScale6), frame: 1))
+        let coarse = try OllinApp.image(of: DetailProbe.make(.stripesScale3), frame: 1)
+        let fine = try OllinApp.image(of: DetailProbe.make(.stripesScale6), frame: 1)
         let n0 = stripeTransitions(of: none)
         let n3 = stripeTransitions(of: coarse)
         let n6 = stripeTransitions(of: fine)
@@ -135,7 +135,7 @@ struct DetailMapTests {
         // 128 gray is the data-read neutral: the sample x 2 multiplies by
         // 1.004, under half an 8-bit step everywhere, so the detailed render
         // sits within the dither's neighborhood of the control.
-        let detailed = try #require(OllinApp.image(of: DetailProbe.make(.neutralGray), frame: 1))
+        let detailed = try OllinApp.image(of: DetailProbe.make(.neutralGray), frame: 1)
         let control = try render(.plain)
         let a = imageBytes(detailed), b = imageBytes(control)
         var worst = 0
@@ -150,7 +150,7 @@ struct DetailMapTests {
         // Strength 0 is the off switch: the drawer never raises the gates, so
         // the frame is byte-identical to the same mesh with no detail maps
         // attached at all (the plain textured pipeline).
-        let off = try #require(OllinApp.image(of: DetailProbe.make(.amountZero), frame: 1))
+        let off = try OllinApp.image(of: DetailProbe.make(.amountZero), frame: 1)
         let none = try render(.plain)
         #expect(imageBytes(off) == imageBytes(none))
     }
@@ -171,8 +171,8 @@ struct DetailMapTests {
         // must hand back the base normal map's own relief. An overwrite blend
         // fails this (it would flatten the base tilt); the probe compares
         // against the base-only render and allows only the dither's step.
-        let flat = try #require(OllinApp.image(of: DetailProbe.make(.tiltedBaseFlatDetail), frame: 1))
-        let baseOnly = try #require(OllinApp.image(of: DetailProbe.make(.tiltedBaseNoDetail), frame: 1))
+        let flat = try OllinApp.image(of: DetailProbe.make(.tiltedBaseFlatDetail), frame: 1)
+        let baseOnly = try OllinApp.image(of: DetailProbe.make(.tiltedBaseNoDetail), frame: 1)
         let a = imageBytes(flat), b = imageBytes(baseOnly)
         var worst = 0
         for i in 0..<min(a.count, b.count) {
@@ -188,12 +188,9 @@ struct DetailMapTests {
         // the same lean must tilt them *further* (brighter still), which is
         // what reorienting onto the base gives and what replacing the base
         // with the detail alone would not.
-        let flat = meanBrightness(of: try #require(
-            OllinApp.image(of: DetailProbe.make(.litFlat), frame: 1)))
-        let base = meanBrightness(of: try #require(
-            OllinApp.image(of: DetailProbe.make(.litBaseTilt), frame: 1)))
-        let composed = meanBrightness(of: try #require(
-            OllinApp.image(of: DetailProbe.make(.litBaseAndDetailTilt), frame: 1)))
+        let flat = meanBrightness(of: try OllinApp.image(of: DetailProbe.make(.litFlat), frame: 1))
+        let base = meanBrightness(of: try OllinApp.image(of: DetailProbe.make(.litBaseTilt), frame: 1))
+        let composed = meanBrightness(of: try OllinApp.image(of: DetailProbe.make(.litBaseAndDetailTilt), frame: 1))
         #expect(base > flat + 4, "the base tilt alone must brighten: \(flat) vs \(base)")
         #expect(composed > base + 4, "the detail must tilt further onto the base: \(base) vs \(composed)")
     }

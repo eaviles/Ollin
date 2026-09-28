@@ -347,8 +347,8 @@ struct USDAnimationTests {
     /// (apply is absolute, and nothing else in the probe reads the clock).
     @Test(.enabled(if: Snapshot.hasMetal))
     func exampleAssetWrapsByteIdentically() throws {
-        let before = try #require(OllinApp.image(of: USDMobileWrapProbe(), frame: 5))
-        let after = try #require(OllinApp.image(of: USDMobileWrapProbe(), frame: 21))
+        let before = try OllinApp.image(of: USDMobileWrapProbe(), frame: 5)
+        let after = try OllinApp.image(of: USDMobileWrapProbe(), frame: 21)
         #expect(rgba(before) == rgba(after))
     }
 

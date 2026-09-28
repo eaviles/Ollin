@@ -83,8 +83,8 @@ struct AnisotropyRenderProbes {
         // A brushed metal under a frontal light: the isotropic sphere's highlight is
         // round, the anisotropic one's must streak wide along the surface's tangent
         // axis (horizontal, on the world-derived frame a bare sphere gets).
-        let iso = try #require(OllinApp.image(of: AnisoProbe.make(kind: .iso), frame: 1))
-        let brushed = try #require(OllinApp.image(of: AnisoProbe.make(kind: .brushed), frame: 1))
+        let iso = try OllinApp.image(of: AnisoProbe.make(kind: .iso), frame: 1)
+        let brushed = try OllinApp.image(of: AnisoProbe.make(kind: .brushed), frame: 1)
         let a = extents(brushed), i = extents(iso)
         #expect(a.x > 0 && i.x > 0, "expected a highlight in both renders")
         #expect(Double(a.x) > 1.8 * Double(a.y),
@@ -96,7 +96,7 @@ struct AnisotropyRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theRotationSpinsTheStreak() throws {
         // A quarter-turn rotation must run the same streak vertically.
-        let turned = try #require(OllinApp.image(of: AnisoProbe.make(kind: .turned), frame: 1))
+        let turned = try OllinApp.image(of: AnisoProbe.make(kind: .turned), frame: 1)
         let e = extents(turned)
         #expect(e.y > 0, "expected a highlight")
         #expect(Double(e.y) > 1.8 * Double(e.x), "expected a vertical streak: \(e)")
@@ -105,7 +105,7 @@ struct AnisotropyRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func negativeStrengthRunsTheStreakTheOtherWay() throws {
         // The sign swaps the two roughnesses, so -0.85 reads like the quarter turn.
-        let neg = try #require(OllinApp.image(of: AnisoProbe.make(kind: .negative), frame: 1))
+        let neg = try OllinApp.image(of: AnisoProbe.make(kind: .negative), frame: 1)
         let e = extents(neg)
         #expect(e.y > 0, "expected a highlight")
         #expect(Double(e.y) > 1.8 * Double(e.x), "expected a vertical streak: \(e)")
@@ -115,8 +115,8 @@ struct AnisotropyRenderProbes {
     func theEnvironmentGatherFollowsTheStretch() throws {
         // Under an environment alone the bent reflection vector must move the gather:
         // the anisotropic sphere reads the studio differently from the isotropic one.
-        let iso = try #require(OllinApp.image(of: AnisoProbe.make(kind: .isoEnv), frame: 1))
-        let brushed = try #require(OllinApp.image(of: AnisoProbe.make(kind: .brushedEnv), frame: 1))
+        let iso = try OllinApp.image(of: AnisoProbe.make(kind: .isoEnv), frame: 1)
+        let brushed = try OllinApp.image(of: AnisoProbe.make(kind: .brushedEnv), frame: 1)
         let d = meanAbsDiff(iso, brushed)
         #expect(d > 2, "expected the bent gather to change the reflection: diff \(d)")
     }

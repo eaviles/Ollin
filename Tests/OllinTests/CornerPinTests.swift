@@ -24,12 +24,12 @@ struct CornerPinTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSquarePinnedToItselfChangesNoByte() throws {
-        let plain = try #require(OllinApp.image(of: MarkProbe.make(nil), frame: 1))
-        let pinned = try #require(OllinApp.image(of: MarkProbe.make(.cornerPin()), frame: 1))
+        let plain = try OllinApp.image(of: MarkProbe.make(nil), frame: 1)
+        let pinned = try OllinApp.image(of: MarkProbe.make(.cornerPin()), frame: 1)
         #expect(maxDifference(plain, pinned) == 0)
         // The gate can fail: a moved corner moves bytes.
-        let moved = try #require(OllinApp.image(
-            of: MarkProbe.make(.cornerPin(bottomRight: Vector2(0.7, 0.8))), frame: 1))
+        let moved = try OllinApp.image(
+            of: MarkProbe.make(.cornerPin(bottomRight: Vector2(0.7, 0.8))), frame: 1)
         #expect(maxDifference(plain, moved) > 100)
     }
 
@@ -41,7 +41,7 @@ struct CornerPinTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func theCornersAndEdgesLandOnTheirPoints() throws {
         let q = Self.quad
-        let image = try #require(OllinApp.image(of: MarkProbe.make(Self.pinned(q)), frame: 1))
+        let image = try OllinApp.image(of: MarkProbe.make(Self.pinned(q)), frame: 1)
         let px = pixels(of: image)
         let map = try #require(Homography(unitSquareTo: q.topLeft, q.topRight, q.bottomRight, q.bottomLeft))
         let inside = Vector2(0.5, 0.5)
@@ -69,7 +69,7 @@ struct CornerPinTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aMarkInsideFollowsTheMap() throws {
         let q = Self.quad
-        let image = try #require(OllinApp.image(of: MarkProbe.make(Self.pinned(q)), frame: 1))
+        let image = try OllinApp.image(of: MarkProbe.make(Self.pinned(q)), frame: 1)
         let map = try #require(Homography(unitSquareTo: q.topLeft, q.topRight, q.bottomRight, q.bottomLeft))
         let predicted = map.map(MarkProbe.mark) * 200
         let found = try #require(redCentroid(pixels(of: image), near: predicted, within: 12))
@@ -84,7 +84,7 @@ struct CornerPinTests {
         let doubled = Filter.cornerPin(topLeft: Vector2(0.2, 0.2), topRight: Vector2(0.2, 0.2),
                                        bottomRight: Vector2(0.8, 0.8), bottomLeft: Vector2(0.2, 0.8))
         for filter in [flat, doubled] {
-            let px = pixels(of: try #require(OllinApp.image(of: MarkProbe.make(filter), frame: 1)))
+            let px = pixels(of: try OllinApp.image(of: MarkProbe.make(filter), frame: 1))
             // The present pass dithers, so a black pixel reads 0 or 1.
             var lit = 0
             for i in stride(from: 0, to: px.bytes.count, by: 4) where px.bytes[i + 1] > 1 { lit += 1 }

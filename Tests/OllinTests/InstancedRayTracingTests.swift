@@ -33,7 +33,7 @@ struct InstancedRayTracingTests {
     private func mirroredBoxMean(_ how: InstancedReflectionProbe.How) throws -> Double {
         if let known = Self.mirrored[how] { return known }
         let scene = InstancedReflectionProbe.make(how)
-        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let image = try OllinApp.image(of: scene, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -77,7 +77,7 @@ struct InstancedRayTracingTests {
     private func shadowedFloorMean(_ how: InstancedShadowProbe.How) throws -> Double {
         if let known = Self.shadowed[how] { return known }
         let scene = InstancedShadowProbe.make(how)
-        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let image = try OllinApp.image(of: scene, frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -207,7 +207,7 @@ struct ReflectionResolutionTierTests {
     private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
                                  _ quality: RenderQuality) throws -> Double {
         let scene = InstancedReflectionProbe.make(how)
-        let image = try #require(OllinApp.image(of: scene, frame: 1, quality: quality))
+        let image = try OllinApp.image(of: scene, frame: 1, quality: quality)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -250,7 +250,7 @@ struct ReflectionResolutionTierTests {
         // left face (which reflects the red panel), strongly positive on the right one.
         func profile(_ quality: RenderQuality) throws -> [Double] {
             let scene = MirrorEdgeProbe()
-            let image = try #require(OllinApp.image(of: scene, frame: 1, quality: quality))
+            let image = try OllinApp.image(of: scene, frame: 1, quality: quality)
             let w = image.width, h = image.height
             var data = [UInt8](repeating: 0, count: w * h * 4)
             let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -538,7 +538,7 @@ struct InstancedPathTracedTests {
         if let known = Self.traced[key] { return known }
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
+        let image = try OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
@@ -666,7 +666,7 @@ struct InstancedPathTracedMaterialTests {
                               samples: Int) throws -> (glass: Double, opaque: Double) {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
-        let image = try #require(OllinApp.image(of: InstancedMaterialProbe.make(how), frame: 1))
+        let image = try OllinApp.image(of: InstancedMaterialProbe.make(how), frame: 1)
         let w = image.width, h = image.height
         var data = [UInt8](repeating: 0, count: w * h * 4)
         let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,

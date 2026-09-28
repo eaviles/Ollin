@@ -81,7 +81,7 @@ struct GainMapExportTests {
     /// extended sketch has float samples; an eight-bit one has none, which is
     /// itself the reason it can carry no gain map.
     private func rendered(_ sketch: Sketch) throws -> (image: CGImage, samples: GainMap.Samples) {
-        let image = try #require(OllinApp.image(of: sketch))
+        let image = try OllinApp.image(of: sketch)
         let samples = try #require(GainMap.floatSamples(of: image, context: context()))
         return (image, samples)
     }
@@ -211,7 +211,7 @@ struct GainMapExportTests {
     func standardOutputWritesNoMap() throws {
         let sketch = Core()
         sketch.output = .standard
-        let image = try #require(OllinApp.image(of: sketch))
+        let image = try OllinApp.image(of: sketch)
         #expect(GainMap.floatSamples(of: image, context: context()) == nil,
                 "an eight-bit frame has no values above white to read")
         let url = temporary("standard.heic")
