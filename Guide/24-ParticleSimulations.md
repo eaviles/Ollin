@@ -54,7 +54,7 @@ Grains drawn as light into a running mean are also how Ollin builds a lens that 
 
 ## A million riding the same field: attractor flow
 
-The grains above rode a curl-noise field across the plane. A strange attractor is a field too. [Chapter 22](22-IteratedForms.md#motion-found-in-a-formula) plotted the flat ones as ghosts of their own orbits. The 3D ones, Lorenz and his relatives, live in space, so they need a camera. [Chapter 25](25-3DGently.md) teaches cameras properly, and here one call, `cameraShowcase`, sets up a camera that circles the attractor slowly. A continuous system like Lorenz is a **velocity field**. Hand it a point in space and it tells you which way that point is moving. `StrangeAttractor` integrates one starting point through that field and hands back the path, which you draw as a curve. That is the left half of the picture below.
+The grains above rode a curl-noise field across the plane. A strange attractor is a field too. [Chapter 22](22-IteratedForms.md#a-formula-that-folds-the-plane-chaotic-maps) plotted the flat ones as ghosts of their own orbits. The 3D ones, Lorenz and his relatives, live in space, so they need a camera. [Chapter 25](25-3DGently.md) teaches cameras properly, and here one call, `cameraShowcase`, sets up a camera that circles the attractor slowly. A continuous system like Lorenz is a **velocity field**. Hand it a point in space and it tells you which way that point is moving. `StrangeAttractor` integrates one starting point through that field and hands back the path, which you draw as a curve. That is the left half of the picture below.
 
 The right half is the same field with six hundred thousand particles in it. Each follows it from wherever it happens to be, and all of them step every frame on the GPU.
 

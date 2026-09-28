@@ -16,18 +16,32 @@ final class OrbitPlate: Sketch {
         Color(hex: 0xE8663C), Color(hex: 0xE8B23C),
         Color(hex: 0x49B8A0), Color(hex: 0x7C6FD1),
     ])
+    var clouds: [[Vector2]] = []
+    var builtFor = 0
+
+    override func setup() {
+        build()
+    }
 
     override func draw() {
-        seed(3)
+        if builtFor != budget { build() }
         background(paper)
         noStroke()
 
         let panels = grid(columns: 2, rows: 2, padding: 70, gutter: 44)
         for (index, cell) in panels.cells.enumerated() {
             let inner = cell.frame.inset(by: .all(26))
-            plot(orbit(index), in: inner, ink: ramp.color(at: Double(index) / 3))
+            plot(clouds[index], in: inner, ink: ramp.color(at: Double(index) / 3))
             label(index, in: cell.frame)
         }
+    }
+
+    // The four clouds are built once, and again only when the point budget
+    // moves. The same seed makes the same clouds every time.
+    func build() {
+        seed(3)
+        clouds = (0 ..< 4).map { orbit($0) }
+        builtFor = budget
     }
 
     // Four rules, four clouds of points. Nothing below this line knows which
