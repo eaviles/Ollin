@@ -1,9 +1,10 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 39): the same motion said two ways. The left panel is
-// a keyed Automation.Track, sampled, with a dot at each key. The right panel is
-// the same track filled by a Formula instead, sampled the same way, with the
-// text that made it underneath. Both read the shipped types, so the shapes are
+// Guide diagram (Chapter 39): one swing said two ways. The left panel is a
+// keyed Automation.Track, sampled, with a dot at each key; its eases bring it
+// to rest at every key. The right panel is the same track filled by a Formula
+// instead, sampled the same way, with the text that made it underneath; it
+// never rests. Both read the shipped types, so the shapes are
 // the real ones rather than a drawing of them.
 import Ollin
 import OllinDiagram
@@ -48,7 +49,7 @@ final class ParameterAsARule: Sketch {
         fill(soft)
         textSize(19)
         textAlign(.center, .top)
-        drawText("the same motion, said two ways", width / 2, 376)
+        drawText("keys say a few moments; a rule says every moment", width / 2, 376)
     }
 
     func panel(_ index: Int, title: String, caption: String,

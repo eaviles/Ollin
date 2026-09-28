@@ -82,16 +82,17 @@ final class BroadcastGrid: Sketch {
 
         // The loupe: eight milliseconds around the second mark, where a
         // millisecond is wide enough to see.
-        let loupe = Rectangle(x: 700, y: secondY - 28, width: 150, height: 124)
+        let loupe = Rectangle(x: 690, y: secondY - 28, width: 170, height: 124)
         fill(theme.card)
         stroke(theme.border)
         strokeWeight(1.5)
         drawRect(loupe, cornerRadius: 8)
         let msWide = loupe.width / 8
-        func lx(_ seconds: Double) -> Double { loupe.x + loupe.width / 2 + (seconds - 1) * 1000 * msWide }
+        // The second sits left of center, leaving the labels room on its right.
+        func lx(_ seconds: Double) -> Double { loupe.x + loupe.width * 0.4 + (seconds - 1) * 1000 * msWide }
         stroke(theme.accent(0.6))
         strokeWeight(1)
-        drawLine(lx(1), loupe.y + 8, lx(1), loupe.y + loupe.height - 22)
+        drawLine(lx(1), loupe.y + 8, lx(1), loupe.y + loupe.height - 8)
         for (rate, y) in lanes {
             let k = rate.frames(in: 1)
             let t = rate.seconds(for: k)
@@ -104,7 +105,7 @@ final class BroadcastGrid: Sketch {
             drawText(said, lx(t) + 8, y, size: 11, color: theme.muted, align: .left, .middle)
         }
         noStroke()
-        drawText("eight milliseconds, under a loupe", loupe.center.x, loupe.y + loupe.height - 10,
+        drawText("eight milliseconds, under a loupe", loupe.center.x, loupe.y + loupe.height + 12,
                  size: 10.5, color: theme.muted, align: .center, .middle)
         stroke(theme.ink(0.25))
         strokeWeight(1)

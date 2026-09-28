@@ -53,8 +53,11 @@ final class MIDIFileFigure: Sketch {
                                             beat: beat, step: chords.count))
             }
             arp.notes = pitches.map { $0.transposed(by: 12) }
-            arp.reset(to: beat)
-            for note in arp.events(upTo: beat + 4) {
+            // Start the figure again on this bar's downbeat. A reset counts
+            // the step at its own position as played, so it goes to the step
+            // before; the first bar has nothing before it and starts there.
+            if bar > 0 { arp.reset(to: beat - arp.rate.beats) }
+            for note in arp.events(upTo: beat + 3.99) {
                 melody.append(ScheduledNote(Note(note.pitch, velocity: 0.75, length: .eighth),
                                             beat: note.beat, step: melody.count))
             }

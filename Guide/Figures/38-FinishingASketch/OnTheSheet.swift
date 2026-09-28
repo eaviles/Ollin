@@ -26,7 +26,7 @@ final class OnTheSheet: Sketch {
 
     let plans: [Plan] = [
         Plan(spelling: "paper: .a3.landscape, margin: 15", settings: GCode(.plotter(), paper: .a3.landscape, margin: 15),
-             canvas: Rectangle(x: 0, y: 0, width: 1080, height: 1080), flag: "--gcode-paper a3"),
+             canvas: Rectangle(x: 0, y: 0, width: 1080, height: 1080), flag: "--gcode-paper a3-landscape --gcode-margin 15"),
         Plan(spelling: "paper: .a4", settings: GCode(.plotter(), paper: .a4),
              canvas: Rectangle(x: 0, y: 0, width: 1080, height: 1080), flag: "--gcode-paper a4"),
         Plan(spelling: "paper: .a4, a tall canvas", settings: GCode(.plotter(), paper: .a4),

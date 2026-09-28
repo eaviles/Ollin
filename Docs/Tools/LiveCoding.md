@@ -8,7 +8,7 @@ OllinLiveCoding is a host for live performance. One window holds the running ske
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/39-Performing/StageDiagram-dark.jpg">
-  <img src="../../Guide/Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual filling the stage, code lines riding over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
+  <img src="../../Guide/Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual sized to fit its black stage, code lines riding over it on translucent strips, an Evaluated toast, an error strip along the bottom, and callouts naming each part" width="680">
 </picture>
 
 ```sh

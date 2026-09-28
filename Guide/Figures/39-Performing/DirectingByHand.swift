@@ -6,7 +6,8 @@
 // does, and the function mark where a rule typed in the row drives it. The
 // panel on the right: the transport and its readout, the ruler with a loop
 // region and the playhead, one lane per track drawing what the parameter will
-// do (a number as its curve, a color as the blend, a switch as steps), the
+// do (a number as its curve, a color as the blend, and a rule's lane naming
+// the rule, since a worked-out parameter has no keys to draw), the
 // selected key with its two Bezier handles, and the footer naming that key's
 // moment and curve beside the file the lanes are saved to. Drawn with Ollin
 // rather than captured, so it renders in both themes from one source.
@@ -91,7 +92,7 @@ final class DirectingByHand: Sketch {
         let litLane = Rectangle(x: laneLeft, y: laneTop + 2 * (laneH + 2), width: laneRight - laneLeft, height: laneH)
         numberLane(radiusLane, tx: tx)
         colorLane(groundLane, tx: tx)
-        switchLane(litLane, tx: tx)
+        ruleLane(litLane, rule: "time % 6 < 3")
 
         // The playhead, through the ruler and every lane, capped on the ruler.
         let ph = tx(playhead)
@@ -198,15 +199,15 @@ final class DirectingByHand: Sketch {
     }
 
     /// A switch lane: two levels and a step between them.
-    private func switchLane(_ lane: Rectangle, tx: (Double) -> Double) {
-        let low = lane.y + lane.height - 9, high = lane.y + 9
-        stroke(theme.accent(0.45))
-        strokeWeight(1.5)
-        drawLine(tx(0), low, tx(3), low)
-        drawLine(tx(3), low, tx(3), high)
-        drawLine(tx(3), high, tx(4), high)
-        key(at: Vector2(tx(0), low), selected: false)
-        key(at: Vector2(tx(3), high), selected: false)
+    /// A parameter a rule works out has no keys to place, so its lane draws
+    /// no curve: it names the rule at its right end, as the panel does.
+    private func ruleLane(_ lane: Rectangle, rule: String) {
+        withState {
+            textFont(.systemMono)
+            noStroke()
+            drawText("rule: \(rule)", lane.x + lane.width - 10, lane.y + lane.height / 2,
+                     size: 11, color: theme.muted, align: .right, .middle)
+        }
     }
 
     private func key(at p: Vector2, selected: Bool) {

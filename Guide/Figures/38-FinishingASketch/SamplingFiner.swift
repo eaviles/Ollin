@@ -44,7 +44,7 @@ final class SamplingFiner: Sketch {
             fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
-            drawText(scale == 1 ? "one sample per pixel" : "sixteen, averaged",
+            drawText(scale == 1 ? "one drawn pixel each" : "sixteen drawn pixels, averaged",
                      x + panel / 2, 58 + panel + 12)
         }
 

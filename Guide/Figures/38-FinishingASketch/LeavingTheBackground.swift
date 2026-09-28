@@ -62,7 +62,7 @@ final class LeavingTheBackground: Sketch {
 
         diagramCaption("the background left behind: the file keeps the coverage as its alpha",
                        at: 358, theme: theme)
-        drawText("a half-covered edge keeps its color at half the coverage: the bytes are premultiplied, as every reader expects",
+        drawText("a pixel the ring half covers keeps the ring's white at half coverage, rather than turning gray",
                  width / 2, 388, size: 13, color: theme.muted, align: .center, .top)
     }
 
@@ -95,7 +95,7 @@ final class LeavingTheBackground: Sketch {
         fill(Color(hue: 0.12, saturation: 0.5, brightness: 1, alpha: 0.35))
         drawCircle(r.x + r.width * 0.25, r.y + r.height * 0.7, 46)
         fill(Color(hue: 0.95, saturation: 0.4, brightness: 1, alpha: 0.3))
-        drawCircle(r.x + r.width * 0.78, r.y + r.height * 0.3, 60)
+        drawCircle(r.x + r.width * 0.72, r.y + r.height * 0.3, 54)
     }
 }
 

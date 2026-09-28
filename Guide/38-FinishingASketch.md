@@ -304,7 +304,7 @@ Here `MySketch` stands for your own sketch's class. `OllinApp.image(of:frame:)` 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/SamplingFiner-dark.png">
-  <img src="Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one sample per pixel and render scale 4 with sixteen averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
+  <img src="Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one drawn pixel each and render scale 4 with sixteen drawn pixels averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
 </picture>
 
 The difference shows along the edges of filled shapes and the letters of outline text. Those reach the screen as triangles, and every pixel along an edge decides how much of one it covers. More samples make a finer decision. Circles, rectangles, arcs, and every stroked line work out their coverage by formula instead. They are already as sharp as they get, so the setting does nothing for them, and the contour chart's poster gains nothing from it.

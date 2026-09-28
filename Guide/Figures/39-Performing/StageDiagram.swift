@@ -1,9 +1,10 @@
 // figure: frame=200 themed
 //
 // Guide diagram (Chapter 39): the performance host, annotated. A stylized
-// OllinLiveCoding window drawn with Ollin itself: the sketch fills the stage,
-// the code rides over it as translucent text, a toast confirms the last
-// evaluation. Callouts name the moving parts.
+// OllinLiveCoding window drawn with Ollin itself: the sketch sits on the black
+// stage, sized to fit, the code rides over it as translucent text, a toast
+// confirms the last evaluation, and the error strip along the bottom holds a
+// typo while the stage plays on. Callouts name the moving parts.
 import Ollin
 import OllinDiagram
 
@@ -38,9 +39,10 @@ final class StageDiagram: Sketch {
         // The code, riding over the visuals on translucent strips.
         let lines = [
             "drawVisual(",
-            "    .oscillator(frequency: 11, colorShift: 0.5)",
+            "    .oscillator(frequency: 11, speed: 0.6,",
+            "                colorShift: 0.5)",
             "        .kaleidoscope(segments: 5)",
-            "        .displaced(by: .noise(scale: 3),",
+            "        .displaced(by: .noise(scale: 3, speed: 0.25),",
             "                   amount: 0.09)",
             "        .posterized(levels: 6, gamma: 0.75)",
             ")",
@@ -65,16 +67,34 @@ final class StageDiagram: Sketch {
         textAlign(.center, .center)
         drawText("Evaluated · 1.3 s", window.x + window.width - 90, window.y + 30)
 
+        // The error strip, under the stage, which it never dims.
+        let strip = Rectangle(x: window.x + 20, y: window.y + window.height - 46,
+                              width: window.width - 40, height: 30)
+        fill(Color(red: 0.13, green: 0.05, blue: 0.06, alpha: 0.95))
+        stroke(Color(hex: 0xE5484D, alpha: 0.5))
+        strokeWeight(1)
+        drawRect(strip, cornerRadius: 8)
+        noStroke()
+        withState {
+            textFont(.systemMono)
+            textSize(12)
+            textAlign(.left, .center)
+            fill(Color(hex: 0xE5484D))
+            drawText("L12", strip.x + 14, strip.center.y)
+            fill(Color(white: 0.95))
+            drawText("expected ')' in expression list", strip.x + 52, strip.center.y)
+        }
+
         // Callouts.
         textSize(15)
         callout("the code rides on top,", "part of the show",
                 at: Vector2(40, 120), to: Vector2(window.x + 26, 150), alignRight: false)
-        callout("the piece fills the stage,", "letterboxed on black",
+        callout("the sketch, sized to fit,", "sits on the black stage",
                 at: Vector2(40, 330), to: Vector2(stage.x + 40, 360), alignRight: false)
         callout("⌘↩ evaluates the buffer;", "the clock carries across",
-                at: Vector2(845, 110), to: Vector2(window.x + window.width - 30, 100), alignRight: true)
+                at: Vector2(860, 110), to: Vector2(window.x + window.width - 30, 100), alignRight: true)
         callout("typos land in a strip;", "the show never stops",
-                at: Vector2(845, 390), to: Vector2(window.x + window.width - 70, 448), alignRight: true)
+                at: Vector2(860, 390), to: Vector2(strip.x + strip.width - 24, strip.center.y), alignRight: true)
 
         noStroke()
         fill(soft)

@@ -15,7 +15,7 @@ This matters because a string can arrive at runtime, and Swift source cannot. So
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/39-Performing/ParameterAsARule-dark.jpg">
-  <img src="../../Guide/Images/39-Performing/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
+  <img src="../../Guide/Images/39-Performing/ParameterAsARule.jpg" alt="Two panels. The left one is a wave built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
 </picture>
 
 ### Contents

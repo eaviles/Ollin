@@ -14,7 +14,7 @@ This chapter puts code on stage. You type over the running picture in a performa
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/39-Performing/StageDiagram-dark.jpg">
-  <img src="Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual letterboxed on the black stage, code lines over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
+  <img src="Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual letterboxed on the black stage, code lines over it on translucent strips, an Evaluated toast, an error strip along the bottom, and callouts naming each part" width="680">
 </picture>
 
 The loop differs from the live-reload host you have used since [Chapter 1](01-HelloOllin.md). There is no separate editor and no file being watched. You type in the window, into the **buffer**, the text the host holds, and press **⌘↩** to **evaluate** it. Evaluating compiles the buffer, turning the Swift into a program the Mac can run, and swaps the running sketch for the new one. The compile happens in the background while the old sketch keeps drawing. When it succeeds, the new sketch takes over with the clock carried across. A motion driven by `time` then does not jump in the middle of a set.
@@ -226,7 +226,7 @@ swift run OllinLive Examples/Motion/Automation/Sketch.swift
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/39-Performing/DirectingByHand-dark.jpg">
-  <img src="Images/39-Performing/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles around the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane stepping up at three seconds, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
+  <img src="Images/39-Performing/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles around the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane that names its rule and draws no keys, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
 </picture>
 
 Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. In the figure, Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it shows a function mark instead. [Writing the parameter as a rule](#writing-the-parameter-as-a-rule-formulas) explains rules.

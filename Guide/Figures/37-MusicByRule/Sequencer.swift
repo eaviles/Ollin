@@ -145,7 +145,7 @@ final class SequencerFigure: Sketch {
         fill(soft)
         textSize(13)
         textAlign(.left, .middle)
-        drawText("a bar as tall as its velocity; an outline where a chance step stayed quiet; a ratchet split into its strikes",
+        drawText("a cell as tall as its velocity; an outline where a chance step stayed quiet; a ratchet split into its strikes",
                  left, top + 46 + 4 * 36 + 6)
     }
 

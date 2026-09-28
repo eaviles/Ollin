@@ -161,7 +161,7 @@ swift run --package-path Examples Example-Shapes-Polygons --export poster.png --
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-FinishingASketch/SamplingFiner-dark.png">
-  <img src="../../Guide/Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one sample per pixel and render scale 4 with sixteen averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
+  <img src="../../Guide/Images/38-FinishingASketch/SamplingFiner.png" alt="Two magnified pixel grids side by side showing the same fan of blue rays meeting at a point, labeled render scale 1 with one drawn pixel each and render scale 4 with sixteen drawn pixels averaged; the second fan has softer, more graded edges and a cleaner center" width="680">
 </picture>
 
 It is the quality-over-speed control for a frame that has no frame-rate deadline. The work grows with the square of the number: four times the pixels at 2, sixteen at 4. That is why the live window never uses it, and why 4 is the ceiling. If you ask for more, the export renders at the ceiling and prints a line saying so.
