@@ -6,7 +6,7 @@
 
 <img src="Images/34-Listening/Resonator.jpg" alt="A white core inside an amber glow, crowned by spectrum spokes that are long and pale gold at the top, coral and magenta down the sides, and short faint ticks around the bottom, with small gold sparks scattered around it" width="560">
 
-This chapter gives a sketch ears. A microphone, a song, or a video's sound becomes a handful of numbers you read in `draw()`. They say how loud the low, middle, and high parts of the sound are, and when a beat lands. The picture moves with the music. The steps build the Resonator above: a crown of spectrum spokes around a core that throbs on each beat. Before it, a section on mapping says which sound should move which part of a picture. After it come the note being sung, and the words and sounds a listener can name. Hands come next, in [Chapter 35](35-ControlsAndSignals.md), where a knob, a sliding fader, or a sensor you wired drives the same parameters. Making sound instead of hearing it is [Chapter 36](36-MakingSound.md).
+Sound can move a picture once it becomes a few numbers: how loud the low, middle, and high parts are, and when a beat lands. You read those numbers from a microphone, a song, or a video, and learn which sound should move which part of a picture. The Resonator above throbs on every beat under a crown of spectrum spokes. The chapter then turns to the note being sung, and to the words and sounds a listener can name.
 
 ## Loudness from the microphone: `amplitude`
 

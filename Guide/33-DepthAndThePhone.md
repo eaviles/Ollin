@@ -6,9 +6,7 @@
 
 <img src="Images/33-DepthAndThePhone/GhostRoom.jpg" alt="A room rendered as woven scan lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
 
-A camera flattens the world. A depth camera keeps one more number per pixel, the distance to what it sees. That number is enough to stand the picture back up. This chapter teaches what a depth frame is and how one frame becomes a cloud of points you can orbit. Then many frames fuse into one scanned room. All of it runs on any Mac, with a pretend depth camera written in Swift. It ends in the ghost room above, a room that scans itself into being.
-
-After the room come the techniques it leaves out, still on the Mac. You can draw inside a depth frame, keep a long scan from drifting, and turn a cloud into a surface. Then come the real sensors: a recorded clip, a live stream, and Ollin Capture, the iPhone app. Last are the phone's other streams. They bring the room it builds, the people in front of it, and what its picture shows. They also make the phone in your hand an input.
+Each pixel of a depth frame says how far away it is, and that is enough to stand the picture up in space. This chapter turns one frame into a cloud of points and fuses many into a room, on any Mac with a pretend depth camera. The ghost room at the top scans itself into being. The sections after it draw inside a depth frame, keep long scans straight, and bring in the real sensors and the iPhone's other streams.
 
 ## What a depth camera sees
 

@@ -6,9 +6,7 @@
 
 <img src="Images/32-Seeing/MotionBrush.jpg" alt="A dark canvas with thousands of short colored strokes in greens, magentas, cyans, blues, purples, reds and yellows, gathered into one large tangle across the middle where the picture moved, with the edges mostly empty" width="560">
 
-A camera gives a sketch someone to answer. This chapter reads the webcam, first as a picture you draw, with a still or a film standing in when there is no camera. Then trackers turn what the Mac finds in each frame into values you read in `draw()`, the same way you read the mouse. The Mac finds these on the machine, with nothing sent over the network. A body comes back as joints a sketch can steer by, and a person as pixels you can lift out. The picture's motion comes back as a field. The motion brush above paints with that field.
-
-After the brush come the other things a picture holds: outlines and print, one thing followed through the frames, and what a picture is about. Then come models you download yourself, and the camera frame as the light and the surface of a 3D scene. Last are two more sources of frames, the screen and the past.
+A camera gives a sketch someone to answer. You read the webcam first as a picture, then through trackers that turn each frame into values you read in `draw()`. They find a body's joints, a person lifted out as pixels, and the motion in the picture, on the Mac with nothing sent away. The brush above paints with that motion. After it come outlines and print, one thing followed, labels, models of your own, the camera in a 3D scene, the screen, and slit scan.
 
 ## The webcam is an image
 
