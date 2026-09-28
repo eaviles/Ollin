@@ -1,8 +1,8 @@
 // figure: frame=0 themed
 //
 // Guide contact sheet (Chapter 30): domain operators fold space, so one
-// shape becomes many for free: a mirror, a tiling, and a radial fan of the
-// same off-center cluster.
+// shape becomes many: a mirror and a tiling of one off-center cluster, and a
+// radial fan of a petal that is symmetric within its wedge.
 import Ollin
 import OllinDiagram
 
@@ -33,7 +33,7 @@ final class DomainFold: Sketch {
         let tiles: [(String, SDF)] = [
             ("mirrored(x:)", cell.at(52, 0).mirrored(x: true)),
             ("repeated(spacing:count:)", cell.scaled(0.72).repeated(spacing: Vector2(88, 88), count: 1)),
-            ("repeatedRadially(9)", petal.at(82, 0).repeatedRadially(count: 9)),
+            ("repeatedRadially(count:)", petal.at(82, 0).repeatedRadially(count: 9)),
         ]
 
         for (i, tile) in tiles.enumerated() {

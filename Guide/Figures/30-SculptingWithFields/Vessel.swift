@@ -2,7 +2,7 @@
 //
 // Guide listing (Chapter 30): the sculpt block. A form built top to bottom
 // like working clay: add the body and a lip, carve the hollow, then add a
-// crisp handle with the melt turned nearly off.
+// crisp ring on the front with the melt turned nearly off.
 import Ollin
 
 final class Vessel: Sketch {
@@ -23,7 +23,7 @@ final class Vessel: Sketch {
             withState { translate(0, 1.1, 0); drawSphere(radius: 0.52) }   // the hollow
             add(); blend(0.05)         // back to adding, nearly hard
             withState { translate(0, 0.35, 1.05); rotateX(.pi / 2)
-                        drawTorus(radius: 0.34, tube: 0.09) }              // a handle
+                        drawTorus(radius: 0.34, tube: 0.09) }              // a ring on the front
         }
     }
 }

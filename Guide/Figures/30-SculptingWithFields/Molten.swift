@@ -1,8 +1,8 @@
 // figure: frame=200
 //
-// Guide payoff (Chapter 30): Molten, a melted-glass sculpture. Four lobes
-// smooth-unioned into one twisting body over a mesh floor, finished as jade
-// under a studio environment, breathing slowly, orbitable.
+// Guide payoff (Chapter 30): Molten, a sculpture in glossy glaze. Four lobes
+// smooth-unioned into one twisting body over a mesh floor, finished as a
+// smooth dielectric under a studio environment, breathing slowly, orbitable.
 import Ollin
 
 final class Molten: Sketch {
@@ -23,9 +23,9 @@ final class Molten: Sketch {
         fill(Color(hex: 0x30343F))
         drawPlane(width: 30, depth: 30)
 
-        // The glass: four lobes melting into one body, breathing.
+        // The glaze: four lobes melting into one body, breathing.
         let breathe = 0.42 + signedNoise(time * 0.25) * 0.1
-        let glass = Color(hex: 0x9FDCD3)
+        let glaze = Color(hex: 0x9FDCD3)
         let body = SDF3D.sphere(radius: 0.8).at(0, 0.85, 0)
             .smoothUnion(SDF3D.ellipsoid(radiusX: 0.62, radiusY: 0.4, radiusZ: 0.62)
                 .at(0.72, 0.5, 0.25), k: breathe)
@@ -33,7 +33,7 @@ final class Molten: Sketch {
                 .at(-0.55, 1.25, -0.1).rotatedZ(0.5), k: 0.4)
             .smoothUnion(SDF3D.sphere(radius: 0.4).at(-0.2, 1.95, 0.3), k: 0.5)
             .twisted(0.3)
-            .colored(glass)
+            .colored(glaze)
 
         material(.dielectric(roughness: 0.07))
         drawSDF3D(body)

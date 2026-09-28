@@ -89,7 +89,7 @@ The reason is that the front view and the side view share the same vertical axis
 - **Three agree far less often.** A point of one shadow may have nothing behind it that survives the other two. That part of the shadow is then not cast. The three-letter sculptures are designed around this limit.
 - Compare `shadow(from:)` against the silhouette you passed in. Where the two differ, the thrown shadow is the one you get.
 
-Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 30](../../Guide/30-SculptingWithFields.md).
+Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 26](../../Guide/26-Meshes.md#one-solid-two-shadows-shadow-art).
 
 ---
 
