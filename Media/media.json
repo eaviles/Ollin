@@ -392,6 +392,10 @@
     "Recreations/WaldemarCordeiro": [
       "Recreations/WaldemarCordeiro/Derivadas",
       "Recreations/WaldemarCordeiro/Gente"
+    ],
+    "Recreations/AlmaThomas": [
+      "Recreations/AlmaThomas/Rings",
+      "Recreations/AlmaThomas/Columns"
     ]
   },
   "groups": {
@@ -657,6 +661,14 @@
       ],
       "image": "groups/Recreations.jpg?v=85af6f4f",
       "imageSmall": "groups/Recreations-640.jpg?v=96c0051c"
+    },
+    "Recreations/AlmaThomas": {
+      "of": [
+        "Recreations/AlmaThomas/Rings",
+        "Recreations/AlmaThomas/Columns"
+      ],
+      "image": "groups/Recreations-AlmaThomas.jpg?v=27c2e83b",
+      "imageSmall": "groups/Recreations-AlmaThomas-640.jpg?v=b24a323f"
     },
     "Recreations/BridgetRiley": {
       "of": [
@@ -8560,6 +8572,50 @@
       "still": "examples/Randomness/Walk/still.jpg?v=1e9db5cf",
       "stillSmall": "examples/Randomness/Walk/still-640.jpg?v=eb2a85d6",
       "width": 1080
+    },
+    "Recreations/AlmaThomas/Columns": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 24.0,
+      "frame": 1080,
+      "motion": 19.002,
+      "sound": false,
+      "source": "459a446420b58cb8",
+      "rendered": "2026-09-27",
+      "bytes": {
+        "loop": 2322183,
+        "loopSmall": 846484,
+        "still": 395593,
+        "stillSmall": 151095
+      },
+      "loop": "examples/Recreations/AlmaThomas/Columns/loop.mp4?v=a2e5cb55",
+      "loopSmall": "examples/Recreations/AlmaThomas/Columns/loop-640.mp4?v=fd119b2f",
+      "still": "examples/Recreations/AlmaThomas/Columns/still.jpg?v=67136b2f",
+      "stillSmall": "examples/Recreations/AlmaThomas/Columns/still-640.jpg?v=8af7f837",
+      "seed": 1
+    },
+    "Recreations/AlmaThomas/Rings": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 30.0,
+      "frame": 1350,
+      "motion": 25.368,
+      "sound": false,
+      "source": "5a74b4afcace3bb1",
+      "rendered": "2026-09-27",
+      "bytes": {
+        "loop": 4851391,
+        "loopSmall": 1730960,
+        "still": 682967,
+        "stillSmall": 245594
+      },
+      "loop": "examples/Recreations/AlmaThomas/Rings/loop.mp4?v=8dab5136",
+      "loopSmall": "examples/Recreations/AlmaThomas/Rings/loop-640.mp4?v=bab16db4",
+      "still": "examples/Recreations/AlmaThomas/Rings/still.jpg?v=bea6f497",
+      "stillSmall": "examples/Recreations/AlmaThomas/Rings/still-640.jpg?v=4b78273d",
+      "seed": 1
     },
     "Recreations/BridgetRiley/Current": {
       "bytes": {

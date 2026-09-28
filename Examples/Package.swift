@@ -963,6 +963,11 @@ let package = Package(
         // flame, after Mohamed Melehi.
         example("Recreations/MohamedMelehi/Waves"),
         example("Recreations/MohamedMelehi/Flamme"),
+        // The concentric paintings of 1966 to 1970 and the vertical mosaics
+        // of 1970 to 1972, short strokes of a flat brush laid in rings and in
+        // columns with the ground showing between them, after Alma Thomas.
+        example("Recreations/AlmaThomas/Rings"),
+        example("Recreations/AlmaThomas/Columns"),
         // A photograph read to seven levels and printed as struck characters,
         // then derived three times, each degree its own sheet, after Waldemar
         // Cordeiro and Giorgio Moscati.
