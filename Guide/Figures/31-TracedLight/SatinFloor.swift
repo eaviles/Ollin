@@ -22,7 +22,7 @@ final class SatinFloor: Sketch {
         environment(.studio.intensified(to: 1.0))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         rayTracedReflections()
-        if lobe { glossyReflections() }
+        glossyReflections(lobe)            // persistent, so switch it both ways
 
         // The satin floor: rough enough that one mirror ray cannot describe it.
         withState {
