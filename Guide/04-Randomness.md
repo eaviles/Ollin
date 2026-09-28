@@ -35,7 +35,7 @@ final class Scatter: Sketch {
 }
 ```
 
-Run it and the canvas boils, which is what the code asks for. `draw()` runs at the display's rate, sixty or more times a second, every frame rolls eighty fresh positions, and you are watching all of them. Sometimes that shimmer is the texture a sketch wants, and the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) uses it on purpose. Most of the time you want chance to make its choices once and keep them. For that, you need to know where these numbers come from.
+Run it and the canvas boils, which is what the code asks for. Your `draw()` runs at the display's rate, sixty or more times a second. Every frame rolls eighty fresh positions, and you are watching all of them. Sometimes that shimmer is the texture a sketch wants, and the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) uses it on purpose. Most of the time you want chance to make its choices once and keep them. For that, you need to know where these numbers come from.
 
 > **Swift note.** `for _ in 0..<80` is [Chapter 1](01-HelloOllin.md)'s counting loop with the counter thrown away. The underscore says "I don't need `i`, just do this eighty times."
 
@@ -54,11 +54,11 @@ Add that line at the top of `Scatter`'s `draw()` and the boiling stops. Every fr
   <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
 </picture>
 
-This is the working rhythm of generative art. The code decides everything the sketch *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the figure above is one), and keep the ones you like. Reproducibility is what makes this art direction. A keeper is never lost, because the code plus the seed is the sketch. Render it twice and the files match pixel for pixel.
+This is the working rhythm of generative art. The code decides everything the sketch *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet, and keep the ones you like. The figure above is one such sheet. Reproducibility is what makes this art direction. A keeper is never lost, because the code plus the seed is the sketch. Render it twice and the files match pixel for pixel.
 
 One relative comes with it. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. It also records the number as the run's variation, which [Finding a seed to keep](#finding-a-seed-to-keep) uses. Noise is [Chapter 5](05-Noise.md)'s whole subject.
 
-One thing can break all of this quietly. Swift brings randomness of its own, and it is not yours. `colors.randomElement()` and `points.shuffled()` roll the system's dice, so a seeded sketch that calls either stops reproducing while every line of it still looks right. Hand those calls your generator instead, and they follow your seed:
+One thing can break all of this quietly. Swift brings randomness of its own, and it is not yours. Swift's own `colors.randomElement()` and `points.shuffled()` roll the system's dice. So a seeded sketch that calls either stops reproducing, while every line of it still looks right. Hand those calls your generator instead, and they follow your seed:
 
 ```swift
 let pick = colors.randomElement(using: &randomness)
@@ -66,7 +66,7 @@ let order = points.shuffled(using: &randomness)
 let roll = Int.random(in: 1 ... 6, using: &randomness)
 ```
 
-`randomness` is the sketch's own generator, the same stream `random()` draws from, and `using:` is how the standard library asks which dice to roll. The `&` in front hands the call the generator itself to advance, rather than a copy of it. Anything that takes it lands on your seed.
+The property `randomness` is the sketch's own generator, the same stream `random()` draws from. The `using:` label is how the standard library asks which dice to roll. The `&` in front hands the call the generator itself to advance, rather than a copy of it. Anything that takes it lands on your seed.
 
 ## Letting chance decide
 
@@ -116,7 +116,7 @@ Everything so far spreads its rolls *uniformly*, meaning every value in the rang
 let x = randomGaussian(mean: width / 2, deviation: 120)
 ```
 
-`mean` is the center of the pile, and `deviation` is its spread, in the same units. About two thirds of the rolls land within one deviation of the mean, and nearly all within three. So there is no hard edge, only increasing rarity. Reach for this whenever you want scatter that reads as *settled* rather than *sprayed*, like dust motes around a lamp or spatter around a brush stroke. Uniform says "anywhere here"; Gaussian says "around here."
+`mean` is the center of the pile, and `deviation` is its spread, in the same units. About two thirds of the rolls land within one deviation of the mean, and nearly all within three. So there is no hard edge, only increasing rarity. Reach for this whenever you want scatter that reads as *settled* rather than *sprayed*. Think of dust motes around a lamp, or spatter around a brush stroke. Uniform says "anywhere here"; Gaussian says "around here."
 
 ## Finding a seed to keep
 
@@ -193,7 +193,7 @@ One rule makes the seed a tool. A seed is only useful to flip through when it de
 
 ## Putting it together: order, with a pinch of disorder
 
-This is the sketch from the top of the chapter, and it holds still on purpose, because its motion lives *between* variations, one key press apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge. The permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
+This is the sketch from the top of the chapter. It holds still on purpose, because its motion lives *between* variations, one key press apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge. The permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
 
 ```swift
 import Ollin
@@ -285,12 +285,12 @@ final class DisorderGrid: Sketch {
 Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apart:
 
 - `setup()` pins variation 7 and calls `roll()`, so the whole drawing is one seed's variation, held still. Every nudge is rolled once there, into `nudges`, and every quadrilateral's ink into `inks`. Nothing in `draw()` rolls.
-- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the sketch's top-to-bottom structure.
+- `unrest` is the composition. Row 0 computes it as zero, so no nudge is allowed and the squares nest perfectly. The bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the sketch's top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell. Each corner coordinate adds its own stored nudge, a number between -1 and 1, scaled by the row's reach `d`. That is eight rolls per shape, so the squares deform rather than shift. Four `drawLine` calls close the loop, and `quad` counts which shape is being drawn, so the right eight nudges are read.
 - The accent is a gate and a pick working together, from [Letting chance decide](#letting-chance-decide). Eight percent of quadrilaterals trade ink for `randomChoice(accents)`, decided in `roll()`.
-- `drawText` writes the variation into the bottom margin. It draws a line of text with its left end at the x and its baseline at the y, in the size and color you give it. [Chapter 8](08-Words.md) is about text, and this is all of it you need here.
-- The arrow keys change the variation. Right steps to the next one and left to the one before, each calling `roll()` again, so the grid redraws with new nudges and the label follows.
-- Turn `Disorder` to zero and the grid snaps to perfect order, so the sketch contains its own before picture. The nudges never change with the parameter, only their reach does, so the same tangles grow back in the same places as you turn it up again.
+- `drawText` writes the variation into the bottom margin. It draws a line of text with its left end at the x and its baseline at the y. It uses the size and color you give it. [Chapter 8](08-Words.md) is about text, and this is all of it you need here.
+- The arrow keys change the variation. Right steps to the next one and left to the one before. Each key calls `roll()` again, so the grid redraws with new nudges and the label follows.
+- Turn `Disorder` to zero and the grid snaps to perfect order, so the sketch contains its own before picture. The nudges never change with the parameter, only their reach does. So the same tangles grow back in the same places as you turn it up again.
 
 When a variation is a keeper, write its number into the `seed(7)` line and export the still:
 
@@ -304,8 +304,8 @@ Then push it somewhere new:
 
 - Let the disorder grow left to right instead. Move the `unrest` and `d` lines into the column loop and build `unrest` from `c` and `columns`.
 - Give the inner squares more freedom than the outer ones, by scaling `d` with `Double(k + 1) / 4`.
-- Change the shape of the nudges. `randomGaussian(mean: 0, deviation: 0.5)` in `roll()` keeps most corners near their posts and lets a few wander far, the settled scatter from [Two shapes of chance](#two-shapes-of-chance-uniform-and-gaussian).
-- Put the motion back. Writing `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the grid between order and chaos every eight seconds, and by [Chapter 3](03-MotionAndTime.md)'s loop rule a `--export-gif` of it with `--seconds 8` loops seamlessly.
+- Change the shape of the nudges. Rolling them with `randomGaussian(mean: 0, deviation: 0.5)` in `roll()` keeps most corners near their posts and lets a few wander far. This gives the settled scatter from [Two shapes of chance](#two-shapes-of-chance-uniform-and-gaussian).
+- Put the motion back. Replace the `d` line with `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)`. The grid then moves from order to chaos and back every eight seconds. By [Chapter 3](03-MotionAndTime.md)'s loop rule, a `--export-gif` of it with `--seconds 8` loops seamlessly.
 - Retune the accents. At `0.02` they read as stray errors, and at `0.3` as confetti. Try both.
 
 ## Chance with a memory: random walks
@@ -321,7 +321,7 @@ The figure shows the difference:
   <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
 </picture>
 
-The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and there is a *path* that wanders, drifts, and doubles back. This is the **random walk**. Its name comes from Karl Pearson, who asked in a 1905 letter to *Nature* where a walker taking steps in random directions ends up. Give the same treatment to a point in two dimensions and it traces a journey.
+The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step. The result is a *path* that wanders, drifts, and doubles back. This is the **random walk**. Its name comes from Karl Pearson, who asked in a 1905 letter to *Nature* where a walker taking steps in random directions ends up. Give the same treatment to a point in two dimensions and it traces a journey.
 
 To draw that journey you need `drawLine`, which [Chapter 1](01-HelloOllin.md) showed beside the circle and the rectangle. `drawLine(x1, y1, x2, y2)` draws a straight segment between two points. Joining each step of the walk to the next is all it takes. Make `MySketches/WalkGrows.swift`:
 
@@ -372,7 +372,7 @@ Write that walk by hand once. After that Ollin has it ready, along with two rela
 
 **`randomWalk`** is the one you just wrote, seeded and shipped. Notice what it does with five thousand steps in the first panel: it pools. A walk with equal-sized steps spreads outward only as fast as the square root of the number of steps. So it spends most of its time revisiting a small patch.
 
-**`levyFlight`** changes the step size rule. Instead of every step being about the same length, the lengths come from a distribution where small steps are overwhelmingly likely but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. Biologists have used it as a model of animals searching for food they cannot see. Benoit Mandelbrot named it after the mathematician Paul Lévy, who studied these heavy-tailed distributions. One parameter needs care. `minStep` must stay above zero, because the distribution runs to infinity at zero, so a zero minimum hands back only the starting point.
+**`levyFlight`** changes the step size rule. Its steps are no longer all about the same length. Their lengths come from a distribution where small steps are overwhelmingly likely, but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. Biologists have used it as a model of animals searching for food they cannot see. Benoit Mandelbrot named it after the mathematician Paul Lévy, who studied these heavy-tailed distributions. One parameter needs care. `minStep` must stay above zero, because the distribution runs to infinity at zero, so a zero minimum hands back only the starting point.
 
 **`selfAvoidingWalk`** changes the memory rule. It moves on a grid and refuses to enter a cell it has already visited, so it cannot pool, and it fills its region instead. When every neighbor of a cell has been used, it backs out of the dead end and tries another way. The call hands back the longest path it found. Paul Flory proposed the walk in 1953 as a model of a polymer chain, which cannot pass through itself.
 
@@ -455,11 +455,11 @@ A scored search can only find what its score was written to want. A search judge
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's number generators of the 1940s. Ollin's generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014), and `randomGaussian` uses George Marsaglia's polar method (1964). The family sections name their own sources as they go: Pearson, Lévy and Mandelbrot, Flory, Bridson, Halton, Sobol, and Sims. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*. She followed rules as a machine would, with dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe. This guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's number generators of the 1940s. Ollin's generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014), and `randomGaussian` uses George Marsaglia's polar method (1964). The family sections name their own sources as they go: Pearson, Lévy and Mandelbrot, Flory, Bridson, Halton, Sobol, and Sims. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Random](../Docs/Generators/Random.md): the full reference, including `randomVector(in:)` (a roll inside a rectangle), `randomVector(innerRadius:outerRadius:)` (a roll inside a ring, for halos), and the seeded `shuffled`.
+- [Random](../Docs/Generators/Random.md): the full reference. It includes `randomVector(in:)` (a roll inside a rectangle), `randomVector(innerRadius:outerRadius:)` (a roll inside a ring, for halos), and the seeded `shuffled`.
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the habits that break a repeat.
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives that each change one rule. `levyFlight` mostly shuffles and occasionally leaps, and `selfAvoidingWalk` refuses to cross its own path.
@@ -469,13 +469,13 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you cannot wait to make chance glide.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness).
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), `Ring` (the ring roll), and `Walk` (the seeded walk revealed over time).
-- The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you meet in [Chapter 5](05-Noise.md)).
+- The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks). The gaps in `Interruptions` come from the noise you meet in [Chapter 5](05-Noise.md).
 - The LeWitt homage [`FiftyPoints`](../Examples/Recreations/SolLeWitt/FiftyPoints/Sketch.swift): an instruction from 1971 that asks for fifty points "at random" and "evenly distributed" at once. Plain chance cannot give both, so the drafter keeps the farthest of a handful of throws for each point.
-- The Winiarski homages in [`Examples/Recreations/RyszardWiniarski/`](../Examples/Recreations/RyszardWiniarski/): `Obszar` is the program behind his areas, a coin or a die deciding every square of a grid from a drawn corner, the rule written under it and the count of black against what the distribution promised. `LosowanieDwiemaKostkami` lays black and white runs whose lengths are the sums of two dice, so the histogram of two dice is painted out as bars.
-- The Sharif homages in [`Examples/Recreations/HassanSharif/`](../Examples/Recreations/HassanSharif/): `DotsLinesForms` picks a pair of numbered points for every column of a table and draws what the rule makes of them three times over, with the picks written on a draft paper beside the sheet, which is how a picked number stays readable in the picture. `AngularLines` picks six of twenty-five crossings for every cell, without repeating, then picks one of the finished lines to paint large. `OctoberLines` lets chance draw one wavy cut down a table of numbers and hands everything after that to the rule, the digit sums, the repeats dropped, the bands of lines, so the same seed is the same wall. `BodyAndSquares` picks five squares of a grid for a body's head, hands and feet and then has to find a way to lie on them, a pick the body cannot reach struck out and picked again, which is chance with a physical check on it.
-- The Bonačić homage [`DynamicObject`](../Examples/Recreations/VladimirBonacic/DynamicObject/Sketch.swift): the other answer to chance, from an artist who distrusted it. A square of lamps that looks like noise and is not: each pattern is the one before multiplied by x in a finite field, so it can be read, set by hand, and predicted, and it still takes more than 270 years to repeat.
-- The Bonačić homage [`Random63`](../Examples/Recreations/VladimirBonacic/Random63/Sketch.swift): his one work built on chance, sixty-three bulbs each switched by a random source of its own, hung here beside the same bulbs driven by a field. On the field's panel every bulb blinks one sequence, a tick behind the next, and the left half lights up alone every sixty-three ticks. On the other panel, no two bulbs agree.
-- The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a whole monster dealt in `setup()`, one form for each of its pieces and the proportions of head, neck, and body. `draw()` only moves what was dealt, so the seed is the monster. Proof a day's monsters with `--export-grid`.
+- The Winiarski homages in [`Examples/Recreations/RyszardWiniarski/`](../Examples/Recreations/RyszardWiniarski/): `Obszar` is the program behind his areas. A coin or a die decides every square of a grid, starting from a drawn corner. Under the grid it writes the rule and the count of black against what the distribution promised. `LosowanieDwiemaKostkami` lays black and white runs whose lengths are the sums of two dice, so the histogram of two dice is painted out as bars.
+- The Sharif homages in [`Examples/Recreations/HassanSharif/`](../Examples/Recreations/HassanSharif/): `DotsLinesForms` picks a pair of numbered points for every column of a table. It draws what the rule makes of them three times over. The picks are written on a draft paper beside the sheet, which is how a picked number stays readable in the picture. `AngularLines` picks six of twenty-five crossings for every cell, without repeating, then picks one of the finished lines to paint large. In `OctoberLines`, chance draws one wavy cut down a table of numbers. The rule does everything after that: the digit sums, the repeats dropped, and the bands of lines. So the same seed is the same wall. In `BodyAndSquares`, chance picks five squares of a grid for a body's head, hands, and feet. Then the body has to find a way to lie on them. A pick the body cannot reach is struck out and picked again, which is chance with a physical check on it.
+- The Bonačić homage [`DynamicObject`](../Examples/Recreations/VladimirBonacic/DynamicObject/Sketch.swift): the other answer to chance, from an artist who distrusted it. It is a square of lamps that looks like noise but is not. Each pattern is the one before multiplied by x in a finite field. So it can be read, set by hand, and predicted, yet it takes more than 270 years to repeat.
+- The Bonačić homage [`Random63`](../Examples/Recreations/VladimirBonacic/Random63/Sketch.swift): his one work built on chance. Each of its sixty-three bulbs is switched by a random source of its own. Here it hangs beside the same bulbs driven by a field. On the field's panel every bulb blinks one sequence, a tick behind the next, and the left half lights up alone every sixty-three ticks. On the other panel, no two bulbs agree.
+- The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a whole monster dealt in `setup()`. The deal is one form for each of the monster's pieces, plus the proportions of head, neck, and body. `draw()` only moves what was dealt, so the seed is the monster. Proof a day's monsters with `--export-grid`.
 
 ---
 
