@@ -6,17 +6,13 @@
 
 <img src="Images/26-Meshes/Bench.jpg" alt="Five objects on a mottled stone bench under warm interior light: a pale translucent crystal on a black lacquered plinth, a small silver cushion, a teal ball whose paint has worn through to gold in patches, a flat tile with a wheel carved into it, and a cream egg resting on a rust-red cushion, with a faint stamped mark on the stone at the left" width="560">
 
-Not one of those five is shaped the way it looks. The slab was never unwrapped, so its stone is projected onto it from three directions at once. The paint on the teal ball has worn back to metal because a picture says where. The wheel in the pale tile is a picture too, and the tile is flat. The crystal came out of a file, the silver cushion started as a crude six-pointed slab, and the egg carries light a little way under its own surface before letting it back out.
+Every one of those five gets its look from somewhere other than its shape. The slab was never unwrapped, so its stone is projected onto it from three directions at once. The paint on the teal ball has worn back to metal because a picture says where. The wheel in the pale tile is a picture too, and the tile is flat. The crystal came out of a file, and the small silver form started as a crude six-pointed slab. The egg carries light a little way under its own surface before letting it back out.
 
-[Chapter 25](25-3DGently.md) drew solids the framework knows how to make, and finished them by name. This chapter is the two ways past that. A mesh can come from somewhere else, or from another mesh, and a picture can decide what a surface is from one texel to the next. Then come the finishes you set with numbers rather than names, which is the tier that reads as a real material instead of a good guess. By the end you will have built the bench above.
+This chapter teaches where else a mesh can come from, what a picture can do to its surface, and the finishes you set with numbers. A mesh can be loaded from a file or roughed out as a cage and rounded by the computer. A picture can wrap a mesh, or decide what its surface is from one texel to the next. It can set the surface's relief, its wear and glow, and its depth. It can also be projected from three sides, refined for a close look, or stamped across the scene. Then come the measured finishes, which start with the surroundings that light them. They cover metal and dielectric, the brushed streak, glass, coated paint and cloth, and skin. The steps end in the bench above. After it comes a whole scene loaded with its camera, its lights, and its motion. Then come more ways to make a mesh, and one more measured finish, the thin film.
 
-## Meshes you did not model
+## A mesh from a file
 
-A generator hands you a shape the framework knows how to build. A file hands you a shape somebody drew, and it can hold a whole set rather than one object.
-
-### A mesh from a file
-
-Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included:
+A generator hands you a shape the framework knows how to build. A file hands you a shape somebody drew. Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included:
 
 ```swift
 final class Loaded: Sketch {
@@ -37,43 +33,13 @@ final class Loaded: Sketch {
 }
 ```
 
-The one habit that saves confusion is **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers. Normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. Models you build yourself are yours to ship, while downloaded ones carry licenses worth checking before you bundle them.
+One habit matters here: **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers. Normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. Models you build yourself are yours to ship. Downloaded ones carry licenses to check before you bundle them.
 
-> **Swift note.** Loading can fail, and `loadMesh` throws when it does. `try?` turns the throw into `nil`, so `(try? loadMesh(...))?.normalized(scale: 3)` stops at the `?.` when the file isn't there, and `model` stays `nil`. The `if let model` in `draw()` then skips drawing, so a missing file never crashes the sketch. Write `try!` instead to stop the sketch with the file's name and what was wrong with it.
+> **Swift note.** Loading can fail, and `loadMesh` throws when it does. `try?` turns the throw into `nil`. So `(try? loadMesh(...))?.normalized(scale: 3)` stops at the `?.` when the file isn't there, and `model` stays `nil`. The `if let model` in `draw()` then skips drawing, so a missing file never crashes the sketch. Write `try!` instead to stop the sketch with the file's name and what was wrong with it.
 
-`loadMesh` deliberately flattens a file into one mesh you place yourself. Sometimes the file *is* the placement: a whole scene composed in the design tool, with a camera framing it and lights already set. For that there's `loadScene`, which keeps the file's structure instead of merging it:
+### A picture wrapped around it: textured
 
-```swift
-stage = try! loadScene("Stage.gltf")            // in setup()
-
-camera(stage.camera ?? .orbiting(radius: 6))   // the file's own framing
-for l in stage.lights { light(l) }             // and its lighting
-stage["sculpture"]?.rotate(deltaTime, axis: .unitY)
-drawScene(stage)                               // every node, in its authored place
-```
-
-A scene is a tree of named nodes, and everything unpacks into things you already know. The file's camera is a `Camera3D`, its lights are `Light`s, and each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single piece moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details. Here is that stage, and what the file actually hands over:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/SceneTree-dark.jpg">
-  <img src="Images/26-Meshes/SceneTree.jpg" alt="Left, the scene file's node tree as a list: floor, pedestal with sculpture under it, orb, lamp with lampPost, lampShade, and lampLight under it, then camera, keySpot, and sun, each tagged as a mesh, a group, the camera, or a light. Middle, the stage drawn through its own camera: a gold torus on a pale pedestal, a lamp behind it, a teal orb in front. Right, the same stage with the lamp brought to the front by name, standing beside the pedestal" width="680">
-</picture>
-
-The tree on the left is the file as it was saved: every node by name, nested the way the tool nested them, each carrying a mesh, a light, the camera, or nothing but its children. `loadMesh` would have folded all of it into one shape. `drawScene` draws it as the middle panel, through the file's own camera and under its own lights. The right panel moves one node by name, `stage["lamp"]`, and the lamp's light moves with it, because a light rides the node that carries it. Move a group and everything under it, meshes and lights alike, comes along.
-
-If the file was animated in the tool, that motion carries over too. `stage.animations` holds the authored keyframe tracks, and applying one poses the scene at whatever moment you ask for:
-
-```swift
-if let spin = stage.animation("spin") {
-    stage.apply(spin, at: time.truncatingRemainder(dividingBy: spin.duration))
-}
-```
-
-The file remembers its motion; the sketch decides when time passes. `apply` takes any time you hand it, so wrapping `time` loops the animation, `time * 0.5` plays it at half speed, and a parameter's value scrubs it. The `3D/Geometry/AnimatedScene` example plays a small orrery's authored spin this way, one seamless 8-second lap.
-
-Tracks like the orrery's move whole nodes, rigid pieces on a hierarchy. A file can also carry motion that bends the geometry itself. A *skin* ties each vertex to a few joint nodes with blend weights, so a blade of kelp or an arm flexes smoothly as its joints turn. *Morph targets* store alternate shapes for a mesh, and the node's `weights` mix them, the way faces animate between expressions. Both play through the same `apply`, and `drawScene` poses them without any extra calls. The `3D/Geometry/SkinnedScene` example is a small tidepool doing both at once, kelp swaying on skins while an anemone pulses on two morph targets. And since `weights` is just a node property, `tank["anemone"]?.weights = [1, 0]` poses a blend shape from any signal you like.
-
-Whether a mesh came from a file or a generator, there are two other ways to dress it besides lighting a solid surface.
+Whether a mesh came from a file or a generator, a picture can dress it. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) showed a mesh as a lit solid and as its wireframe net. The third way is to wrap it in an image:
 
 <img src="Images/26-Meshes/SurfaceKinds.jpg" alt="Three spheres side by side: a solid glossy teal one, the same sphere drawn as a pale cyan net of triangle edges, and one wrapped in an orange and cream checker whose squares narrow toward the poles" width="680">
 
@@ -83,11 +49,9 @@ withState { stroke(pale); wireframe(); drawMesh(globe) }         // edges only
 withState { fill(.white); drawMesh(globe.textured(checker)) }    // wrapped in an image
 ```
 
-**`wireframe()`** draws the mesh as its triangle edges instead of filled faces, taking the current `stroke` color and `strokeWeight`. It's how you see what a mesh is actually made of, which is genuinely useful when a generator gives you something odd. It's also just a look, the standard way to show a form that's still a proposal rather than a finished object. Because the faces are see-through, a wireframe doesn't light, so lights and materials have nothing to do.
+**`textured(_:)`** returns a copy of a mesh wrapped in an `Image`. Texture coordinates decide where each part of the picture lands. The sphere and the plane are the generators that carry them, which is why the checker above reads cleanly. The rest arrive without any, and the triplanar step below is what you reach for there. The squares stay square around the middle and narrow to slivers at the poles. That's what wrapping a flat rectangle onto a ball does, and you'll meet it whenever you texture a sphere. A textured mesh still lights normally, so it takes materials and shadows like any other surface. Keep the `fill` white unless you want the image tinted, the same rule as a loaded model. All three treatments are ordinary drawing state, saved by `withState`, so one frame holds all of them, and the figure is a single render.
 
-**`textured(_:)`** returns a copy of a mesh wrapped in an `Image`. Texture coordinates decide where each part of the picture lands, and the sphere, the plane, and the parametric surfaces are the generators that carry them, which is why the checker above reads cleanly. The rest arrive without any, and the triplanar section below is what you reach for there. The squares stay square around the middle and narrow to slivers at the poles. That's what wrapping a flat rectangle onto a ball does, and you'll meet it whenever you texture a sphere. A textured mesh still lights normally, so it takes materials and shadows like any other surface. Keep the `fill` white unless you want the image tinted, the same rule as a loaded model.
-
-One question comes with every texture: what happens where the picture runs out. A globe never asks it, since its coordinates run 0 to 1 and stop there. A floor asks it at once. Give a floor coordinates that run to 8 and it is asking for eight copies of the picture across its width, not one copy with its border smeared over the other seven.
+One question comes with every texture: what happens where the picture runs out. A globe never asks it, since its coordinates run 0 to 1 and stop there. A floor asks it at once. Give a floor coordinates that run to 8, and it is asking for eight copies of the picture across its width. It is not asking for one copy with its border smeared over the other seven.
 
 ```swift
 var floor = Mesh.plane(width: 800, depth: 800)
@@ -95,27 +59,34 @@ floor.uvs = floor.uvs.map { $0 * 8 }                  // eight tiles across
 drawMesh(floor.textured(planks, wrap: .tile))         // .clamp is the default
 ```
 
-`.tile` starts the picture again, `.mirror` starts it flipped so copies always meet on the same pixels, and `.clamp`, the default, holds that last row of pixels forever. Inside 0 to 1 all three draw the same thing, so the choice only ever shows where you left the square. A model you load brings its file's own answer with it, which is why a floor somebody authored to tile arrives tiling.
+`.tile` starts the picture again, and `.mirror` starts it flipped so copies always meet on the same pixels. `.clamp`, the default, holds that last row of pixels forever. Inside 0 to 1 all three draw the same thing, so the choice only ever shows where you left the square. A model you load brings its file's own answer with it, which is why a floor somebody authored to tile arrives tiling.
 
-Distance asks the second question. Send that floor off to the horizon and one screen pixel covers many of the picture's own pixels. Reading just one of them is the difference between a floor and a swarm of bees. So Ollin keeps every picture you load at half size, and half of that, down to a single pixel. It reads whichever copy matches what the screen pixel covers, and the far floor settles into the gray the checker really is. Nothing to switch on. And a floor is seen edge-on, so that screen pixel is not a square of the picture. It is a long thin sliver: many of the picture's pixels one way, hardly any the other. Ollin reads along the sliver rather than picking a copy big enough to cover all of it. The far floor stays a floor instead of going soft. One thing to know: a picture whose pixels you wrote yourself keeps only its full-size self. It goes up again on every frame it changes, so that one still swarms in the distance.
+Distance asks the second question. Send that floor off to the horizon and one screen pixel covers many of the picture's own pixels. Reading only one of them makes the far floor shimmer with noise. So Ollin keeps every picture you load at half size, and half of that, down to a single pixel. It reads whichever copy matches what the screen pixel covers, and the far floor settles into the gray the checker averages to. Nothing needs switching on. And a floor is seen edge-on, so that screen pixel is not a square of the picture. It is a long thin sliver: many of the picture's pixels one way, hardly any the other. Ollin reads along the sliver rather than picking a copy big enough to cover all of it. So the far floor stays a floor instead of going soft. A picture whose pixels you wrote yourself keeps only its full-size self, because it goes up again on every frame it changes. That one still shimmers in the distance.
 
-Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
+## Smooth from a cage: subdivision surfaces
 
-### A scene you can take apart
+A file gives you a shape somebody finished. The bench also draws on a shape you rough out yourself and let the computer round, which is the way character artists work. Build something crude out of a few boxes and extrusions. Then `subdivided(levels:)` takes it as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.
 
-Loading a scene keeps the file in charge, which is what you want while the model is still moving. Once the layout is settled, you may want to work on it as code instead. `ollin new Yard --from-scene yard.usdz` writes a project whose `draw()` is the scene spelled out. It has the camera, the lights, and a `withState` block for every node, while the meshes are still read from the file. [Bringing a scene over](../Docs/Tools/SceneImport.md) shows the result beside the scene it draws, and says what carries over and what stays behind.
+```swift
+let cage = Mesh.extrude(Profile.star(), depth: 0.75)
+let smooth = cage.subdivided(levels: 2)
+```
 
-### A shape from four dimensions: the Hopf fibration
+<img src="Images/26-Meshes/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
 
-One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space. No two of them meet, and every two of them are linked. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
+You model the cage, and the smoothness is computed. One level already turns the slab-sided star into something you'd want to hold. By two the form has melted well inside its cage. The smooth surface eases *toward the averages* of the cage. Points pull in and notches fill out, and the pointy features round off the fastest. If a shape comes out softer than you wanted, the fix is a chunkier cage rather than fewer levels.
+
+Any mesh works as a cage with no preparation: the primitives, an extrusion, a lathe, or a loaded model. `subdivided` welds their shared corners and recovers their intended faces before refining, so a box rounds as one closed surface rather than six drifting plates. Open sheets keep their rims, and a subdivided `plane` smooths along its edge instead of shrinking away from it. Triangle-native meshes like an icosphere or a marching-cubes blob have their own refinement rules a scheme argument away, `subdivided(.loop, levels: 2)`. The [reference page](../Docs/Generators/SubdivisionSurfaces.md) covers when to pick which.
+
+This is `setup()`-shaped work. Each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` draw it. Two or three levels is almost always enough.
 
 ## Pictures that change the surface
 
-The next three sections all hang a picture on a mesh, and none of them is about color. Each hands the renderer something it would otherwise need geometry for, and the geometry stays exactly as coarse as it was.
+The checker on the globe changed its color. The next three steps all hang a picture on a mesh, and none of them is about color. Each hands the renderer something it would otherwise need geometry for, and the geometry stays as coarse as it was.
 
 ### Relief from a picture: normal maps
 
-A texture changes a surface's color. A **normal map** changes how it catches light. Each texel stores a surface direction instead of a color, and at shading time the lighting normal bends by it. The result is relief without geometry.
+A texture changes a surface's color. A **normal map** changes how it catches light. Each texel stores a surface direction instead of a color, and at shading time the lighting normal from [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) bends by it. The result is relief without geometry.
 
 <img src="Images/26-Meshes/SurfaceRelief.jpg" alt="Three gray spheres under the same warm light: one hammered with soft dents, one engraved with concentric rings, and one bare, all with perfectly circular silhouettes" width="680">
 
@@ -123,15 +94,15 @@ A texture changes a surface's color. A **normal map** changes how it catches lig
 let hammered = Mesh.sphere(radius: 1).normalMapped(dents)
 ```
 
-All three spheres are the same 96-segment sphere, and only the middle of the picture knows about dents and rings. Look at the silhouettes, which are perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles. The edge of the object never learns about them. Games have leaned on this for twenty years, which is why a cobblestone street in one can be six polygons.
+All three spheres are the same 96-segment sphere. Only the pictures the first two wear know about the dents and the rings. Look at the silhouettes, which are perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles. The edge of the object never learns about them. Games have leaned on this for twenty years, which is why a cobblestone street in one can be six polygons.
 
-**`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates. It quietly sets up the frame of reference the map's directions are expressed in, a *tangent basis*. It's the same standard one other tools bake maps against, so a map made elsewhere lights the same way here. `scale` is a relief dial, where 0 flattens it off, 1 is as authored, and more exaggerates. Loaded models bring their own normal maps along without being asked.
+**`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates. It sets up the frame of reference the map's directions are expressed in, a *tangent basis*. It's the same standard one other tools bake maps against, so a map made elsewhere lights the same way here. `scale` is a relief dial, where 0 flattens it off, 1 is as authored, and more exaggerates. Loaded models bring their own normal maps along without being asked.
 
-Where do maps come from? Anywhere images do, and one particularly satisfying place, which is math. Start with a height function, take its slopes, and encode them. The `3D/Materials/NormalMaps` example builds hammered metal, woven cloth, and engraved rings this way in a couple dozen lines, no files involved. One convention matters when authoring by hand. Green marks the slope that faces *up the image*. If a map from elsewhere lights upside down, its green channel is inverted, so flip it and it's home.
+Where do maps come from? Anywhere images do, and one place is math. Start with a height function, take its slopes, and encode them. The `3D/Materials/NormalMaps` example builds hammered metal, woven cloth, and engraved rings this way in a couple dozen lines, no files involved. One convention matters when authoring by hand. Green marks the slope that faces *up the image*. If a map from elsewhere lights upside down, its green channel is inverted, so flip it and it's home.
 
-### What the surface is, per texel
+### What the surface is, per texel: surface maps
 
-A normal map changes how light lands. The rest of the standard map set changes what the surface *is* from texel to texel, and `surfaceMapped(...)` hangs any of them on a mesh:
+A normal map changes how light lands. The rest of the standard map set changes what the surface *is* from texel to texel. `surfaceMapped(...)` hangs any of them on a mesh:
 
 <img src="Images/26-Meshes/SurfaceMaps.jpg" alt="Four spheres under one studio environment: coppery paint worn through to polished metal in soft patches, a pale coffered grid with shadow settled into its grooves, a near-black sphere crossed by glowing cyan seams, and a bare matte control" width="680">
 
@@ -143,11 +114,11 @@ let panel = Mesh.sphere(radius: 1)
                    emissive: seams)           // an ordinary color image
 ```
 
-A **metallic-roughness map** packs two dials into one image, with roughness on green and metallic on blue, the packing every glTF exporter uses. Per pixel it multiplies the finish you draw under. `.physicallyBased` is the measured tier the last family of this chapter sets out. Both dials at 1 make it a blank the map can write on, so `material(.physicallyBased(metallic: 1, roughness: 1))` shows the map as authored. That multiply is the whole trick of the first sphere. One map says where the paint has rubbed through to bare polished metal, and the base texture colors the same patches silver.
+A **metallic-roughness map** packs two dials into one image. Roughness is how scattered a surface's reflection is, and metallic is whether it reflects like a metal. Roughness goes on green and metallic on blue, the packing every glTF exporter uses. Per pixel it multiplies the finish you draw under. `.physicallyBased` is the measured tier *Finishes you measure* sets out below. Both dials at 1 make it a blank the map can write on. So `material(.physicallyBased(metallic: 1, roughness: 1))` shows the map as authored. That multiply is what the first sphere does. One map says where the paint has rubbed through to bare polished metal, and the base texture colors the same patches silver.
 
-An **occlusion map** is baked shadow for the crevices geometry doesn't have, and it dims only the *steady* light, the ambient and the environment. A lamp shining straight into a groove still lights it, which is exactly how real crevices behave and why the convention exists. The second sphere pairs it with a normal map made from the same height field, the usual recipe. The relief catches the light, and the occlusion keeps its grooves dark.
+An **occlusion map** is baked shadow for the crevices geometry doesn't have. It dims only the *steady* light: the ambient, and the environment, a photograph of a whole place used as light that the finishes below begin with. A lamp shining straight into a groove still lights it, which is how real crevices behave and why the convention exists. The second sphere pairs it with a normal map made from the same height field, the usual recipe. The relief catches the light, and the occlusion keeps its grooves dark.
 
-An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is what the third sphere leans on, a nearly black shell whose engraved seams glow. Emission is the surface's own radiance, so fog veils it with distance like everything else. One line of housekeeping is worth knowing. A glowing surface doesn't light its neighbors unless global illumination is on, at which point it does.
+An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is what the third sphere leans on, a nearly black shell whose engraved seams glow. Emission is the surface's own radiance, so fog veils it with distance like everything else. A glowing surface doesn't light its neighbors unless global illumination is on or the frame is path-traced for export.
 
 `emissiveColor` is one color a mesh, so a vertex-colored mesh under it either washes toward white or takes one tint whole. To make a surface glow in its **own** colors, the fill, the vertex colors, and the texture all included, give it an intensity instead:
 
@@ -155,15 +126,15 @@ An **emissive map** makes texels give off light of their own, tinted and dimmed 
 drawMesh(ribbon.glowing(1.5))     // each vertex glows in its own hue
 ```
 
-`Mesh.glowing(_:)` sets `emissiveIntensity` on a copy. 1 adds the surface's own color once as light, more is brighter, and a `bloom` filter turns the glow into a halo.
+`Mesh.glowing(_:)` sets `emissiveIntensity` on a copy. At 1 it adds the surface's own color once as light, and more is brighter. A `bloom` filter turns the glow into a halo.
 
-Loaded glTF and USD models carry all of these in and out without being asked, and the round trip through `saveScene` keeps them. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
+Loaded glTF and USD models carry all of these in and out without being asked. `saveScene`, which writes a scene out as a file, keeps them on the round trip. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
 
 ### Depth from a picture: height maps
 
 A normal map tilts the light. A **height map** goes one further and stores the depth itself. The red channel is height, white is the surface, and darker is carved in below it. One image, and Ollin reads it two ways.
 
-<img src="Images/26-Meshes/HeightRelief.jpg" alt="Three cratered tan spheres seen slightly from the side: a parallax-mapped one whose craters sink deep yet whose outline is a perfect circle, a displaced one with a genuinely bumpy cratered rim, and a bare control with flat dark spots" width="680">
+<img src="Images/26-Meshes/HeightRelief.jpg" alt="Three cratered tan spheres seen slightly from the side: a parallax-mapped one whose craters sink deep yet whose outline is a perfect circle, a displaced one with a bumpy cratered rim, and a bare control with flat dark spots" width="680">
 
 ```swift
 let moon = base.textured(dust).parallaxMapped(craterHeights, scale: 0.06)
@@ -172,145 +143,23 @@ let rock = base.displaced(by: craterHeights, scale: 0.13).textured(dust)
 
 **`parallaxMapped(_:scale:)`** is the shading read. At every pixel the renderer marches your line of sight down into the height field and finds where it lands. Then it reads the base texture, the normal map, and every other map *there* instead of at the flat surface. Crevices sink, slide against their rims as the view moves, and hide their far walls, everything real carving does. And still not one vertex has moved. `scale` is the depth of the relief as a fraction of the picture's tile. It needs the same texture coordinates and tangent basis a normal map does, and it sets the basis up itself the same way.
 
-**`displaced(by:scale:)`** is the geometry read. Every vertex really moves along its normal by the height at its spot on the picture, normals are recomputed, and the relief becomes true of the mesh, with `scale` now in the mesh's own units. It's honest work done once, so do it in `setup()` and keep the result. The detail you get is the *mesh's* to give, since a plane with more `segments` carves finer.
+**`displaced(by:scale:)`** is the geometry read. Every vertex moves along its normal by the height at its spot on the picture, and the normals are recomputed. The relief becomes true of the mesh, with `scale` now in the mesh's own units. It is work done once, so do it in `setup()` and keep the result. The detail you get is the *mesh's* to give, since a plane with more `segments` carves finer.
 
-Look at the outlines in the figure, because they are the entire lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read. The shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is genuinely cratered, in shadow and reflection too. Inside the outline the two are nearly twins, which is exactly why parallax is worth having, all of the depth and none of the triangles. When the edge matters, displace. When it doesn't, march.
+The outlines in the figure carry the lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read. The shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is cratered for real, in shadow and reflection too. Inside the outline the two are nearly twins, which is what parallax gives you: the depth without the triangles. When the edge matters, displace. When it doesn't, march.
 
-White stays put in both readings, one convention doing quiet work. A height map's white regions *are* the authored surface, so the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. USD files carry the map in and out, since `saveScene` writes it to the preview surface's displacement slot, while glTF simply has no place to put one.
-
-## Meshes made from other meshes
-
-These are more ways to get geometry. Cutting, smoothing, and growing start from a mesh you already have, and shadow art starts from the shadows you want a solid to throw.
-
-### Cutting one solid with another
-
-The oldest way to make a shape is to start with a block and take material off it. Two solids combine four ways, and they are the same four a filled `Shape` gives you on the plane:
-
-```swift
-let cube = Mesh.box(size: 1.3)
-let ball = Mesh.sphere(radius: 0.88)
-
-cube.union(ball)          // everything either one covers
-cube.intersection(ball)   // only what both cover
-cube.subtracting(ball)    // the cube, with the ball taken out of it
-```
-
-<img src="Images/26-Meshes/CutSolids.jpg" alt="Four solids in a row against black: a blue cube with an orange ball showing through it, labeled a cube and a ball; an orange cube with a dome bulging from each face, labeled union; a yellow-green cube with every edge and corner rounded off, labeled intersection; and a green cube with a round hole bitten through each face, labeled cube minus ball" width="880">
-
-Look at the third one. That is a cube and a ball. It is also a block with every edge and every corner rounded at once, which by hand means modeling twelve fillets. That is the thing to take from this. You are not cutting because you want a hole. You are cutting because a shape that is hard to describe is often easy to *catch* between two shapes that are not.
-
-What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract` and `carve()` [Chapter 30](30-SculptingWithFields.md) works fields with. Those melt distance fields on the GPU while the frame is drawn, and leave no geometry behind. Reach for them when you want a blobby form that moves. Reach for these when you want the shape itself.
-
-Three things to know before you cut.
-
-**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 38](38-FinishingASketch.md) runs before it writes a mesh for a printer.
-
-**A cutter has to be the right way out.** Mirroring a mesh turns it inside out, whether you swap two of its coordinates or scale an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
-
-```swift
-let shaft = Mesh.cylinder(radius: 0.2, height: 2)
-block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quarter turn
-```
-
-**Cut once.** This is work your processor does, not your graphics card. Solids of a few thousand triangles take a few tenths of a second, and denser ones take longer. So cut in `setup()`, or when a parameter moves, and keep the mesh for `draw()` to draw. That is the same advice as the cage below, for the same reason.
-
-**Not every assembly is a cut.** Parts that only have to draw and cast a shadow together join into one mesh with no boolean at all. `placed(_:)` bakes a placement into a copy of a part, and `Mesh.joined(_:)` lays the parts end to end, so a body and its four wheels become one draw call:
-
-```swift
-let body = Mesh.box(width: 1, height: 0.5, depth: 2)
-let wheel = Mesh.cylinder(radius: 0.25, height: 0.2)
-let spots = [Vector3(0.6, -0.3, 0.7), Vector3(-0.6, -0.3, 0.7), Vector3(0.6, -0.3, -0.7), Vector3(-0.6, -0.3, -0.7)]
-let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $0, rotation: Vector3(0, 0, .pi / 2))) })
-drawMesh(car)
-```
-
-The joined mesh renders as the parts would drawn one by one, and it costs nothing but the copy. Where two parts overlap, both surfaces stay inside, which is fine on screen and not for a printer. A printer wants `union`, which merges the overlap into one closed skin. The [reference](../Docs/3D/3D.md#join) says what rides along, and why a joined mesh wears one material.
-
-### One solid, two shadows: shadow art
-
-A cut keeps the part of one solid that lies inside or outside another. Pictures can carve a solid too. Ask for the shadows you want it to throw, and Ollin works out a solid that throws them.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/TwoShadowsOneSolid-dark.jpg">
-  <img src="Images/26-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
-</picture>
-
-```swift
-let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
-drawMesh(art.mesh)
-```
-
-A lit point casts its shadow along the light's direction. So a point can only be part of the solid if it lands inside the shadow in *every* direction it is lit from. Keep exactly those points, and what is left is the largest solid that could cast them. That is why a shape that looks like neither shadow throws both. The points are tested on a grid of small cubes, `resolution` across. The survivors are turned into a mesh the way [Chapter 30](30-SculptingWithFields.md#the-other-way-out-field-to-mesh) turns a field into one.
-
-**The shadows it really throws are never larger than the ones you asked for, and can be smaller.** The catch is that two views share an axis. The front and the side are seen from either end of the same vertical, so a row that is empty in one empties it in the other. Two silhouettes come out exact when they are solid in the same rows, which is why the classic circle-and-square works. Three agree far less often, and the famous three-shadow sculptures are designed around that rather than in spite of it. `art.shadow(from: .front)` hands back what is really thrown, and where it differs from what you asked for, it is the one that is true.
-
-One practical trap if you show the solid beside flat panels, as the figure does. **Lights are per-frame state, not per-shape.** Calling `noLights()` after drawing the mesh, to keep the panels flat, unlights the mesh you already drew. Draw the flat panels inside `withoutLights { }` instead, which leaves the frame's lights on everything else.
-
-### Smooth from a cage
-
-There is a third way to get a mesh, and it's the one character artists live in. Build something crude out of a few boxes and extrusions, then let the computer round it. `subdivided(levels:)` takes any mesh as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.
-
-```swift
-let cage = Mesh.extrude(Profile.star(), depth: 0.75)
-let smooth = cage.subdivided(levels: 2)
-```
-
-<img src="Images/26-Meshes/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
-
-You model the cage, and the smoothness is computed. One level already turns the slab-sided star into something you'd want to hold. By two the form has melted well inside its cage, which is the thing to internalize. The smooth surface eases *toward the averages* of the cage, so it always sits inside it, and pointy features round off the fastest. If a shape comes out softer than you wanted, the fix is a chunkier cage, not fewer levels.
-
-Any mesh works as a cage with no preparation. Take the primitives, an extrusion, a lathe, or a loaded model. `subdivided` welds their shared corners and recovers their intended faces before refining, so a box rounds as one closed surface rather than six drifting plates. Open sheets keep their rims, and a subdivided `plane` smooths along its edge instead of shrinking away from it. Triangle-native meshes like an icosphere or a marching-cubes blob have their own refinement rules a scheme argument away, `subdivided(.loop, levels: 2)`. The [reference page](../Docs/Generators/SubdivisionSurfaces.md) covers when to pick which.
-
-This is `setup()`-shaped work: each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` just draw it. Two or three levels is almost always enough.
-
-### A surface that outgrows itself
-
-Subdividing takes a shape you designed and smooths it. This does the opposite. It hands you a shape nobody designed, out of a rule you can say in one sentence.
-
-Take a mesh. Push its vertices apart, and split any triangle that stretches so the triangles stay a fixed size. The surface now has more area than it started with, and here is the part that matters. **Nothing is pushing it outward.** The forces run along its own edges, and those lie in the surface. It cannot get bigger the way a balloon does. So the new area has to go somewhere, and the only direction left is sideways. It folds.
-
-```swift
-// setup(), and keep it:
-growth = MeshGrowth(mesh: .icosphere(subdivisions: 3), driver: .uniform, seed: 7)
-
-// draw():
-growth.step()
-drawMesh(growth.mesh)
-```
-
-<img src="Images/26-Meshes/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labeled the starting mesh, an orange ball completely covered in even brain-like folds labeled everywhere, and a flattened orange form with a smooth top and a ruffled rim labeled at the equator" width="680">
-
-That middle one is a plain sphere that grew evenly, and it is worth sitting with, because nobody told it to make lobes. Grow a ball uniformly and it does not become a bigger ball. It becomes a brain. Every fold in it is the surface running out of room.
-
-The `driver` decides *where* the growth is fastest, and since every driver folds, what you are really choosing is **where the folds go**:
-
-```swift
-MeshGrowth(mesh: seed, driver: .uniform)      // evenly, all over
-MeshGrowth(mesh: seed, driver: .curvature)    // wherever it already bulges
-
-// Only near the equator, the way a leaf grows along its margin.
-MeshGrowth(mesh: seed, driver: .field { position, _ in
-    1 - smoothstep(0.1, 0.5, abs(position.y))
-})
-```
-
-The third panel is that last one. The poles never grew, so they stayed smooth, and everything the band made had to ruffle. It is the same rule as the lettuce leaf and the kale edge. They grow faster along the rim than through the middle, and they buckle for exactly this reason.
-
-The two parameters worth knowing early. `edgeLength` is the triangle size, so it sets the finest fold the surface can hold and it is where the cost lives. `stiffness` is how much the surface resists bending, and it decides how *big* the folds come out. A sheet with no stiffness buckles at the smallest scale it can and reads as crumpled paper, while more of it gathers the same growth into broader waves. If a result looks like foil someone sat on, that is the parameter.
-
-There is a fourth driver, `.chemical`, that runs a reaction-diffusion pattern in the surface and grows where the pattern collects. The chemistry decides where to add area, and the new area gives the chemistry more room to spread. That is the branching-coral one, and the [reference page](../Docs/Generators/MeshGrowth.md) has it along with self-avoidance, open sheets that keep their rims, and the cost.
-
-Growth is slow on purpose. A form takes hundreds of steps, and stepping once a frame while you watch it develop is most of the pleasure. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
+White stays put in both readings. A height map's white regions *are* the authored surface. So the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. USD files carry the map in and out, since `saveScene` writes it to the preview surface's displacement slot. glTF has no place to put one.
 
 ## More ways to put a picture on
 
-These three do not work like the maps above. The first needs no texture coordinates at all, the second adds a scale of detail the base picture never carried, and the third does not belong to any one mesh in the first place.
+The maps above all need texture coordinates. These three steps do not work like them. The first needs no texture coordinates at all. The second adds a scale of detail the base picture never carried. The third does not belong to any one mesh in the first place.
 
 ### A picture from three sides: triplanar
 
-The last two sections left you holding a small problem. A texture maps through uv coordinates, a little address on every vertex saying where on the picture it sits. The surfaces you just made have none. Nobody unwrapped the grown ball, a subdivided cage comes back without its uvs, and the raymarched blobs of [Chapter 30](30-SculptingWithFields.md) are the same way. `textured(_:)` has nothing to hold onto.
+The cage step left you holding a small problem. A texture maps through uv coordinates, a little address on every vertex saying where on the picture it sits. A subdivided cage comes back without its uvs, and so do the blobs [Chapter 30](30-SculptingWithFields.md) turns from a field into a mesh. `textured(_:)` has nothing to hold onto.
 
-`triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis, like three slide projectors aimed down x, y, and z. Every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it. A 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
+`triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis. Picture three slide projectors aimed down x, y, and z. Every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it. A 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
+
+Here it is on `grown`, a folded ball with no uvs from the surface growth after the bench:
 
 ```swift
 drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
@@ -318,26 +167,26 @@ drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
 
 <img src="Images/26-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball wearing the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
 
-`scale` is the size of one tile in world units, and a `normal:` map rides the same projection. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles, and its normal map is nothing but the slope of that photograph's own brightness, which is why the painted design reads as moulded rather than printed on. Notice what you did *not* do. There are no uvs, no tangent basis, and no unwrapping, and the projection works on any mesh you can make or load.
+`scale` is the size of one tile in world units, and a `normal:` map rides the same projection. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles. Its normal map is the slope of that photograph's own brightness, which is why the painted design reads as moulded rather than printed on. The folded ball has no uvs, no tangent basis, and no unwrapping, and the projection works on any mesh you can make or load.
 
-One thing the projection asks of you in return: **the picture has to tile.** It repeats across the whole surface whatever any wrap setting says, so if the left edge and the right edge of your map disagree, every wrap draws a straight line. That is why the figure uses the tilework and not the other bundled surface: its frame is cut to two whole periods of the motif, so it joins up. Authoring a map with `fbm(u * 8, v * 8)` does exactly that, because the field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
+The projection asks one thing of you in return: **the picture has to tile.** It repeats across the whole surface whatever any wrap setting says. If the left edge and the right edge of your map disagree, every wrap draws a straight line. That is why the figure uses the tilework and not the other bundled surface. Its frame is cut to two whole periods of the motif, so it joins up. A map authored with `fbm(u * 8, v * 8)` does not join. The field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
 
 ```swift
 // u and v run 0...1 across the map you are filling
 let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
 ```
 
-`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that will catch you. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench at the end of this chapter wears its stone this way.
+`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that shows most. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench the steps end in wears its stone this way.
 
-The picture stands still and the surface moves through it. That is the one thing to understand about triplanar, and it cuts both ways. The cairn is three separate boxes drawn one after another, and the pattern runs unbroken across all three, because they stand in the same standing field. That is why the technique is beloved for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along, so a body that travels should wear uvs. A form that grows or morphs in place, like the blob in the `3D/Materials/Triplanar` example, flows through the pattern like a shape turning under falling light, which is its own kind of beautiful.
+The picture stands still and the surface moves through it. That is the one thing to understand about triplanar, and it cuts both ways. The cairn is three separate boxes drawn one after another. The pattern runs unbroken across all three, because they stand in the same standing field. That is why the technique is the usual choice for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along. So a body that travels should wear uvs. A form that grows or morphs in place flows through the pattern like a shape turning under falling light. The blob in the `3D/Materials/Triplanar` example does that.
 
 The projection carries the base texture and a normal map, while the rest of the map set stays with uvs. The [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on parameters.
 
-### Texture that survives a close look
+### Texture that survives a close look: detail maps
 
 Every texture has a budget. A picture sized to cover a whole boulder spends all its texels on the big shapes. The moment the camera leans in, the surface runs out of information and dissolves into soft nothing. Real rock does not do that. Get closer and there is always another scale of grain waiting.
 
-`detailMapped` fakes that second scale honestly. It tiles a much finer texture pair across the base one, a color map and a normal map. They repeat several times per base tile, so the close look finds grain the base never carried.
+`detailMapped` adds that second scale. It tiles a much finer texture pair across the base one, a color map and a normal map. They repeat several times per base tile, so the close look finds grain the base never carried.
 
 ```swift
 drawMesh(boulder
@@ -348,15 +197,15 @@ drawMesh(boulder
 
 <img src="Images/26-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
 
-The figure makes both maps out of one bundled photograph of a dry-stone wall. The base is that picture cut down to the resolution a single map covering a whole form would really have, which is why the left sphere is soft. The detail pair is a patch of the same wall seen close, mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
+The figure makes both maps out of one bundled photograph of a dry-stone wall. The base is that picture cut down to the resolution a single map covering a whole form would have. That is why the left sphere is soft. The detail pair is a patch of the same wall seen close, mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
 
-`scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the honest off switch. A pair tiled dozens of times over is the first thing that would break up in the distance, so those maps read their smaller copies like every other map does. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres, the detail pair on one of them, and the tile count and amount on parameters while the camera sways close.
+`scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the off switch. A pair tiled dozens of times over is the first thing that would break up in the distance. A loaded picture reads its smaller copies there, but a pair you wrote from bytes has none to fall back on. Keep the scale in the range your framing shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres and the detail pair on one of them. The tile count and amount sit on parameters while the camera sways close.
 
 ### A picture stamped onto the scene: decals
 
-Everything so far dressed one mesh. A sticker does not care about meshes. Slap it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
+Everything so far dressed one mesh. A sticker does not care about meshes. Put it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
 
-A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box. Every surface inside the box receives the picture, composited over the surface's own color before lighting, so it shades like paint rather than a glowing overlay.
+A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box. Every surface inside the box receives the picture, composited over the surface's own color before lighting. So it shades like paint rather than like a glowing overlay.
 
 ```swift
 var sticker: Decal!
@@ -373,69 +222,37 @@ override func draw() {
 
 <img src="Images/26-Meshes/Stamped.jpg" alt="A gray floor with two tan crates: a red, white, and blue roundel stamped across the floor and continuing up over a crate's top, a black and yellow striped tag on the crate's front face, and a half-transparent yellow ring overlapping the roundel on the floor" width="680">
 
-The box has a direction, a width and height, and a depth. The placement is per-frame state like a light, which is the quietly powerful part. Move `at:` and the stamp slides across the scene, crossing from the floor up onto a crate and over its far edge, conforming to whatever it touches. Transparency in the image is honored, and later decals composite over earlier ones. A surface standing edge-on to the projection fades the stamp out instead of smearing it down the side, which is the failure you would otherwise get on every wall.
+The box has a direction, a width and height, and a depth. The placement is per-frame state like a light, which is the part that matters. Move `at:` and the stamp slides across the scene. It crosses from the floor up onto a crate and over its far edge, conforming to whatever it touches. Transparency in the image is honored, and later decals composite over earlier ones. A surface standing edge-on to the projection fades the stamp out instead of smearing it down the side. Without that fade, every wall would show the smear.
 
-A decal is paint, so it takes the finish of the surface it lands on. Stamp a rough floor and the mark is matte. Stamp polished metal and it sits under the shine. The [reference page](../Docs/3D/3D.md#decals) has the envelope. That's eight per frame, which surfaces receive them, and what mirrors show. The `3D/Materials/Decals` example slides a roundel across floor and crates on a loop, with the size, a roll, and a see-through ring on parameters.
+A decal is paint, so it takes the finish of the surface it lands on. Stamp a rough floor and the mark is matte. Stamp polished metal and it sits under the shine. The [reference page](../Docs/3D/3D.md#decals) has the envelope: eight per frame, which surfaces receive them, and what mirrors show. The `3D/Materials/Decals` example slides a roundel across floor and crates on a loop, with the size, a roll, and a see-through ring on parameters.
 
 ## Finishes you measure
 
-[Chapter 25](25-3DGently.md) picked a finish by name: velvet, jade, toon. Each of those is a look somebody chose and tuned. The finishes in this family are picked by number instead, and the numbers are the ones a physicist would ask for. That sounds like more work and is usually less, because a surface described that way behaves correctly in light you have not set up yet.
+[Chapter 25](25-3DGently.md) picked a finish by name: velvet, jade, toon. Each of those is a look somebody chose and tuned. The finishes in this step are picked by number instead, and the numbers are the ones a physicist would ask for. It is usually less work, because a surface described that way behaves correctly in light you have not set up yet.
 
-They also want something the earlier chapters never needed, which is why they waited. Most of them have almost nothing to work with until the scene has surroundings, so the third section here is about giving it some.
-
-### Two numbers for most real surfaces: PBR
-
-The **physically based** finishes ask for two properties instead of a name, and the renderer works out from them how light should behave:
-
-```swift
-material(.metal(roughness: 0.12))         // a metal, nearly polished
-material(.dielectric(roughness: 0.4))     // a non-metal, satin
-```
-
-**Metal or not** is the first question, and it's close to binary in the real world. Metals tint the light they reflect (gold reflects gold) and have no color of their own underneath. Everything else, called a *dielectric*, reflects white highlights and shows its own color through them. That covers plastic, glass, skin, paint, and stone. **Roughness** is the second, and it's the one you'll actually reach for. It sets how scattered the reflection is, from `0` for a mirror to `1` for chalk.
-
-<img src="Images/26-Meshes/Roughness.jpg" alt="Five identical gray metal spheres in a row labeled 0.02, 0.15, 0.32, 0.6, and 1.0. The first is a dark mirror with a tiny sharp highlight, and each one after it has a broader, softer, paler highlight until the last is an almost flat matte gray" width="680">
-
-That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in. That's why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen. By `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before, and roughness only decides how the surface handles light.
-
-There are ready-made ones for the common cases, like `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from [Chapter 25](25-3DGently.md), not a physically based one, so reach for `.smoothPlastic` when you want this family.
-
-### A streak instead of a dot: anisotropy
-
-Roughness sets how *wide* the highlight is. One more number sets its *shape*. Look at the base of a frying pan, or a laptop lid. The highlight there isn't a dot but a streak, because fine parallel grooves from brushing or machining cover the surface. **anisotropy** is that streak. It runs `-1…1`: `0` keeps the round highlight, and either end pulls it into a line. **anisotropyRotation** spins the line, in radians.
-
-```swift
-material(Material(shading: .physicallyBased, metallic: 1,
-                  roughness: 0.4, anisotropy: 0.8))
-```
-
-<img src="Images/26-Meshes/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second wears a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
-
-**The whole picture answers to one number.** The first two spheres are the same steel, and the streak is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, exactly how a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
-
-Numbers you tune by hand want a way back into code, and every material has one. `swiftSource` prints the expression that rebuilds it, listing only what you changed, and a built-in prints as its own name. The [material explorer](../Examples/3D/Materials/Explorer/Sketch.swift) puts the whole library and every dial from this chapter on parameters, and its C key copies exactly that expression. Tune until it looks right, press C, paste. The parameters were never the artifact. The source is.
+They also want something the earlier chapters never needed, which is why they waited until now. Most of them have almost nothing to work with until the scene has surroundings, so the surroundings come first.
 
 ### Surroundings as the light: environments
 
-Here's the catch the last two sections have been walking toward. A mirror reflects its surroundings, so **a physically based surface with no surroundings has almost nothing to work with** and goes dark and dull. Named lights don't fix it, because a point light is a point. It makes a highlight, not a reflection.
+A mirror reflects its surroundings. So a physically based surface with no surroundings has almost nothing to work with, and it goes dark and dull. Named lights don't fix it, because a point light is a point. It makes a highlight, not a reflection.
 
 What fixes it is an **environment**: a photograph of a whole place, wrapped around your scene as a sphere, used as the light.
 
 ```swift
 environment(.sunset)
 material(.metal(roughness: 0.12))
-drawMesh(body)
+drawMesh(ball)
 ```
 
 <img src="Images/26-Meshes/EnvironmentSky.jpg" alt="Three chrome balls resting together on a gray-blue floor under a clear pale blue sky, their whole surfaces reflecting soft sky gradients" width="680">
 
 <img src="Images/26-Meshes/EnvironmentSunset.jpg" alt="The same three chrome balls in the same position, now under a warm evening HDRI of Venice. Ochre buildings and trees fill the background, and the buildings are clearly visible reflected in the left flank of the largest ball" width="680">
 
-Those two images are the same solids, the same material, the same camera, and the same floor. The only difference is one word. Look at the left flank of the largest ball in the second picture and you can read the buildings in it. That's the whole idea in one glance. The surroundings *are* the reflection, and they are also the light. The floor is lit by the sky in the first and by an ochre evening in the second, without a single light being placed.
+Those two images are the same solids, the same material, the same camera, and the same floor. The only differences are one word and a touch of blur on the backdrop. Look at the left flank of the largest ball in the second picture and you can read the buildings in it. The surroundings *are* the reflection, and they are also the light. The floor is lit by the sky in the first and by an ochre evening in the second, without a single light being placed.
 
-Twenty environments come curated. Eight of them are bundled, so they work offline and instantly. Those are `.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, and `.sunset`. The other twelve download the first time you use one and cache from then on. They range enormously in real brightness, so each is exposed to a consistent level for you. They also pair well with `toneMap(.aces)` from [Chapter 19](19-LayersAndEffects.md), for a filmic rolloff on the highlights.
+Twenty environments come curated. Eight of them are bundled, so they work offline and at once. The other twelve download the first time you use one and cache from then on. The [environment lighting reference](../Docs/3D/3D.md#environment) lists them by mood. They differ greatly in brightness, so each is exposed to a consistent level for you. They also pair well with `toneMap(.aces)` from [Chapter 19](19-LayersAndEffects.md), for a filmic rolloff on the highlights.
 
-Put the choice on a parameter and the inspector offers all twenty as a menu, so you can flip a scene from a studio to a dusk while it runs:
+Put the choice on a parameter and the inspector offers all twenty as a menu. You can then flip a scene from a studio to a dusk while it runs:
 
 ```swift
 @Param var surroundings = Environment.studio
@@ -448,20 +265,20 @@ The first image uses none of them. **`.sky(...)`** builds a daylight sky at runt
 environment(.sky(sunElevation: 0.35))       // no asset, and the sun can move
 ```
 
-It takes a sun elevation and a `turbidity` for how hazy the air is. Because it's computed rather than loaded, you can animate the sun and watch the whole scene's light follow. It's the one to reach for when you want good lighting and don't want to think about assets at all.
+It takes a sun elevation and a `turbidity` for how hazy the air is. Because it's computed rather than loaded, you can animate the sun and watch the whole scene's light follow. It's the one to reach for when you want good lighting and don't want to think about assets.
 
-The sky can also carry weather. `.clouds(...)` marches real volumetric clouds into the same bake. The deck behind your scene, the light on every surface, and the picture in every reflection then agree about the sky:
+The sky can also carry weather. `.clouds(...)` marches volumetric clouds into the same bake. The deck behind your scene, the light on every surface, and the picture in every reflection then agree about the sky:
 
 ```swift
 environment(.sky(sunElevation: 0.5).clouds(.scattered))          // a preset deck
 environment(.sky(sunElevation: 0.5).clouds(coverage: 0.9))       // a gray lid: the light goes soft
 ```
 
-<img src="Images/26-Meshes/Cloudscape.jpg" alt="A chrome ball on a matte plain under a scattered cloud deck: solid white cumulus with shadowed undersides over real blue, the same deck reflected in the ball" width="680">
+<img src="Images/26-Meshes/Cloudscape.jpg" alt="A chrome ball on a matte plain under a scattered cloud deck: solid white cumulus with shadowed undersides over clear blue, the same deck reflected in the ball" width="680">
 
-`coverage` runs from a few fair-weather puffs to overcast. Because the clouds live in the environment, sliding it dims and diffuses the whole scene the way a real gray day does. `tallness` trades flat sheets for building towers. `phase` is the wind's clock, so advance it and the weather drifts, deterministically, and an export plays the same sky. A still sky bakes once and costs nothing per frame. The `3D/Environments/Cloudscape` example puts all of it on parameters.
+`coverage` runs from a few fair-weather puffs to overcast. Because the clouds live in the environment, sliding it dims and diffuses the whole scene the way a gray day does. `tallness` trades flat sheets for building towers. `phase` is the wind's clock, so advance it and the weather drifts, deterministically, and an export plays the same sky. A still sky bakes once and costs nothing per frame. The `3D/Environments/Cloudscape` example puts all of it on parameters.
 
-Two parameters come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlurred(_:)` softens just the backdrop, which pushes it back behind the subject. The two chrome-ball figures above use a little.
+Two modifiers come up at once in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlurred(_:)` softens only the backdrop, which pushes it back behind the subject. The two chrome-ball figures above use a little.
 
 A computed sky also hands the air its sun. [Chapter 25](25-3DGently.md#air-you-can-see-fog-and-volumetric-light)'s `fog` paints every distance toward one color, which is right for a room. Outdoor air is choosier. It takes the blue out of a far ridge's own light. It adds sunlight scattered into the path, blue from the side, brighter and whiter toward the sun. That is **aerial perspective**, the cue that makes mountains read as mountains. With a sky in place it is one call:
 
@@ -472,11 +289,43 @@ aerialPerspective()
 
 <img src="Images/26-Meshes/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
-With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 25's volumetric beams ride it exactly as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 25's volumetric beams ride it as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+
+### Two numbers for most real surfaces: PBR
+
+With surroundings in place, the finishes have something to show. The **physically based** finishes ask for two properties instead of a name, and the renderer works out from them how light should behave:
+
+```swift
+material(.metal(roughness: 0.12))         // a metal, nearly polished
+material(.dielectric(roughness: 0.4))     // a non-metal, satin
+```
+
+**Metal or not** is the first question, and it's close to binary in the real world. Metals tint the light they reflect (gold reflects gold) and have no color of their own underneath. Everything else, called a *dielectric*, reflects white highlights and shows its own color through them. That covers plastic, glass, skin, paint, and stone. **Roughness** is the second, and it's the one you'll reach for. It sets how scattered the reflection is, from `0` for a mirror to `1` for chalk.
+
+<img src="Images/26-Meshes/Roughness.jpg" alt="Five identical gray metal spheres in a row labeled 0.02, 0.15, 0.32, 0.6, and 1.0. The first is a dark mirror with a tiny sharp highlight, and each one after it has a broader, softer, paler highlight until the last is an almost flat matte gray" width="680">
+
+That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in. That's why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen. By `1.0` it has spread so far that the sphere reads as its average brightness. `fill` still sets the color, as before, and roughness only decides how the surface handles light.
+
+The [materials reference](../Docs/3D/3D.md#materials) lists ready-made ones for the common cases, the same two properties underneath. One naming trap: plain `.plastic` is one of the *stylized* finishes from [Chapter 25](25-3DGently.md), so reach for `.smoothPlastic` when you want this family.
+
+### A streak instead of a dot: anisotropy
+
+Roughness sets how *wide* the highlight is. One more number sets its *shape*. Look at the base of a frying pan, or a laptop lid. The highlight there is a streak rather than a dot, because fine parallel grooves from brushing or machining cover the surface. **anisotropy** is that streak. It runs `-1…1`: `0` keeps the round highlight, and either end pulls it into a line. **anisotropyRotation** spins the line, in radians.
+
+```swift
+material(Material(shading: .physicallyBased, metallic: 1,
+                  roughness: 0.4, anisotropy: 0.8))
+```
+
+<img src="Images/26-Meshes/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second wears a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
+
+The streak is one number. The first two spheres are the same steel, and the band is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, the way a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
+
+Numbers you tune by hand want a way back into code, and every material has one. `swiftSource` prints the expression that rebuilds it, listing only what you changed, and a built-in prints as its own name. The [material explorer](../Examples/3D/Materials/Explorer/Sketch.swift) puts the whole library and every dial from this chapter on parameters, and its C key copies that expression. The source is the artifact, so tune until it looks right, press C, and paste.
 
 ### Glass
 
-There has been a way to make a surface see-through since [Chapter 25](25-3DGently.md): give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:
+There has been a way to make a surface see-through since [Chapter 2](02-Color.md). Give the `fill` some alpha, and in 3D the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:
 
 ```swift
 environment(.studio)                  // something to transmit
@@ -487,17 +336,17 @@ drawSphere(radius: 0.9)
 
 <img src="Images/26-Meshes/LookingThrough.jpg" alt="Three glass spheres in front of a red, a green, and a blue bar. The left sphere is clear solid glass and shows the red bar flipped and warped inside it. The middle sphere is deep bottle green with the green bar refracted inside. The right sphere is a thin pale-blue bubble and the blue bar passes through it almost unchanged" width="640">
 
-The one distinction that matters is `thickness`. At `0` the body is a thin wall, a pane or a soap bubble. What's behind passes through nearly straight, just tinted by the `fill` and dimmed at the edges where the surface turns away. Give it a thickness and the body becomes solid, and a sphere's diameter is the natural number. Now the light refracts on the way in and again on the way out, so a solid ball shows the world behind it flipped and gathered, the crystal-ball look. **A solid ball is a lens, and a thin wall is a window.** The middle sphere in the figure adds the other solid-body parameter, `attenuationColor` with an `attenuationDistance`. That's Beer-Lambert absorption under a friendlier name. You say what white light should become after traveling that far inside, and thicker paths get more of it. It's exactly why real bottle glass is palest at its center and deepest green at the rim.
+The one distinction that matters is `thickness`. At `0` the body is a thin wall, a pane or a soap bubble. What's behind passes through nearly straight, tinted by the `fill` and dimmed at the edges where the surface turns away. Give it a thickness and the body becomes solid, and a sphere's diameter is the natural number. Now the light refracts on the way in and again on the way out. So a solid ball shows the world behind it flipped and gathered, the crystal-ball look. A solid ball is a lens, and a thin wall is a window. The middle sphere in the figure adds the other solid-body parameter, `attenuationColor` with an `attenuationDistance`. That's Beer-Lambert absorption under a friendlier name. You say what white light should become after traveling that far inside, and thicker paths get more of it. It is why real bottle glass is palest at its center and deepest green at the rim.
 
-Three more parameters do what you'd hope. `roughness` frosts the glass, so the view through it blurs into a glow. `ior` sets how strongly the body bends light, from `1.33` for water through `1.5` for glass to `2.42` for diamond. And `dispersion` bends each color by a slightly different amount, which is what a prism does. A solid body then fringes what shows through it, faintly at `0.1` (real glass) and as a full rainbow at `1`. A thin wall shows none of it, because it lets every color through parallel.
+Three more parameters do what you'd hope. `roughness` frosts the glass, so the view through it blurs into a glow. `ior` sets how strongly the body bends light, and the [glass reference](../Docs/3D/3D.md#glass) lists the values for water, glass, and diamond. And `dispersion` bends each color by a slightly different amount, which is what a prism does. A solid body then fringes what shows through it, and a thin wall shows none of it, because it lets every color through parallel.
 
 <img src="Images/26-Meshes/Prism.jpg" alt="Two solid glass balls in front of three thin white bars on a dark wall. The left ball shows the bars turned over inside it in plain gray. The right ball shows the same bars with a red edge outside each one and a yellow edge inside it, the fringe a prism puts on a white edge" width="560">
 
-The figure puts the same bars behind a clear ball and a dispersive one. The red channel bends least, so its picture of each bar is the widest, and where only it reaches the edge reads red; where red and green reach but blue has not yet, it reads yellow. Turn the bars dark on a bright wall and the fringes turn cyan and blue instead. That is exactly what a cheap camera lens does at the edge of the frame, and it is why a little of the parameter goes a long way: a touch reads as real glass, a lot reads as a prism.
+The figure puts the same bars behind a clear ball and a dispersive one. The red channel bends least, so its picture of each bar is the widest, and where only it reaches the edge reads red. Where red and green reach but blue has not yet, it reads yellow. Turn the bars dark on a bright wall and the fringes turn cyan and blue instead. A cheap camera lens does the same at the edge of the frame. That is why a little of the parameter goes a long way. A touch reads as real glass, and a lot reads as a prism.
 
-Glass needs an `environment(_:)`, for the same reason a mirror did. There has to be something on the other side to show. On its own it refracts the environment, and that already reads as glass. Add the ray-traced reflections of [Chapter 31](31-TracedLight.md) on a Mac that traces, and the view through the glass upgrades to the actual scene. That's what the figure shows, since those bars appear *through* the spheres because rays really pass through and hit them. One call upgrades mirrors and glass together.
+Glass needs an `environment(_:)`, for the same reason a mirror did. There has to be something on the other side to show. On its own it refracts the environment, and that already reads as glass. Add the ray-traced reflections of [Chapter 31](31-TracedLight.md) on a Mac that traces, and the view through the glass upgrades to the scene itself. That's what the figure shows, since those bars appear *through* the spheres because rays pass through and hit them. One call upgrades mirrors and glass together.
 
-But refracting the environment alone has a catch you will meet the first time you put glass in front of your own scene: **the scene isn't in it.** The wall behind the bottle, the floor, the other objects, they all stop at the glass and the studio shows instead. A bottle standing in a room comes out empty. `sceneThroughGlass()` fills that in, and it needs no ray tracing at all, so it works on any Mac:
+Refracting the environment alone has a catch, and it shows the first time you put glass in front of your own scene. The scene isn't in it. The wall behind the bottle, the floor, the other objects, they all stop at the glass and the studio shows instead. A bottle standing in a room comes out empty. `sceneThroughGlass()` fills that in, and it needs no ray tracing at all, so it works on any Mac:
 
 ```swift
 environment(.studio)                  // still needed
@@ -506,13 +355,9 @@ sceneThroughGlass()                   // and now the scene, too
 
 <img src="Images/26-Meshes/SceneInTheGlass.gif" alt="Three glass bodies in front of a red, a green, and a blue bar, alternating every two seconds. With sceneThroughGlass() on, the red bar continues straight through the thin pane on the left, the green bar fills the solid sphere in the middle with the blue and the red bars turned over at its rim, and the blue bar shows softened and turned over inside the frosted sphere on the right. With it off, all three go back to reflecting the studio and the bars stop at their silhouettes" width="560">
 
-The trick is one you can picture exactly. The frame gets drawn a *second* time with every piece of glass taken out, along with how far away each pixel of it stands, and each body then looks up that picture along its own bent view ray. So a thin pane shows what is behind it, in place. A solid body bends the ray on the way in, travels its `thickness`, bends it again on the way out, and follows it to where it meets the scene, so the ball is a real lens: the floor and the far bars in the figure come through it turned over, the way they do through a glass of water. And `roughness` reads that picture blurred, which is why the frosted sphere in the figure softens the bar behind it instead of losing it.
+It works by drawing the frame a second time with every piece of glass taken out. Each body then looks up that picture along its own bent view ray. So a thin pane shows what is behind it, in place. A solid ball shows the floor and the far bars turned over, the way a glass of water does. A frosted body reads the picture blurred. Only what the camera drew can show through. The [reference](../Docs/3D/3D.md#scene-through-glass) lists what the lookup cannot show and where ray tracing takes over. Writing both calls costs nothing and is the right habit. The price is the second pass: a frame with glass in it draws its scene twice.
 
-Three things follow from reading the picture rather than tracing rays, and none of them are hidden from you. Only what the camera drew can show through, so a lookup that falls off the edge of the frame eases back into the environment. One piece of glass never appears inside another, which is exactly the rule that keeps a body from finding *itself*. And something standing between you and the glass never shows inside it, because the lookup knows it is nearer than the glass and shows the environment there instead. Where ray tracing is available it has none of those limits and quietly takes over, so writing both calls costs nothing and is the right habit. The price is the second pass: a frame with glass in it draws its scene twice.
-
-And the one glass object everyone knows is a soap bubble, which is thin glass plus one more idea. A *film* whose thickness drains and swirls colors the surface with marbled interference bands that drift while you watch. That's the iridescence finish's soap-film mode, `iridescenceFlow`, composed straight onto the glass. `iridescencePhase` is the clock, and you drive it with `time`, so exports reproduce. The [`ThinFilm` example](../Examples/3D/Materials/ThinFilm/Sketch.swift) floats a handful of them rising behind its thickness rows.
-
-Two honest edges, so they don't puzzle you later. Glass still casts a solid shadow. Glass seen *inside a mirror*, or through other glass, reads as a shiny opaque ball, because a traced ray doesn't re-enter the transmission math. Both are the standard real-time compromises, and both have follow-ups on the roadmap.
+The one glass object everyone knows is a soap bubble, which is thin glass plus one more idea. A *film* whose thickness drains and swirls colors the surface with marbled interference bands that drift while you watch. That's the iridescence finish's soap-film mode, `iridescenceFlow`, composed straight onto the glass. `iridescencePhase` is the clock, and you drive it with `time`, so exports reproduce. The [`ThinFilm` example](../Examples/3D/Materials/ThinFilm/Sketch.swift) floats a handful of them. Glass still casts a solid shadow, and the [glass reference](../Docs/3D/3D.md#glass) lists the other edges, such as what glass seen inside a mirror shows.
 
 ### Paint and cloth: clearcoat and sheen
 
@@ -528,37 +373,15 @@ material(.felt)                         // a dry, fuzzy blue
 
 <img src="Images/26-Meshes/PaintAndCloth.jpg" alt="Four spheres in a row labeled car paint, bare metal, felt, and bare cloth. The car-paint sphere is a deep red with both a soft satin sheen and a small sharp white highlight; the bare metal beside it has only the satin sheen. The felt sphere is a pale-rimmed dusty blue that brightens toward its edge; the bare cloth beside it is the same blue, flat and matte" width="680">
 
-Look at the first pair. The bare metal has one soft satin highlight, the widest its roughness allows. The coated one keeps that satin body and adds a second, sharper reflection floating over it. **Two finishes on one surface, which no single roughness can make.** That's `clearcoat`, and the same idea covers piano lacquer and varnished wood. `.lacquer` is a near-black matte body under a deep gloss film. `clearcoatRoughness` sets the film's own polish, independent of the base. The base dims slightly under a coat, by exactly the light the film reflects away, so the layering never invents brightness. Add [Chapter 25](25-3DGently.md)'s glitter flecks on top of `.carPaint`, through the `sparkle` parameter, and you have metal-flake paint.
+Look at the first pair. The bare metal has one soft satin highlight, the widest its roughness allows. The coated one keeps that satin body and adds a second, sharper reflection floating over it. Two finishes sit on one surface, which no single roughness can make. That's `clearcoat`, and the same idea covers piano lacquer and varnished wood. `.lacquer` is a deep gloss film over a matte body, and a near-black `fill` under it gives the piano look. `clearcoatRoughness` sets the film's own polish, independent of the base. The base dims slightly under a coat, by the light the film reflects away, so the layering never invents brightness. Add [Chapter 25](25-3DGently.md)'s glitter flecks on top of `.carPaint`, through the `sparkle` parameter, and you have metal-flake paint.
 
-Now the second pair. The felt sphere is the same blue as its neighbor, but its silhouette glows. Fabric is covered in fibers that lean every direction, and where the surface turns away from you those fibers catch the light edge-on. That's `sheen`. The face stays matte while the rim brightens, and the body gives up a little light to pay for it. `sheenRoughness` sets how tight the rim band is, so `.satin` pulls it close to the edge and `.felt` spreads it into a haze. `sheenColor` tints it. Leave it white for dusty cloth, or tint it away from the `fill` for shot fabric, the deep red velvet rimmed in orange that the [`CoatAndCloth` example](../Examples/3D/Materials/CoatAndCloth/Sketch.swift) ends on.
+Now the second pair. The felt sphere is the same blue as its neighbor, but its silhouette glows. Fabric is covered in fibers that lean every direction, and where the surface turns away from you those fibers catch the light edge-on. That's `sheen`. The face stays matte while the rim brightens, and the body gives up a little light to pay for it. `sheenRoughness` sets how tight the rim band is, so `.satin` pulls it close to the edge and `.felt` spreads it into a haze. `sheenColor` tints it. Leave it white for dusty cloth, or tint it away from the `fill` for shot fabric. The [`CoatAndCloth` example](../Examples/3D/Materials/CoatAndCloth/Sketch.swift) ends on a deep red velvet rimmed in orange.
 
-Both layers work under ordinary lights, under the area-light panels of [Chapter 25](25-3DGently.md), and from an environment. Under the ray-traced reflections of [Chapter 31](31-TracedLight.md) the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass. Seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
-
-### Color with no pigment: the thin film
-
-Blow a soap bubble and it turns colors that were never in the soap. The wall of that bubble is a film a few hundred nanometers thick, and light reflects off both of its faces. The second reflection travels a little farther, so the two come back out of step. Where they line up a color gets brighter, and where they oppose each other it disappears. **What is left is a color made by a distance, not by a pigment.** The same thing colors anodized titanium, oil on a wet road, and the inside of a shell.
-
-```swift
-fill(Color(white: 0.75))
-material(.anodized)                     // an oxide film over polished metal
-
-var m = Material.metal(roughness: 0.16)
-m.thinFilm = 1                          // how much of the reflection is the film's
-m.thinFilmThickness = 480               // nanometers, and this is the color parameter
-material(m)
-```
-
-<img src="Images/26-Meshes/ThinFilm.jpg" alt="Four spheres in a row labeled bare metal, 360 nm, 600 nm, and soap film. The bare metal is a neutral mirror of a warm room; the 360 nm ball wears a violet and gold band around its edge; the 600 nm ball turns green at the top and red below; the soap film ball is dark and see-through with a colored rim" width="680">
-
-The three metals are the same metal. Only the thickness of the film on them changes, and it changes everything about their color. That number is in **nanometers**, which is light's own scale rather than the scene's. It is the one measurement in the whole material that is not in world units. It also means the same value works on a bubble and on a building. Around `300` the film runs gold into violet, and `550` sits in the magenta and green band. Past about `1000` the bands crowd together and everything washes toward silver.
-
-Now look at any one of the filmed balls on its own. One thickness, and yet the color changes from the middle of the ball to its edge. A slanted path through the film is a longer path, so the color walks as the surface turns away from you, and it walks again when you move. That is the whole reason a bubble looks alive rather than painted, and you get it for nothing. The surface *under* the film matters too, since the film's lower face is where the two meet. That is why `.anodized`, over metal, and `.oilOnWater`, over a dark wet dielectric, look nothing alike.
-
-The fourth ball is the bubble itself: `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops, so walk the thickness down over time and yours will do the same. `.nacre` is the last preset, the pearl. And this is a different thing from the stylized `iridescence` under [Chapter 25](25-3DGently.md)'s `.iridescent` finish, which is a rim rainbow you dial by band count. This one is measured, so it holds its color under a moving light the way the real surface does.
+Both layers work under ordinary lights, under the area-light panels of [Chapter 25](25-3DGently.md#a-light-with-a-body-area-lights), and from an environment. Under the ray-traced reflections of [Chapter 31](31-TracedLight.md) the coat's reflection upgrades to the traced scene along with everything else. Seen in a mirror, a coated body keeps its film and a felted one its fuzz. Only the highlights a lamp puts on them stay out of the reflection. The [reference page](../Docs/3D/3D.md#clearcoat-sheen) has the details.
 
 ### Skin, wax, and stone: subsurface scattering
 
-Every surface so far bounces light off its outside. Skin doesn't. Hold a flashlight against your fingers and the flesh glows red around it. Some of the light went *in*, wandered a little way under the surface, and came back out somewhere else. Marble, wax, milk, and jade all do this, and the eye is remarkably good at noticing when a render of them doesn't. **A surface without it reads as painted plastic no matter how carefully it's colored.**
+Every surface so far bounces light off its outside. Skin doesn't. Hold a flashlight against your fingers and the flesh glows red around it. Some of the light went *in*, wandered a little way under the surface, and came back out somewhere else. Marble, wax, milk, and jade all do this, and the eye notices when a render of them lacks it. A surface without it reads as painted plastic however carefully it is colored.
 
 ```swift
 fill(Color(red: 0.92, green: 0.72, blue: 0.62))
@@ -570,20 +393,19 @@ drawSphere(radius: 0.72)
 
 Look at each pair at the line where light gives way to shadow. The bare balls cut off the way a painted surface does. The scattering ones carry light a little way past that line, because light that entered on the lit side is re-emerging on the dark one. On the skin ball the carried light is *red*. Red travels farthest through flesh, which is why shadow edges on faces are warm. That per-channel reach is the `scatteringColor`, and its default is the skin ratio. Near-equal channels give the neutral softening of `.marble`, and a green-dominant color makes a jade whose glow is green.
 
-`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges are worth knowing. It applies to solid meshes on the main canvas, so a raymarched field or a mesh inside a render target keeps its plain shading. And it's a different thing from the stylized `subsurface` glow under [Chapter 25](25-3DGently.md)'s `.jade`, which fakes back-light cheaply and can still layer on top for ears and edges.
+`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. The block above asks for far more, so the effect is easy to see on a small ball. Too big, and the material slides toward wax. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. It is a different thing from the stylized `subsurface` glow under [Chapter 25](25-3DGently.md)'s `.jade`. That one fakes back-light cheaply, and it can still layer on top for ears and edges. Where the measured one applies and where it does not is on the [reference page](../Docs/3D/3D.md#subsurface-scattering).
 
-There's a second half, and it asks for one more call. Turn on `castShadows()` and the same material starts *transmitting*. Light that strikes the far side of a thin body comes through it, which is the flashlight-through-fingers trick from the top of this section done for real. It works because the shadow machinery already knows the one thing the material needs. A shadow map records where the light first landed, and the surface being shaded knows where it is. The gap between the two is how far the light traveled inside the body. **The shadow map was a thickness gauge all along.**
+There's a second half, and it asks for one more call. Turn on `castShadows()` and the same material starts *transmitting*. Light that strikes the far side of a thin body comes through it. That is the flashlight-through-fingers trick from the top of this section, done for real. It works because the shadow machinery already knows the one thing the material needs. A shadow map records where the light first landed, and the surface being shaded knows where it is. The gap between the two is how far the light traveled inside the body. The shadow map was a thickness gauge all along.
 
 <img src="Images/26-Meshes/Translucency.jpg" alt="Two upright skin slabs and a ball, lit from behind so their dark sides face the viewer. The thin slab glows deep red across its whole face, the deep slab stays black except for a warm rim at its edges, and the ball carries a red crescent where its edge thins" width="680">
 
-Put the light behind your subject and this carries the picture. A body about one `scatteringRadius` thick passes mostly red, the blood-red of a hand against the sun. The deep slab goes dark except at its rim, where the crossing is short. The ball keeps a warm crescent along its thinning edge. There are no new parameters, because the material already says everything. The radius sets what counts as thin, and `scatteringColor` decides what survives the trip. One edge to know is that only a shadow-casting light transmits, since its depth is the one that's known. Every light that casts does, and a directional, spot, or point caster all work.
-
+Put the light behind your subject and this carries the picture. A body about one `scatteringRadius` thick passes mostly red, the blood-red of a hand against the sun. The deep slab goes dark except at its rim, where the crossing is short. The ball keeps a warm crescent along its thinning edge. There are no new parameters, because the material already says everything. The radius sets what counts as thin, and `scatteringColor` decides what survives the trip. Only a shadow-casting light transmits, since its depth is the one that's known. Every light that casts does, and a directional, spot, or point caster all work.
 
 ## Putting it together: the bench
 
 The finished sketch is five specimens on a stone slab, and each one is here to carry a different part of the chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
 
-The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from the normal-map section. A color picture is a function of the tile's own coordinates. The two height functions under them are named `bareness`, which decides where paint has worn back to metal, and `device`, the wheel cut into the tile.
+The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from the normal-map step. A color picture is a function of the tile's own coordinates. Two height functions sit under them. `bareness` decides where paint has worn back to metal, and `device` is the wheel cut into the tile.
 
 ```swift
 import Foundation
@@ -629,8 +451,8 @@ final class Bench: Sketch {
         return Image(width: size, height: size, premultipliedRGBA: bytes)!
     }
 
-    /// The example model this chapter has been loading all along. Found by walking
-    /// up from the working directory, since a figure compiles from a copy of itself.
+    /// The crystal: a model that ships in the LoadedMesh example's folder, found by
+    /// walking up from the working directory until the path exists.
     var modelURL: URL {
         let tail = "Examples/3D/Geometry/LoadedMesh/model.obj"
         var directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -662,7 +484,9 @@ final class Bench: Sketch {
 
 ```
 
-The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball wears four maps at once: the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The silver cushion started life as a six-pointed slab, the `star` in the listing. The crystal is the model the `3D/Geometry/LoadedMesh` example loads, read from its file the way the chapter's first listing read a duck.
+> **Swift note.** Some things here are new. A picture is bytes, four per pixel. `[UInt8](repeating: 0, count:)` makes a list of that many zero bytes, and `UInt8(...)` narrows a number into one of them. `Image(width:height:premultipliedRGBA:)` builds a picture from those bytes. It hands back an optional, forced here with `!` because the sizes match by construction. `import Foundation` brings in `URL` and `FileManager`, which the model's path needs, and `while true` runs a loop until a `return` leaves it. The `// MARK:` lines are comments the editor lists in its jump bar, and nothing more.
+
+The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball wears four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, read from its file the way the chapter's first listing read a duck.
 
 ```swift
     // MARK: the parts
@@ -745,6 +569,8 @@ The second part builds the objects. The slab has no texture coordinates worth ha
     }
 
 ```
+
+> **Swift note.** `Mesh(positions: [], indices: [])` is an empty mesh standing in until `setup()` fills the property. [Chapter 12](12-FlocksAndSwarms.md) held a `Boids!` the same way before building it. The closures handed to `picture` take two arguments, `u` and `v`. Inside one, the sketch's own methods are reached through `self.`. Swift accepts `bareness(u, v)` here too, since the closure runs before `picture` returns. The listing spells `self.` to show whose function it is. `||` and `&&` are *or* and *and*, and `? :` picks one of two values. All three appeared in [Chapter 23](23-GridSimulations.md)'s Metal.
 
 The third part is the frame. There is one directional light and one environment, and the environment is doing most of the work, because every finish here is a measured one.
 
@@ -837,21 +663,208 @@ The third part is the frame. There is one directional light and one environment,
 }
 ```
 
-Five specimens, ten pictures, one light. Three of those specimens have no detail you could find in a vertex. The ball is a plain sphere, the tile is a single flat quad, and the slab is a box, and everything you can see on them was written into a picture.
+The bench is five specimens, ten pictures, and one light, and it composes most of the chapter's steps. The crystal is loaded from a file and normalized. The silver star is a cage rounded by two levels of subdivision. The ball wears a normal map, a metallic-roughness map, and a detail pair over its texture. The tile wears a height map read by parallax. The slab is textured from three sides and stamped with a decal. Every finish is a measured one, lit by an environment. The slab and the tile are dielectrics, the star is brushed metal, and the crystal is thin glass with attenuation. The plinth is lacquer, the cloth under the egg is felt with its own sheen color, and the egg scatters light under its surface. The ball and the tile have no detail you could find in a vertex, and neither does the slab they stand on. The ball is a plain sphere, the tile a single flat quad, and the slab a box. Everything you can see on them was written into a picture.
+
+> **Swift note.** The camera here is spelled out as a `Camera3D` with an eye, a target, and a projection. It holds one composed shot, where `camera(.orbiting(...))` placed the eye on an orbit. `Color(kelvin:)` names a light's color by its temperature, the way a bulb's box does.
 
 Then make it yours:
 
-- Set `parallaxMapped`'s `scale` on the tile to `0.2` and look along the slab. The carving deepens and still leaves the tile's outline perfectly straight, which is the trade the height-map section describes.
+- Set `parallaxMapped`'s `scale` on the tile to `0.2` and look along the slab. The carving deepens and still leaves the tile's outline straight, which is the trade the height-map step describes.
 - Swap the tile's `parallaxMapped` for `displaced(by:scale:)` on a `Mesh.plane(width:depth:segments: 200)`. Now the edge is carved too, and you paid for it in triangles.
-- Change `.marble(radius:)` on the egg to `.skin(radius:)` and watch the shadow terminator go warm.
-- Give the felt cushion under the egg a `sheenColor` far from its `fill`, deep red under orange, for the two-tone velvet look.
+- Raise the egg's `.marble(radius: 0.12)` to `0.4`. The light wanders so far that the egg glows from within, which is the wax look.
+- Set the felt's `sheenColor` to white, and the two-tone velvet under the egg turns to dusty cloth.
 - Point `modelURL` at a model of your own. `normalized(scale:)` fits it to the bench whatever units its author saved it in.
+
+The bench holds still, so keep it as a still. `swift run OllinLive MySketches/Bench.swift --export bench.png` writes the frame at the size the canvas is. [Chapter 38](38-FinishingASketch.md) says how to size one for a print.
+
+## A whole scene from a file: its camera, its lights, and its motion
+
+The bench loaded one mesh from a file and placed it itself. A file can hold more than one object. It can hold a whole set composed in the design tool, with a camera framing it and lights already placed. It can also remember how the set moves. This family is for loading that whole scene, and for taking it back into code once it settles.
+
+### A scene with its camera and lights: loadScene
+
+`loadMesh` flattens a file into one mesh you place yourself. `loadScene` keeps the file's structure instead of merging it. A **scene** is a tree of named nodes, each carrying a mesh, a light, the camera, or nothing but its children. It is for the case where the file *is* the placement. You composed a stage in a design tool, and you want to draw it as it was saved. One part or another moves from the sketch. Scene files are the interchange formats the 3D tools write, glTF and USD, and `loadScene` reads both.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/SceneTree-dark.jpg">
+  <img src="Images/26-Meshes/SceneTree.jpg" alt="Left, the scene file's node tree as a list: floor, pedestal with sculpture under it, orb, lamp with lampPost, lampShade, and lampLight under it, then camera, keySpot, and sun, each tagged as a mesh, a group, the camera, or a light. Middle, the stage drawn through its own camera: a gold torus on a pale pedestal, a lamp behind it, a teal orb in front. Right, the same stage with the lamp brought to the front by name, standing beside the pedestal" width="680">
+</picture>
+
+```swift
+stage = try! loadScene("Stage.gltf")            // in setup()
+
+camera(stage.camera ?? .orbiting(radius: 6))   // the file's own framing
+for l in stage.lights { light(l) }             // and its lighting
+stage["sculpture"]?.rotate(deltaTime, axis: .unitY)
+drawScene(stage)                               // every node, in its authored place
+```
+
+Everything unpacks into things you already know. The file's camera is a `Camera3D`, its lights are `Light`s, and each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single part moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The tree on the left of the figure is the file as it was saved. Every node has its name, nested the way the tool nested it. `loadMesh` would have folded all of it into one shape. `drawScene` draws it as the middle panel, through the file's own camera and under its own lights. The right panel moves one node by name, `stage["lamp"]`. The lamp's light moves with it, because a light rides the node that carries it. Move a group and everything under it, meshes and lights alike, comes along. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details.
+
+> **Swift note.** `??` hands back the value on its left when it is there, and the value on its right when the left is `nil`. So the sketch uses the file's camera, and falls back to an orbit without one. The subscript `stage["sculpture"]` also answers an optional, since a file may not hold a node of that name. The `?.` after it skips the rotate when it does not.
+
+### Motion the file remembers: animations, skins, and morph targets
+
+A file can carry motion as well as a layout. An **animation** is a set of keyframe tracks the tool recorded, and `stage.animations` holds them. It is for playing what the animator made, on the sketch's own clock, so the scene poses itself at whatever moment you ask for. The tracks come from the same glTF and USD files as the layout does.
+
+```swift
+if let spin = stage.animation("spin") {
+    stage.apply(spin, at: time.truncatingRemainder(dividingBy: spin.duration))
+}
+```
+
+The file remembers its motion, and the sketch decides when time passes. `apply` takes any time you hand it. Wrapping `time` loops the animation, `time * 0.5` plays it at half speed, and a parameter's value scrubs it. The `3D/Geometry/AnimatedScene` example plays a small orrery's authored spin this way, one seamless 8-second lap.
+
+Tracks like the orrery's move whole nodes, rigid pieces on a hierarchy. A file can also carry motion that bends the geometry itself. A *skin* ties each vertex to a few joint nodes with blend weights. A blade of kelp or an arm then flexes smoothly as its joints turn. *Morph targets* store alternate shapes for a mesh, and the node's `weights` mix them, the way faces animate between expressions. Both play through the same `apply`, and `drawScene` poses them without any extra calls. The `3D/Geometry/SkinnedScene` example is a small tidepool doing both at once, kelp swaying on skins while an anemone pulses on two morph targets. And since `weights` is a node property, `tank["anemone"]?.weights = [1, 0]` poses a blend shape from any signal you like.
+
+### A scene you can take apart
+
+Loading a scene keeps the file in charge, which is what you want while the model is still moving. Once the layout is settled, you may want to work on it as code instead. `ollin new Yard --from-scene yard.usdz` writes a project whose `draw()` is the scene spelled out. It has the camera, the lights, and a `withState` block for every node, while the meshes are still read from the file. [Bringing a scene over](../Docs/Tools/SceneImport.md) shows the result beside the scene it draws, and says what carries over and what stays behind.
+
+## More ways to make a mesh: cuts, joins, shadow art, growth, and the Hopf fibration
+
+The bench made one mesh from another when it rounded its cage, and loaded another from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. And one comes from a formula for a shape that does not fit in the room.
+
+### Cutting one solid with another: mesh booleans
+
+A **boolean** combines two solids the way a filled `Shape` combines two outlines on the plane, with the same combinations. It is for the shape that is hard to describe and easy to catch between two shapes that are not. A block with every edge rounded, a plate with a round hole, and a shell with a window cut out are all cuts. The operations are the constructive solid geometry of CAD tools. Ollin computes them by the method Bruce Naylor, John Amanatides, and William Thibault published in 1990. It holds each solid as a tree of its own face planes and sorts the other solid's surface into inside and outside.
+
+```swift
+let cube = Mesh.box(size: 1.3)
+let ball = Mesh.sphere(radius: 0.88)
+
+cube.union(ball)          // everything either one covers
+cube.intersection(ball)   // only what both cover
+cube.subtracting(ball)    // the cube, with the ball taken out of it
+```
+
+A fourth, `symmetricDifference`, keeps what only one of them covers.
+
+<img src="Images/26-Meshes/CutSolids.jpg" alt="Four solids in a row against black: a blue cube with an orange ball showing through it, labeled a cube and a ball; an orange cube with a dome bulging from each face, labeled union; a yellow-green cube with every edge and corner rounded off, labeled intersection; and a green cube with a round hole bitten through each face, labeled cube minus ball" width="880">
+
+Look at the third one. That is a cube and a ball. It is also a block with every edge and every corner rounded at once, which by hand means modeling twelve fillets. The reason to cut is rarely the hole itself. A shape that is hard to describe is often easy to *catch* between two shapes that are not.
+
+What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract` and `carve()` [Chapter 30](30-SculptingWithFields.md) works fields with. Those melt distance fields on the GPU while the frame is drawn, and leave no geometry behind. Reach for them when you want a blobby form that moves. Reach for these when you want the shape itself.
+
+Three things to know before you cut.
+
+**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Most built-in generators close, but a plane, a Möbius strip, and a cylinder without caps do not. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 38](38-FinishingASketch.md) runs before it writes a mesh for a printer.
+
+**A cutter has to be the right way out.** Mirroring a mesh turns it inside out, whether you swap two of its coordinates or scale an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
+
+```swift
+let shaft = Mesh.cylinder(radius: 0.2, height: 2)
+block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quarter turn
+```
+
+**Cut once.** This is work your processor does, not your graphics card. Solids of a few thousand triangles take a few tenths of a second, and denser ones take longer. So cut in `setup()`, or when a parameter moves, and keep the mesh for `draw()` to draw. That is the same advice as the cage, for the same reason.
+
+**Not every assembly is a cut.** Parts that only have to draw and cast a shadow together join into one mesh with no boolean at all. `placed(_:)` bakes a placement into a copy of a part, and `Mesh.joined(_:)` lays the parts end to end. A body and its four wheels become one draw call:
+
+```swift
+let body = Mesh.box(width: 1, height: 0.5, depth: 2)
+let wheel = Mesh.cylinder(radius: 0.25, height: 0.2)
+let spots = [Vector3(0.6, -0.3, 0.7), Vector3(-0.6, -0.3, 0.7), Vector3(0.6, -0.3, -0.7), Vector3(-0.6, -0.3, -0.7)]
+let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $0, rotation: Vector3(0, 0, .pi / 2))) })
+drawMesh(car)
+```
+
+The joined mesh renders as the parts would drawn one by one, and it costs nothing but the copy. Where two parts overlap, both surfaces stay inside, which is fine on screen and not for a printer. A printer wants `union`, which merges the overlap into one closed skin. The [reference](../Docs/3D/3D.md#join) says what rides along, and why a joined mesh wears one material.
+
+### One solid, two shadows: shadow art
+
+A cut keeps the part of one solid that lies inside or outside another. **Shadow art** carves a solid from pictures instead. You ask for the shadows you want it to throw, one per direction, and Ollin works out the largest solid that throws them. It is for the sculpture that reads as one thing from the front and another from the side, and for any form that only has to be right in silhouette. Sculptures built to throw chosen shadows came first. The carving is the visual hull Aldo Laurentini named in 1994, and Niloy Mitra and Mark Pauly set out shadow art as a computation in 2009. Ollin keeps the plain carve and skips their later adjustment step.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-Meshes/TwoShadowsOneSolid-dark.jpg">
+  <img src="Images/26-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+</picture>
+
+```swift
+let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
+drawMesh(art.mesh)
+```
+
+A lit point casts its shadow along the light's direction. So a point can only be part of the solid if it lands inside the shadow in *every* direction it is lit from. Keep those points and no others, and what is left is the largest solid that could cast them. That is why a shape that looks like neither shadow throws both. The points are tested on a grid of small cubes, `resolution` across. The survivors are turned into a mesh the way [Chapter 30](30-SculptingWithFields.md#the-other-way-out-field-to-mesh) turns a field into one.
+
+The shadows it really throws are never larger than the ones you asked for, and they can be smaller. The catch is that two views share an axis. The front view and the side view share the vertical axis, so their rows line up, and a row that is empty in one shadow empties it in the other. Two silhouettes come out exact when they are solid in the same rows, which is why the classic circle-and-square works. Three agree far less often, and the famous three-shadow sculptures are designed around that rather than in spite of it. `art.shadow(from: .front)` hands back what is really thrown, and where it differs from what you asked for, it is the one that is true.
+
+One practical trap if you show the solid beside flat panels, as the figure does. Lights are per-frame state, not per-shape. Calling `noLights()` after drawing the mesh, to keep the panels flat, unlights the mesh you already drew. Draw the flat panels inside `withoutLights { }` instead, which leaves the frame's lights on everything else.
+
+### A surface that outgrows itself: differential growth
+
+Subdividing takes a shape you designed and smooths it. **Differential growth** does the opposite. It hands you a shape nobody designed, out of a rule you can say in one sentence: push a mesh's vertices apart, and split any triangle that stretches so the triangles stay a fixed size. It is for the folded, brain-like and leaf-like forms that no cage could hold, grown in front of you a step a frame. [Chapter 13](13-GrowingThings.md#growth-by-crowding-differential-growth) grew a line this way, and this is the same rule on a surface. The surface form follows the thin-shell growth the studio Nervous System describes in its *Floraform* project, and Anders Hoff's mesh growth. It keeps its triangles even with the remeshing of Mario Botsch and Leif Kobbelt (2004).
+
+The surface gains area as its triangles split, and here is the part that matters. Nothing is pushing it outward. The forces run along its own edges, and those lie in the surface. It cannot get bigger the way a balloon does. So the new area has to go somewhere, and the only direction left is sideways. It folds.
+
+<img src="Images/26-Meshes/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labeled the starting mesh, an orange ball completely covered in even brain-like folds labeled everywhere, and a flattened orange form with a smooth top and a ruffled rim labeled at the equator" width="680">
+
+```swift
+// setup(), and keep it:
+growth = MeshGrowth(mesh: .icosphere(subdivisions: 3), driver: .uniform, seed: 7)
+
+// draw():
+growth.step()
+drawMesh(growth.mesh)
+```
+
+That middle one is a plain sphere that grew evenly, and nobody told it to make lobes. Grow a ball uniformly and it does not become a bigger ball. It becomes a brain. Every fold in it is the surface running out of room.
+
+The `driver` decides *where* the growth is fastest, and since every driver folds, what you are choosing is where the folds go:
+
+```swift
+MeshGrowth(mesh: ball, driver: .uniform)      // evenly, all over
+MeshGrowth(mesh: ball, driver: .curvature)    // wherever it already bulges
+
+// Only near the equator, the way a leaf grows along its margin.
+MeshGrowth(mesh: ball, driver: .field { position, _ in
+    1 - smoothstep(0.1, 0.5, abs(position.y))
+})
+```
+
+The third panel is that last one. The poles never grew, so they stayed smooth, and everything the band made had to ruffle. It is the same rule as the lettuce leaf and the kale edge. They grow faster along the rim than through the middle, and they buckle for this reason.
+
+Two parameters matter early. `edgeLength` is the triangle size, so it sets the finest fold the surface can hold and it is where the cost lives. `stiffness` is how much the surface resists bending, and it decides how *big* the folds come out. A sheet with no stiffness buckles at the smallest scale it can and reads as crumpled paper, while more of it gathers the same growth into broader waves. If a result looks like foil someone sat on, that is the parameter.
+
+There is a fourth driver, `.chemical`, that runs a reaction-diffusion pattern in the surface and grows where the pattern collects. The chemistry decides where to add area, and the new area gives the chemistry more room to spread. That is the branching-coral one, and the [reference page](../Docs/Generators/MeshGrowth.md) has it along with self-avoidance, open sheets that keep their rims, and the cost.
+
+Growth is slow on purpose. A form takes hundreds of steps, and stepping once a frame lets you watch it develop. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
+
+### A shape from four dimensions: the Hopf fibration
+
+One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space. No two of them meet, and every two of them are linked. Drawn as tubes, it makes a sculpture of linked rings. Heinz Hopf described it in 1931. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
+
+## More finishes you measure: the thin film
+
+The bench's finishes were all picked by number, and one measured finish is left. It colors a surface with a distance rather than a pigment.
+
+### Color with no pigment: the thin film
+
+Blow a soap bubble and it turns colors that were never in the soap. The wall of that bubble is a film a few hundred nanometers thick, and light reflects off both of its faces. The second reflection travels a little farther, so the two come back out of step. Where they line up a color gets brighter, and where they oppose each other it disappears. What is left is a color made by a distance. A **thin film** finish puts that film on any surface. It is for anodized titanium, oil on a wet road, the inside of a shell, and the bubble itself. The finish is Laurent Belcour and Pascal Barla's 2017 extension of the microfacet model, which adds up the light bouncing between a film's two faces.
+
+<img src="Images/26-Meshes/ThinFilm.jpg" alt="Four spheres in a row labeled bare metal, 360 nm, 600 nm, and soap film. The bare metal is a neutral mirror of a warm room; the 360 nm ball wears a violet and gold band around its edge; the 600 nm ball turns green at the top and red below; the soap film ball is dark and see-through with a colored rim" width="680">
+
+```swift
+fill(Color(white: 0.75))
+material(.anodized)                     // an oxide film over polished metal
+
+var m = Material.metal(roughness: 0.16)
+m.thinFilm = 1                          // how much of the reflection is the film's
+m.thinFilmThickness = 480               // nanometers, and this is the color parameter
+material(m)
+```
+
+The three metals are the same metal. Only the thickness of the film on them changes, and it changes everything about their color. That number is in **nanometers**, which is light's own scale rather than the scene's. It is the one measurement in the whole material that is not in world units, which is why the same value works on a bubble and on a building. The 360 nm ball wears violet and gold, the 600 nm one turns green and red, and the [thin-film reference](../Docs/3D/3D.md#thin-film) walks the thickness through its bands.
+
+Now look at any one of the filmed balls on its own. One thickness, and yet the color changes from the middle of the ball to its edge. A slanted path through the film is a longer path, so the color walks as the surface turns away from you, and it walks again when you move. That is why a bubble looks alive rather than painted, and it costs nothing. The surface *under* the film matters too, since the film's lower face is where the two meet, which is why the same film over metal and over a dark wet dielectric look nothing alike.
+
+The fourth ball is the bubble itself. `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops, so walk the thickness down over time and yours will do the same. The reference lists the other presets. This is a different thing from the stylized `iridescence` under [Chapter 25](25-3DGently.md)'s `.iridescent` finish, which is a stylized rainbow at the rim. This one is measured, so it holds its color under a moving light the way the real surface does.
 
 ## Where this comes from
 
 Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface, and the tangent-space map is how that idea reached every real-time engine. Parallax occlusion mapping is the marching read of the same picture, from the terrain and surface work of the mid-2000s. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*, and the detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles, the pair that character modeling has run on ever since.
 
-The measured finishes are the Cook-Torrance microfacet model, in the metallic-roughness form Brent Burley presented for Disney in 2012 and the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty, the clear coat is the second lobe of Google's Filament documentation, and the sheen is Estevez and Kulla's production-friendly sheen. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013; the computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues, over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The measured finishes are the Cook-Torrance microfacet model, in the metallic-roughness form Brent Burley presented for Disney in 2012 and the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty Estevez, who also wrote the production-friendly sheen used here. The clear coat is the second lobe of Google's Filament documentation. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013. The computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues, over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. The entries after the bench name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -859,18 +872,18 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 - [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
-- [Cutting solids](../Docs/3D/3D.md#booleans): the four set operations on a `Mesh`, what has to be true of the two solids, what rides along with the result, and the two shapes that come out honestly awkward.
+- [Cutting solids](../Docs/3D/3D.md#booleans): the four set operations on a `Mesh`, what has to be true of the two solids, what rides along with the result, and the two shapes that come out awkward.
 - [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
 - [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md): both schemes, what happens at an open boundary, and when to pick which.
 - [Mesh growth](../Docs/Generators/MeshGrowth.md): the differential-growth and reaction-diffusion forms, their parameters, and how to keep a growth stable.
-- [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky parameters.
+- [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highResolution` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky parameters.
 - [Atmosphere](../Docs/3D/Atmosphere.md): `aerialPerspective` with its `density` and `haziness`, how it follows a `.sky` environment's sun, and how it trades places with `fog`.
-- [Physically based materials](../Docs/3D/3D.md): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
-- [Glass](../Docs/3D/3D.md#glass): every transmission parameter with its units, the environment requirement, and the honest edges spelled out.
+- [Physically based materials](../Docs/3D/3D.md#materials): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
+- [Glass](../Docs/3D/3D.md#glass): every transmission parameter with its units, the environment requirement, and the edges spelled out.
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering parameters, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).
 - [Combining 3D features](../Docs/3D/Combining.md): which finishes reach which kind of geometry, which is the table to check when a material you expected to apply does nothing.
 - The Farmanfarmaian homage [`MirrorFamily`](../Examples/Recreations/MonirFarmanfarmaian/MirrorFamily/Sketch.swift): a relief built as two meshes of flat triangles, one wearing a near-mirror metal and one a painted finish under a clear coat. Its reflections are traced against the room the sketch builds around it, which is where a mirror's look comes from.
-- The Felguérez homages in [`Examples/Recreations/ManuelFelguerez/`](../Examples/Recreations/ManuelFelguerez/): `EspacioMultiple` pushes the flat outlines of a painting into slabs with `drawExtrude`, each to its own height. Then it pulls the slabs apart into a standing piece, so one point list is the painting, the relief and the sculpture. `RelieveLacado` raises a composed design in lacquered layers under a key light that circles slowly. With the lights off and the camera straight on it renders its own plan again, pixel for pixel, which is the check that the raising is right.
+- The Felguérez homages in [`Examples/Recreations/ManuelFelguerez/`](../Examples/Recreations/ManuelFelguerez/): `EspacioMultiple` pushes the flat outlines of a painting into slabs with `drawExtrude`, each to its own height. Then it pulls the slabs apart into a standing sculpture, so one point list is the painting, the relief and the sculpture. `RelieveLacado` raises a composed design in lacquered layers under a key light that circles slowly. With the lights off and the camera straight on it renders its own plan again, pixel for pixel, which is the check that the raising is right.
 - The Bonačić homage [`GFE164`](../Examples/Recreations/VladimirBonacic/GFE164/Sketch.swift): 1,024 tubes of four lengths as two instanced draws, the tubes lit and their glass ends drawn inside `withoutLights`, so each lit glass is its own light. One point light for every block of sixteen tubes carries the color of what is lit there onto the tubes around it. A copy's color multiplies the `fill`, so the fill goes back to white first.
 - Worked examples, in [`Examples/3D/`](../Examples/3D/): `Geometry/LoadedMesh` and `Geometry/LoadedScene`, `Materials/NormalMaps`, `Materials/SurfaceMaps`, `Materials/Parallax`, `Materials/Triplanar`, `Materials/Detail`, `Materials/Decals`, `Materials/BrushedMetal`, `Materials/CoatAndCloth`, `Materials/ThinFilm`, `Materials/SeeThrough`, and `Environments/Cloudscape`.
 

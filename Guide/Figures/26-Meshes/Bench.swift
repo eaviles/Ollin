@@ -49,8 +49,8 @@ final class Bench: Sketch {
         return Image(width: size, height: size, premultipliedRGBA: bytes)!
     }
 
-    /// The example model this chapter has been loading all along. Found by walking
-    /// up from the working directory, since a figure compiles from a copy of itself.
+    /// The crystal: a model that ships in the LoadedMesh example's folder, found by
+    /// walking up from the working directory until the path exists.
     var modelURL: URL {
         let tail = "Examples/3D/Geometry/LoadedMesh/model.obj"
         var directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
