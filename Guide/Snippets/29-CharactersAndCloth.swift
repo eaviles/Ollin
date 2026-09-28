@@ -24,9 +24,11 @@ var cloth = try! world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24
 var ball = cloth
 var banner: SoftBody3D? = cloth
 let gust = 4.0
-let sheet = Mesh.plane(width: 0.8, depth: 1.2, segments: 18)
+let sheet = Mesh.plane(width: 0.8, depth: 1.15, segments: 16)
+let bannerMesh = Mesh.plane(width: 5, depth: 2.4, segments: 16)
 var cape = cloth
 var chain = try! world.addRope(through: [Vector3(0, 0, 0), Vector3(0, -1, 0)])
 var raft = cloth
 let saved = world.snapshot()
 func splash(at point: Vector3, size: Double) {}
+let contact = world.contacts[0]

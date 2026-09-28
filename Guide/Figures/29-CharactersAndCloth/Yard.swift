@@ -56,7 +56,7 @@ final class Yard: Sketch {
 
         // A soft body is its mesh. Pinning the two top corners is what turns a
         // sheet into a banner rather than a dropped cloth.
-        banner = try? world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -4.2),
+        banner = try? world.addSoftBody(from: bannerMesh, at: Vector3(-1.2, 3.1, -3.0),
                                    mass: 1.2, stiffness: 0.7, damping: 0.2,
                                    pinned: { $0.z < -1.0 && abs($0.x) > 2.2 })
 
