@@ -52,7 +52,7 @@ drawPoints(fitted(trail, in: bounds.inset(by: .all(80))), size: 1)
 
 `next` applies the formula once, and the loop is the whole iteration. `map.orbit(count:)` does the same loop in one call. The points live within about plus or minus two, so `fitted` places them the way it placed the fern. The low alpha is what makes a **density plate**: one dot is nearly invisible, and where the orbit returns often the dots stack. Turn the alpha up to 1 and the same points flatten into a silhouette.
 
-For a plate with millions of visits, let the canvas keep every frame's dots. Call `noClear()` in `setup()`, as [Chapter 12](12-FlocksAndSwarms.md#roaming-wander-and-trails-from-noclear) did for its trails. Then draw each frame's new points with `blendMode(.add)` from [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes), so a faint dot adds its light to what is under it rather than painting over it. Draw tens of thousands of new points a frame at a very low alpha, and after a few seconds each plate holds well over a million visits:
+For a plate with millions of visits, let the canvas keep every frame's dots. Call `noClear()` in `setup()`, as [Chapter 12](12-FlocksAndSwarms.md#roaming-wander-and-trails-from-noclear) did for its trails. Then draw each frame's new points with `blendMode(.add)` from [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes). With that mode, a faint dot adds its light to what is under it rather than painting over it. Draw tens of thousands of new points a frame at a very low alpha. After a few seconds each plate holds well over a million visits:
 
 <img src="Images/22-IteratedForms/Plates.jpg" alt="Four glowing pale-blue density plates on near-black: two Clifford attractors above and two de Jong attractors below, each a folded translucent form like an X-ray of smoke" width="560">
 
@@ -60,7 +60,7 @@ Every constant in `clifford(a:b:c:d:)` reshapes the form completely. Most values
 
 ## Circles used as mirrors: inversion limit sets
 
-The third panel comes from a chance game again, with a different kind of move. **Inverting** a point in a circle turns the plane inside out around that circle. The rim stays where it is, points near the center fly far away, and points far away land near the center. The circle acts as a mirror. Take an arrangement of circles, invert the dot in one picked at random, mark where it lands, and repeat. The orbit settles onto the arrangement's **limit set**, the set of points the mirrors, taken together, send onto itself, the way the fern's four rules did. The one rule of the game is never to pick the same circle twice in a row, because inverting twice in the same circle undoes itself.
+The third panel comes from a chance game again, with a different kind of move. **Inverting** a point in a circle turns the plane inside out around that circle. The rim stays where it is, points near the center fly far away, and points far away land near the center. The circle acts as a mirror. Take an arrangement of circles, invert the dot in one picked at random, mark where it lands, and repeat. The orbit settles onto the arrangement's **limit set**. The mirrors, taken together, send that set of points onto itself, the way the fern's four rules did. The one rule of the game is never to pick the same circle twice in a row. A second inversion in the same circle would undo the first.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/FractalFamily-dark.jpg">
@@ -90,7 +90,7 @@ The five centers sit on a circle of radius `ring`, a fifth of a turn apart. A ra
 
 ## A group drawn as one curve: Kleinian limit sets
 
-The last panel has no randomness in it at all. It comes from two **Möbius transformations**, which are the maps that send circles to circles. The **group** they generate is everything you can combine out of them: one map, then the other, then the first one backwards, in every order and to every depth. A **Kleinian limit set** is the boundary all those combinations pile up against. Walking the group in order, rather than at random, traces that boundary as one line:
+The last panel has no randomness in it at all. It comes from two **Möbius transformations**, which are the maps that send circles to circles. The **group** they generate is everything you can combine out of them. You apply one map, then the other, then the first one backwards, in every order and to every depth. A **Kleinian limit set** is the boundary all those combinations pile up against. Walking the group in order, rather than at random, traces that boundary as one line:
 
 ```swift
 let curve = kleinianLimitSet(.lace)
@@ -196,11 +196,11 @@ final class OrbitPlate: Sketch {
 }
 ```
 
-> **Swift note.** `switch index` picks one branch by a value. Each `case` is one value, `default` is every other, and a `return` inside a case leaves the function with that branch's answer. `trail.reserveCapacity(budget)` asks the list to set room aside before the loop fills it, so it never has to grow. `clouds` is a list of lists, like the trails in [Chapter 10](10-Vectors.md)'s chasers, and `(0 ..< 4).map { orbit($0) }` builds it with the `$0` form from [Chapter 6](06-GridsAndRepetition.md).
+> **Swift note.** `switch index` picks one branch by a value. Each `case` is one value, `default` is every other, and a `return` inside a case leaves the function with that branch's answer. `trail.reserveCapacity(budget)` asks the list to set room aside before the loop fills it, so it never has to grow. The property `clouds` is a list of lists, like the trails in [Chapter 10](10-Vectors.md)'s chasers. The call `(0 ..< 4).map { orbit($0) }` builds it with the `$0` form from [Chapter 6](06-GridsAndRepetition.md).
 
 Run it, then pull the ink alpha down and the point budget up. What each function does:
 
-- `build()` makes the four clouds once, in `setup()`, and makes them again only when `Points per panel` moves. Building them every frame would cost the same work sixty times a second for a picture that never changes. `seed(3)` inside it is what keeps the fern and the mirrors' dust the same from one build to the next. The mirrors get a third of the budget, since their dust crowds faster, and the Kleinian curve has a point count of its own and ignores it.
+- `build()` makes the four clouds once, in `setup()`, and makes them again only when `Points per panel` moves. Building them every frame would cost the same work sixty times a second for a picture that never changes. `seed(3)` inside it is what keeps the fern and the mirrors' dust the same from one build to the next. The mirrors get a third of the budget, since their dust crowds faster. The Kleinian curve has a point count of its own and ignores the budget.
 - `orbit(_:)` is where the four systems live, and it is the only place they differ. Three of them return a cloud they generated. The Kleinian one returns a curve's points, which is the same list of `Vector2` and so plots identically.
 - `plot(_:in:ink:)` never asks what it is drawing. `fitted` measures whatever it is handed and scales it into the panel. That is why the fern's own coordinates and the Clifford map's plus-or-minus-two range both land correctly, with no per-system numbers anywhere.
 - The low alpha is the reason these read as forms rather than scribble. A single dot is nearly invisible. Where the orbit returns often the dots stack, and the density becomes the image. Turn `Ink` up to 0.6 and the picture flattens into a silhouette, which is the same information with the interesting part thrown away.
@@ -217,11 +217,11 @@ The plate is a still, so keep it as one. `swift run OllinLive MySketches/OrbitPl
 
 ## More games with transformations: fractal flames and Schottky circles
 
-The plate plays two chance games and walks one group. The same move, play transformations and see where the orbit lives, gives two more pictures. The fractal flame is a chaos game whose rules bend as well as squash, and the Schottky circles are the paired circles behind the Kleinian curve.
+The plate plays two chance games and walks one group. The same move, play transformations and see where the orbit lives, gives two more pictures. The fractal flame is a chaos game whose rules bend as well as squash. The Schottky circles are the paired circles behind the Kleinian curve.
 
 ### The chaos game with a twist: fractal flames
 
-A **fractal flame** is the chaos game with two additions. Each rule finishes with a nonlinear twist, a swirl or a fold or a turning inside out, so the copies are bent as well as shrunk. And instead of plotting dots, every pixel *counts* how many times the orbit visited it, and the picture shows the logarithm of those counts. A logarithm compresses a range. A pixel visited a million times comes out only a few steps brighter than one visited a thousand. That is what lets the blazing core and the faintest veil appear in one image. The color comes from which rules carried the orbit there, rather than from where it landed. Flames are for pictures with a range of tone no fill can give, and for watching a picture rise out of noise. The algorithm is Scott Draves's, begun in 1992 and written up with Erik Reckase. It ran for years as a screensaver that evolved flames by popular vote. The left panel of the figure in the mirrors step is one:
+A **fractal flame** is the chaos game with two additions. Each rule finishes with a nonlinear twist. The twist can be a swirl, a fold, or a turning inside out, so the copies are bent as well as shrunk. And instead of plotting dots, every pixel *counts* how many times the orbit visited it, and the picture shows the logarithm of those counts. A logarithm compresses a range. A pixel visited a million times comes out only a few steps brighter than one visited a thousand. That is what lets the blazing core and the faintest veil appear in one image. The color comes from which rules carried the orbit there, rather than from where it landed. Flames are for pictures with a range of tone no fill can give, and for watching a picture rise out of noise. The algorithm is Scott Draves's, begun in 1992 and written up with Erik Reckase. It ran for years as a screensaver that evolved flames by popular vote. The left panel of the figure in the mirrors step is one:
 
 ```swift
 var source = SplitMix64(seed: 6)
@@ -234,7 +234,7 @@ drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
 
 ### Circles that pair off: Schottky groups
 
-A **Schottky group** starts with four circles paired two and two. A pairing is a Möbius map that turns everything outside one circle into the inside of its partner. Whatever you hand it comes back smaller, sitting in the partner. Hand a pairing the other three circles and you get three smaller circles nested inside one of them. Do it again with every pairing and its inverse, in every order, and those nest again, forever. The group is everything you can combine out of the pairings, and the lace it leaves is the group drawn at once. It is for lace you can plot, since what comes back is circles rather than dust. It is also for the family of pictures that runs from the lace to the Apollonian gasket, a disc filled with circles that all touch. Friedrich Schottky described the paired-circle groups in 1877, and the way to draw them comes from *Indra's Pearls*, the same book the Kleinian curves come from.
+A **Schottky group** starts with four circles paired two and two. A pairing is a Möbius map that turns everything outside one circle into the inside of its partner. Whatever you hand it comes back smaller, sitting in the partner. Hand a pairing the other three circles and you get three smaller circles nested inside one of them. Do it again with every pairing and its inverse, in every order, and those nest again, forever. The group is everything you can combine out of the pairings, and the lace it leaves is the group drawn at once. It is for lace you can plot, since what comes back is circles rather than dust. It is also for the family of pictures that runs from the lace to the Apollonian gasket, a disc filled with circles that all touch. Friedrich Schottky described the paired-circle groups in 1877. The way to draw them comes from *Indra's Pearls*, the same book the Kleinian curves come from.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/CirclesPairOff-dark.jpg">
@@ -266,7 +266,7 @@ drawCircles(schottkyCircles(ta: Vector2(2, 0), tb: Vector2(2, 0),
                             in: canvasRectangle.inset(by: .all(60)), maxDepth: 100))
 ```
 
-A trace travels as a `Vector2`, its two numbers side by side, and the complex-plane entry at the end of the chapter says what the second one means. The gasket is deep enough to want more generations than the default. The Kleinian presets name the same traces, so `schottkyCircles(.gasket, in:)` is this call. `.gasket` here and `.gasket` there are the same group, drawn two ways. The [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) example animates a small arc of this family, out from the gasket and back.
+A trace is passed as a `Vector2`, its two numbers side by side. The complex-plane entry at the end of the chapter says what the second one means. The gasket is deep enough to want more generations than the default. The Kleinian presets name the same traces, so `schottkyCircles(.gasket, in:)` is this call. `.gasket` here and `.gasket` there are the same group, drawn two ways. The [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) example animates a small arc of this family, out from the gasket and back.
 
 ## Order into chaos: the bifurcation diagram, billiards, and the double pendulum
 
@@ -274,7 +274,7 @@ Every system so far was plotted where its orbit went, and each settled onto one 
 
 ### One dial away from chaos: the bifurcation diagram
 
-A **bifurcation diagram** shows what a map with one dial does at every setting of the dial. Sweep the dial, let the orbit settle at each position, and plot where it landed. It is for a question the chaotic maps could not ask, since their constants were fixed: when does a formula fall apart? The one-dimensional `IteratedMap` family answers it. Its famous member is the **logistic map**, `x' = r·x·(1 − x)`, a toy model of a population, where `x` is this year's crowding and `r` is how fast it breeds. Robert May's 1976 paper in *Nature* made the map and its diagram famous, and the rhythm of its forks is Mitchell Feigenbaum's discovery.
+A **bifurcation diagram** shows what a map with one dial does at every setting of the dial. Sweep the dial, let the orbit settle at each position, and plot where it landed. It is for a question the chaotic maps could not ask, since their constants were fixed: when does a formula fall apart? The one-dimensional `IteratedMap` family answers it. Its famous member is the **logistic map**, `x' = r·x·(1 − x)`, a toy model of a population. The value `x` is this year's crowding, and `r` is how fast the population breeds. Robert May's 1976 paper in *Nature* made the map and its diagram famous, and the rhythm of its forks is Mitchell Feigenbaum's discovery.
 
 <img src="Images/22-IteratedForms/Bifurcation.jpg" alt="The logistic map's bifurcation diagram in dark ink on white: a single settled line forks into two branches, then four, compressing into a gray band of chaos threaded with pale periodic windows, with the forks at 3.0 and 3.45 and the period-3 window at 3.83 labeled" width="680">
 
@@ -287,11 +287,11 @@ Each column of the image is one position of the dial, and `samplesPerColumn` is 
 
 The diagram reads left to right like a story. At low `r` the population settles to one steady value, a single line. At 3 the line forks, and the orbit flips between two values forever. The forks come faster and faster until, just past 3.57, they never stop coming and the orbit never repeats again. Nothing random was added anywhere in this picture. Chaos here is a dial turned too far. The pale slots inside the gray are windows where order briefly returns, and the wide one near 3.83 holds the entire diagram again in miniature. Sweep `over: 3.82...3.87` and see.
 
-Two companions go with the diagram. `cobweb(at:steps:)` traces one orbit as the classic staircase between the map's curve and the diagonal, which is the way to *watch* a single dial position. `lyapunovExponent(at:)` scores one, where negative means settling and positive means chaos. The [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) example prints the diagram with the exponent traced beneath it, dipping below zero at every window.
+Two companions go with the diagram. The call `cobweb(at:steps:)` traces one orbit as the classic staircase between the map's curve and the diagonal. Use it to *watch* a single dial position. `lyapunovExponent(at:)` scores one, where negative means settling and positive means chaos. The [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) example prints the diagram with the exponent traced beneath it, dipping below zero at every window.
 
 ### A ball in a room: billiards
 
-A **billiard** is the same question with no formula in it. Let a ball loose in a room. It goes straight until it meets the wall, then leaves at the angle it arrived at, forever. That is the entire rule, and it is iteration in the plainest form there is. It is for finding out how much of a picture comes from the rule and how much from the room, because here the rule never changes. The study goes back to a question of Birkhoff's. The two disorderly rooms below are Leonid Bunimovich's stadium and Yakov Sinai's square with a post in it.
+A **billiard** is the same question with no formula in it. Let a ball loose in a room. It goes straight until it meets the wall, then leaves at the angle it arrived at, forever. That is the entire rule, and it is iteration in the plainest form there is. It is for finding out how much of a picture comes from the rule and how much from the room. Billiards can answer that because here the rule never changes. The study goes back to a question of Birkhoff's. The two disorderly rooms below are Leonid Bunimovich's stadium and Yakov Sinai's square with a post in it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/BallInARoom-dark.jpg">
@@ -329,11 +329,11 @@ A **double pendulum** is two weights on two rigid arms, hinged end to end, with 
   <img src="Images/22-IteratedForms/PendulumFan.jpg" alt="Two panels: one double pendulum over its looping twelve-second trace, and sixteen pendulums that started a ten-thousandth of a radian apart, fanned out in every direction after eight seconds" width="680">
 </picture>
 
-This machine is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos means, here, in the stadium, and in the gray band of the logistic map. A fan of near-identical pendulums is the cheapest way to watch it happen. [`Examples/Motion/DoublePendulum`](../Examples/Motion/DoublePendulum/Sketch.swift) draws one: twenty-four pendulums that swing as one line, then pull apart.
+This machine is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos means. It means the same here, in the stadium, and in the gray band of the logistic map. A fan of near-identical pendulums is the cheapest way to watch it happen. [`Examples/Motion/DoublePendulum`](../Examples/Motion/DoublePendulum/Sketch.swift) draws one: twenty-four pendulums that swing as one line, then pull apart.
 
 ## Iteration at every pixel: escape time, Newton's basins, and domain coloring
 
-Every orbit so far was plotted where it went, one wandering point at a time. The other way to iterate is to give every pixel a loop of its own and ask it one question, the per-pixel model of [Chapter 18](18-YourFirstShader.md#one-question-a-million-times-per-pixel-thinking). Escape time asks each pixel when its orbit left. The Buddhabrot keeps the paths escape time throws away. Newton's basins ask where an orbit lands, and domain coloring asks about a single step instead of a loop. The complex-plane entry hands the arithmetic under them to a shader of your own.
+Every orbit so far was plotted where it went, one wandering point at a time. The other way to iterate is to give every pixel a loop of its own and ask it one question. It is the per-pixel model of [Chapter 18](18-YourFirstShader.md#one-question-a-million-times-per-pixel-thinking). Escape time asks each pixel when its orbit left. The Buddhabrot keeps the paths escape time throws away. Newton's basins ask where an orbit lands, and domain coloring asks about a single step instead of a loop. The complex-plane entry hands the arithmetic under them to a shader of your own.
 
 ### Iteration without memory: escape-time fractals and orbit traps
 
@@ -364,7 +364,7 @@ if let plane = set.plane {
 }
 ```
 
-The other way round, `planePoint(at:in:)` reads the number under the pointer, which is how a sketch lets you pick a `c` by clicking on the set.
+The other way round, `planePoint(at:in:)` reads the number under the pointer. A sketch uses it to let you pick a `c` by clicking on the set.
 
 The bands look stepless rather than like contour lines, because the coloring uses a smoothed escape count rather than a whole number. `cycles` sets how many times the palette repeats across the range. `phase` walks the colors along the bands, which is the drifting-color animation, and it costs nothing because it recolors rather than recomputes.
 
@@ -429,7 +429,7 @@ You place the roots yourself, up to eight. The palette spreads around them in or
 
 The middle panel changes the step. `relaxation` scales it. Below 1 the method creeps and the basins fatten. Above 1 it overshoots, and the basins spiral and throw off islands. Five roots at 1.3 is what the panel shows. Feed the dial a slow sine and the whole plane breathes. [`Examples/Effects/NewtonBasins`](../Examples/Effects/NewtonBasins/Sketch.swift) holds the dial still and sends its roots riding orbits of their own instead.
 
-The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2 the step sends 0 to 1 and 1 back to 0, and that cycle pulls in everything near it. Those pixels are painted `trapped`, the two dark pools in the panel, one at 0 and one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
+The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2, the step sends 0 to 1 and 1 back to 0. That cycle pulls in everything near it. Those pixels are painted `trapped`, the two dark pools in the panel, one at 0 and one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
 
 ### A picture of a function: domain coloring
 
@@ -466,7 +466,7 @@ The generator paints the named functions and a rational one. A function of your 
 
 The **complex plane** reads a point as a number, `x + y·i`, where `i` is the square root of minus one. Multiplying two of these multiplies their lengths and **adds their angles**, and the rest of this entry follows from that one rule. It is for writing a function of the plane yourself, and for seeing why the squaring step of escape time behaves as it does. The arithmetic here follows the textbook, with one shader function per operation, after Harley Turan's walkthrough of it in GLSL.
 
-`cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. It also squares the length, so a point outside the circle of radius 1 moves farther out and a point inside it moves in. That is the step escape time repeats at every pixel, with a fixed number added each time. `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. The other functions build on the same rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md), so a number you work out in `draw()` means the same thing in a shader. The three tiles below are three such functions painted this way:
+`cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. It also squares the length, so a point outside the circle of radius 1 moves farther out and a point inside it moves in. That is the step escape time repeats at every pixel, with a fixed number added each time. `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. The other functions build on the same rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md). A number you work out in `draw()` therefore means the same thing in a shader. The three tiles below are three such functions painted this way:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/ComplexPlane-dark.jpg">
@@ -506,13 +506,13 @@ Each of these is a circle of Apollonius, the set of points where the ratio has o
 
 ## Where this comes from
 
-The plate's four systems come first. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong, and Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, the Ikeda map out of laser optics, and Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*, which made Felix Klein's groups visible. The entries after the plate name their own sources: Draves and Reckase, Schottky and *Indra's Pearls* again, May and Feigenbaum, Birkhoff, Bunimovich, and Sinai, Neumann, Julia and Mandelbrot, Green, Cayley and Peitgen and Richter, Farris and Wegert, and Turan. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The plate's four systems come first. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong, and Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, the Ikeda map out of laser optics, and Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*, which made Felix Klein's groups visible. The entries after the plate name their own sources. They are Draves and Reckase, Schottky and *Indra's Pearls* again, May and Feigenbaum, and Birkhoff, Bunimovich, and Sinai. Then come Neumann, Julia and Mandelbrot, Green, Cayley and Peitgen and Richter, Farris and Wegert, and Turan. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both family builders and why a tangent pair keeps the picture full, and the escape-time family with its orbit traps.
 - [Billiards](../Docs/Generators/Billiards.md): the four rooms, letting a ball go, what each room draws and why, posts standing in a room, and drawing the room itself. The [`Examples/Patterns/Billiards`](../Examples/Patterns/Billiards/Sketch.swift) example puts all four side by side with a fan of balls.
-- [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that carries a million orbits at once, which [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow) puts to work as a field of drifting points.
+- [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that runs a million orbits at once. [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow) puts that tier to work as a field of drifting points.
 - [Chaotic maps and bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [The double pendulum](../Docs/Simulation/Motion.md#pendulum): its settings, the `energy` check, and why a live `deltaTime` gives up the exact replay.
 - [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding parameters.
