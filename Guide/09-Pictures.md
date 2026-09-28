@@ -166,7 +166,7 @@ let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 
 and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. [Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright. Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
 
-You can also write pixels. The initializer `Image(width:height:)` makes a blank image, and `image[x, y] = color` paints one pixel. So a picture can come out of code as readily as out of a file. Run a double loop over every pixel, color each from a [Chapter 2](02-Color.md) ramp read by height, and add a little [Chapter 5](05-Noise.md) noise. The result is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and everything in this chapter reads an authored image the way it reads a photograph.
+You can also write pixels. The initializer `Image(width:height:)` makes a blank image, and `image[x, y] = color` paints one pixel. So a picture can come out of code as readily as out of a file. Run a double loop over every pixel, color each from a [Chapter 2](02-Color.md) ramp read by height, and add a little [Chapter 5](05-Noise.md) noise. The result is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and every picture tool in this chapter reads an authored image the way it reads a photograph.
 
 ## Putting it together: a picture painted with type
 

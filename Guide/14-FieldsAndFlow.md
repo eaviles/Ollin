@@ -14,7 +14,7 @@ A field is a rule, not a grid of stored values. Hand it any point of the plane a
 
 A **number field** answers with a number. [Chapter 5](05-Noise.md)'s `noise` is one, and so is any function you write that takes a point and returns a value. A number field makes two kinds of picture. Painted as tone, it is the cloudy gray you know from noise. Traced where it equals some chosen value, it is a set of curves, and those curves are the first thing this chapter draws.
 
-A **direction field** answers with a direction, a *which way* at every point. The print at the top of the chapter is made of one. Lines that follow the answers gather into currents, and particles set loose on it drift along them. The direction field comes after the plate, and it carries the rest of the chapter.
+A **direction field** answers with a direction, a *which way* at every point. The print at the top of the chapter is made of one. Lines that follow the answers gather into currents, and particles set loose on it drift along them. The chapter turns to the direction field after [the vibrating plate](#standing-waves-chladni-figures), and most of what follows is built on one.
 
 ## Where the field equals something: contours
 

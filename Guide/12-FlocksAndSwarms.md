@@ -12,7 +12,7 @@ Before we start, one word about names. The field calls these creatures *autonomo
 
 ## A creature that steers: `Vehicle`
 
-Here is the chase recipe from [Chapter 10](10-Vectors.md) one more time, because this whole chapter is built from it:
+Here is the chase recipe from [Chapter 10](10-Vectors.md) one more time, because the creatures and the flock in this chapter are built from it:
 
 ```swift
 let desired = (target - position).normalized * maxSpeed
@@ -21,7 +21,7 @@ let steer = (desired - velocity).limited(to: maxForce)
 
 Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing with mass turns instantly. [Chapter 10](10-Vectors.md#steering-the-chase) drew that move as arrows, with the steer running from the tip of the velocity to the tip of the desired.
 
-Everything a `Vehicle` or a boid does in this chapter is this same move with a different idea of *desired*, and that is how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
+Everything a `Vehicle` or a boid does in this chapter is this same move with a different idea of *desired*. Ollin's `Vehicle` and `Boids` are built on that move. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
 
 ```swift
 let creature = Vehicle(at: Vector2(540, 540), maxSpeed: 4, maxForce: 0.15, seed: 1)
