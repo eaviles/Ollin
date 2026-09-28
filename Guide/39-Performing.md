@@ -6,7 +6,7 @@
 
 <img src="Images/39-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core" width="560">
 
-This chapter puts code on stage. You type over the running picture in a performance host, evaluate each change without stopping it, and record the set as you play it. The steps build a set in five evaluations, and the picture above is its last state. After it come more of the host, looks you call back, and nights you replay. Then parameters are directed by keys, by hand, or by another machine's clock, and written as rules. Last come live feeds into other apps.
+This chapter puts code on stage. You type over the running picture in a performance host and evaluate each change without stopping it. You also record the **set**, the performance from start to end, as you play it. The steps end in a set of five evaluations, and the picture above is its last state. After it come more of the host, looks and runs you come back to, and parameters directed or written as rules. Last come live feeds into other apps.
 
 ## Performing the code itself: live coding
 
@@ -19,19 +19,19 @@ This chapter puts code on stage. You type over the running picture in a performa
 
 The loop differs from the live-reload host you have used since [Chapter 1](01-HelloOllin.md). There is no separate editor and no file being watched. You type in the window, into the **buffer**, the text the host holds, and press **⌘↩** to **evaluate** it. Evaluating compiles the buffer, turning the Swift into a program the Mac can run, and swaps the running sketch for the new one. The compile happens in the background while the old sketch keeps drawing. When it succeeds, the new sketch takes over with the clock carried across. A motion driven by `time` then does not jump in the middle of a set.
 
-The swap happens twice. A plain build goes on stage the moment it compiles. An optimized build, whose code runs faster, follows when it is ready, with the clock carried again. So an edit shows sooner, and the sketch still runs at full speed. [Live coding](../Docs/Tools/LiveCoding.md#the-evaluate-loop) has the numbers, and the flag for a sketch that should not start over twice. Tuned `@Param` values carry across too, including ones bound over MIDI or OSC.
+The swap happens twice. A plain build goes on stage the moment it compiles. An optimized build, whose code runs faster, follows when it is ready, with the clock carried again. So an edit shows sooner, and the sketch still runs at full speed. [Live coding](../Docs/Tools/LiveCoding.md#the-evaluate-loop) has the numbers, and a flag that keeps to one build. Tuned `@Param` values carry across too, including ones bound over MIDI or OSC.
 
-A typing mistake leaves the stage alone. The last good sketch keeps playing, the errors appear in a strip along the bottom, and you fix them and evaluate again. **⌃⇧H** hides the code when it should get out of the way, and **⌃⌘F** makes the window fill the projector. For a real set, `Scripts/OllinLiveCoding` builds the host in release mode, so the framework itself renders at full speed.
+A typing mistake leaves the stage alone. The last good sketch keeps playing, the errors appear in a strip along the bottom, and you fix them and evaluate again. **⌃⇧H** hides the code when it should get out of the way, and **⌃⌘F** makes the window fill the projector. For a real set, `Scripts/OllinLiveCoding` builds the host itself optimized, in what Swift calls release mode, so the framework renders at full speed.
 
 Evaluation never writes your file. **⌘S** does, so you can try things freely and keep only what worked.
 
-What a swap does to the run depends on what you changed. The host compares your buffer with the code the stage was built from. If you changed nothing but the inside of a method, the run carries on. `setup()` does not run again, so the canvas keeps what is piled on it, and `random()` picks up where it was. A canvas that has been piling up marks for ten minutes keeps them. Change a property, a method's name or arguments, `setup()`, or anything `setup()` calls, and the run starts over. It also starts over when `setup()` sets a stored property that is not marked `@Saved`, because the carried run would find that property empty. The small message that appears on the stage after each evaluation says which happened, and the editor lights the block you were in. To carry state of your own across an edit, mark it `@Saved`, the word [Chapter 41](41-Installations.md#picking-up-where-it-left-off) uses to carry a sketch across a relaunch. [Live coding](../Docs/Tools/LiveCoding.md#what-the-edit-changed) has the full rule.
+What a swap does to the run depends on what you changed. The host compares your buffer with the code the stage was built from. If you changed nothing but the inside of a method, the run carries on. `setup()` does not run again, so the canvas keeps what is piled on it, and `random()` picks up where it was. A canvas that has been piling up marks for ten minutes keeps them. Add or remove a declaration, change a stored property, a method's name or arguments, `setup()`, or anything `setup()` calls, and the run starts over. It also starts over when `setup()` names a stored property that is not marked `@Saved`, because the carried run would find that property empty. The small message that appears on the stage after each evaluation says which happened, and the editor lights the block you were in. To carry state of your own across an edit, mark it `@Saved`, a word written before a property that keeps its value. [Chapter 41](41-Installations.md#picking-up-where-it-left-off) uses it to carry a sketch across a relaunch. [Live coding](../Docs/Tools/LiveCoding.md#what-the-edit-changed) has the full rule.
 
 ## Keeping the take
 
 A set happens once. The parameter you moved and the evaluation that landed at the right moment will not happen the same way again. Every exporter in [Chapter 38](38-FinishingASketch.md) renders the sketch again on a fixed clock, which gives the same file every run. A performance needs the opposite: a recording of what happened in real time. One recorded run of a performance is called a **take**.
 
-The host records one. Press **⌘⇧R** and a small red counter starts on the stage. Play the set. Press **⌘⇧R** again, and the take is a movie in `~/Movies/Ollin/`, picture and sound together, named after the sketch and the moment. The recording carries on through evaluations, so a set that changed its code twelve times is still one continuous movie.
+The host records one. Press **⌘⇧R** and a small red counter starts on the stage. Play the set. Press **⌘⇧R** again, and the take is a movie in `~/Movies/Ollin/`, picture and sound together, named after the sketch and the moment. The recording carries on through evaluations as long as the canvas keeps its size. A set that changed its code twelve times is still one continuous movie.
 
 A sketch can also record itself, with one pair of calls. Here the R key starts and stops it:
 
@@ -46,7 +46,7 @@ override func keyPressed() {
 }
 ```
 
-The sound needs no wiring. The recorder finds the instruments the sketch holds, and what they play lands in the movie's sound in time with the picture. When the music comes from outside the sketch, record the room instead. `startRecording(audio: .microphone)` asks for the microphone and records the air.
+The sound needs no wiring. The recorder finds the instruments the sketch holds, and what they play lands in the movie's sound in time with the picture. When the music comes from outside the sketch, record the room instead. `startRecording(audio: .microphone)` asks for the microphone and records what it hears.
 
 For a run filmed from its first frame, the live-reload host takes a flag:
 
@@ -54,11 +54,11 @@ For a run filmed from its first frame, the live-reload host takes a flag:
 swift run OllinLive MySketches/Finale.swift --record
 ```
 
-Quitting the host finishes the movie first, and so does Control-C in the terminal, so a take that ends badly is still a take. [`Examples/Export/Record`](../Examples/Export/Record/Sketch.swift) is an instrument you drag to play, and [Recording](../Docs/Output/Recording.md) has the rest.
+Quitting the host finishes the movie first, and so does Control-C in the terminal, so the file is complete however the take ends. [`Examples/Export/Record`](../Examples/Export/Record/Sketch.swift) is an instrument you drag to play, and [Recording](../Docs/Output/Recording.md) has the rest.
 
 ## Putting it together: a set in five evaluations
 
-The finished sketch is a short performed set. You build the picture above the way an audience would watch it grow, one evaluation at a time. The set uses the performance host and its evaluate loop, a take recorded with ⌘⇧R, and the `Visual` chains of [Chapter 18](18-YourFirstShader.md#patching-without-typing-metal-visual-chains). Each step adds one call to a chain.
+The finished sketch is a short performed set. You build the picture above the way an audience would watch it grow, one evaluation at a time. The set uses the performance host and its evaluate loop, a take recorded with ⌘⇧R, and the `Visual` chains of [Chapter 18](18-YourFirstShader.md#patching-without-typing-metal-visual-chains). Each evaluation adds to one chain.
 
 Open the host with a new buffer. It starts with a small sketch of circles. Delete the body of its `draw()`, and type each step into it:
 
@@ -92,13 +92,13 @@ final class Finale: Sketch {
 }
 ```
 
-It is short enough to type from memory on stage. Each step changes only the inside of `draw()`, so the run carries on through all five, and the clock never jumps. `.colorCycled` adds to the hue, the saturation, and the brightness together. That is why the last look turns lilac and gray rather than only changing hue.
+It is short enough to type from memory on stage. Each step changes only the inside of `draw()`, so the run carries on through all five, and the clock never jumps. `.colorCycled` adds to the hue, the saturation, and the brightness together, so the last look turns lilac and gray rather than only changing hue.
 
 Then make it yours:
 
 - Play the steps in another order, or swap step 2's fold for `.repeated(x: 3, y: 3)`, and the mandala becomes wallpaper.
-- Put the oscillator's frequency on a `@Param` and bind it to a MIDI knob, as in [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc). The set then has a second instrument.
-- Perform a sketch from earlier in the guide, since any of them runs in the host as it is. Try evaluating changes into [Chapter 23](23-GridSimulations.md)'s reaction-diffusion while it grows.
+- Put the oscillator's frequency on a `@Param` and bind it to a MIDI knob, as in [Chapter 35](35-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing). The set then has a second instrument.
+- Perform a sketch from earlier in the guide, since any of them runs in the host as it is. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring)'s breathing ring has no `setup()`, so every edit to its `draw()` carries the run. A sketch that builds its state in `setup()` starts over on each evaluation instead.
 
 Keep the set as you play it. Press ⌘⇧R before the first evaluation, and the take keeps every evaluation as it happened. Save the buffer with ⌘S. For a clean copy of the finished look, export the saved file as video:
 
@@ -108,9 +108,9 @@ swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 
 
 ## More of the performance host: completion, a controller, and the drag
 
-The set used the host's editor and its evaluate key. Three more parts of the host help during a longer set. Completion finishes the names you type, and a controller can run the host's own actions. A drag on the stage moves a shape by rewriting its numbers.
+The set used the host's editor and its evaluate key. More parts of the host help during a longer set. Completion finishes the names you type, and a controller can run the host's own actions. A drag on the stage moves a shape by rewriting its numbers.
 
-### Names in reach: completion
+### Finishing a name as you type: completion
 
 Completion offers the names that can follow what you have typed. Use it on stage to type a call without looking it up. It comes from SourceKit, the Swift toolchain's own completion service, which Xcode uses too. The first letters of a call open a list under the text cursor. It holds every drawing call, every color, and every member of a value the buffer holds. Return or Tab takes the row, and the call lands with its arguments as blanks that Tab walks through. A dot after `Color` lists the palette. Escape opens the list when it is closed and closes it when it is open. So a stray Escape never drops the stage out of full screen. [Live coding](../Docs/Tools/LiveCoding.md#completing-a-name) has the keys, and the switch that keeps the list away until you ask.
 
@@ -120,11 +120,11 @@ The host's own actions, such as evaluating, hiding the code, and recording, can 
 
 ### Moving a shape on stage: the Command-drag
 
-The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Use it to place a shape by hand while the audience watches the numbers change. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the handle, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries on. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
+The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Use it to place a shape by hand while the audience watches the numbers change. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries on. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
 
 ## Looks and nights you come back to: cues and replay
 
-The set moves forward and never returns. A longer set comes back to looks it had before, and a good night can be played again. A cue saves a look to call back later. A take file records a whole run so it can be played again, frame for frame.
+The set moves forward and never returns. A longer set comes back to looks it had before, and a run played by hand can be played again. A cue saves a look to call back later. A take file records a run so it can be played again, frame for frame.
 
 ### A look you come back to: cues
 
@@ -135,7 +135,7 @@ A **cue** is a saved look: every parameter's value at once, under a name. Use cu
   <img src="Images/39-Performing/CalledBack.jpg" alt="Three square looks of one ring of twelve dots: small violet dots on near-black labeled night, larger green dots with bright cores on gray labeled one second in, and large orange dots with bright cores on cream labeled dawn, with arrows between them under the call cue dawn over 2. Below, four lanes over two seconds: size rising along an eased curve, hue falling along one, ground as a band blending from navy to cream, and lit stepping up at the first frame; a small card at the left lists five cue names with dawn marked" width="680">
 </picture>
 
-The kind of parameter decides whether it eases or jumps. A number, a color, a point, and a range have values between two settings, so they ease there, slowly at both ends. A switch, a menu choice, and a piece of text have nothing in between. They take the cue's value on the first frame of the fade. That is why the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
+The kind of parameter decides whether it eases or jumps. A number, a color, a point, and a range have values between two settings, so they ease there, slowly at both ends. A switch, a menu choice, and a piece of text have nothing in between. They take the cue's value on the first frame of the fade. So the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
 
 The hosts keep the list of cues in a file beside the sketch, named after it, such as `Finale.cues.json`. So a reload never loses a look. On stage, a MIDI program change, a message that asks for a numbered preset, calls a cue by number. `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) holds five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
 
@@ -143,7 +143,7 @@ A cue differs from a parameter's default. The **Save parameters** button above t
 
 ### Playing the night again: replay
 
-A movie keeps what a take looked like. A **take file** keeps the performance itself: the seed the run rolled, the clock it followed, every pointer move, and every parameter you changed. Use one to play a night again, find a frame in it, or render it again at a higher quality. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
+A movie keeps what a take looked like. A **take file** keeps the performance itself: the seed the run rolled, the clock it followed, every pointer move, and every parameter you changed. Use one to play a run again, find a frame in it, or render it again at a higher quality. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel. Games have long recorded demos the same way, storing the player's inputs rather than the picture.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/39-Performing/TheTake-dark.jpg">
@@ -152,23 +152,25 @@ A movie keeps what a take looked like. A **take file** keeps the performance its
 
 The file holds four lanes. The seed is one number, rolled once. The clock is one sample per frame, written down as the display drove it, jitter included, so a replay keeps the night's own timing. The pointer lane holds every move, press, and key, each stamped with the frame it came before. The parameter lane holds where every `@Param` started and each change after, on its frame. Nothing else drives a sketch that repeats itself ([Chapter 4](04-Randomness.md#seeds-randomness-you-can-keep)), so a fresh sketch fed the same four lanes walks through the same frames. The two rows under the lanes are five frames of a run and the same five replayed.
 
+A take file records a run in OllinLive, from launch to quit, and a reload ends it. So it keeps a sketch played by hand, such as the Record example's instrument you drag to play, rather than a live-coded set:
+
 ```sh
-swift run OllinLive MySketches/Finale.swift --record-take take.json   # play; quitting writes the file
-swift run OllinLive MySketches/Finale.swift --replay take.json        # the same run again
+swift run OllinLive Examples/Export/Record/Sketch.swift --record-take take.json   # play; quitting writes the file
+swift run OllinLive Examples/Export/Record/Sketch.swift --replay take.json        # the same run again
 ```
 
-During a replay the mouse belongs to the recording, so the keyboard becomes the **transport**, the play, pause, and step controls. Space pauses. The arrows step one frame, and with Shift held they jump thirty. Home rewinds, End jumps to the last frame, and Space at the end starts the night over. Stepping backward runs the sketch again from the start up to the frame you asked for, which gives the same frame every time. So finding the one frame to keep is a matter of arrow keys.
+During a replay the mouse belongs to the recording, so the keyboard becomes the **transport**, the play, pause, and step controls. Space pauses. The arrows step one frame, and with Shift held they jump thirty. Home rewinds, End jumps to the last frame, and Space at the end starts the night over. Stepping backward runs the sketch again from the start up to the frame you asked for, which gives the same frame every time. So the arrow keys find the one frame to keep.
 
 A take file also feeds every exporter in [Chapter 38](38-FinishingASketch.md):
 
 ```sh
-swift run OllinLive MySketches/Finale.swift --replay take.json --export-video night.mov
-swift run OllinLive MySketches/Finale.swift --replay take.json --export still.png --frame 412
+swift run OllinLive Examples/Export/Record/Sketch.swift --replay take.json --export-video night.mov
+swift run OllinLive Examples/Export/Record/Sketch.swift --replay take.json --export still.png --frame 412
 ```
 
-A replayed video needs no `--seconds`, because it renders the take from start to end. A take of a 3D sketch, such as the plaza of [Chapter 25](25-3DGently.md), can also render with `--path-traced`. A set played at sixty frames a second can then render again overnight, path-traced, as performed. `--seed` beside `--replay` keeps your gestures while `random()` rolls differently, so one good performance can try many variations.
+A replayed video needs no `--seconds`, because it renders the take from start to end. A take of a 3D sketch played by hand, such as the plaza of [Chapter 25](25-3DGently.md), can also render with `--path-traced`. A run played at sixty frames a second can then render again overnight, path-traced, as performed. `--seed` beside `--replay` keeps your gestures while `random()` rolls differently, so one good performance can try many variations.
 
-What replays is what drives the sketch: time, input, parameters, and randomness. A camera feed or a microphone keeps playing live during a replay. A sketch that reads the room follows your recorded hands, but the room it hears is the one around it now. [Replay](../Docs/Core/Replay.md) has the rest, and the `Take` type under the flags.
+What replays is time, the pointer and the keys, the parameters, and randomness. A dropped file, OSC, and MIDI do not replay, and a camera feed or a microphone keeps playing live. So a sketch that listens follows your recorded hands, but hears the room around it now. [Replay](../Docs/Core/Replay.md) has the rest, and the `Take` type under the flags.
 
 ## Directing the parameters: keyframes, the timeline, and timecode
 
@@ -176,7 +178,7 @@ In the set, every change came from your hands. A parameter can also follow a pla
 
 ### A value at each moment: keyframes
 
-A **keyframe** is a value placed at a moment. An **automation** moves a parameter from one key to the next along a curve. You write down what a parameter does instead of moving it yourself. Use it for a change that should happen the same way every time. Keyframes come from animation, where a lead artist drew the key poses and others drew the frames between. Here `radius` is a `@Param` of the sketch, and `$radius` is the parameter itself, as in [Chapter 35](35-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing):
+A **keyframe** is a value placed at a moment. An **automation** moves a parameter from one key to the next along a curve. You write down what a parameter does instead of moving it yourself. A **track** is one parameter's keys. Use an automation for a change that should happen the same way every time. Keyframes come from animation, where a lead artist drew the key poses and others drew the frames between. Here `radius` is a `@Param` of the sketch, and `$radius` is the parameter itself, as in [Chapter 35](35-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing):
 
 ```swift
 override func setup() {
@@ -189,7 +191,7 @@ override func setup() {
 }
 ```
 
-Every frame, before your `draw()` runs, the parameter is set to whatever its curve holds at the sketch's clock. A **track** is one parameter's keys. `automation` is the sketch's set of tracks. It is nil until the first `automate` call, so the `?` reaches it only if it exists.
+Every frame, before your `draw()` runs, the parameter is set to whatever its curve holds at the sketch's clock. `automation` is the sketch's set of tracks. It is nil until the first `automate` call, so the `?` reaches it only if it exists.
 
 Each key carries the curve that *leaves* it, so the last key's curve is never read. The figure draws four of the curves between the same two keys:
 
@@ -210,7 +212,7 @@ The tracks read the sketch's clock, and every exporter drives that clock at a fi
 swift run --package-path Examples Example-Motion-Automation --export-video directed.mp4 --seconds 12
 ```
 
-An automation is plain data too, so a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, with a line for the current moment. `--automation file.json` drives the same parameters from a file instead of from code. [Automation](../Docs/Core/Automation.md) has the full list of calls.
+An automation is plain data too, so a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, with a line for the current moment. `--automation file.json` drives parameters from a file, for any the code does not track itself. [Automation](../Docs/Core/Automation.md) has the full list of calls.
 
 ### Directing by hand: the timeline panel
 
@@ -227,7 +229,7 @@ swift run OllinLive Examples/Motion/Automation/Sketch.swift
   <img src="Images/39-Performing/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles around the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane stepping up at three seconds, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
 </picture>
 
-Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. In the figure, Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it wears a function mark instead. [Writing the parameter as a rule](#writing-the-parameter-as-a-rule-formulas) explains rules.
+Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. In the figure, Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it shows a function mark instead. [Writing the parameter as a rule](#writing-the-parameter-as-a-rule-formulas) explains rules.
 
 Placing a key takes three moves. Drag the playhead along the ruler, or step a frame at a time, and the picture follows. Set a parameter in the inspector until the frame looks right. Then click the diamond in that parameter's row, and a key lands at the playhead holding that value. A hollow diamond starts a track. Clicking the diamond while the playhead stands on a key takes that key away.
 
@@ -237,7 +239,7 @@ Everything you place lands in a file beside the sketch, named after it, such as 
 
 ### Following another timeline: timecode
 
-The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to another machine. It may be a video player, a lighting console, or a DAW locked to a film. It may be a show controller, the computer that runs a show's cues. **Timecode** is how such a machine says where it is, as hours, minutes, seconds, and frames. It comes from film and television, where it labels every frame of a recording. Use it to land a change on the exact frame a video reaches. A `TimecodeClock` reads MIDI Time Code, the form timecode takes over MIDI. Here `midi` is a `MIDIInput`, started as in [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc):
+The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to another machine. It may be a video player or deck, a lighting console, or a DAW locked to a film. It may be a show controller, the computer that runs a show's cues. **Timecode** is how such a machine says where it is, as hours, minutes, seconds, and frames. It comes from film and television, where it labels every frame of a recording. Use it to land a change on the exact frame a video reaches. A `TimecodeClock` reads MIDI Time Code, the form timecode takes over MIDI. Here `midi` is a `MIDIInput`, started as in [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc), with `import OllinMIDI` at the top of the file:
 
 ```swift
 lazy var timecode = TimecodeClock(from: midi)
@@ -246,6 +248,8 @@ let t = timecode.seconds                                          // where the t
 drawText(timecode.timecode.map { "\($0)" } ?? "--:--:--:--", 40, 60)   // 00:01:30:12
 ```
 
+`timecode.timecode` is optional, nil before the first message arrives, and `.map` turns it into text only when it has a value. The **Timecode** example (`Examples/Integration/Timecode`) plays a deck itself with an internal timer. You can watch changes land under a scrolling timeline with nothing plugged in.
+
 The frames in a timecode are the other machine's frames, often 25 or 30 a second, not the sketch's. A position is too big for a single MIDI message, so the sender spells it out in eight small ones, four to a frame:
 
 <picture>
@@ -253,9 +257,9 @@ The frames in a timecode are the other machine's frames, often 25 or 30 a second
   <img src="Images/39-Performing/TimecodePieces.jpg" alt="Eight cards in a row, one per quarter-frame message, each naming the part of the position it carries and showing its four bits, with stalks down to a two-frame strip; below, the timecode the eight of them spell and the eight bytes inside the locate message" width="680">
 </picture>
 
-Each message carries four bits, half of one number. The frames take two messages, the seconds two more, and so on up to the hours, whose last message carries the frame rate too. Eight messages take two frames to arrive, so a full set names a time that has already passed. The clock sets itself 1.75 frames past the spelled time and moves on smoothly at the frame rate. That is why `seconds` moves smoothly while `timecode` changes on frame boundaries.
+Each message carries four bits, half of one number. The frames take two messages, the seconds two more, and so on up to the hours, whose last message carries the frame rate too. Eight messages take two frames to arrive, so a full set of eight names a time that has already passed. The clock sets itself 1.75 frames past the spelled time and moves on smoothly at the frame rate. So `seconds` moves smoothly while `timecode` changes on frame boundaries.
 
-Stop the deck and the messages stop, so the position holds where it was. Press locate, which jumps to a position, and the deck sends the full position in one message. The figure shows the eight bytes inside it, between the bytes that start and end the message. The clock jumps there rather than waiting for a new set of eight.
+Stop the deck, the player sending the timecode, and the messages stop, so the position holds where it was. Press locate, which jumps to a position, and the deck sends the full position in one message. The figure shows the eight bytes inside it, between the bytes that start and end the message. The clock jumps there rather than waiting for a new set of eight.
 
 `timecode.timecode` is the frame the timeline is on, and `seconds` is the same moment as a number to compute with. `frameRate` is the rate once a full set has arrived, and `isPlaying` says whether messages are still coming. Landing a change is a comparison of two timecodes. Here `flash()` stands for a function of your own:
 
@@ -264,7 +268,6 @@ let mark = Timecode(hours: 0, minutes: 1, seconds: 30, frames: 12, frameRate: .f
 if let now = timecode.timecode, now >= mark { flash() }
 ```
 
-The **Timecode** example (`Examples/Integration/Timecode`) plays the deck itself with an internal timer. You can watch changes land under a scrolling timeline with nothing plugged in.
 
 ## Writing the parameter as a rule: formulas
 
@@ -272,7 +275,7 @@ Keys say where a parameter is at a few moments. Sometimes you want to say what t
 
 ### A rule instead of keys: formulas
 
-A **formula** is a parameter's rule written as text. Use one to make a parameter follow the clock, the pointer, or another parameter, and to change that rule during a set without evaluating. It works like a formula in a spreadsheet cell, which reads other values and works out its own. Here `radius` is a `@Param` again:
+A **formula** is a parameter's rule written as text. Use one to make a parameter follow the clock, the pointer, or another parameter. In OllinLive you can change the rule while the sketch runs, with no compile. It works like a formula in a spreadsheet cell, which reads other values and works out its own. Here `radius` is a `@Param` again:
 
 ```swift
 override func setup() {
@@ -287,9 +290,9 @@ override func setup() {
 
 The rule is in quotation marks, so it is text rather than Swift. Text can arrive while the sketch runs. It can be typed into a field, read out of a file, or changed during a set, and no compile is needed.
 
-The field is in the inspector. In OllinLive, right-click the diamond of any number or switch and choose **Write a Rule**, and a field opens under the row. Type the rule and press Return, and the parameter follows it from the next frame. Its diamond turns into a function mark, and its slider dims. Get a character wrong and the row says so, with a mark under the character and the reason beneath. The rule that was running keeps running. A rule written this way lands in the same automation file as the keys, so an export plays it. [Writing a rule in the row](../Docs/Tools/Timeline.md#writing-a-rule-in-the-row) has the details.
+The field is in the inspector. In OllinLive, right-click the diamond of a number or switch that has no track, and choose **Write a Rule**. A field opens under the row. Type the rule and press Return, and the parameter follows it from the next frame. Its diamond turns into a function mark, and its slider dims. Get a character wrong and the row says so, with a mark under the character and the reason beneath. The rule that was running keeps running. A rule written this way lands in the same automation file as the keys, so an export plays it. [Writing a rule in the row](../Docs/Tools/Timeline.md#writing-a-rule-in-the-row) has the details.
 
-The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, and `smoothstep` are spelled and ordered as they are in `draw()` and in a shader. `noise`, `pi`, and `tau` are there too. A formula reads `time`, the moment the tracks are at, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and your other parameters by name. Here `count`, `edge`, and `filled` are three more parameters:
+The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, and `smoothstep` are spelled and ordered as they are in `draw()` and in a shader. `noise`, `pi`, and `tau` are there too. A formula reads `time`, the moment the tracks are at, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and your other parameters by name. A comparison gives 1 when it is true and 0 when it is false. Here `count`, `edge`, and `filled` are three more parameters:
 
 ```swift
 drive($radius, "190 + sin(time * tau / 6) * 80")
@@ -304,11 +307,11 @@ So two parameters cannot name each other, and a parameter cannot name itself. `"
 
 A formula is a track like any keyed one. It loops, plays at any speed, and renders frame for frame through every export. It travels in the same `--automation` file, as the text you typed. The [Formula example](../Examples/Motion/Formula/Sketch.swift) drives six parameters this way and prints each rule under the picture. [Formula](../Docs/Helpers/Formula.md) lists every name a formula knows.
 
-Two spellings differ from what you might write first. `-2^2` is `-4`, because a power binds tighter than a minus sign, as on a calculator. And `-1 % 3` is `2`, because the remainder wraps around rather than turning negative, which keeps a phase continuous as it crosses zero.
+Two spellings differ from what you might write first. In a formula `^` raises to a power, where Swift uses it for something else. `-2^2` is `-4`, because a power binds tighter than a minus sign, as on a calculator. And `-1 % 3` is `2`, because the remainder wraps around rather than turning negative, which keeps a phase continuous as it crosses zero.
 
-### A parameter that holds more than one number
+### A rule for each part: parameters that hold several numbers
 
-A point holds two numbers, and a color holds four. A rectangle holds four of its own. Each part can take its own rule, named where you write it. Here `box` is a `Rectangle` parameter and `eye` a point parameter:
+A point holds two numbers, and a color holds four. A rectangle holds four of its own. Each part can take its own rule, named where you write it. Use it to move one part by rule and keep the others by hand. Here `box` is a `Rectangle` parameter and `eye` a point parameter:
 
 ```swift
 drive($box, width: "620 + sin(time * tau / 7) * 220")
@@ -320,21 +323,22 @@ drive($eye, x: "box.x + box.width / 2", y: "height / 2")
   <img src="Images/39-Performing/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
-The parts you leave out keep their values. The figure's rectangle changes its width and height, while its `x` and `y` stay where they were set. You can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for every part.
+The parts you leave out keep their values. The figure's rectangle changes its width and height, while its `x` and `y` stay where they were set. You can go on dragging them while the size plays.
 
-One part of a parameter is a name too, spelled `parameter.part`. That is how `eye` above follows the rectangle it sits in. The name works whether keys carry that part or another rule works it out.
+One part of a parameter is a name too, spelled `parameter.part`, and `eye` above follows the rectangle it sits in that way. The name works whether keys carry that part or another rule works it out.
 
-Three rules apply when you write one. One call carries every part of the parameter, so give them all at once, because a second call replaces the first. A pair of ends stays in order, so a `lower` that climbs past `upper` lifts it along. And a color's parts are plain numbers from 0 to 1 with nothing holding them there, so write `saturate(...)` where you want a limit. The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints each part's rule under the picture.
+Three rules apply when you write one. One call carries every part of the parameter, so give them all at once, because a second call replaces the first. A range parameter's two ends, `lower` and `upper`, stay in order, so a `lower` that climbs past `upper` lifts it along. And a color's parts are plain numbers from 0 to 1 with nothing holding them there. Write `saturate(...)`, which holds a number between 0 and 1, where you want a limit. The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints each part's rule under the picture.
 
 ## Live feeds: into other apps
 
-The set left as a movie and a file. A sketch can also stay alive and send its frames into another program while it runs. Syphon hands them to another app on the same Mac, and the virtual camera makes the sketch a camera that any app can choose.
+The set was recorded as a movie and saved as a file. A sketch can also stay alive and send its frames into another program while it runs. Syphon hands them to another app on the same Mac, and the virtual camera makes the sketch a camera that any app can choose.
 
 ### Into another app: Syphon
 
-**Syphon** is the macOS standard for passing frames on the GPU between running apps. Use it to feed a sketch into a VJ or projection-mapping app during a show. Tom Butterworth and Anton Marini wrote it, and Maxime Touroute and Philippe Chaurand wrote its Metal version, the part Ollin carries. One line makes a sketch a source:
+**Syphon** is the macOS standard for passing frames on the GPU between running apps. Use it to feed a sketch into a VJ app or a projection-mapping app during a show. A projection-mapping app fits a picture onto a building or an object. Tom Butterworth and Anton Marini wrote it, and Maxime Touroute and Philippe Chaurand wrote its Metal version, the part Ollin carries. One line makes a sketch a source:
 
 ```swift
+import Ollin
 import OllinSyphon
 
 override func setup() {
@@ -346,7 +350,11 @@ VJ apps such as Resolume and VDMX, projection-mapping apps such as MadMapper, an
 
 ### The sketch as a webcam: the virtual camera
 
-Syphon works between apps that both speak it. A web page or a video call asks the operating system for a *camera* instead. The virtual camera makes the sketch one. Use it to show a sketch in a video call or on a web page that takes a camera:
+Syphon works between apps that both speak it. A web page or a video call asks the operating system for a *camera* instead. The virtual camera makes the sketch one. Use it to show a sketch in a video call or on a web page that takes a camera. It is a camera extension, the kind of software camera macOS has supported since 2022.
+
+It needs a one-time setup, because a camera device is a part of the operating system. The device is a macOS **system extension**, installed by the Ollin Camera app, which is built from [`Apps/OllinCameraApp`](../Apps/OllinCameraApp/README.md) in this repository. Launch the app from `/Applications`, and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not a sketch is running. When nothing is publishing, it shows a "no signal" test card. If you publish before installing it, the sketch keeps drawing, and `isAvailable` and `unavailableReason` say what is missing.
+
+Then one line in `setup()` publishes to it:
 
 ```swift
 import Ollin
@@ -357,11 +365,10 @@ override func setup() {
 }
 ```
 
-After that, "Ollin Camera" is in the camera menu of every app on the machine. Zoom, Meet, QuickTime, Photo Booth, and OBS, a program for streaming and recording, can take the sketch as their input. So can any web page that asks for a camera.
+With the extension installed, "Ollin Camera" is in the camera menu of every app on the machine. Zoom, Meet, QuickTime, Photo Booth, and OBS, a program for streaming and recording, can take the sketch as their input. So can any web page that asks for a camera.
 
-It needs a one-time setup, because a camera device is a part of the operating system. The device is a macOS **system extension**, installed by the Ollin Camera app, which is built from [`Apps/OllinCameraApp`](../Apps/OllinCameraApp/README.md) in this repository. Launch the app from `/Applications`, and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not a sketch is running. When nothing is publishing, it shows a "no signal" test card. If you publish before installing it, the sketch keeps drawing, and `isAvailable` and `unavailableReason` say what is missing.
 
-Two facts about the frame explain most surprises:
+Two facts about the frame:
 
 - **The camera frame is a fixed 1280×720.** Your canvas is scaled to fit and centered. A square canvas arrives with black bars down both sides. For a sketch meant for a call, `override var canvasSize: CanvasSize { .size(1280, 720) }` fills the frame.
 - **The camera runs at 30 frames a second.** A sketch running faster publishes every other frame. A slower one updates the camera at its own pace.

@@ -37,7 +37,7 @@ final class SetSteps: Sketch {
         fill(soft)
         textSize(19)
         textAlign(.center, .top)
-        drawText("one set, five evaluations: each return key reshapes the piece without stopping it",
+        drawText("one set, five evaluations: each ⌘↩ reshapes the sketch without stopping it",
                  width / 2, 400)
     }
 

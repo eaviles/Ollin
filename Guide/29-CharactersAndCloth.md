@@ -380,7 +380,7 @@ Before moving on, make it yours:
 - Give the truck a ramp made of a tilted static box, and drive at it.
 - Build a stair of static boxes 0.3 high and walk the figure up it. Then set `pacer?.stepHeight = 0`, and it stops at the first box.
 
-The yard waits for you to drive it, so film it while you play. `swift run OllinLive MySketches/Yard.swift --record` records the window from the first frame until you quit. An export such as `--export-video` runs on its own clock with nobody at the keys, so it keeps only the banner. To export a drive, record the take with `--record-take drive.json`, then run `--replay drive.json --export-video yard.mov`. [Chapter 39](39-Performing.md#keeping-the-take) covers both.
+The yard waits for you to drive it, so film it while you play. `swift run OllinLive MySketches/Yard.swift --record` records the window from the first frame until you quit. An export such as `--export-video` runs on its own clock with nobody at the keys, so it keeps only the banner. To export a drive, record the take with `--record-take drive.json`, then run `--replay drive.json --export-video yard.mov`. [Chapter 39](39-Performing.md#keeping-the-take) covers the recording, and [its replay entry](39-Performing.md#playing-the-night-again-replay) the take file.
 
 ## A figure that falls: ragdolls
 

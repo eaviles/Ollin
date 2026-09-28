@@ -26,7 +26,7 @@ final class ParameterParts: Sketch {
     /// Where the hand put the rectangle. Only its size is ever worked out.
     let placed = ParamStored.rectangle(x: 62, y: 108, width: 300, height: 150)
 
-    lazy var track = Automation.Track(name: "frame", parts: [
+    lazy var track = Automation.Track(name: "box", parts: [
         "width": try! Formula(wide),
         "height": try! Formula(tall),
     ])
@@ -87,7 +87,7 @@ final class ParameterParts: Sketch {
             fill(soft)
             textSize(16)
             textAlign(.right, .top)
-            drawText("frame.\(part)", 612, top)
+            drawText("box.\(part)", 612, top)
 
             fill(rule.isEmpty ? faint : ink)
             textAlign(.left, .top)
