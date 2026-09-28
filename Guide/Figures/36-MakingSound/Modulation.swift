@@ -5,7 +5,7 @@
 // the tones it contains below, measured from the wave itself over two of its
 // periods. The first has nothing above its own note, the middle two grow a
 // harmonic series as the index climbs, and the fourth, at a ratio that is not
-// a whole number, lands between the harmonics instead of on them.
+// a whole number, lands partly on the harmonics and partly between them.
 import Ollin
 import OllinDiagram
 
@@ -64,7 +64,7 @@ final class Modulation: Sketch {
         fill(ink.withAlpha(0.6))
         textSize(15)
         textAlign(.center, .top)
-        drawText("dark bars are the note's own harmonics, red ones fall between them",
+        drawText("\(darkTheme ? "light" : "dark") bars are the note's own harmonics, red ones fall between them",
                  width / 2, 424)
         fill(ink)
         textSize(20)

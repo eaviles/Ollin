@@ -74,8 +74,9 @@ final class FeltPattern: Sketch {
                  size: 15, color: theme.muted, align: .left, .middle)
     }
 
-    /// The plan: every knock the same height, because the hardware has one
-    /// strength. What carries the fade is how close together they stand.
+    /// The plan: the hardware has one strength, so what carries the fade is
+    /// how close together the knocks stand. Height here is only which of the
+    /// three feels a knock asks for: soft, level, or crisp.
     private func drawAsFelt(_ knocks: [TrackpadKnock], in panel: Rectangle, span: Double) {
         diagramFrame(panel, title: "as a trackpad feels it", theme: theme)
         let base = panel.y + panel.height - 46

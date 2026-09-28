@@ -303,7 +303,7 @@ Only the *ratios* come from the shape. You decide the note when you play it, so 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/StruckShapes-dark.jpg">
-  <img src="../../Guide/Images/36-MakingSound/StruckShapes.jpg" alt="Five outlines, each with the frequencies it rings at drawn on a scale from one to four: a circle, a square, a triangle, an oblong, and an irregular blob, where the symmetric ones show pairs of lines sitting together and the asymmetric ones show single lines" width="680">
+  <img src="../../Guide/Images/36-MakingSound/StruckShapes.jpg" alt="Five outlines, each with the frequencies it rings at drawn on a scale from one to four: a circle, a square, a triangle, an oblong, and an irregular blob, where the circle, square, and triangle show pairs of lines sitting together and the oblong and the blob show single lines" width="680">
 </picture>
 
 | Member | What it does |
@@ -438,7 +438,7 @@ Whole ratios stay musical, because their tones land on the note's own harmonics.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/36-MakingSound/Modulation-dark.jpg">
-  <img src="../../Guide/Images/36-MakingSound/Modulation.jpg" alt="Four columns, each a wave above the tones it contains: a plain sine with a single bar, the same sine at index 2 and index 6 growing a run of harmonics, and one at ratio 3.5 whose bars land between the harmonics instead of on them" width="680">
+  <img src="../../Guide/Images/36-MakingSound/Modulation.jpg" alt="Four columns, each a wave above the tones it contains: a plain sine with a single bar, the same sine at index 2 and index 6 growing a run of harmonics, and one at index 4 and ratio 3.5 whose bars fall partly on the note's harmonics and partly between them, the ones between drawn in red" width="680">
 </picture>
 
 #### Why it is a fixed size

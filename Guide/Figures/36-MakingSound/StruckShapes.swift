@@ -4,8 +4,11 @@
 // its outline. Each row is a real StruckShape, measured by the same code the
 // sketch runs, so the numbers beside each outline are not illustrations of the
 // idea: they are the answer. The circle's are the zeros of the Bessel
-// functions, which is what a real drumhead rings at, and it has each of them
-// twice because a pattern that fits at one rotation fits at another.
+// functions, which is what a real drumhead rings at. A tone whose pattern is
+// not round comes twice, because a pattern that fits at one rotation fits at
+// another, while the round ones, the lowest among them, come once. The square
+// and the triangle double some of theirs for the same reason; the oblong,
+// which only matches itself after a half turn, doubles none.
 import Ollin
 import OllinDiagram
 import OllinAudio
@@ -51,8 +54,8 @@ final class StruckShapes: Sketch {
         fill(soft)
         textSize(12)
         textAlign(.center, .top)
-        drawText("a symmetric shape rings at some tones twice, because a pattern that fits "
-                 + "at one turn fits at another", 440, 610)
+        drawText("the circle, square and triangle ring at some tones twice, because a pattern "
+                 + "that fits at one turn fits at another", 440, 610)
     }
 
     private func drawRow(name: String, outline: Shape, y: Double) {
