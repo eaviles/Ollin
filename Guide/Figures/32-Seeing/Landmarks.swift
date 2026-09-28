@@ -129,9 +129,9 @@ final class Landmarks: Sketch {
             .leftElbow: Vector2(156, 118), .rightElbow: Vector2(64, 118),
             .leftWrist: Vector2(168, 160), .rightWrist: Vector2(52, 160),
             .root: Vector2(110, 148),
-            .leftHip: Vector2(128, 152), .rightHip: Vector2(92, 152),
-            .leftKnee: Vector2(132, 205), .rightKnee: Vector2(88, 205),
-            .leftAnkle: Vector2(134, 258), .rightAnkle: Vector2(86, 258),
+            .leftHip: Vector2(134, 152), .rightHip: Vector2(86, 152),
+            .leftKnee: Vector2(137, 205), .rightKnee: Vector2(83, 205),
+            .leftAnkle: Vector2(138, 258), .rightAnkle: Vector2(82, 258),
         ]
         stroke(faint)
         strokeWeight(2.5)
@@ -144,19 +144,20 @@ final class Landmarks: Sketch {
         fill(ink)
         for (_, p) in joints { drawCircle(origin.x + p.x, origin.y + p.y, 4.5) }
 
-        label(".neck", at: origin + Vector2(110, 62), dx: 14, dy: -6)
-        label(".root", at: origin + Vector2(110, 148), dx: 14, dy: 8)
-        label(".leftWrist", at: origin + Vector2(168, 160), dx: -2, dy: 20, alignRight: true)
+        label(".neck", at: origin + Vector2(110, 62), dx: 14, dy: -14)
+        label(".root", at: origin + Vector2(110, 148), dx: 0, dy: 10, centered: true)
+        label(".leftWrist", at: origin + Vector2(168, 160), dx: 12, dy: -9)
         caption("Body: 19 joints", x: origin.x + 110)
     }
 
     // MARK: Shared bits
 
-    func label(_ text: String, at p: Vector2, dx: Double, dy: Double, alignRight: Bool = false) {
+    func label(_ text: String, at p: Vector2, dx: Double, dy: Double,
+               alignRight: Bool = false, centered: Bool = false) {
         noStroke()
         fill(accent)
         textSize(15)
-        textAlign(alignRight ? .right : .left, .top)
+        textAlign(centered ? .center : alignRight ? .right : .left, .top)
         drawText(text, p.x + dx, p.y + dy)
         textSize(19)
     }

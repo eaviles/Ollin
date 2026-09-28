@@ -23,27 +23,27 @@ final class TrackerFlow: Sketch {
     override func draw() {
         background(paper)
 
-        box(x: 45, y: 80, w: 200, h: 96, title: "Camera()",
-            sub: "or a video, or your own feed")
-        box(x: 340, y: 80, w: 200, h: 96, title: "FaceTracker(camera)",
-            sub: "analyzes frames in the background")
-        box(x: 635, y: 80, w: 200, h: 96, title: "faces.faces",
-            sub: "typed results, read in draw()")
+        box(x: 15, y: 74, w: 214, h: 110, title: "Camera()",
+            sub: ["or a video,", "or your own feed"])
+        box(x: 333, y: 74, w: 214, h: 110, title: "FaceTracker(camera)",
+            sub: ["analyzes frames", "in the background"])
+        box(x: 651, y: 74, w: 214, h: 110, title: "faces.faces",
+            sub: ["typed results,", "read in draw()"])
 
-        arrow(from: Vector2(245, 128), to: Vector2(338, 128))
-        arrow(from: Vector2(540, 128), to: Vector2(633, 128))
+        arrow(from: Vector2(229, 129), to: Vector2(331, 129))
+        arrow(from: Vector2(547, 129), to: Vector2(649, 129))
 
         noStroke()
         fill(soft)
-        textSize(15)
+        textSize(14)
         textAlign(.center, .top)
-        drawText("frames", 292, 100)
-        drawText("Face values", 587, 100)
+        drawText("frames", 281, 102)
+        drawText("Face values", 599, 102)
 
         // The inset: normalized results land on the drawn frame's rectangle.
-        normalizedPanel(x: 130, y: 260)
-        canvasPanel(x: 500, y: 260)
-        arrow(from: Vector2(390, 350), to: Vector2(488, 350))
+        normalizedPanel(x: 90, y: 260)
+        canvasPanel(x: 570, y: 260)
+        arrow(from: Vector2(335, 350), to: Vector2(545, 350))
 
         noStroke()
         fill(soft)
@@ -98,20 +98,22 @@ final class TrackerFlow: Sketch {
         drawText("pixels, origin top left, y down", x + w / 2, y + h + 48)
     }
 
-    func box(x: Double, y: Double, w: Double, h: Double, title: String, sub: String) {
+    func box(x: Double, y: Double, w: Double, h: Double, title: String, sub: [String]) {
         fill(darkTheme ? Color(hex: 0x2A2724) : .white)
         stroke(faint)
         strokeWeight(1.5)
         drawRect(x, y, w, h, cornerRadius: 10)
         noStroke()
         fill(ink)
-        textSize(19)
+        textSize(17)
         textAlign(.center, .bottom)
-        drawText(title, x + w / 2, y + h / 2 + 2)
+        drawText(title, x + w / 2, y + 48)
         fill(soft)
         textSize(14)
         textAlign(.center, .top)
-        drawText(sub, x + w / 2, y + h / 2 + 8)
+        for (i, line) in sub.enumerated() {
+            drawText(line, x + w / 2, y + 56 + Double(i) * 19)
+        }
     }
 
     func arrow(from a: Vector2, to b: Vector2) {
