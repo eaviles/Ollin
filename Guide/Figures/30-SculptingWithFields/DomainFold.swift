@@ -43,7 +43,7 @@ final class DomainFold: Sketch {
                 drawSDF(tile.1)
             }
             fill(ink)
-            textSize(22)
+            textSize(20)
             textAlign(.center, .middle)
             drawText(tile.0, cx, 460)
         }
