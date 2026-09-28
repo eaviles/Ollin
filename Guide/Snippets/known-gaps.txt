@@ -87,16 +87,6 @@ cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'Ren
 a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 70e92ab22ab8  Guide/22-IteratedForms.md:455  reference to member 'domainColoring' cannot be resolved without a contextual type
-cb9b9aef4027  Guide/24-ParticleSimulations.md:110  cannot assign value of type 'Physarum' to type 'Particles'
-06dc0b77369e  Guide/24-ParticleSimulations.md:128  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
-40985baa20ae  Guide/24-ParticleSimulations.md:150  cannot assign value of type 'ParticleLenia' to type 'SimField'
-1467e7512ff9  Guide/24-ParticleSimulations.md:174  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
-4c27b93ffe32  Guide/24-ParticleSimulations.md:201  cannot assign value of type 'ParticleFluid' to type 'SimField'
-c66998c2424a  Guide/24-ParticleSimulations.md:214  cannot assign value of type 'SoftBodies' to type 'Particles'
-1a520092892e  Guide/24-ParticleSimulations.md:232  cannot assign value of type 'Evolution' to type 'Particles'
-59b86708f2bb  Guide/24-ParticleSimulations.md:265  cannot assign value of type 'SwarmChemistry' to type 'SimField'
-3df2b6e16904  Guide/24-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
-c1755d1ac067  Guide/24-ParticleSimulations.md:96  cannot assign value of type 'ParticleLife' to type 'SimField'
 80235a1dca07  Guide/25-3DGently.md:431  cannot find 'knot' in scope
 0253ea5cf1ea  Guide/25-3DGently.md:99  cannot find 'anchor' in scope
 1a571812c99a  Guide/26-Meshes.md:122  cannot find 'dents' in scope
