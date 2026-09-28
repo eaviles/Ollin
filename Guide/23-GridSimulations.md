@@ -230,7 +230,7 @@ In `.excitable` a resting cell fires when a neighbor is firing. A fired cell the
 
 `.briansBrain()` is the fastest of the family. A ready cell fires when *exactly two* of its eight neighbors are firing, rests for one step, and is ready again. Almost any loose sprinkle explodes into gliders that race the grid forever, which is the bottom-left panel's permanent traffic. A solid painted blob dies on the spot. Its interior rests all at once, and along a flat edge every outside cell sees three firing neighbors where a birth needs two. So sprinkle loose soup, never a disc.
 
-`.hodgepodge` models an infection, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction, the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` like every other sim in this chapter.
+`.hodgepodge` models an infection, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction, the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` the way [the organism](#putting-it-together-the-organism) was.
 
 ### A circuit made of cells: Wireworld
 

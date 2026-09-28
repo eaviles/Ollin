@@ -76,7 +76,7 @@ Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a regi
 let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
 ```
 
-The plate rests on that one call. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a stroke attribute a tool may read differently. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
+The plate rests on that one call. Once a stroke is a region, everything in this chapter applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a stroke attribute a tool may read differently. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
 
 ### Asking an outline where it goes: contour questions
 
@@ -225,7 +225,7 @@ Both panels are the same packing, from a bag with more shapes in it than the lis
 
 The parameters beyond `count` and the radius range change the character rather than the density. `padding` opens a consistent gap between shapes, which helps when they will be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
 
-The output is `[Shape]`, so it flows straight into everything earlier in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
+The output is `[Shape]`, so it flows straight into everything else in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
 `ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 12](12-FlocksAndSwarms.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That is what the `Patterns/ShapePacking` example does, filling in for as long as it runs.
 

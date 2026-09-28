@@ -323,7 +323,7 @@ final class Glide: Sketch {
 }
 ```
 
-Click around and the dot glides to each click, with no progress variable for you to manage. Like everything in this chapter the glide is timed in seconds, so it feels identical at 60 and 120 fps.
+Click around and the dot glides to each click, with no progress variable for you to manage. Like `time` and `deltaTime`, the glide is timed in seconds, so it feels identical at 60 and 120 fps.
 
 **`@Sprung`** answers the same question a different way. Where `@Eased` follows a curve you chose for a duration you fixed, a spring is a physical model. It accelerates toward the target, overshoots if it has the energy, and settles. That difference matters most when the target *moves*. Retarget an `@Eased` value mid-flight and it restarts its curve from wherever it happens to be, which reads as a stutter. Retarget a spring and it carries its current velocity into the new journey. That is why interfaces that follow a dragging finger tend to be spring-driven:
 

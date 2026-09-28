@@ -246,7 +246,7 @@ Then make it yours:
 - Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtIn)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
-- Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)`, from the family below, and the poster becomes one unbroken thread a plotter could draw.
+- Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)`, from [A picture as one line](#a-picture-as-one-line-stippling-singleline-and-spanningtree), and the poster becomes one unbroken thread a plotter could draw.
 
 ## The colors read back: palettes and dithering
 
@@ -566,7 +566,7 @@ Both loaders belong in `setup()`. Reading a file is slow next to drawing one fra
 
 ## Where this comes from
 
-Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size, and every treatment in this chapter descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster of a young couple as line-printer characters, and then its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is the youngest technique on the spine. Shai Avidan and Ariel Shamir published it in 2007, and its demonstration video went around the world, mostly because of the part where a mask makes something disappear.
+Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size, and each way this chapter turns a picture into marks descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster of a young couple as line-printer characters, and then its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is the youngest technique on the spine. Shai Avidan and Ariel Shamir published it in 2007, and its demonstration video went around the world, mostly because of the part where a mask makes something disappear.
 
 The families after the sketch name their own sources, from Secord's stipple to Asendorf's sorted pixels. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 

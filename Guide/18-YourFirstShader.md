@@ -311,7 +311,7 @@ drawVisual(
   <img src="Images/18-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of rendered frames: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 </picture>
 
-The move to notice is the last step, where one chain's color drives another chain's coordinates, per pixel. That `displaced(by:)` is the same idea as the displacement map [Chapter 19](19-LayersAndEffects.md) mentions, but the driver is any chain. The expression, drivers included, compiles into a single GPU pass. Everything animates by default, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary: sources, warps, color ops, blends, and the feedback loop.
+The move to notice is the last step, where one chain's color drives another chain's coordinates, per pixel. That `displaced(by:)` is the same idea as the displacement map [Chapter 19](19-LayersAndEffects.md#the-whole-stack-in-one-block-compose) mentions, but the driver is any chain. The expression, drivers included, compiles into a single GPU pass. Everything animates by default, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary: sources, warps, color ops, blends, and the feedback loop.
 
 ### Somebody else's shader: GLSL import
 

@@ -36,7 +36,7 @@ A sketch that uses randomness is many pictures, one for each seed. Finishing it 
 swift run OllinLive MySketches/YourSketch.swift --export-grid sheet.png --seeds 25 --seed 4810
 ```
 
-That sheet shows seeds 4810 to 4834, each tile labeled with its seed. When a tile is the one, write its seed into `setup()`. The contour chart at the end of this chapter was found this way, at 4821:
+That sheet shows seeds 4810 to 4834, each tile labeled with its seed. When a tile is the one, write its seed into `setup()`. The contour chart in [Putting it together](#putting-it-together-the-contour-chart) was found this way, at 4821:
 
 ```swift
 override func setup() {

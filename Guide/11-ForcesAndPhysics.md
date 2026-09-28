@@ -153,7 +153,7 @@ final class Pile: Sketch {
 
 Two hundred forty discs fall, land on each other, shuffle for space, and settle into the heap above, like gumballs in a jar. The sketch never mentions a collision. It scatters particles in `setup()`, and in `draw()` it does two things. It steps the world, then draws what's there.
 
-The shape of every physics sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `advance(by: deltaTime)` moves it on, and you draw from its bodies wherever they happen to be.
+The shape of every `World` sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `advance(by: deltaTime)` moves it on, and you draw from its bodies wherever they happen to be.
 
 The rules you set at the top are each one line. `world.bounds = bounds` gives the world walls, and without it bodies are free to leave. `bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties, which [Chapter 7](07-Tiles.md) introduced. `particlesCollide = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment. `world.restitution` is how much speed survives hitting a wall. `world.drag` is the same air resistance you wrote by hand a page ago, now built in.
 

@@ -299,7 +299,7 @@ material(Material(shading: .physicallyBased, metallic: 1,
 
 The streak is one number. The first two spheres are the same steel, and the band is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, the way a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
 
-Numbers you tune by hand want a way back into code, and every material has one. `swiftSource` prints the expression that rebuilds it, listing only what you changed, and a built-in prints as its own name. The [material explorer](../Examples/3D/Materials/Explorer/Sketch.swift) puts the whole library and every dial from this chapter on parameters, and its C key copies that expression. The source is the artifact, so tune until it looks right, press C, and paste.
+Numbers you tune by hand want a way back into code, and every material has one. `swiftSource` prints the expression that rebuilds it, listing only what you changed, and a built-in prints as its own name. The [material explorer](../Examples/3D/Materials/Explorer/Sketch.swift) puts the whole library on parameters, with this chapter's dials for metal, roughness, anisotropy, glass, clearcoat, and sheen. Its C key copies that expression. The source is the artifact, so tune until it looks right, press C, and paste.
 
 ### Glass
 

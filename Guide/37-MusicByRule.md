@@ -42,7 +42,7 @@ override func draw() {
 
 `steps(upTo:)` hands back every step that fell due since the last call, as a range. At 120 beats a minute a step lasts 125 milliseconds. A frame on a 60-hertz display lasts about 17, so most frames get no step at all. A slow frame can cover two or three, and each of them still plays. If time jumps far ahead, after the machine stalls, the counter skips to where it landed rather than playing every step at once.
 
-Keeping the clock outside the counter lets the same code follow other clocks. `tempo.beats(at: time)` is one source of beats. A beat heard through the microphone is another, in the family after the music box. A drum machine's MIDI clock is a third ([Chapter 35](35-ControlsAndSignals.md#musical-time-midi-clock-and-link)). The code after the counter stays the same whichever one it follows.
+Keeping the clock outside the counter lets the same code follow other clocks. `tempo.beats(at: time)` is one source of beats. A beat heard through the microphone is another, in [Playing along with the room](#playing-along-with-the-room-tempo-sync). A drum machine's MIDI clock is a third ([Chapter 35](35-ControlsAndSignals.md#musical-time-midi-clock-and-link)). The code after the counter stays the same whichever one it follows.
 
 ## Hits spread evenly: Euclidean rhythms with `Rhythm`
 
@@ -83,7 +83,7 @@ A **scale** is a choice of notes inside each octave. Its first note is the **roo
 
 Each note of a scale is a **degree**, numbered by its place from the root. Musicians count degrees from 1. Ollin counts them from 0, like the positions in a list, so degree 0 is the root. The numbers in the dots of the top two rows are degrees. Degree 7 of the major scale is its root again, an octave up.
 
-The distance between two notes is an **interval**, counted in semitones. Two intervals carry most of this chapter. A **third** is three or four semitones, a minor third or a major third. A **fifth** is seven semitones. A **triad** is a chord of three notes: a root, the note a third above it, and the note a fifth above the root. On a scale, that means taking every other note. The bottom two rows of the figure are triads. C, E, and G make a **major** triad, four semitones and then three. A, C, and E make a **minor** triad, three semitones and then four. Both use only white keys, the notes of C major, so taking every other note skips one white key each time. The bracket under each shows that both span a fifth. Major usually sounds brighter, and minor darker.
+The distance between two notes is an **interval**, counted in semitones. Two intervals build most of the chords in this chapter. A **third** is three or four semitones, a minor third or a major third. A **fifth** is seven semitones. A **triad** is a chord of three notes: a root, the note a third above it, and the note a fifth above the root. On a scale, that means taking every other note. The bottom two rows of the figure are triads. C, E, and G make a **major** triad, four semitones and then three. A, C, and E make a **minor** triad, three semitones and then four. Both use only white keys, the notes of C major, so taking every other note skips one white key each time. The bracket under each shows that both span a fifth. Major usually sounds brighter, and minor darker.
 
 ## Staying in key: `Scale`
 

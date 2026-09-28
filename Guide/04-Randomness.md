@@ -382,7 +382,7 @@ levyFlight(steps: 900, minStep: 1.5, maxStep: 90)
 selfAvoidingWalk(cellSize: 22)
 ```
 
-Each call hands back the walk's points as a list, ready to draw. All three are seeded like everything else in this chapter, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every parameter, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
+Each call hands back the walk's points as a list, ready to draw. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every parameter, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
 
 ## Chance spread evenly: blue noise and low-discrepancy sequences
 

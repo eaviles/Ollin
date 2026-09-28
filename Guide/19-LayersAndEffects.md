@@ -39,7 +39,7 @@ final class FirstLayer: Sketch {
 
 <img src="Images/19-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` sends everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. So the same drawing can appear twice, once blurred across the whole canvas and once sharp in a card in front of its own blur. One drawing, held and then used, is what every section of this chapter builds on.
+Three calls carry the idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` sends everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. So the same drawing can appear twice, once blurred across the whole canvas and once sharp in a card in front of its own blur. One drawing, held and then used, is what most of this chapter builds on.
 
 Two habits follow from that. A `makeRenderTarget()` is a per-frame handle, so make it fresh inside `draw()` rather than storing it. The texture behind it is pooled and reused, so making one each frame costs nothing. And a layer that is never drawn back stays invisible, because `withTarget` only records the drawing, and `drawImage` is what puts it on screen.
 
@@ -261,7 +261,7 @@ The `tint` alpha is the decay ([Chapter 9](09-Pictures.md) used `tint` to fade a
 
 ## Putting it together: comets
 
-[Chapter 12](12-FlocksAndSwarms.md) ended with a flock of triangles trailing fading paint. Here is the same flock rebuilt from four of this chapter's steps. They are the feedback loop, the bloom filter, the `.add` blend mode, and the ACES tone map. The boids draw as bright dots into a feedback layer, which gives them wakes that drift and curl. The layer comes back bloomed and added as light, and the tone map rolls the hot cores off like film. For contrast, here is the before:
+[Chapter 12](12-FlocksAndSwarms.md#putting-it-together-the-living-flock) built a flock of triangles trailing fading paint. Here is the same flock rebuilt from four of this chapter's steps. They are the feedback loop, the bloom filter, the `.add` blend mode, and the ACES tone map. The boids draw as bright dots into a feedback layer, which gives them wakes that drift and curl. The layer comes back bloomed and added as light, and the tone map rolls the hot cores off like film. For contrast, here is the before:
 
 <img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 12's flock: colored triangles with short painted trails on a flat dark canvas" width="480">
 

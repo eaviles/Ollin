@@ -349,7 +349,7 @@ Hold the button and the circle turns orange. Because `draw()` is running anyway,
 
 ## Putting it together: a breathing ring
 
-Now we can build the sketch from the top of the chapter, out of the steps above. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the ring drift, and `sin` swings both the ring's radius and each circle's size so that the sketch breathes. The ring is placed from the middle of the canvas with `uv` and sized in units of `scale`, as [Placing things without pixels](#placing-things-without-pixels) advised, and each circle wears a fill from a short list of colors. The four `@Param` lines are the panel of controls, and they are the one thing the steps above did not cover.
+Now we can build the sketch from the top of the chapter, out of the steps above. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the ring drift, and `sin` swings both the ring's radius and each circle's size so that the sketch breathes. The ring is placed from the middle of the canvas with `uv` and sized in units of `scale`, as [Placing things without pixels](#placing-things-without-pixels) advised, and each circle wears a fill from a short list of colors. The four `@Param` lines are the panel of controls, and the steps above did not cover them.
 
 Two more things in the listing are new. The circles run inside a `for` loop, which repeats the drawing commands once per circle. And each color carries an `alpha`, which is how opaque it is. 1 is solid, 0 is invisible, and 0.85 lets overlapping circles show a little of each other.
 

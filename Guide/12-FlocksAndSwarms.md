@@ -21,7 +21,7 @@ let steer = (desired - velocity).limited(to: maxForce)
 
 Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing with mass turns instantly. [Chapter 10](10-Vectors.md#steering-the-chase) drew that move as arrows, with the steer running from the tip of the velocity to the tip of the desired.
 
-Everything a creature does in this chapter is this same move with a different idea of *desired*, and that is how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
+Everything a `Vehicle` or a boid does in this chapter is this same move with a different idea of *desired*, and that is how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
 
 ```swift
 let creature = Vehicle(at: Vector2(540, 540), maxSpeed: 4, maxForce: 0.15, seed: 1)
@@ -32,7 +32,7 @@ creature.step()                             // then move one step
 
 Behaviors don't move the creature. They only return forces, and you decide which to apply and how loudly each one counts (`creature.flee(danger) * 2` counts twice). `step()` adds the sum to the velocity, caps the speed, and moves. It is [Chapter 11](11-ForcesAndPhysics.md)'s force accumulation again, with the forces coming from wants instead of gravity.
 
-One thing is different from [Chapter 10](10-Vectors.md). There is no `deltaTime` here. A `Vehicle`, like every simulation in this chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation repeats. The same seed replays the same run, which is how the figures in this guide, and any sketch you export, can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that is almost always fine.
+One thing is different from [Chapter 10](10-Vectors.md). There is no `deltaTime` here. A `Vehicle`, like `Boids` and the pursuit runners later in the chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation repeats. The same seed replays the same run, which is how the figures in this guide, and any sketch you export, can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that is almost always fine.
 
 > **Swift note.** `creature` is declared with `let` even though it changes every frame. That works because `Vehicle` is a *class*, so the `let` pins which creature the name points at, not what is inside it. You met the same pattern in [Chapter 11](11-ForcesAndPhysics.md) with `World`. Holding one instance and poking it every frame is the house shape for simulations.
 

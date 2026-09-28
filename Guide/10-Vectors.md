@@ -247,7 +247,7 @@ Every line of the recipe is arithmetic you already have. A subtraction points fr
 
 ## Putting it together: the swarm
 
-One chaser follows a lure. A few hundred, each with a top speed of its own, move like a school of fish. The sketch at the top of the chapter composes three of the steps. The chase recipe runs over parallel lists of positions and velocities. The wrap comes from the ball's section. And each mover is drawn as a streak along its own velocity, which is the first section's arithmetic, so the drawing shows the motion. Every mover gets its own top speed, so the crowd stretches into leaders and stragglers. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
+One chaser follows a lure. A few hundred, each with a top speed of its own, move like a school of fish. The sketch at the top of the chapter composes three of the steps. The chase recipe runs over parallel lists of positions and velocities. The wrap comes from the ball's section. And each mover is drawn as a streak along its own velocity, which is the arithmetic from [Arrow arithmetic](#arrow-arithmetic-adding-subtracting-scaling-and-dividing), so the drawing shows the motion. Every mover gets its own top speed, so the crowd stretches into leaders and stragglers. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
 
 ```swift
 import Ollin
