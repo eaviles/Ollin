@@ -4,13 +4,13 @@
 
 # 37. Music by rule
 
-<img src="Images/37-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold bars low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
+<img src="Images/37-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold marks low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
 
-This chapter teaches a sketch to decide which notes to play, and when. Rhythms spread hits evenly over a count of steps. After a short primer on pitch, a scale chooses the notes, and a chain that learned a phrase decides where a line goes next. The steps build the music box above, which plays by itself and draws each note as it plays it. After it come a sequencer with a feel, progressions, and tunings. Then come a beat taken from the room, numbers played as notes, MIDI files, and sound placed in a 3D scene.
+This chapter teaches a sketch to decide which notes to play, and when. Rhythms spread hits evenly over a count of steps. After a short primer on pitch, a scale chooses the notes and the chords. A chain that learned a phrase decides where a line goes next. The steps build the music box above, which plays by itself and draws each note as it plays it. After it come a sequencer and an arpeggiator with a feel, progressions, and tunings. Then come a beat taken from the room, numbers played as notes, MIDI files, and sound placed in a 3D scene.
 
 ## Beats and note lengths: `Tempo` and `NoteLength`
 
-A synth decides what a note sounds like. It says nothing about which notes there are, or when they play. Music answers the "when" in beats. A **beat** is the steady pulse you would tap your foot to, and the **tempo** is how many beats pass in a minute. Every type in this chapter counts in beats, and one value turns seconds into beats.
+A synth decides what a note sounds like. It says nothing about which notes there are, or when they play. Music answers the "when" in beats. A **beat** is the steady pulse you would tap your foot to, and the **tempo** is how many beats pass in a minute. The types in this chapter count time in beats and steps rather than seconds, and one value turns seconds into beats.
 
 A `Tempo` knows how long a beat lasts. `let tempo: Tempo = 120` is 120 beats a minute, so `tempo.beats(at: time)` is `time * 120 / 60`, two beats every second.
 
@@ -21,7 +21,7 @@ The same value answers how long a note lasts. A `NoteLength` is a length in beat
   <img src="Images/37-MusicByRule/NoteLengths.jpg" alt="One bar of four beats at 96 beats a minute across the top, each beat marked with the second it lands on, and under it seven rows laying the named note lengths across that bar: whole, half, quarter, eighth, sixteenth, dotted quarter, and eighth triplet, each row ending with how many seconds one of them lasts" width="680">
 </picture>
 
-Read the figure across one bar of four beats. At 96 beats a minute a beat lasts 0.625 seconds. A whole note then holds for 2.5 seconds and a sixteenth for 0.156 seconds. Two dotted quarters fill three beats and leave one over, which is why a dotted rhythm sounds uneven. Three eighth triplets fit where two eighths did.
+Read the figure across one bar of four beats. At 96 beats a minute a beat lasts 0.625 seconds. A whole note then holds for 2.5 seconds and a sixteenth for 0.156 seconds. Two dotted quarters fill three beats and leave one over. Three eighth triplets fit where two eighths did.
 
 ## One step at a time: `StepCounter`
 
@@ -60,7 +60,7 @@ if rhythm[step] { synth.play(60, for: 0.1) }
 
 Read the gaps column. However many strikes you spread over sixteen steps, the gaps come out in at most two lengths, and those two differ by one. Five strikes, for example, leave gaps of three and four steps.
 
-Spreading hits this evenly gives rhythms people already play. `Rhythm(3, in: 8)` is the Cuban tresillo, and `Rhythm(5, in: 8)` the cinquillo. `Rhythm(7, in: 12, rotation: 3)`, the same spread begun at its third strike, is the bell pattern played across west Africa and, after it, in much of the Americas. The method was written to time pulses in a particle accelerator. It works the way Euclid's method for the largest number that divides two others does, so these are called **Euclidean rhythms**.
+Spreading hits this evenly gives rhythms people already play. `Rhythm(3, in: 8)` is the Cuban tresillo, and `Rhythm(5, in: 8)` the cinquillo. `Rhythm(7, in: 12, rotation: 3)` is the same spread started three steps later, at its third strike. It is the bell pattern played across west Africa and, after it, in much of the Americas. The method was written to time pulses in a particle accelerator. It works the way Euclid's method for the largest number that divides two others does, so these are called **Euclidean rhythms**.
 
 The named ones are on the type, so you rarely have to remember the numbers: `.tresillo`, `.cinquillo`, `.bellPattern`, `.bossaNova`, `.samba`, `.aksak`, and several more. You can also write out a pattern you already hear, one character per step, with `x` for a strike and `.` for a rest:
 
@@ -76,7 +76,7 @@ A rhythm says when. The next steps choose which note, and that needs a few words
 
 A **semitone** is the step from one key of a piano to the next, black keys included. Twelve semitones make an **octave**, where the frequency doubles. MIDI numbers count semitones, 60 for middle C and one more for each key up. So a pitch is a number you can add to. 72 is the C an octave above middle C, and 67 is the G seven keys above it.
 
-A **scale** is a choice of notes inside each octave. Its first note is the **root**, and the pattern repeats from the root of the next octave up. A scale is easiest to write as the steps between its notes. The major scale takes steps of 2, 2, 1, 2, 2, 2, and 1 semitones. From C that gives C, D, E, F, G, A, B, and C again, the white keys. A **pentatonic** scale has five notes, and the minor pentatonic takes steps of 3, 2, 2, 3, and 2. Start the same steps on another root and you get the same scale in a new **key**, the set of notes the music uses.
+A **scale** is a choice of notes inside each octave. Its first note is the **root**, and the pattern repeats from the root of the next octave up. A scale is easiest to write as the steps between its notes. The major scale takes steps of 2, 2, 1, 2, 2, 2, and 1 semitones. From C that gives C, D, E, F, G, A, B, and C again, the white keys. A **pentatonic** scale has five notes, and the minor pentatonic takes steps of 3, 2, 2, 3, and 2. Start the same steps on another root and you get the same scale in a new **key**, the set of notes the music uses. That is a different meaning of the word from a piano's keys.
 
 Each note of a scale is a **degree**, numbered by its place from the root. Musicians count degrees from 1. Ollin counts them from 0, like the positions in a list, so degree 0 is the root.
 
@@ -84,19 +84,19 @@ The distance between two notes is an **interval**, counted in semitones. Two int
 
 ## Staying in key: `Scale`
 
-A `Scale` turns whole numbers into notes. Give it a kind of scale and a root, then read it at a degree:
+A `Scale` turns whole numbers into notes. Give it a kind of scale and a root, then read it at a degree. The `play` line goes inside the loop over steps:
 
 ```swift
-let key = Scale(.minorPentatonic, root: "A3")
-synth.play(key[step])
+let scale = Scale(.minorPentatonic, root: "A3")
+synth.play(scale[step])
 ```
 
-Degrees run past both ends. This scale has five notes, so `key[5]` is the root an octave up, and `key[-1]` is the note below the root. Any whole number lands on a note of the key, however it was arrived at. That is how generated music stays in key. Feed a wandering number through a scale and every note it plays belongs to the key. `.major`, `.minor`, `.blues`, and `.hirajoshi` are other kinds, and [Composition](../Docs/Helpers/Composition.md) lists them all.
+Degrees run past both ends. This scale has five notes, so `scale[5]` is the root an octave up, and `scale[-1]` is the note below the root. Any whole number lands on a note of the key, however it was arrived at, so generated music stays in key. Feed a wandering number through a scale and every note it plays belongs to the key. `.major`, `.minor`, `.blues`, and `.hirajoshi` are other kinds, and [Composition](../Docs/Helpers/Composition.md) lists them all.
 
 Sometimes the number came from somewhere that is not music, like a mouse position or a sensor reading. Then `snap` moves it to the nearest note of the scale. `Pitch(...)` makes a pitch from a MIDI number, which can fall between two keys:
 
 ```swift
-synth.play(key.snap(Pitch(40 + mouseY / 12)))
+synth.play(scale.snap(Pitch(40 + mouseY / 12)))
 ```
 
 ## Chords from the key: `Chord` and `Arpeggio`
@@ -116,7 +116,7 @@ The first comes out major and the second minor, from the same call. The steps be
   <img src="Images/37-MusicByRule/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
 </picture>
 
-The left panel is A minor pentatonic as a ladder over every semitone. A wandering run of numbers, fed through the scale, lands only on its rungs. The right panel stacks a triad on each degree of C major. Three come out major and three minor. The one on the seventh degree is **diminished**, three semitones and then three. The numerals under them are how musicians name a chord by the degree it starts on. Capitals mean major, and lowercase means minor.
+The left panel is A minor pentatonic as a ladder over every semitone. A wandering run of numbers, fed through the scale, lands only on its rungs. The right panel stacks a triad on each degree of C major. Three come out major and three minor. The one on the seventh degree is **diminished**, three semitones and then three. It spans six semitones, one short of a fifth, which is called a diminished fifth. The numerals under them are how musicians name a chord by the degree it starts on. Capitals mean major, lowercase means minor, and the small circle after vii means diminished.
 
 An `Arpeggio` plays a chord one note at a time, and like a rhythm it answers a step number:
 
@@ -125,20 +125,20 @@ let arp = Arpeggio(Chord("A3", .minorSeventh), .upDown, octaves: 2)
 synth.play(arp[step], for: 0.1)
 ```
 
-`.upDown` climbs through the chord's notes and comes back down, over two octaves here. Read it at the step number, not at a count of the notes played so far. Then each note is the one the pattern holds at that point in the bar. A rhythm that strikes only some steps skips the notes in between, rather than walking through them one by one.
+`.upDown` climbs through the chord's notes and comes back down, over two octaves here. Read it at the step number, not at a count of the notes played up to now. Then each note is the one the pattern holds at that point in the bar. A rhythm that strikes only some steps skips the notes in between, rather than walking through them one by one.
 
 ## What comes next: a `MarkovChain`
 
-The scale keeps a line in key, but something still has to choose the degrees. A `MarkovChain` chooses them from habits it learned. Show it a **motif**, a short phrase, and it counts what tended to follow what. Then it picks each next element by those counts:
+The scale keeps a line in key, but something still has to choose the degrees. A `MarkovChain` chooses them from habits it learned. Show it a **motif**, a short phrase, and it counts what tended to follow what. Then it picks each next element by those counts. The chain is a property of the sketch, `start(at:)` goes in `setup()`, and the `play` line goes inside the loop over steps:
 
 ```swift
 var melody = MarkovChain(learning: [0, 2, 4, 2, 0, -3], seed: 4, loops: true)
 melody.start(at: 0)
 
-synth.play(key[melody.next() ?? 0])
+synth.play(scale[melody.next() ?? 0])
 ```
 
-The motif here is a list of degrees. `loops: true` treats it as a phrase that comes round again, so its last note leads back to its first. `start(at:)` sets the element the chain starts from. `next()` answers nil when the chain has nowhere to go, so `?? 0` falls back to the root.
+The motif here is a list of degrees. `loops: true` treats it as a phrase that comes round again, so its last note leads back to its first. `start(at: 0)` places the chain at 0, so the first `next()` answers with what followed 0 in the motif. `next()` answers nil only when the chain has learned nothing, so `?? 0` falls back to the root.
 
 `order` is how far back the chain looks. At 1, the default, each element depends only on the one before it. At 2 it looks at the last two, which follows the motif more closely and invents less. The chain is seeded, and it keeps its own random generator rather than borrowing the sketch's. So adding one does not change anything else you were drawing at random, and the same seed plays the same line.
 
@@ -235,11 +235,11 @@ final class MusicBox: Sketch {
 
 ```
 
-> **Swift note.** `MarkovChain<Int>(seed: 4)` makes an empty chain of whole numbers. The type in angle brackets says what the chain holds, which Swift cannot tell from an empty chain; `learn(_:loops:)` teaches it in `setup()`. `struct Played` is declared inside the class, which is how a type that only this sketch uses stays with it. The sketch's own `play(_:_:at:beats:voice:velocity:)` shares its name with the synth's, and Swift tells them apart by their labels. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out.
+> **Swift note.** `MarkovChain<Int>(seed: 4)` makes an empty chain of whole numbers. The type in angle brackets says what the chain holds, which Swift cannot tell from an empty chain. `learn(_:loops:)` teaches it in `setup()`. `struct Played` is declared inside the class, which is how a type that only this sketch uses stays with it. The sketch's own `play(_:_:at:beats:voice:velocity:)` shares its name with the synth's, and Swift tells them apart by their labels.
 
-A few lines take a second look. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The bell builds a seventh chord an octave above the root and reads it as an arpeggio at the step. It snaps each note to the key, which changes nothing for this chord but keeps the bell in key when you change the scale. The breath takes its pitch from the step's place in the bar, which gives E5 on its first strike and D6 on its second. It snaps that too. `((step % steps) + steps) % steps` is the step's place in the bar, 0 to 15. The `%` is the remainder after dividing, and adding `steps` before the second one keeps the answer in range even for a negative step.
+A few lines need a closer look. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out. The scale inside `draw()` is named `key`, which works because it is a local name. A property of the sketch cannot use that name, since `key` is already the sketch's last key pressed. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat. `tempo.seconds(beats:)` turns a length in beats into seconds. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The bell builds a seventh chord an octave above the root and reads it as an arpeggio at the step. It snaps each note to the key, which changes nothing for this chord but keeps the bell in key when you change the scale. The breath takes its pitch from the step's place in the bar, which gives E5 on its first strike and D6 on its second. It snaps that too. `((step % steps) + steps) % steps` is the step's place in the bar, 0 to 15. The `%` is the remainder after dividing, and adding `steps` before the second one keeps the answer in range even for a negative step.
 
-The second part is the drawing, and it knows nothing about sound. Every note the music played was written into `score` as it went. The picture reads that list, with time across and pitch up. How long each note holds is the length of its mark, and how hard it was struck is its weight.
+The second part is the drawing, and it knows nothing about sound. Every note the music played was written into `score` as it went. The picture reads that list, with time across and pitch up. How long each note holds is the length of its mark, and how hard it was struck is its weight. `drawScore` draws a faint line at every fourth beat for the bar lines, then each note, then a line at the current beat.
 
 ```swift
     // MARK: the score it leaves behind
@@ -306,7 +306,7 @@ The second part is the drawing, and it knows nothing about sound. Every note the
 }
 ```
 
-Read the picture back against the code and each voice's rhythm is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones jump around the chord rather than climbing. The arpeggio is read at the step, and the bell strikes only every third or fourth step, so it skips the notes between. The pink ones hold for 2.4 beats and come every two beats, which is why they overlap. `Examples/Audio/Generative` builds music the same way, with its key and tempo on parameters.
+Read the picture back against the code and each voice's rhythm is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones jump around the chord rather than climbing. The arpeggio is read at the step, and the bell strikes only every third or fourth step, so it skips the notes between. The pink ones hold for 2.4 beats and come every two beats, which is why they overlap. `Examples/Audio/Generative` builds music the same way, with its kind of scale, its chord, and its tempo on parameters.
 
 Then make it yours:
 
@@ -324,13 +324,13 @@ Twenty seconds at 96 beats a minute is eight bars. An export drives the sketch o
 
 ## Steps with a feel: the sequencer and the arpeggiator
 
-The music box strikes every hit at the same strength and on the grid, and its bell plays one chord worked out in advance. Two tools from hardware instruments loosen that. A step sequencer gives each step its own weight, chance, and timing. An arpeggiator plays whatever chord is held at the moment.
+The music box strikes every hit at the same strength and on the grid, and its bell plays one chord worked out in advance. Tools from hardware instruments loosen that. A step sequencer gives each step its own weight, chance, and timing. An arpeggiator plays whatever chord is held at the moment.
 
 ### A grid with a feel: `StepSequencer`
 
-A `StepSequencer` is a grid of steps in which each step carries more than on or off. Use it for drum parts and bass lines that should sound played rather than counted. It follows the grid of a hardware drum machine and has the same controls. Each step sets how hard it is struck, its chance to play, and quick repeats, and swing moves the offbeats.
+A `StepSequencer` is a grid of steps in which each step carries more than on or off. Use it for drum parts and bass lines that should sound played rather than counted. It follows the grid of a hardware drum machine and has the same controls. Each step sets how hard it is struck, its chance to play, and its quick repeats, and the whole grid can lean late.
 
-Write one out as a string, one token per step, where a number is a MIDI note and `.` is a rest. **Swing** delays every second step of each pair by the same fraction. At 0.5 the steps are straight, and at 0.58 each second step lands a little late. The loop goes in `draw()`, with `tempo` and `synth` as before:
+Write one out as a string, one token per step, where a number is a MIDI note and `.` is a rest. An **offbeat** is the second step of a pair. **Swing** delays every offbeat by the same fraction. At 0.5 the steps are straight, and at 0.58 each second step lands a little late. The loop goes in `draw()`, with `tempo` and `synth` as before:
 
 ```swift
 var drums: StepSequencer = "36 . . 36 . . 36 . 38 . . 36 . 38 . ."
@@ -346,7 +346,7 @@ override func draw() {
 }
 ```
 
-This loop differs from the counter's in one way. The sequencer is asked for the notes up to where the music will be at the *end* of the frame. The synth is told where the music is *now*. The synth waits out the difference, to the sample. Without the wait, a note asked for in `draw()` lands with the frame that asked for it. That is close enough for a note on the beat but not for swing. A frame lasts about 17 milliseconds on a 60-hertz display. At 120 beats a minute, a swing of 0.67 moves a note by 42. The call underneath is `play(_:velocity:for:after:)`, which any note can use. `after:` is a wait in seconds, so a strum is three notes and three waits.
+This loop differs from the counter's in one way. The sequencer is asked for the notes up to where the music will be at the *end* of the frame. The synth is told where the music is *now*. The synth waits out the difference, to the sample. Without the wait, a note asked for in `draw()` lands with the frame that asked for it. It is close enough for a note on the beat but not for swing. A frame lasts about 17 milliseconds on a 60-hertz display. At 120 beats a minute, a swing of 0.67 moves a note by 42 milliseconds. The call underneath is `play(_:velocity:for:after:)`, which any note can use. `after:` is a wait in seconds, so a strum is three notes and three waits.
 
 Each step is a `Step` with a pitch or a rest and three settings. `velocity` is how hard it is struck, from 0 to 1. `probability` is its chance to play on any one bar. `ratchet` squeezes several quick strikes into the step. Set them through the subscript, which wraps like a rhythm's:
 
@@ -360,7 +360,7 @@ drums[13] = StepSequencer.Step(42, probability: 0.5)             // plays half t
   <img src="Images/37-MusicByRule/Sequencer.jpg" alt="Three blocks. Top: one bar of sixteen steps as dots on a line, three rows for straight, swing 0.58, and swing 0.67, the offbeat dots pushed right by a growing amount while the downbeat dots stay on their ticks. Middle: one lane over four bars as rows of cells, one cell shorter for a low velocity, one cell drawn as an outline on two of the four bars where a chance step stayed quiet, and one cell split into three narrow strikes for a ratchet. Bottom: two pitch ladders, the first climbing C4 E4 G4 with a B4 joining the ladder after a marked step, the second running up and down over two octaves" width="680">
 </picture>
 
-Read the top block across. An **offbeat** is the second step of a pair. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the uneven lilt called a shuffle. The steps on the beat never move, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's seed. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
+Read the top block across. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the uneven rhythm called a shuffle. The steps on the beat never move, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's seed. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
 
 `Examples/Audio/Sequencer` is a drum machine's grid with an arpeggiator under it. It has three lanes, a swing slider, the hat's offbeats on a chance, two ratchets, and a chord that changes every bar. Click a cell to turn it on or off.
 
@@ -368,7 +368,7 @@ Read the top block across. An **offbeat** is the second step of a pair. Swing mo
 
 An `Arpeggiator` plays whatever notes are held right now, one a step, in an order. Use it to turn chords from a keyboard, or chords the sketch chooses, into a moving line. It is the arpeggiator of a hardware synthesizer, which does the same with the keys under your hand.
 
-The notes can come from a keyboard over MIDI, or from the sketch itself. Here `midi` is a `MIDIInput` from [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc), and `heldNotes` lists the keys held down on it:
+The notes can come from a keyboard over MIDI, or from the sketch itself. Here `midi` is a `MIDIInput` from [Chapter 35](35-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc), so the sketch imports `OllinMIDI`, and `heldNotes` lists the keys held down on it:
 
 ```swift
 var arp = Arpeggiator(.upDown, octaves: 2, rate: .sixteenth)
@@ -402,24 +402,24 @@ for step in chordSteps.steps(upTo: time * 2) {
 }
 ```
 
-Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. The numerals can be written in either case, since the scale decides major or minor.
+Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. Ollin ignores the case of a numeral, since the scale decides major or minor.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Changes-dark.jpg">
   <img src="Images/37-MusicByRule/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
 </picture>
 
-These are the notes `pitches(at:)` hands back, in two keys, with nothing else changed. Every chord comes out different, each one whatever the scale's own notes make of that degree. The second column is minor in the major key and major in the minor one. The numeral only ever meant "start here and take every other note". Ollin names every black key with a sharp, so the minor row's `G#` is the A flat a score would print. A **flat** is the key just below a letter, as a sharp is the key just above. So G sharp and A flat are the same pitch. `Examples/Audio/Changes` puts the key on a parameter, so you can hear the chords change while it plays.
+These are the notes `pitches(at:)` hands back, in two keys, with nothing else changed. Every chord comes out different, each one whatever the scale's own notes make of that degree. The second column is minor in the major key and major in the minor one. The numeral only ever meant "start here and take every other note". A musician would write the minor key's row as i VI iv v, in lowercase where the chords are minor. Ollin names every black key with a sharp, so the minor row's `G#` is the note a score would print as A flat. A **flat** is the key just below a letter, as a sharp is the key just above. So G sharp and A flat are the same pitch. `Examples/Audio/Changes` puts the key on a parameter, so you can hear the chords change while it plays.
 
 A few progressions are named, such as `.pop(in:)`, `.blues(in:)`, `.twoFiveOne(in:)`, and `.andalusian(in:)`. A progression can also leave its cycle:
 
 ```swift
-let changes = Progression("I vi IV V ii V", in: key).wandering(32)
+let changes = Progression("I vi IV V ii V", in: scale).wandering(32)
 ```
 
 `wandering(_:)` learns a Markov chain from the progression's own moves and plays 32 chords from it. It only makes moves the original made, but after a few bars it is somewhere the original never went. It is seeded per call, so a wander you like is one you can ask for again.
 
-When the chords do not all come from one key, write them as chord symbols instead. A symbol names a chord's root and kind, so `Dm7` is D minor seventh:
+When the chords do not all come from one key, write them as chord symbols instead. A symbol names a chord's root and kind. `Dm7` is D minor seventh, `G7` a G seventh chord, `Cmaj7` C major seventh, and `F#m7` F sharp minor seventh:
 
 ```swift
 let changes = Progression(symbols: "Dm7 G7 Cmaj7 Cmaj7")
@@ -430,9 +430,9 @@ Symbols stay where they are when the key changes, and degrees move with it.
 
 ### Other divisions of the octave: `Tuning`
 
-Every step so far divides the octave into twelve equal semitones, which is called **equal temperament**. A **tuning** is a choice of where the notes sit, and equal temperament is one tuning among several. Use another when a held chord should sit still instead of beating, or for pitches between a keyboard's keys. Tunings by whole-number ratios are older than written music, and equal temperament is arithmetic. The tuning with names on it is Bohlen-Pierce, later in this entry.
+Every step up to here divides the octave into twelve equal semitones, which is called **equal temperament**. A **tuning** is a choice of where the notes sit, and equal temperament is one tuning among several. Use another when a held chord should sit still instead of wobbling, or for pitches between a keyboard's keys. Tuning by whole-number ratios goes back at least to ancient Greece, where the Pythagoreans described it. Equal temperament was calculated in the 1580s, by Zhu Zaiyu in China and Simon Stevin in the Netherlands.
 
-A tuning is easiest to see as ratios of frequency. An octave is the ratio 2, the upper note at twice the frequency of the lower. A fifth tuned by ratio is 3/2, and a major third 5/4. In equal temperament every semitone is the same ratio, the twelfth root of 2. Twelve of them make exactly 2, and no other interval comes out as a whole-number ratio. Measured in cents, a hundred to a semitone as in [Chapter 34](34-Listening.md#one-note-at-a-time-pitch), `Tuning.just` reads 0, 204, 386, 498, 702, 884, and 1088. Equal temperament reads round hundreds.
+A tuning is easiest to see as ratios of frequency. An octave is the ratio 2, the upper note at twice the frequency of the lower. A fifth tuned by ratio is 3/2, and a major third 5/4. In equal temperament every semitone is the same ratio, the twelfth root of 2. Twelve of them make exactly 2, and no other interval comes out as a whole-number ratio. Tuning every note by whole-number ratios is called **just intonation**. Measured in cents, a hundred to a semitone as in [Chapter 34](34-Listening.md#one-note-at-a-time-pitch), `Tuning.just` reads 0, 204, 386, 498, 702, 884, and 1088. Equal temperament reads round hundreds.
 
 <!-- Figure: Tunings (Guide/Figures/37-MusicByRule/Tunings.swift), waiting on a render. -->
 
@@ -443,9 +443,9 @@ let tuning = Tuning.just.rooted(at: "C3")
 synth.play(tuning[degree])
 ```
 
-Equal temperament makes every key usable by putting every interval but the octave slightly off. Hold a triad in `.equalTemperament`, then the same triad in `.just`, and you can hear the cost. The equal one wobbles in a slow rise and fall in loudness, called beating, as [Chapter 36](36-MakingSound.md#a-shape-you-can-hit-modal-synthesis)'s drum did. The just one holds still. Just intonation is in tune in one key only, so music that never changes key gives nothing up by using it.
+Equal temperament makes every key usable by putting every interval but the octave slightly off. Hold a triad in `.equalTemperament`, then the same triad in `.just`, and you can hear the cost. The equal one wobbles in a slow rise and fall in loudness, called beating, as [Chapter 36](36-MakingSound.md#a-shape-you-can-hit-modal-synthesis)'s drum did. The just one holds still. Just intonation is tuned for chords on its root, and some other chords in the same key come out worse. D to A, for example, is a fifth 22 cents flat, so just intonation suits music that stays near its root.
 
-`.pythagorean` builds its notes from stacked fifths. `.nineteen`, `.thirtyOne`, and `.quarterTones` divide the octave into more equal steps. `.bohlenPierce` repeats at the ratio 3, an octave and a fifth, divided into thirteen equal steps, so it has no octave at all. Heinz Bohlen found it in 1972, and Kees van Prooijen in 1978 and John R. Pierce in 1984 found it again on their own. It works because odd harmonics still line up, so it suits a sound with odd harmonics only, like the clarinet of [Chapter 36](36-MakingSound.md#a-note-you-keep-playing-bowed-and-blown). `Examples/Audio/Tunings` holds one triad through all seven.
+`.pythagorean` builds its notes from stacked fifths. `.nineteen`, `.thirtyOne`, and `.quarterTones` divide the octave into more equal steps. `.bohlenPierce` repeats at the ratio 3, an octave and a fifth, divided into thirteen equal steps, so it has no octave at all. It is the tuning with names on it. Heinz Bohlen found it in 1972, and Kees van Prooijen in 1978 and John R. Pierce in 1984 found it again on their own. It works because odd harmonics still line up, so it suits a sound with odd harmonics only, like the clarinet of [Chapter 36](36-MakingSound.md#a-note-you-keep-playing-bowed-and-blown). `Examples/Audio/Tunings` holds one triad through all seven.
 
 ## Music from outside the sketch: the room's beat and a table of numbers
 
@@ -453,9 +453,9 @@ The music box keeps its own time and invents every note. Both can come from outs
 
 ### Playing along with the room: tempo sync
 
-A `BeatFollower` listens to a source and works out musical time from the beats it hears. Use it to play in time with a record, a band, or a drum machine that sends no clock. It builds on the beat detection of [Chapter 34](34-Listening.md#hearing-the-beat-onsets), which tells you *that* a beat happened. Playing along needs a tempo and a place in the bar as well.
+A `BeatFollower` listens to a source and works out musical time from the beats it hears. Use it to play in time with a record, a band, or a drum machine that sends no clock. It builds on the beat detection of [Chapter 34](34-Listening.md#hearing-the-beat-onsets), which tells you *that* a beat happened. Playing along needs a tempo and a place in the bar as well. A program that follows a beat this way is called a beat tracker, and DJ software uses one to match two records.
 
-`mic` is an `AudioInput`, started in `setup()` as in Chapter 34. `lazy var` waits to build the follower until it is first used, after `mic` exists:
+`mic` is an `AudioInput`, started in `setup()` as in Chapter 34. A property's starting value cannot read another property, so `lazy var` builds the follower when it is first used, and then it can read `mic`:
 
 ```swift
 let mic = AudioInput()                   // start it in setup(), as in Chapter 34
@@ -465,7 +465,7 @@ var counter = StepCounter(perBeat: 2)
 override func draw() {
     room.advance(to: time)
     for step in counter.steps(upTo: room.beats) {
-        synth.play(key[step % 5], for: 0.2)
+        synth.play(scale[step % 5], for: 0.2)
     }
 }
 ```
@@ -495,24 +495,24 @@ The same call reads a line across a terrain as heights, or a row of a picture as
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Sonification-dark.jpg">
-  <img src="Images/37-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the low half bunches against the top two octaves, and again snapped so every mark lands on a line of the scale" width="880">
+  <img src="Images/37-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
 </picture>
 
 Two choices inside that call shape what you hear. The figure shows both.
 
-**Pitch is spread evenly in semitones, not in hertz.** Hearing works in ratios. The step from 220 Hz to 440 sounds like the step from 440 to 880, though the second is twice as many hertz. Spread a series evenly in hertz, and the high values crowd together in the top octave, where their differences are hard to hear. The low values take up most of the range. That is the third row of the figure. Spread evenly in semitones, every step in the data is the same size to the ear.
+**Pitch is spread evenly in semitones, not in hertz.** Hearing works in ratios. The step from 220 Hz to 440 sounds like the step from 440 to 880, though the second is twice as many hertz. Spread a series evenly in hertz, and the high values crowd together in the top octave, where their differences are hard to hear. The low values take up most of the range, as in the third row of the figure. Spread evenly in semitones, every step in the data is the same size to the ear.
 
 **Snapping keeps every value on a note of the key.** The bottom row is the same reading landing only on notes of the scale. The data is unchanged, and every note it plays now belongs to the key.
 
-A reference note helps a listener read the values. It sounds one chosen value on the same terms as the reading. Here `marker` is a second synth, with a different voice so the reference stands apart:
+A reference note helps a listener read the values. It sounds one chosen value on the same terms as the reading. Here `marker` is a second synth, with a different voice so the reference stands apart, and the line goes inside the loop over steps:
 
 ```swift
 marker.play(readings.reference(at: 20), tempo: 120)   // 20 degrees, sounded
 ```
 
-Without a reference, a listener needs **absolute pitch**, the rare ability to name a note by ear, to know what any note means. With one, every note is heard as above or below something. It works like a grid line on a chart. René Tünnermann, Jens Hammerschmidt, and Thomas Hermann measured in 2016 that reference notes make readings more accurate.
+Without a reference, a listener needs **absolute pitch**, the rare ability to name a note by ear, to know what any note means. With one, every note is heard as above or below something. It works like a grid line on a chart. Oussama Metatla, Nick Bryan-Kinns, Tony Stockman, and Fiore Martin measured in 2016 that reference notes make readings more accurate.
 
-A sketch that draws a column can play the same column from the same numbers, in one more line. `Examples/Audio/Sonification` draws a line across a landscape as a profile and plays it as a tune, with a playhead on the note sounding. The picture and the sound are two views of one series, and the sound works for someone who is not looking.
+A sketch that draws a column can play the same column from the same numbers, in one more line. `Examples/Audio/Sonification` draws a line across a landscape as a profile and plays it as a tune, with a line marking the note sounding. The picture and the sound are two views of one series, and the sound works for someone who is not looking.
 
 ## Where the music goes: a file, and a place in the scene
 
@@ -522,14 +522,14 @@ The music box's notes exist only while it runs, and every voice comes out of bot
 
 A **Standard MIDI File**, the `.mid` file, stores notes as MIDI messages with their timing. Every sequencer and notation program reads and writes one. Use it to keep a phrase you liked, to open the sketch's music in another program, or to play a file somebody else wrote. The format is published by the MIDI Association beside the MIDI 1.0 specification.
 
-Writing one takes the notes you already have. `drums` is the step sequencer from [A grid with a feel](#a-grid-with-a-feel-stepsequencer). The loop asks it for its notes one bar of four beats at a time, up to beat 32, and writes them to a file:
+Writing one takes the notes you already have. Here `drums` is a fresh step sequencer like the one in [A grid with a feel](#a-grid-with-a-feel-stepsequencer). A sequencer that has been playing live has moved its count on. The loop asks it for one bar of four beats at a time, up to just before the next bar starts. It writes eight bars to a file, and `try?` skips the write if it fails:
 
 ```swift
 var phrase: [ScheduledNote] = []
-for beat in stride(from: 4.0, through: 32, by: 4) {
-    phrase += drums.events(upTo: beat)
+for bar in 0..<8 {
+    phrase += drums.events(upTo: Double(bar) * 4 + 3.99)
 }
-try MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
+try? MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
 ```
 
 `events(upTo:)` hands back `ScheduledNote` values, each a note with the beat it starts on. A file is made of those, so nothing has to be converted. The arpeggiator answers in the same values, so its notes can be written out the same way.
@@ -554,14 +554,14 @@ The loop uses the sequencer's look-ahead. It asks for the notes up to where the 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/MIDIFileFigure-dark.jpg">
-  <img src="Images/37-MusicByRule/MIDIFileFigure.jpg" alt="Two blocks. Top: four bars of a file as a piano roll, long blue bars for held chords on channel one and short red marks climbing above them for a figure on channel two, vertical lines at each bar, and a chord name written above each bar. Bottom: the same four bars on two horizontal rulers, one counted in beats with ticks evenly spaced and one counted in seconds with the first half of the ticks bunched together and the second half spread twice as far apart, sloping lines joining each position on the first ruler to the same position on the second" width="680">
+  <img src="Images/37-MusicByRule/MIDIFileFigure.jpg" alt="Two blocks. Top: four bars of a file as a piano roll, long blue bars for held chords on channel one and short red marks climbing above them for a figure on channel two, vertical lines at each bar, and the name of each bar's root note written above it. Bottom: the same four bars on two horizontal rulers, one counted in beats with ticks evenly spaced and one counted in seconds with the first half of the ticks bunched together and the second half spread twice as far apart, sloping lines joining each position on the first ruler to the same position on the second" width="680">
 </picture>
 
-The top of the figure is a file drawn as a piano roll, a chart with time across and pitch up. Reading a file gives you all of it. The parts, their MIDI channels, the bar lines from its time signature, and the note names from its markers all come back. A **time signature** says how many beats a bar holds.
+The top of the figure is a file drawn as a piano roll, a chart with time across and pitch up. Reading a file gives you everything the figure shows. The parts, their MIDI channels, and the bar lines from its time signature come back. So do the note names over the bars, which come from its **markers**, names placed at beats. A **time signature** says how many beats a bar holds.
 
-The bottom half shows how a file keeps time. Every position in a MIDI file is a beat, never a second, for the same reason the composition types own no clock. A beat still means the same place in the music when somebody plays the file faster. The **tempo map** joins beats to seconds. It is a list of the places the speed changes, and `beats(at:)` and `seconds(at:)` read it from either side. In the figure the music drops to half speed at beat eight. So the later bars take twice as long on the clock, while sitting where they were in the music. Divide by one tempo instead, and everything after that point comes out wrong. The error is hard to see: a playhead drifts slowly away from the notes it should be marking.
+The bottom half shows how a file keeps time. Positions in most MIDI files are beats rather than seconds, for the same reason the composition types own no clock. A beat still means the same place in the music when somebody plays the file faster. The **tempo map** joins beats to seconds. It is a list of the places the speed changes, and `beats(at:)` and `seconds(at:)` read it from either side. In the figure the music drops to half speed at beat eight. So the later bars take twice as long on the clock, while sitting where they were in the music. Divide by one tempo instead, and everything after that point comes out wrong. The error is hard to see, because a **playhead**, the line marking the current moment, drifts slowly away from the notes it should be marking.
 
-A file carries more than notes. Control changes, the pitch wheel, the instrument each part asks for, the names, and markers all come back. A **marker** is a name at a beat, put there by whoever wrote the music. A sketch can use one as the place to change scene.
+A file carries more than notes. Control changes, the pitch wheel, the instrument each part asks for, and the names come back too. A few things are passed over, such as aftertouch and key signatures. A marker is put there by whoever wrote the music, and a sketch can use one as the place to change scene.
 
 A `Synth` can also write down what it is asked to play, so a **take**, one recorded run of playing, can be opened somewhere else. In `keyPressed()`, `key` is the key just pressed on the Mac's keyboard, not a scale:
 
@@ -575,7 +575,7 @@ override func keyPressed() {
 }
 ```
 
-The notes keep the timing they were played with, down to the wait each one was asked with, so a swung pattern arrives swung. The tempo you give only decides where the bar lines fall around what was played. `Examples/Audio/MIDIFiles` goes round the whole circle. It composes eight bars, writes them to a file, forgets them, and reads the file back. Everything you then see and hear comes off the disk.
+The notes keep the timing they were played with, down to the wait each one was asked with, so a swung pattern arrives swung. The tempo you give only decides where the bar lines fall around what was played. `Examples/Audio/MIDIFiles` does both directions in one sketch. It composes eight bars, writes them to a file, forgets them, and reads the file back. Everything you then see and hear comes off the disk.
 
 ### Sound from a place in the scene: spatial audio
 
@@ -590,9 +590,9 @@ guard let eye = activeCamera else { return }
 synth.place(at: Vector3(2, 0, -3), heardFrom: eye)
 ```
 
-The position and the listener arrive in the same call, because a position means nothing until something listens. Where the sketch looks from is where it hears from. On headphones this is more than loudness. It includes how much later the sound reaches one ear than the other, and how a head changes a sound arriving from each side. Something behind you sounds behind you, rather than only quieter. `Examples/Audio/Spatial` is three chimes standing still and one walking past them.
+The position and the listener arrive in the same call, because a position means nothing until something listens. Where the sketch looks from is where it hears from. On headphones the placing changes more than loudness. It changes how much later the sound reaches one ear than the other, and how a head changes a sound arriving from each side. Something behind you sounds behind you, rather than only quieter. `Examples/Audio/Spatial` is three chimes standing still and one walking past them.
 
-Placing works in an export too. Where each synth was, and where it was heard from, are written down as the frames are drawn, the same way as the notes. The soundtrack is then rendered through a listener at the end. A chime that walks past on the left on screen walks past on the left in the file. There the placing is a plain left and right, without the head model headphones get live, since a file cannot know what plays it. Place each synth from the first frame. The export builds its sound machinery once, at the start. A synth that plays before it is ever placed reports that, rather than coming out in the middle.
+Placing works in an export too. Where each synth was, and where it was heard from, are written down as the frames are drawn, the same way as the notes. The soundtrack is then rendered through a listener at the end. A chime that walks past on the left on screen walks past on the left in the file. There the placing is a plain left and right, without the head model headphones get live, since a file cannot know what plays it. Place each synth from the first frame. The export builds its sound machinery once, at the start. A synth that plays before it is ever placed comes out in the middle, and the export prints a note saying so.
 
 ## Where this comes from
 

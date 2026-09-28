@@ -65,15 +65,16 @@ final class Keyboard: Sketch {
     }
 
     func drawKeyboard() {
-        // White keys first, then the black keys over them.
-        stroke(theme.ink(0.7))
+        // White keys first, then the black keys over them. The keys keep
+        // their own colors in both themes, since they depict a keyboard.
+        stroke(Color(white: 0.35))
         strokeWeight(1.5)
         for midi in low ... high where isWhite(midi) {
-            fill(theme.paper)
+            fill(Color(white: 0.98))
             drawRect(keyX(midi) - whiteWidth / 2, keyTop, whiteWidth, whiteHeight)
         }
         for midi in low ... high where !isWhite(midi) {
-            fill(theme.ink(0.85))
+            fill(Color(white: 0.12))
             drawRect(keyX(midi) - blackWidth / 2, keyTop, blackWidth, blackHeight)
         }
 
@@ -82,14 +83,14 @@ final class Keyboard: Sketch {
         textAlign(.center, .middle)
         for midi in low ... high {
             if isWhite(midi) {
-                fill(theme.muted)
+                fill(Color(white: 0.45))
                 textSize(12)
                 drawText("\(midi)", keyX(midi), keyTop + whiteHeight - 14)
                 fill(theme.ink)
                 textSize(13)
                 drawText("\(Pitch(Double(midi)))", keyX(midi), keyTop + whiteHeight + 14)
             } else {
-                fill(theme.paper)
+                fill(Color(white: 0.92))
                 textSize(10)
                 drawText("\(midi)", keyX(midi), keyTop + blackHeight - 11)
             }
