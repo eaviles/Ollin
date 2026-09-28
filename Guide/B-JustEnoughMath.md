@@ -4,7 +4,7 @@
 
 # B. Just enough math, visually
 
-This appendix explains every math idea in the guide again, one short entry per idea. Each entry gives a picture, the idea in plain words, and a link to the chapter that uses it. It backs up the guide's first rule, that a concept comes before anything uses it. If you get lost on a page anywhere, look here for the missing idea.
+This appendix explains every math idea in the guide again, in one short entry each. Each entry gives a picture, a plain-words explanation, and a link to the chapter that uses it. It supports the guide's first rule, that a concept comes before anything uses it. If you get lost on a page anywhere, look here for what you are missing.
 
 The entries are grouped by theme rather than by chapter, so related ideas sit together. You can read it from start to end, or go straight to the one idea you need.
 
@@ -51,7 +51,7 @@ The 3D world uses its own frame. The origin sits wherever you like, x still grow
 
 <img src="Images/B-JustEnoughMath/TauClock.jpg" alt="A dial with 0, tau over 4, tau over 2, and 3 tau over 4 marked around it, an accent wedge of tau over 8, and three mini dials showing tau over 12, 6, and 3" width="680">
 
-Angles here are radians, and the easiest way to write them is with `.tau`, the angle of one full turn (about 6.283, twice pi). Fractions of tau read as fractions of a turn: `.tau / 4` is a quarter turn, `.tau / 12` a clock hour. Because the canvas's y points down, angles sweep *clockwise* on screen, starting from 3 o'clock. Thinking in turns spares you both degrees and memorized decimals, and [Chapter 1](01-HelloOllin.md) adopts it immediately.
+Angles here are radians, and the easiest way to write them is with `.tau`, the angle of one full turn (about 6.283, twice pi). Fractions of tau read as fractions of a turn: `.tau / 4` is a quarter turn, `.tau / 12` a clock hour. Because the canvas's y points down, angles sweep *clockwise* on screen, starting from 3 o'clock. Thinking in turns spares you both degrees and memorized decimals, and [Chapter 1](01-HelloOllin.md) measures angles this way.
 
 ### An angle and a radius make a point
 
@@ -62,7 +62,7 @@ Angles here are radians, and the easiest way to write them is with `.tau`, the a
 
 To stand on a circle's rim, you need how far around (an angle) and how far out (a radius). `cos(angle) * radius` gives the across part, `sin(angle) * radius` the down part, and adding them to the center gives the point. This one pattern places petals, clock hands, orbiting moons, and everything else arranged in a ring. It first appears in [Chapter 1](01-HelloOllin.md), and later chapters keep using it.
 
-Once you know the pattern, you can also write it as one call. `polar(angle, radius, around: center)` gives the same point, and `angles(12)` gives you twelve evenly spaced angles to place things at. A whole ring becomes a `for` loop with no index arithmetic. This appendix keeps spelling the trig out so you can see it work.
+Once you know the pattern, you can also write it as one call. `polar(angle, radius, around: center)` returns the same point, and `angles(12)` returns twelve evenly spaced angles to place things at. A ring of things becomes a `for` loop with no index arithmetic. This appendix keeps spelling the trig out so you can see it work.
 
 ### The angle of an arrow: `atan2`
 
@@ -89,7 +89,7 @@ Once you know the pattern, you can also write it as one call. `polar(angle, radi
   <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
 </picture>
 
-Adding a constant inside `sin(...)` starts the swing partway through its cycle, a head start, called phase. Give each element a *different* head start, usually from its position, as in `sin(time + x * 0.02)`. Then identical motions turn into a wave that travels across space. [Chapter 3](03-MotionAndTime.md) makes a wave across a row of dots this way.
+Adding a constant inside `sin(...)` starts the swing partway through its cycle, a head start, called phase. Give each element a *different* head start, usually from its position, as in `sin(time + x * 0.02)`. Then identical motions turn into a wave that travels across space. [Chapter 3](03-MotionAndTime.md) gives a row of dots their head starts this way.
 
 ### n copies close the circle
 
@@ -133,7 +133,7 @@ A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at 
 
 <img src="Images/B-JustEnoughMath/Wrap.jpg" alt="Three strips over one time axis: raw time rising forever, loopProgress wrapping 0 to 1 every lap, and pingPong folding each lap out and back" width="680">
 
-A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps whole numbers, so `i % 4` cycles 0, 1, 2, 3. `fract` keeps only the fraction of a decimal, which wraps it into 0…1. `loopProgress(over: 3)` is that wrap applied to the sketch clock, "how far through the current 3-second lap". `pingPong` folds each lap, so the value goes out and back instead of jumping to 0. [Chapter 1](01-HelloOllin.md) meets `%`, and [Chapter 3](03-MotionAndTime.md) supplies the two helpers.
+A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps whole numbers, so `i % 4` cycles 0, 1, 2, 3. `fract` keeps only the part after the decimal point, so 2.75 becomes 0.75, and a growing value wraps into 0…1. `loopProgress(over: 3)` is that wrap applied to the sketch clock, "how far through the current 3-second lap". `pingPong` folds each lap, so the value goes out and back instead of jumping to 0. [Chapter 1](01-HelloOllin.md) meets `%`, and [Chapter 3](03-MotionAndTime.md) supplies the two helpers.
 
 ### What two counts share: the greatest common divisor
 
@@ -148,13 +148,13 @@ The greatest common divisor of two whole numbers is the largest number that divi
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around concentric rings of colored dots, looping seamlessly" width="480">
 
-An animation loops with no visible jump when every time-driven term completes *whole* cycles in the loop length. A 4-second loop can hold sine waves with periods of 4, 2, or 1 second, but a period of 3 pops at the seam. Noise loops the same way. `noise(x, loop: t)` walks a closed circle through the noise field, so one lap ends where it began ([Chapter 5](05-Noise.md)). [Chapter 3](03-MotionAndTime.md) states the rule. An exported GIF depends on it, because a GIF plays its first frame again after its last.
+An animation loops with no visible jump when every time-driven term completes *whole* cycles in the loop length. A 4-second loop can hold sine waves with periods of 4, 2, or 1 second. A period of 3 jumps where the loop starts over. Noise loops the same way. `noise(x, loop: t)` walks a closed circle through the noise field, so one lap ends where it began ([Chapter 5](05-Noise.md)). [Chapter 3](03-MotionAndTime.md) states the rule. An exported GIF depends on it, because a GIF plays its first frame again after its last.
 
 ### Sampling one grid with another
 
 <img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait built entirely from one word repeated in a grid, colored and sized by the image beneath" width="560">
 
-To read an image at any grid's resolution, connect the grid and the image through fractions. A cell 30% across and 60% down the grid reads the pixel 30% across and 60% down the image. Nothing needs to match in size, because the fractions do the translation. This is how [Chapter 9](09-Pictures.md) rebuilds a photo as a mosaic of letters. It is the normalized coordinates from the start of this appendix, put to use on a grid.
+To read an image at any grid's resolution, connect the grid and the image through fractions. A cell 30% across and 60% down the grid reads the pixel 30% across and 60% down the image. Nothing needs to match in size, because the fractions do the translation. This is how [Chapter 9](09-Pictures.md) rebuilds a photo as a mosaic of letters. It is the idea of normalized coordinates, from the start of this appendix, used on a grid.
 
 ## Shaping a value
 
@@ -182,7 +182,7 @@ Multiply a value by a little less than 1 every frame, keeping 93% say, and it fa
   <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles of dot constellations labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
 </picture>
 
-`random()` is a deterministic scramble that plays out the same sequence from a chosen starting point, the **seed**. The same seed gives the same "random" result on every run, which is what makes generative work reproducible. A seed works like a serial number for one version of a sketch. Change the seed and you get another variation, a different result from the same code. [Chapter 4](04-Randomness.md) builds its seed workflow on this.
+`random()` is a deterministic scramble that plays out the same sequence from a chosen starting point, the **seed**. The same seed gives the same "random" result on every run, which is what makes generative work reproducible. A seed works like a serial number. Change it and you get another variation, a different result from the same code. [Chapter 4](04-Randomness.md) builds its seed workflow on this.
 
 ### Probability as a threshold
 
@@ -191,7 +191,7 @@ Multiply a value by a little less than 1 every frame, keeping 93% say, and it fa
   <img src="Images/04-Randomness/Choices.jpg" alt="Strips of dots showing probability gates at 0.25 and 0.75, a uniform four-color pick, and a pick dominated by one weighted color" width="680">
 </picture>
 
-`random() < 0.25` is true a quarter of the time. A uniform roll in 0…1 falls below 0.25 a quarter of the time, below 0.5 half the time, and so on. Stack several thresholds and you have a weighted choice. A common outcome gets a wide slice of the 0…1 line, and a rare one gets a thin slice. [Chapter 4](04-Randomness.md) turns this into scattered accents and weighted palettes.
+`random() < 0.25` is true a quarter of the time. Every part of 0…1 is equally likely, and 0 to 0.25 is a quarter of it. By the same reasoning, `random() < 0.5` is true half the time. Stack several thresholds and you have a weighted choice. A common outcome gets a wide slice of the 0…1 line, and a rare one gets a thin slice. [Chapter 4](04-Randomness.md) turns this into scattered accents and weighted palettes.
 
 ### Uniform vs Gaussian
 
@@ -222,7 +222,7 @@ To scatter points in a disk, pick an angle and a distance from the center. A pla
   <img src="Images/04-Randomness/ScatterCompare.jpg" alt="Two panels with the same number of dots: plain random placement with clumps and bare gaps, and a blue-noise scatter, even but organic" width="680">
 </picture>
 
-Independent random placements clump and leave holes, and they do not space themselves out, because each roll ignores every other. Clumps are what independent rolls look like, even from a good generator. When you want "random but even", you need an algorithm that pushes points apart, like the blue-noise scatter on the right. [Chapter 4](04-Randomness.md) names the lump problem and fixes it with blue noise, and [Chapter 15](15-ShapesAsMaterial.md) scatters the same way inside a shape.
+Independent random placements clump and leave holes, because each roll ignores every other. Clumps are what independent rolls look like, even from a good generator. When you want "random but even", you need an algorithm that pushes points apart, like the blue-noise scatter on the right. [Chapter 4](04-Randomness.md) names the lump problem and fixes it with blue noise, and [Chapter 15](15-ShapesAsMaterial.md) scatters the same way inside a shape.
 
 ### The random walk
 
@@ -231,7 +231,7 @@ Independent random placements clump and leave holes, and they do not space thems
   <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash, accumulated nudges produce a wandering path" width="680">
 </picture>
 
-Re-roll a position every frame and you get a jagged hash with no memory. *Accumulate* small random nudges instead (`x += random(-2, 2)`) and a path appears, because each position remembers all the nudges before it. That one change, re-rolling or accumulating, is the difference between static and a wandering path. [Chapter 4](04-Randomness.md) builds its random walks this way.
+Re-roll a position every frame and you get a jagged hash with no memory. *Accumulate* small random nudges instead (`x += random(-2, 2)`) and a path appears, because each position remembers all the nudges before it. That one change, re-rolling or accumulating, is the difference between a jagged hash and a wandering path. [Chapter 4](04-Randomness.md) builds its random walks this way.
 
 ## Noise
 
@@ -251,7 +251,7 @@ Re-roll a position every frame and you get a jagged hash with no memory. *Accumu
   <img src="Images/05-Noise/NoiseZoom.jpg" alt="Three panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06: one gentle valley, rolling hills, busy wiggles" width="680">
 </picture>
 
-The multiplier in `noise(x * scale)` sets how far apart your questions land on the landscape. The landscape itself stays the same. A small multiplier asks about points close together and sees one broad feature, while a large one steps across many hills and sees busy detail. When noise looks wrong, try changing this multiplier first. [Chapter 5](05-Noise.md) calls it the zoom parameter.
+The multiplier in `noise(x * scale)` sets how far apart your questions land on the landscape. The landscape itself stays the same. A small multiplier asks about points close together and sees one broad feature, while a large one steps across many hills and sees busy detail. When noise looks wrong, try changing this multiplier first. [Chapter 5](05-Noise.md) calls it the zoom multiplier.
 
 ### A field of answers, drifting in time
 
@@ -269,7 +269,7 @@ Give noise two inputs and it answers everywhere on a plane. That's a **field**, 
   <img src="Images/05-Noise/NoiseLayers.jpg" alt="Three strips: a slow big-scale curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum" width="680">
 </picture>
 
-Natural forms have big shapes *and* fine texture. So take noise at both scales and add them, weighted mostly toward the broad curve and a little toward the busy one. Keep the weights summing to 1 and the result stays in range. Stack a few layers like that (each smaller and fainter) and you get the fractal texture `fbm` packages up. [Chapter 5](05-Noise.md) builds it by hand first, so you know what the packaged call does.
+Natural forms have big shapes *and* fine texture. So take noise at both scales and add them, weighted mostly toward the broad curve and a little toward the busy one. Keep the weights summing to 1 and the result stays in range. Stack a few layers like that (each smaller and fainter) and you get the fractal texture that `fbm` gives in one call. [Chapter 5](05-Noise.md) builds it by hand first, so you know what that call does.
 
 ### Distance to the nearest point makes cells
 
@@ -289,7 +289,7 @@ Scatter points across a plane, then ask everywhere how far the nearest one is. T
   <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed, then translated, then rotated, then scaled" width="680">
 </picture>
 
-`translate`, `rotate`, and `scale` don't touch your shapes. They move the paper under the pen. Every draw call afterward lands in the moved frame, and later transforms build on earlier ones (translate then rotate is not rotate then translate). The habit that makes this easy is to draw your motif *around the origin*, with coordinates straddling (0, 0). Then translate to where it goes and rotate. It pivots about its own center instead of swinging around a distant corner. [Chapter 6](06-GridsAndRepetition.md) uses this to draw one thing many ways, with `withState { }` to undo the moves after each copy.
+`translate`, `rotate`, and `scale` don't touch your shapes. They move the paper under the pen. Every draw call afterward lands in the moved frame, and later transforms build on earlier ones (translate then rotate is not rotate then translate). The habit that makes this easy is to draw your motif *around the origin*, with (0, 0) at its center. Then translate to where it goes and rotate. It pivots about its own center instead of swinging around a distant corner. [Chapter 6](06-GridsAndRepetition.md) uses this to draw one thing many ways, with `withState { }` to undo the moves after each copy.
 
 ### Small moves compound
 
@@ -365,7 +365,7 @@ A body in water sinks until the water it pushes aside weighs as much as the body
   <img src="Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="A coil spring between two discs: at rest length, stretched with arrows pulling inward, and squeezed with arrows pushing outward" width="680">
 </picture>
 
-A spring is built around one number, its **rest length**. Longer than that, it pulls its ends together. Shorter, it pushes them apart, and at rest length it does nothing. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from ropes to blobs, is dots connected by this one rule.
+A spring is built around one number, its **rest length**. When it is longer than that, it pulls its ends together. When it is shorter, it pushes them apart, and at its rest length it does nothing. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from ropes to blobs, is dots connected by this one rule.
 
 ### Damping: a swing that dies away
 
@@ -375,7 +375,7 @@ A spring on its own would swing forever. **Damping** is a force against the velo
 
 <img src="Images/B-JustEnoughMath/Verlet.jpg" alt="Dots labeled previous and now, the step between them carried forward as a dashed arrow, then bent down by gravity to the next position" width="680">
 
-Verlet integration stores no velocity at all. It remembers where the particle *was* last frame. The gap between then and now *is* the velocity, so each step replays that gap and bends it by the frame's forces. This makes Verlet steady under constraints. When a spring pulls a particle somewhere new, its velocity changes with it, because there is no stored velocity to disagree. [Chapter 11](11-ForcesAndPhysics.md)'s particles and springs move this way.
+Verlet integration stores no velocity at all. It remembers where the particle *was* last frame. The gap between then and now *is* the velocity, so each step replays that gap and bends it by the frame's forces. This makes Verlet steady under constraints. When a spring pulls a particle somewhere new, its velocity changes with it. There is no stored velocity that could fall out of step with the position. The particles in [Chapter 11](11-ForcesAndPhysics.md)'s physics world move this way, which is part of why its springs and piles stay calm.
 
 ### One second is one second
 
@@ -421,7 +421,7 @@ Every field so far was invented, while optical flow is *measured*. Comparing one
   <img src="Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="One dark boid among gray neighbors inside a faint circle labeled what it can see, with an arrow showing the average heading it turns toward" width="680">
 </picture>
 
-Systems of many creatures need a definition of "nearby". That's a perception radius around each creature, so that others inside it count and others outside it are ignored. Every flocking rule in [Chapter 12](12-FlocksAndSwarms.md) is an average over that circle. The radius changes how the group behaves. Small circles make creatures that jitter on their own, and large circles make them move together.
+Systems of many creatures need a definition of "nearby". That's a perception radius around each creature. Others inside it count, and others outside it are ignored. Every flocking rule in [Chapter 12](12-FlocksAndSwarms.md) is an average over that circle. The radius changes how the group behaves. Small circles make creatures that jitter on their own, and large circles make them move together.
 
 ### Everyone against everyone: counting pairs
 
@@ -434,7 +434,7 @@ Asking every creature about every other one grows fast. A group of n things has 
   <img src="Images/23-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: lonely cells die, comfortable cells live on, empty cells with three neighbors are born" width="680">
 </picture>
 
-No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and other patterns appear with no one planning them. Gentler systems work the same way. Truchet tiles in [Chapter 7](07-Tiles.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 23](23-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
+No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and other patterns appear with no one planning them. Other systems work the same way. Truchet tiles in [Chapter 7](07-Tiles.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 23](23-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
 
 ### Constraint propagation
 
@@ -449,10 +449,10 @@ Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/FeedKillMap-dark.jpg">
-  <img src="Images/23-GridSimulations/FeedKillMap.jpg" alt="A grid of reaction-diffusion dishes at different feed and kill settings: about half stay quiet, and the rest, in a diagonal band, grow spots, rings, mazes, and dots" width="680">
+  <img src="Images/23-GridSimulations/FeedKillMap.jpg" alt="A grid of reaction-diffusion dishes at different feed and kill settings: about half stay quiet, and the rest, in a diagonal band, grow large spots, rings, mazes, and grids of small dots" width="680">
 </picture>
 
-Two parameters span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, dead calm nearly everywhere. Render the map, one small run per grid cell, and you can see which settings give which behavior. Interesting settings cluster along the borders between regions. [Chapter 23](23-GridSimulations.md) maps Gray-Scott's feed and kill this way.
+Two parameters span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, and dead calm over wide stretches. Render the map, one small run per grid cell, and you can see which settings give which behavior. Interesting settings cluster along the borders between regions. [Chapter 23](23-GridSimulations.md) maps Gray-Scott's feed and kill this way.
 
 ## Iteration: a rule applied again
 
@@ -460,7 +460,7 @@ Two parameters span a plane, where every pair of settings is a point. A system's
 
 <img src="Images/13-GrowingThings/TreeByHand.jpg" alt="A bare fractal tree: one trunk splitting into two branches, each splitting again, nine levels deep" width="560">
 
-A branch is a stick with two smaller branches on top, and each of *those* is a stick with two smaller branches on top. A function that calls itself expresses that directly. It needs two rules to keep it from running forever. Something must shrink on each call, the length here, and a floor must say when to stop, a depth counter. Since every level doubles the branches, n levels end in 2ⁿ⁻¹ tips, so nine levels already make a canopy of 256 tips. [Chapter 13](13-GrowingThings.md) grows this tree from one short function.
+A branch is a stick with two smaller branches on top, and each of *those* is a stick with two smaller branches on top. A function that calls itself expresses that directly. It needs two rules. Something must shrink on each call, the length here, so each branch is smaller than the one below it. And a floor must say when to stop, a depth counter, or the calls would never end. Since every level doubles the branches, n levels end in 2ⁿ⁻¹ tips, so nine levels make a canopy of 256 tips. [Chapter 13](13-GrowingThings.md) grows this tree from one short function.
 
 ### Rewriting growth
 
@@ -469,13 +469,13 @@ A branch is a stick with two smaller branches on top, and each of *those* is a s
   <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="The same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, letter counts rising to 1551" width="680">
 </picture>
 
-An L-system grows a *sentence* first and draws it afterward. Start from an axiom, replace every symbol by its rule, and repeat. The string lengthens exponentially. A turtle then walks the final string, reading symbols as "forward", "turn", "branch". The drawing gets richer only because the sentence got longer, so the plant's shape comes from the rewriting rules. [Chapter 13](13-GrowingThings.md) writes its ferns and plants this way.
+An L-system grows a *sentence* first and draws it afterward. Start from an axiom, replace every symbol by its rule, and repeat. The string lengthens exponentially. A turtle then walks the final string, reading symbols as "forward", "turn", "branch". The drawing gets richer only because the sentence got longer, so the plant's shape comes from the rewriting rules. [Chapter 13](13-GrowingThings.md) grows its fern and the garden's row of plants this way.
 
 ### Iterated maps: orbits that pile up
 
 <img src="Images/22-IteratedForms/Plates.jpg" alt="Four glowing density plates: folded translucent attractor forms like X-rays of smoke" width="560">
 
-Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint visits shows which places it visits most. The plates in [Chapter 22](22-IteratedForms.md) are visit counts drawn as brightness.
+Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint points shows where it goes most often. The plates in [Chapter 22](22-IteratedForms.md) are visit counts drawn as brightness.
 
 ### Escape time
 
@@ -484,7 +484,7 @@ Take a formula, feed it a point, feed it its own answer, and keep going, and the
   <img src="Images/22-IteratedForms/FractalPair.jpg" alt="Three panels banded in blue, gold, and cream: the whole Mandelbrot set with a small red circle marking one point on its edge, the Julia set that same point produces, and a deep zoom into the Mandelbrot boundary" width="680">
 </picture>
 
-Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted as the inside of the set. Everywhere else the *count itself* becomes the color, so each smooth band joins the points that escaped after the same number of rounds. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 22](22-IteratedForms.md) shades both this way.
+Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted as the inside of the set. Everywhere else the *count itself* becomes the color. Points that took about the same number of rounds get about the same color, and that is what makes the bands. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 22](22-IteratedForms.md) shades both this way.
 
 ## Shapes as regions
 
@@ -501,7 +501,7 @@ Treat shapes as *regions of space* and logic applies to them. Union is "in eithe
 
 <img src="Images/B-JustEnoughMath/Offsets.jpg" alt="A peanut-shaped region with grown outlines around it and shrunken outlines inside, the deepest inset split into two islands" width="680">
 
-Offsetting moves a region's whole boundary by the same distance everywhere, so outward grows it and inward shrinks it. Insets are not scaled-down copies. Narrow passages thin faster than broad ones, and a deep enough inset pinches the waist apart into islands. The split is useful, since it marks where the shape is thin. [Chapter 15](15-ShapesAsMaterial.md) uses offsets for insets, outlines, and plotter work.
+Offsetting moves a region's whole boundary by the same distance everywhere, so outward grows it and inward shrinks it. But an inset, an inward offset, is not a scaled-down copy. Narrow passages thin faster than broad ones, and a deep enough inset pinches the waist apart into islands. The split is useful, since it marks where the shape is thin. [Chapter 15](15-ShapesAsMaterial.md) uses offsets for insets, outlines, and plotter work.
 
 ### Convexity: the rubber band
 
@@ -581,7 +581,7 @@ Add enough light and channel values go past 1, brighter than the screen can show
   <img src="Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="The same orbiting dot drawn into feedback with different transforms: fade leaves a tail, zoom smears a streak, rotate wraps a swirl, both coil a spiral" width="680">
 </picture>
 
-Draw this frame on top of a transformed copy of the *last* frame, and the transform applies again every frame, which is iteration. A gentle zoom becomes an ever-deepening tunnel, a small rotation a tightening swirl, because each frame inherits all the transforms before it. Small moves each frame add up to large structure, as in [Small moves compound](#small-moves-compound), but in pixels. [Chapter 19](19-LayersAndEffects.md) builds video feedback from it.
+Draw this frame on top of a transformed copy of the *last* frame, and the transform applies again every frame, which is iteration. A gentle zoom becomes an ever-deepening tunnel, a small rotation a tightening swirl, because each frame inherits all the transforms before it. Tiny changes each frame add up to large structure, as the staircase did in [Small moves compound](#small-moves-compound), but in pixels. [Chapter 19](19-LayersAndEffects.md) builds video feedback from it.
 
 ## Per-pixel thinking and distance
 
@@ -610,7 +610,7 @@ A signed distance field describes a shape by answering, at every point, "how far
   <img src="Images/18-YourFirstShader/EdgeStep.jpg" alt="The same disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
 </picture>
 
-Given a distance field, a shape is "all points within r". The edge lives where the distance crosses that level, like one contour line on a topographic map. Testing the crossing with `step` gives a hard edge. Testing it with a `smoothstep` window turns the same boundary into a crisp anti-aliased rim, or a wide glow if you widen the window. Every disc in [Chapter 18](18-YourFirstShader.md) is drawn this way, by turning a distance into how much of the pixel is covered.
+Given a distance field, a shape is "all points within r". The edge lives where the distance crosses that level, like one contour line on a topographic map. Testing the crossing with `step` gives a hard edge. Testing it with a `smoothstep` window turns the same boundary into a crisp anti-aliased rim, or a wide glow if you widen the window. Every disc in [Chapter 18](18-YourFirstShader.md) is drawn this way, by turning each pixel's distance into how strongly it is painted.
 
 ### min melts, max trims
 
@@ -637,7 +637,7 @@ To render a distance field, march a ray from the eye. Ask the field "how far to 
   <img src="Images/30-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, the same cluster tiled into a grid, and a petal fanned into a nine-fold rosette" width="680">
 </picture>
 
-Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. The field holds one shape and asks about each point once. The fold makes that shape appear wherever a folded point lands on it. A grid of a thousand copies costs the same as one. [Chapter 30](30-SculptingWithFields.md) mirrors, tiles, and fans with it.
+Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. The field still holds one shape, and each point asks it only once. The fold makes that shape appear at every point whose folded copy lands on it. A grid of a thousand copies costs the same as one. [Chapter 30](30-SculptingWithFields.md) mirrors, tiles, and fans with it.
 
 ## Into three dimensions
 
@@ -679,7 +679,7 @@ Points recovered from a camera come out in *its* frame, "two meters ahead of me"
 
 <img src="Images/33-DepthAndThePhone/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
 
-A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. They record where the sensor could not see, and only more viewpoints fill them. [Chapter 33](33-DepthAndThePhone.md) fills them by fusing frames from a moving camera.
+A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. Only more viewpoints fill them. [Chapter 33](33-DepthAndThePhone.md) fills them by fusing frames from a moving camera.
 
 ## Sound as numbers
 
@@ -690,7 +690,7 @@ A depth image knows only what its rays touched, so nothing measured the space be
   <img src="Images/34-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
 </picture>
 
-Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. Spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 34](34-Listening.md) maps these bands onto pictures.
+Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. If the bars were spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 34](34-Listening.md) maps these bands onto pictures.
 
 ### Equal steps that multiply: log scales
 
