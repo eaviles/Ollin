@@ -15,7 +15,7 @@ average of its own surroundings, rather than against one number for the whole pi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/LocalAverages-dark.jpg">
-  <img src="../../Guide/Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of dark bars and dots on pale paper with a light falling across it, bright at the top left and deep in shadow at the bottom right; the same page cut to black and white by one threshold, which swallows the whole shadowed half into solid black; and the same page cut against each pixel's own neighborhood, where every bar and dot survives on clean white paper" width="680">
+  <img src="../../Guide/Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of printed text with diagonal bands of shadow falling across it; the same page cut to black and white by one threshold, which turns the shadow bands solid black; and the same page cut against each pixel's own neighborhood, where the text comes back through the bands and only dark streaks along their edges remain" width="680">
 </picture>
 
 ### Contents

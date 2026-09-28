@@ -119,7 +119,7 @@ Filters are value descriptors built with static factories. They composite in
 [linear light](../Drawing/HDR.md), so grades and blends are physically correct. Every family below is a segment of the `Effects/FilterCatalog` contact sheet,
 and `Effects/Glitter` shows the iridescence and glitter pair on shapes. The catalog:
 
-<img src="../../Guide/Images/19-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
+<img src="../../Guide/Images/19-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one portrait of a young woman in a lace headdress shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
 #### Blur & glow
 
