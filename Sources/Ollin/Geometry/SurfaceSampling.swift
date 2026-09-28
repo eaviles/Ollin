@@ -344,9 +344,11 @@ private func thinToBlueNoise(_ samples: [SurfaceSample], count: Int,
     while left > count, let top = heap.pop() {
         let i = Int(top.item)
         if dropped[i] { continue }
-        // A stale entry: this sample grew lighter after the entry was made, so
-        // put its true weight back and let the heap sort it out.
-        if top.key != weights[i] { heap.push(weights[i], top.item); continue }
+        // A stale entry: this sample grew lighter after the entry was made. Its
+        // true weight was pushed when it changed, so the old entry is only
+        // passed over. Pushing it again here would copy that entry, and every
+        // copy goes stale at the next change and copies itself in turn.
+        if top.key != weights[i] { continue }
         dropped[i] = true
         left -= 1
         grid.forEachNeighbor(of: positions[i], within: dMax) { j, d2 in

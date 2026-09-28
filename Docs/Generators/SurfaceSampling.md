@@ -48,7 +48,7 @@ The `scatter` argument takes one of two spreads:
 | `.blueNoise` (default) | Keeps neighbors apart, so nothing clumps and nothing leaves a hole | Props, roots, stipple, and anything the eye reads as *placed* |
 | `.random` | Each point is independent of the ones before it | Splatter, thrown seed, and any case where clumping is the look |
 
-`.blueNoise` draws several times `count` candidates and thins out the crowded ones, so it costs a few times what `.random` costs. Ask for **the count you want** rather than trimming the result yourself. The thinning is what makes the spacing even, so cutting the list afterward undoes it.
+`.blueNoise` draws five times `count` candidates and thins out the crowded ones, which means searching around every candidate. So it costs far more than `.random`, and the gap widens with the count. In a debug build on the M2, five thousand points on a terrain took about fifty times as long as `.random`. A hundred thousand took nearly three hundred times as long. For a dense scatter whose marks overlap anyway, `.random` is the practical choice. Ask for **the count you want** rather than trimming the result yourself. The thinning is what makes the spacing even, so cutting the list afterward undoes it.
 
 The mesh is read as it is. Nothing is welded or rebuilt first, so two triangles that meet at a seam stay two separate triangles. A triangle with no area never receives a point.
 
