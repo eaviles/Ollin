@@ -6,10 +6,11 @@
 // changes is which of two overlapping solids wins a tie, and it stays inside
 // six counts of 255 over about 0.03% of the frame.
 // Guide payoff (Chapter 27): Valley. Ridged noise weathered by rain and
-// gravity, then read out three ways: as the lit mesh, as the sampler that
-// finds somewhere flat to stand and decides where a pine can grow, and as the
-// ground height every placement sits on. The far world is a culled field; the
-// near stand is an instanced draw rebuilt each frame so the wind reaches it.
+// gravity, then read out three ways: as the lit mesh, which is also the
+// surface the far world is scattered over by area, as the sampler that finds
+// somewhere flat to stand, and as the ground height the near stand sits on.
+// The far world is a culled field; the near stand is an instanced draw
+// rebuilt each frame so the wind reaches it.
 import Ollin
 
 final class Valley: Sketch {
@@ -147,24 +148,25 @@ final class Valley: Sketch {
         let pineDark = Color(hue: 0.36, saturation: 0.6, brightness: 0.26)
         let pineLight = Color(hue: 0.26, saturation: 0.5, brightness: 0.5)
         let stoneGray = Color(hue: 0.09, saturation: 0.12, brightness: 0.55)
-        let half = span / 2 - 1
 
-        for _ in 0 ..< 400_000 {
-            let x = random(-half, half), z = random(-half, half)
-            let y = ground(atX: x, z: z)
-            let slope = steepness(atX: x, z: z)
+        // Spots spread by area over the land's own surface, then kept or passed
+        // over by what the ground does there. A spot's normal says how steep it is.
+        // At this density the pines overlap anyway, so the cheap random scatter
+        // serves, where blue noise would cost several times as much.
+        for spot in surfacePoints(on: land, count: 400_000, scatter: .random) {
+            let p = spot.position
             // Nothing grows on the flood plain, and nothing grows on bare rock.
-            if y < floorY + 0.5 { continue }
-            if Vector2(x, z).distance(to: clearing) < standReach { continue }
-            if slope < 0.8 && y < relief * 0.66 {
+            if p.y < floorY + 0.5 { continue }
+            if Vector2(p.x, p.z).distance(to: clearing) < standReach { continue }
+            if spot.normal.y > 0.78 && p.y < relief * 0.66 {
                 let s = random(0.7, 1.5)
-                pines.append(MeshInstance(position: Vector3(x, y + 1.6 * s, z),
+                pines.append(MeshInstance(position: Vector3(p.x, p.y + 1.6 * s, p.z),
                                           rotation: Vector3(0, random(.tau), 0),
                                           scale: Vector3(s, s * random(0.85, 1.5), s),
                                           color: Color.mix(pineDark, pineLight, random(1))))
-            } else if slope > 1.0 && random(1) < 0.4 {
+            } else if spot.normal.y < 0.71 && random(1) < 0.4 {
                 let s = random(0.4, 1.4)
-                stones.append(MeshInstance(position: Vector3(x, y + 0.25 * s, z),
+                stones.append(MeshInstance(position: Vector3(p.x, p.y + 0.25 * s, p.z),
                                            rotation: Vector3(random(.tau), random(.tau), random(.tau)),
                                            scale: Vector3(s, s * 0.7, s),
                                            color: Color.mix(stoneGray, Color(white: 0.68), random(1))))

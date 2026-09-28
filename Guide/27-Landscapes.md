@@ -6,22 +6,22 @@
 
 <img src="Images/27-Landscapes/Valley.jpg" alt="A wide green meadow of individually curved grass blades running to a stand of low-poly pines, with tan hills rising on both sides, a pale scree of boulders on the pass between them, and a clear blue sky above" width="560">
 
-Nobody placed a tree in that picture. The ground grew out of noise and then had rain run over it for a while. Everything standing on it was scattered by asking the ground where a pine could take root. The grass in the foreground was never built at all. The GPU works it out while drawing it and keeps nothing afterwards.
+Nobody placed a tree in that picture. This chapter teaches how to grow a landscape and then draw more things on it than you could place by hand. The ground grows from noise and weathers under rain. Then you ask it questions: where it is flat, how high it stands, and where a pine could take root. Ten thousand copies of one mesh go down in one call, spread over a surface by area. A whole world is cut down each frame to what the camera sees. Half a million blades of grass are worked out inside the draw and kept nowhere. The steps end in the valley above. After it comes the water on the land, the rivers read off the ground and a sea made from its waves. Last comes a courtyard of lamps that each light only their own corner.
 
-[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. Ten thousand copies of one mesh, a quarter of a million solids the camera trims, sixty-four lamps, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
+[Chapter 26](26-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold, so each step after the ground hands more of the work to the GPU.
 
 ## A landscape you grow
 
-A mesh you load is a shape somebody else made. A mesh you generate is one nobody has seen, and terrain is the friendliest place to start. A landscape is just a height for every point on a grid, and Ollin has a type for exactly that.
+A mesh you load is a shape somebody else made. A mesh you generate is one nobody has seen, and terrain is the friendliest place to start. A landscape is a height for every point on a grid, and Ollin has a type for that.
 
 ```swift
 let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
 drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 ```
 
-A `Heightfield` holds heights between 0 and 1, and you can grow one from any field you like, including everything [Chapter 5](05-Noise.md) taught. `Heightfield(columns: 257, rows: 257) { u, v in fbm(u * 3, v * 3, octaves: 6) }` rolls hills, and swapping in `ridgedFbm` creases them into ridges. The `diamondSquare` form above is the classic terrain fractal instead. Set the four corners, then repeatedly fill in each square's center and each edge's midpoint with the average of its neighbors plus a random nudge. The grid step halves and the nudge shrinks each round. `roughness` controls how fast the nudges shrink, and around 0.55 reads as landscape. The `size` rounds up to the grid the subdivision needs, which is why it wants numbers like 129, 257, or 513.
+A `Heightfield` holds heights between 0 and 1, and you can grow one from any field you like, including everything [Chapter 5](05-Noise.md) taught. `Heightfield(columns: 257, rows: 257) { u, v in fbm(u * 3, v * 3, octaves: 6) }` rolls hills. Swapping in `ridgedFbm` creases them into ridges. The `diamondSquare` form above is the classic terrain fractal instead. Set the four corners, then repeatedly fill in each square's center and each edge's midpoint with the average of its neighbors plus a random nudge. The grid step halves and the nudge shrinks each round. `roughness` controls how fast the nudges shrink, and values around 0.5, the default, read as landscape. The `size` rounds up to the grid the subdivision needs, which is why it wants numbers like 129, 257, or 513.
 
-Here is the thing that separates a terrain from a cloud of noise, though. Real land doesn't look the way it does because of the rock. It looks that way because water has been running down it for a very long time.
+Noise alone gives you a cloud of heights rather than land. Land looks the way it does because water has been running down it for a very long time.
 
 ```swift
 let weathered = land
@@ -34,50 +34,21 @@ let weathered = land
   <img src="Images/27-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
 </picture>
 
-`.hydraulic` drops tens of thousands of simulated raindrops on the terrain. Each one lands somewhere random and rolls downhill. It picks up sediment while it's moving fast, and drops that sediment again as it slows down or dries out. No single drop does much. Fifty thousand of them agree with each other about where the valleys are. Branching drainage networks appear that no amount of layered noise will give you. The middle panel above is the whole argument for the technique.
+`.hydraulic` drops tens of thousands of simulated raindrops on the terrain. Each one lands somewhere random and rolls downhill. It picks up sediment while it's moving fast, and drops that sediment again as it slows down or dries out. No single drop does much. Fifty thousand of them agree with each other about where the valleys are, and branching drainage networks appear that layered noise does not give you. The middle panel above shows the difference.
 
-`.thermal` is gravity's half of the job. Wherever two neighboring samples differ by more than `talus`, some of that excess slides to the lower one. Cliffs shed into scree slopes, and spikes settle to an angle they can actually hold. It's a smaller change than rain. The third panel shows a gentler version of the second rather than a different landscape, which is exactly what weathering looks like.
+`.thermal` is gravity's half of the job. Wherever two neighboring samples differ by more than `talus`, some of that excess slides to the lower one. Cliffs shed into scree slopes, and spikes settle to an angle they can hold. It's a smaller change than rain. The third panel shows a gentler version of the second rather than a different landscape, which is what weathering looks like.
 
 <img src="Images/27-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
 
-Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with proper normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(u:v:)` samples any point for placing trees, routing a path, or driving something else entirely. The picture above wears a texture built by walking each height up a `Ramp` from valley green to snow, which is the whole coloring recipe, and it is one call: `coloredMesh(width:depth:height:_:)` hands back the mesh already wearing the ramp (build it when the field changes, not per frame).
+Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with proper normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(u:v:)` samples any point, for placing trees, routing a path, or driving something else entirely. The picture above wears a texture built by walking each height up a `Ramp` from valley green to snow. That is the coloring recipe, and `coloredMesh(width:depth:height:_:)` does it in one call, handing back the mesh already wearing the ramp. Build it when the field changes, not per frame.
 
-One practical note carries all of this. Erosion is genuine work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` just draw it.
-
-## Where the water goes
-
-The rain that carved those valleys knew where to run. You can ask the finished landscape the same question, and get the rivers out as lines.
-
-```swift
-let water = land.drainage()
-for river in water.rivers(minFlow: 140, in: mapFrame) {
-    strokeWeight(0.7 + Double(river.order) * 0.9)
-    drawPolyline(river.points)
-}
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/27-Landscapes/WhereWaterGoes-dark.jpg">
-  <img src="Images/27-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
-</picture>
-
-Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill, and the flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like branching you have seen.
-
-`minFlow` is the parameter worth putting on a slider, and it means something real: the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
-
-One thing has to happen before any of it works. A landscape is full of hollows with no way out, and water arriving in one has nowhere to go, so the network would stop dead there. Every hollow is filled first, up to the level it would brim over at, which is what a real basin does once it has filled. `drainage()` does that for you, and `land.filled()` is the same pass on its own.
-
-The thickness above is Strahler's order rather than the flow. A headwater is 1, two of the same order meeting make the next one up, and an unequal pair keeps the larger. It counts how much of the branching upstream is behind a reach, and it strokes better than flow, which runs from 1 to tens of thousands across one picture.
-
-The middle panel is the other thing that falls out for free. Every cell knows which outlet it eventually reaches, so coloring by `basin` splits the ground into catchments. The lines between them are the ridges, and nothing here ever went looking for a ridge.
-
-What comes back is points, so a river network strokes, hatches, and plots like any other geometry. It is also, unlike most of this chapter, a 2D result: a map rather than a mesh.
+Erosion is work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` draw it.
 
 ## Ten thousand of the same thing
 
-Once there is ground, you want many things standing on it: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The loop you would naturally write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh is millions of vertices rebuilt per frame, and the frame rate goes where you would expect.
+Once there is ground, you want many things standing on it: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The loop you would naturally write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh are hundreds of thousands of vertices rebuilt per frame, and the frame rate drops accordingly.
 
-Instancing is the escape. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. **The mesh uploads once; only the placements travel.**
+**Instancing** is the way out. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. The mesh uploads once, and only the placements travel.
 
 <img src="Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
 
@@ -101,17 +72,17 @@ override func draw() {
 }
 ```
 
-A `MeshInstance` is a position, a rotation, a scale, and an optional tint, applied in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field. Twelve thousand small structs is nothing next to the twelve thousand mesh expansions it replaces. And the copies are not a special cheap kind of object. They take the current `fill` and material, the scene's lights, the environment, and the fog. They drop real shadows, and they stand in a mirror when one is nearby, exactly as if you had drawn each one yourself.
+A `MeshInstance` is a position, a rotation, a scale, and an optional tint. They apply in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field. Twelve thousand small structs cost little next to the twelve thousand mesh expansions they replace. And the copies are ordinary objects. They take the current `fill` and material, the scene's lights, the environment, and the fog. They drop shadows, and they stand in a mirror when one is nearby, as if you had drawn each one yourself.
 
-This is the division of labor behind the retained `Batch` in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) and the attractor flow in [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow). Here it applies to solid geometry. Keep the heavy thing on the GPU and send only what changed. The numbers land where you would hope. Recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all. The [instancing reference](../Docs/3D/Instancing.md) shows that form.
+This is the division of labor behind the retained `Batch` in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) and the attractor flow in [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow). Here it applies to solid geometry. Keep the heavy thing on the GPU and send only what changed. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the loop and the instanced call. Watch the inspector's CPU frame time fall when it flips. When even the placement list is too much for the CPU, a compute kernel can write the placements into a buffer the CPU never touches. The [instancing reference](../Docs/3D/Instancing.md) shows that form, and it has the measured costs of both.
 
-## Where the copies go
+## Where the copies go: points on a surface
 
 The pillars sat on a ring worked out by hand, which is fine for a ring. A hillside of trees is not a ring. The spots have to come from the shape itself, and the shape is a mesh.
 
-The tempting shortcut is the vertex list. It is already a list of points on the surface, so pick a few hundred of them and plant a tree at each. What comes back is wrong in a way that is hard to unsee. A mesh puts its vertices where its *shape* needs them, not where its *area* is. A flat wall gets four. A rounded corner gets hundreds. The trees end up following the modeler's decisions instead of the ground.
+The tempting shortcut is the vertex list. It is already a list of points on the surface, so pick a few hundred of them and plant a tree at each. What comes back is visibly wrong. A mesh puts its vertices where its *shape* needs them, not where its *area* is. A flat wall gets four. A rounded corner gets hundreds. The trees end up following the modeler's decisions instead of the ground.
 
-`surfacePoints` picks over the skin instead. **A spot is as likely anywhere the surface holds the same area.**
+`surfacePoints` picks over the skin instead. A spot is as likely anywhere the surface holds the same area.
 
 <img src="Images/27-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each wearing the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
@@ -125,19 +96,19 @@ drawMesh(tree, instances: spots.map {
 })
 ```
 
-Each spot is a `SurfaceSample`, and it knows more than where it landed. `normal` is the direction the surface faces there. `alignment` turns that into the angles a placement takes, so a tree stands up out of a slope instead of leaning with the rest. `spin` turns it about that direction, which is what stops a field of copies from reading as clones. `uv` is the texture coordinate, for reading a picture at that spot. `triangle` and `barycentric` are there to blend anything else the mesh carries per vertex.
+Each spot is a `SurfaceSample`, and it knows more than where it landed. `normal` is the direction the surface faces there, the normal from [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals). `alignment` turns that into the angles a placement takes, so a copy stands straight out of the surface, square to the slope it grows on. Leave the rotation out for a tree that should stay upright. `spin` turns it about that direction, which is what stops a field of copies from reading as clones. `uv` is the texture coordinate, for reading a picture at that spot. `triangle` and `barycentric` are there to blend anything else the mesh carries per vertex.
 
-By default the spots also keep away from each other. That is blue noise again, the even-but-organic spread you met on a flat rectangle in [Chapter 15](15-ShapesAsMaterial.md). Here you ask by count rather than by radius: ask for 400 and you get 400, spaced as widely as 400 can be on that much skin. Pass `scatter: .random` when clumping is the look you want, as it is for thrown seed or splatter. Ask by `spacing:` instead of `count:` when the density is what should hold still while the mesh changes size.
+By default the spots also keep away from each other. That is blue noise again, the even spread [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences) threw on a flat rectangle. Here you ask by count rather than by radius. Ask for 400 and you get 400, spaced as widely as 400 can be on that much skin. Pass `scatter: .random` when clumping is the look you want, as it is for thrown seed or splatter. Ask by `spacing:` instead of `count:` when the density is what should hold still while the mesh changes size.
 
-And because a sample knows the surface, a scatter can be filtered by what the surface is doing. Trees on the flat ground and nowhere else is one line:
+And because a sample knows the surface, a scatter can be filtered by what the surface is doing. The flatter the ground, the closer its normal's `y` comes to 1, so trees on the flat ground and nowhere else is one line:
 
 ```swift
 let flat = surfacePoints(on: terrain, count: 800).filter { $0.normal.y > 0.85 }
 ```
 
-## A world the camera trims
+## A world the camera trims: MeshField
 
-Rebuilding twelve thousand placements a frame is cheap. Rebuilding a quarter of a million is not, and drawing a quarter of a million is worse when the camera can only ever see a corner of them. That is what a **`MeshField`** is for: a world you build once and draw with one call, where the GPU itself decides, every frame, which copies the camera can see. **Place it once; the camera argues for the rest.**
+Rebuilding twelve thousand placements a frame is cheap. Rebuilding a quarter of a million is not. And drawing a quarter of a million is worse when the camera can only ever see a corner of them. A **`MeshField`** is for that case. You build the world once and draw it with one call, and every frame the GPU itself decides which copies the camera can see.
 
 <img src="Images/27-Landscapes/FieldWorld.jpg" alt="A low flying view over a dark foggy plain crowded with low-poly pines, shrubs, boulders, and pale standing stones, the nearest solids crisp and shadowed and the horizon dissolving into darkness" width="640">
 
@@ -156,38 +127,13 @@ override func draw() {
 }
 ```
 
-The picture above holds 240,000 solids. Each frame, a small compute pass tests every copy's bounding sphere against the camera and writes the draws itself. The CPU issues one draw per *kind* of mesh and never meets a copy again. Point the camera at the ground and the rest of the plain simply is not drawn. The part worth trusting is that culling can never change the picture, because everything it skips was outside the view to begin with. The [`MeshField`](../Examples/Rendering/MeshField/Sketch.swift) example wires the culling to a parameter so you can watch the frame rate move while the picture holds still, and the test suite pins exactly that.
+The picture above holds 240,000 solids. Each frame, a small compute pass tests every copy's bounding sphere against the camera and writes the draws itself. The CPU issues one draw per *kind* of mesh and never meets a copy again. Point the camera at the ground and the rest of the plain is not drawn. Culling never changes the picture, because everything it skips was outside the view to begin with. The [`MeshField`](../Examples/Rendering/MeshField/Sketch.swift) example wires the culling to a parameter, so you can watch the frame rate move while the picture holds still. The test suite pins that the picture does not change.
 
-A field bakes its colors when you place it (each copy's own tint on top), shades through whatever `material(_:)` is current, and still drops real shadows, including from copies *behind* you, which is the sort of detail you only notice when it is wrong. The shadow pass culls too, against the light's own view instead of yours. A field stands in a mirror as well, so a ray-traced reflection shows its copies like anything else. That part is bounded on purpose. A copy inside the traced scene costs real GPU time every frame. So a field larger than `tracedCopyBudget`, 20,000 copies by default, stays out of the traced passes and says so once. Raise it when a slow frame is a price you are happy to pay. On an M2, this world costs 18.5 ms of GPU per frame with culling on and 50.8 ms with it off, a 2.7x win, and the one `drawMeshField` call costs the CPU nothing worth printing. The [instancing reference](../Docs/3D/Instancing.md) has the field's fine print.
+A field bakes its colors when you place it, each copy's own tint on top, and it shades through whatever `material(_:)` is current. It still drops shadows, including from copies *behind* you, because the shadow pass culls against the light's own view instead of yours. The [instancing reference](../Docs/3D/Instancing.md) has the rest. It covers how a field appears in a traced mirror and the budget that keeps a large one out of it. It also says what culling saves on an M2.
 
-## A courtyard of lamps: many lights
+## Grass that was never built: strand fields
 
-The camera trims the copies it cannot see. Lights run into the same problem once there are many of them. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. Lamps come in numbers. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
-
-The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
-
-```swift
-for i in 0 ..< 64 {
-    let angle = Double(i) * 2.4, radius = 4 + Double(i) * 0.3
-    pointLight(Color(hue: Double(i) / 64, saturation: 0.75, brightness: 1),
-               at: Vector3(cos(angle) * radius, 2.4, sin(angle) * radius),
-               intensity: 1.7, reach: 11)
-}
-```
-
-<img src="Images/27-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
-
-`reach:` is how far a light carries, in world units. Inside it the lamp is full strength at the source and a quarter of that halfway out. At `reach` and beyond it is *exactly* nothing. That is the part that matters. The dark between the pools has no light in it at all. (Real light thins as the inverse square of the distance. That curve has no end, and it blows up at the source. This is the same shape with both ends made usable.) Every light with a position takes it, the area panels included. `Light.reaching(_:)` sets or clears it on a light you have already built. Leave it off and the light is exactly what it was before.
-
-The second thing that goes wrong is cost. Forward lighting shades every pixel against every light, which is why the plain path stops at eight lights. **A frame carries up to 256 lights.** Past eight, the renderer divides the screen into small squares. It works out, once per square, which lamps can possibly arrive there. A pixel then shades against the four or five standing over it instead of the sixty-four in the courtyard. You write the same calls either way, and the picture is identical either way. On an M2 at a 1080-pixel canvas, sixty-four lamps cost 16.9 ms a frame instead of 42.7.
-
-The `reach` is what did that. A lamp with no bound can arrive anywhere, so it stays in every square and costs full price. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable.
-
-A few things stay on the frame's first eight lights on purpose. Shadows are the big one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Sixty-four shadow-casting lamps would stall the frame. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
-
-## Grass that was never built
-
-One kind of geometry defeats every trick so far. A meadow needs half a million blades, and each blade needs its own curve: its own height, its own lean, its own bend along its length, its own sway in the wind. Instancing cannot do that. An instanced draw moves rigid copies of one fixed shape, and a blade's whole character is that it is *not* rigid. The answer is to stop storing geometry at all. A **`StrandField`** grows every blade inside the draw call itself. **The geometry is born inside the draw and gone when it ends.**
+One kind of geometry defeats every trick so far. A meadow needs half a million blades, and each blade needs its own curve. It has its own height, its own lean, its own bend along its length, and its own sway in the wind. Instancing cannot do that. An instanced draw moves rigid copies of one fixed shape, and a blade bends along its whole length. The answer is to stop storing geometry at all. A **`StrandField`** grows every blade inside the draw call itself, and the geometry is gone when the draw ends.
 
 <img src="Images/27-Landscapes/GrassMeadow.jpg" alt="A dense meadow of individually curved grass blades in deep greens, each catching the warm key light differently, with pale boulders half-buried among them and the field dimming into darkness at the horizon" width="640">
 
@@ -202,65 +148,15 @@ override func draw() {
 }
 ```
 
-There is no vertex buffer and no instance list behind that call, and `setup()` built nothing. A GPU stage looks at each tile of the patch, skips the ones the camera cannot see, and decides how much detail the rest deserve. A second stage synthesizes the visible ribbons from hashes of each blade's index, four segments near the camera and one far away. Where a blade roots, how it bends, how it sways on the sketch clock: all of it is arithmetic that happens during the draw and is never written down anywhere.
+There is no vertex buffer and no instance list behind that call, and `setup()` built nothing. A GPU stage looks at each tile of the patch, skips the ones the camera cannot see, and decides how much detail the rest need. A second stage builds the visible ribbons from hashes of each blade's index, four segments near the camera and one far away. Where a blade roots, how it bends, and how it sways on the sketch clock are all arithmetic. It happens during the draw and is never written down anywhere.
 
-And the blades are not a special effect painted over the scene. They shade on the same lit path as every solid, so the boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow above draws in about 22.5 ms on an M2, from zero bytes of geometry and zero per-frame CPU. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a parameter on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade parameters and the fine print (blades receive shadows but cast none; nothing exists for an exporter to record).
-
-## The sea, from what a sea is made of
-
-Water defeats the same trick grass did, for the opposite reason. Grass is half a million
-separate things. The sea is one thing, and it moves everywhere at once.
-
-You could try to place waves. Nobody who has looked at the ocean for long thinks that will
-work: the surface has waves at every size from a swell that takes eight seconds to pass to
-the ripple on its back, all crossing each other. So do what oceanographers do and describe
-the sea by its **spectrum** instead: how much water stands at each wavelength and heading
-for a given wind. That is a small, smooth description, and one inverse Fourier transform
-([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform)) turns the whole of it into the surface in one step.
-
-```swift
-let sea = makeOceanField(.breeze)              // the transform runs here
-drawOcean(sea, segments: 320, tiles: 5)
-```
-
-<img src="Images/27-Landscapes/OceanSurface.jpg" alt="Open sea seen from just above the surface under a low sun: waves of several sizes crossing each other, teal in the troughs and pale where the sky catches a crest, with a soft column of light running from the sun down to the foreground" width="680">
-
-Both halves of that are free of geometry. The field is a layer the GPU wrote: at each texel,
-how far the water has moved sideways, how high it stands, and how hard it is folding over
-there. The draw then works out its grid from vertex indices alone, the way the grass did, and
-reads the field for where each corner has gone. Nothing is uploaded.
-
-**The parameter worth trusting is `waveHeight`.** It is in world units, and it means what a sailor
-means: the average height of the tallest third of the waves. Ask for 3 and the water stands
-3, whatever the wind or the grid resolution is doing, because the scale is worked out from
-the spectrum's own arithmetic rather than turned by eye until it looks right.
-
-```swift
-let sea = makeOceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
-```
-
-`windSpeed` then decides *which* waves carry that height, moving the energy between short
-chop and long swell without changing how tall it stands. `choppiness` moves water sideways
-toward the crests, which is what makes them narrow and the troughs wide, and past about 1.5
-they fold through themselves, which is where the foam comes from. `WaterSurface` is the look
-on top of all that: the color of the body, what it reflects, and how the sun glitters off it.
-
-The motion is not animated either. Each wave turns at the speed its own wavelength travels
-at, and long waves genuinely travel faster than short ones, which is the whole reason a sea
-reads as a sea rather than as a shaking sheet. Set `loopSeconds` and every wave is nudged to
-a frequency that closes on that period, so a recording loops with no seam.
-
-What it will not do is worth knowing before you build a scene around it: there is nothing
-under the water (no refraction and no floating bodies), the surface is not in the shadow map
-or a vector export, since it exists only inside the draw, and a wide sea is one period laid
-out again and again, which a still can show if the patch is small. The
-[ocean reference](../Docs/3D/Ocean.md) has the rest.
+The blades shade on the same lit path as every solid. The boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow draws from zero bytes of geometry and costs the CPU nothing per frame. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a parameter on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade parameters, the cost, and the fine print. Blades receive shadows but cast none, and nothing exists for an exporter to record.
 
 ## Putting it together: the valley
 
-The finished sketch is a valley you could stand in, and every part of it is this chapter. The land is grown and weathered, the meadow is grass that does not exist between frames, the far world is a culled field, and the trees near the camera are an instanced draw the wind can reach. Make `MySketches/Valley.swift`. It is long enough to be worth taking in three parts.
+The finished sketch is a valley you could stand in. It composes the chapter's steps. The land is grown and weathered, and then read back to find where the camera stands and what it looks at. The far world is scattered over the land's own surface with `surfacePoints` and drawn as one culled `MeshField`. The trees near the camera are an instanced draw the wind can reach, and the meadow is grass that does not exist between frames. Make `MySketches/Valley.swift`. It comes in three parts.
 
-The first part grows the ground. Ridged noise across the whole grid, rained on, then settled by gravity, with the lowest third of the heights held at one level so a meadow has somewhere flat to sit. The `Ramp` that becomes the terrain's texture starts at that flood plain rather than at zero, which is what keeps the low ground green while the ridges go pale.
+The first part grows the ground. Ridged noise across the whole grid is rained on, then settled by gravity. Every height below 0.3 of the range is held at that level, so a meadow has somewhere flat to sit. The `Ramp` that becomes the terrain's texture starts at that flood plain rather than at zero. That keeps the low ground green while the ridges go pale.
 
 ```swift
 import Ollin
@@ -355,7 +251,7 @@ final class Valley: Sketch {
 
 ```
 
-The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and scores each spot by how much level ground surrounds it. Where the camera stands is something the terrain decides, not a number you typed. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. The shot faces lit land rather than a silhouette. `dressTheLand` throws four hundred thousand darts at the map and keeps the ones that landed somewhere a pine or a boulder belongs. Nothing grows on the flood plain, pines take the gentle mid slopes, and stones collect where it is steep. About 109,000 copies survive that filter and go into the field. The trees near the camera are kept in a list of their own, because they are the ones the wind has to move.
+The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and scores each spot by how much level ground surrounds it. Where the camera stands is something the terrain decides. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. So the shot faces lit land rather than a silhouette. `dressTheLand` scatters four hundred thousand spots over the land mesh with `surfacePoints`, by area, and passes `scatter: .random`. At this density the pines overlap into one canopy anyway, and the even spacing would cost several times as much. It keeps the spots that landed somewhere a pine or a boulder belongs, and a spot's normal says how steep the ground is there. Nothing grows on the flood plain, pines take the gentle mid slopes, and stones collect where it is steep. The trees near the camera are kept in a list of their own, because they are the ones the wind has to move. They come from darts thrown in a disc around the clearing, since they have to stand near the camera rather than all over the land.
 
 ```swift
     // MARK: reading the land back
@@ -405,24 +301,25 @@ The second part reads the field back, which is the step that turns a landscape i
         let pineDark = Color(hue: 0.36, saturation: 0.6, brightness: 0.26)
         let pineLight = Color(hue: 0.26, saturation: 0.5, brightness: 0.5)
         let stoneGray = Color(hue: 0.09, saturation: 0.12, brightness: 0.55)
-        let half = span / 2 - 1
 
-        for _ in 0 ..< 400_000 {
-            let x = random(-half, half), z = random(-half, half)
-            let y = ground(atX: x, z: z)
-            let slope = steepness(atX: x, z: z)
+        // Spots spread by area over the land's own surface, then kept or passed
+        // over by what the ground does there. A spot's normal says how steep it is.
+        // At this density the pines overlap anyway, so the cheap random scatter
+        // serves, where blue noise would cost several times as much.
+        for spot in surfacePoints(on: land, count: 400_000, scatter: .random) {
+            let p = spot.position
             // Nothing grows on the flood plain, and nothing grows on bare rock.
-            if y < floorY + 0.5 { continue }
-            if Vector2(x, z).distance(to: clearing) < standReach { continue }
-            if slope < 0.8 && y < relief * 0.66 {
+            if p.y < floorY + 0.5 { continue }
+            if Vector2(p.x, p.z).distance(to: clearing) < standReach { continue }
+            if spot.normal.y > 0.78 && p.y < relief * 0.66 {
                 let s = random(0.7, 1.5)
-                pines.append(MeshInstance(position: Vector3(x, y + 1.6 * s, z),
+                pines.append(MeshInstance(position: Vector3(p.x, p.y + 1.6 * s, p.z),
                                           rotation: Vector3(0, random(.tau), 0),
                                           scale: Vector3(s, s * random(0.85, 1.5), s),
                                           color: Color.mix(pineDark, pineLight, random(1))))
-            } else if slope > 1.0 && random(1) < 0.4 {
+            } else if spot.normal.y < 0.71 && random(1) < 0.4 {
                 let s = random(0.4, 1.4)
-                stones.append(MeshInstance(position: Vector3(x, y + 0.25 * s, z),
+                stones.append(MeshInstance(position: Vector3(p.x, p.y + 0.25 * s, p.z),
                                            rotation: Vector3(random(.tau), random(.tau), random(.tau)),
                                            scale: Vector3(s, s * 0.7, s),
                                            color: Color.mix(stoneGray, Color(white: 0.68), random(1))))
@@ -443,6 +340,8 @@ The second part reads the field back, which is the step that turns a landscape i
     }
 
 ```
+
+> **Swift note.** `nearSeats` holds tuples with named parts, `(x:, z:, ground:, phase:)`, so a seat reads as `seat.x` rather than `seat.0`. [Chapter 9](09-Pictures.md) met the tuple. `stride(from:through:by:)` counts from one value to another in steps and includes the last, as [Chapter 14](14-FieldsAndFlow.md)'s stride did. The `to:` form stops short of it. `continue` skips to the next spot, as in [Chapter 11](11-ForcesAndPhysics.md).
 
 The third part is the frame. It draws the land, then the meadow, then the whole far world in one call, then rebuilds the near stand from scratch. Everything in that last loop is a placement, so the gust never touches a vertex.
 
@@ -491,32 +390,123 @@ The third part is the frame. It draws the land, then the meadow, then the whole 
 }
 ```
 
-Four hundred and twenty thousand blades of grass, 109,000 solids in the field, and about 4,300 pines in the near stand, out of one `Heightfield` and three draw calls. The one number that never appears is a coordinate. Move the seed and the whole valley moves with it, camera included. Nothing in the sketch knows where anything is until it asks the ground.
+The valley holds 420,000 blades of grass, a far world scattered from 400,000 spots, and a stand of pines near the camera. All of it comes from one `Heightfield` and four draw calls. The one number that never appears is a coordinate. Move the seed and the whole valley moves with it, camera included. Nothing in the sketch knows where anything is until it asks the ground.
 
 Then make it yours:
 
-- Change `seed(2_608)` in both places and run it again. You get a different valley, a different clearing, and a different ridge to look at, with no other edit.
-- Raise `floorLevel` to 0.4 for a wetter world. The flats spread, the forest retreats uphill, and the meadow follows the flats out because it is placed from them.
-- Take out the `.eroded(.hydraulic(...))` line. The land keeps its shape and loses its drainage, and the placement rules stop making sense, because there are no longer valleys for the trees to gather in.
+- Change `seed(2_608)` and `noiseSeed(2_608)` and run it again. You get a different valley, a different clearing, and a different ridge to look at, with no other edit.
+- Raise `floorLevel` to 0.4 for a wetter world. The flats spread and the forest retreats uphill, since nothing is placed on the flood plain.
+- Take out the `.eroded(.hydraulic(...))` line. The land keeps its shape and loses its drainage. The placement rules stop making sense, because there are no longer valleys for the trees to gather in.
 - Set `world.isCullingEnabled = false` and watch the inspector's frame time while the picture holds still.
-- Swap `Mesh.cone` for a loaded tree model. Nothing else changes: a `MeshInstance` does not care what it is placing.
+- Swap `Mesh.cone` for a loaded tree model. Nothing else changes, because a `MeshInstance` does not care what it is placing.
+
+The valley moves only where the wind reaches the near pines and the grass. Keep it as a still, or as a short video for the sway. `swift run OllinLive MySketches/Valley.swift --export valley.png --frame 180` writes the still, and `--export-video valley.mp4 --seconds 8` records the wind.
+
+## Water on the land: rivers and the sea
+
+The valley's rain carved the drainage into the ground and then left no water behind. Water belongs to the land in two more ways. The finished ground can be asked where its rivers run. And a sea is a surface of its own, made from the waves on it rather than from a height at every point.
+
+### Where the water goes: drainage
+
+**Drainage** reads the rivers off a heightfield. It is for maps and contour plates that need rivers where the ground would put them, and for splitting land into catchments. The method is the standard chain of raster hydrology. Water on each cell runs to its steepest neighbor, John O'Callaghan and David Mark's 1984 method. A filling pass for hollows comes first, the Priority-Flood of Richard Barnes and colleagues (2014), and the entry says below why it is needed.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/27-Landscapes/WhereWaterGoes-dark.jpg">
+  <img src="Images/27-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
+</picture>
+
+```swift
+let water = land.drainage()
+for river in water.rivers(minFlow: 140, in: mapFrame) {
+    strokeWeight(0.7 + Double(river.order) * 0.9)
+    drawPolyline(river.points)
+}
+```
+
+Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill. The flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like branching you have seen.
+
+`minFlow` is the parameter to put on a slider. It is the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
+
+One thing has to happen before any of it works. A landscape is full of hollows with no way out. Water arriving in one has nowhere to go, so the network would stop dead there. Every hollow is filled first, up to the level it would brim over at, which is what a real basin does once it has filled. `drainage()` does that for you, and `land.filled()` is the same pass on its own.
+
+The stroke width above follows Strahler's order rather than the flow. A headwater is 1, two of the same order meeting make the next one up, and an unequal pair keeps the larger. It counts how much of the branching upstream is behind a reach. It strokes better than flow, which runs from 1 to tens of thousands across one picture. Arthur Strahler set out the ordering in 1957, refining Robert Horton's earlier scheme.
+
+The middle panel falls out at no extra cost. Every cell knows which outlet it eventually reaches, so coloring by `basin` splits the ground into catchments. The lines between them are the ridges, and nothing here ever went looking for a ridge.
+
+What comes back is points, so a river network strokes, hatches, and plots like any other geometry. It is also, unlike most of this chapter, a 2D result, a map rather than a mesh. The [`Examples/Patterns/Rivers`](../Examples/Patterns/Rivers/Sketch.swift) example draws one as a contour map.
+
+### The sea, from what a sea is made of
+
+The rivers were lines read off a height. The sea is a surface, and it moves everywhere at once, so it defeats the tricks the valley used. An **ocean** here is described by its **spectrum**: how much water stands at each wavelength and heading for a given wind. That description is how oceanographers write down a sea state. It is for open water with waves of every size crossing each other. The spectrum is O. M. Phillips's 1957 model of wind-driven waves, as Jerry Tessendorf presented it for rendering in his *Simulating Ocean Water* notes.
+
+Placing waves by hand does not work. The surface has waves at every size, from a swell that takes eight seconds to pass to the ripple on its back. The spectrum is a small, smooth description instead. One inverse Fourier transform ([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform)) turns the whole of it into the surface in one step.
+
+<img src="Images/27-Landscapes/OceanSurface.jpg" alt="Open sea seen from just above the surface under a low sun: waves of several sizes crossing each other, teal in the troughs and pale where the sky catches a crest, with a soft column of light running from the sun down to the foreground" width="680">
+
+```swift
+let sea = makeOceanField(.breeze)              // the transform runs here
+drawOcean(sea, segments: 320, tiles: 5)
+```
+
+Neither half of that stores geometry. The field is a layer the GPU wrote. At each texel it holds how far the water has moved sideways, how high it stands, and how hard it is folding over there. The draw then works out its grid from vertex indices alone, the way the grass did. It reads the field for where each corner has gone. Nothing is uploaded.
+
+The parameter to trust is `waveHeight`. It is in world units, and it means what a sailor means: the average height of the tallest third of the waves. Ask for 3 and the water stands 3, whatever the wind or the grid resolution is doing. The scale is worked out from the spectrum's own arithmetic rather than turned by eye until it looks right.
+
+```swift
+let sea = makeOceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
+```
+
+`windSpeed` then decides *which* waves carry that height. It moves the energy between short chop and long swell without changing how tall the sea stands. `choppiness` moves water sideways toward the crests, which makes them narrow and the troughs wide. Past about 1.5 they fold through themselves, which is where the foam comes from. `WaterSurface` is the look on top of all that: the color of the body, what it reflects, and how the sun glitters off it.
+
+The motion is not animated either. Each wave turns at the speed its own wavelength travels at, and long waves travel faster than short ones. That is why a sea reads as a sea rather than as a shaking sheet. Set `loopSeconds` and every wave is nudged to a frequency that closes on that period, so a recording loops with no seam.
+
+Some things it does not do. There is nothing under the water, so there is no refraction and nothing floats. The surface is not in the shadow map or a vector export, since it exists only inside the draw. And a wide sea is one period laid out again and again, which a still can show if the patch is small. The [ocean reference](../Docs/3D/Ocean.md) has the rest.
+
+## More lights than a frame can shade: many lamps
+
+The valley was lit by one preset, a sun and its fill. The field and the grass trimmed their copies to what the camera sees. Lights run into the same problem once there are many of them, and they have a look problem of their own.
+
+### A courtyard of lamps: many lights
+
+A **light with a reach** stops at a set distance, and a frame can carry many of them. It is for lamps that come in numbers, each lighting only its own corner: forty lanterns in a courtyard, or a string of bulbs along a street. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. The reach's falloff is the inverse square of physics with its two ends made usable. Giving each square of the screen its own short list of lights is Forward+, which Takahiro Harada, Jay McKee, and Jason C. Yang presented in 2012.
+
+You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once. The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
+
+```swift
+for i in 0 ..< 64 {
+    let angle = Double(i) * 2.4, radius = 4 + Double(i) * 0.3
+    pointLight(Color(hue: Double(i) / 64, saturation: 0.75, brightness: 1),
+               at: Vector3(cos(angle) * radius, 2.4, sin(angle) * radius),
+               intensity: 1.7, reach: 11)
+}
+```
+
+<img src="Images/27-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
+
+`reach:` is how far a light carries, in world units. Inside it the lamp is full strength at the source and a quarter of that halfway out. At `reach` and beyond it is nothing at all, so the dark between the pools has no light in it. Real light thins as the inverse square of the distance, a curve that never ends and that blows up at the source. This is the same shape with both ends made usable. Every light with a position takes a reach, the area panels included. `Light.reaching(_:)` sets or clears it on a light you have already built. Leave it off and the light is what it was before.
+
+The second thing that goes wrong is cost. Forward lighting shades every pixel against every light, which is why the plain path stops at eight lights. A frame carries up to 256. Past eight, the renderer divides the screen into small squares and works out, once per square, which lamps can possibly arrive there. A pixel then shades against the four or five standing over it instead of the sixty-four in the courtyard. You write the same calls either way, and the picture is identical either way.
+
+The `reach` is what makes that work. A lamp with no bound can arrive anywhere, so it stays in every square and costs full price. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable. The [reach reference](../Docs/3D/3D.md#reach) has what it saves on an M2.
+
+A few things stay on the frame's first eight lights on purpose. Shadows are the main one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
 
 ## Where this comes from
 
 Diamond-square terrain comes from Alain Fournier, Don Fussell, and Loren Carpenter's 1982 paper on stochastic models. That is the same line of work that put fractal mountains in *Star Trek II*. The droplet erosion follows Hans Theobald Beyer's 2015 thesis on hydraulic erosion for procedural terrain. Thermal weathering is the talus-angle relaxation from Ken Musgrave, Craig Kolb, and Robert Mace's 1989 paper on eroded fractal terrains. The idea that a landscape is data you sample rather than a model you sculpt runs through all of that work. It is the reason the sketch can ask the ground where to plant a tree.
 
-Picking a point evenly inside a triangle is older than any of this, and the version here folds the square's two halves together across the diagonal rather than taking a square root, which is Eric Heitz's 2019 note on the map between the two shapes. Spacing the spots out afterward is Cem Yuksel's 2015 elimination method, which is what lets an even scatter be asked for by count on a surface, where a radius has no obvious value.
+Picking a point evenly inside a triangle is older than any of this. The version here folds the square's two halves together across the diagonal rather than taking a square root. That is Eric Heitz's 2019 note on the map between the two shapes. Spacing the spots out afterward is Cem Yuksel's 2015 elimination method. It is what lets an even scatter be asked for by count on a surface, where a radius has no obvious value.
 
-Drawing thousands of copies from one call, and letting the GPU decide which ones the camera can see, are practices the real-time industry arrived at together. Graphics chips outgrew the buses feeding them, and the work had to move. Growing grass inside the draw is that same instinct followed to its end. It became practical when GPUs gained a stage that can generate geometry on the way to the screen. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Drawing thousands of copies from one call, and letting the GPU decide which ones the camera can see, are practices the real-time industry arrived at together. Graphics chips outgrew the buses feeding them, and the work had to move. Growing grass inside the draw is that same instinct followed to its end. It became practical when GPUs gained a stage that can generate geometry on the way to the screen. The entries after the valley name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Drainage](../Docs/Generators/Drainage.md): the filling pass and its two visible details, flow, the network and its threshold, Strahler ordering, and basins. The [`Examples/Patterns/Rivers`](../Examples/Patterns/Rivers/Sketch.swift) example draws one as a contour map.
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion parameter, and reading a field out as a mesh, an image, or samples.
-- [Instancing](../Docs/3D/Instancing.md): the whole `MeshInstance` surface, placements written by a compute kernel so they never visit the CPU, and the `MeshField` fine print (what the cull tests, what it does to shadow casters, what a placed color does to your `fill`).
+- [Instancing](../Docs/3D/Instancing.md): the whole `MeshInstance` surface, placements written by a compute kernel so they never visit the CPU, the measured costs, and the `MeshField` fine print (what the cull tests, what it does to shadow casters, the traced-copy budget, what a placed color does to your `fill`).
 - [Points on a surface](../Docs/Generators/SurfaceSampling.md): the whole `surfacePoints` surface, asking by spacing instead of count, what a `SurfaceSample` carries, `alignment(spin:)`, and `surfaceArea` for holding a density rather than a count.
+- [Strands](../Docs/3D/Strands.md): every blade parameter, the distance grading, what a meadow costs, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
+- [Drainage](../Docs/Generators/Drainage.md): the filling pass and its two visible details, flow, the network and its threshold, Strahler ordering, and basins. The [`Examples/Patterns/Rivers`](../Examples/Patterns/Rivers/Sketch.swift) example draws one as a contour map.
 - [The ocean](../Docs/3D/Ocean.md): the whole sea state, the field a transform writes, every look parameter, what it costs, and the four things it will not do.
-- [Strands](../Docs/3D/Strands.md): every blade parameter, the distance grading, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
 - Appendix B draws two ideas this chapter leans on: [Layering scales](B-JustEnoughMath.md#layering-scales), which is what makes a heightfield look like land, and [The 3D world frame](B-JustEnoughMath.md#the-3d-world-frame).
 - Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a parameter that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), and [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side).
 
