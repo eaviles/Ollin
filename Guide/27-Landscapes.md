@@ -216,7 +216,7 @@ work: the surface has waves at every size from a swell that takes eight seconds 
 the ripple on its back, all crossing each other. So do what oceanographers do and describe
 the sea by its **spectrum** instead: how much water stands at each wavelength and heading
 for a given wind. That is a small, smooth description, and one inverse Fourier transform
-([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves)) turns the whole of it into the surface in one step.
+([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform)) turns the whole of it into the surface in one step.
 
 ```swift
 let sea = makeOceanField(.breeze)              // the transform runs here
