@@ -10,7 +10,7 @@ A 3D frame usually stops light at the first thing it hits. This chapter follows 
 
 ## Mirrors that see off screen: ray-traced reflections
 
-A scene's depth layer, from [Chapter 25](25-3DGently.md#what-the-depth-buffer-is-for), feeds one more effect, and it is where reflections start.
+A scene's depth layer, from [Chapter 25](25-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus), feeds one more effect, and it is where reflections start.
 
 **`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It has one limit worth understanding rather than being surprised by. It reflects what is on the screen, and a picture does not contain the back of anything. Where the true reflection would be of a surface the camera cannot see, such as the underside of a ball resting on a floor, it can only approximate. That shows as a soft zone right at the contact. A touch of `roughness` hides it, and `rayTracedReflections()`, next, is the exact alternative.
 
@@ -245,7 +245,7 @@ The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts 
 
 ## The shape of a blur: bokeh
 
-[Chapter 25](25-3DGently.md#what-the-depth-buffer-is-for)'s `.defocus` blurs a scene by its depth, and the lens it imitates has an iris of its own.
+[Chapter 25](25-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus)'s `.defocus` blurs a scene by its depth, and the lens it imitates has an iris of its own.
 
 A blur has a shape, and it is not always a circle. Out of focus, a point of light is not a smudge. It is a picture of the opening its light came through. Hand `.defocus` a `blades` count and every highlight becomes a polygon of that many sides. That is what the iris of a real lens is made of. `catsEye` adds the barrel around that iris. The barrel clips the opening away from the middle of the frame. So a highlight that is whole in the middle lies down into a lemon toward the corners.
 

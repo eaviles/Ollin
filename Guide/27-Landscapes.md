@@ -162,7 +162,7 @@ A field bakes its colors when you place it (each copy's own tint on top), shades
 
 ## A courtyard of lamps: many lights
 
-The camera trims the copies it cannot see. Lights run into the same problem once there are many of them. [Chapter 25](25-3DGently.md#light-by-playing) lit its scenes with a handful of lights placed by hand. Lamps come in numbers. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
+The camera trims the copies it cannot see. Lights run into the same problem once there are many of them. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. Lamps come in numbers. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
 
 The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
 

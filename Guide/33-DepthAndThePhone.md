@@ -206,7 +206,7 @@ The camera path does double duty here. Every fitted plane has two sides, and the
 
 Because the sketch handed over a `PointCloud` rather than bare positions, the colors ride along. Each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill`, which is the texture contract. That is why the default white fill shows them untouched, and `fill(Color(white: 0.5))` dims the whole scan without touching its hues. The same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
 
-What comes back is an ordinary `Mesh`, so everything [Chapter 25](25-3DGently.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
+What comes back is an ordinary `Mesh`, so everything [Chapter 25](25-3DGently.md) and [Chapter 26](26-Meshes.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
 
 ## The phone's other streams
 
