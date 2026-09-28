@@ -3,8 +3,8 @@
 // Guide figure (Chapter 33): a walk that comes back to where it started. The
 // camera circles a staged block and returns, with the same small error added to
 // its pose every frame. On the left each frame is lined up against the scan
-// before it is merged, which is all a sweep can do on its own: the walk still
-// closes as a spiral, and the room leans. On the right the scan also recognizes
+// before it is merged, which is all a sweep can do on its own: the second lap
+// lands off the first, and the room leans. On the right the scan also recognizes
 // the place it began at, and straightens every pose between.
 import Ollin
 import simd

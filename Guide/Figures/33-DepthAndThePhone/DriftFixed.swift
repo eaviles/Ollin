@@ -3,7 +3,7 @@
 // Guide figure (Chapter 33): drift, and the fix. The same nine captures of the
 // staged room fused twice. On the left each frame goes in at the pose the
 // camera reported, and the small error the camera adds every frame piles up
-// until the ball and the crate are drawn several times over. On the right each
+// until the walls smear into one slanting sheet. On the right each
 // frame is lined up against the scan before it is merged.
 import Ollin
 import simd
