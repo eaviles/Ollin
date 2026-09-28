@@ -104,8 +104,8 @@ final class Contraption: Sketch {
         }
     }
 
-    // Bodies come back as colliders, so one recursive helper draws every kind
-    // and a compound just draws its parts in their own local frames.
+    // Bodies come back as colliders, so one recursive helper draws the kinds
+    // this machine uses, and a compound draws its parts in their own frames.
     func draw(_ collider: Collider3D, tint: Color?) {
         switch collider {
         case .box(let w, let h, let d):

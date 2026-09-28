@@ -6,7 +6,7 @@
 
 <img src="Images/28-WorldsWithWeight/Contraption.jpg" alt="A wooden panel carrying two touching wheels, a small orange one and a larger gray one, with a long steel bar fixed across the larger wheel sweeping a row of six red crates along a shelf, lit from above with soft shadows on a dark floor" width="560">
 
-This chapter gives the 3D scene weight. Bodies fall, stack, and knock each other about, and joints tie them into machines that one motor can run. The machine above has a single motor in it. A gear link ties that motor's hinge to a second hinge, and everything after that is contact. The bar swings because it is fixed to a wheel, and the crates move because the bar reaches them. Nothing in the picture is animated, and with the motor off the whole thing coasts to a stop.
+This chapter gives the 3D scene weight. Bodies fall, stack, and knock into each other, and joints tie them into machines that one motor can run. The machine above has a single motor in it. A gear link ties that motor's hinge to a second hinge, and everything after that is contact. The bar swings because it is fixed to a wheel, and the crates move because the bar reaches them. Nothing in it is keyframed, and with the motor off the machine coasts to a stop.
 
 The steps build that machine from three ideas. Bodies get weight in a 3D world, joints get a motor and a gear between them, and groups of bodies pass through each other. After the machine come the other things a world can do. It can tell you what hit what, and what is in the way. A body can lose a direction it is allowed to move in. More joints hold a cart on a track and struts on their cables. Water floats what is lighter than it, and the ground can come from a landscape or a file. A snapshot keeps a settled arrangement exactly as it was.
 
@@ -43,9 +43,9 @@ That orientation is one value, a `Rotation3D`, and you can read it, set it, or b
 
 That pyramid is built the same way. Each crate is one `addBody` with a `.box` collider. A heavy steel ball is one more body, given a starting `velocity` that throws it into the pile. Nothing in the collapse is animated by hand, and nothing in it is random. The solver is deterministic, so the same steps on the same machine give the same wreck. An export steps on a fixed clock, so it replays the same collapse every run.
 
-Colliders come from a small catalog. There are `.box`, `.sphere`, `.capsule`, and `.cylinder`, and their tapered relatives `.cone`, `.taperedCylinder`, and `.taperedCapsule`. A `.hull` wraps a convex solid around points of your own, and a static `.mesh` is for scenery that never moves. `connect` links bodies with joints: the kinds from [Chapter 11](11-ForcesAndPhysics.md#hinges-and-a-handle-revolute-and-grab), plus `.ball`, the free-swiveling socket a hanging chain is made of.
+Colliders come from a small catalog. There are `.box`, `.sphere`, `.capsule`, and `.cylinder`, and their tapered relatives `.cone`, `.taperedCylinder`, and `.taperedCapsule`. A `.hull` wraps a convex solid around points of your own, and a static `.mesh` is for scenery that never moves. `connect` links bodies with joints. [Chapter 11](11-ForcesAndPhysics.md#hinges-and-a-handle-revolute-and-grab) showed the `.revolute` hinge and pointed to the slider, the weld, and the rod. 3D adds `.ball`, the free-swiveling socket a hanging chain is made of.
 
-The cursor reaches through the camera too. `grabBody(at:in:)` finds the body under the mouse, and `dragGrab(_:to:)` slides it across the view at the depth it was picked. `dragBodies(in: world)` does the whole press, drag, and release as one call in `draw()`. That is how you rummage through a pile in a running sketch. `drawBody(body)` draws a body as its collider, in the current fill and material. It knows every kind of collider, so a whole world can draw as one loop.
+The cursor reaches through the camera too. `grabBody(at:in:)` finds the body under the mouse, and `dragGrab(_:to:)` slides it across the view at the depth it was picked. `dragBodies(in: world)` does the whole press, drag, and release as one call in `draw()`. It lets you dig through a pile in a running sketch. `drawBody(body)` draws a body as its collider, in the current fill and material. It knows every kind of collider, so a whole world can draw as one loop.
 
 A body doesn't have to be one shape, either. `.compound` joins several colliders into a single rigid body, each part posed in the body's own space. The mass, the balance, and the spin all come from the whole assembly:
 
@@ -63,7 +63,7 @@ for arm in 0 ..< 4 {
 let cross = world.addBody(.compound(parts), at: hubCenter)
 ```
 
-That is a windmill's blade cross, five shapes in one body. A cylinder stands upright, so the hub takes a quarter turn about x to face the camera. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing. `withBody` still draws the whole thing, so inside the block you translate to each part's pose and draw its shape.
+The result is a windmill's blade cross, five shapes in one body. A cylinder stands upright, so the hub takes a quarter turn about x to face the camera. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing. `withBody` still draws the compound as one body, so inside the block you translate to each part's pose and draw its shape.
 
 ## Machines out of joints: motors, gears, and racks
 
@@ -79,7 +79,7 @@ Hinges and sliders can be powered, and that is where a machine starts. The joint
 
 <img src="Images/28-WorldsWithWeight/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, four colored balls on the floor, and a low swing gate on either side, the left one swung open with two balls against it" width="560">
 
-One motored hinge does all the turning here. The blade cross from the first step turns on a `.revolute` driven at a constant rate. The balls it knocks away roll toward swing gates on either side, and the left gate has swung open under two of them. Each gate is a hinge about `.unitY` with limits, and `softenLimits` makes its stops springy. A `drive(to: 0)` servo holds it shut, too weak to stop a rolling ball. The [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example is the version to play with. The space bar cuts the motor, and hinge friction slows the mill to a stop.
+One motored hinge does all the turning here. The blade cross built above turns on a `.revolute` driven at a constant rate. The balls it knocks away roll toward swing gates on either side, and the left gate has swung open under two of them. Each gate is a hinge about `.unitY` with limits, and `softenLimits` makes its stops springy. A `drive(to: 0)` servo holds it shut, too weak to stop a rolling ball. The [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example is the version to play with. The space bar cuts the motor, and hinge friction slows the mill to a stop.
 
 A machine also needs one motion to cause another. A gear does that by connecting two hinges. What it ties together is the turning each hinge allows, so `connect` takes the two joints here rather than the two wheels:
 
@@ -101,6 +101,8 @@ world.connect(bigHinge, slide,
               .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
 ```
 
+The slider's range has to include 0, the pose it was built in, which is why this one starts just below it.
+
 A pinion is a small toothed wheel that drives a toothed bar, the rack. Here it is a smaller disc fixed to the front of the big wheel. `travelPerTurn` is how far the bar runs for one full turn of the pinion. For a pinion of radius `r` that is its circumference, `2 * .pi * r`. The two links combine, and the machine below has one motor, two links, and three moving parts: two wheels and a bar.
 
 <img src="Images/28-WorldsWithWeight/Machines.jpg" alt="A small toothed wheel meshed with a wheel twice its size on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar with a paddle at its left end has slid along a shelf, and four teal blocks sit just ahead of the paddle" width="620">
@@ -111,24 +113,24 @@ Those wheels touch at their rims, as meshed gears do. To the solver, two solids 
 
 ## Things that pass through each other: collision groups
 
-Until now everything in a world has collided with everything else. That is usually what you want, and the gears are the exception. Many scenes need a few exceptions like it. Sparks fly through the machine that threw them, a ghost walks through a door, and a laser stops at only some things.
+Until now everything in a world has collided with everything else. Usually you want that, and the gears are the exception. Many scenes need a few exceptions like it. Sparks fly through the machine that threw them, a ghost walks through a door, and a laser stops at only some things.
 
-You could do this with logic, checking who touched what and undoing it. Ollin works the other way round. You put bodies in a named **group** when you build them, and then tell the world that two groups never touch:
+You could do this with logic, checking who touched what and undoing it. Ollin has you name the rule instead. You put bodies in a named **group** when you build them, and then tell the world that two groups never touch:
 
 ```swift
 let bead = world.addBody(.sphere(radius: 0.17), at: p, group: "passing")
 world.ignoreCollisions(between: "passing", and: "grating")
 ```
 
-That is a word where you build something, and one sentence saying what it does not touch. The picture below has two identical tubes with identical gratings, and the same beads poured into each. The only difference is that the right pour is in a group the grating was told to ignore.
+You write a word where you build something, and one sentence saying what it does not touch. The picture below has two identical tubes with identical gratings, and the same beads poured into each. The only difference is that the right pour is in a group the grating was told to ignore.
 
 <img src="Images/28-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a horizontal grating across the middle. In the left tube a pile of amber beads rests on top of the grating; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
 
-Three things follow from the way that sentence works.
+The rule has a few consequences.
 
 **It reads both ways.** `ignoreCollisions(between: "passing", and: "grating")` states a fact about a pair. The beads cannot ignore the grating while the grating still stops the beads.
 
-**A group name alone changes nothing.** A world where nobody has written an `ignoreCollisions` behaves like a world with no groups. So you can tag things as you build them and decide later what the tags mean. It also means a typo in a group name does nothing, which is the first thing to check when a rule seems to be ignored. `world.collisionGroups` prints what the world has heard.
+**A group name alone changes nothing.** A world where nobody has written an `ignoreCollisions` behaves like a world with no groups. So you can tag things as you build them and decide later what the tags mean. It also means a typo in a group name does nothing, which is the first thing to check when a rule seems to be ignored. `world.collisionGroups` lists every group the world has heard of, so a misspelled name shows up there as a group of its own.
 
 **A group still collides with itself.** Two crates in one group stack normally. For confetti that drifts through itself, say so:
 
@@ -138,7 +140,7 @@ world.ignoreCollisions(between: "confetti", and: "confetti")
 
 That same line is what lets the gears touch. Put every part of the machine's frame in one group and tell the group to ignore itself. The wheels then turn rim to rim while the gear link does the work.
 
-Everything you can add to a world takes a group, the same way it takes a density. That covers bodies, soft bodies, and the static scenery [a family after the contraption](#scenery-and-bodies-from-a-file-scenes-and-usd-physics) imports from a `Scene`. It also covers the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md). A rule holds everywhere the pair could meet. A filtered pair does not collide, and it does not turn up in the world's list of contacts or in a sensor. [A family after the contraption](#asking-the-world-contacts-sensors-and-queries) explains those two. A character walks through it, another character included, and a vehicle's wheels do not feel it.
+Everything you can add to a world takes a group, the same way `addBody` takes a density. That covers bodies, soft bodies, and the static scenery that [the scenes and USD entry](#scenery-and-bodies-from-a-file-scenes-and-usd-physics) imports from a `Scene`. It also covers the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md). A rule holds everywhere the pair could meet. A filtered pair does not collide, and it does not turn up in the world's list of contacts or in a sensor. [The contacts and sensors entries](#asking-the-world-contacts-sensors-and-queries) explain those two. A character walks through it, another character included, and a vehicle's wheels do not feel it.
 
 You can move a body between groups while it runs. `body.group = "debris"` takes effect on the world's next step, and the body is woken so the world looks at it again. A crate resting on a shelf drops through it once it joins a group the shelf ignores.
 
@@ -146,7 +148,7 @@ The [`3D/Physics/Sieve`](../Examples/3D/Physics/Sieve/) example is a sorting mac
 
 ## Putting it together: the contraption
 
-The machine at the top of the chapter uses all three steps. A motor turns one hinge at a steady rate, and a gear link turns the second. There are no keyframes in it, and no code that knows what time it is. Make a new file, `MySketches/Contraption.swift`:
+The machine at the top of the chapter is built from the steps above. A motor turns one hinge at a steady rate, and a gear link turns the second. There are no keyframes in it, and no code that knows what time it is. Make a new file, `MySketches/Contraption.swift`:
 
 ```swift
 import Foundation
@@ -249,8 +251,8 @@ final class Contraption: Sketch {
         }
     }
 
-    // Bodies come back as colliders, so one recursive helper draws every kind
-    // and a compound just draws its parts in their own local frames.
+    // Bodies come back as colliders, so one recursive helper draws the kinds
+    // this machine uses, and a compound draws its parts in their own frames.
     func draw(_ collider: Collider3D, tint: Color?) {
         switch collider {
         case .box(let w, let h, let d):
@@ -279,9 +281,9 @@ final class Contraption: Sketch {
 Run it, then drag the speed. Here is how the steps show up in it:
 
 - **Things with weight.** The world has a `ground` and a little bounce, `restitution` as in [Chapter 11](11-ForcesAndPhysics.md). The wall and the shelf are `.static`, so nothing moves them. Each wheel is a `.compound` whose cylinder takes a quarter turn about x, and the big wheel's second part is the bar. Each body keeps its color in `userData`, the way Chapter 11's bricks did.
-- **Machines out of joints.** Two `.revolute` hinges hold the wheels to the wall, and `.gear(teeth:and:)` links the two joints. `crank?.drive(at:strength:)` asks the small hinge for a rate every frame. It pushes up to `strength` to get it, so a jammed machine stalls.
+- **Machines out of joints.** Two `.revolute` hinges hold the wheels to the wall, and `.gear(teeth:and:)` links the two joints. `crank?.drive(at:strength:)` asks the small hinge for a rate every frame. It pushes up to `strength` to get it, so a jammed machine stalls. The Teeth parameter is read once, in `setup()`, so it takes effect on the next save rather than while you drag it.
 - **Collision groups.** The wall, the wheels, and the shelf are all in `"frame"`, which ignores itself. The wheels touch rim to rim, and the bar passes over the small wheel and the end of the shelf without striking them. The crates are in no group, so the bar and the shelf still stop them.
-- The crates are the only moving bodies with no joint at all. Everything that happens to them is contact, and a crate that falls off the shelf is put back on it. They tumble differently on every live run, because each live step is as long as the frame took.
+- **Contact.** The crates are the only moving bodies with no joint at all. Everything that happens to them is contact, and a crate that falls off the shelf is put back on it. They tumble differently on every live run, because each live step is as long as the frame took.
 - `withBody(body) { ... }` puts the transform stack in each body's pose, and the helper only has to know about shapes. `drawBody` would draw every shape in one fill and material. The helper gives the cylinders a metal finish and the boxes a matte one, and a compound draws its parts in their own frames.
 
 > **Swift note.** `crank` is optional because `setup()` fills it, so `crank?.drive(...)` is the optional chaining of [Chapter 9](09-Pictures.md). The helper is also named `draw`. Swift tells two functions apart by their arguments, so `draw(_:tint:)` and the sketch's own `draw()` never mix. Its `switch` works like [Chapter 22](22-IteratedForms.md)'s switch over a number, with one addition. A case such as `.box(let w, let h, let d)` matches a box and names the three sizes it carries. `body.userData as? Color` and `tint ?? .white` read the color back as Chapter 11's bricks did.
@@ -290,17 +292,17 @@ Before moving on, make it yours:
 
 - Change `bigTeeth`'s default and save, so `setup()` builds the gear again. The ratio changes and the drawn wheels do not, because the link knows nothing about their size. Then change the big wheel's radius and hub to match.
 - Take out the `ignoreCollisions` line. The bar now strikes the small wheel and the shelf on its way round, and the motor stalls against them.
-- Add a `raycast` straight down from the end of the bar and draw where it lands. The queries in the family after this explain the call.
+- Keep `big` in a property, so `draw()` can reach it. The end of the bar is `big.position + Vector3(1.9, 0, 0).rotated(by: big.rotation)`. `rotated(by:)` turns a vector by a rotation. Cast a `raycast` straight down from there and draw where it lands. The queries in the family after this explain the call.
 
 The machine runs on its own, so keep it as a video. `swift run OllinLive MySketches/Contraption.swift --export-video contraption.mp4 --seconds 12` records the first twelve seconds. An export steps the world on a fixed clock, so the crates fall the same way every time you record it.
 
 ## Asking the world: contacts, sensors, and queries
 
-The contraption never asks its world anything. It puts a crate back by reading the crate's height, and it never learns that the bar touched it. A world can tell you when two things meet, keep count of what is inside a region, and answer questions about what is where. All three turn a world you watch into one you can play.
+The contraption never asks its world anything. It puts a crate back by reading the crate's height, and it never learns that the bar touched it. A world can tell you when two things meet, keep count of what is inside a region, and answer questions about what is where. Together they let a sketch react to its world.
 
 ### What hit what: contacts
 
-A contact is the world's record that two bodies met during a step. It is for the moments a sketch should answer. A ball reached the goal, a crate landed hard, or a plate has something on it, and a sound, a spark, or a score follows. Every rigid-body solver finds these contacts to push the bodies apart. Ollin keeps them as a list after each `step`, and `draw()` reads the list the way it reads the mouse:
+A contact is the world's record that two bodies met during a step. It is for the moments a sketch should answer. A ball reached the goal, a crate landed hard, or two cars touched, and a sound, a spark, or a score follows. Every rigid-body solver finds these contacts to push the bodies apart. Ollin keeps them as a list after each `advance(by:)`, and `draw()` reads the list the way it reads the mouse:
 
 ```swift
 world.advance(by: deltaTime)
@@ -310,9 +312,9 @@ for contact in world.contacts where contact.phase == .began {
 }
 ```
 
-There are no callbacks, and nothing fires at an awkward moment. The list belongs to the step that filled it. Each `Contact3D` names the two bodies that met, as `a` and `b`. `contact.other(than: ball)` hands back the one that is not the ball. It also says where they met, which way the surfaces faced, and `speed`, how fast they were closing. The speed is measured before the solver answers the collision, so it is the size of the impact. That one number can set the volume of a clink, the size of a spark, or the brightness of a flash. Contacts are per pair of bodies, so a crate landing on a mesh floor is one arrival rather than one for each triangle under it.
+Nothing interrupts your code in the middle of a step. The list belongs to the step that filled it. Each `Contact3D` names the two bodies that met, as `a` and `b`. `contact.other(than: ball)` hands back the one that is not the ball. It also says where they met, which way the surfaces faced, and `speed`, how fast they were closing. The speed is measured before the solver answers the collision, so it is the size of the impact. That one number can set the volume of a clink, the size of a spark, or the brightness of a flash. Contacts are per pair of bodies, so a crate landing on a mesh floor is one arrival rather than one for each triangle under it.
 
-Solids can break on impact, too, the way flat shapes broke in [Chapter 11](11-ForcesAndPhysics.md#breaking-things). `Mesh.fractured(into:around:seed:)` cuts a 3D mesh into convex cells, and `.hull(points)` makes each one a `Body3D`. A contact's `speed` is the thing to read for the moment to break it. The [`3D/Physics/Burst`](../Examples/3D/Physics/Burst/) example throws solids up and breaks each one at the top of its arc.
+Solids can break on impact, too, the way flat shapes broke in [Chapter 11](11-ForcesAndPhysics.md#breaking-things). `Mesh.fractured(into:around:seed:)` cuts a 3D mesh into convex cells, and `world.addBody(.hull(cell.positions), at: …)` makes each cell a body. A contact's `speed` is the thing to read for the moment to break it. The [`3D/Physics/Burst`](../Examples/3D/Physics/Burst/) example throws solids up and breaks each one at the top of its arc.
 
 ### A region that counts what is inside: sensors
 
@@ -364,7 +366,7 @@ let drop = world.raycast(from: p, to: p - Vector3(0, 20, 0))?.distance
 let below = world.sweep(.sphere(radius: 0.55), from: overhead, to: patrol)
 ```
 
-A ray asks what is in the way, and a sweep asks whether something fits. The second is usually the question you meant. A ray threads a gap a shoulder would never get through, and it drops between two crates onto a floor a drone could never reach. Anything a body can wear works as the probe, turned however you like with `rotated:`. The two exceptions are the colliders that describe scenery, a mesh and a height field.
+A ray asks what is in the way, and a sweep asks whether something fits. A sweep is often the better question. A ray threads a gap a shoulder would never get through, and it drops between two crates onto a floor a drone could never reach. Anything a body can wear works as the probe, turned however you like with `rotated:` and `axis:`. The two exceptions are the colliders that describe scenery, a mesh and a heightfield.
 
 **An overlap** asks what is inside a region right now:
 
@@ -377,9 +379,9 @@ for caught in world.bodiesOverlapping(.sphere(radius: 3.2), at: blast) {
 }
 ```
 
-That is a blast radius in a few lines, and the sphere it asked with never existed. The push points away from the blast and a little upward, and it is strongest near the middle. You could build a sensor there and read `touching` instead, and for a standing question, like the tray's, you should. But a sensor has to exist before the moment and be cleared away after. An overlap is a question asked once, anywhere, with a shape made up on the spot. `bodiesContaining(point)` asks the same question with no shape at all.
+Those few lines are a blast radius, and the sphere they asked with never existed. The push points away from the blast and a little upward, and it is strongest near the middle. You could build a sensor there and read `touching` instead, and for a standing question, like the tray's, you should. But a sensor has to exist before the moment and be cleared away after. An overlap is a question asked once, anywhere, with a shape made up in that line. `bodiesContaining(point)` asks the same question with no shape at all.
 
-A few habits help. Queries skip sensors unless you pass `includingSensors: true`. They do see soft bodies, so a hanging sheet blocks a ray. `ignoring:` lets something cast from inside itself, which you need the first time a robot's own body blocks its view. None of this steps the world, so you can ask once per crate every frame and find everything where you left it.
+A few habits help. Queries skip sensors unless you pass `includingSensors: true`. They do see soft bodies, so a hanging sheet blocks a ray. `ignoring:` lets something cast from inside itself, which is how a robot looks out past its own body. None of this steps the world, so you can ask once per crate every frame and find everything where you left it.
 
 Groups change what a query sees, too. Every query takes `as:`, which asks it the way a body of that group would ask it:
 
@@ -398,20 +400,21 @@ The contraption's wheels can only turn, because their hinges allow nothing else.
 
 ### Taking a direction away: degrees of freedom
 
-A rigid body can do six things. It travels along three axes and turns about three, and mechanics calls these its six degrees of freedom. You can take any of them away. It is for flat worlds, like a pin table, a machine seen from the side, or a puzzle of sliding tiles. Building one in 2D gives up the lighting, the shadows, and the solid shapes. Building it in 3D lets every collision push things toward and away from the camera, until the world stops reading as flat. So you tell the bodies they may not go that way.
+A rigid body can do six things. It travels along three axes and turns about three, and mechanics calls these its six degrees of freedom. You can take any of the six away. Taking one away is for flat worlds, like a pin table, a machine seen from the side, or a puzzle of sliding tiles. Building one in 2D gives up the lighting, the shadows, and the solid shapes. Building it in 3D lets every collision push things toward and away from the camera, until the world stops reading as flat. So you tell the bodies they may not go that way.
 
 <img src="Images/28-WorldsWithWeight/Flattened.jpg" alt="Two identical pin boards standing in open-fronted bins. At the foot of the left board the teal beads lie in one flat row at the same depth, one resting on the others. At the right board the amber beads are scattered: a few still in the bin at different depths, the rest out on the open floor in front of it" width="620">
 
-Those are two identical pin boards. The same beads are poured down each, one at a time. Each bead gets a nudge toward or away from the camera on the way down. Both boards get the same nudges. The beads on the left are held to the board's plane, and the ones on the right are not:
+Those are two identical pin boards. The same beads are poured down each, one at a time. Most beads get a nudge toward or away from the camera on the way down. Both boards get the same nudges. The beads on the left are held to the board's plane, and the ones on the right are not:
 
 ```swift
 let bead = world.addBody(.sphere(radius: 0.17), at: p, freedom: .plane())
 ```
 
-The left beads had nowhere to put that nudge, so they landed in one flat row. The right ones took it and left. A locked direction is gone from the body. Gravity, a contact, a joint, and a velocity you set yourself all fail to move it that way.
+The left beads had nowhere to put that nudge, so they landed in one flat row. The right ones took it, and most rolled out of the open front. A locked direction is gone from the body. Gravity, a contact, a joint, and a velocity you set yourself all fail to move it that way.
 
 The useful combinations have names, and you can spell out anything else:
 
+<!-- snippet: skip a list of the named values to choose from, not code to type -->
 ```swift
 .all                        // the default
 .plane()                    // travels in x and y, turns about z: a flat world
@@ -422,7 +425,7 @@ The useful combinations have names, and you can spell out anything else:
 [.moveX, .turnZ]
 ```
 
-`.upright` is the other one you will reach for. It suits a fridge on a dolly, a chess piece, or anything that should slide and turn without falling over. A tilted plane is the one thing you cannot ask for. The solver takes away whole world axes, so `.plane(normal:)` rounds its normal to the nearest one.
+`.upright` is the other common one. It suits a fridge on a dolly, a chess piece, or anything that should slide and turn without falling over. A tilted plane is the one thing you cannot ask for. The solver takes away whole world axes, so `.plane(normal:)` rounds its normal to the nearest one.
 
 ### A pull of its own: `gravityScale`
 
@@ -435,7 +438,7 @@ feather.gravityScale = 0.15      // falls about a seventh as far in the same sec
 
 ### Too fast for a thin wall: `checksPath`
 
-`checksPath` is for things that are small and quick. A body can cover more than its own width in one step. It can then be in front of a thin wall at one step and past it at the next, having touched nothing. Engines answer this with continuous collision detection, which tests the whole motion rather than where it ended. Turn it on and the solver sweeps the body's shape along its path:
+`checksPath` makes the solver test a body's whole path through a step, not only where the step leaves it. It is for things that are small and quick. A body can cover more than its own width in one step. It can then be in front of a thin wall at one step and past it at the next, having touched nothing. Engines answer this with continuous collision detection, which tests the whole motion rather than where it ended. Turn it on and the solver sweeps the body's shape along its path:
 
 ```swift
 let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
@@ -452,7 +455,7 @@ The contraption is two hinges and a gear link. A machine can want other kinds of
 
 ### A cart on a track: the path joint
 
-A path joint threads the second body onto a smooth curve through a list of points. The body can travel along the curve and nothing else. It is for a rollercoaster car, a bead on a wire, or a camera on a dolly rail. The picture shows a cart banked into a bend on the left, and a pulley on the right, the next entry's joint.
+A path joint threads the second body onto a smooth curve through a list of points. The body can travel along the curve and nothing else. It is for a rollercoaster car, a bead on a wire, or a camera on a dolly rail. Physics engines call this a path constraint, and Jolt's, with a curve that passes through every point, is the one under it. The picture shows a cart banked into a bend on the left, and a pulley on the right, the next entry's joint.
 
 <img src="Images/28-WorldsWithWeight/TrackAndPulley.jpg" alt="Two machines side by side. Left, a cart banked into the bend of an oval wire track on thin posts. Right, a timber frame: a rope runs up from a tray holding a brass ball, across the beam, and down to a counterweight, the two passing each other at the same height" width="680">
 
@@ -466,7 +469,7 @@ ride.drive(at: 3.9, strength: 400)   // world units per second along the track
 ride.progress              // 0 at the first point, 1 at the last
 ```
 
-The curve runs through the points rather than between them, so a dozen of them describe a long smooth track. `alignment` decides how much of the body's turning the track takes over. `.free` leaves it tumbling, and `.followsPath` banks it into every bend, which is why the cart in the picture leans. A flat `Contour` becomes a track on the ground in one call. So you can draw the route with the curve tools from [Chapter 16](16-CurvesAndFigures.md) and then ride it.
+The curve runs through the points rather than between them, so a dozen of them describe a long smooth track. `alignment` decides how much of the body's turning the track takes over. `.free` leaves it tumbling, and `.followsPath` banks it into every bend, which is why the cart in the picture leans. A flat `Contour` becomes a track on the ground in one call, `.path(contour, atHeight: 0.3)`. So you can draw the route with the curve tools from [Chapter 16](16-CurvesAndFigures.md) and then ride it.
 
 ### A rope over two hooks: the pulley
 
@@ -478,7 +481,7 @@ world.connect(tray, counterweight,
                       and: rightHook, to: weightTop))
 ```
 
-Rope behaves like rope. It resists being pulled longer and goes slack when it is let go, so both ends can drop together but neither can stretch. In the picture above, the tray and the counterweight pass each other because the rope ties their motions together. `ratio: 2` threads the second side twice, which is a block and tackle. That side moves half as far and lifts twice as much.
+A rope resists being pulled longer and goes slack when it is let go. So both ends can drop together, but the rope never stretches. In the picture above, the tray and the counterweight pass each other because the rope ties their motions together. `ratio: 2` threads the second side twice, which is a block and tackle. That side moves half as far and lifts twice as much.
 
 ### The joint that is a list of freedoms: `.allowing`
 
@@ -490,17 +493,17 @@ world.connect(post, platter,
               .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
 ```
 
-`.allowing([])` is a weld. `.allowing([.turnX, .turnY, .turnZ])` is a ball joint. One turn with a range is a hinge. Writing those three out once shows what the named joints are made of.
+`.allowing([], at: p)` is a weld. `.allowing([.turnX, .turnY, .turnZ], at: p)` is a ball joint. One turn with a range is a hinge. Writing those three out once shows what the named joints are made of.
 
 The [`3D/Physics/Contraption`](../Examples/3D/Physics/Contraption/) example is a workshop with one of each. It has a drive train, a hoist you can load, a platter allowed only to rise and spin, and a cart on a track. You can drag any of it.
 
 ### Standing on cables: tensegrity
 
-A tensegrity is a structure of struts that never touch. Cables hold them apart. Each strut pushes, the cables around it pull back just as hard, and the whole thing stands with no strut resting on another. It is for sculpture, masts, and forms that look like they should fall. Kenneth Snelson built them as sculpture, and Buckminster Fuller gave them their name. The six-strut ball is Børge Jessen's icosahedron from 1967.
+A tensegrity is a structure of struts that never touch. Cables hold them apart. Each strut pushes, the cables around it pull back just as hard, and the structure stands with no strut resting on another. It is for sculpture, masts, and forms that look like they should fall. Kenneth Snelson built them as sculpture, and Buckminster Fuller gave them their name. The six-strut ball is Børge Jessen's icosahedron from 1967. The stacked mast follows Robert Skelton and Mauricio de Oliveira's stacking of prisms from 2009.
 
 <img src="Images/28-WorldsWithWeight/Tensegrity.jpg" alt="Three tensegrities standing on a dark floor: an orange three-strut prism on the left, a yellow six-strut ball in the middle, and a tall teal mast of three stacked prisms on the right. Thin pale cables run between the strut tips, and no strut touches another in the first two." width="680">
 
-None of the three rests on a strut. Each stands on a few strut tips, and the cables carry everything in between. Every part of one is a body or a joint you already know, plus one joint kind.
+In the prism and the ball no strut touches another. Each form stands on a few strut tips, and the cables carry everything in between. Every part of one is a body or a joint you already know, plus one joint kind.
 
 **The cable.** A `.distance` joint is a rod. It holds two anchors at a fixed spacing whichever way they are pushed. A `.cable` holds them no farther apart than its length and does nothing when they come closer. That is a rope, a tether, or a guy line:
 
@@ -518,8 +521,8 @@ let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.9
 **The weight.** `addTensegrity` builds a form in the world. It makes a capsule body for each strut, a `.cable` for each cable, and a `.ball` joint wherever two struts meet at a node. Set it down a little above the floor and step the world. It lands, bounces on its own cables, and stands.
 
 ```swift
-let standing = try world.addTensegrity(mast, at: Vector3(2.25, 0.35, 0),
-                                       strutRadius: 0.038, friction: 0.7)
+let standing = try! world.addTensegrity(mast, at: Vector3(2.25, 0.35, 0),
+                                        strutRadius: 0.038, friction: 0.7)
 
 // each frame:
 world.advance(by: deltaTime)
@@ -527,11 +530,11 @@ fill(.white)
 drawTensegrity(standing)
 ```
 
-`drawTensegrity` draws the struts and cables in one fill and material. The picture colors its struts by drawing them with `drawBody` and its cables as thin capsules between the strut tips. Drag any strut with `dragBodies(in:)` and the whole form follows, stretches, and rights itself when you let go.
+`addTensegrity` throws only for a form it cannot build, so the ready-made forms can take [Chapter 2](02-Color.md)'s `try!`. `drawTensegrity` draws the struts and cables in one fill and material. To color the struts, draw each with `drawBody` in its own fill, and each cable as a thin capsule between its two `nodes`. Drag any strut with `dragBodies(in:)` and the whole form follows, stretches, and rights itself when you let go.
 
-**The twist.** The top polygon of a prism has to turn against the bottom one. Only one angle works: a quarter turn, less half a turn divided by the number of struts. Three struts want thirty degrees, and four want forty-five. Robert Connelly and Maria Terrell proved that rule in 1995. `imbalance` measures how far a form is from that. It reads near zero for the built-in forms and well above it for `prism(twist: 0.2)`. No set of taut cables can balance that prism's struts. Build that one anyway and watch it in the world. As it settles it turns toward thirty degrees on its own, since that is the only shape where every cable is taut.
+**The twist.** The top polygon of a prism has to turn against the bottom one. Only one angle works. It is a quarter turn minus half a turn divided by the number of struts. Three struts want thirty degrees, and four want forty-five. Robert Connelly and Maria Terrell proved that rule in 1995. `imbalance` measures how far a form is from balance. It reads near zero for the built-in forms and well above it for `prism(twist: 0.2)`. No set of taut cables can balance that prism's struts. Build that one anyway and watch it in the world. As it settles it turns toward thirty degrees on its own, since that is the only shape where every cable is taut.
 
-**The prestress.** A real tensegrity is tightened after it is built. `prestress` does the same, making every cable a little shorter than its drawn length, two percent by default. The struts are rigid, so the cables cannot reach that length. They sit taut instead, and the form holds its shape through a landing. With the prestress at zero, a hard landing can leave a cable loose.
+**The prestress.** A built tensegrity is tightened after it goes up. `prestress` does the same, making every cable a little shorter than its drawn length, two percent by default. The struts are rigid, so the cables cannot reach that length. They sit taut instead, and the form holds its shape through a landing. With the prestress at zero, a hard landing can leave a cable loose.
 
 The [`3D/Physics/Tensegrity`](../Examples/3D/Physics/Tensegrity/) example drops all three forms and lets you drag them, and space drops them again.
 
@@ -541,7 +544,7 @@ The contraption stands on a flat `ground` at zero, and every other surface in it
 
 ### Water, and what it holds up: buoyancy
 
-Water in a world holds up whatever is lighter than it and lets the rest sink. It is for harbors, flotsam, and anything that bobs. The rule is Archimedes' principle, from his *On Floating Bodies* in the third century BC. A body sinks until the water it pushes aside weighs the same as the body. [Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of-an-ocean-spectrum) built a sea to look at, and this one bodies can float in.
+Water in a world holds up whatever is lighter than it and lets the rest sink. It is for harbors, flotsam, and anything that bobs. The rule is Archimedes' principle, from his *On Floating Bodies* in the third century BC. A body sinks until the water it pushes aside weighs the same as the body. [Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of-an-ocean-spectrum) built a sea to look at. This one holds bodies up.
 
 <img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each riding lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
 
@@ -564,13 +567,13 @@ The cork bobs and the stone goes to the bottom. A body of density `0.5` settles 
 
 `Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine, and every crate in the scene rides higher without you touching any of them.
 
-The parameter you will reach for first is drag:
+The first parameter to know is drag:
 
 ```swift
 world.water = Water(level: 0, linearDrag: 0.5)   // the default
 ```
 
-At `0`, a crate dropped in bounces about its waterline for a long time, like a crate on a trampoline. The default dips, comes back, and settles in about a second. `angularDrag` does the same for turning, which stops a long shape rocking all afternoon after it lands.
+At `0`, a crate dropped in bounces about its waterline for a long time, like a ball on a trampoline. The default dips, comes back, and settles in a second or two. `angularDrag` does the same for turning, which stops a long shape rocking for minutes after it lands.
 
 Give the surface a shape and it carries whatever is riding it:
 
@@ -579,7 +582,7 @@ world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
                                                  wavelength: 8, speed: 1.5))
 ```
 
-Now the water you draw has to match the water they float on. `waterMesh` hands back that surface as an ordinary mesh, so the swell you see is the swell they ride. `extent` is how far it reaches in world units, and `resolution` how many rows of vertices it has:
+Now the water you draw has to match the water they float on. `waterMesh` hands back that surface as an ordinary mesh, so the swell you see is the swell they ride. `extent` is how far it reaches in world units, and `resolution` how many cells it has along each side:
 
 ```swift
 if let surface = world.waterMesh(extent: 30, resolution: 40) {
@@ -593,7 +596,7 @@ if let surface = world.waterMesh(extent: 30, resolution: 40) {
 
 `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbor is what you get by putting static walls in it. The water also leaves some things alone. Sensors, static bodies, and the walking characters of [Chapter 29](29-CharactersAndCloth.md) go where you put them rather than where the water would.
 
-The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example puts it in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths. A stone anchor sits on the bottom, and a current carries the lot past. Drag one under and let go.
+The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example puts it in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths. A stone anchor sits on the bottom, and a current carries them all past. Drag one under and let go.
 
 ### Ground from a landscape: the heightfield collider
 
@@ -604,15 +607,15 @@ A heightfield collider is ground made from a grid of heights. It is for terrain,
 The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved funnel them down. `.heightfield` takes the `Heightfield` directly, sized like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
 
 ```swift
-world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
-              at: .zero, kind: .static, friction: 0.55)
+let island = world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
+                           at: .zero, kind: .static, friction: 0.55)
 ```
 
 The [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example is the slide to play with. Rocks keep arriving, and a dice parameter grows the mountain again.
 
 ### Scenery and bodies from a file: scenes and USD physics
 
-A world can take its surfaces from a scene file, and a USD file can bring its bodies and joints too. That is for a hall you modeled somewhere else, or a whole physical arrangement drawn up in another program. USD's physics schema is the part of the format that says which prims are bodies. It also says what shape they collide as and how they are joined.
+A world can take its surfaces from a scene file, and a USD file can bring its bodies and joints too. It is for a hall you modeled somewhere else, or a physical arrangement drawn up in another program. USD's physics schema, which Pixar's OpenUSD publishes, is the part of the format that says which parts of the scene are bodies. USD calls those parts prims. It also says what shape they collide as and how they are joined.
 
 For scenery, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. A `.usd` file can also say which of its prims are physical, and `world.addBodies(from: scene)` reads them all. A sketch that loads such a file writes no physics of its own:
 
@@ -621,7 +624,7 @@ let scene = try! loadScene("yard.usda")
 world.addBodies(from: scene)
 ```
 
-The import covers bodies, colliders, joints, masses, and materials. The file's gravity is read only when you pass `usesSceneGravity: true`. Reading it is lossy, and that is on purpose. A file's description of a body is only a description, and anything it leaves out gets a sensible default.
+The import covers bodies, colliders, joints, masses, and the friction and bounce of the file's physics materials. The file's gravity is read only when you pass `usesSceneGravity: true`. Reading it is lossy, and that is on purpose. It keeps what this world understands and leaves out articulations, joint drives, and the file's own collision groups. Anything a file leaves unsaid about a body gets a sensible default.
 
 The [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) example is this import. Its `yard.usda` is written by hand, and the sketch is a camera and a drawing loop.
 
@@ -631,17 +634,25 @@ Everything the contraption does, it does again from `setup()` every run. Some ar
 
 ### A world saved as it stands: `snapshot` and `restore`
 
-A snapshot is the whole world captured at one moment. It is for an arrangement you found rather than designed, so you can put it back after you wreck it, or keep it past quitting. Physics engines save their state like this to replay a moment, and a snapshot is Ollin's own file for it. `snapshot()` takes the world as it stands, and `restore(_:)` puts it back:
+A snapshot is the world captured at one moment. It is for an arrangement you found rather than designed, so you can put it back after you wreck it, or keep it past quitting. Physics engines save their state like this to replay a moment, and a snapshot is Ollin's own file for it. You might ask why the heap needs saving at all, when the code that built it is right there. The picture answers that.
+
+<img src="Images/28-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labeled saved and restored, are identical stone for stone. The third, labeled simulated again, is a visibly different heap" width="720">
+
+All three heaps come from the same code. The first was simulated and captured, and the second is that capture restored, stone for stone. The third was simulated again with one stone released a ten-millionth of a unit higher, and nothing else in the setup changed. Stones landing on stones magnify the difference. One lands a little differently, which tips the next, and by the twelfth you have a different heap. [Chapter 22](22-IteratedForms.md#the-classic-chaos-machine-doublependulum)'s double pendulum showed the same sensitivity. So the same code can give a slightly different heap on a machine whose arithmetic rounds one bit differently. Running the code again gives you a heap, and only a snapshot gives you that heap.
+
+`snapshot()` takes the world as it stands, and `restore(_:)` puts it back:
 
 ```swift
 let settled = world.snapshot()      // once the heap has come to rest
 // …knock it over, drag stones out of it, wreck it…
-try world.restore(settled)              // exactly the heap you had
+try? world.restore(settled)             // the heap you had, exactly
 ```
 
-A snapshot is a value you can keep, so it can also go to a file. That is how a heap survives quitting:
+A snapshot is a value you can keep, so it can also go to a file, and a file survives quitting:
 
 ```swift
+let file = URL(fileURLWithPath: "heap.physics")
+
 override func setup() {
     world.ground = 0
     do {
@@ -653,15 +664,9 @@ override func setup() {
 }
 ```
 
-> **Swift note.** `do` runs the lines inside it, and `catch` runs when one of them throws. So the first run builds the heap and saves it. It is the long form of [Chapter 2](02-Color.md)'s `try?`, for when a failure should do something. A plain `try` marks each call that can throw, as `try world.restore(settled)` does above.
+> **Swift note.** `URL(fileURLWithPath:)` names a file on disk, as in [Chapter 26](26-Meshes.md). `do` runs the lines inside it, and `catch` runs when one of them throws. So the first run builds the heap and saves it. A plain `try` works only inside a `do` like this one, or in a function marked `throws`. Everywhere else, [Chapter 2](02-Color.md)'s `try?` runs the call and drops the error.
 
 Restoring puts things back exactly. Every body returns in the same pose, moving at the same speed and spinning the same way. A body that had gone to sleep is still asleep, so a saved heap does not shudder back into shape as it arrives. A door saved standing half open is still half open. It still stops where it used to, because the snapshot remembers the pose each joint was made in.
-
-You might ask why the heap needs saving at all, when the code that built it is right there.
-
-<img src="Images/28-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labeled saved and restored, are identical stone for stone. The third, labeled simulated again, is a visibly different heap" width="720">
-
-All three heaps come from the same code. The first was simulated and captured, and the second is that capture restored, stone for stone. The third was simulated again with one stone released a ten-millionth of a unit higher, and that is the only difference in the setup. Stones landing on stones magnify it. One lands a little differently, which tips the next, and by the twelfth you have a different heap. That is the sensitivity [Chapter 22](22-IteratedForms.md#the-classic-chaos-machine-doublependulum)'s double pendulum showed. It means the same code can give a slightly different heap on a machine whose arithmetic rounds one bit differently. Running the code again gives you a heap, and only a snapshot gives you that heap.
 
 A snapshot holds every body with its collider and all its parameters. It holds every joint between them, gears and racks included, and the collision groups with their rules. It holds the world's gravity, ground, bounce, and water. It also holds the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md#snapshots-of-figures-vehicles-and-cloth), which says how each one comes back.
 
@@ -669,7 +674,7 @@ Restoring empties the world first, so any `Body3D` you were holding onto is gone
 
 ### A large collider saved by name: `assetName`
 
-Almost everything in a world is small, and a box is three numbers. A terrain collider is thousands of samples, and it goes into the file every time you save. `assetName` is for that case. You name the large collider, and the snapshot stores the name instead of the samples:
+`assetName` stores a name in the snapshot in place of a collider's geometry. It is for the few colliders that are large. Almost everything in a world is small, and a box is three numbers. A terrain collider is thousands of samples, and they go into the file every time you save. Scene files keep large data out of the same way, pointing at a texture by name rather than holding its pixels. Here the name goes on the terrain body from [the heightfield entry](#ground-from-a-landscape-the-heightfield-collider):
 
 ```swift
 island.assetName = "island"
@@ -678,8 +683,8 @@ island.assetName = "island"
 On the way back in, you say what the name means:
 
 ```swift
-try world.restore(saved) { name in
-    name == "island" ? .heightfield(terrain) : nil
+try? world.restore(settled) { name in
+    name == "island" ? .heightfield(land) : nil
 }
 ```
 
@@ -689,9 +694,9 @@ A snapshot is Ollin's own format rather than USD. Reading USD is lossy, and writ
 
 ## Where this comes from
 
-The 3D solver under this chapter is [Jolt Physics](https://github.com/jrouwe/JoltPhysics) by Jorrit Rouwe. It is bundled in the repository and wrapped behind Ollin's own API, so the calls read like the 2D world of [Chapter 11](11-ForcesAndPhysics.md). Jolt runs the physics of the game *Horizon Forbidden West*. Jolt satisfies contacts and joints by correcting velocities over and over, a little at a time, rather than solving one large system at once. That is the impulse-solver approach Erin Catto's Box2D made familiar, and Box2D is the rigid-body solver under Chapter 11's 2D world.
+The 3D solver under this chapter is [Jolt Physics](https://github.com/jrouwe/JoltPhysics) by Jorrit Rouwe. It is bundled in the repository and wrapped behind Ollin's own API, so the calls read like the 2D world of [Chapter 11](11-ForcesAndPhysics.md). Jolt runs the physics of the game *Horizon Forbidden West*. Jolt satisfies contacts and joints by correcting velocities over and over, a little at a time, rather than solving one large system at once. This is the impulse-solver approach Erin Catto's Box2D made familiar, and Box2D is the rigid-body solver under Chapter 11's 2D world.
 
-A gear or a rack tying the motions of two joints together is an idea from constraint solvers. The machines it builds are much older. The gear train, the crank, and the cam fill Leonardo da Vinci's notebooks, and Franz Reuleaux formalized them in the 1870s. The entries after the contraption name their own sources, and the full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Tying the motions of two joints together is how Jolt builds its gear and rack-and-pinion constraints. The machines they build are much older. The gear train, the crank, and the cam fill Leonardo da Vinci's notebooks, and Franz Reuleaux formalized them in the 1870s. The entries after the contraption name their own sources, and the full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -699,7 +704,7 @@ A gear or a rack tying the motions of two joints together is an idea from constr
 - [Tensegrity](../Docs/Generators/Tensegrity.md): the three ready-made forms, `imbalance`, and everything `addTensegrity` and `Tensegrity3D` take and read back.
 - Appendix B draws the ideas the solver rests on: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stack` and `Tumble` (stacking and contact), `Windmill` and `Contraption` (joints and linkages, the second much larger than the one here), `Sieve` (collision groups), `Trigger` and `Sightlines` (contacts, sensors, and queries), `Burst` (solids that break), `Bagatelle` (degrees of freedom and path checks), `Tensegrity`, `Flotsam` (water), `Rockslide` (a slope of debris), and `Imported` (a world read out of a USD file).
-- The Gego homage [`Chorro`](../Examples/Recreations/Gego/Chorro/Sketch.swift): about a hundred and fifty capsules on ball joints and nothing else. Each rod is one `addBody`, and each hook one `connect` with a `.ball` at the loop. The plate is a kinematic sphere the air moves, and the floor is `ground`. The sketch draws no body as a solid. It draws each rod as a line between its hooks, with small circles at the hooks and a shadow line on the floor. The settling on the floor is what the solver does with the slack.
+- The Gego homage [`Chorro`](../Examples/Recreations/Gego/Chorro/Sketch.swift): about a hundred and fifty capsules on ball joints and nothing else. Each rod is one `addBody`, and each hook one `connect` with a `.ball` at the loop. The plate is a `.kinematic` body, a sphere the sketch moves by hand as the air would, and the floor is `ground`. The sketch draws no body as a solid. It draws each rod as a line between its hooks, with small circles at the hooks and a shadow line on the floor. The settling on the floor is what the solver does with the slack.
 
 ---
 

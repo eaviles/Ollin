@@ -62,9 +62,8 @@ let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.9
 
 // The ground from a landscape, and the saved heap.
 let land = Heightfield(columns: 2, rows: 2, values: [0, 0, 0, 0])
-let terrain = land
 let island = world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
                            at: .zero, kind: .static)
 let file = URL(fileURLWithPath: "heap.physics")
 func buildTheHeap() {}
-let saved = world.snapshot()
+let settled = world.snapshot()
