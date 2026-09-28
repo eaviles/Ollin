@@ -41,7 +41,7 @@ final class FirstLayer: Sketch {
 
 Three calls carry the idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` sends everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 9](09-Pictures.md)'s `drawImage`. So the same drawing can appear twice, once blurred across the whole canvas and once sharp in a card in front of its own blur. One drawing, held and then used, is what most of this chapter builds on.
 
-Two habits follow from that. A `makeRenderTarget()` is a per-frame handle, so make it fresh inside `draw()` rather than storing it. The texture behind it is pooled and reused, so making one each frame costs nothing. And a layer that is never drawn back stays invisible, because `withTarget` only records the drawing, and `drawImage` is what puts it on screen.
+Two habits follow from that. A `makeRenderTarget()` is a per-frame handle, so make it fresh inside `draw()` rather than storing it. The texture behind it is pooled and reused, so making one each frame is cheap. And a layer that is never drawn back stays invisible, because `withTarget` only records the drawing, and `drawImage` is what puts it on screen.
 
 Here is the same idea as a picture, one thumbnail per stage. Two drawings each land in a layer, and each layer goes through a filter. The second filter is the glow the Filters section names. Then the canvas composites the results:
 

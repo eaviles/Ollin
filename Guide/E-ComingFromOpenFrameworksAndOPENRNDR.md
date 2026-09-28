@@ -6,7 +6,7 @@
 
 Ollin learned from both of these. openFrameworks showed how plain a creative-coding app can be, and OPENRNDR showed what a typed core with layers you compose looks like. So if you've worked in either one, the ideas here won't be new. What you need is where each thing went.
 
-This appendix is shorter than [Appendix C](C-ComingFromP5.md) on purpose, and it covers the big moves only. Each one says what you reach for there and how Ollin does it, with a small pair of code, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
+This appendix is shorter than [Appendix C](C-ComingFromP5.md) on purpose, and it covers the big moves only. Each one says what you reach for there and how Ollin does it, in two short listings, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
 
 ## From openFrameworks
 
@@ -38,7 +38,7 @@ void ofApp::draw() {
 }
 ```
 
-In Ollin the same piece is one class in one file:
+In Ollin the same program is one class in one file:
 
 ```swift
 import Ollin
@@ -56,9 +56,9 @@ final class Spinner: Sketch {
 
 There's no header and no `main`. The canvas is 1080 by 1080 unless the sketch declares another `canvasSize`, and `swift run OllinLive Spinner.swift` opens the window.
 
-There's no `update()` either. `draw()` is the one call per frame, so anything that changes goes at its top. Often nothing needs storing, because the state can be worked out from the clock. Here the angle is `time * 1.2`, where `time` is the seconds since the sketch started. When something really does build up over time, like a particle's position, step it by `deltaTime` at the top of `draw()`.
+There's no `update()` either. `draw()` is the one call per frame, so anything that changes goes at its top. Often nothing needs storing, because the state can be worked out from the clock. Here the angle is `time * 1.2`, where `time` is the seconds since the sketch started. When something does build up over time, like a particle's position, step it by `deltaTime` at the top of `draw()`.
 
-The frame rate follows the display, and there's no call to set it. A Mac display may refresh 60 or 120 times a second. Motion written against `time` and `deltaTime` keeps its speed on both. Ported as it is, the `0.02` a frame above would spin twice as fast on the second.
+The frame rate follows the display, and there's no call to set it. A Mac display may refresh 60 or 120 times a second. Motion written against `time` and `deltaTime` keeps its speed on both. Ported as it is, the `0.02` a frame above would spin twice as fast on the faster display.
 
 ### The names you type every day
 
@@ -74,10 +74,10 @@ The frame rate follows the display, and there's no call to set it. A Mac display
 | `ofSetLineWidth(4)` | `strokeWeight(4)` | |
 | `ofDrawCircle(x, y, r)` | `drawCircle(x, y, r)` | a radius in both |
 | `ofDrawRectangle(x, y, w, h)` | `drawRect(x, y, w, h)` | |
-| `ofRotateDeg(45)` | `rotate(.pi / 4)` | radians only |
+| `ofRotateDeg(45)` | `rotate(.pi / 4)` | radians, and `rotate(.degrees(45))` converts |
 | `ofRandom(10)`, `ofNoise(x, y)`, `ofSignedNoise(x)` | `random(10)`, `noise(x, y)`, `signedNoise(x)` | |
 | `ofMap(v, a, b, c, d, true)` | `map(v, a, b, c, d, clamped: true)` | |
-| `glm::vec2`, `ofColor` | `Vector2`, `Color` | values, with real operators |
+| `glm::vec2`, `ofColor` | `Vector2`, `Color` | values; `Vector2` adds and scales with operators, and a `Color` mixes with `mixed(with:_:)` |
 
 ### Fill and stroke are separate inks
 
@@ -102,7 +102,9 @@ strokeWeight(6)
 drawCircle(540, 540, 200)
 ```
 
-Three settings from that world have nothing to set here. Antialiasing is always on, and so is alpha blending. There's no circle resolution either, because a circle isn't built from straight sides. Its edge is worked out at every pixel, so it stays round at any size.
+A stroke is on by default, a thin black one, which an openFrameworks shape drawn under `ofFill` does not have. Call `noStroke()` when you want the fill alone.
+
+Three openFrameworks settings have no counterpart in Ollin. Antialiasing is always on, and so is alpha blending. There's no circle resolution either, because a circle isn't built from straight sides. Its edge is worked out at every pixel, so it stays round at any size.
 
 ### One scope for the matrix and the style
 
@@ -163,9 +165,9 @@ override func draw() {
 }
 ```
 
-Making the layer every frame costs nothing, because Ollin keeps the GPU texture behind it and hands the same one back each time. A new layer starts transparent, so there's no `ofClear` to call.
+Making the layer every frame is cheap, because Ollin reuses the GPU textures behind layers from frame to frame instead of allocating new ones. A new layer starts transparent, so there's no `ofClear` to call.
 
-The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps what you drew, as the classic trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()` and draw into it with `withFeedback`. [Chapter 19](19-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
+The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps the last frame's picture, as a trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()`. Then `withFeedback` hands you that picture to draw back in, faded or moved, before the new marks go on top. [Chapter 19](19-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
 
 ### Shaders: one function, in Metal
 
@@ -198,16 +200,16 @@ override func draw() {
 }
 ```
 
-The time, the resolution, and the mouse arrive in `info` without being set, and numbers of your own ride along as `params`. How many layers the function reads decides what it is. With none it's a generator, with one it's a filter, and with two it combines them. Metal's grammar is C's, as GLSL's is, so most lines change only their type names, and `vec2` becomes `float2`.
+The time, the resolution, and the mouse arrive in `info` without being set. Numbers of your own go in as `params`, and the shader reads them with `param(info, i)`. How many layers the function reads decides what it is. With none it's a generator, with one it's a filter, and with two it combines them. Metal and GLSL both take their grammar from C, so most lines change only their type names, such as `vec2` to `float2`.
 
-For a shader you already have, `ollin new --from-shader` translates a fragment shader in the common web form into Metal and writes a project around it. [Chapter 18](18-YourFirstShader.md) teaches the whole contract, and [Bringing a GLSL shader over](../Docs/Tools/ShaderImport.md) lists what the translation carries and what it leaves as a note.
+For a shader you already have, `ollin new --from-shader` translates it into Metal and writes a project around it. It takes a GLSL fragment shader built around a `mainImage` function, the common form on the web, or an older one built around `main`. [Chapter 18](18-YourFirstShader.md) teaches the shader contract, and [Bringing a GLSL shader over](../Docs/Tools/ShaderImport.md) lists what the translation carries and what it leaves as a note.
 
 ### 3D: the camera is a call
 
 In openFrameworks, 3D is an `ofEasyCam` you begin and end, with depth testing and lights switched on by hand:
 
 ```cpp
-// ofApp.h declares ofEasyCam cam and ofLight light
+// ofApp.h declares ofEasyCam cam and ofLight light, and setup() calls light.setPosition(300, 400, 500)
 void ofApp::draw() {
     ofEnableDepthTest();
     cam.begin();
@@ -230,11 +232,11 @@ override func draw() {
 }
 ```
 
-`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, so it covers most of what ofxAssimpModelLoader loads. [Chapter 26](26-Meshes.md) starts there.
+`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, USD, STL, and PLY files, the common formats ofxAssimpModelLoader also opens, though not FBX, Collada, or 3DS. [Chapter 26](26-Meshes.md) starts there.
 
 ### C++ habits that change
 
-Several C++ chores go away in Swift. There are no headers, no pointers, and no `new` or `delete`, because memory is counted for you. `std::vector<T>` becomes an array, `[T]`. `auto` becomes `let` for a constant and `var` for something that changes.
+Several C++ chores go away in Swift. There are no headers and no pointers. There's no `new` or `delete` either, because memory is counted for you. `std::vector<T>` becomes an array, `[T]`. `auto` becomes `let` for a constant and `var` for something that changes.
 
 One habit changes meaning, and it's the loop over your particles. In C++, `auto&` hands you each particle by reference, so the loop changes the vector:
 
@@ -252,13 +254,13 @@ for i in particles.indices {
 }
 ```
 
-Or make `Particle` a class, whose instances are shared rather than copied. [Appendix A](A-JustEnoughSwift.md) covers values and references.
+Or make `Particle` a class, whose instances are shared rather than copied. [Appendix A](A-JustEnoughSwift.md#classes-and-structs-or-who-copies) covers values and references.
 
 ### Addons become satellite modules
 
-The addons sketches reach for most have counterparts that ship with Ollin. Each one is a Swift module you `import`, or a part of the core:
+Most of the addons that sketches reach for, and a few core classes, have counterparts that ship with Ollin. Each one is a Swift module you `import`, or a part of the core:
 
-| openFrameworks addon | In Ollin | Reference |
+| openFrameworks | In Ollin | Reference |
 |---|---|---|
 | ofxGui | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md) |
 | ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md) |
@@ -269,7 +271,7 @@ The addons sketches reach for most have counterparts that ship with Ollin. Each 
 | ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md) |
 | ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md) |
 | ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md) |
-| ofSoundPlayer, ofSoundStream | `AudioPlayer`, `AudioInput`, and `AudioAnalyzer`, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md) |
+| ofSoundPlayer, ofSoundStream | `AudioPlayer`, `AudioInput`, and `AudioAnalyzer` for sound in, and `Synth` for sound out, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md) |
 
 Here is ofxGui beside its Ollin form, which has no panel code at all:
 
@@ -299,7 +301,7 @@ The inspector beside the canvas draws the slider, so it never lands in an export
 
 ### projectGenerator becomes ollin new
 
-The projectGenerator writes an IDE project with your addons in it. `ollin new` writes a Swift package, with the satellites you name already wired in, or a single loose file when the name ends in `.swift`:
+The projectGenerator writes an IDE project with your addons in it. The command `ollin new` writes a Swift package with what you list after `--with` already wired in. A name that ends in `.swift` gets a single loose file instead:
 
 ```sh
 ollin new Spinner --with osc,params    # a project folder
@@ -307,13 +309,13 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up, and [Chapter 39](39-Performing.md) and [Chapter 40](40-HandingItOver.md) carry the clock across a swap on stage and on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up. [Chapter 39](39-Performing.md) carries the clock across a swap on stage, and [Chapter 40](40-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) carries it across a reinstall on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 
 ### From Kotlin to Swift
 
-OPENRNDR runs on the Java virtual machine, so it's easy to think of it as Java. The programs are written in Kotlin, though, and Kotlin and Swift are close relatives. `val` is Swift's `let`, and `var` is `var`. A trailing lambda reads like a trailing closure, `it` becomes `$0`, and `?` marks a value that may be missing in both. An extension function is a Swift extension.
+OPENRNDR runs on the Java virtual machine, but its programs are written in Kotlin. Kotlin and Swift share many ideas. `val` is Swift's `let`, and `var` is `var`. A trailing lambda reads like a trailing closure, `it` becomes `$0`, and `?` marks a value that may be missing in both. An extension function is a Swift extension.
 
 Two differences show up often. Swift reads `140` as a `Double` wherever one is expected, so the `.0` endings go. And a Kotlin data class is a reference, while a Swift struct is a value, copied when you assign it.
 
@@ -357,13 +359,13 @@ final class Pulse: Sketch {
 }
 ```
 
-Code in `program { }` that comes before `extend { }` runs once, so it moves to `setup()` or into properties. The `extend { }` block runs every frame, which makes it `draw()`. `configure` becomes a `canvasSize` declaration, `seconds` becomes `time`, and `drawer.bounds.center` becomes `center`.
+Code in `program { }` that comes before `extend { }` runs once, so it moves to `setup()` or into properties. The `extend { }` block runs every frame, which makes it `draw()`. In the Swift, `seconds` becomes `time`, and `drawer.bounds.center` becomes `center`. The `configure` block becomes a `canvasSize` declaration, which `Pulse` leaves out because 1080 by 1080 is the default.
 
 Events are overrides rather than listeners. Where OPENRNDR listens on `mouse.buttonDown`, a sketch overrides `mousePressed()` and reads `mouse` inside it. Keys work the same way, through `keyPressed()`.
 
 ### No drawer to pass around
 
-OPENRNDR hands every program a `drawer`, and you set its state by assigning to it. Ollin's calls live on the sketch, so `drawer.fill = ColorRGBa.PINK` is `fill(.pink)`. There is a drawer underneath, and the bare calls forward to it, but it isn't public yet. Whether to open it is a decision the project will make before 1.0.
+OPENRNDR hands every program a `drawer`, and you set its state by assigning to it. Ollin's calls live on the sketch, so `drawer.fill = ColorRGBa.PINK` is `fill(.pink)`. There is a drawer underneath, and the bare calls forward to it, but it is not public. Whether to make it public is an open question for 1.0.
 
 So a helper that draws extends `Sketch` rather than the drawer:
 
@@ -389,20 +391,20 @@ The `draw` prefix is the house rule for any call that puts geometry on the canva
 
 | OPENRNDR | Ollin | Notes |
 |---|---|---|
-| `ColorRGBa(1.0, 0.4, 0.0)` | `Color(red: 1, green: 0.4, blue: 0)` | channels run `0...1` in both |
-| `ColorRGBa.fromHex("#ff6600")` | `Color(hex: "#ff6600")` | |
-| `Vector2(3.0, 4.0)`, `Vector3` | `Vector2(3, 4)`, `Vector3` | the same names and operators |
+| `ColorRGBa(1.0, 0.4, 0.0)` | `Color(linear: 1, green: 0.4, blue: 0)` | channels run `0...1`, read as linear light in both; `Color(red:green:blue:)` reads them as sRGB |
+| `ColorRGBa.fromHex("#ff6600")` | `Color(hex: "#ff6600")` | optional, `nil` for a bad string; `Color(hex: 0xFF6600)` is not |
+| `Vector2(3.0, 4.0)`, `Vector3` | `Vector2(3, 4)`, `Vector3` | the same names; the operators match except `*` and `/` between two vectors |
 | `a.distanceTo(b)` | `a.distance(to: b)` | |
 | `Rectangle` | `Rectangle` | |
 | `ShapeContour`, `Shape` | `Contour`, `Shape` | a `Contour` holds points, so curves are flattened into it |
-| `contour { moveTo(…); lineTo(…) }` | `Path { $0.move(to: …); $0.line(to: …) }` | `drawShape { }` takes the same builder and draws at once |
+| `contour { moveTo(…); lineTo(…) }` | `Path { $0.move(to: …); $0.line(to: …) }.contour` | `drawShape { }` takes the same builder and draws at once |
 | `drawer.contour(c)` | `drawShape(Shape(contours: [c]))` | |
 | `c.position(t)` | `c.point(at: t)` | measured by length along the whole outline |
-| `c.normal(t)`, `c.nearest(p)` | `c.normal(at: t)`, `c.nearestPoint(to: p)` | |
+| `c.normal(t)`, `c.nearest(p).position` | `c.normal(at: t)`, `c.nearestPoint(to: p)` | |
 | `c.sub(t0, t1)` | `c.piece(from: t0, to: t1)` | |
 | `intersections(a, b)` | `a.crossings(with: b)` | |
 
-`position(t)` and `point(at:)` measure differently. OPENRNDR splits `t` evenly across the contour's segments, so on an outline of uneven segments `0.5` can land well away from halfway. Ollin's `point(at:)` always measures along the length, so `c.point(at: t)` matches `c.pointAtLength(t * c.length)` there. The contour questions are in [Geometry](../Docs/Drawing/Geometry.md) and [Chapter 15](15-ShapesAsMaterial.md).
+`position(t)` and `point(at:)` measure differently. OPENRNDR splits `t` evenly across the contour's segments, so on an outline of uneven segments `0.5` can land well away from halfway. Ollin's `point(at:)` always measures along the length, and so do `normal(at:)` and `piece(from:to:)`. So `c.point(at: t)` matches OPENRNDR's `c.pointAtLength(t * c.length)`. The contour questions are in [Geometry](../Docs/Drawing/Geometry.md) and [Chapter 15](15-ShapesAsMaterial.md).
 
 ### isolated, and the degrees trap
 
@@ -457,13 +459,13 @@ override func draw() {
 }
 ```
 
-Declaring it every frame costs nothing, since the textures underneath are kept and reused. To animate a setting, you pass a new value each frame rather than changing a property on the filter. A layer's blend is a modifier, `.blended(.add)`. A helper layer that feeds another layer's effect is `aside { }`, as in the compositor.
+Declaring it every frame makes no new textures, since Ollin keeps the ones underneath and reuses them. To animate a setting, you pass a new value each frame rather than changing a property on the filter. A layer's blend is a modifier, `.blended(.add)`. A helper layer that feeds another layer's effect is `aside { }`, as in the compositor.
 
-The pieces under `compose` map just as directly. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames is `makeFeedback()`, and `extend(NoClear())` is `noClear()`. [Chapter 19](19-LayersAndEffects.md) teaches the whole stack.
+The calls under `compose` have matches too. A `renderTarget` made once and drawn into with `isolatedWithTarget` becomes `makeRenderTarget()` and `withTarget` inside `draw()`, as in the openFrameworks half. A target that keeps its pixels between frames is a `Feedback`, made once in `setup()` with `makeFeedback()`. And `extend(NoClear())` becomes `noClear()`. [Chapter 19](19-LayersAndEffects.md) teaches the whole stack.
 
 ### Shade styles
 
-A shade style splices GLSL into the fill of every shape drawn while it's set:
+A shade style splices GLSL into the shader of every shape drawn while it's set:
 
 ```kotlin
 drawer.shadeStyle = shadeStyle {
@@ -479,9 +481,9 @@ fill(.linear(from: Vector2(340, 0), to: Vector2(740, 0), [.black, .pink]))
 drawCircle(center: center, radius: 200)
 ```
 
-The gradient's two ends are canvas points, so you place them where the shape is. `.radial(center:radius:_:)` and `stroke(.alongPath(_:))` are the other two geometries.
+The gradient's two ends are canvas points, so you place them where the shape is. `.radial(center:radius:_:)`, `.conic(center:startAngle:_:)`, and `stroke(.alongPath(_:))` are the other three geometries.
 
-Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 18](18-YourFirstShader.md) the shader.
+Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a `compose` block that's `.masked(by: aside { … })`, with the shape drawn in white in the aside. [Layered effects](../Docs/Drawing/Effects.md#aside) shows the mask, and [Chapter 18](18-YourFirstShader.md) the shader.
 
 ### The orx modules
 
@@ -506,7 +508,7 @@ orx-olive and `OllinLive` both keep the window open while you edit. Olive evalua
 swift run OllinLive Pulse.swift
 ```
 
-`extend(…)` is here too. A `SketchExtension` hooks the same moments an OPENRNDR extension does, setup and before and after the draw, and it can also receive each finished frame. Screenshots and screen recording are run flags rather than extensions, such as `--export` and `--export-video`. Syphon reads almost the same in both:
+`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. It has no hook for when the program shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
 
 ```kotlin
 extend(SyphonServer("Pulse"))
@@ -524,18 +526,18 @@ The OPENRNDR template is a Gradle build, and it's where you name the orx modules
 
 ## What stays behind
 
-Both frameworks run on Windows and Linux, and both draw through OpenGL. OPENRNDR also has a browser target. Ollin draws through Metal and runs on Apple platforms only, by design. The [README](../README.md#why-apple-only) gives the reasons. In short, it lets Ollin use Metal and Apple's own frameworks for vision, audio, and the iPhone's sensors directly. That choice has a cost. A sketch here won't build on a Linux box or a Raspberry Pi, and it won't run in a browser. `--export-web` writes a page that plays back what the sketch drew, which covers sharing but isn't the same thing.
+Both frameworks run on Windows and Linux, and both draw through OpenGL. They can also run in a browser, openFrameworks through Emscripten and OPENRNDR through its experimental Kotlin/JS target. Ollin draws through Metal and runs on Apple platforms only, by design. The [README](../README.md#why-apple-only) gives the reasons. In short, it lets Ollin use Metal and Apple's own frameworks for vision, audio, and the iPhone's sensors directly. That choice has a cost. A sketch here won't build on a Linux box or a Raspberry Pi, and it won't run in a browser. For sharing, `--export-web` records what the sketch draws and writes a page that plays it back, with its shaders still running live. A sketch with 3D meshes in it exports as a video instead.
 
-The other thing that stays behind is years of community work. The `ofx` and `orx` ecosystems hold addons for hardware and techniques that Ollin doesn't have yet. When you miss one, check [Appendix D](D-CompleteToolbox.md) first, since the name may simply be different. If it isn't there, the [roadmap](../ROADMAP.md) says what's planned, and [Writing an extension](../Docs/Tools/Extensions.md) shows how to build it yourself.
+The other thing that stays behind is years of community work. The `ofx` and `orx` ecosystems hold addons for hardware and techniques that Ollin doesn't have yet. When you miss one, check [Appendix D](D-CompleteToolbox.md) first, since it may go by another name. If it isn't there, the [roadmap](../ROADMAP.md) says what's planned, and [Writing an extension](../Docs/Tools/Extensions.md) shows how to build it yourself.
 
 ## Go deeper
 
-- [Appendix C](C-ComingFromP5.md): the full call-by-call dictionary, written for p5.js, which serves for the everyday calls here too.
-- [Appendix A](A-JustEnoughSwift.md): the Swift you need, including values against references.
+- [Appendix C](C-ComingFromP5.md): the full call-by-call dictionary, written for p5.js and Processing. Its rows for the everyday calls work for openFrameworks and OPENRNDR too.
+- [Appendix A](A-JustEnoughSwift.md): the Swift you need, including values and references.
 - [Chapter 19, Layers and effects](19-LayersAndEffects.md): layers, filters, feedback, and `compose`.
 - [Chapter 18, Your first shader](18-YourFirstShader.md): the `shade` contract, the shader library, and bringing GLSL over.
 - [Chapter 25, 3D, gently](25-3DGently.md): the camera, lights, and the built-in solids.
-- [Chapter 26, Meshes, maps, and materials](26-Meshes.md): meshes from files and from other meshes, and the maps and finishes that dress them.
+- [Chapter 26, Meshes, maps, and materials](26-Meshes.md): meshes from files and from other meshes, and the maps and materials on their surfaces.
 - [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each.
 
 ---
