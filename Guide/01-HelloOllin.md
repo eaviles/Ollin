@@ -104,9 +104,9 @@ swift run OllinLive MySketches/FirstCircle.swift
 
 <img src="Images/01-HelloOllin/FirstCircle.jpg" alt="A dark circle centered on a white canvas" width="560">
 
-A window opens with your circle in it. Three calls made it happen. `background(.white)` fills the canvas, `fill` sets the color the next shape is drawn in, and `drawCircle` draws it. Its three numbers are x, y, and radius, in that order, and the radius is the distance from the circle's center to its edge. `width` and `height` are the size of the canvas, so halving each puts the circle in the middle. `.white` is one of the colors Ollin names, and `Color(hex: 0x2B2B2B)` names one by the same six hex digits a color picker or a web page uses. There is more on both in [Shapes and ink](#shapes-and-ink).
+A window opens with your circle in it. Three calls made it happen. `background(.white)` fills the canvas, `fill` sets the color the next shape is drawn in, and `drawCircle` draws it. Its three numbers are x, y, and radius, in that order, and the radius is the distance from the circle's center to its edge. `width` and `height` are the size of the canvas, so halving each puts the circle in the middle. Ollin names a set of colors, and `.white` is one of them. The fill color, `Color(hex: 0x2B2B2B)`, is named by the same six hex digits a color picker or a web page uses. There is more on both in [Shapes and ink](#shapes-and-ink).
 
-> **Swift note.** `import Ollin` brings the framework in. `final class FirstCircle: Sketch` declares your sketch, a new thing named `FirstCircle` built on Ollin's `Sketch`, which is what gives you the canvas, the drawing calls, and the loop. `final` says nothing else will build on `FirstCircle` in turn, which is the usual choice for a sketch. `override func draw()` fills in the one function Ollin calls to render a frame. You never call `draw()` yourself, because Ollin is the one calling it.
+> **Swift note.** `import Ollin` brings the framework in. The line `final class FirstCircle: Sketch` declares your sketch, a new thing named `FirstCircle` built on Ollin's `Sketch`. Building on `Sketch` is what gives you the canvas, the drawing calls, and the loop. `final` says nothing else will build on `FirstCircle` in turn, which is the usual choice for a sketch. `override func draw()` fills in the one function Ollin calls to render a frame. You never call `draw()` yourself, because Ollin is the one calling it.
 
 Now keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place, because `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it on purpose: delete a parenthesis and save. An error prints in the terminal while your last working sketch keeps drawing, so nothing is lost. Fix the parenthesis, save again, and you're back where you were.
 
@@ -118,7 +118,7 @@ You have just done all of it once, at a small scale. You wrote a program whose o
 
 The program is the material. Instead of drawing a shape by hand, you write the rule that places it. The same rule can then place a thousand shapes, move them, or let chance decide where each one goes. You decide how things get placed, and the computer carries the decision out as many times as you like.
 
-People use it for prints and posters, animation and motion graphics, visuals for music and for the stage, installations that fill a room, drawings for a pen plotter, and data made visible. The practice goes back to the 1960s, when Georg Nees, Frieder Nake, and Vera Molnár wrote programs that drove pen plotters. In the same years Sol LeWitt wrote instructions for other people to draw. [`Examples/Recreations/`](../Examples/Recreations/) holds sketches after their work and after later artists, and [Chapter 4](04-Randomness.md) builds a grid in Molnár's manner.
+People use it for prints and posters, animation and motion graphics, and visuals for music and for the stage. They also use it for installations that fill a room, drawings for a pen plotter, and data made visible. The practice goes back to the 1960s, when Georg Nees, Frieder Nake, and Vera Molnár wrote programs that drove pen plotters. In the same years Sol LeWitt wrote instructions for other people to draw. [`Examples/Recreations/`](../Examples/Recreations/) holds sketches after their work and after later artists, and [Chapter 4](04-Randomness.md) builds a grid in Molnár's manner.
 
 The word *sketch* comes from Processing, which called its programs sketches and kept them in a sketchbook folder. The idea was that a program can be as quick and as disposable as a drawing in a notebook. You make one to try an idea out. Ollin keeps the word and the attitude. A sketch is one file, most of them are short, and you make many.
 
@@ -160,7 +160,7 @@ Your circle sat in the middle because `width / 2` and `height / 2` put it there.
   <img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 </picture>
 
-The diagram names one point by how far it sits from that corner, which is all a pair of coordinates ever says. Inside `draw()`, `width` and `height` always hold the canvas size. That is why `drawCircle(width / 2, height / 2, 200)` lands in the middle. Try replacing the coordinates with plain numbers and see where the circle goes. The default canvas is 1080 pixels square, so `drawCircle(380, 240, 60)` sits left of center and above it, because 380 is less than half of 1080 and so is 240.
+The diagram names one point by how far it sits from that corner, which is all a pair of coordinates ever says. Inside `draw()`, `width` and `height` always hold the canvas size. That is why `drawCircle(width / 2, height / 2, 200)` lands in the middle. Try replacing the coordinates with plain numbers and see where the circle goes. The default canvas is 1080 pixels square. Both 380 and 240 are less than half of 1080, so `drawCircle(380, 240, 60)` sits left of center and above it.
 
 ## The canvas is not the window
 
@@ -207,7 +207,7 @@ Drag to pan, scroll to zoom. A sketch that never calls it never pays for it, and
   <img src="Images/01-HelloOllin/ViewCloser.jpg" alt="The same generated chart twice: on the left the whole island, where the place names are an illegible smudge, and on the right the view four notches in, where the same names are crisp and readable" width="680">
 </picture>
 
-The figure shows one reason to zoom. The place names are drawn at the same text size in both panels, and the zoom draws the outlines and the letters larger, so they arrive crisp. A shape is kept as geometry rather than as pixels, so looking closer shows more of it instead of a blur.
+The figure shows one reason to zoom. The place names are drawn at the same text size in both panels. The zoom draws the outlines and the letters larger, so they arrive crisp. A shape is kept as geometry rather than as pixels, so looking closer shows more of it instead of a blur.
 
 A drag moves the content as far as the pointer went, so the drawing stays under your finger. A zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose: a flat plane under a finger reads better without inertia.
 
@@ -230,7 +230,7 @@ Writing `drawCircle(85, 71, 34)` says "85 pixels from the left". That's fine unt
 drawCircle(center: uv(0.5, 0.42), radius: 200 * scale)
 ```
 
-This is the second way to call `drawCircle`. It names its parts, and `center:` takes the position as one value, a point, instead of as two numbers. `uv(u, v)` hands back the canvas point at those fractions, so `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, and `uv(0.5, 0.5)` the middle. Sizes want the same treatment. `scale` is the shorter canvas edge divided by 1000, so `200 * scale` is a fifth of that edge. That is 216 pixels on the default canvas, and proportionally more when you export the same sketch at print resolution.
+This is the second way to call `drawCircle`. It names its parts, and `center:` takes the position as one value, a point, instead of as two numbers. The call `uv(u, v)` hands back the canvas point at those fractions. So `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, and `uv(0.5, 0.5)` the middle. Sizes want the same treatment. `scale` is the shorter canvas edge divided by 1000, so `200 * scale` is a fifth of that edge. That is 216 pixels on the default canvas, and proportionally more when you export the same sketch at print resolution.
 
 You don't have to do this everywhere. Plenty of sketches in this guide use plain pixels, because they only ever run at one size. Fractions matter the day you want a sketch as a poster as well as on a screen. They keep the centers where you put them. They can't know what a square arrangement should become on a wide one, so look at the layout again when the shape changes. The sketch this chapter builds places its ring this way, from the middle of the canvas and in units of `scale`.
 
@@ -268,7 +268,7 @@ The blue circle sits on top because it was drawn second, and after the swap the 
 
 Colors come as names or as hex values like `Color(hex: 0xE4572E)`, the same six digits you'd use on the web. Ollin ships a selected set of the CSS color names, `.white`, `.black`, `.orange`, `.crimson` and about forty more, and the [Color](../Docs/Drawing/Color.md) page lists them all. There are many more shapes where these three came from, including ellipses, triangles, stars, and hearts, and the [Drawing](../Docs/Drawing/Drawing.md) page is the full catalog.
 
-When you want a rectangle centered on a point instead of hung from its corner, ask for it by name: `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor. Naming the anchor is how you say which part of the shape the position refers to.
+Sometimes you want a rectangle centered on a point instead of placed by its corner. Then ask for it by name, with `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor. Naming the anchor is how you say which part of the shape the position refers to.
 
 A rectangle can also round its corners. `cornerRadius: 20` rounds all four the same. `cornerRadii:` gives each corner its own radius, so a tab is rounded along its top and square where it meets the page:
 
@@ -281,7 +281,7 @@ drawRect(300, 540, 240, 160, cornerRadii: CornerRadii(topLeft: 60, topRight: 0,
 
 `.top`, `.bottom`, `.left`, and `.right` round one pair of corners, and `CornerRadii` names all four. A radius too large for its side is scaled down until it fits, so the shape is kept.
 
-> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. `uv(0.5, 0.5)` handed you one earlier, and `.x` and `.y` read its two numbers back. That's all you need from it here. [Chapter 10](10-Vectors.md) gives it a chapter of its own, because once a position is one value you can add positions together, and that is how motion and forces get written.
+> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value. That way you can pass a position around as one thing instead of two loose numbers. `uv(0.5, 0.5)` handed you one earlier, and `.x` and `.y` read its two numbers back. That's all you need from it here. [Chapter 10](10-Vectors.md) gives it a chapter of its own. Once a position is one value, you can add positions together, which is how motion and forces get written.
 
 > **Swift note.** Some calls take bare values in a fixed order, like `drawCircle(540, 540, 200)` for x, y, and radius. Others name their values, like `Color(hex: 0xE4572E)`, where the `hex:` is part of the call. A call can offer both forms, and `drawCircle(center:radius:)` above is the named twin of the bare one.
 
@@ -293,7 +293,7 @@ Everything you have drawn so far held still. This section is the idea the framew
 drawCircle(width / 2 + time * 120, height / 2, 200)
 ```
 
-Save, and the circle drifts to the right until it leaves the canvas. Nothing else was needed, because `draw()` was already running over and over, as fast as your display refreshes, often 60 or 120 times a second. `time` holds the seconds since the sketch started. So when `time` grows, an x computed from it grows along with it, and the circle lands somewhere slightly different on every frame. Drawing that sequence quickly is what we read as motion. Nearly everything animated in this guide works this way, from breathing dots to flocking birds: you put time into an expression.
+Save, and the circle drifts to the right until it leaves the canvas. Nothing else was needed, because `draw()` was already running over and over. It repeats as fast as your display refreshes, often 60 or 120 times a second. `time` holds the seconds since the sketch started. So when `time` grows, an x computed from it grows along with it, and the circle lands somewhere slightly different on every frame. Drawing that sequence quickly is what we read as motion. Nearly everything animated in this guide works this way, from breathing dots to flocking birds: you put time into an expression.
 
 `time` has siblings called `frameCount`, `deltaTime`, and `frameRate`. The [Sketch](../Docs/Core/Sketch.md#temporal-state) page lists them, and you'll meet them properly in [Chapter 3](03-MotionAndTime.md).
 
@@ -313,7 +313,7 @@ drawCircle(x, height / 2, 70)
 
 The `* 300` is how far it swings. `.tau` is the angle of one full turn, about 6.28. So `time * .tau / 3` completes one turn every three seconds, and the swing starts over. [Chapter 3](03-MotionAndTime.md) explains why that works, and for today you can use it as a recipe.
 
-> **Swift note.** `let x = ...` gives a value a name. Use `let` for values computed fresh each frame (most of what you'll write in `draw()`); `var` is for values that need to change after they're set.
+> **Swift note.** `let x = ...` gives a value a name. Use `let` for values computed fresh each frame, which is most of what you'll write in `draw()`. Use `var` for values that need to change after they're set.
 
 The recipe has a second half, and it's what the finished sketch is built on. `sin` has a twin called `cos`, and together they turn an angle into a point on a circle:
 
@@ -324,7 +324,7 @@ The recipe has a second half, and it's what the finished sketch is built on. `si
 
 Angles here are radians rather than degrees, and one full turn is `.tau`. Angle zero points to the right, and since y grows downward, a growing angle sweeps clockwise. The angle in the diagram is negative, which is why its point sits above the center rather than below.
 
-Give the pair an angle and a radius, and `cos(angle) * radius` is how far across the point sits and `sin(angle) * radius` how far down. Grow the angle and the point walks the rim. For now that's all this guide asks of `cos` and `sin`, that they're how you place things *around* something. [Chapter 3](03-MotionAndTime.md) shows why it works, and [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
+Give the pair an angle and a radius. Then `cos(angle) * radius` is how far across the point sits, and `sin(angle) * radius` is how far down. Grow the angle and the point walks the rim. For now that's all this guide asks of `cos` and `sin`, that they're how you place things *around* something. [Chapter 3](03-MotionAndTime.md) shows why it works, and [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
 
 ## The mouse joins in
 
@@ -349,11 +349,11 @@ Hold the button and the circle turns orange. Because `draw()` is running anyway,
 
 ## Putting it together: a breathing ring
 
-Now we can build the sketch from the top of the chapter, out of the steps above. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the ring drift, and `sin` swings both the ring's radius and each circle's size so that the sketch breathes. The ring is placed from the middle of the canvas with `uv` and sized in units of `scale`, as [Placing things without pixels](#placing-things-without-pixels) advised, and each circle wears a fill from a short list of colors. The four `@Param` lines are the panel of controls, and the steps above did not cover them.
+Now we can build the sketch from the top of the chapter, out of the steps above. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the ring drift, and `sin` swings both the ring's radius and each circle's size so that the sketch breathes. The ring is placed from the middle of the canvas with `uv` and sized in units of `scale`, as [Placing things without pixels](#placing-things-without-pixels) advised. Each circle takes its fill from a short list of colors. The four `@Param` lines are the panel of controls, and the steps above did not cover them.
 
 Two more things in the listing are new. The circles run inside a `for` loop, which repeats the drawing commands once per circle. And each color carries an `alpha`, which is how opaque it is. 1 is solid, 0 is invisible, and 0.85 lets overlapping circles show a little of each other.
 
-> **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`, so `i` names each circle in turn. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors[0]` is its first, `colors.count` is its length, and `%` is the remainder after division, which is what makes the palette repeat. These keep coming back; there's more Swift in the [Swift quick reference](../Docs/Swift.md) whenever you want it.
+> **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`, so `i` names each circle in turn. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. The type `[Color]` is a list of colors, `colors[0]` is its first, and `colors.count` is its length. The `%` sign gives the remainder after division, which is what makes the palette repeat. These keep coming back; there's more Swift in the [Swift quick reference](../Docs/Swift.md) whenever you want it.
 
 Make a new file, `MySketches/HelloMotion.swift`:
 
@@ -391,12 +391,12 @@ final class HelloMotion: Sketch {
 Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through what each line contributes:
 
 - `Double(i) / Double(count) * .tau` divides the full turn into one slot per circle. Adding `time * speed` grows every angle together, so the ring rotates.
-- `breathe` is the pendulum again, and the part to notice is the `+ Double(i) * 0.5`, which gives each circle a head start over its neighbor. That small offset is what makes the ring ripple instead of pulsing all at once. Try deleting it and watch the difference.
+- `breathe` is the pendulum again. The part to notice is the `+ Double(i) * 0.5`, which puts each circle's swing ahead of its neighbor's. That small offset is what makes the ring ripple instead of pulsing all at once. Try deleting it and watch the difference.
 - `breathe` gets used twice, swinging both the ring's radius (`310 + breathe * 80`) and each circle's size (`size + breathe * 16`). So each circle grows as it swings outward and shrinks as it comes back.
-- `center` is `uv(0.5, 0.5)`, the middle of the canvas, and `* scale` turns the ring's radius and each circle's size from units into pixels of the shorter canvas edge. Change `canvasSize` to `.fhd1080` and the ring keeps its place and its size.
+- `center` is `uv(0.5, 0.5)`, the middle of the canvas. The `* scale` turns the ring's radius and each circle's size from thousandths of the shorter canvas edge into pixels. Change `canvasSize` to `.fhd1080` and the ring keeps its place and its size.
 - `colors[i % colors.count]` cycles through the palette, so circle 0 gets the first color and circle 4 wraps back around to it.
 
-That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a parameter with a label, a range, and a starting value, and the sketch reads it like any other property. Each parameter arrived as the control its type calls for. Speed and Size hold `Double`s, so they are sliders. Circles holds a whole number, so it is a stepper. Ground holds a `Color`, so it is a swatch you click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point. You'll meet them as the guide goes on. Beside a numeric control the value itself is live, so you can drag it sideways to scrub or click it to type one in.
+That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. The line `@Param("Speed", 0...2) var speed = 0.3` declares a parameter with a label, a range, and a starting value. The sketch reads it like any other property. Each parameter arrived as the control its type calls for. Speed and Size hold `Double`s, so they are sliders. Circles holds a whole number, so it is a stepper. Ground holds a `Color`, so it is a swatch you click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point. You'll meet them as the guide goes on. Beside a numeric control the value itself is live, so you can drag it sideways to scrub or click it to type one in.
 
 Play the panel while the sketch runs. Your tuned values survive a save. Edit the code, save, and your parameter positions carry over into the reloaded sketch instead of snapping back to the defaults. Build that habit early, because a number you find yourself trying three values of is a number that wants to be a parameter.
 
@@ -413,7 +413,7 @@ The button under the rows writes them down for you. Press **Save parameters to H
 
 Only the parameters you moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
 
-Going the other way is one click. Every parameter you turn wears a small dot after its name. Click it, or right-click the row and choose **Reset**, and the value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
+Going the other way is one click. Every parameter you turn wears a small dot after its name. Click it, or right-click the row and choose **Reset**. The value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
 
 A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters because `86` and `86.0` are different types to Swift, and only `86.0` is the `Double` you declared.
 
@@ -429,9 +429,9 @@ The line under the button says so and names what stands there. Put `38.0` back w
 
 The sketch is small enough to change freely, and three directions are a good start:
 
-- Run `Circles` from 4 up to 120 and watch the gaps close. Keep `Size` above 16 while you do, because below that the breathing takes some radii to zero, and a circle with no radius isn't drawn at all.
+- Run `Circles` from 4 up to 120 and watch the gaps close. Keep `Size` above 16 while you do, because below that the breathing takes some radii to zero or below. A circle with a radius of zero or less isn't drawn at all.
 - Swap the palette. Pick four hex colors you like and paste them in.
-- Replace `drawCircle` with `drawRect(center: Vector2(x, y), width: size * scale, height: size * scale)`. Use the `center:` form here, because the positional `drawRect(x, y, size, size)` would hang each square down and to the right of its place on the ring.
+- Replace `drawCircle` with `drawRect(center: Vector2(x, y), width: size * scale, height: size * scale)`. Use the `center:` form here. The positional `drawRect(x, y, size * scale, size * scale)` would put each square down and to the right of its place on the ring.
 
 When you want to keep a moment of it, one flag writes a still at the full canvas size, and no window opens:
 
@@ -471,7 +471,7 @@ A corner changes the numbers that *size* the shape and leaves the ones that plac
 
 The knob turns the shape, and it only appears when the line can say which way the shape faces. A line has two ends, so both swing about the middle. An arc, a piece of a circle's edge, carries its own two angles, so those move instead. A circle looks the same however you turn it, so it shows no knob at all. Turning a circle takes a `rotate` further up the file, which [Chapter 6](06-GridsAndRepetition.md) introduces and which this doesn't touch.
 
-One more move belongs here, and it's the one a number cannot express. A shape drawn later lands on top, as [Shapes and ink](#shapes-and-ink) showed. With a shape outlined, press `⌘]` to bring it forward or `⌘[` to send it back, and its line moves past its neighbor's in the file. The `fill` it was drawn with travels along and is said again where it lands, and the ink the shapes after it had is put back. So the only thing that changes is which shape is in front. Shift takes it all the way to the front or the back.
+One more move belongs here, and it's the one a number cannot express. A shape drawn later lands on top, as [Shapes and ink](#shapes-and-ink) showed. With a shape outlined, press `⌘]` to bring it forward or `⌘[` to send it back. Its line moves past its neighbor's in the file. The `fill` it was drawn with moves along with the shape and is written again where the shape lands. The shapes that came after it get back the ink they were drawn with. So the only thing that changes is which shape is in front. Shift takes it all the way to the front or the back.
 
 Two rules apply before you rely on any of it, and the first is the save button's. A number written whole stays whole, so a shape dragged to 285.7 lands on 286, and a nudge under half a pixel changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
 
@@ -484,9 +484,9 @@ There is one exception. A coordinate written as the name of a `@Param` has no nu
 drawCircle(sunX, sunY, 40)     // dragging this moves both parameters
 ```
 
-The drag sets those parameters instead of writing the file, so nothing recompiles, and the values stay put across the next reload the way any parameter you change by hand does. Both coordinates have to be parameters for that. With a parameter in one slot and a plain number in the other, the number is still written into the file and the sketch reloads.
+The drag sets those parameters instead of writing the file, so nothing recompiles. The values are kept across the next reload, the way any parameter you change by hand is. Both coordinates have to be parameters for that. With a parameter in one slot and a plain number in the other, the number is still written into the file and the sketch reloads.
 
-That limit follows from what the drag is. The file is the sketch, and dragging edits the file, so anything the file works out for itself has to be changed where it's written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest: named points, lines with two ends, and what stops a shape from moving past a line that is not ink.
+That limit follows from what the drag is. The file is the sketch, and dragging edits the file, so anything the file works out for itself has to be changed where it's written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends. It also says what stops a shape from moving past a line that is not ink.
 
 ## A shorter way to run things
 
@@ -527,31 +527,31 @@ The command does two more things beyond running a file, and each has a page of i
 
 ### When one file isn't enough
 
-A loose sketch can load a photograph, a font, or a shader sitting in its own folder. What one file can't hold is a second file's worth of code, or a program you build once and hand to somebody. At that point you want a package, and `ollin new MySketch` writes one. It holds the sketch, a manifest that already knows where the framework is, a folder for your material, and a README with the commands in it. `swift run MySketch` runs it from inside the folder. `ollin Sources/MySketch/Sketch.swift` opens the same file in the live window, so the edit-and-save loop is unchanged. `ollin new MySketch --from Basic/HelloCircle` starts the folder from [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) instead of a blank `draw()`. `ollin generate` makes the same choices in a window, running each starting point while you look. [The project generator](../Docs/Tools/ProjectGenerator.md) has every template and option.
+A loose sketch can load a photograph, a font, or a shader sitting in its own folder. What one file can't hold is a second file's worth of code, or a program you build once and hand to somebody. At that point you want a package, and `ollin new MySketch` writes one. It holds the sketch in a folder that also takes anything the sketch loads. Beside it are a manifest that already knows where the framework is, and a README with the commands in it. `swift run MySketch` runs it from inside the folder. `ollin Sources/MySketch/Sketch.swift` opens the same file in the live window, so the edit-and-save loop is unchanged. `ollin new MySketch --from Basic/HelloCircle` starts the folder from [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) instead of a blank `draw()`. `ollin generate` makes the same choices in a window, running each starting point while you look. [The project generator](../Docs/Tools/ProjectGenerator.md) has every template and option.
 
 ### Looking something up without leaving the terminal
 
-Everything the reference says is in the folder you cloned, so you can read it where you work. `ollin docs color` opens the page about color in a pager, where Space scrolls and `q` returns the prompt, and `ollin docs Color#ramp` opens one section of it. `ollin docs --search "long exposure"` finds every line that says it, with the page and the heading it sits under. `ollin examples flocking` lists the examples that match a word, and `ollin examples ocean --source` prints the sketch itself, here [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift). `ollin api drawCircle` prints each way to call it with its labels. None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including `ollin site`, which writes the pages out as a website.
+Everything the reference says is in the folder you cloned, so you can read it where you work. The command `ollin docs color` opens the page about color in a pager, where Space scrolls and `q` returns you to the prompt. The form `ollin docs Color#ramp` opens one section of that page. `ollin docs --search "long exposure"` finds every line that says it, with the page and the heading it sits under. `ollin examples flocking` lists the examples that match a word, and `ollin examples ocean --source` prints the sketch itself, here [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift). `ollin api drawCircle` prints each way to call it with its labels. None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including `ollin site`, which writes the pages out as a website.
 
 ## Where this comes from
 
-The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001. It continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing also gave the field the word *sketch*, and the sketchbook folder its programs live in. Processing and p5.js repeat `draw()` while a sketch runs, and Ollin keeps that, at the display's refresh rate, with `noLoop()` as the escape hatch for a still. The artists named under [What creative coding is](#what-creative-coding-is), Georg Nees, Frieder Nake, Vera Molnár, and Sol LeWitt, are credited with the others in [`Examples/Recreations/`](../Examples/Recreations/README.md). The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 39](39-Performing.md).
+The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001. It continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing also gave the field the word *sketch*, and the sketchbook folder its programs live in. Processing and p5.js repeat `draw()` while a sketch runs. Ollin keeps that at the display's refresh rate, and `noLoop()` stops the loop when you want a still. The artists named under [What creative coding is](#what-creative-coding-is) are Georg Nees, Frieder Nake, Vera Molnár, and Sol LeWitt. They are credited with the others in [`Examples/Recreations/`](../Examples/Recreations/README.md). The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 39](39-Performing.md).
 
 ## Go deeper
 
 - [The frame](../Docs/Concepts/Frame.md): one screen on what a drawing call does, why the picture is built from nothing each time, and what happens once `draw()` returns.
-- [Where a point is](../Docs/Concepts/Coordinates.md): one screen on the coordinates above, the difference between a point and a pixel, and the other frames that arrive with a camera, a 3D scene, or a machine.
+- [Where a point is](../Docs/Concepts/Coordinates.md): one screen on the coordinates above and the difference between a point and a pixel. It also names the other coordinate frames that arrive with a camera, a 3D scene, or a machine.
 - [Sketch](../Docs/Core/Sketch.md): the full lifecycle, `noLoop()` for stills, and running a sketch as its own standalone program with `@main`.
-- [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution (`scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas).
+- [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that work at any resolution. It covers `scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas.
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state, and [`viewControl`](../Docs/Drawing/Drawing.md#viewcontrol) with its opening framing, its zoom range, and `resetView()`.
 - [Single-file sketches](../Docs/Tools/SingleFile.md): installing `ollin`, running one loose `.swift` file, the hashbang form, and exporting from the command line.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [Checking the machine](../Docs/Tools/Doctor.md): `ollin doctor` answer by answer, installing the shell completions, and `--list-params` for everything a sketch declares.
 - [The reference offline](../Docs/Tools/Reference.md): `ollin docs`, `ollin examples`, and `ollin api` in full, including one section of a page, the search across everything, and what happens in a pipe.
-- [The Ollin quick reference](../Docs/QuickReference.md): the whole framework on one page, with the units every call takes and the mistakes that give a wrong picture with no error. Keep it open while you work.
+- [The Ollin quick reference](../Docs/QuickReference.md): the whole framework on one page. It lists the units every call takes, and the mistakes that give a wrong picture with no error. Keep it open while you work.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
-- [Parameters](../Docs/Helpers/Parameters.md): the full parameter family, from toggles and menus to draggable pads, plus grouping them into cards, icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.
+- [Parameters](../Docs/Helpers/Parameters.md): the full parameter family, from toggles and menus to draggable pads. It also covers grouping them into cards, icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language taught in order, every construct these sketches lean on. [The Swift quick reference](../Docs/Swift.md) is the short version, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
 - Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the parameters demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift), and a sketch you can grab, drag, and release with the mouse, [`Examples/Input/Drag`](../Examples/Input/Drag/Sketch.swift).
