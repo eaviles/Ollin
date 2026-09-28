@@ -103,7 +103,7 @@ You get all of this without writing any of it. The setting to know is `raymarchQ
 
 Every field so far is a shape you could build from parts. A distortion bends a whole field at once. It is for a column that twists as it rises, a bar that curls, and a surface that ripples or turns to rock. Three of them reimplement Inigo Quilez's twist, bend, and displacement operators, and the fourth adds a noise relief.
 
-<img src="Images/30-SculptingWithFields/Distortions.jpg" alt="Four forms in a row on a dark background: a blue square column whose faces spiral as it rises, an amber bar bent into an arch, a coral sphere covered in regular bumps, and a gray sphere roughened into a lumpy rock" width="680">
+<img src="Images/30-SculptingWithFields/Distortions.jpg" alt="Four forms in a row on a dark background: a blue square column whose faces spiral as it rises, an amber bar bent into an arch, a coral sphere covered in even, rounded bumps, and a gray sphere roughened into a lumpy rock" width="680">
 
 Each one is a method on the field, like `.at`:
 
@@ -120,7 +120,7 @@ SDF3D.sphere(radius: 0.95)
 
 `twisted` screws the cross-section around the y axis, and `bent` curls the form about the z axis. For another axis, rotate the field first: `.rotatedX`, `.rotatedY`, and `.rotatedZ` turn a field by an angle in radians about that axis through its origin. `amplitude` is how far the ripples or the relief push the surface, and `frequency` is how tightly they pack.
 
-A distortion has a cost the plain shapes do not. A bent field no longer answers with the exact distance to its surface. It can answer a little more than the true distance, and a ray that hops that far could step through the surface. So the tracer takes shorter hops on a distorted field, scaled to the distortion's strength. The surface never breaks up, and strong settings trace more slowly. The [`3D/Raymarching/RaymarchedDistort`](../Examples/3D/Raymarching/RaymarchedDistort/Sketch.swift) example shows all four, three with their amounts swinging.
+A distortion has a cost the plain shapes do not. A bent field no longer answers with the exact distance to its surface. It can answer a little more than the true distance, and a ray that hops that far could step through the surface. So the tracer takes shorter hops on a distorted field, scaled to the distortion's strength. No ray steps through the surface, and strong settings trace more slowly. The [`3D/Raymarching/RaymarchedDistort`](../Examples/3D/Raymarching/RaymarchedDistort/Sketch.swift) example shows all four, three with their amounts swinging.
 
 ## The light this needs: materials and shadows on a field
 

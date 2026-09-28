@@ -169,6 +169,7 @@ The right-hand ball shows the other thing every corner of the net carries. Besid
 A mesh hands its normals back beside its positions, as two lists of the same length matched by index. `zip` from [Chapter 7](07-Tiles.md) pairs them:
 
 ```swift
+fill(Color(hex: 0xFFD166))
 for (p, n) in zip(ball.positions, ball.normals) {
     drawTube([p, p + n * 0.42], radius: 0.022, sides: 6)
 }
