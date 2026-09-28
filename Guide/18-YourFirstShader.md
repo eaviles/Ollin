@@ -6,7 +6,7 @@
 
 <img src="Images/18-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a violet night sky full of small stars, above a black mountain ridge" width="560">
 
-The GPU can run a small function at every pixel of the canvas at once, and that function is a shader. You learn to write one: per-pixel thinking, a `shade` function, distance shaped by `smoothstep`, and the library Ollin splices into every shader. The aurora at the top is under forty lines of shader and no assets. The shaders Ollin ships come after it, and then other ways to a shader, from chains patched in Swift to GLSL brought over.
+The GPU can run a small function at every pixel of the canvas at once, and that function is a shader. You learn to write one: per-pixel thinking, a `shade` function, distance shaped by `smoothstep`, time and parameters, and the library Ollin splices in. Under forty lines of shader and no assets make the aurora at the top. After it come the shaders Ollin ships and other ways to a shader, such as chains patched in Swift and GLSL brought over.
 
 ## One question, a million times: per-pixel thinking
 

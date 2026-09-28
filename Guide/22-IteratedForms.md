@@ -6,7 +6,7 @@
 
 <img src="Images/22-IteratedForms/OrbitPlate.jpg" alt="Four dark panels on near-black: a coral-red Barnsley fern, a gold folded ribbon from a chaotic map, a teal lace of nested circles from circle inversion, and a violet double spiral from a Kleinian group" width="560">
 
-Take a point, apply a rule, mark where it lands, and repeat a hundred thousand times. The marks record where the point spent its time, and that record is the picture. You learn four such rules and one plotting function that draws them all, and the plate above is that function called four times. Fractal flames, order turning into chaos, and questions asked of the plane one pixel at a time follow it.
+Take a point, apply a rule, mark where it lands, and repeat tens of thousands of times. The marks record where the point spent its time, and that record is the picture. You learn four such rules and one plotting function that draws them all, and the plate above is that function called four times. Fractal flames, order turning into chaos, and questions asked of the plane one pixel at a time follow it.
 
 ## The same fern, played as a game: the chaos game
 

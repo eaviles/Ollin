@@ -6,7 +6,7 @@
 
 <img src="Images/16-CurvesAndFigures/Engraving.jpg" alt="A two-ink engraved plate on cream paper: a green guilloche rosette with a red spirograph turning in its eye, a red square knot in each corner, a ribbon of six lines under the rosette, all inside a frame whose corners ease round" width="560">
 
-Some figures come from a rule instead of a hand, like the Lissajous figure two sine waves weave. Ollin has rules like that as calls, from Hobby's spline through your own points to spirolaterals and corners eased like a road's. The plate above engraves a guilloche rosette with a spirograph in its eye, a knot in each corner, and a ribbon on Hobby's spline. Envelopes, epicycles, morphs, and a drawing that reads only in a mirror come after it.
+Some figures come from a rule instead of a hand, like the Lissajous figure two sine waves weave. Ollin has rules like that as calls, from Hobby's spline through your own points to spirolaterals and corners eased like a road's. The engraving above holds a guilloche rosette with a spirograph in its eye, a knot in each corner, and a ribbon on Hobby's spline. Envelopes, epicycles, morphs, and a drawing that reads only in a mirror come after it.
 
 ## A curve that reads as drawn: Hobby's spline
 

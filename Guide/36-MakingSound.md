@@ -6,7 +6,7 @@
 
 <img src="Images/36-MakingSound/Workbench.jpg" alt="A dark workbench: a room's answer to a click drawn across the top, three outlines, a circle, a tilted square, and a hand-drawn blob, with a bar chart of tones under each, six strings across the middle, and a gold bowed string at the bottom" width="560">
 
-A synth inside the sketch gives it a voice, and you build that voice up from a single note. Physical models play a string, a struck shape, a bow, and a breath, and a chain of effects ends in a room you can draw. The workbench at the top is an instrument you play with the mouse, and it needs no microphone, controller, or file. After it come patches, recordings, wavetables, and grains, more effects including one of your own, and notes you bend one at a time.
+A synth inside the sketch gives it a voice, and you build that voice up from a single note. Physical models pluck and bow a string, strike a shape, and blow a tube. A chain of effects ends in a room you can draw. You play the workbench at the top with the mouse, and it needs no microphone, controller, or file. Other sources of sound follow it, then more effects including one you write, and notes you bend one at a time.
 
 ## A sketch that plays
 

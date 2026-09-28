@@ -6,7 +6,7 @@
 
 <img src="Images/39-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core" width="560">
 
-Code can be the performance: you type over the running picture and evaluate each change without stopping it. Here you learn live coding in a performance host, and how to record the set, the performance from start to end, as you play it. The picture at the top is the last state of a set in five evaluations. Past it come completion and a controller, cues and replay, parameters directed or written as rules, and live feeds into other apps.
+Code can be the performance: you type over the running picture and evaluate each change without stopping it. Here you learn live coding in a performance host, and how to record the set, everything you play from start to end. The picture at the top is the last state of a set in five evaluations. Past it come completion and a controller, cues and replay, parameters directed or written as rules, and live feeds into other apps.
 
 ## Performing the code itself: live coding
 

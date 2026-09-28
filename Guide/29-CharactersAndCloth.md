@@ -6,7 +6,7 @@
 
 <img src="Images/29-CharactersAndCloth/Yard.jpg" alt="A dark yard: a tan capsule standing in for a figure at the left, a truck on four wheels parked in front of a wall of orange crates, and a teal banner blowing between two wooden posts behind them" width="560">
 
-Rigid bodies model a crate well, but a person, a vehicle, or a sheet of cloth badly. You learn the three things the solver keeps for them: a figure that stays upright, a vehicle on sprung wheels, and cloth. In the yard at the top, you walk the figure and drive the truck while a banner blows between two posts. Ragdolls, a cape, ropes, and cloth among the contacts, water, and snapshots of [Chapter 28](28-WorldsWithWeight.md) come after it.
+Rigid bodies model a crate well, but a person, a vehicle, or a sheet of cloth badly. You learn the three things the solver keeps for them: a figure that stays upright, a vehicle on sprung wheels, and cloth. In the yard at the top, you walk the figure and drive the truck while a banner blows between two posts. After it come ragdolls, a cape, and ropes, and then all three kinds among the contacts, water, and snapshots of [Chapter 28](28-WorldsWithWeight.md).
 
 ## Someone to be in there: the character controller
 

@@ -6,7 +6,7 @@
 
 <img src="Images/25-3DGently/Plaza.jpg" alt="A small sculpture court at golden hour: a glossy teal knot, a deep red vase, a sparkling car-paint sphere, an orange faceted gem, and one wireframe sphere, each on a pale plinth, casting long soft shadows" width="560">
 
-With a third axis, a sketch holds solids you can walk around, lit and shadowed like things on a table. This chapter keeps the same `draw()` and adds a camera, solids and the triangles they are made of, light, shadows, and finishes. The steps end in the sculpture court above, which you can grab and turn with the mouse. A light with a body and the seam under a resting thing come after it.
+With a third axis, a sketch holds solids you can walk around, lit and shadowed like things on a table. This chapter keeps the same `draw()` and adds a camera, solids and the triangles they are made of, light, shadows, and finishes. The steps end in the sculpture court above, which you can grab and turn with the mouse. Area lights, and the contact shadow under a resting thing, come after it.
 
 ## A camera and a sphere
 

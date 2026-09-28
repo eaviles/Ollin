@@ -6,7 +6,7 @@
 
 <img src="Images/28-WorldsWithWeight/Contraption.jpg" alt="A wooden panel carrying two touching wheels, a small orange one and a larger gray one, with a long steel bar fixed across the larger wheel sweeping a row of six red crates along a shelf, lit from above with soft shadows on a dark floor" width="560">
 
-Weight turns a 3D scene into a machine: bodies fall and knock into each other, and joints let one motor run them. This chapter teaches bodies, joints with a motor and a gear, and groups of bodies that pass through each other. The contraption above has a single motor, and everything after its gear is contact, so with the motor off it coasts to a stop. The families after it cover contacts and queries, bodies held back, more joints, water and terrain, and snapshots of a settled world.
+Weight turns a 3D scene into a machine: bodies fall and knock into each other, and joints let one motor run them. This chapter teaches bodies, joints with a motor and a gear, and groups of bodies that pass through each other. The contraption above runs on one motor with no keyframes, and its crates move only where the bar reaches them. The families after it cover contacts and queries, bodies held back, more joints, water and terrain, and snapshots of a settled world.
 
 ## Things with weight: `World3D` and bodies
 

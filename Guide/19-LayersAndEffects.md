@@ -6,7 +6,7 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. This chapter teaches all three, from the filter catalog to a canvas that feeds its own past back in. The comets above are the flock of [Chapter 12](12-FlocksAndSwarms.md), drawn into a feedback layer that comes back bloomed and added as light. After them comes what to do when a frame gets slow.
+A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them comes what to do when a frame gets slow.
 
 ## A drawing you can hold: render targets
 

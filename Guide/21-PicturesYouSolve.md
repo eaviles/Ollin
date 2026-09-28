@@ -6,7 +6,7 @@
 
 <img src="Images/21-PicturesYouSolve/Lighthouse.jpg" alt="A lighthouse on a dark headland at dusk, its lamp throwing beams into a violet and orange sky, the sun on the horizon, and a small boat with a lit mast on the water, every silhouette traced in a thin warm outline" width="560">
 
-Some filters solve a problem instead of changing a picture. This chapter teaches three: diffusion from a few marks, distance measured from every edge, and light worked out from a scene and its lamps. The lighthouse above uses all three, with its sky diffused, its outlines measured, and its beams worked out. Past it, a pasted patch loses its seam, a picture is read as waves, and any window's average comes at a flat price.
+Some filters solve a problem instead of changing a picture. Diffusion paints from a few marks, a distance field measures every pixel against an edge, and light works itself out from its lamps. In the lighthouse above, the sky is diffused, the outlines are measured, and the beams are worked out. Past it, a pasted patch loses its seam, a picture is read as waves, and a window's average costs the same at any size.
 
 ## A picture made of a few marks: diffusion
 

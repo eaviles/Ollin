@@ -6,7 +6,7 @@
 
 <img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait of a young woman in a lace headdress built entirely from the word OLLIN repeated in a grid, the letters large and white where the lace is, smaller and warm across the face, and small and dark in the hair and the blouse" width="560">
 
-Pictures and tables arrive from outside your sketch, and you read both the same way, as grids you ask questions of. This chapter reads them one sample at a time and turns each sample into a mark of your own. The portrait at the top is one photograph sampled a few thousand times, each sample drawn as a letter sized and colored by its pixel. The sections after it answer a pixel other ways, from dithering to one unbroken line, and then read CSV and JSON.
+Pictures and tables arrive from outside your sketch, and you read both the same way, as grids you ask questions of. This chapter reads them one sample at a time and turns each sample into a mark of your own. One photograph, sampled a few thousand times, becomes the portrait at the top, each sample a letter sized and colored by its pixel. The sections after it answer a pixel other ways, from dithering to a shape hidden in a repeat, and then read CSV and JSON.
 
 ## A picture on the canvas: `loadImage` and `drawImage`
 

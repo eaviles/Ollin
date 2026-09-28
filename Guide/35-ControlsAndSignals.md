@@ -6,7 +6,7 @@
 
 <img src="Images/35-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in dark ink on cream, with fainter, slightly turned copies of itself fanning out behind it as though blown" width="560">
 
-Knobs, faders, a shared beat, a game controller, the weather, and a knock from the trackpad can all steer a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above at once. Past it come a table you touch, sensors on a wire or over Bluetooth, published and smoothed parameters, and data from the web.
+Knobs, faders, a shared beat, a game controller, and the weather all reach a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above, and it knocks the trackpad under your hand on every downbeat. Past it come a table you touch, sensors on a wire or over Bluetooth, published and smoothed parameters, and data from the web.
 
 ## Parameters from anywhere: MIDI and OSC
 

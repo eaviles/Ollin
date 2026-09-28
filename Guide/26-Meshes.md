@@ -6,7 +6,7 @@
 
 <img src="Images/26-Meshes/Bench.jpg" alt="Five objects on a mottled stone bench under warm interior light: a pale translucent crystal on a black lacquered plinth, a small silver cushion, a teal ball whose paint has worn through to gold in patches, a flat tile with a wheel carved into it, and a cream egg resting on a rust-red cushion, with a faint stamped mark on the stone at the left" width="560">
 
-Meshes can come from a file, pictures can decide their surfaces, and a few numbers can make them metal, glass, or skin. You learn all three. Each object on the bench at the top shows a different technique, from worn paint to an egg that carries light under its own surface. Past the bench come whole scenes from a file, more ways to make a mesh, clouds and distant air, and the thin film.
+Meshes can come from a file, pictures can decide their surfaces, and a few numbers can make them metal, glass, or skin. Each object on the bench at the top shows a different technique, from worn paint to an egg that carries light under its own surface. Past the bench come whole scenes from a file, more ways to make a mesh, clouds and distant air, and the thin film.
 
 ## A mesh from a file
 

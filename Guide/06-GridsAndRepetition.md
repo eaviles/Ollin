@@ -6,7 +6,7 @@
 
 <img src="Images/06-GridsAndRepetition/RoseWall.jpg" alt="A five-by-five wall of cut-paper medallions on cream, each a colored disc with cream arms folded around it, the color drifting diagonally from coral through amber and green to deep indigo" width="560">
 
-Grids give generative art its order, and repetition gives it rhythm. You learn the tools for both, from grids and transforms to a fold that repeats every drawing call. The twenty-five medallions at the top all come from one crooked arm, drawn once and then placed, turned, folded, and trimmed. Uneven panels split by recursion and a spiral of numbers come after them.
+Grids give generative art its order, and repetition gives it rhythm. The tools here place, turn, fold, and clip your shapes, and one of them runs a whole sketch inside a cell. The twenty-five medallions at the top all come from one crooked arm, drawn once and then placed, turned, folded, and trimmed. Uneven panels split by recursion and a spiral of numbers come after them.
 
 ## One loop, not two: `grid`
 

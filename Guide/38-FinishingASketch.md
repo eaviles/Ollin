@@ -6,7 +6,7 @@
 
 <img src="Images/38-FinishingASketch/ContourChart.jpg" alt="Concentric single-line rings around a still center on cream paper, each ring bent by the same noise field so neighboring rings bend together and the outer ones bend most" width="560">
 
-This chapter takes a sketch from a draft on your screen to files you can keep and share. You pick a keeper from a contact sheet, fix its seed and parameters, then size it, describe it, and export it with its recipe inside. The contour chart above is kept as a poster, a loop, and a plot. Finer stills, more kinds of video, a web page, line work for machines, prints in separate inks, and objects to hold come after it.
+This chapter takes a sketch from a draft on your screen to files you can keep and share. You pick a keeper from a contact sheet, fix its seed and parameters, then size it, describe it, and export it with its recipe inside. Its steps turn the contour chart above into a poster, a loop, and a plot. Finer stills, more kinds of video, a web page, line work for machines, prints in separate inks, and objects to hold come after it.
 
 ## Every export runs without a window
 

@@ -6,7 +6,7 @@
 
 <img src="Images/13-GrowingThings/Garden.jpg" alt="A dark garden bed: a pale branching tree with a thick trunk fills the sky, six green fern-like plants stand along the soil, and gray-green lichen sprawls at the ground line" width="560">
 
-Trees grow branch by branch and frost grows crystal by crystal, and a form in a sketch can grow from a rule the same way. This chapter teaches a function that calls itself, a grammar that rewrites a sentence, growth toward open space, and walkers that freeze where they touch. Everything in the garden above was grown one of those ways. The other growers follow: rules over shapes, a line that folds as it crowds, cracks that make cities, and a river that wanders.
+Trees grow branch by branch and frost crystal by crystal, and a sketch can grow a form from a rule the same way. This chapter teaches a function that calls itself, a grammar that rewrites a sentence, growth toward open space, and walkers that freeze where they touch. Everything in the garden above was grown one of those ways. After the garden come rules over shapes, a line that folds as it crowds, cracks that make cities, and a river that wanders.
 
 ## A tree from one rule: recursion
 

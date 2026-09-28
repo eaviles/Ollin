@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of square cells on a near-black ground, teal at the top left, the violet base through the middle, magenta at the bottom right, each cell jittered a step off its diagonal neighbors" width="560">
 
-Color is the first thing a viewer reads in a sketch, and plain arithmetic mixes it to mud. Here you learn the tools that keep it clean, from thinking in hue to palettes grown from one color and gradients used as paint. The color field at the top is built on one harmony and redraws as a fresh variation on every click. A family section after it mixes colors the way paint does.
+Color is the first thing a viewer reads in a sketch, and plain arithmetic mixes it to mud. Here you learn the tools that keep it clean, from thinking in hue to palettes grown from one color and gradients used as paint. The color field at the top is built on one harmony and redraws as a fresh variation on every click. A section after it mixes colors the way paint does.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go. Put the swinging yellow circle from [It moves on its own](01-HelloOllin.md#it-moves-on-its-own) back into `FirstCircle.swift`, because this chapter colors it.
 

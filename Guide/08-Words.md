@@ -6,7 +6,7 @@
 
 <img src="Images/08-Words/Specimen.jpg" alt="A type specimen sheet on cream paper: the word Ollin set very large in black with small red beads running evenly around every outline, three lines below it in an outline font, a pen font, and a pixel font, and a passage set flush on both edges under a red rule" width="560">
 
-A word on the canvas also means something, and it comes with centuries of craft attached. Here you learn to set words and to take them apart, down to outlines you can warp and respace. The specimen above beads one word along its own outline, over the three kinds of letter and a passage set flush on both edges. After it, letters come one at a time, and scripts that do not run like English keep their shaping, their direction, and their columns.
+A word is a shape that also means something, and it comes with centuries of craft attached. Here you learn to set words and to take them apart, down to outlines you can warp and respace. The specimen above beads one word along its own outline, over the three kinds of letter and a passage set flush on both edges. After it, letters come one at a time, and scripts that do not run like English keep their shaping, their direction, and their columns.
 
 ## Saying something: `drawText`
 

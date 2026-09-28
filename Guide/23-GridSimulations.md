@@ -6,7 +6,7 @@
 
 <img src="Images/23-GridSimulations/Organism.jpg" alt="A dense teal brain-coral labyrinth grown by reaction-diffusion, its winding ridges lit with a wet sheen against deep navy gaps" width="560">
 
-Cells on a grid can carry their own state on the GPU and change it every frame, each asking only about its neighbors. You seed such a field by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew over six hundred frames from a scatter of dots, and whatever you draw while it runs joins the chemistry. The other rules follow in families: automata, piles and fires, crowds past a threshold, chemistries, fluids, materials, and a rule you write yourself.
+A simulation field is a grid of cells on the GPU, and every frame each cell changes by asking its neighbors. You seed one by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew from a scatter of dots, and whatever you draw while the sketch runs joins the chemistry. The other rules follow in families: automata, piles and fires, crowds past a threshold, chemistries, fields that move, materials, and your own rule.
 
 ## State that lives on the GPU: SimField and withField
 

@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-Motion needs a clock you can trust and curves that give it character. You learn both, from the clock and the circle behind `sin` to shaping curves that ease, snap, and bounce. The rings above loop without a seam, and you export them as a GIF. Past the rings comes the motion Ollin runs for you: a sway in one call, values that chase, timelines, and timers.
+Motion needs a clock you can trust and curves that give it character. You learn both, from the clock and the circle behind `sin` to shaping curves that ease, snap, and bounce. The rings above loop without a seam, and you export them as a GIF. Past the rings comes the motion Ollin runs for you, from a sway in one call to timers, and the setting that holds it still.
 
 ## The clock
 

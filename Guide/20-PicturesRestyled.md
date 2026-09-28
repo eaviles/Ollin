@@ -6,7 +6,7 @@
 
 <img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
-One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take parameters. The street above is one photograph with five of them stacked into a hand-colored print. Two families follow it: more of the stylize shelf, and filters that read a layer as height, tone, a center, a ring, or a pour.
+One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take parameters. Five of them, stacked, turn the street photograph above into a hand-colored print. After it come more of the stylize shelf, and filters that read a layer as height, tone, a center, a ring, or a pour.
 
 ## Paint that follows the picture: brushwork
 

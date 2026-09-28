@@ -6,7 +6,7 @@
 
 <img src="Images/37-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold marks low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
 
-Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly, a short primer on pitch, scales and chords from a key, and a chain that learned a phrase. The music box above plays by itself and draws each note as it plays it. The families after it hold a sequencer with a feel, progressions and tunings, a beat from the room, and MIDI files.
+Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly, pitch as numbers, scales and chords from a key, and a chain that learned a phrase. The music box above plays by itself and draws each note as it plays it. The families after it hold a sequencer with a feel, progressions and tunings, a beat from the room, and MIDI files.
 
 ## Beats and note lengths: `Tempo` and `NoteLength`
 

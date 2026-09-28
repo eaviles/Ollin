@@ -6,7 +6,7 @@
 
 <img src="Images/27-Landscapes/Valley.jpg" alt="A wide green meadow of individually curved grass blades running to a stand of low-poly pines, with tan hills rising on both sides, a pale scree of boulders on the pass between them, and a clear blue sky above" width="560">
 
-A landscape holds more than you could place by hand, so you grow the ground and hand the placing to the GPU. The ground grows from noise and weathers under rain. Then ten thousand copies go down in one call, a world is cut to what the camera sees, and grass is drawn without being built. No tree in the valley above was placed by hand. After it come rivers and a sea, and a courtyard of lamps that each light only their own corner.
+A landscape holds more than you could arrange yourself, so you grow the ground from noise and rain and hand the placing to the GPU. Ten thousand copies of a mesh go down in one call, a world is cut to the view, and grass is never built. No tree in the valley above was placed by hand. Rivers, a sea, and a courtyard of lamps that each light only their own corner follow it.
 
 ## A landscape you grow: heightfields and erosion
 
