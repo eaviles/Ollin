@@ -230,7 +230,7 @@ final class MessagesThatPushThemselves: Sketch {
             fill(ink)
             textSize(13)
             textAlign(.left, .top)
-            drawText("A piece on a wall outlives any socket, so the redialing is the feed's job.",
+            drawText("A sketch on a wall outlives any socket, so the redialing is the feed's job.",
                      left, top)
             drawText("The sketch reads what arrived, and says what is happening.",
                      left, top + 22)
