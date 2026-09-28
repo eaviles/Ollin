@@ -74,7 +74,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part III: Shapes, lines, and marks
 
-15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then Voronoi territories, packing by growth and by rule (the Apollonian gasket and Ford circles), hulls and skeletons, and hatching and SVG for pen plotters. After the plate, crease patterns fold and cut the paper itself.
+15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: contours and shapes with holes, booleans, offsets, and the questions an outline answers. Then Voronoi territories, packing by growth and by rule (the Apollonian gasket and Ford circles), hulls and skeletons, hatching and SVG for pen plotters, and how a plot runs. After the plate, crease patterns fold and cut the paper itself.
 16. **[Curves and figures](16-CurvesAndFigures.md).** Figures that come from a rule. Hobby splines and the curves you can write down (Lissajous figures, roses, spirographs, superellipses, guilloche, harmonographs), then spirolaterals, envelopes and caustics, clothoids, Fourier epicycles, morphs, and mirror anamorphosis.
 17. **[Marks and media](17-MarksAndMedia.md).** Strokes with a hand in them: width profiles, stroke dynamics, brushes that stamp a tip, and dashes. Then two wet media made from geometry, marbled ink and watercolor pigment.
 

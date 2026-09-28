@@ -105,7 +105,7 @@ A denominator of zero is taken as one. A fraction over nothing is not a number, 
 - **Color by denominator, not by position.** The denominator is what the picture is about, and the size already shows it. A ramp over the denominator therefore reads immediately.
 - The circles are plain `Circle` values, so they hatch, cut, and export to SVG for a pen plotter like any other geometry.
 
-Example: `Patterns/FordCircles`. Guide: [Chapter 15](../../Guide/15-ShapesAsMaterial.md#a-circle-for-every-fraction).
+Example: `Patterns/FordCircles`. Guide: [Chapter 15](../../Guide/15-ShapesAsMaterial.md#a-circle-for-every-fraction-ford-circles).
 
 ---
 
