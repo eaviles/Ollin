@@ -117,10 +117,6 @@ ed46b0988c49  Guide/27-Landscapes.md:245  cannot find 'floorLevel' in scope
 f2ec3a59a96c  Guide/27-Landscapes.md:405  cannot find 'weathered' in scope
 e25df8430b7c  Guide/27-Landscapes.md:55  cannot find 'seats' in scope
 ee027f846921  Guide/27-Landscapes.md:91  cannot find 'island' in scope
-5dddaa709201  Guide/28-WorldsWithWeight.md:415  cannot infer contextual base in reference to member 'all'
-f192418e7342  Guide/28-WorldsWithWeight.md:520  errors thrown from here are not handled
-c0fe9fc2affa  Guide/28-WorldsWithWeight.md:636  errors thrown from here are not handled
-56811a58d088  Guide/28-WorldsWithWeight.md:680  errors thrown from here are not handled
 cc0338f303d4  Guide/29-CharactersAndCloth.md:130  errors thrown from here are not handled
 d208686885d8  Guide/29-CharactersAndCloth.md:168  errors thrown from here are not handled
 a249a33239de  Guide/29-CharactersAndCloth.md:198  labeled block needs 'do'
@@ -154,82 +150,33 @@ ddc10c3c2c06  Guide/32-Seeing.md:562  cannot find 'Camera' in scope
 a43bc3b3351c  Guide/32-Seeing.md:582  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 09cdb84809fc  Guide/32-Seeing.md:613  cannot find 'TextRecognizer' in scope
 62b423f43b64  Guide/32-Seeing.md:654  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
-017c452a6271  Guide/34-Listening.md:114  cannot find 'source' in scope
-1619227774c6  Guide/34-Listening.md:127  cannot find 'AudioInput' in scope
-36c1984f3958  Guide/34-Listening.md:140  cannot find 'AudioInput' in scope
-d559097e43a5  Guide/34-Listening.md:162  cannot find 'speech' in scope
-9fc5e6cd17f9  Guide/34-Listening.md:173  cannot find 'ears' in scope
-3dc84979ea9c  Guide/34-Listening.md:186  cannot find 'caption' in scope
-fa1d35a007bc  Guide/34-Listening.md:200  cannot find 'StageMic' in scope
-c67498c6917a  Guide/34-Listening.md:57  cannot find 'source' in scope
-c823df8978fd  Guide/34-Listening.md:79  cannot find 'source' in scope
-a1204e64b3d8  Guide/34-Listening.md:93  cannot find 'mic' in scope
-58bf90074c5f  Guide/35-ControlsAndSignals.md:148  cannot find 'midi' in scope
-ec5b7bed747d  Guide/35-ControlsAndSignals.md:17  cannot find 'flash' in scope
-9219385b934b  Guide/35-ControlsAndSignals.md:182  cannot find '$echoAmount' in scope
-4e5013c327ed  Guide/35-ControlsAndSignals.md:195  cannot find 'TUIOReceiver' in scope
-6a1db510cf9a  Guide/35-ControlsAndSignals.md:221  cannot find 'surface' in scope
-4863fcfd1bd9  Guide/35-ControlsAndSignals.md:241  cannot find 'ship' in scope
-263308768a2a  Guide/35-ControlsAndSignals.md:269  cannot find 'controllersReportMotion' in scope
-9604f6e134cd  Guide/35-ControlsAndSignals.md:289  cannot find 'flash' in scope
-5f695b2da7f5  Guide/35-ControlsAndSignals.md:322  cannot find 'mark' in scope
-181536a7f988  Guide/35-ControlsAndSignals.md:384  cannot find 'tide' in scope
-8fdc3921fadc  Guide/35-ControlsAndSignals.md:42  cannot find 'TempoClock' in scope
-5706cae06fc1  Guide/35-ControlsAndSignals.md:474  cannot find 'ball' in scope
-8861f5da491f  Guide/35-ControlsAndSignals.md:488  cannot find 'HapticPattern' in scope
-2f0eb373b1a6  Guide/36-MakingSound.md:115  cannot find 'synth' in scope
-8acc9d775f74  Guide/36-MakingSound.md:139  cannot find 'ImpulseResponse' in scope
-733a7ebea9dc  Guide/36-MakingSound.md:146  cannot find 'ImpulseResponse' in scope
-93290d281e0a  Guide/36-MakingSound.md:15  cannot find 'Synth' in scope
-362b9f442929  Guide/36-MakingSound.md:165  cannot find 'synth' in scope
-75a0752d3b86  Guide/36-MakingSound.md:191  cannot find 'synth' in scope
-8eabe1ca311c  Guide/36-MakingSound.md:217  cannot find 'synth' in scope
-f64d87778e08  Guide/36-MakingSound.md:243  cannot find 'synth' in scope
-efcededa9cbe  Guide/36-MakingSound.md:255  cannot find 'synth' in scope
-f60f324debba  Guide/36-MakingSound.md:264  cannot find 'SampledInstrument' in scope
-bc7cfd64d402  Guide/36-MakingSound.md:27  cannot find 'synth' in scope
-a4c6b85d290c  Guide/36-MakingSound.md:274  cannot find 'synth' in scope
-bfcc249a217f  Guide/36-MakingSound.md:287  cannot find 'synth' in scope
-e4885e12c6d9  Guide/36-MakingSound.md:295  cannot find 'synth' in scope
-eb91b3aab4b2  Guide/36-MakingSound.md:309  cannot find 'synth' in scope
-fe0d5ce663bc  Guide/36-MakingSound.md:324  cannot find 'synth' in scope
-9ac12f1c52e8  Guide/36-MakingSound.md:350  cannot find 'Synth' in scope
-31cc68e2d94f  Guide/36-MakingSound.md:36  cannot find 'synth' in scope
-10916390e224  Guide/36-MakingSound.md:366  cannot find 'PluckedString' in scope
-953403ae7b45  Guide/36-MakingSound.md:386  cannot find 'Synth' in scope
-9ecff0cac4c8  Guide/36-MakingSound.md:393  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
-2a9797c1f713  Guide/36-MakingSound.md:424  cannot find 'Synth' in scope
-62d10742cdf6  Guide/36-MakingSound.md:449  cannot find 'Synth' in scope
-04d0a43694ed  Guide/36-MakingSound.md:473  cannot find 'Synth' in scope
-a9f545d0863e  Guide/36-MakingSound.md:51  cannot find 'Envelope' in scope
-c28bf884158f  Guide/36-MakingSound.md:59  cannot find 'synth' in scope
-274487214234  Guide/36-MakingSound.md:69  cannot find 'Patch' in scope
-e9461ba978f7  Guide/36-MakingSound.md:97  cannot find 'synth' in scope
-ecff20fec242  Guide/37-MusicByRule.md:103  cannot find 'MarkovChain' in scope
+3dc84979ea9c  Guide/34-Listening.md:367  'module' is inaccessible due to 'internal' protection level
+ad66fc5ac5b5  Guide/34-Listening.md:40  'module' is inaccessible due to 'internal' protection level
+38b204d41c3b  Guide/36-MakingSound.md:194  'module' is inaccessible due to 'internal' protection level
+f941d86cbeeb  Guide/36-MakingSound.md:462  'module' is inaccessible due to 'internal' protection level
+ecff20fec242  Guide/37-MusicByRule.md:103  cannot find 'synth' in scope
 78b2e7562074  Guide/37-MusicByRule.md:114  cannot find 'counter' in scope
-474da14fcc2e  Guide/37-MusicByRule.md:127  cannot find type 'StepSequencer' in scope
+474da14fcc2e  Guide/37-MusicByRule.md:127  cannot find 'tempo' in scope
 872c8e85f6ed  Guide/37-MusicByRule.md:142  cannot find 'drums' in scope
-ba40962cd7f5  Guide/37-MusicByRule.md:156  cannot find 'Arpeggiator' in scope
-c6ba8019c2f9  Guide/37-MusicByRule.md:174  cannot find 'Progression' in scope
-0d78b16c8fe1  Guide/37-MusicByRule.md:19  cannot find 'StepCounter' in scope
-b65e733a615b  Guide/37-MusicByRule.md:194  cannot find 'Progression' in scope
-63e8747a07b2  Guide/37-MusicByRule.md:202  cannot find 'Progression' in scope
-3df4f4621bf6  Guide/37-MusicByRule.md:213  cannot find 'Tuning' in scope
-40a4221ae027  Guide/37-MusicByRule.md:228  cannot find 'BeatFollower' in scope
-7b892f6fda28  Guide/37-MusicByRule.md:251  cannot find 'Sonification' in scope
+ba40962cd7f5  Guide/37-MusicByRule.md:156  cannot find 'midi' in scope
+c6ba8019c2f9  Guide/37-MusicByRule.md:174  cannot find 'counter' in scope
+0d78b16c8fe1  Guide/37-MusicByRule.md:19  cannot find 'synth' in scope
+b65e733a615b  Guide/37-MusicByRule.md:194  cannot convert value of type 'Character?' to expected argument type 'Scale'
+3df4f4621bf6  Guide/37-MusicByRule.md:213  cannot find 'synth' in scope
+40a4221ae027  Guide/37-MusicByRule.md:228  cannot find 'synth' in scope
+7b892f6fda28  Guide/37-MusicByRule.md:251  cannot find 'table' in scope
 d714b78b8487  Guide/37-MusicByRule.md:275  cannot find 'marker' in scope
 6249edb6a06a  Guide/37-MusicByRule.md:289  cannot find 'synth' in scope
-d7575267921f  Guide/37-MusicByRule.md:319  cannot find type 'ScheduledNote' in scope
-9a151b5ea333  Guide/37-MusicByRule.md:333  cannot find 'MIDIFile' in scope
+d7575267921f  Guide/37-MusicByRule.md:319  cannot find 'drums' in scope
+9a151b5ea333  Guide/37-MusicByRule.md:333  'module' is inaccessible due to 'internal' protection level
 b609c9b37692  Guide/37-MusicByRule.md:358  cannot find 'synth' in scope
 2a0c8c084dd7  Guide/37-MusicByRule.md:377  expected '}' in class
-d729b07ab7e8  Guide/37-MusicByRule.md:45  cannot find 'Rhythm' in scope
+d729b07ab7e8  Guide/37-MusicByRule.md:45  failed to produce diagnostic for expression; please submit a bug report (https://swift.org/contributing/#reporting-bugs)
 3d1a3a00857d  Guide/37-MusicByRule.md:466  extraneous '}' at top level
-609b55480d32  Guide/37-MusicByRule.md:59  cannot find type 'Rhythm' in scope
-f6bf8df998ea  Guide/37-MusicByRule.md:65  cannot find 'Scale' in scope
+f6bf8df998ea  Guide/37-MusicByRule.md:65  cannot find 'synth' in scope
 3a6bbc15652e  Guide/37-MusicByRule.md:74  cannot find 'synth' in scope
 31aa7f6ea403  Guide/37-MusicByRule.md:80  value of type 'Character?' has no member 'chord'
-d9a1c473df9d  Guide/37-MusicByRule.md:94  cannot find 'Arpeggio' in scope
+d9a1c473df9d  Guide/37-MusicByRule.md:94  cannot find 'synth' in scope
 de4654592f32  Guide/38-FinishingASketch.md:233  cannot find 'scene' in scope
 8c4c8abbf60d  Guide/38-FinishingASketch.md:315  cannot find 'sketch' in scope
 3e6b653375f4  Guide/38-FinishingASketch.md:335  cannot find 'sketch' in scope
@@ -243,8 +190,8 @@ e873c5d7bcef  Guide/38-FinishingASketch.md:50  cannot find 'MySketch' in scope
 233c9fb903ba  Guide/38-FinishingASketch.md:618  cannot find 'sunBox' in scope
 2cab8d98cd98  Guide/38-FinishingASketch.md:627  cannot find 'x' in scope
 1413e784982d  Guide/39-Performing.md:110  cannot find '$radius' in scope
-c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'TimecodeClock' in scope
-663454403921  Guide/39-Performing.md:191  cannot find 'Timecode' in scope
+c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'midi' in scope
+663454403921  Guide/39-Performing.md:191  cannot find 'timecode' in scope
 30dedeb34bae  Guide/39-Performing.md:202  cannot find '$radius' in scope
 17254b9bfd8a  Guide/39-Performing.md:219  cannot find '$radius' in scope
 7f198c23270e  Guide/39-Performing.md:238  cannot find '$frame' in scope
