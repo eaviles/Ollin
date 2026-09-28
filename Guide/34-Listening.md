@@ -29,7 +29,7 @@ final class Pulse: Sketch {
 }
 ```
 
-Save it as `MySketches/Pulse.swift` and run it with `swift run OllinLive MySketches/Pulse.swift`, like any sketch. macOS asks about the microphone the first time, so say yes, and hum. The circle grows and shrinks with your voice. If it never moves, the reason is usually the permission, and `mic.unavailableReason` then holds a sentence that says so. Every sketch in this chapter has the same shape. You make a source, keep it in a property, start it in `setup()`, and read its values every frame. The steps that follow add richer values to read.
+Save it as `MySketches/Pulse.swift` and run it with `swift run OllinLive MySketches/Pulse.swift`, like any sketch. macOS asks about the microphone the first time, so say yes, and hum. The circle grows and shrinks with your voice. If it never moves, the reason is usually the permission, and `mic.unavailableReason` then holds a sentence that says so. A Mac with no microphone, such as a Mac mini, can listen to a song file or a tone instead, as [Four sources](#four-sources-the-microphone-a-file-a-tone-and-a-video) shows. Every sketch in this chapter has the same shape. You make a source, keep it in a property, start it in `setup()`, and read its values every frame. The steps that follow add richer values to read.
 
 > **Swift note.** `amplitude` is a `Float`, because audio hardware works in 32-bit floats. Drawing wants `Double`, so you'll see `Double(mic.amplitude)` around every audio read. The conversion changes the type and keeps the value.
 
