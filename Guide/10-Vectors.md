@@ -6,7 +6,7 @@
 
 <img src="Images/10-Vectors/Swarm.jpg" alt="A school of hundreds of small colored streaks on a dark canvas, wheeling together in mid-turn as they chase a small white dot, warm orange leaders ahead of cool blue stragglers" width="560">
 
-This chapter teaches vectors: arrows you can add, subtract, scale, and point. Three arrows on one body make a thrown ball arc and bounce. A correction between two of those arrows makes a chaser steer toward a target. A few hundred chasers, each with its own top speed, make the sketch above. The swarm wheels after a wandering lure and comes to your mouse when you press. You have been using vectors since [Chapter 1](01-HelloOllin.md), as the pair of coordinates a call like `drawCircle(center:radius:)` takes. The new part is reading that pair as an arrow.
+A vector is an arrow you can add, subtract, scale, and point. It gives anything in a sketch a position, a speed, and a direction. Three arrows on one body make a thrown ball arc and bounce, and a correction between two of them makes a chaser steer. The swarm above is a few hundred chasers wheeling after a wandering lure, and it comes to your mouse when you press.
 
 ## An arrow you can draw: `Vector2`
 

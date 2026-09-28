@@ -6,7 +6,7 @@
 
 <img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them" width="560">
 
-This chapter teaches creatures that want things, and what happens when a few hundred of them watch only each other. You build one creature that can chase a target, stop at it, and roam on its own, with trails that fade instead of being erased. Then you give every creature the same three rules about its neighbors, which is enough to make the flock above, with nobody in charge. After the sketch come three more crowds run by a rule. Chases draw curves, walkers make room for each other, and fireflies fall into step.
+Give a few hundred creatures something to want, let each watch only its neighbors, and a flock appears with nobody in charge. You build one creature that chases, stops, and roams, then give every creature the same three rules about its neighbors. The flock above leaves trails that fade instead of being erased. Other crowds run by a rule come after it: chases that draw curves, walkers that make room, and fireflies falling into step.
 
 Before we start, one word about names. The field calls these creatures *autonomous agents*, a name from decades before "agent" came to mean software with a chat window. It is the name Daniel Shiffman's chapter on them carries. This guide will say creature, boid, and flock. *Boid* is Craig Reynolds' own word, from the flock he first animated in 1986.
 

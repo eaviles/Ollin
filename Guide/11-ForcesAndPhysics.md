@@ -6,7 +6,7 @@
 
 <img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing into a tower of colored bricks, the bricks it hit shattered into shards flying to the right while the rest of the column leans" width="560">
 
-This chapter teaches forces: the pushes that change a velocity, and what happens when several of them act on one body at once. You write a few by hand first, gravity, wind, and drag, and find out why mass matters. Then you hand the job to a physics world. It holds hundreds of bodies, connects them with springs and hinges, breaks them into pieces, and lets you grab them with the mouse. The wrecking ball above is where it ends up, and you get to knock the tower down yourself. After the sketch come three systems that run on the same forces but need no world. A limb reaches, gravity works at the scale of a galaxy, and a graph lays itself out.
+Forces are the pushes that change a velocity, and a sketch full of them behaves like things in the world. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, and a graph lays itself out, all without a world.
 
 ## A force is a push: adding forces and dividing by mass
 

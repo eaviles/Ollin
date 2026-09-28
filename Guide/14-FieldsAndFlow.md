@@ -6,7 +6,7 @@
 
 <img src="Images/14-FieldsAndFlow/FlowPrint.jpg" alt="A print of flowing ribbons in terracotta, gold, sage, navy, pale blue, and ink on cream, combed across the canvas in curving non-crossing lines of three different widths" width="560">
 
-This chapter teaches the **field**, a question you can ask at every point of the canvas and always get an answer. A field can answer with a number, and noise already does that. A field can answer with a direction instead, and then you get flow. You draw the curves where a number field equals something, and the still lines of a ringing plate. Then you build a direction field, follow it into streamlines, and space the lines evenly. That is how the print above draws itself out of one function. After the print come three more things a field can do. It can carry particles along, brush a whole layer at once, and pass through values you set by hand. The same idea comes back per-pixel in [Chapter 18](18-YourFirstShader.md) and as sculpting material in [Chapter 30](30-SculptingWithFields.md).
+A field is a question you can ask at every point of the canvas, and its answer is a number or a direction. You draw both kinds, from the lines where a number field equals something to streamlines spaced evenly through a direction field. The print at the top draws itself out of one function that way. After it, a field carries particles, combs a whole layer at once, and passes through values you set by hand.
 
 ## Two kinds of field: a number or a direction at every point
 

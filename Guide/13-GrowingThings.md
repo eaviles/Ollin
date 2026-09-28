@@ -6,7 +6,7 @@
 
 <img src="Images/13-GrowingThings/Garden.jpg" alt="A dark garden bed: a pale branching tree with a thick trunk fills the sky, six green fern-like plants stand along the soil, and gray-green lichen sprawls at the ground line" width="560">
 
-This chapter teaches four ways to grow a form from a rule instead of drawing it by hand. A function calls itself, a grammar rewrites a sentence, growth reaches for unclaimed space, and particles wander until they freeze. Everything in the garden above was grown that way. The tree claimed its patch of air branch by branch. The plants were written by a grammar, and the lichen froze into place one walker at a time. After the garden come the other growers. Rules can rewrite shapes instead of letters, and a line can fold because it will not crowd itself. Cracks can make cities, and a river can wander.
+Trees grow branch by branch and frost grows crystal by crystal, and a form in a sketch can grow from a rule the same way. This chapter teaches a function that calls itself, a grammar that rewrites a sentence, growth toward open space, and walkers that freeze where they touch. Everything in the garden above was grown one of those ways. The other growers follow: rules over shapes, a line that folds as it crowds, cracks that make cities, and a river that wanders.
 
 ## A tree from one rule: recursion
 
