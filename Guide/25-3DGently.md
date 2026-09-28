@@ -160,7 +160,7 @@ drawMesh(ball)
 
 > **Swift note.** A semicolon lets two statements share a line. The listings use it for a pair that belongs together, like a stroke color and its weight.
 
-<!-- figure: TrianglesAndNormals, waiting on a render. The same coarse icosphere three times on one floor: the lit solid, its wireframe net, and the solid with a short tube standing out of every vertex along its normal. -->
+<img src="Images/25-3DGently/TrianglesAndNormals.jpg" alt="The same coarse sphere three times on a gray floor against a dark background: a lit coral solid with a many-sided outline, its net of pale blue-gray triangles drawn as see-through lines, and the coral solid again with a short yellow tube standing straight out of every corner" width="680">
 
 The middle ball is the same icosphere as the left one, drawn as its net. A wireframe takes no light, because there is no face to shade. It still takes the depth test, so a solid in front of it hides its lines. `wireframe(false)` goes back to solid, and `withState` scopes it like any other state. It is the look for a form still being worked out, and the finished sketch puts one on a plinth that way.
 

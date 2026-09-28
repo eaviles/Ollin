@@ -87,71 +87,40 @@ cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'Ren
 a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 70e92ab22ab8  Guide/22-IteratedForms.md:455  reference to member 'domainColoring' cannot be resolved without a contextual type
-80235a1dca07  Guide/25-3DGently.md:431  cannot find 'knot' in scope
-0253ea5cf1ea  Guide/25-3DGently.md:99  cannot find 'anchor' in scope
-1a571812c99a  Guide/26-Meshes.md:122  cannot find 'dents' in scope
-a0d4c8d842eb  Guide/26-Meshes.md:138  cannot find 'paint' in scope
-a49346a622b2  Guide/26-Meshes.md:154  cannot find 'ribbon' in scope
-3116ee605b52  Guide/26-Meshes.md:168  cannot find 'base' in scope
-371520eae381  Guide/26-Meshes.md:210  cannot find 'block' in scope
-b0c465e3a91b  Guide/26-Meshes.md:238  cannot find 'ring' in scope
-3bb451e5be2a  Guide/26-Meshes.md:272  cannot find 'growth' in scope
-d861efd8d23b  Guide/26-Meshes.md:287  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
-b842f5f92dc5  Guide/26-Meshes.md:315  cannot find 'grown' in scope
-de16d0d4ea1b  Guide/26-Meshes.md:325  cannot find 'u' in scope
-4b1f9e2f920c  Guide/26-Meshes.md:342  cannot find 'boulder' in scope
-4279c6e5416b  Guide/26-Meshes.md:361  cannot find 'dropPoint' in scope
-dba927805441  Guide/26-Meshes.md:424  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
-12920b7a4e82  Guide/26-Meshes.md:46  cannot find 'stage' in scope
-307ebc159073  Guide/26-Meshes.md:588  expected '}' in class
-cd7cc7722169  Guide/26-Meshes.md:66  cannot find 'stage' in scope
-7deb4e20fcbe  Guide/26-Meshes.md:667  cannot find 'picture' in scope
-02f7d4dd947d  Guide/26-Meshes.md:751  extraneous '}' at top level
-cb73ed16193c  Guide/26-Meshes.md:80  cannot find 'teal' in scope
-db4a3035423c  Guide/26-Meshes.md:92  cannot find 'planks' in scope
-ee027f846921  Guide/27-Landscapes.md:118  cannot find 'island' in scope
-1d1f62235737  Guide/27-Landscapes.md:134  cannot find 'terrain' in scope
-e77cf7b0f42e  Guide/27-Landscapes.md:144  cannot find 'stone' in scope
-bd8e3b53904b  Guide/27-Landscapes.md:194  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+a0d4c8d842eb  Guide/26-Meshes.md:111  cannot find 'paint' in scope
+a49346a622b2  Guide/26-Meshes.md:127  cannot find 'ribbon' in scope
+3116ee605b52  Guide/26-Meshes.md:141  cannot find 'base' in scope
+b842f5f92dc5  Guide/26-Meshes.md:166  cannot find 'grown' in scope
+de16d0d4ea1b  Guide/26-Meshes.md:176  cannot find 'u' in scope
+4b1f9e2f920c  Guide/26-Meshes.md:193  cannot find 'boulder' in scope
+4279c6e5416b  Guide/26-Meshes.md:212  cannot find 'dropPoint' in scope
+5590a3024691  Guide/26-Meshes.md:243  cannot find 'ball' in scope
+b0e7c799f2b4  Guide/26-Meshes.md:390  expected '}' in class
+cb73ed16193c  Guide/26-Meshes.md:46  cannot find 'teal' in scope
+7deb4e20fcbe  Guide/26-Meshes.md:471  cannot find 'picture' in scope
+79deeb21380c  Guide/26-Meshes.md:557  extraneous '}' at top level
+db4a3035423c  Guide/26-Meshes.md:56  cannot find 'planks' in scope
+12920b7a4e82  Guide/26-Meshes.md:670  cannot find 'stage' in scope
+cd7cc7722169  Guide/26-Meshes.md:687  cannot find 'stage' in scope
+371520eae381  Guide/26-Meshes.md:732  cannot find 'block' in scope
+b0c465e3a91b  Guide/26-Meshes.md:762  cannot find 'ring' in scope
+3bb451e5be2a  Guide/26-Meshes.md:781  cannot find 'growth' in scope
+4ddb6b362826  Guide/26-Meshes.md:794  cannot find 'ball' in scope
+1a571812c99a  Guide/26-Meshes.md:95  cannot find 'dents' in scope
+1d1f62235737  Guide/27-Landscapes.md:107  cannot find 'terrain' in scope
+e77cf7b0f42e  Guide/27-Landscapes.md:117  cannot find 'stone' in scope
+bd8e3b53904b  Guide/27-Landscapes.md:142  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+46ca4464bac9  Guide/27-Landscapes.md:163  expected '}' in class
+ed46b0988c49  Guide/27-Landscapes.md:245  cannot find 'floorLevel' in scope
 6829f7c2ee58  Guide/27-Landscapes.md:26  cannot find 'land' in scope
-7870f41dc935  Guide/27-Landscapes.md:265  expected '}' in class
-3b1201986a57  Guide/27-Landscapes.md:360  cannot find 'floorLevel' in scope
-14d659f831c0  Guide/27-Landscapes.md:449  extraneous '}' at top level
-aa64d41ba1be  Guide/27-Landscapes.md:51  cannot find 'land' in scope
-6bdcc431cbc1  Guide/27-Landscapes.md:84  cannot find 'seats' in scope
-cd0f0f69c325  Guide/28-WorldsWithWeight.md:105  cannot find 'world' in scope
-99a0c1ff5b77  Guide/28-WorldsWithWeight.md:115  cannot find 'world' in scope
-54e6d3c815bf  Guide/28-WorldsWithWeight.md:121  cannot find 'world' in scope
-c5dc3aae037a  Guide/28-WorldsWithWeight.md:129  cannot find 'world' in scope
-a4b6120dd295  Guide/28-WorldsWithWeight.md:154  cannot find 'world' in scope
-9c1159cb5e18  Guide/28-WorldsWithWeight.md:171  cannot find 'world' in scope
-64438bffe2e9  Guide/28-WorldsWithWeight.md:179  cannot find 'world' in scope
-333905130c99  Guide/28-WorldsWithWeight.md:198  cannot find 'world' in scope
-5dddaa709201  Guide/28-WorldsWithWeight.md:210  cannot infer contextual base in reference to member 'all'
-b305e0f4ce6c  Guide/28-WorldsWithWeight.md:224  cannot find 'balloon' in scope
-7b5c31a31969  Guide/28-WorldsWithWeight.md:231  cannot find 'world' in scope
-20b6418d59d1  Guide/28-WorldsWithWeight.md:252  cannot find 'world' in scope
-0892beefa7fd  Guide/28-WorldsWithWeight.md:264  cannot find 'world' in scope
-054b725adae3  Guide/28-WorldsWithWeight.md:278  cannot find 'world' in scope
-2778035405b2  Guide/28-WorldsWithWeight.md:288  cannot find 'world' in scope
-c8a850499702  Guide/28-WorldsWithWeight.md:296  cannot find 'world' in scope
-6956f0177b2a  Guide/28-WorldsWithWeight.md:308  cannot find 'world' in scope
-2d71305deb04  Guide/28-WorldsWithWeight.md:320  cannot find 'world' in scope
-c1d064a61c06  Guide/28-WorldsWithWeight.md:333  cannot find 'world' in scope
-bde99013cfce  Guide/28-WorldsWithWeight.md:356  cannot find 'world' in scope
-305625ddd502  Guide/28-WorldsWithWeight.md:362  cannot find 'world' in scope
-e9e7d437b032  Guide/28-WorldsWithWeight.md:379  cannot find 'world' in scope
-33a974af7d19  Guide/28-WorldsWithWeight.md:387  cannot find 'world' in scope
-fabc52d54518  Guide/28-WorldsWithWeight.md:394  cannot find 'world' in scope
-0527357b2c2d  Guide/28-WorldsWithWeight.md:412  cannot find 'world' in scope
-4f6760cecf7f  Guide/28-WorldsWithWeight.md:423  cannot find 'world' in scope
-c0fe9fc2affa  Guide/28-WorldsWithWeight.md:438  cannot find 'world' in scope
-7c7b55ec1557  Guide/28-WorldsWithWeight.md:446  cannot find 'world' in scope
-3ed94d1d9046  Guide/28-WorldsWithWeight.md:474  cannot find 'island' in scope
-56811a58d088  Guide/28-WorldsWithWeight.md:480  cannot find 'world' in scope
-2131a6413b67  Guide/28-WorldsWithWeight.md:50  cannot find 'world' in scope
-7e311cd3cc0e  Guide/28-WorldsWithWeight.md:70  cannot find 'world' in scope
-915388d15d13  Guide/28-WorldsWithWeight.md:81  cannot find 'world' in scope
+14d659f831c0  Guide/27-Landscapes.md:337  extraneous '}' at top level
+f2ec3a59a96c  Guide/27-Landscapes.md:405  cannot find 'weathered' in scope
+e25df8430b7c  Guide/27-Landscapes.md:55  cannot find 'seats' in scope
+ee027f846921  Guide/27-Landscapes.md:91  cannot find 'island' in scope
+5dddaa709201  Guide/28-WorldsWithWeight.md:415  cannot infer contextual base in reference to member 'all'
+f192418e7342  Guide/28-WorldsWithWeight.md:520  errors thrown from here are not handled
+c0fe9fc2affa  Guide/28-WorldsWithWeight.md:636  errors thrown from here are not handled
+56811a58d088  Guide/28-WorldsWithWeight.md:680  errors thrown from here are not handled
 ea4e7ee754d4  Guide/29-CharactersAndCloth.md:105  cannot find 'wheel' in scope
 9fbaf34ee0ea  Guide/29-CharactersAndCloth.md:120  cannot find 'world' in scope
 022caa8e92db  Guide/29-CharactersAndCloth.md:137  cannot find 'crawler' in scope
@@ -331,7 +300,7 @@ c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'TimecodeClock' in scope
 30dedeb34bae  Guide/39-Performing.md:202  cannot find '$radius' in scope
 17254b9bfd8a  Guide/39-Performing.md:219  cannot find '$radius' in scope
 7f198c23270e  Guide/39-Performing.md:238  cannot find '$frame' in scope
-9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  @objc attribute used without importing module 'Foundation'
+9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  cannot find 'Ripple' in scope
 93d908a1e153  Guide/40-HandingItOver.md:406  cannot find 'MyWatermark' in scope
 0eaa18b2ae73  Guide/40-HandingItOver.md:434  cannot find 'points' in scope
 dc5f30a6160e  Guide/41-Installations.md:213  cannot find type 'Tile' in scope

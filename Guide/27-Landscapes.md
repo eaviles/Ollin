@@ -238,7 +238,7 @@ final class Valley: Sketch {
 
 ```
 
-The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and scores each spot by how much level ground surrounds it. Where the camera stands is something the terrain decides. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. So the shot faces lit land rather than a silhouette. `dressTheLand` scatters four hundred thousand spots over the land mesh with `surfacePoints`, by area, and passes `scatter: .random`. At this density the pines overlap into one canopy anyway, and the even spacing would cost several times as much. It keeps the spots that landed somewhere a pine or a boulder belongs, and a spot's normal says how steep the ground is there. Nothing grows on the flood plain or within 42 units of the clearing. Pines take the gentle mid slopes, and stones collect where it is steep.
+The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and scores each spot by how much level ground surrounds it. Where the camera stands is something the terrain decides. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. So the shot faces lit land rather than a silhouette. `dressTheLand` scatters four hundred thousand spots over the land mesh with `surfacePoints`, by area, and passes `scatter: .random`. At this density the pines overlap into one canopy anyway, and the even spacing would take far longer to work out. It keeps the spots that landed somewhere a pine or a boulder belongs, and a spot's normal says how steep the ground is there. Nothing grows on the flood plain or within 42 units of the clearing. Pines take the gentle mid slopes, and stones collect where it is steep.
 
 The trees near the camera are kept in a list of their own, because they are the ones the wind has to move. They come from darts thrown in a disc around the clearing, since they have to stand near the camera rather than all over the land. They skip steep ground too. The square root of `random(1)` as the distance spreads the darts evenly over the disc. A plain `random` would crowd them at its center.
 
@@ -294,7 +294,7 @@ The trees near the camera are kept in a list of their own, because they are the 
         // Spots spread by area over the land's own surface, then kept or passed
         // over by what the ground does there. A spot's normal says how steep it is.
         // At this density the pines overlap anyway, so the cheap random scatter
-        // serves, where blue noise would cost several times as much.
+        // serves, where blue noise would take far longer.
         for spot in surfacePoints(on: land, count: 400_000, scatter: .random) {
             let p = spot.position
             // Nothing grows on the flood plain, and nothing grows on bare rock.

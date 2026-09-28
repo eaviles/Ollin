@@ -137,7 +137,7 @@ final class Valley: Sketch {
         // Spots spread by area over the land's own surface, then kept or passed
         // over by what the ground does there. A spot's normal says how steep it is.
         // At this density the pines overlap anyway, so the cheap random scatter
-        // serves, where blue noise would cost several times as much.
+        // serves, where blue noise would take far longer.
         for spot in surfacePoints(on: land, count: 400_000, scatter: .random) {
             let p = spot.position
             // Nothing grows on the flood plain, and nothing grows on bare rock.
