@@ -102,6 +102,9 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed; `PushFeed` holds a connection open for messages that arrive on their own | [Ch 35](35-ControlsAndSignals.md) | [LiveData](../Docs/Helpers/LiveData.md) |
 | The weather outside | `Weather` reads the sky over a place or a name in plain units, and `Place.sun(at:)` puts the sun where the clock says | [Ch 35](35-ControlsAndSignals.md) | [Weather](../Docs/Helpers/Weather.md) |
 | Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 20](20-PicturesRestyled.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Lens distortion | A layer bent into a barrel or a pincushion by a real lens's radial model, the corners left empty or the frame kept full, the `.lensDistortion` filter | [Ch 20](20-PicturesRestyled.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Corner pin | A layer laid onto four points with its straight lines kept, the `.cornerPin` filter, the same map installation mode fits a projector with | [Ch 20](20-PicturesRestyled.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Channel mixer | Every channel of a layer weighed from all four and an offset through a `ColorMatrix`, for a gray to a recipe or two channels traded, the `.channelMixer` filter | [Ch 20](20-PicturesRestyled.md) | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold
 

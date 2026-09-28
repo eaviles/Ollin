@@ -401,6 +401,65 @@ import OllinWebGate
         }
     }
 
+    /// Colored discs in a half-transparent layer through a channel mixer that
+    /// trades red for green and lifts blue: five rows of matrix.
+    final class Mixed: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                noStroke()
+                fill(Color(hex: 0xE84A5F)); drawCircle(40, 40, 24)
+                fill(Color(hex: 0x2A9D8F, alpha: 0.6)); drawCircle(80, 70, 28 + sin(time) * 4)
+                fill(Color(hex: 0xF4A261)); drawCircle(40, 88, 16)
+            }
+            let mix = ColorMatrix(red: [0, 1, 0], green: [1, 0, 0], blue: [0, 0, 1, 0, 0.05])
+            drawImage(layer.filtered(.channelMixer(mix)).image, 0, 0)
+        }
+    }
+
+    /// A grid through a lens distortion that breathes between a barrel and a
+    /// pincushion, filled on the way in, so the page runs both the model and
+    /// the CPU's scale.
+    final class Distorted: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                background(Color(hex: 0xEDE6D6))
+                stroke(Color(hex: 0x2B2D42)); strokeWeight(3); noFill()
+                for i in 1 ..< 6 {
+                    let g = Double(i) * 20
+                    drawLine(g, 0, g, 120); drawLine(0, g, 120, g)
+                }
+            }
+            let amount = 0.35 * sin(time * 1.3)
+            drawImage(layer.filtered(.lensDistortion(amount: amount, quartic: 0.1,
+                                                     fillsFrame: amount < 0)).image, 0, 0)
+        }
+    }
+
+    /// A striped layer pinned onto four points, one of them on the move.
+    final class Pinned: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                background(Color(hex: 0xF6C453))
+                noStroke(); fill(Color(hex: 0x1D3557))
+                for i in 0 ..< 4 { drawRect(0, Double(i) * 30 + 8, 120, 12) }
+                fill(Color(hex: 0xE63946)); drawCircle(30, 30, 10)
+            }
+            drawImage(layer.filtered(.cornerPin(topLeft: Vector2(0.15, 0.1),
+                                                topRight: Vector2(0.9, 0.2 + 0.1 * sin(time)),
+                                                bottomRight: Vector2(0.8, 0.85),
+                                                bottomLeft: Vector2(0.1, 0.9))).image, 0, 0)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -646,6 +705,9 @@ import OllinWebGate
             ("Posted", { Posted() }, 4, 2),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
             ("Filmed", { Filmed() }, 4, 2),
+            ("Mixed", { Mixed() }, 4, 2),
+            ("Distorted", { Distorted() }, 6, 4),
+            ("Pinned", { Pinned() }, 4, 2),
         ]
         var worst: [String] = []
         for c in cases {

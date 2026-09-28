@@ -3226,6 +3226,18 @@ struct ColorLUT: Equatable, Sendable
     let problem: String
     var description: String { get }
   var cubeText: String { get }
+struct ColorMatrix: Equatable, Sendable
+  enum Channel: CaseIterable, Equatable, Hashable, Sendable
+    case alpha
+    case blue
+    case green
+    case red
+  init(red: [Double] = default, green: [Double] = default, blue: [Double] = default, alpha: [Double] = default)
+  let values: [Double]
+  static func gray(red: Double = default, green: Double = default, blue: Double = default) -> ColorMatrix
+  static func swapping(_: ColorMatrix.Channel, _: ColorMatrix.Channel) -> ColorMatrix
+  static let gray: ColorMatrix
+  static let identity: ColorMatrix
 struct ColorVision: Equatable, Hashable, Sendable
   enum Kind: String, ParamOption, ParamValue, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
     case deuteranomaly
@@ -3764,12 +3776,14 @@ struct Filter: Sendable
   static func boxBlur(radius: Double = default) -> Filter
   static func brushwork(radius: Double = default, stretch: Double = default, sharpness: Double = default) -> Filter
   static func bulge(amount: Double = default, radius: Double = default, center: Vector2 = default) -> Filter
+  static func channelMixer(_: ColorMatrix) -> Filter
   static func chromaticAberration(amount: Double = default, mode: Filter.Dispersion = default, spectral: Bool = default, quality: RenderQuality = default) -> Filter
   static func cmykHalftone(scale: Double = default) -> Filter
   static func colorGrade(brightness: Double = default, contrast: Double = default, saturation: Double = default, hue: Double = default) -> Filter
   static func colorVision(_: ColorVision) -> Filter
   static func colorama(cycles: Double = default, shift: Double = default) -> Filter
   static func contour(levels: Double = default, amount: Double = default) -> Filter
+  static func cornerPin(topLeft: Vector2 = default, topRight: Vector2 = default, bottomRight: Vector2 = default, bottomLeft: Vector2 = default) -> Filter
   static func crosshatch(scale: Double = default, foreground: Color = default, background: Color = default) -> Filter
   static func crt(curvature: Double = default, scanline: Double = default, aberration: Double = default) -> Filter
   static func develop(exposure: Double = default, ground: Color = default) -> Filter
@@ -3803,6 +3817,7 @@ struct Filter: Sendable
   static func invert(amount: Double = default) -> Filter
   static func iridescence(amount: Double = default, scale: Double = default, bands: Double = default, shift: Double = default) -> Filter
   static func kaleidoscope(segments: Double = default, angle: Double = default) -> Filter
+  static func lensDistortion(amount: Double = default, quartic: Double = default, center: Vector2 = default, fillsFrame: Bool = default) -> Filter
   static func levels(blackPoint: Double = default, whitePoint: Double = default, gamma: Double = default) -> Filter
   static func lineScreen(scale: Double = default, softness: Double = default, angle: Double = default, foreground: Color = default, background: Color = default) -> Filter
   static func liquidMetal(repetition: Double = default, softness: Double = default, dispersion: Double = default, distortion: Double = default, contour: Double = default, angle: Double = default, tint: Color = default, phase: Double = default) -> Filter

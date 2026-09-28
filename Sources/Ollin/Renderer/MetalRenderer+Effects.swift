@@ -825,6 +825,7 @@ extension MetalRenderer {
              .contour, .cmykHalftone, .normalMap, .relight, .iridescence, .glitter,
              .thinFilm, .diffraction, .scanlines, .glitch, .crt, .kaleidoscope, .swirl,
              .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
+             .lensDistortion, .cornerPin, .channelMixer,
              .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows:
             return nil
         }

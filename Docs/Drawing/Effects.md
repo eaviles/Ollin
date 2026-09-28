@@ -144,6 +144,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.posterize(levels:)`** quantize each channel to flat steps, for the banding of a screen print.
 - **`.threshold(_:softness:)`** cut the layer to two tones at a brightness, where `softness` widens the edge.
 - **`.sepia(amount:)`** a warm monochrome tone, blended by `amount`.
+- **`.channelMixer(_:)`** every channel of the result is a weighted sum of the input's red, green, blue, and alpha plus an offset, read off a `ColorMatrix`: the channel mixer of a photo tool, with the alpha row in play too. `ColorMatrix.gray` mixes the display's own gray (the BT.709 weights, in linear light), `ColorMatrix.gray(red:green:blue:)` a gray to a recipe (a black-and-white photographer's red filter is `gray(red: 0.6, green: 0.3, blue: 0.1)`), `ColorMatrix.swapping(_:_:)` trades two channels named by `ColorMatrix.Channel` (`.red`, `.green`, `.blue`, `.alpha`), and `ColorMatrix.identity` changes nothing. A matrix built by hand is `ColorMatrix(red:green:blue:alpha:)`, one row per output channel, each `[r, g, b, a, offset]`; a row left out keeps its channel, a short row reads its missing entries as zero, and `values` holds the twenty numbers row by row. The multiply runs in linear light on the straight color, so a half-transparent layer keeps its edges, and the identity matrix changes no byte. It crosses to the [web page](../Output/Web.md).
 - **`.duotone(dark:light:amount:)`** map luminance between two colors (shadows → `dark`, highlights → `light`).
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](../Drawing/Color.md) or [`Colormap`](../Drawing/Color.md) (viridis, magma, turbo, …). It is a fast way to recolor a grayscale field or a whole scene.
 - **`.lut(_:amount:)`** move every color through a [`ColorLUT`](./Looks.md), the table a grading tool exports as a `.cube` file (a film look, a grade, a print emulation) or one built in code. The table is read on the encoded picture, a cube by tetrahedral interpolation, and `amount` fades it in. A curves table crosses to the [web page](../Output/Web.md); a cube stays with video. See [Looks](./Looks.md).
@@ -159,6 +160,8 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 
 ```swift
 layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
+layer.filtered(.channelMixer(.swapping(.red, .blue)))
+layer.filtered(.channelMixer(ColorMatrix(red: [1, 0, 0, 0, 0.1], blue: [0, 0, 0.8])))
 layer.filtered(.gradientMap(.turbo))
 layer.filtered(.lut(.warmPrint, amount: 0.8))
 layer.filtered(.levels(blackPoint: 0.08, whitePoint: 0.92, gamma: 1.4))
@@ -258,12 +261,16 @@ The three radial warps take an optional `center` in fractions of the layer, meas
 - **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates, a tunnel or fold.
 - **`.tile(count:mirrored:)`** repeat the image in a `count`×`count` grid, and `mirrored` flips alternate cells for a seamless tiling.
 - **`.perturb(amount:scale:phase:)`** warp the image by its own internal fbm noise, with no map needed, for a smoky heat-haze ripple.
+- **`.lensDistortion(amount:quartic:center:fillsFrame:)`** the radial distortion of a real lens, the Brown-Conrady model with two coefficients. A point at a distance `r` from `center`, with `r` a fraction of the distance to the farthest corner, reads the layer at `r × (1 + amount × r² + quartic × r⁴)`. Above zero, `amount` is a barrel: straight lines bow outward, the corners read past the layer's edge, and what read past it is left transparent, with a pixel of fade at the rim. Below zero it is a pincushion: lines bow inward and the corners pull in. `quartic` bends the corners while leaving the middle alone, and the two together fit a measured lens. `fillsFrame: true` scales the read so no empty border shows, which costs the outermost picture. Zero coefficients change no byte. It crosses to the [web page](../Output/Web.md).
+- **`.cornerPin(topLeft:topRight:bottomRight:bottomLeft:)`** lay the layer onto four points: its corners land on them and every point between follows, so straight lines stay straight while parallel edges may meet, as a picture thrown onto a wall from an angle does. The points are in fractions of the layer (top-left origin), clockwise from the top left, and each defaults to its own corner, so moving one corner is one argument. Outside the four points the result is transparent, with a pixel of fade at the outline. Four points with no area between them (three in a line, two on top of each other, a bow tie) show nothing, and the unit square pinned to itself changes no byte. It is the map [installation mode's projection](../Output/Installation.md) runs on the whole output, here for one layer. It crosses to the [web page](../Output/Web.md).
 - **`.droste(inner:twist:zoom:center:angle:)`** put the picture inside itself, without end. The ring between `inner` and the layer's edge repeats at every scale. So a smaller copy of the picture sits in the middle of it, with a smaller copy inside that one. `inner` is the radius of the hole, which is also how much smaller each copy is. `twist` is how many copies one turn around the middle steps down. `0` leaves plain concentric rings, `1` winds them into the single spiral of the Escher construction, and a negative value winds it the other way. `zoom` slides the picture into itself in copies, so `zoom: time * 0.2` is an endless fall that loops exactly every five seconds. The join between one copy and the next shows unless the picture is made for it. Keep the content clear of both edges of the ring, or let the ring end on flat color at each end.
 
 ```swift
 layer.filtered(.kaleidoscope(segments: 8))
 layer.filtered(.swirl(angle: 3, radius: 0.6))
 layer.filtered(.droste(inner: 0.4, twist: 1, zoom: time * 0.2))
+layer.filtered(.lensDistortion(amount: 0.3, fillsFrame: true))
+layer.filtered(.cornerPin(topRight: Vector2(0.9, 0.15), bottomRight: Vector2(0.85, 0.8)))
 postProcess(.ripple(amplitude: 0.02, frequency: 12, phase: time * 3))
 ```
 

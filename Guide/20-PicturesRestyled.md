@@ -175,6 +175,27 @@ The idea is easier than the picture looks. Take the ring between `inner` and the
 
 One thing to design for. The filter reads a ring, and the outer edge of that ring has to meet the inner edge of the next copy along. If your content runs to both edges, the join shows up as a hard circle. Keep the content clear of both, or let the ring end on flat color at each end. The layer in the figure does the second thing: plain dark ground inside and outside, windows only in between.
 
+## Through a lens, onto a wall, and through a mixer
+
+Three more filters take one poster somewhere else. Two of them are warps with a physical model behind them, and the third is the color tool a darkroom printer would ask for first.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/20-PicturesRestyled/LensPinMixer-dark.jpg">
+  <img src="Images/20-PicturesRestyled/LensPinMixer.jpg" alt="Three panels from one poster of colored bars with a grid and two discs: the poster bent into a barrel with its straight lines bowing outward and its corners left empty, the poster laid onto four points so its right edge leans and two edges converge, and the poster printed as a monochrome in which the red bars come out light and the blue bars dark" width="680">
+</picture>
+
+```swift
+layer.filtered(.lensDistortion(amount: 0.3, quartic: 0.1))
+layer.filtered(.cornerPin(topRight: Vector2(0.9, 0.2), bottomRight: Vector2(0.95, 0.9)))
+layer.filtered(.channelMixer(.gray(red: 0.7, green: 0.2, blue: 0.1)))
+```
+
+**`.lensDistortion` bends the picture the way a real lens does.** A point some distance from the center reads the layer a little further out than itself. The factor grows with the square of that distance. That one rule is the radial part of the lens model photogrammetry fits to real glass, and it makes straight lines bow. A positive `amount` is a barrel, in the first panel. The lines bow outward, and the corners read past the layer's edge, so they come back empty. A negative amount is a pincushion. The lines bow inward and the corners pull in from the edge. `quartic` adds a second term that grows with the fourth power of the distance. It bends the corners and leaves the middle alone. The empty corners are honest, and sometimes what you want. When they are not, `fillsFrame: true` scales the read so the frame stays full, at the cost of the outermost strip of the picture.
+
+**`.cornerPin` lays the picture onto four points.** Give it where the four corners should land, in `0...1` layer coordinates, and every point between follows. Straight lines stay straight, and parallel edges may meet, the way a picture thrown onto a wall from an angle does. Each corner defaults to its own place, so moving one is one argument. In the second panel the right edge leans away and the top and bottom edges converge toward it. Outside the four points the layer is not there at all. [Installation mode](../Docs/Output/Installation.md) runs the same map over the whole output to fit a projector to a wall. Here it runs over one layer at a time. That is how you put a picture into a picture in perspective: a poster on a drawn wall, a screen inside a drawn room.
+
+**`.channelMixer` weighs every channel from all of them.** A `ColorMatrix` has a row for each output channel. The row says how much of the input's red, green, blue, and alpha goes into it, plus a number added at the end. `ColorMatrix.gray` is the gray a display makes, and `.gray(red:green:blue:)` is a gray mixed to your own recipe. The third panel is a red filter's monochrome, with red weighted heavily and blue hardly at all. The red bars come out light and the blue ones dark. That is what a black-and-white photographer's red filter does to a sky. `.swapping(.red, .blue)` trades two channels. A matrix built by hand does the rest, one row per channel. `ColorMatrix(red: [1, 0, 0, 0, 0.1])` lifts red by a tenth and leaves the other channels as they were. The arithmetic runs in linear light. An offset of a tenth is a tenth of the light, not a tenth of the code value.
+
 ## One filter, five pictures: chromatic aberration
 
 Most filters have a strength parameter. Chromatic aberration has a strength parameter and a **mode**, and the modes are not one look at five strengths. They are five different pictures.

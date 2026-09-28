@@ -591,6 +591,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("film-look",
                  note: "One night scene (a lamp and a moon over a sky ramp and a lit facade) read four ways: as drawn, through halation, through film grain, and through both. Pins the bright pass and blur shared with bloom, the halation add-back landing only where each channel has room (the lamp's core stays white, its ring is warm), the grain's tone weighting (none on the black sky or the white core, most on the facade), its spread normalization across the cell, and the seed's pattern. No rng and no time, so it is deterministic.",
                  make: { FilmLookScene() }),
+    SnapshotCase("lens-pin-mixer",
+                 note: "One poster (bars of color, a grid, and two discs, one half transparent) read four ways: as drawn, through a barrel lens distortion with its corners left empty, through a corner pin with two edges converging, and through a channel mixer that trades red for blue and lifts green. Pins the Brown-Conrady read and the transparent rim it leaves, the square-to-quadrilateral map and the fade at its outline, and the matrix over straight linear color under a half-transparent disc. No rng and no time, so it is deterministic.",
+                 make: { LensPinMixerScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -4263,6 +4266,43 @@ private final class FilmLookScene: Sketch {
         drawImage(layer.filtered(halation).image, in: panel(1))
         drawImage(layer.filtered(grain).image, in: panel(2))
         drawImage(layer.filtered(halation).filtered(grain).image, in: panel(3))
+    }
+}
+
+/// One poster read four ways at fixed values (no time, no random): as drawn,
+/// through a barrel lens distortion, through a corner pin, and through a
+/// channel mixer.
+private final class LensPinMixerScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.08))
+        let layer = makeRenderTarget(width: 128, height: 128)
+        withTarget(layer) {
+            noStroke()
+            let bars: [UInt32] = [0xE63946, 0xF1FAEE, 0xA8DADC, 0x457B9D, 0x1D3557, 0xF4A261]
+            for (i, hex) in bars.enumerated() {
+                fill(Color(hex: hex)); drawRect(0, Double(i) * 128 / 6, 128, 128 / 6 + 1)
+            }
+            stroke(Color(white: 0.1, alpha: 0.7)); strokeWeight(2); noFill()
+            for i in 1 ..< 4 {
+                let g = Double(i) * 32
+                drawLine(g, 0, g, 128); drawLine(0, g, 128, g)
+            }
+            noStroke()
+            fill(Color(red: 1, green: 0.9, blue: 0.2)); drawCircle(40, 44, 18)
+            fill(Color(red: 0.2, green: 0.9, blue: 0.5, alpha: 0.5)); drawCircle(88, 84, 22)
+        }
+        func panel(_ index: Int) -> Rectangle {
+            Rectangle(x: Double(index % 2) * 128, y: Double(index / 2) * 128, width: 128, height: 128)
+        }
+        drawImage(layer.image, in: panel(0))
+        drawImage(layer.filtered(.lensDistortion(amount: 0.35, quartic: 0.1)).image, in: panel(1))
+        drawImage(layer.filtered(.cornerPin(topLeft: Vector2(0.15, 0.12), topRight: Vector2(0.82, 0.2),
+                                            bottomRight: Vector2(0.95, 0.9),
+                                            bottomLeft: Vector2(0.05, 0.8))).image, in: panel(2))
+        drawImage(layer.filtered(.channelMixer(ColorMatrix(red: [0, 0, 1], green: [0, 1, 0, 0, 0.08],
+                                                           blue: [1, 0, 0]))).image, in: panel(3))
     }
 }
 

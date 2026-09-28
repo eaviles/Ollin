@@ -5004,23 +5004,24 @@
     "Effects/FilterCatalog": {
       "width": 1080,
       "height": 1080,
-      "length": "10s",
+      "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
       "motion": 1.238,
       "sound": false,
-      "source": "774fbbdd2c720f7d",
-      "rendered": "2026-09-13",
+      "source": "43be96d60ca97e6a",
+      "rendered": "2026-09-27",
       "bytes": {
         "loop": 1587044,
-        "loopSmall": 596135,
+        "loopSmall": 596660,
         "still": 309517,
         "stillSmall": 117561
       },
       "loop": "examples/Effects/FilterCatalog/loop.mp4?v=82e1891a",
-      "loopSmall": "examples/Effects/FilterCatalog/loop-640.mp4?v=ffe239f6",
+      "loopSmall": "examples/Effects/FilterCatalog/loop-640.mp4?v=d2d6532d",
       "still": "examples/Effects/FilterCatalog/still.jpg?v=1125de20",
-      "stillSmall": "examples/Effects/FilterCatalog/still-640.jpg?v=a55061dd"
+      "stillSmall": "examples/Effects/FilterCatalog/still-640.jpg?v=a55061dd",
+      "seed": 1
     },
     "Effects/FlowStreaks": {
       "bytes": {

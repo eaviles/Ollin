@@ -295,15 +295,15 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
 f9dd3d125f11  Docs/Drawing/Effects.md:107  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 8528c8e05574  Docs/Drawing/Effects.md:133  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-0070bfefdb14  Docs/Drawing/Effects.md:160  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:221  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:240  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-c30f287a209e  Docs/Drawing/Effects.md:263  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:322  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:571  cannot find 'horizon' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:607  cannot find 'marks' in scope
-63ea4c842664  Docs/Drawing/Effects.md:937  cannot find 'photo' in scope
+287a7fa55e41  Docs/Drawing/Effects.md:161  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:224  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:243  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+0cf1d8be56d4  Docs/Drawing/Effects.md:268  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:329  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:578  cannot find 'horizon' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:614  cannot find 'marks' in scope
 09c8e57cb7b7  Docs/Drawing/Effects.md:94  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+63ea4c842664  Docs/Drawing/Effects.md:944  cannot find 'photo' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator

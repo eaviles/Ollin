@@ -76,6 +76,8 @@ extension Filter {
             let m = vision.matrix
             return pass("ollin_fx_color_vision",
                         [f(m[0], m[1], m[2], 0), f(m[3], m[4], m[5], 0), f(m[6], m[7], m[8], 0)])
+        case .channelMixer(let rows):
+            return pass("ollin_fx_channel_mixer", rows)
         case let .duotone(dark, light, amount):
             return pass("ollin_fx_duotone", [f(amount, 0, 0, 0), dark, light])
         case let .gradientMap(lut, amount):
@@ -241,6 +243,45 @@ extension Filter {
         case let .perturb(amount, scale, phase):
             return pass("ollin_fx_perturb",
                         [SIMD4(Float(amount), Float(scale), Float(phase), aspect)])
+        case let .lensDistortion(amount, quartic, center, fillsFrame):
+            // Distances are measured in a space where the layer is `aspect` wide
+            // and 1 tall, so the distortion stays round, and as a fraction of
+            // the distance from the center to the farthest corner, so `amount`
+            // reads as that corner's displacement whatever the layer's shape.
+            let stretched = { (p: Vector2) in Vector2((p.x - center.x) * Double(aspect), p.y - center.y) }
+            let corners = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+            let far = max(corners.map { stretched($0).length }.max() ?? 1, 1e-6)
+            let near = max(0, min(center.x * Double(aspect), (1 - center.x) * Double(aspect),
+                                  center.y, 1 - center.y)) / far
+            // The frame stays full when every point of the output's edge reads
+            // at or inside the layer's edge: the read lies on the ray from the
+            // center at `factor` times the way out, so the scale is one over
+            // the largest factor anywhere on the boundary. The factor is a
+            // quadratic in the squared distance, whose range over the boundary
+            // is `near²…1`, so the largest is at an end of that range or at the
+            // quadratic's own top when it has one inside the range.
+            var scale = 1.0
+            if fillsFrame {
+                let g = { (t: Double) in 1 + amount * t + quartic * t * t }
+                var candidates = [near * near, 1]
+                if quartic < 0 {
+                    let top = -amount / (2 * quartic)
+                    if top > near * near && top < 1 { candidates.append(top) }
+                }
+                if let largest = candidates.map(g).max(), largest > 1e-6 { scale = 1 / largest }
+            }
+            return pass("ollin_fx_lens_distortion",
+                        [SIMD4(Float(amount), Float(quartic), aspect, Float(scale)),
+                         SIMD4(Float(center.x), Float(center.y), Float(far), 0)])
+        case let .cornerPin(topLeft, topRight, bottomRight, bottomLeft):
+            // The fragment starts from where it is on the output and asks which
+            // point of the layer belongs there, so it carries the map read
+            // backwards; a pin with no area has no such map and arrives as
+            // zeros, which the fragment reads as nothing to draw.
+            let m = Homography(unitSquareTo: topLeft, topRight, bottomRight, bottomLeft)?
+                .shaderInverse ?? simd_float3x3(0)
+            return pass("ollin_fx_corner_pin",
+                        [SIMD4(m.columns.0, 0), SIMD4(m.columns.1, 0), SIMD4(m.columns.2, 0)])
 
         // Design filters that read the layer alone.
         case let .flutedGlass(flutes, shape, profile, distortion, shift, stretch,

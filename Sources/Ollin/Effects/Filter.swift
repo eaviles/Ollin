@@ -169,6 +169,9 @@ public struct Filter: Sendable {
         case sepia(amount: Double)
         /// Show the layer as somebody with the given color vision sees it.
         case colorVision(ColorVision)
+        /// A four-by-five matrix over straight linear RGBA: four rows of input
+        /// weights, one per output channel, and a fifth row of offsets.
+        case channelMixer(rows: [SIMD4<Float>])
         /// Map luminance between two colors, blended over the original by `amount`.
         case duotone(dark: SIMD4<Float>, light: SIMD4<Float>, amount: Double)
         /// Map luminance through a baked 256-step color ramp (linear, straight alpha),
@@ -361,6 +364,12 @@ public struct Filter: Sendable {
         case tile(count: Double, mirrored: Bool)
         /// Self-displace by internal fbm noise: organic warp of `amount`, noise `scale`, `phase`.
         case perturb(amount: Double, scale: Double, phase: Double)
+        /// The radial distortion of a lens about `center`: `amount` on the square of the
+        /// distance and `quartic` on its fourth power; `fillsFrame` scales the read so
+        /// no empty border shows.
+        case lensDistortion(amount: Double, quartic: Double, center: Vector2, fillsFrame: Bool)
+        /// The layer laid onto four points, in fractions of the layer, clockwise from the top left.
+        case cornerPin(topLeft: Vector2, topRight: Vector2, bottomRight: Vector2, bottomLeft: Vector2)
 
         // Design filters ------------------------------------------------------
         /// Ribbed architectural glass: per-flute refraction with boundary
@@ -528,6 +537,22 @@ public struct Filter: Sendable {
     /// ```
     public static func colorVision(_ vision: ColorVision) -> Filter {
         Filter(kind: .colorVision(vision))
+    }
+
+    /// A channel mixer: every channel of the result is a weighted sum of the
+    /// input's red, green, blue, and alpha plus an offset, read off a
+    /// `ColorMatrix`. `.gray` mixes the display's gray, `.gray(red:green:blue:)`
+    /// a gray to a recipe, `.swapping(_:_:)` trades two channels, and a matrix
+    /// built row by row does anything else a mixer can. The multiply runs in
+    /// linear light on the straight color, so a half-transparent layer keeps
+    /// its edges, and the identity matrix changes no byte.
+    ///
+    /// ```swift
+    /// layer.filtered(.channelMixer(.swapping(.red, .blue)))
+    /// layer.filtered(.channelMixer(ColorMatrix(red: [1, 0, 0, 0, 0.1])))
+    /// ```
+    public static func channelMixer(_ matrix: ColorMatrix) -> Filter {
+        Filter(kind: .channelMixer(rows: matrix.shaderRows))
     }
 
     /// Duotone: remap the image's luminance between two colors (shadows toward
@@ -1273,6 +1298,46 @@ public struct Filter: Sendable {
     /// `scale` the noise frequency, `phase` animates it.
     public static func perturb(amount: Double = 0.03, scale: Double = 4, phase: Double = 0) -> Filter {
         Filter(kind: .perturb(amount: max(0, amount), scale: max(0.001, scale), phase: phase))
+    }
+
+    /// Lens distortion: the radial distortion of a real lens. A point at a distance
+    /// `r` from `center`, with `r` a fraction of the distance to the farthest corner,
+    /// reads the layer at `r * (1 + amount * r² + quartic * r⁴)`, the Brown-Conrady
+    /// radial model. Above zero, `amount` is a barrel: straight lines bow outward,
+    /// the corners read past the layer's edge, and what read past it is transparent.
+    /// Below zero it is a pincushion: lines bow inward and the corners pull in from
+    /// the edge. `quartic` bends the corners while leaving the middle alone. With
+    /// `fillsFrame` the read is scaled so no empty border shows, at the cost of the
+    /// outermost picture. Zero coefficients change no byte.
+    ///
+    /// ```swift
+    /// layer.filtered(.lensDistortion(amount: 0.3))                    // a barrel
+    /// layer.filtered(.lensDistortion(amount: -0.2, fillsFrame: true)) // a pincushion, full frame
+    /// ```
+    public static func lensDistortion(amount: Double = 0.2, quartic: Double = 0,
+                                      center: Vector2 = Vector2(0.5, 0.5),
+                                      fillsFrame: Bool = false) -> Filter {
+        Filter(kind: .lensDistortion(amount: amount, quartic: quartic, center: center,
+                                     fillsFrame: fillsFrame))
+    }
+
+    /// Corner pin: lay the layer onto four points, its corners landing on them and
+    /// every point between following, so straight lines stay straight while parallel
+    /// edges may meet, as a picture thrown onto a wall from an angle does. The points
+    /// are in fractions of the layer (top-left origin), clockwise from the top left,
+    /// and each defaults to its own corner, so moving one corner is one argument.
+    /// Outside the four points the result is transparent. Four points with no area
+    /// between them (three in a line, two on top of each other, a bow tie) show
+    /// nothing; the unit square pinned to itself changes no byte.
+    ///
+    /// ```swift
+    /// layer.filtered(.cornerPin(topRight: Vector2(0.9, 0.15), bottomRight: Vector2(0.85, 0.8)))
+    /// ```
+    public static func cornerPin(topLeft: Vector2 = Vector2(0, 0), topRight: Vector2 = Vector2(1, 0),
+                                 bottomRight: Vector2 = Vector2(1, 1),
+                                 bottomLeft: Vector2 = Vector2(0, 1)) -> Filter {
+        Filter(kind: .cornerPin(topLeft: topLeft, topRight: topRight,
+                                bottomRight: bottomRight, bottomLeft: bottomLeft))
     }
 
     // MARK: Design filters

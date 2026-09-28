@@ -26,7 +26,7 @@ c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 b455e4f737c2  Guide/06-GridsAndRepetition.md:228  cannot find 'drawPetals' in scope
 60af001c8df1  Guide/06-GridsAndRepetition.md:379  cannot find 'spiral' in scope
 e06710580a51  Guide/06-GridsAndRepetition.md:95  cannot find 'cell' in scope
-6db7db40c038  Guide/07-Tiles.md:340  cannot find 'tiles' in scope
+6db7db40c038  Guide/07-Tiles.md:343  cannot find 'tiles' in scope
 c68684592154  Guide/07-Tiles.md:83  cannot find 'strands' in scope
 ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
 678b6b363dab  Guide/09-Pictures.md:114  cannot find 'picture' in scope
@@ -57,8 +57,7 @@ d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
 903bd8f5d681  Guide/11-ForcesAndPhysics.md:314  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
-4bd9e3101756  Guide/13-GrowingThings.md:308  missing argument label 'at:' in call
-750461323d36  Guide/14-FieldsAndFlow.md:191  cannot find 'x' in scope
+750461323d36  Guide/14-FieldsAndFlow.md:276  cannot find 'x' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:104  cannot find 'road' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:145  cannot find 'circles' in scope
 1c47a7d408ef  Guide/15-ShapesAsMaterial.md:198  cannot find 'square' in scope
@@ -70,15 +69,16 @@ e94aaf6380fc  Guide/15-ShapesAsMaterial.md:493  unary operator cannot be separat
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
-c8a055fb7cf3  Guide/16-CurvesAndFigures.md:176  cannot convert value of type 'Shape' to expected argument type 'Contour'
-fff55af49a8c  Guide/16-CurvesAndFigures.md:195  cannot find 'ring' in scope
-c6308b0590b1  Guide/17-MarksAndMedia.md:176  cannot find 'navy' in scope
-a19ce2b50625  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
-1e41fd025294  Guide/17-MarksAndMedia.md:201  cannot find 'bath' in scope
-d6f8fdb72cba  Guide/17-MarksAndMedia.md:76  cannot assign to value: 'mark' is a 'let' constant
+c8a055fb7cf3  Guide/16-CurvesAndFigures.md:291  cannot convert value of type 'Shape' to expected argument type 'Contour'
+fff55af49a8c  Guide/16-CurvesAndFigures.md:310  cannot find 'ring' in scope
+c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
+6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
+1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
+d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
 4467bb8d08b2  Guide/20-PicturesRestyled.md:143  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 1d6986f2d7b4  Guide/20-PicturesRestyled.md:166  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-3ad05523666d  Guide/20-PicturesRestyled.md:189  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+0979bc9f5047  Guide/20-PicturesRestyled.md:187  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+3ad05523666d  Guide/20-PicturesRestyled.md:210  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 d557820db6d8  Guide/20-PicturesRestyled.md:93  'module' is inaccessible due to 'internal' protection level
 742a059aea91  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
 45ff58c66642  Guide/21-PicturesYouSolve.md:180  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'

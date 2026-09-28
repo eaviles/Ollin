@@ -424,6 +424,36 @@ fragment float4 ollin_fx_color_vision(PresentOut in [[stage_in]],
     return ollin_premul(max(seen, 0.0), s.a);
 }
 
+// channelMixer: every channel of the result a weighted sum of the input's four
+// and an offset, over the straight color in linear light. Rows 0..3 hold the
+// input weights for red, green, blue, and alpha in turn, row 4 the offsets.
+// The matrix is written over the straight color, but the layer holds it
+// premultiplied, and dividing the alpha out and multiplying it back in is exact
+// only to a float's last bit, which the 8-bit quantization can see on a rim
+// pixel. So the color weights are applied to the premultiplied color as it is
+// (a weighted sum scales with the alpha like the color does) and scaled by the
+// ratio of the new alpha to the old, which is exactly one when the alpha row is
+// the identity; only the alpha weight and the offset, which do not scale with
+// the color, are multiplied by the new alpha themselves. The ratio is written
+// as exactly one when the two alphas are equal rather than as their quotient,
+// since a shader's division is fast math and a value over itself is not always
+// one. The identity matrix then changes no byte. Alpha is kept to 0..1; color
+// is only kept from going below zero, since a layer may carry light above one
+// for the tone map.
+fragment float4 ollin_fx_channel_mixer(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float a = s.a;
+    float3 weighted = float3(dot(params[0].xyz, s.rgb), dot(params[1].xyz, s.rgb),
+                             dot(params[2].xyz, s.rgb));
+    float3 fromAlpha = float3(params[0].w, params[1].w, params[2].w) * a + params[4].xyz;
+    float outA = clamp(dot(params[3], float4(ollin_unpremul(s), a)) + params[4].w, 0.0, 1.0);
+    float ratio = outA == a ? 1.0 : (a > 1e-4 ? outA / a : 0.0);
+    return float4(max(weighted * ratio + fromAlpha * outA, 0.0), outA);
+}
+
 // duotone: map luminance between two colors (params[1] dark, params[2] light).
 fragment float4 ollin_fx_duotone(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],
@@ -2590,6 +2620,59 @@ fragment float4 ollin_fx_droste(PresentOut in [[stage_in]],
 
     float2 uv = ctr + float2(z.x / aspect, z.y) * 0.5;
     return src.sample(samp, clamp(uv, 0.0, 1.0));
+}
+
+// Read the layer at `q`, which a warp may have sent past its edge: transparent
+// there, with a pixel of fade across the rim so a curved edge does not stair-step.
+// The fade is placed a quarter pixel past the edge, so a read that never left the
+// layer (an identity warp) keeps every byte: the nearest a pixel center comes to
+// the edge is half a pixel, and half plus three quarters is past full.
+static inline float4 ollin_fx_read_within(texture2d<float> src, sampler samp, float2 q) {
+    float2 fw = max(fwidth(q), 1e-6);
+    float2 inside = min(q, 1.0 - q) / fw;           // to the nearest edge, in pixels
+    float coverage = clamp(min(inside.x, inside.y) + 0.75, 0.0, 1.0);
+    return src.sample(samp, clamp(q, 0.0, 1.0)) * coverage;
+}
+
+// lensDistortion: the radial distortion of a lens. A pixel at a distance r from
+// the center reads the layer at r (1 + k1 r^2 + k2 r^4), with r a fraction of the
+// distance to the farthest corner: above zero the corners read past the edge and
+// straight lines bow out (a barrel), below zero they read inside and lines bow in
+// (a pincushion). `scale` is the factor that keeps the frame full when asked,
+// worked out on the CPU. The read is the pixel's own coordinate plus a
+// displacement that is exactly zero at zero coefficients, so zero touches no byte.
+// (params[0]: k1, k2, aspect, scale; params[1]: center.xy, the far corner's distance)
+fragment float4 ollin_fx_lens_distortion(PresentOut in [[stage_in]],
+                                         texture2d<float> src [[texture(0)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    float k1 = params[0].x, k2 = params[0].y, aspect = params[0].z, scale = params[0].w;
+    float2 ctr = params[1].xy;
+    float far = max(params[1].z, 1e-6);
+    float2 p = (in.uv - ctr) * float2(aspect, 1.0);
+    float r2 = dot(p, p) / (far * far);
+    float factor = (1.0 + k1 * r2 + k2 * r2 * r2) * scale;
+    float2 q = in.uv + p * (factor - 1.0) / float2(aspect, 1.0);
+    return ollin_fx_read_within(src, samp, q);
+}
+
+// cornerPin: the layer laid onto four points. The three columns of the map that
+// takes the output's fraction coordinates back to the layer's own (the inverse of
+// the square-to-quadrilateral map, worked out on the CPU) arrive in
+// params[0..2].xyz. A point carries a third number through the multiply and is
+// divided by it after, which is what lets two parallel edges of the layer meet on
+// the way to a vanishing point. A point on or behind the horizon (w at or below
+// zero) shows nothing, and so does a pin with no area, which arrives as zeros.
+// The identity map divides by exactly one, so the square pinned to itself touches
+// no byte.
+fragment float4 ollin_fx_corner_pin(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float3x3 m = float3x3(params[0].xyz, params[1].xyz, params[2].xyz);
+    float3 h = m * float3(in.uv, 1.0);
+    float2 q = h.xy / max(h.z, 1e-6);
+    return ollin_fx_read_within(src, samp, q) * step(1e-6, h.z);
 }
 
 // MARK: - Measured distance fields (jump flooding)

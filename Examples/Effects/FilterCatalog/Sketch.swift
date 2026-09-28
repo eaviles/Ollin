@@ -68,6 +68,7 @@ final class FilterCatalog_Example: Sketch {
                 ("lut", .lut(.warmPrint)),
                 ("colorama", .colorama(cycles: 3)),
                 ("lumaKey", .lumaKey(low: 0.35)),
+                ("channelMixer", .channelMixer(.swapping(.red, .blue))),
             ]
         case .stylize:
             return [
@@ -114,6 +115,10 @@ final class FilterCatalog_Example: Sketch {
                 ("polar", .polar(amount: 1)),
                 ("tile", .tile(count: 3, mirrored: true)),
                 ("perturb", .perturb(amount: 0.04, scale: 5, phase: t)),
+                ("lensDistortion", .lensDistortion(amount: 0.35 * sin(t * 0.8), quartic: 0.1,
+                                                   fillsFrame: true)),
+                ("cornerPin", .cornerPin(topRight: Vector2(0.92, 0.12 + 0.08 * sin(t)),
+                                         bottomRight: Vector2(0.86, 0.88))),
             ]
         case .design:
             return [

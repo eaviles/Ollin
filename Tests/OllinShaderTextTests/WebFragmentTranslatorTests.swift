@@ -40,7 +40,8 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_thin_film", "ollin_fx_diffraction", "ollin_fx_scanlines", "ollin_fx_glitch",
         "ollin_fx_crt", "ollin_fx_kaleidoscope", "ollin_fx_swirl", "ollin_fx_droste",
         "ollin_fx_bulge", "ollin_fx_wave", "ollin_fx_ripple", "ollin_fx_mirror", "ollin_fx_polar",
-        "ollin_fx_tile", "ollin_fx_perturb", "ollin_fx_fluted_glass", "ollin_fx_water",
+        "ollin_fx_tile", "ollin_fx_perturb", "ollin_fx_lens_distortion", "ollin_fx_corner_pin",
+        "ollin_fx_channel_mixer", "ollin_fx_fluted_glass", "ollin_fx_water",
         "ollin_fx_paper_texture", "ollin_fx_melt", "ollin_fx_field_map", "ollin_fx_arrows",
         "ollin_fx_brightpass", "ollin_fx_bloom_combine", "ollin_fx_halation_combine",
         // Combines
