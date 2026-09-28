@@ -372,7 +372,7 @@ The notes keep the timing they were played with, down to the wait each one was a
 
 The finished sketch plays by itself and draws what it plays. Three voices, one clock, three rhythms, one key. Make `MySketches/MusicBox.swift` and run it, because the picture is the smaller half of this one.
 
-The first part is the piece. The bell is patched by hand rather than picked from the presets, the string is the model from [Chapter 36](36-MakingSound.md#a-string-worked-out-rather-than-drawn-the-plucked-string), and the breath is a preset. Everything about *when* comes from three Euclidean rhythms read at the same step number, and everything about *which* comes from the scale, so no note in it can be out of key. The low line's degrees come from the chain, which was taught an eight-note motif and now wanders inside its habits.
+The first part is the piece. The bell is patched by hand rather than picked from the presets, the string is the model from [Chapter 36](36-MakingSound.md#a-string-worked-out-sample-by-sample-the-plucked-string), and the breath is a preset. Everything about *when* comes from three Euclidean rhythms read at the same step number, and everything about *which* comes from the scale, so no note in it can be out of key. The low line's degrees come from the chain, which was taught an eight-note motif and now wanders inside its habits.
 
 ```swift
 import Ollin

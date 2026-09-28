@@ -107,7 +107,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part VII: Out into the world
 
-36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, effects, and a room you can draw. Instruments built by patching or from recordings, wavetables and grains, physical models of a string, a struck shape, a bow and a tube, and expression under the finger.
+36. **[Making sound](36-MakingSound.md).** A sketch that plays sound: synths and the voices inside them, physical models of a string, a struck shape, a bow and a tube, and a chain of effects that ends in a room you can draw. Then instruments built by patching or from recordings, wavetables and grains, more effects including one of your own, and expression under the finger.
 37. **[Music by rule](37-MusicByRule.md).** Which notes, and when: rhythms, scales, chains, a sequencer and an arpeggiator, chords from a key, and tunings. Then playing along with the room, sonification, sound placed in a room and kept in an export, and MIDI files.
 38. **[Finishing a sketch](38-FinishingASketch.md).** Stills, frames kept in linear light or brighter than white, video, GIF, slow motion, SVG for plotters, and a page that plays in a browser. G-code, embroidery, DXF, prints and 3D prints, USDZ and spatial video, reproducibility, and describable output.
 39. **[Performing](39-Performing.md).** Live coding on stage, cues, takes and replay, keyframes and the timeline, a show's timecode, parameters written as rules, and live feeds into other apps.
