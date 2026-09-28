@@ -53,11 +53,11 @@ final class BytesIntoValues: Sketch {
 
         // Read right.
         row(y: 268, label: "read as the standard says",
-            reading: ".heartRateMeasurement", result: "72 beats a minute", good: true)
+            reading: ".heartRateMeasurement", result: "114 beats a minute", good: true)
 
         // Read wrong: the mistake the format exists to stop.
         row(y: 348, label: "read as two bytes anyway",
-            reading: ".read(as: .uint16)", result: "626 beats a minute", good: false)
+            reading: ".read(as: .uint16)", result: "29,200 beats a minute", good: false)
 
         // Two more, where the format also carries a scale and a sign.
         line(y: 424)

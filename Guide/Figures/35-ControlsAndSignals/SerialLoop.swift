@@ -48,7 +48,7 @@ final class SerialLoop: Sketch {
 
         textAlign(.left, .top)
         fill(ink)
-        drawText("float(default: 0)", 560, 290)
+        drawText("number(default: 0)", 560, 290)
         drawText("lines()", 560, 318)
         drawText("bind(to: $radius)", 560, 346)
         fill(soft)

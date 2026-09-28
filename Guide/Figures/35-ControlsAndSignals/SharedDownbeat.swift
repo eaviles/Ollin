@@ -25,7 +25,7 @@ final class SharedDownbeat: Sketch {
         // Three participants, each with its own beat count. The fraction is
         // the same on every machine; the whole part is each one's own.
         let names = ["the DAW", "a phone app", "your sketch"]
-        let counts = ["1042.62", "88.62", "6.62"]
+        let counts = ["1042.62", "90.62", "6.62"]
         let cardWidth = 218.0, cardHeight = 96.0, gap = 42.0
         let rowWidth = cardWidth * 3 + gap * 2
         let left = (880 - rowWidth) / 2

@@ -36,7 +36,7 @@ final class SmoothedSignal: Sketch {
         }
 
         // The same samples through the filter behind @Smoothed.
-        var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.01)
+        var filter = OneEuroFilter<Double>()
         var smooth: [Vector2] = []
         for p in raw {
             smooth.append(Vector2(p.x, filter.filter(p.y, deltaTime: 1.0 / 60.0)))
