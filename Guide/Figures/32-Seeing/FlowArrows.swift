@@ -5,8 +5,9 @@
 // camera locked off. Right: the same frame with the measured flow drawn on
 // top, one arrow per grid sample, pointing the way the picture moved since the
 // frame a twenty-fifth of a second earlier. The field is measured by the real
-// Vision request, so the arm that swings gets arrows and the leg that stays
-// planted gets none.
+// Vision request, so both arms get arrows, sweeping opposite ways, while the
+// chest gets none and the planted legs only a few, where a knee and a foot
+// shift.
 import Ollin
 import OllinDiagram
 import OllinSamplePhotos

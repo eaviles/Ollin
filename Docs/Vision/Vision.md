@@ -739,7 +739,7 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Seeing/FlowArrows-dark.jpg">
-  <img src="../../Guide/Images/32-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. His body and his planted legs get no arrows at all" width="680">
+  <img src="../../Guide/Images/32-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. A few sit on one leg and at one foot, and none on his chest" width="680">
 </picture>
 
 ```swift
