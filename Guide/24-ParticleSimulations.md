@@ -148,7 +148,7 @@ The drift's particles rode a curl-noise field across the plane. The first family
 
 ### A million riding the same field: attractor flow
 
-An **attractor flow** puts a million particles into the velocity field of a strange attractor. A continuous system like Lorenz is a **velocity field**: hand it a point in space and it tells you which way that point is moving. [Chapter 22](22-IteratedForms.md#a-formula-that-folds-the-plane-chaotic-maps) plotted the flat maps as ghosts of their own orbits. The 3D systems, Lorenz and its relatives, live in space, so they need a camera. `StrangeAttractor` integrates one starting point through the field and hands back the path, which you draw as a curve. The flow follows the same field with six hundred thousand particles, all of them stepping every frame on the GPU. It is for the attractor seen as a crowd rather than a line, with a second fact, speed, in its color. The Lorenz system comes from Edward Lorenz's 1963 paper on deterministic nonperiodic flow, a weather model cut down until it would run on the computer he had. Its successors are collected at dynamicmath.xyz.
+An **attractor flow** puts a million particles into the velocity field of a strange attractor. A continuous system like Lorenz is a **velocity field**: hand it a point in space and it tells you which way that point is moving. [Chapter 22](22-IteratedForms.md#a-formula-that-folds-the-plane-chaotic-maps) plotted the flat maps as ghosts of their own orbits. The 3D systems, Lorenz and its relatives, live in space, so they need a camera. `StrangeAttractor` integrates one starting point through the field and hands back the path, which you draw as a cloud of points. The flow follows the same field with six hundred thousand particles, all of them stepping every frame on the GPU. It is for the attractor seen as a crowd rather than a line, with a second fact, speed, in its color. The Lorenz system comes from Edward Lorenz's 1963 paper on deterministic nonperiodic flow, a weather model cut down until it would run on the computer he had. Its successors are collected at dynamicmath.xyz.
 
 <img src="Images/24-ParticleSimulations/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
@@ -171,7 +171,7 @@ override func draw() {
 
 The left half of the picture is the single orbit, and the right half is the flow. [Chapter 25](25-3DGently.md) teaches cameras properly, and here one call, `cameraShowcase`, sets up a camera that circles the attractor slowly. A flow is 3D and draws through the camera, so `drawParticles` does nothing without one. A million particles step and draw at 55 frames a second on an M2, at two tenths of a millisecond of CPU work per frame. Every particle reads only its own position and nothing else, so there is no neighbor search here, unlike [the flock](#the-flock-a-thousand-times-bigger-swarm) later in this chapter.
 
-Notice what the sketch never says. It never says where the attractor is, how big it is, or how fast to run it. Lorenz spans about fifty units and Aizawa about three, and their natural clocks differ by more than an order of magnitude. Hard-coding any of that would tie the sketch to one system. Instead the flow integrates a single CPU orbit when you build it and reads the answers off that. It takes `center` and `extent` for the camera, a splat size, a color range, and a pace that crosses the attractor about once a second. Swap `.lorenz()` for `.aizawa()` and everything re-measures.
+Notice what the sketch never says. It never says where the attractor is, how big it is, or how fast to run it. Lorenz spans about fifty units and Aizawa about a unit and a half, and their natural clocks differ too. Hard-coding any of that would tie the sketch to one system. Instead the flow integrates a single CPU orbit when you build it and reads the answers off that. It takes `center` and `extent` for the camera, a splat size, a color range, and a pace that crosses the attractor about once a second. Swap `.lorenz()` for `.aizawa()` and everything re-measures.
 
 The colors carry a second fact. A particle's color comes from how fast it is moving, which is what separates the fast outer sweeps from the slow, crowded core. But the picture is drawn additively, so brightness already means *how many particles are here*. Color is speed, and brightness is crowd. The default ramp shifts hue while holding its brightness roughly level, so those two facts stay on separate channels. A ramp that ran dark to light as well would make a slow crowded region and a fast empty one look the same.
 
@@ -179,9 +179,9 @@ One more decision shows in the picture. The particles start spread over the attr
 
 ## Particles that see their neighbors: Particle Life, the Primordial Particle System, Physarum, and the flock at scale
 
-Neither the drift's grains nor the attractor's particles ever noticed each other. Making a hundred thousand particles *aware* of their neighbors is the harder problem. Asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The fix is the one [Chapter 12](12-FlocksAndSwarms.md#the-trick-that-keeps-it-cheap-spatialindex)'s `SpatialIndex` used on the CPU. Sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort on the GPU as `SpatialHash`, and it is public, so you can build your own neighbor-aware system on it. Four come already built: three from artificial life, and the flock.
+Neither the drift's grains nor the attractor's particles ever noticed each other. Making a hundred thousand particles *aware* of their neighbors is the harder problem. Asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The fix is the one [Chapter 12](12-FlocksAndSwarms.md#the-trick-that-keeps-it-cheap-spatialindex)'s `SpatialIndex` used on the CPU. Sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort on the GPU as `SpatialHash`, after Rama Hoetzlein's counting sort, and it is public, so you can build your own neighbor-aware system on it. Four come already built: three from artificial life, and the flock.
 
-<img src="Images/24-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
+<img src="Images/24-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, one bright knot of transport loops on an empty violet trail field" width="680">
 
 ### A few kinds and a table of attractions: Particle Life
 
@@ -203,7 +203,7 @@ The **Primordial Particle System** is leaner than Particle Life. Each particle c
 
 ### Agents that talk through the floor: Physarum
 
-**Physarum** models slime mold, and it needs no neighbor search at all, because its agents talk through the floor instead of to each other. Each one sniffs three points ahead, turns toward the strongest trail, steps forward, and deposits a little trail of its own. The trail map blurs and fades a touch each frame. It is for branching transport networks, the kind real slime mold uses to solve mazes. The agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. The right panel above is one:
+**Physarum** models slime mold, and it needs no neighbor search at all, because its agents talk through the floor instead of to each other. Each one sniffs three points ahead, turns toward the strongest trail, steps forward, and deposits a little trail of its own. The trail map blurs and fades a touch each frame. It is for branching transport networks, the kind real slime mold uses to solve mazes. The agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. The right panel above is one, gathered into a bright knot of loops:
 
 ```swift
 slime = makePhysarum(agents: 220_000, resolution: 1024)
@@ -234,7 +234,7 @@ stepSwarm(swarm)
 drawParticles(swarm)
 ```
 
-That is the left panel. Turn those three off and turn on `flow` instead and a noise field carries everyone, which is the middle panel. Turn on `wander` alone and each agent roams by itself, which is the right one. `seek`, `flee`, and `arrive` steer at a `target` you can move with the mouse. Each behavior works out where it *wants* to be going, and subtracts where the agent is already going. The weighted total is capped before it moves anything, as in Chapter 12.
+Those three on together give the left panel's flocking. Turn them off and turn on `flow` instead and a noise field carries everyone, which is the middle panel. Turn on `wander` alone and each agent roams by itself, which is the right one. `seek`, `flee`, and `arrive` steer at a `target` you can move with the mouse. Each behavior works out where it *wants* to be going, and subtracts where the agent is already going. The weighted total is capped before it moves anything, as in Chapter 12.
 
 Three numbers are tied to each other, and a swarm that looks wrong is usually one of them rather than a weight. An agent should see about twenty others, which is what `perceptionRadius` decides against how crowded the canvas is. See far more and every agent is averaging over most of the swarm, so the structure washes out. `separationRadius` wants to be about the gap between neighbors, since a personal space larger than that means everyone shoves everyone forever. And the turning circle, `maxSpeed²/maxForce`, should be a few times the perception radius, or agents orbit inside their own neighborhood instead of traveling through it.
 
@@ -260,7 +260,7 @@ stepParticleLenia(lenia)
 drawParticles(lenia)
 ```
 
-The three panels above are that same code. The only difference between them is which crowding the growth function is asking for and how fussy it is about getting it: `muG` and `sigmaG`. Two numbers are the difference between a cell with a fringed skin, a coral, and a smooth solid body.
+The three panels above differ only in which crowding the growth function is asking for and how fussy it is about getting it: `muG` and `sigmaG`. Two numbers are the difference between a cell with a fringed skin, a coral, and a smooth solid body.
 
 Which term does what matters, because they pull against each other on the same thing. Growth is the only term that attracts, so with it switched off, particles drift apart. Repulsion is the only term with an opinion at very short range, so with *it* switched off, they end up standing on each other. The reason for that second one is the kernel's shape. It is a *ring*, so two particles in the same place add almost nothing to each other's crowding, and growth is content to let them coincide.
 
@@ -270,9 +270,9 @@ One number you never set is the kernel's weight. It is whatever makes the kernel
 
 ### Liquids and jellies: SPH and soft bodies
 
-**`ParticleFluid`** is smoothed-particle hydrodynamics, a long name for a simple bargain. Represent a liquid as thousands of particles, have each one measure how crowded it is, and push it away from wherever it is crowded. Density becomes pressure, pressure becomes motion, and a free surface, splashes, and sloshing all come out without anyone modeling them. **`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with. Every step it works out where that shape would be now, its center and its rotation, and pulls its particles back toward those remembered positions. The two are for liquid and jelly you can grab and fling. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation, with the near-density term Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005. The jellies use Müller's 2005 meshless shape matching.
+**`ParticleFluid`** is smoothed-particle hydrodynamics, a long name for a simple bargain. Represent a liquid as thousands of particles, have each one measure how crowded it is, and push it away from wherever it is crowded. Density becomes pressure, pressure becomes motion, and a free surface, splashes, and sloshing all come out without anyone modeling them. **`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with. Every step it works out where that shape would be now, its center and its rotation, and pulls its particles back toward those remembered positions. The two are for liquid and jelly you can grab and fling. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation, with the near-density term Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005. The jellies use Müller and colleagues' 2005 meshless shape matching.
 
-<img src="Images/24-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
+<img src="Images/24-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall and a churning cavity under the mass at the right. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
 
 ```swift
 fluid = makeParticleFluid(count: 26_000, radius: 12)
@@ -293,7 +293,7 @@ stepSoftBodies(blobs)
 drawParticles(blobs)
 ```
 
-`squish` is how firmly a body pulls back toward its remembered shape, and that one parameter is the difference between a bouncing ball and a slime. Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as [Physarum](#agents-that-talk-through-the-floor-physarum) and its neighbors.
+`squish` is how firmly a body pulls back toward its remembered shape, and that one parameter is the difference between a bouncing ball and a slime. Bodies collide with each other and flatten where they press together, which is the pile of nine on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as [Physarum](#agents-that-talk-through-the-floor-physarum) and its neighbors.
 
 ## Searches you can watch: ant colony optimization, evolution, and swarm chemistry
 
@@ -306,7 +306,7 @@ Every system so far made a picture and nothing else. Three more use a crowd of p
 <img src="Images/24-ParticleSimulations/AntColonySearch.jpg" alt="Three dark panels of the same scatter of white city dots. Left, after one iteration, a pale web of trails over nearly every pair. Middle, after eight, fewer and stronger edges. Right, after sixty, a settled web with the best tour traced through the cities in orange" width="680">
 
 ```swift
-let colony = AntColony(cities: points, seed: 7)
+let colony = AntColony(cities: points, elitism: 2, seed: 7)
 
 // each frame:
 colony.step()
@@ -319,7 +319,7 @@ drawPolyline(colony.bestTourPoints, closed: true)   // the answer so far
 
 The three panels are one seeded search at three moments. After one iteration the map is a haze, because every ant's tour deposited somewhere. Edges that keep landing in short tours are walked again and grow stronger, and the rest fade. By iteration sixty the web has settled, and the best tour found so far rides on top in orange. Draw `trails` each frame and you watch that condensation happen live.
 
-Two parameters set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The [`Patterns/AntColony`](../Examples/Patterns/AntColony/Sketch.swift) example runs the whole search as a living sketch, and the [reference](../Docs/Generators/AntColony.md) has the rest of the parameters.
+Two parameters set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer, and the block sets it to 2. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The [`Patterns/AntColony`](../Examples/Patterns/AntColony/Sketch.swift) example runs the whole search as a living sketch, and the [reference](../Docs/Generators/AntColony.md) has the rest of the parameters.
 
 ### Letting the sketch find it: evolution
 
@@ -340,7 +340,7 @@ drawParticles(run)
 
 Nowhere in that do you say how to get there. You place a start, a target, and the walls. The route is the one thing you leave out, and the route is what comes back.
 
-The three panels are the same search a few seconds apart. Generation 1 is a spray with no idea. By generation 8 a plume has found the gap and is pouring through it. By generation 23 the population is a single arc that threads the gap and ends in the ring. Nothing improved a genome. All that happened is that the ones that did badly had fewer children.
+The three panels are three runs of the same search, stopped at generations 1, 8, and 23. Generation 1 is a spray with no idea. By generation 8 a plume has found the gap and is pouring through it. By generation 23 the population is a single arc that threads the gap and ends in the ring. Nothing improved a genome. All that happened is that the ones that did badly had fewer children.
 
 Choosing the parents is the interesting part. Each parent is picked by holding a small tournament: grab a few individuals at random, and keep whichever scored highest. The other common method gives a genome a share of the parents equal to its share of everyone's total score, and the tournament suits the GPU better for a reason. A tournament never adds anything up. It only ever asks *which of these two is higher*. So thirty thousand children can each pick their own parents at the same instant, with nothing to agree on and nothing to wait for, which is what a GPU does well. It also means the scale of a score is irrelevant. Only its order matters.
 
@@ -356,7 +356,7 @@ Evolution has a second half with no score at all, where a person picks and the p
 
 **Swarm chemistry** takes the generation away from evolution and sees what is left. Every particle carries its own copy of the rule it moves by, eight numbers called a recipe: how far it sees, the speed it likes, the speed it can reach, and then the strengths of cohesion, alignment, separation, random steering, and pace-keeping. When two particles touch, one recipe overwrites the other. Nothing is scored and nothing is aimed at. A recipe spreads because the particles holding it keep meeting particles holding something else and winning. It is for a contest you can watch with no judge in it. The model is Hiroki Sayama's swarm chemistry of 2009, and the heritable recipes follow his later work on open-ended evolution in it.
 
-<img src="Images/24-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
+<img src="Images/24-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split three ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 ```swift
 chem = makeSwarmChemistry(count: 4000, kinds: 6)
@@ -366,17 +366,17 @@ stepSwarmChemistry(chem)
 drawParticles(chem)
 ```
 
-The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then two, then very nearly one. No one chose the winner, and no one could have said in advance which it would be.
+The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then a few, then very nearly one. No one chose the winner, and no one could have said in advance which it would be.
 
 `competition` is the one parameter that says what winning means, and it sets the character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added, a fixed mixture of six kinds.
 
-Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is far below the one `Evolution` uses. Set it as high as a generational search would, and the recipes take dozens of nudges inside a single takeover. They arrive as noise, which you see at once. The structures dissolve, and the picture flattens into an even gas.
+Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is a quarter of the one `Evolution` uses. Set it as high as a generational search would, and the recipes take dozens of nudges inside a single takeover. They arrive as noise, which you see at once. The structures dissolve, and the picture flattens into an even gas.
 
 The color is the recipe itself, three of its numbers read as red, green, and blue. So a takeover reads as one color eating the others, and a mutation as a shift in shade rather than a new color. When one line has won and the picture keeps changing shade, that is the line still drifting inside itself.
 
 ## Where this comes from
 
-GPU particle systems are a demoscene and games inheritance, and the additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go: Lorenz and the collection at dynamicmath.xyz, Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, Chan with Mordvintsev and Niklasson and Randazzo, Müller with Clavet and Beaudoin and Poulin, Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, and Sayama. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+GPU particle systems are a demoscene and games inheritance, and the additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go: Lorenz and the collection at dynamicmath.xyz, Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, Chan with Mordvintsev and Niklasson and Randazzo, Müller and his co-authors with Clavet and Beaudoin and Poulin, Hoetzlein, Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, and Sayama. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
