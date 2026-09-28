@@ -376,7 +376,7 @@ drawSphere(radius: 0.62)
 
 > **Swift note.** `var paint = Material.glitter` copies the preset into a value you can change. The original stays as it was, because a `Material` is a value like a `Color`.
 
-There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that needs surroundings to reflect. [Chapter 26](26-Meshes.md#finishes-you-measure) teaches it, where environments light the scene.
+There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that needs surroundings to reflect. [Chapter 26](26-Meshes.md#finishes-you-measure-environments-and-physically-based-materials) teaches it, where environments light the scene.
 
 One more thing to keep straight as you combine finishes. Ollin draws several *kinds* of 3D thing, and they reach the screen by different routes, so a finish applies unevenly. Solid meshes are the fullest citizens, taking materials, textures, shadows, and reflections. A wireframe takes none of the light, as the solids step showed. The raymarched fields of [Chapter 30](30-SculptingWithFields.md) take materials, environments, and shadows by a route of their own. Point clouds, which [Chapter 33](33-DepthAndThePhone.md) draws, are dots that always face the camera, and they take neither lighting nor shadows. When something you expected to apply does nothing, the [combining reference](../Docs/3D/Combining.md) is a table of what stacks with what.
 
@@ -439,7 +439,7 @@ fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
 
 `fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is a formula rather than a blur pass, so animating the density is a number moving. The fog half of the `3D/Effects/Atmosphere` example is a colonnade standing in this mist. The density is a thickness per world unit. When you would rather say how much of the scene the air should take, hand `fog` a `Fog` value instead. `fog(.groundMist)` measures the veil against the camera's target distance, so it reads the same at any scene scale. The presets sit on the inspector's menu as a `@Param`.
 
-Fog paints every distance toward one color, which is right for a room. Outdoor air also blues the far ridges and brightens toward the sun. That is **aerial perspective**, and it needs a sky to take its sun from, so [Chapter 26](26-Meshes.md#surroundings-as-the-light-environments) teaches it beside the environments. The second call here is the beam half, and it wants a little haze to live in:
+Fog paints every distance toward one color, which is right for a room. Outdoor air also blues the far ridges and brightens toward the sun. That is **aerial perspective**, and it needs a sky to take its sun from, so [Chapter 26](26-Meshes.md#distant-air-aerial-perspective) teaches it after the environments. The second call here is the beam half, and it wants a little haze to live in:
 
 ```swift
 castShadows()

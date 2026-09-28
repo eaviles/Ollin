@@ -188,10 +188,7 @@ final class Bench: Sketch {
                 translate(0, 0.68, 0)
                 rotateY(0.6)
                 fill(Color(hex: 0xDCEEF6))
-                var crystal = Material.glass(roughness: 0.03, ior: 1.48, thickness: 0)
-                crystal.attenuationColor = Color(hex: 0xBBE0EC)
-                crystal.attenuationDistance = 4
-                material(crystal)
+                material(.glass(roughness: 0.03, ior: 1.48, thickness: 0))   // a thin wall
                 drawMesh(specimen)
             }
         }
