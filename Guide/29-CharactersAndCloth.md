@@ -258,7 +258,7 @@ banner.applyForce(Vector3(0, 0, gust))
 
 The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene. There's a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. One thing is worth knowing before you build on this. Soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers.
 
-A cloth is also an ordinary member of the world when something touches it. It turns up in `world.contacts`, the list from [Chapter 28](28-WorldsWithWeight.md#asking-what-hit-what). A crate landing on a sheet reports where it hit and how hard, exactly like a crate landing on the floor.
+A cloth is also an ordinary member of the world when something touches it. It turns up in `world.contacts`, the list from [Chapter 28](28-WorldsWithWeight.md#what-hit-what-contacts). A crate landing on a sheet reports where it hit and how hard, exactly like a crate landing on the floor.
 
 ```swift
 for contact in world.contacts where contact.phase == .began {
@@ -367,7 +367,7 @@ A rope does not collide with itself, so a coil passes through its own turns. It 
 
 ## A raft made of cloth
 
-The sheet you draped earlier floats too, in the water [Chapter 28](28-WorldsWithWeight.md#water-and-what-it-holds-up) put into the world. Floating it is one number.
+The sheet you draped earlier floats too, in the water [Chapter 28](28-WorldsWithWeight.md#water-and-what-it-holds-up-buoyancy) put into the world. Floating it is one number.
 
 ```swift
 raft.density = 0.3           // rides high; above 1 it sinks
@@ -383,7 +383,7 @@ The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example puts a cloth raft 
 
 ## Snapshots of figures, vehicles, and cloth
 
-[Chapter 28](28-WorldsWithWeight.md#keeping-what-settled) saved a settled heap with `snapshot()` and brought it back exact. The things in this chapter come back too. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
+[Chapter 28](28-WorldsWithWeight.md#keeping-what-settled-snapshots) saved a settled heap with `snapshot()` and brought it back exact. The things in this chapter come back too. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
 
 The ragdoll is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver holds is a shape per limb, the tree they hang in, and how far each joint may bend. *That* is small enough to write down. The skin stays where it always was, your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
 
