@@ -62,7 +62,7 @@ textFont(OutlineFont(name: "Avenir Next") ?? .system)
 
 > **Swift note.** `??` means "or, if that was nothing, use this instead". `OutlineFont(name:)` returns an optional like [Chapter 2](02-Color.md)'s `Color(hex: String)`, and `?? .system` unwraps it with a default in one step.
 
-The same call has two more doors. If the font file is a *variable* font, `variation(_:)` sets its design axes. So a word can change from thin to heavy while the sketch runs. With your font held as `f`, `textFont(f.variation(["wght": map(sin(time), -1, 1, 0.5, 3)]))` does it. The square brackets are a small table that pairs an axis name with its value. The values are in the font's own units, so 0.5 to 3 suits Skia, which comes with macOS, and a font's `variationAxes` lists its ranges. And you can bundle a font file beside your sketch and load it with `try? OutlineFont(resource:in:)`, the `try?` from [Chapter 2](02-Color.md), since the file may be missing. The [Text reference](../Docs/Drawing/Text.md) covers both, plus loading more bitmap and stroke faces.
+The same call has two more doors. If the font file is a *variable* font, `variation(_:)` sets its design axes. So a word can change from thin to heavy while the sketch runs. With your font held as `f`, `textFont(f.variation(["wght": map(sin(time), -1, 1, 0.5, 3)]))` does it. The square brackets are a small table that pairs an axis tag, a four-letter code like `wght`, with its value. The values are in the font's own units. The 0.5 to 3 above suits Skia, which comes with macOS, and any font's `variationAxes` lists its ranges. And you can bundle a font file beside your sketch and load it with `try? OutlineFont(resource:in:)`, the `try?` from [Chapter 2](02-Color.md), since the file may be missing. The [Text reference](../Docs/Drawing/Text.md) covers both, plus loading more bitmap and stroke faces.
 
 ## Text as geometry: `textToShapes`
 
@@ -97,7 +97,7 @@ Marks *along* the letters need one more step. The outline points come back uneve
 
 ## Both edges flush: the box form and justification
 
-So far every string has been one line hung from a point. A passage wants a box. A `Rectangle` is a corner plus a width and a height. When you hand `drawText` one, it breaks the text to fit inside, line by line. Each break falls where the system says a line may break. By default each line stops where its last word ends. `textJustify()` opens the spaces instead, until every full line reaches the box's right edge:
+So far every string has been one line hung from a point. A passage wants a box. A `Rectangle` is a corner plus a width and a height. When you hand `drawText` one, it breaks the text to fit inside, line by line. It wraps where the system says a line may break. By default each line stops where its last word ends. `textJustify()` opens the spaces instead, until every full line reaches the box's right edge:
 
 ```swift
 let box = Rectangle(x: 120, y: 758, width: 840, height: 280)
@@ -256,7 +256,7 @@ Two relatives place the glyphs for you. The form `drawText(_:along:)` lays a str
 
 ## Every script: shaping, direction, columns, and fallback
 
-One glyph per letter is an English idea. With an outline font, the system's layout engine shapes the text and finds a font that has the letters. So every call in this chapter draws any script with no setup. What changes is what a glyph is, which way a line runs, how a paragraph breaks, and where the columns go. The specimen sets Latin, so none of this touched it. Swap its headline for Arabic or Devanagari and all of it does.
+One glyph per letter is an English idea. With an outline font, every call in this chapter draws any script with no setup. The system's layout engine shapes the text and finds a font that has the letters. What changes is what a glyph is, which way a line runs, how a paragraph breaks, and where the columns go. The specimen sets Latin, so none of this touched it. Swap its headline for Arabic or Devanagari and all of it does.
 
 ### Shaping and direction: text in any script
 

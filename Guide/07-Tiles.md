@@ -169,7 +169,7 @@ Before moving on, make it yours:
 
 ## Line-work from fewer coins: hitomezashi, mazes, kolam, and knotwork
 
-The tangle spent one coin per cell and let the doorways do the rest. The patterns in this section keep the grid and move the chance somewhere else. Hitomezashi spends one coin per grid line, and a maze comes from a search that carves corridors. A kolam spends no coin at all. Instead, one line finds its own way around a field of dots. The tangle has no use for them. But each hands back its line-work as contours, the way `truchet` does, so everything the sketch did with strands works on them too.
+The tangle spent one coin per cell and let the doorways do the rest. The patterns in this section keep the grid and move the chance somewhere else. Hitomezashi spends one coin per grid line, and a maze spends its coins inside the algorithm that carves its corridors. A kolam spends no coin at all. Instead, one line finds its own way around a field of dots. The tangle has no use for these patterns. But each one hands back its line-work as contours, the way `truchet` does, so everything the sketch did with strands works on them too.
 
 ### One coin per line: hitomezashi
 
@@ -309,13 +309,13 @@ Write a piece by drawing it, `Polyomino([".X.", "XXX"])`, and ask it how many wa
 
 `reuse: true` lets a piece be used as often as it fits, which is a floor rather than a puzzle. `reflections: false` refuses to turn a piece over, and then a lopsided piece can no longer cover its own mirror.
 
-Sometimes there is no fit, and the answer is `nil`. The classic case is on the right above: a board with two opposite corners cut off cannot be covered by dominoes, however long you try. Color it like a checkerboard and every domino covers one square of each color. But the cut board has two more of one color than the other. The search finds that out the hard way, by exhausting the space, so keep a region that might refuse down to a puzzle's size. The mutilated board is older than the name. Its lesson is that a proof can settle in one line what a search takes a long time to say.
+Sometimes there is no fit, and the answer is `nil`. The classic case is on the right above: a board with two opposite corners cut off cannot be covered by dominoes, however long you try. Color it like a checkerboard and every domino covers one square of each color. But the cut board has two more of one color than the other. The search finds that out the hard way, by exhausting the space, so keep a region that might refuse down to a puzzle's size. The mutilated board is older than the word polyomino. Its lesson is that a proof can settle in one line what a search takes a long time to say.
 
 A fit of twelve pentominoes takes about a second, so solve it in `setup()` or on a click and animate the *drawing*. The placements come back in the order they were laid, so revealing them one at a time shows how the fit was found. [Polyominoes](../Docs/Generators/Polyominoes.md) is the reference, and [`Patterns/Pentominoes`](../Examples/Patterns/Pentominoes/Sketch.swift) lays all twelve one at a time, with the tray emptying as they go.
 
 ### Every neighbor must agree: Wave Function Collapse
 
-That fit was found by searching: the solver tries pieces until the board is full, or proves it never will be. Wave Function Collapse fills a grid by narrowing instead, and it goes back to the rule this chapter started from. It works from a small set of tiles under one demand: neighboring tiles must agree along their shared edge. It is the tool for a texture with structure, such as a pipe network, a map, or a floor plan. You describe it by its tiles and never draw it by hand. Maxim Gumin published it in 2016, named with a physicist's wink, and this tile-and-socket form is its simple-tiled model.
+That fit was found by searching: the solver tries pieces until the board is full, or proves it never will be. Wave Function Collapse fills a grid by narrowing instead, and it goes back to the rule this chapter started from. It works from a small set of tiles under one demand: neighboring tiles must agree along their shared edge. It is the tool for a texture with structure, such as a pipe network, a map, or a floor plan. You describe such a texture by its tiles and never draw it by hand. Maxim Gumin published it in 2016, named with a physicist's wink, and this tile-and-socket form is its simple-tiled model.
 
 Each tile declares a *socket* per edge, pipe or blank in the classic set. The solver keeps every cell's options open, repeatedly settling the most-constrained cell and propagating what that choice forbids:
 
@@ -436,7 +436,7 @@ The figure counts why only three fit on flat paper:
   <img src="Images/07-Tiles/CornersAtAVertex.jpg" alt="Five panels. Six triangles, four squares, and three hexagons each meet around a dot with no gap and no overlap, labeled as summing to 360 degrees. Four pentagons around the fourth dot overlap, the fourth one landing on the first, with the extra 72-degree wedge marked in orange. The last panel is a Poincaré disk with four pentagons meeting cleanly at its center, the rest of the tiling faded around them" width="680">
 </picture>
 
-The corners meeting at a vertex must add up to one full turn. Six triangles, four squares, or three hexagons use up that turn exactly, and no other regular shape does. Four pentagons ask for 432 degrees, so the fourth lands on the first. In the disk the same four meet at right angles, because a hyperbolic polygon's corners shrink as the polygon grows. So there is always a size whose corners fit. Write it as a rule, with `sides` the polygon's sides and `meeting` how many meet at a corner. A pair whose `(sides - 2) * (meeting - 2)` is above 4 lives in the disk. Exactly 4 is flat paper, and below 4 the corners close up into one of the five Platonic solids.
+The corners meeting at a vertex must add up to one full turn. Six triangles, four squares, or three hexagons use up that turn exactly, and no other regular shape does. Four pentagons ask for 432 degrees, so the fourth lands on the first. In the disk the same four meet at right angles, because a hyperbolic polygon's corners shrink as the polygon grows. So there is always a size whose corners fit. The rule is written with `sides`, the polygon's sides, and `meeting`, how many meet at a corner. A pair whose `(sides - 2) * (meeting - 2)` is above 4 lives in the disk. Exactly 4 is flat paper, and below 4 the corners close up into one of the five Platonic solids.
 
 ```swift
 for tile in hyperbolicTiling(sides: 5, meeting: 4) {
@@ -474,7 +474,7 @@ for edge in sheet.edges { drawPolyline(edge.points, closed: false) }
   <img src="Images/07-Tiles/ParquetRun.jpg" alt="A sheet of interlocking tiles running from plain squares on the left to notched keys on the right, with five of the tiles lifted out below and shown on their own" width="680">
 </picture>
 
-Each edge blends the `from` profile into the `to` profile by how far across the sheet it sits. The five tiles under the figure are samples from that run. They show the same piece at the start, at a quarter, a half, and three quarters of the way over, and at the end. Every neighbor in the sheet differs by about a fourteenth of that. The step is small enough that the eye reads one tiling rather than a row of different ones.
+Each edge blends the `from` profile into the `to` profile by how far across the sheet it sits. The five tiles under the figure are samples from that run. They show the same piece at the start, at a quarter, a half, and three quarters of the way over, and at the end. Every neighbor in the sheet differs by about a fourteenth of the run. The step is small enough that the eye reads one tiling rather than a row of different ones.
 
 The profiles are `.straight`, `.tooth`, `.zigzag`, `.wave`, `.bump`, and `.custom` for one you write out yourself. Any of them can be the start or the end. For example, `.wave(depth: 0.22)` running into `.tooth(depth: 0.3)` turns a soft pinwheel into a square key. A `sweep` sets where the run goes, and the default is left to right. The other sweeps are `.vertical`, `.diagonal`, and `.radial`, whose run starts in the sheet's middle and spreads outward.
 
