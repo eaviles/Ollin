@@ -153,7 +153,7 @@ let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
 fill(dusk.color(at: t))
 ```
 
-Two kinds of ramp come pre-made. **`Colormap`** holds [eight scientific maps](../Docs/Drawing/Color.md#colormap) such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other. That makes them the standard way to turn a number into a color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula. Because they loop, they work well when fed with `time`. Both answer to the same `color(at:)`.
+Two kinds of ramp come pre-made. **`Colormap`** holds [eight scientific maps](../Docs/Drawing/Color.md#colormap) such as `.viridis` and `.magma`. Seven of them are built so that perceived brightness climbs evenly from one end to the other. Those seven are the standard way to turn a number into a color a viewer can read. `.turbo` is a rainbow instead, brightest in the middle. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula. Because they loop, they work well when fed with `time`. Both answer to the same `color(at:)`.
 
 A palette or a ramp can be a `@Param`, which saves a lot of editing and rerunning. A parameter is a value with a control in the panel beside the window, which the hosts call the inspector. You turn it while the sketch runs instead of editing a number and saving. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) declared four of them, and [Parameters](../Docs/Helpers/Parameters.md) is the rest of the family.
 

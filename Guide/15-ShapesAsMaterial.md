@@ -482,7 +482,7 @@ A **crease pattern** is how a folded thing is written down. Every fold is a stra
 
 A crease pattern can be wrong, which a hatched shape cannot. A hatched shape draws whatever you hand it. A crease pattern is a set of instructions, and the paper is the test it has to pass.
 
-Two laws decide it, and both look at a single vertex. **Kawasaki's law**: walk around the vertex and list the angles between one fold and the next. Add the first, take away the second, add the third, and keep going all the way around. The answer has to come to zero. **Maekawa's law**: count the mountains and the valleys meeting there. One count is always two more than the other. `isFlatFoldable` asks both, at every vertex inside the sheet.
+Two laws test it, and both look at a single vertex. **Kawasaki's law**: walk around the vertex and list the angles between one fold and the next. Add the first, take away the second, add the third, and keep going all the way around. The answer has to come to zero. **Maekawa's law**: count the mountains and the valleys meeting there. One count is always two more than the other. `isFlatFoldable` asks both, at every vertex inside the sheet. A pattern that fails them cannot fold flat. One that passes can still fail, if the sheet would have to pass through itself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CreaseAndFold-dark.jpg">
