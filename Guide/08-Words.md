@@ -6,7 +6,7 @@
 
 <img src="Images/08-Words/Specimen.jpg" alt="A type specimen sheet on cream paper: the word Ollin set very large in black with small red beads running evenly around every outline, three lines below it in an outline font, a pen font, and a pixel font, and a passage set flush on both edges under a red rule" width="560">
 
-Every mark on your canvas so far has been a shape. Words are the first thing you draw that also *means* something, and they arrive with a few hundred years of craft attached. This chapter teaches how to set them and how to take them apart. You put a line of text on the canvas, choose between the three kinds of font, and ask for a word as geometry, so its outlines can be warped, stroked, and respaced. Then you set a passage inside a box with both edges flush. Those steps build the specimen above: one word beaded along its own outline, the three kinds of letter under it, and a justified passage. After the sketch come the relatives. The per-glyph form hands you a word one letter at a time, so each letter can move on its own. And the scripts that do not work like English keep their shaping, their direction, and their columns down the page inside the same calls.
+A word on the canvas also means something, and it comes with centuries of craft attached. Here you learn to set words and to take them apart, down to outlines you can warp and respace. The specimen above beads one word along its own outline, over the three kinds of letter and a passage set flush on both edges. After it, letters come one at a time, and scripts that do not run like English keep their shaping, their direction, and their columns.
 
 ## Saying something: `drawText`
 

@@ -6,7 +6,7 @@
 
 <img src="Images/04-Randomness/DisorderGrid.jpg" alt="A nine-by-nine grid of nested square outlines on warm paper, perfectly ordered at the top and dissolving into tangled quadrilaterals toward the bottom, with a few red, blue, and ochre accents, and a small line of text in the bottom margin naming the variation" width="560">
 
-Randomness is the "generative" in generative art. You stop placing every mark yourself and write the rules that place them. Adding chance takes one call. The craft is in controlling it: deciding what may vary and by how much, and getting the same accident back tomorrow. This chapter teaches the calls and the seed that makes a run repeat. Then it teaches chance as a yes-or-no and a which-one, and the two shapes a roll can take. Last comes finding a variation you want to keep. It ends in the sketch above, a grid that begins in perfect order and comes apart one row at a time. After the sketch, the rolls go further: chance with a memory, chance spread evenly, and picks that breed. [Chapter 2](02-Color.md) borrowed `random` early for its color field, and this chapter is the full story.
+Randomness is the "generative" in generative art, and the craft is in controlling it. You decide what may vary and by how much, and a seed brings the same accident back tomorrow. The grid above begins in perfect order and comes apart one row at a time. After it come chance with a memory, chance spread evenly, and variations you breed by eye.
 
 ## Rolling dice
 

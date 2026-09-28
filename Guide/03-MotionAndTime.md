@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-This chapter shows where the `sin` wave comes from, the one [Chapter 1](01-HelloOllin.md) handed you as a recipe, and how to make motion run at the same speed on every display. Then it bends constant-rate movement into motion with character, the kind that eases, snaps, and bounces. The sketch above puts the circle behind `sin`, phase, and a shaping curve you pick from a menu into a loop that ends where it begins. You export it as a GIF that loops. After the sketch, a family section covers the motion Ollin runs for you: a sway in one call, values that chase a target, a timeline, timers, and the setting for people who would rather it held still.
+Motion needs a clock you can trust and curves that give it character. You learn both, from the clock and the circle behind `sin` to shaping curves that ease, snap, and bounce. The rings above loop without a seam, and you export them as a GIF. Past the rings comes the motion Ollin runs for you: a sway in one call, values that chase, timelines, and timers.
 
 ## The clock
 

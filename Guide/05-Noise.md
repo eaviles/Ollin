@@ -6,7 +6,7 @@
 
 <img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in thousands of short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
 
-Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that varies smoothly. It teaches what noise is, a drift that swings both ways, and the zoom multiplier that sets its scale. Then a field in two dimensions, time as the third, a drift that comes home so a loop can close, and layers that add detail. It ends in the sketch above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function. After the sketch come the other fields, laid out by other rules: triangles, cells, folds, and warps.
+Grass, smoke, coastlines, and a hand-drawn line all vary smoothly, and `random` only knows how to jump. The function that varies smoothly is `noise`, and this chapter teaches it from a single drift to layered fields that change with time and loop. The meadow above is fifteen hundred blades combed by one wind, all grown from that function. Other fields follow it, built by other rules: triangles, cells, folds, and warps.
 
 ## Random that remembers: `noise`
 

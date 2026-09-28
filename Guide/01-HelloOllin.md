@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-This chapter builds the sketch above. Twenty-eight circles drift around a ring, each breathing a little out of step with its neighbors. A small panel of parameters tunes them while it runs. Every dot is placed and moved by code you can read line by line. Getting there takes a working toolchain, one new file, and three shapes. On the way you learn what creative coding is and how its work goes. You also meet the idea this guide returns to in every chapter: in Ollin, things move by default. After the sketch, two more sections show how to move a shape by dragging it, and the `ollin` command that runs a sketch from anywhere.
+This chapter takes you from an empty file to a sketch that moves on its own. Twenty-eight circles drift around the ring above, each breathing a little out of step, while a panel of parameters tunes them as they run. On the way you learn what creative coding is and meet the idea every chapter comes back to: in Ollin, things move by default. After the ring, you drag a shape into place by hand and run a sketch from anywhere.
 
 ## What you need
 

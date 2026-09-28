@@ -6,7 +6,7 @@
 
 <img src="Images/06-GridsAndRepetition/RoseWall.jpg" alt="A five-by-five wall of cut-paper medallions on cream, each a colored disc with cream arms folded around it, the color drifting diagonally from coral through amber and green to deep indigo" width="560">
 
-Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. This chapter teaches the tools that make both: a grid you loop once, with its hex and triangle cousins, transforms that move the paper under your shapes, a fold that repeats every drawing call, a region that decides what survives, and a box that runs a whole sketch inside a cell. There are twenty-five medallions in the sketch above, and one crooked little arm behind all of them. The arm is written once. A grid decides where each medallion sits, and the transforms turn and shrink it in place. Symmetry folds that single arm into a ring of copies, and a clip trims whatever runs past the rim. A little disorder inside a strict structure, the move you know from [Chapter 4](04-Randomness.md), is where the life comes from. After the sketch come two other ways to divide and walk a grid: uneven panels split by recursion, and a spiral of numbers.
+Grids give generative art its order, and repetition gives it rhythm. You learn the tools for both, from grids and transforms to a fold that repeats every drawing call. The twenty-five medallions at the top all come from one crooked arm, drawn once and then placed, turned, folded, and trimmed. Uneven panels split by recursion and a spiral of numbers come after them.
 
 ## One loop, not two: `grid`
 

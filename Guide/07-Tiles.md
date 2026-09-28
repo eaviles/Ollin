@@ -6,9 +6,7 @@
 
 <img src="Images/07-Tiles/Meander.jpg" alt="A dense tangle of rounded strands meandering over a dark ground, colored in drifting patches of coral, cream, and teal" width="560">
 
-Every strand in this tangle is the same shape, a quarter circle. It is stamped into a grid a couple of hundred times, and a coin flip spins each copy. Nobody planned the long loops and corridors. They come from a rule each tile follows on its own, and that rule is this chapter's subject. A tile only has to meet its neighbors at its edges. Everything you can see across the page follows from that one promise.
-
-This chapter teaches the rule through Truchet tiles: the two tiles the framework ships, why any arrangement of them connects, and how to take the strands back as values and stroke them your own way. Those steps build the tangle above, which a click re-rolls. After the sketch come the relatives, in three families: line-work that spends its chance differently, pieces that have to fit a region, and the tilings that leave the repeating grid behind. [Chapter 6](06-GridsAndRepetition.md) built the grid all of these sit in. Here the cells stop being containers and start agreeing with each other.
+Every strand in the tangle above is the same quarter circle, stamped into a grid and spun by a coin flip. The long loops come from one rule each tile keeps on its own: it only has to meet its neighbors at its edges. This chapter teaches that rule through Truchet tiles, up to taking the strands back as values you stroke yourself. The relatives follow it: line-work that spends its chance differently, pieces that fit a region, and tilings past the repeating grid.
 
 ## Tiles that agree at their edges: Truchet
 
