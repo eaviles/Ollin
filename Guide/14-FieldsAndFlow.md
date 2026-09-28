@@ -88,7 +88,7 @@ noFill()
 for line in lines { drawPolyline(line.points, closed: line.isClosed) }
 ```
 
-`plate.uv(of:)` turns a point on the canvas into the plate's own `0...1` coordinates, which is what `chladni` reads. To fill a whole layer with the plate instead, [Chapter 18](18-YourFirstShader.md#the-pattern-fields) evaluates the same closed form on the GPU, once for every pixel.
+`plate.uv(of:)` turns a point on the canvas into the plate's own `0...1` coordinates, which is what `chladni` reads. To fill a whole layer with the plate instead, [Chapter 18](18-YourFirstShader.md#closed-forms-at-every-pixel-the-pattern-fields) evaluates the same closed form on the GPU, once for every pixel.
 
 ## A direction at every point: `FlowField`
 
