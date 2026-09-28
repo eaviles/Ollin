@@ -6,7 +6,7 @@
 
 <img src="Images/23-GridSimulations/Organism.jpg" alt="A dense teal brain-coral labyrinth grown by reaction-diffusion, its winding ridges lit with a wet sheen against deep navy gaps" width="560">
 
-This chapter teaches fields: pictures that carry their own state on the GPU and change it every frame by a local rule. Every one of them lives on a grid, and every cell asks only about its neighbors. You seed a field by drawing into it, and the rule does the rest. The corridors above grew that way, over six hundred frames, from a scatter of dots and the two chemical rules of reaction-diffusion. Whatever you draw while the sketch runs joins the chemistry. The spine of the chapter is what that organism uses. It is the field itself, the Game of Life as the first rule to run on one, a field read as data and given a look, and reaction-diffusion. After the organism come the fields it does not use, in families. The other automata run from Wolfram's single rows to Wireworld. The sandpile and the forest fire arrange their own instability. Percolation, Schelling's board, the Ising model, and oscillators on a lattice are crowds that cross a threshold together. Two more chemistries follow, then the fields that move: fluid, ripples, and self-warp. Falling sand and watercolor are two materials, and the last entry is a rule of your own written as a kernel.
+This chapter teaches fields: pictures that carry their own state on the GPU and change it every frame by a local rule. Every one of them lives on a grid, and every cell asks only about its neighbors. You seed a field by drawing into it, and the rule does the rest. The corridors above grew that way, over six hundred frames, from a scatter of dots and the two chemical rules of reaction-diffusion. Whatever you draw while the sketch runs joins the chemistry. The spine of the chapter is what that organism uses. It is the field itself and the Game of Life as the first rule to run on one. Then a field is read as data and given a look, and reaction-diffusion grows the culture. After the organism come the fields it does not use, in families. The other automata run from Wolfram's single rows to Wireworld. The sandpile and the forest fire arrange their own instability. Percolation, Schelling's board, the Ising model, and oscillators on a lattice are crowds that cross a threshold together. Two more chemistries follow, then the fields that move: fluid, ripples, and self-warp. Falling sand and watercolor are two materials, and the last entry is a rule of your own written as a kernel.
 
 ## State that lives on the GPU: SimField and withField
 
@@ -81,9 +81,9 @@ Reaction-diffusion is the Game of Life's continuous cousin, and the engine of th
   <img src="Images/23-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 </picture>
 
-Most of the map is quiet. Life, in this system, is a narrow band where feeding and killing balance, and every regime along that band has its own signature. There are dividing dots, and there are the worm mazes and coral walls the defaults grow. Put `feed` and `kill` on `@Param` parameters and you can walk the map live, which is what the [`Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift) example does.
+Most of the map is quiet. Life, in this system, is a narrow band where feeding and killing balance, and every regime along that band has its own signature. There are dividing dots, and there are the worm mazes and coral walls the defaults grow. Put `feed` and `kill` on `@Param` parameters and you can walk the map live. The [`Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift) example runs the dish at the defaults, a place to start from.
 
-The regime does not have to be one choice for the whole dish. Give the sim two settings, `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`, then attach any layer as `dish.modulation`. That layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. A picture can choose the chemistry, place by place. It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
+The regime does not have to be one choice for the whole dish. Give the sim two settings, `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`, then attach any drawn or generated layer as `dish.modulation`. That layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. A picture can choose the chemistry, place by place. It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
 Here is the same idea with a drawn layer instead of a camera, so the boundary can be looked at:
 
@@ -92,7 +92,7 @@ Here is the same idea with a drawn layer instead of a camera, so the boundary ca
   <img src="Images/23-GridSimulations/ChemistryByPicture.jpg" alt="Three square panels. Left, a soft-edged white disc on black. Middle, one reaction-diffusion dish colored teal on blue: a maze of walls inside the disc's footprint thinning out into scattered spots beyond it, with wall ends reaching into the spot field. Right, two separate dishes, a maze cut into a spot field along a circle drawn in orange, the pattern stopping dead at the line" width="680">
 </picture>
 
-The disc is the map. Inside it the field runs the maze pair, outside it the spot pair, and across the soft edge the maze's walls thin out into dots instead of stopping. The right dish is what a mask gives instead: two separate simulations cut along the same circle, and the seam knows nothing about either. Draw the map every frame before you read the field, since a frame with no map runs the plain black-end pair.
+The disc is the map. Inside it the field runs the maze pair, and outside it the spot pair. Across the soft edge the maze's walls thin out into dots instead of stopping. The right dish is what a mask gives instead: two separate simulations cut along the same circle, and the seam knows nothing about either. Draw the map every frame before you read the field, since a frame with no map runs the plain black-end pair.
 
 Seeding is drawing, as it was for Life. Watch what one mark becomes:
 
@@ -173,7 +173,7 @@ An **elementary cellular automaton** shrinks the grid to a single row. Each cell
 let rows = elementaryCA(rule: 30, width: 161, generations: 161)
 ```
 
-`elementaryCA` runs one rule and hands back a row per generation. Rule 30, on the left, is the famous one, because a rule that small has no business producing something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 is complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
+`elementaryCA` runs one rule and hands back a row per generation. Rule 30, on the left, is the famous one, because no rule that small should produce something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 is complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
 
 ### An ant on a grid: turmites
 
@@ -197,7 +197,7 @@ for painted in ant.paintedCells { /* draw a cell */ }
 dish = makeSimField(.lenia(radius: 13), scale: 0.55)
 ```
 
-The parameters are the model's personality. `radius` is how far the ring reaches. The growth center and width are the target mass, and how forgiving the rule is about missing it. One thing to know before running it: **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, so give it a generous soup of soft marks and a few hundred frames.
+The parameters are the model's personality. `radius` is how far the ring reaches. `growthCenter` is the target mass, and `growthWidth` is how forgiving the rule is about missing it. One thing to know before running it: **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, so give it a generous soup of soft marks and a few hundred frames.
 
 ### Life with soft edges: SmoothLife
 
@@ -228,9 +228,9 @@ In `.excitable` a resting cell fires when a neighbor is firing. A fired cell the
 
 `.cyclic` wires the same idea into a loop. Every cell wears one of fourteen colors, and each color is eaten by the color after it, around a circle with no rest state at all. Every color loses to the next one, forever. Like the Turing field later in this chapter, it needs no seeding, so it fills itself with seeded random states. From there it plays four acts in order: colored static, growing droplets, the first spiral defects, and then spirals that own the field. That is the top-left panel.
 
-`.briansBrain()` is the family's live wire. A ready cell fires when *exactly two* of its eight neighbors are firing, rests for one step, and is ready again. Almost any loose sprinkle explodes into gliders that race the grid forever, which is the bottom-left panel's permanent traffic. A solid painted blob dies on the spot. Its interior rests all at once, and along a flat edge every outside cell sees three firing neighbors where a birth needs two. So sprinkle loose soup, never a disc.
+`.briansBrain()` is the fastest of the family. A ready cell fires when *exactly two* of its eight neighbors are firing, rests for one step, and is ready again. Almost any loose sprinkle explodes into gliders that race the grid forever, which is the bottom-left panel's permanent traffic. A solid painted blob dies on the spot. Its interior rests all at once, and along a flat edge every outside cell sees three firing neighbors where a birth needs two. So sprinkle loose soup, never a disc.
 
-`.hodgepodge` is the family's chemist, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction, the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` like every other sim in this chapter.
+`.hodgepodge` models an infection, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction, the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` like every other sim in this chapter.
 
 ### A circuit made of cells: Wireworld
 
@@ -277,11 +277,11 @@ The field starts empty and you draw the circuit. The usual way in is text, one c
 
 ## Piles and fires: the sandpile and the forest fire
 
-Two automata in the catalog are about things piling up and burning down, and both are known for the same discovery. Neither has a dial that sets how big its avalanches or its fires get, and each arranges itself so that they come in every size.
+The organism's dish ran one rule that spreads. Two automata in the catalog are about things piling up and burning down instead, and both are known for the same discovery. Neither has a dial that sets how big its avalanches or its fires get, and each arranges itself so that they come in every size.
 
 ### A pile of sand: the Abelian sandpile
 
-The **Abelian sandpile** drops grains of sand on a grid. A cell can hold three. The moment it holds four it topples, sending one grain to each of its four neighbors. A neighbor that was sitting at three is now at four, so it topples too. One grain landing in the wrong place can send an avalanche across the field. The order you process the topplings in does not matter, because the pile always settles into the same configuration. That theorem is what puts the *Abelian* in the name. It is also why Ollin can topple every unstable cell at once on the GPU. The pile is for lacework nobody drew, and for avalanches of every size. Per Bak, Chao Tang, and Kurt Wiesenfeld proposed it in 1987, and Deepak Dhar proved in 1990 that its topplings commute.
+The **Abelian sandpile** drops grains of sand on a grid. A cell can hold three. The moment it holds four it topples, sending one grain to each of its four neighbors. A neighbor that was sitting at three is now at four, so it topples too. One grain landing in the wrong place can send an avalanche across the field. The order you process the topplings in does not matter, because the pile always settles into the same configuration. That theorem is what puts the *Abelian* in the name. It is also why Ollin can topple every unstable cell at once on the GPU. The pile is for lacework that comes from the rule alone, and for avalanches of every size. Per Bak, Chao Tang, and Kurt Wiesenfeld proposed it in 1987, and Deepak Dhar proved in 1990 that its topplings commute.
 
 <img src="Images/23-GridSimulations/Sandpile.jpg" alt="A large circular sandpile on cream paper, fully settled: dense self-similar lacework of gold and ink-blue triangular filigree arranged with fourfold symmetry, ringed by smoother petal-shaped lobes at the rim" width="560">
 
@@ -349,7 +349,7 @@ The ratio between the two rates is the dial, so keep `lightning` far below `grow
 
 ## Crowds that cross a threshold: percolation, Schelling's board, the Ising model, and oscillators on a lattice
 
-The forest settled at the density where a stand connects. Four more systems are about a crowd of cells crossing a threshold together. One is a grid of coin flips that suddenly spans, one a board that sorts itself, one a magnet that freezes, and one a lattice of oscillators that falls into step. Two of them run on the CPU and two are fields.
+The organism grew from a scatter into one connected labyrinth, and the forest settled at the density where a stand connects. Percolation, Schelling's board, the Ising model, and oscillators on a lattice are about that moment, a crowd of cells crossing a threshold together. Percolation is a grid of coin flips that suddenly spans. Schelling's board sorts itself, the Ising model is a magnet that freezes, and the lattice falls into step. Two of them run on the CPU and two are fields.
 
 ### When chance acts as a crowd: percolation
 
@@ -404,11 +404,11 @@ override func setup() {
 
 Every cell is a spin, and the rule is a bargain with the heat. A spin whose flip would make it agree with more of its four neighbors flips. A spin whose flip would make it disagree flips anyway, with a chance that falls as the disagreement grows and rises with the `temperature`. That second clause is the model. Without it the field would freeze after a few sweeps. Cold, at a temperature of 1 or 1.5, the field magnetizes: patches of up and down grow and swallow each other until one wins. Hot, at 4, the heat wins and the field is noise. Between them, at Onsager's critical temperature of about 2.27 (`Sim.isingCriticalTemperature`, the default), neither side wins and clusters appear at every size, patches inside patches inside patches. That is what a phase transition looks like, and it is the middle panel.
 
-There is nothing to seed. The field starts as a random mix, which is the field at infinite temperature, and cooling it is the picture. Drag the temperature down from the critical value while it runs and the clusters coarsen into domains. Drag it up and they dissolve. `field` is an outside magnet pulling every spin one way, and a small one is enough to decide which color wins a cold field. Draw a white patch and it magnetizes up, draw a black one and it flips down (`IsingSpin` names the two), and the heat then works on the patch. A run replays exactly under its `seed`. Every coin the rule throws is a hash of the cell, the pass, and the seed, so an export never shows a frame the window did not.
+There is nothing to seed. The field starts as a random mix, which is the field at infinite temperature, and cooling it is the picture. Drag the temperature down from the critical value while it runs and the clusters coarsen into domains. Drag it up and they dissolve. `field` is an outside magnet pulling every spin one way, and a small one is enough to decide which color wins a cold field. Draw a white patch and it magnetizes up, and draw a black one and it flips down; `IsingSpin` names the two. The heat then works on the patch. A run replays under its `seed`, because every coin the rule throws is a hash of the cell, the pass, and the seed. So an export never shows a frame the window did not.
 
 ### In step with the neighbors: oscillators on a lattice
 
-The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. The lattice form of `Kuramoto` is for that geography. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` maps where it has locked. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out:
+The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. The lattice form of `Kuramoto` is for that geography. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` maps where it has locked. The model is Yoshiki Kuramoto's, the one [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) credits, and the lattice is one layout of it. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out:
 
 ```swift
 var grid: HexGrid { hexGrid(columns: 24, rows: 20) }
@@ -424,11 +424,11 @@ override func draw() {
 }
 ```
 
-The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
+The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The [`Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) example is [Chapter 12](12-FlocksAndSwarms.md)'s meadow of fireflies, and a `Kuramoto` given `columns` and `rows` is this lattice. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
 
 ## Other chemistries: predator and prey, and multi-scale Turing
 
-Reaction-diffusion is one chemistry, two quantities feeding and consuming each other across a surface. Two more fields run a rule of that kind. One puts two species on a land instead of two chemicals, and the other keeps a single substance and runs Turing's idea at several sizes at once.
+The organism's reaction-diffusion is one chemistry, two quantities feeding and consuming each other across a surface. The predator-prey field and the multi-scale Turing field run a rule of that kind. The first puts two species on a land instead of two chemicals, and the second keeps a single substance and runs Turing's idea at several sizes at once.
 
 ### Two species: predator and prey
 
@@ -440,7 +440,7 @@ The **predator-prey field** puts prey and predators on one land and lets both wa
 land = makeSimField(.predatorPrey(), scale: 0.5)
 ```
 
-The field rests at full prey and no predators, and you draw green to release predators. The left map is sixty frames after five releases. Each is a front: predators eat their way outward into full prey. Behind the front the prey crash, the predators starve, and the meadow grows back, ring after ring. The right map is the same land later. The fronts have met, and the wake behind them has broken into curling waves, spiral arms with no fixed center. Each patch of land runs the same boom-and-crash cycle a little out of step with its neighbors. A cycle that runs out of step across space *is* a rotating wave.
+The field rests at full prey and no predators, and you draw green to release predators. Each release is a front, and the left map shows five of them: predators eat their way outward into full prey. Behind the front the prey crash, the predators starve, and the meadow grows back, ring after ring. Leave the land running and you get the right map. The fronts have met, and the wake behind them has broken into curling waves, spiral arms with no fixed center. Each patch of land runs the same boom-and-crash cycle a little out of step with its neighbors. A cycle that runs out of step across space *is* a rotating wave.
 
 Three numbers set the ecology. `halfSaturation` is how much prey it takes to fill a predator, `predatorGrowth` how fast full predators multiply, and `predatorDeath` how fast they starve. The defaults sit past the model's oscillation threshold, which is what makes waves. Raise the death rate toward the growth rate, or the half saturation toward the land's capacity. The cycle then calms into a steady coexistence, and the waves die out. The [`Simulation/PredatorPrey`](../Examples/Simulation/PredatorPrey/Sketch.swift) example puts all three on parameters, so you can walk the field from spirals to calm and back.
 
@@ -448,13 +448,13 @@ The raw field is prey in red and predators in green, which already reads as a pi
 
 ### The same rule at many sizes: multi-scale Turing
 
-**Multi-scale Turing patterns** use one substance instead of two chemicals, and several scales instead of one. The single-scale rule is this: take an average of the field over a small disc, take another over a larger disc, and compare them. Where the small average is the greater, brighten the pixel a little, and otherwise darken it. The small disc is the *activator* and the large one the *inhibitor*, and that one comparison, run over and over, grows the stripes on a zebra. That single rule is one `TuringScale`, and the left field below runs it alone:
+**Multi-scale Turing patterns** use one substance instead of two chemicals, and several scales instead of one. The single-scale rule is this: take an average of the field over a small disc, take another over a larger disc, and compare them. Where the small average is the greater, brighten the pixel a little, and otherwise darken it. The small disc is the *activator* and the large one the *inhibitor*, and that one comparison, run over and over, grows the stripes on a zebra. Now run five of those rules side by side, with radii doubling from small to large, which is what `.ladder` names. At every pixel, every step, ask which of the five has its two averages closest together, and let only that one act. Jonathan McCabe's insight is that "closest together" means *this is the scale that has the least to say here*. Letting it act is what lets each part of the picture settle at its own size. The patterns are for pictures that look photographed under a microscope, and they are McCabe's, from his 2010 Bridges paper "Cyclic Symmetric Multi-Scale Turing Patterns". The single rule is one `TuringScale`, and the left field below runs it alone:
 
 ```swift
 field = makeSimField(.multiScaleTuring(scales: [TuringScale(activatorRadius: 4, inhibitorRadius: 8, amount: 0.02)]), scale: 0.5)
 ```
 
-Now run five of those rules side by side, with radii doubling from small to large, which is what `.ladder` names. At every pixel, every step, ask which of the five has its two averages closest together, and let only that one act. Jonathan McCabe's insight is that "closest together" means *this is the scale that has the least to say here*. Letting it act is what lets each part of the picture settle at its own size. The patterns are for pictures that look photographed under a microscope, and they are McCabe's, from his 2010 Bridges paper "Cyclic Symmetric Multi-Scale Turing Patterns".
+The right field runs the five:
 
 <img src="Images/23-GridSimulations/TuringScales.jpg" alt="Two fields side by side, both shaded as gray relief. The left is a uniform maze of equal-width ridges at one size. The right has broad smooth lobes and dark winding channels, with much finer maze-like detail packed inside them" width="720">
 
@@ -485,7 +485,7 @@ field = makeSimField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
 
 ## Fields that move: fluid, ripples, and self-warp
 
-The fields so far change what each cell holds. Three more move what they hold across the grid. A fluid carries dye along a flow, a pool carries height as a wave, and the self-warp carries the picture itself along its own motion.
+The organism's dish, like every field so far, changes what each cell holds. The fluid, the ripple pool, and the self-warp move what they hold across the grid instead. A fluid carries dye along a flow, a pool carries height as a wave, and the self-warp carries the picture itself along its own motion.
 
 ### Water you can stir: fluid
 
@@ -514,11 +514,11 @@ override func draw() {
 }
 ```
 
-`curl` sets how much fine swirling detail the flow keeps, the dissipations how fast motion and color fade, and a mouse delta makes the obvious `force`. Hand this sketch a trackpad and it disappears people for a while.
+`curl` sets how much fine swirling detail the flow keeps, the dissipations how fast motion and color fade, and a mouse delta makes the obvious `force`.
 
 ### A pool you can drop things into: ripples
 
-The **ripple pool** is water of a different kind, a surface that goes up and down. It is the 2D wave equation running on a height field, and it is for drops, rings, and reflections that answer the mouse directly. The wave equation is old. Jean le Rond d'Alembert wrote it down for a vibrating string in 1747. The interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s.
+The **ripple pool** is water of a different kind, a surface that goes up and down. It is the 2D wave equation running on a height field, and it is for drops, rings, and reflections that answer the mouse directly. The wave equation is old, and Jean le Rond d'Alembert wrote it down for a vibrating string in 1747. The step here follows Evan Wallace's WebGL Water.
 
 <img src="Images/23-GridSimulations/RipplePool.jpg" alt="A blue pool with three sets of concentric ripples spreading from separate drop points, the rings crossing each other and fading toward the edges" width="560">
 
@@ -570,7 +570,7 @@ override func draw() {
     withField(warp) {
         background(Color(hex: 0x08080F))
         noStroke()
-        let c = bounds.center
+        let c = bounds.center                    // the canvas middle
         orb(at: c + Vector2(cos(time * 1.15), sin(time * 1.15)) * 310,
             radius: 84, Color(red: 1.0, green: 0.45, blue: 0.15))
         orb(at: c + Vector2(cos(-time * 0.74 + 2.1), sin(-time * 0.74 + 2.1)) * 215,
@@ -588,13 +588,13 @@ func orb(at center: Vector2, radius: Double, _ color: Color) {
 
 You draw the whole scene into the field, background and all, and composite the field instead of the scene. The measuring is the sim's job. It compares this frame's drawing with the last one, so anything that visibly moves, moves the history. The sketch never declares a velocity: the fluid needed a `force:`, and this field reads the push off the picture itself.
 
-`amount` picks the look. At 1 the carried ghost lands exactly back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears. `decay` a touch under 1 sinks old trails toward black.
+`amount` picks the look. At 1 the carried ghost lands back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears. `decay` a touch under 1 sinks old trails toward black.
 
 The motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal, and a camera or video frame drawn into the field works as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
 
 ## Materials: sand that falls and paint that behaves
 
-Two fields model a material rather than a rule you would state in a sentence. One moves grains that fall, roll, and sink, and the other is wet paint on rough paper.
+The organism's rule fits in a sentence. Falling sand and watercolor model a material instead, one moving grains that fall, roll, and sink, and the other wet paint on rough paper.
 
 ### Sand that falls: the falling-sand automaton
 
@@ -641,7 +641,7 @@ The cone on the shelf is not drawn. Grains land, roll down the slope, and stop w
 
 ### Paint that behaves: watercolor
 
-The **watercolor field** is a sheet of rough paper where water flows, carries pigment, and dries the way real paint does. Every other field here is a system you seed and watch; this one is a material you paint with. You lay down wet paint, and the physics produces the look, with no filter imitating it. It is for washes, glazes, and blooms. The three-layer simulation is Cassidy Curtis, Sean Anderson, Joshua Seims, Kurt Fleischer, and David Salesin's, from their 1997 paper "Computer-Generated Watercolor". The twelve pigment presets carry the coefficients the paper measured.
+The **watercolor field** is a sheet of rough paper where water flows, carries pigment, and dries the way paint does. Every other field here is a system you seed and watch; this one is a material you paint with. You lay down wet paint, and the physics produces the look, with no filter imitating it. It is for washes, glazes, and blooms. The three-layer simulation is Cassidy Curtis, Sean Anderson, Joshua Seims, Kurt Fleischer, and David Salesin's, from their 1997 paper "Computer-Generated Watercolor". The twelve pigment presets carry the coefficients the paper measured.
 
 <img src="Images/23-GridSimulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning green where it crosses the blue" width="560">
 
@@ -663,19 +663,19 @@ override func draw() {
 
 Painting is drawing into the field, with the palette riding the color channels. Red is the first pigment, green the second, blue the third, and **alpha is water**. `paint.ink(0)` builds the brush color for the first pigment, `paint.ink(2)` for the yellow, and `paint.water()` is a clean wet brush. `noStroke()` matters more than usual, because a stroked mark would ring every stamp with its stroke color. And black is water with no pigment in it.
 
-Leave a stroke alone and its edge darkens on its own. The wet rim sheds water and the interior refills it, and that slow one-way traffic ferries pigment to the boundary. It is the dark rim every real wet-on-dry stroke dries with. Paint a loaded stroke into a wash that is still wet and it spreads soft and feathery instead. Each pigment keeps its own habits along the way. Dense paints settle where you put them. Granulating ones like `.frenchUltramarine` collect in the paper's hollows and dry speckled, and staining ones grip and will not lift.
+Leave a stroke alone and its edge darkens on its own. The wet rim sheds water and the interior refills it, and that slow one-way traffic ferries pigment to the boundary. It is the dark rim every wet-on-dry stroke dries with. Paint a loaded stroke into a wash that is still wet and it spreads soft and feathery instead. Each pigment keeps its own habits along the way. Dense paints settle where you put them. Granulating ones like `.frenchUltramarine` collect in the paper's hollows and dry speckled, and staining ones grip and will not lift.
 
-Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine makes the muted green those real paints mix. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
+Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine makes the muted green those paints mix. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
 
-There are parameters for the paper too. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you cannot find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
+There are parameters for the paper too, on the longer form `watercolor(.watercolor(pigments: [.frenchUltramarine], dryBrush: 0.3))`. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you cannot find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 
 ## A rule of your own: Sim.shader
 
-Every field so far ran a rule somebody else wrote. The catalog is long, but sooner or later you want a rule it does not have. It might be a heat that spreads, a wind that carries something, or an automaton with your own table. The last entry is how you write one.
+Every field so far ran a rule somebody else wrote. The catalog is long, but sooner or later you want a rule it does not have. It might be a heat that spreads, a wind that carries something, or an automaton with your own table. This entry is how you write one.
 
 ### Life rewritten as a kernel: Sim.shader
 
-`Sim.shader` takes a kernel you write and runs it in the same loop as the catalog. The seeding by drawing, the `image`, and the memory from frame to frame are all the same. It is for the rule the catalog does not have. The kernel is a [`Shader`](18-YourFirstShader.md), and its `shade` returns the cell's **next state** from its neighborhood. `cell(info)` is the cell itself and `cell(info, dx, dy)` a neighbor, with `dy` positive downward like the canvas. Here is Life again, in nine lines of Metal:
+`Sim.shader` takes a kernel you write and runs it in the same loop as the catalog. The seeding by drawing, the `image`, and the memory from frame to frame are all the same. It is for the rule the catalog does not have. The kernel is a [`Shader`](18-YourFirstShader.md), and its `shade` returns the cell's **next state** from its neighborhood. `cell(info)` is the cell itself and `cell(info, dx, dy)` a neighbor, with `dy` positive downward like the canvas. Here is Life again, as a kernel:
 
 ```swift
 let life = Sim.shader(Shader("""
@@ -703,15 +703,15 @@ The second kernel is how a drawn mark gets in. Without one, a mark lands the way
 plate = makeSimField(.shader(heatStep, inject: addHeat, substeps: 4), scale: 0.5, edge: .clamped)
 ```
 
-<img src="Images/23-GridSimulations/OwnRule.jpg" alt="A heat plate run by a hand-written kernel: a brush's trail glows orange through magenta on black, spread and cooling, with white arrows showing the heat running down its own slope toward the cold" width="560">
+<img src="Images/23-GridSimulations/OwnRule.jpg" alt="A heat plate run by a hand-written kernel: a brush's trail glows pale yellow through magenta and purple on black, spread and cooling, with white arrows showing the heat running down its own slope toward the cold" width="560">
 
 That line carries the two other choices a field of your own makes you think about. **`edge`** is what a cell on the border reads when it looks past the field. The default wraps, which is why a glider that leaves Life's right edge comes back on the left. `.clamped` puts walls there. A read past the edge returns the border cell, which for a diffusing quantity is an insulated boundary, so nothing leaks out of this plate. The catalog's neighbor-reading sims honor the same setting, so Life on a clamped field has corners. **`precision`** is how exactly a number keeps. Half float, the default, holds a whole number exactly only to about two thousand, so a rule that *counts* wants `.float32`.
 
-Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. A wind carries dust, a drag pushes it, a noise layer handed in as an `input` stirs it, the edge is switched live, the arrows ride over the dust, and the mean speed is read back twice a second.
+Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. A wind carries dust, a drag pushes it, and a noise layer handed in as an `input` stirs it. The edge is switched live, the arrows ride over the dust, and the mean speed is read back twice a second.
 
 ## Where this comes from
 
-The Game of Life is John Horton Conway's, from 1970, and reached the world through Martin Gardner's *Scientific American* column. It remains the standard demonstration that computation and life-like behavior need almost nothing to start. Reaction-diffusion begins with Alan Turing's 1952 paper *The Chemical Basis of Morphogenesis*. The two-chemical model Ollin ships is the Gray-Scott variant. The feed/kill map figure follows the territory John Pearson charted in his 1993 classification of its patterns, and Karl Sims' interactive tutorial later made that map a creative-coding staple. The families after the organism name their own sources as they go: Wolfram, Langton, Chan, Rafler, Greenberg and Hastings, Griffeath, Silverman, Gerhardt and Schuster, Dewdney, Bak and Tang and Wiesenfeld, Dhar, Drossel and Schwabl, Broadbent and Hammersley, Newman and Ziff, Schelling, Lenz and Ising and Onsager, Metropolis and the Rosenbluths and the Tellers, Kuramoto, Lotka and Volterra, Rosenzweig and MacArthur, Holling, Sherratt and Lewis and Fowler, Medvinsky, McCabe, Stam and Harris, d'Alembert, Lucas and Kanade, Toffoli and Margolus, Devlin and Schuster, and Curtis and his co-authors. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The Game of Life is John Horton Conway's, from 1970, and reached the world through Martin Gardner's *Scientific American* column. It remains the standard demonstration that computation and life-like behavior need almost nothing to start. Reaction-diffusion begins with Alan Turing's 1952 paper *The Chemical Basis of Morphogenesis*. The two-chemical model Ollin ships is the Gray-Scott variant. The feed/kill map figure follows the territory John Pearson charted in his 1993 classification of its patterns. Karl Sims' interactive tutorial later made that map a creative-coding staple. The families after the organism name their own sources as they go: Wolfram, Langton, Chan, Rafler, Greenberg and Hastings, Griffeath, Silverman, Gerhardt and Schuster, Dewdney, Bak and Tang and Wiesenfeld, Dhar, Drossel and Schwabl, Broadbent and Hammersley, Newman and Ziff, Schelling, Lenz and Ising and Onsager, Metropolis and the Rosenbluths and the Tellers, Kuramoto, Lotka and Volterra, Rosenzweig and MacArthur, Holling, Sherratt and Lewis and Fowler, Medvinsky, McCabe, Stam and Harris, d'Alembert and Wallace, Lucas and Kanade, Toffoli and Margolus, Devlin and Schuster, and Curtis and his co-authors. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
