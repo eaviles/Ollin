@@ -300,10 +300,10 @@ Draws from: `Docs/3D/3D.md` (the traced and temporal tiers), `Docs/3D/Caustics.m
 ### Part VI: The world coming in
 
 **32. Seeing.**
-Teaches: the webcam as a live image, and its frame as the light and the surface of a 3D scene (`Environment.feed`, `textured`); the tracker model (attach, read typed results in `draw`); a tour in three depths: hands/face/body (taught), contours and optical flow (shown), the wider catalog (pointed); coordinate mapping done right; video files as material, including analyzing them.
-Assumes: Part I; Ch 8 (images), Ch 10 (vectors).
-Payoff: an interactive mirror piece (the reader's motion paints).
-Figures: tracker-flow diagram; landmark-map figures; a flow-field-from-motion figure; the mirror.
+Teaches: the webcam as a picture, with a still (`Camera.orStill`) or the bundled film (`VideoPlayer`) standing in; the tracker model (attach, read typed results in `draw`) and coordinate mapping; the body as a controller (hands, faces, bodies, the 3D body), the person as pixels (segmenters), and the picture as a field (optical flow), which the sketch paints with. The families after it: outlines and print; following one thing; labels and saliency; models of your own; the frame as the light and the surface of a 3D scene; the screen and slit scan.
+Assumes: Part I; Ch 9 (images), Ch 10 (vectors), Ch 14 (fields), Ch 19 (noClear).
+Payoff: the motion brush. Optical flow paints strokes colored by direction wherever the picture moved, and they sink slowly into the dark.
+Figures: the stand-in still; tracker flow; landmark maps; flow arrows; the motion brush; then contours; the desk read; a trajectory; attention and labels; the live room and the live surface; the screen as material; the slit-scan delay.
 Draws from: `Docs/Vision/Vision.md`, `Docs/Video/Video.md`; `Examples/Vision/`, `Examples/Video/`.
 
 **33. Depth and the iPhone as a sensor.**
