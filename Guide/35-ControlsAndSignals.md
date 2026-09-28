@@ -4,7 +4,7 @@
 
 # 35. Controls and signals
 
-<img src="Images/35-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in dark ink on cream, with fainter, slightly turned copies of itself trailing off to the right as though blown" width="560">
+<img src="Images/35-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in dark ink on cream, with fainter, slightly turned copies of itself fanning out behind it as though blown" width="560">
 
 This chapter connects a sketch to controls and signals outside the inspector. They include MIDI knobs, a phone fader, a shared beat, a game controller, the weather, and a knock from the trackpad. Knobs and faders bind straight to your `@Param` values, and everything else reads in `draw()` as a level or a moment. The steps build the weather rose above, a rose that all of these move at once. After it come more hands (a table, sensors on a wire or over Bluetooth), published and smoothed parameters, and data from the web.
 
