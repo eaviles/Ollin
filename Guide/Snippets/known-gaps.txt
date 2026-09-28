@@ -150,51 +150,12 @@ ddc10c3c2c06  Guide/32-Seeing.md:562  cannot find 'Camera' in scope
 a43bc3b3351c  Guide/32-Seeing.md:582  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 09cdb84809fc  Guide/32-Seeing.md:613  cannot find 'TextRecognizer' in scope
 62b423f43b64  Guide/32-Seeing.md:654  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
-3dc84979ea9c  Guide/34-Listening.md:367  'module' is inaccessible due to 'internal' protection level
+3dc84979ea9c  Guide/34-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 ad66fc5ac5b5  Guide/34-Listening.md:40  'module' is inaccessible due to 'internal' protection level
-38b204d41c3b  Guide/36-MakingSound.md:194  'module' is inaccessible due to 'internal' protection level
-f941d86cbeeb  Guide/36-MakingSound.md:462  'module' is inaccessible due to 'internal' protection level
-ecff20fec242  Guide/37-MusicByRule.md:103  cannot find 'synth' in scope
-78b2e7562074  Guide/37-MusicByRule.md:114  cannot find 'counter' in scope
-474da14fcc2e  Guide/37-MusicByRule.md:127  cannot find 'tempo' in scope
-872c8e85f6ed  Guide/37-MusicByRule.md:142  cannot find 'drums' in scope
-ba40962cd7f5  Guide/37-MusicByRule.md:156  cannot find 'midi' in scope
-c6ba8019c2f9  Guide/37-MusicByRule.md:174  cannot find 'counter' in scope
-0d78b16c8fe1  Guide/37-MusicByRule.md:19  cannot find 'synth' in scope
-b65e733a615b  Guide/37-MusicByRule.md:194  cannot convert value of type 'Character?' to expected argument type 'Scale'
-3df4f4621bf6  Guide/37-MusicByRule.md:213  cannot find 'synth' in scope
-40a4221ae027  Guide/37-MusicByRule.md:228  cannot find 'synth' in scope
-7b892f6fda28  Guide/37-MusicByRule.md:251  cannot find 'table' in scope
-d714b78b8487  Guide/37-MusicByRule.md:275  cannot find 'marker' in scope
-6249edb6a06a  Guide/37-MusicByRule.md:289  cannot find 'synth' in scope
-d7575267921f  Guide/37-MusicByRule.md:319  cannot find 'drums' in scope
-9a151b5ea333  Guide/37-MusicByRule.md:333  'module' is inaccessible due to 'internal' protection level
-b609c9b37692  Guide/37-MusicByRule.md:358  cannot find 'synth' in scope
-2a0c8c084dd7  Guide/37-MusicByRule.md:377  expected '}' in class
-d729b07ab7e8  Guide/37-MusicByRule.md:45  failed to produce diagnostic for expression; please submit a bug report (https://swift.org/contributing/#reporting-bugs)
-3d1a3a00857d  Guide/37-MusicByRule.md:466  extraneous '}' at top level
-f6bf8df998ea  Guide/37-MusicByRule.md:65  cannot find 'synth' in scope
-3a6bbc15652e  Guide/37-MusicByRule.md:74  cannot find 'synth' in scope
-31aa7f6ea403  Guide/37-MusicByRule.md:80  value of type 'Character?' has no member 'chord'
-d9a1c473df9d  Guide/37-MusicByRule.md:94  cannot find 'synth' in scope
-de4654592f32  Guide/38-FinishingASketch.md:233  cannot find 'scene' in scope
-8c4c8abbf60d  Guide/38-FinishingASketch.md:315  cannot find 'sketch' in scope
-3e6b653375f4  Guide/38-FinishingASketch.md:335  cannot find 'sketch' in scope
-74b80e032466  Guide/38-FinishingASketch.md:393  cannot find 'press' in scope
-89f4ed627c95  Guide/38-FinishingASketch.md:414  cannot find 'sculpture' in scope
-39b45f1bdb0a  Guide/38-FinishingASketch.md:431  cannot find 'sculpture' in scope
-28b0f887e08d  Guide/38-FinishingASketch.md:456  cannot find 'scene' in scope
-e91e5ee6a25d  Guide/38-FinishingASketch.md:462  cannot find 'sketch' in scope
-55cc676a6725  Guide/38-FinishingASketch.md:481  cannot find 'scene' in scope
-e873c5d7bcef  Guide/38-FinishingASketch.md:50  cannot find 'MySketch' in scope
-233c9fb903ba  Guide/38-FinishingASketch.md:618  cannot find 'sunBox' in scope
-2cab8d98cd98  Guide/38-FinishingASketch.md:627  cannot find 'x' in scope
-1413e784982d  Guide/39-Performing.md:110  cannot find '$radius' in scope
-c1a37a2ca1db  Guide/39-Performing.md:171  cannot find 'midi' in scope
-663454403921  Guide/39-Performing.md:191  cannot find 'timecode' in scope
-30dedeb34bae  Guide/39-Performing.md:202  cannot find '$radius' in scope
-17254b9bfd8a  Guide/39-Performing.md:219  cannot find '$radius' in scope
-7f198c23270e  Guide/39-Performing.md:238  cannot find '$frame' in scope
+38b204d41c3b  Guide/36-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
+f941d86cbeeb  Guide/36-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
+7a2173392001  Guide/37-MusicByRule.md:151  expected '}' in class
+3d1a3a00857d  Guide/37-MusicByRule.md:244  extraneous '}' at top level
 9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  cannot find 'Ripple' in scope
 93d908a1e153  Guide/40-HandingItOver.md:406  cannot find 'MyWatermark' in scope
 0eaa18b2ae73  Guide/40-HandingItOver.md:434  cannot find 'points' in scope

@@ -809,13 +809,13 @@ fb9dcf7906f1  Docs/Helpers/Input.md:252  cannot find 'sketch' in scope
 f0cd6be6aef9  Docs/Helpers/Input.md:48  consecutive statements on a line must be separated by ';'
 8367ed789b5b  Docs/Helpers/Input.md:55  unary operator cannot be separated from its operand
 8e0b26210e84  Docs/Helpers/Input.md:67  consecutive statements on a line must be separated by ';'
-d7ff958d42d5  Docs/Helpers/Listening.md:104  cannot find 'ears' in scope
-14edaccb0736  Docs/Helpers/Listening.md:125  cannot find 'mic' in scope
-7abdd4aad5ea  Docs/Helpers/Listening.md:138  'module' is inaccessible due to 'internal' protection level
-3296b31fc920  Docs/Helpers/Listening.md:62  cannot find 'speech' in scope
+d7ff958d42d5  Docs/Helpers/Listening.md:107  cannot find 'ears' in scope
+14edaccb0736  Docs/Helpers/Listening.md:128  cannot find 'mic' in scope
+7abdd4aad5ea  Docs/Helpers/Listening.md:141  'module' is inaccessible due to 'internal' protection level
+3296b31fc920  Docs/Helpers/Listening.md:65  cannot find 'speech' in scope
 4d25b9462e40  Docs/Helpers/Listening.md:7  cannot find 'flash' in scope
-75ac024f0f27  Docs/Helpers/Listening.md:82  cannot find 'speech' in scope
-bfa36d7f3c9e  Docs/Helpers/Listening.md:96  cannot find 'ears' in scope
+75ac024f0f27  Docs/Helpers/Listening.md:85  cannot find 'speech' in scope
+bfa36d7f3c9e  Docs/Helpers/Listening.md:99  cannot find 'ears' in scope
 7e385a7a9868  Docs/Helpers/LiveData.md:106  cannot find 'tide' in scope
 278ccd66b9f4  Docs/Helpers/LiveData.md:147  expected ',' separator
 79b337570444  Docs/Helpers/LiveData.md:156  cannot find 'splash' in scope
@@ -1024,17 +1024,17 @@ f85d2e3756c9  Docs/Integration/TUIO.md:80  cannot find 'TUIOReceiver' in scope
 9a034afa7d35  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
 56eab423badd  Docs/Output/Export.md:175  cannot find 'sketch' in scope
-143aa3f7b2a6  Docs/Output/Export.md:215  cannot find 'sketch' in scope
-d6af9cd76d9a  Docs/Output/Export.md:270  cannot find 'images' in scope
-41c51b4217b5  Docs/Output/Export.md:363  cannot find 'sketch' in scope
-5c4ecfe60d45  Docs/Output/Export.md:383  cannot find 'sketch' in scope
-68ebfe5e6c05  Docs/Output/Export.md:399  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:419  'canvasSize' has already been overridden
-9cce5cca05b5  Docs/Output/Export.md:474  cannot find 'MySketch' in scope
-69e3179f9546  Docs/Output/Export.md:481  cannot find 'someShape' in scope
-63d4bbf9aef5  Docs/Output/Export.md:493  cannot find 'sketch' in scope
-5661abd6a536  Docs/Output/Export.md:690  cannot find 'MySketch' in scope
-b050cb53bae3  Docs/Output/Export.md:717  cannot find 'MySketch' in scope
+143aa3f7b2a6  Docs/Output/Export.md:222  cannot find 'sketch' in scope
+d6af9cd76d9a  Docs/Output/Export.md:277  cannot find 'images' in scope
+41c51b4217b5  Docs/Output/Export.md:370  cannot find 'sketch' in scope
+5c4ecfe60d45  Docs/Output/Export.md:390  cannot find 'sketch' in scope
+68ebfe5e6c05  Docs/Output/Export.md:406  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:426  'canvasSize' has already been overridden
+9cce5cca05b5  Docs/Output/Export.md:481  cannot find 'MySketch' in scope
+69e3179f9546  Docs/Output/Export.md:488  cannot find 'someShape' in scope
+63d4bbf9aef5  Docs/Output/Export.md:500  cannot find 'sketch' in scope
+5661abd6a536  Docs/Output/Export.md:697  cannot find 'MySketch' in scope
+b050cb53bae3  Docs/Output/Export.md:724  cannot find 'MySketch' in scope
 5d07534919d9  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 408662c0edcc  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope

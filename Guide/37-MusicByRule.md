@@ -87,16 +87,16 @@ The distance between two notes is an **interval**, counted in semitones. Two int
 A `Scale` turns whole numbers into notes. Give it a kind of scale and a root, then read it at a degree. The `play` line goes inside the loop over steps:
 
 ```swift
-let scale = Scale(.minorPentatonic, root: "A3")
-synth.play(scale[step])
+let pentatonic = Scale(.minorPentatonic, root: "A3")
+synth.play(pentatonic[step])
 ```
 
-Degrees run past both ends. This scale has five notes, so `scale[5]` is the root an octave up, and `scale[-1]` is the note below the root. Any whole number lands on a note of the key, however it was arrived at, so generated music stays in key. Feed a wandering number through a scale and every note it plays belongs to the key. `.major`, `.minor`, `.blues`, and `.hirajoshi` are other kinds, and [Composition](../Docs/Helpers/Composition.md) lists them all.
+Degrees run past both ends. This scale has five notes, so `pentatonic[5]` is the root an octave up, and `pentatonic[-1]` is the note below the root. Any whole number lands on a note of the key, however it was arrived at, so generated music stays in key. Feed a wandering number through a scale and every note it plays belongs to the key. `.major`, `.minor`, `.blues`, and `.hirajoshi` are other kinds, and [Composition](../Docs/Helpers/Composition.md) lists them all.
 
 Sometimes the number came from somewhere that is not music, like a mouse position or a sensor reading. Then `snap` moves it to the nearest note of the scale. `Pitch(...)` makes a pitch from a MIDI number, which can fall between two keys:
 
 ```swift
-synth.play(scale.snap(Pitch(40 + mouseY / 12)))
+synth.play(pentatonic.snap(Pitch(40 + mouseY / 12)))
 ```
 
 ## Chords from the key: `Chord` and `Arpeggio`
@@ -135,7 +135,7 @@ The scale keeps a line in key, but something still has to choose the degrees. A 
 var melody = MarkovChain(learning: [0, 2, 4, 2, 0, -3], seed: 4, loops: true)
 melody.start(at: 0)
 
-synth.play(scale[melody.next() ?? 0])
+synth.play(pentatonic[melody.next() ?? 0])
 ```
 
 The motif here is a list of degrees. `loops: true` treats it as a phrase that comes round again, so its last note leads back to its first. `start(at: 0)` places the chain at 0, so the first `next()` answers with what followed 0 in the motif. `next()` answers nil only when the chain has learned nothing, so `?? 0` falls back to the root.
@@ -414,7 +414,7 @@ These are the notes `pitches(at:)` hands back, in two keys, with nothing else ch
 A few progressions are named, such as `.pop(in:)`, `.blues(in:)`, `.twoFiveOne(in:)`, and `.andalusian(in:)`. A progression can also leave its cycle:
 
 ```swift
-let changes = Progression("I vi IV V ii V", in: scale).wandering(32)
+let changes = Progression("I vi IV V ii V", in: major).wandering(32)
 ```
 
 `wandering(_:)` learns a Markov chain from the progression's own moves and plays 32 chords from it. It only makes moves the original made, but after a few bars it is somewhere the original never went. It is seeded per call, so a wander you like is one you can ask for again.
@@ -465,7 +465,7 @@ var counter = StepCounter(perBeat: 2)
 override func draw() {
     room.advance(to: time)
     for step in counter.steps(upTo: room.beats) {
-        synth.play(scale[step % 5], for: 0.2)
+        synth.play(pentatonic[step % 5], for: 0.2)
     }
 }
 ```

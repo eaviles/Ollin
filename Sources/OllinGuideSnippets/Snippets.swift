@@ -188,9 +188,32 @@ func isMemberHead(_ trimmed: String) -> Bool {
     return false
 }
 
+/// Swift has no property wrapper at top level, so a preamble's wrapped `var`
+/// (a `@Param` the prose established, which a fragment reaches as `$radius`)
+/// goes inside the probe instead, where a sketch would declare it. A wrapper is
+/// a capitalized attribute; `@MainActor` is the one capitalized attribute that
+/// stays at top level.
+func splitPreamble(_ preamble: String) -> (topLevel: String, members: [String]) {
+    var topLevel: [String] = []
+    var members: [String] = []
+    for line in preamble.components(separatedBy: "\n") {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let attribute = trimmed.dropFirst().prefix { $0.isLetter }
+        if trimmed.hasPrefix("@"), attribute.first?.isUppercase == true,
+           attribute != "MainActor", trimmed.contains(" var ") {
+            members.append(trimmed)
+        } else {
+            topLevel.append(line)
+        }
+    }
+    return (topLevel.joined(separator: "\n"), members)
+}
+
 /// The compilable file for one block: the chapter's preamble, then the block
-/// put wherever its parts belong.
-func wrapped(_ block: Block, preamble: String) -> String {
+/// put wherever its parts belong. The preamble's wrapped members reach only a
+/// fragment, the one shape that is compiled inside a sketch.
+func wrapped(_ block: Block, preamble fullPreamble: String) -> String {
+    let (preamble, wrappedMembers) = splitPreamble(fullPreamble)
     let (own, body) = liftImports(block.body)
     let imports = (["import Ollin"] + own).joined(separator: "\n")
     switch shape(of: block.body) {
@@ -199,7 +222,8 @@ func wrapped(_ block: Block, preamble: String) -> String {
     case .declaration:
         return imports + "\n" + preamble + "\n" + body
     case .body:
-        let (members, statements) = partition(body)
+        let (ownMembers, statements) = partition(body)
+        let members = wrappedMembers + ownMembers
         let drawBody = statements.joined(separator: "\n")
         // Loose statements go in `draw()` so they run where a reader would put
         // them. When the block declares its own overrides they go in a plain
