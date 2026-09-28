@@ -6,7 +6,7 @@
 
 <img src="Images/36-MakingSound/Workbench.jpg" alt="A dark workbench: a room's answer to a click drawn across the top, three outlines, a circle, a tilted square, and a hand-drawn blob, with a bar chart of tones under each, six strings across the middle, and a gold bowed string at the bottom" width="560">
 
-This chapter gives a sketch a voice of its own. It starts with one note and what a note is made of. Then it works notes out from physical models of a plucked string, a struck shape, a bow, and a breath. The sound then passes through a chain of effects that ends in a room you can draw. The steps build the workbench above, an instrument you play with the mouse. You strike drawn outlines, pluck and bow strings, and everything rings in a room drawn from a rule. After it come other ways to make a sound, from patches to recordings, wavetables, and grains. Then come more effects, including one you write yourself, and notes you can bend one at a time. The workbench needs no microphone, controller, or file, so run it and you will hear it. Which notes a sketch plays, and when, is [Chapter 37](37-MusicByRule.md).
+A synth inside the sketch gives it a voice, and you build that voice up from a single note. Physical models play a string, a struck shape, a bow, and a breath, and a chain of effects ends in a room you can draw. The workbench at the top is an instrument you play with the mouse, and it needs no microphone, controller, or file. After it come patches, recordings, wavetables, and grains, more effects including one of your own, and notes you bend one at a time.
 
 ## A sketch that plays
 

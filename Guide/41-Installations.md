@@ -6,7 +6,7 @@
 
 <img src="Images/41-Installations/WallPiece.jpg" alt="A wide dark screen carrying a slow field of vertical bars in dusk colors, orange at a peak left of center, deep plum in a dip right of center, and red-orange again at the right edge, with a separate band of the same colors running along the bottom" width="680">
 
-This chapter keeps a finished sketch running in one place for days, with nobody watching it, and lets it light the room around it. The steps end on the wall of bars above, whose bottom band lights a strip of lamps under the screen. After it come a lighting console and a show laser, projectors and many screens, and ways to keep watch from the floor. The guide closes with where to go next.
+Left in one place for days with nobody watching, a sketch becomes an installation, and it can light the room around it. You learn what keeps a sketch running that long, from checkpoints to opening hours, and how it sends light to lamps. The wall of bars above lights a strip of lamps under the screen with its bottom band. Then come a lighting console and a show laser, projectors and many screens, and ways to keep watch from the floor. The guide closes with where to go next.
 
 ## Leaving it running: `Installation`
 

@@ -6,7 +6,7 @@
 
 <img src="Images/37-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold marks low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
 
-This chapter teaches a sketch to decide which notes to play, and when. Rhythms spread hits evenly over a count of steps. After a short primer on pitch, a scale chooses the notes and the chords. A chain that learned a phrase decides where a line goes next. The steps build the music box above, which plays by itself and draws each note as it plays it. After it come a sequencer and an arpeggiator with a feel, progressions, and tunings. Then come a beat taken from the room, numbers played as notes, MIDI files, and sound placed in a 3D scene.
+Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly, a short primer on pitch, scales and chords from a key, and a chain that learned a phrase. The music box above plays by itself and draws each note as it plays it. The families after it hold a sequencer with a feel, progressions and tunings, a beat from the room, and MIDI files.
 
 ## Beats and note lengths: `Tempo` and `NoteLength`
 

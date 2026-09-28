@@ -6,7 +6,7 @@
 
 <img src="Images/39-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core" width="560">
 
-This chapter puts code on stage. You type over the running picture in a performance host and evaluate each change without stopping it. You also record the **set**, the performance from start to end, as you play it. The steps end in a set of five evaluations, and the picture above is its last state. After it come more of the host, looks and runs you come back to, and parameters directed or written as rules. Last come live feeds into other apps.
+Code can be the performance: you type over the running picture and evaluate each change without stopping it. Here you learn live coding in a performance host, and how to record the set, the performance from start to end, as you play it. The picture at the top is the last state of a set in five evaluations. Past it come completion and a controller, cues and replay, parameters directed or written as rules, and live feeds into other apps.
 
 ## Performing the code itself: live coding
 
