@@ -134,7 +134,7 @@ final class SaveToPhone: Sketch {
         drawText("the parameters, both ways", strip.x + 12, strip.y + 16, size: 13, color: theme.ink, align: .left, .middle)
         drawText("http://localhost:9330", strip.x + 12, strip.y + 38, size: 12, color: theme.accent, align: .left, .middle)
         drawText("a slider on the Mac moves the phone;", strip.x + 12, strip.y + 58, size: 11, color: theme.muted, align: .left, .middle)
-        drawText("a value tuned there rides every save", strip.x + 12, strip.y + 72, size: 11, color: theme.muted, align: .left, .middle)
+        drawText("a value tuned there survives a save", strip.x + 12, strip.y + 72, size: 11, color: theme.muted, align: .left, .middle)
 
         diagramCaption("a save is a build and a reinstall, and the written state makes it a swap",
                        at: 466, theme: theme)

@@ -67,7 +67,7 @@ final class SkyClock: Sketch {
             ridge.append(uv(u, 0.76 + noise(u * 4) * 0.08))
         }
         fill(land)
-        drawPolygon(ridge + [uv(1, 1), uv(0, 1)])
+        drawShape(Shape(ridge + [uv(1, 1), uv(0, 1)]))
     }
 
     // A sun or a moon, `arc` of the way along its path: 0 rising at the left, 1 setting at the right.

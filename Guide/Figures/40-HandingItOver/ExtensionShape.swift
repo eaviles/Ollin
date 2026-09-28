@@ -31,7 +31,7 @@ final class ExtensionShape: Sketch {
         let right = Rectangle(x: 514, y: 70, width: 330, height: 300)
 
         card(left, title: "ollinx-halftone", subtitle: "a package, published on its own")
-        card(right, title: "MySketch.swift", subtitle: "somebody else's piece")
+        card(right, title: "MySketch.swift", subtitle: "somebody else's sketch")
 
         // The package: the one file that carries the addition.
         textSize(12.5)
@@ -52,7 +52,7 @@ final class ExtensionShape: Sketch {
             "import Ollin",
             "import OllinxHalftone",
             "",
-            "drawSpiral(center: middle,",
+            "drawSpiral(center: center,",
             "           radius: 90)",
         ], in: right)
 

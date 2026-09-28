@@ -28,9 +28,9 @@ final class AQuarterHourApart: Sketch {
         noStroke()
         textFont(.system)
 
-        drawText("A piece that changes, not one that moves.",
+        drawText("A sketch that changes, not one that moves.",
                  40, 26, size: 17, color: theme.ink, align: .left, .top)
-        drawText("ollin new Ripple --kind widget", 40, 52,
+        drawText("ollin new Tide --kind widget", 40, 52,
                  size: 12, color: theme.accent, align: .left, .top)
 
         run()
@@ -142,7 +142,7 @@ final class AQuarterHourApart: Sketch {
 
         drawText("The system throws a run away and asks for",
                  box.x + 16, box.y + 40, size: 12, color: theme.ink, align: .left, .top)
-        drawText("another whenever it likes. A piece counting",
+        drawText("another whenever it likes. A sketch counting",
                  box.x + 16, box.y + 58, size: 12, color: theme.ink, align: .left, .top)
         drawText("from zero would jump back every time.",
                  box.x + 16, box.y + 76, size: 12, color: theme.ink, align: .left, .top)

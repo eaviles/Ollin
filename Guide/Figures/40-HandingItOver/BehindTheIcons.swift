@@ -27,7 +27,7 @@ final class BehindTheIcons: Sketch {
         noStroke()
         textFont(.system)
 
-        drawText("The desktop becomes the piece, and stays a desktop.",
+        drawText("The desktop becomes the sketch, and stays a desktop.",
                  40, 26, size: 17, color: theme.ink, align: .left, .top)
         drawText("ollin new Drift --kind wallpaper", 40, 52,
                  size: 12, color: theme.accent, align: .left, .top)
@@ -92,7 +92,7 @@ final class BehindTheIcons: Sketch {
         drawRect(screen)
         noStroke()
 
-        drawText("a click reaches the window and the icons, never the piece",
+        drawText("a click reaches the window and the icons, never the sketch",
                  screen.x, screen.y + screen.height + 14,
                  size: 13, color: theme.ink, align: .left, .top)
         drawText("the sketch takes no input at all: no mouseX, no key",
@@ -156,9 +156,9 @@ final class BehindTheIcons: Sketch {
         _ = note(at: y, title: "what it costs", height: 96) { box in
             drawText("It draws at the display's rate for as long as", box.x + 16, box.y + 32,
                      size: 12, color: theme.ink, align: .left, .top)
-            drawText("the machine is up. A still piece calls", box.x + 16, box.y + 50,
+            drawText("the machine is up. A still sketch calls", box.x + 16, box.y + 50,
                      size: 12, color: theme.ink, align: .left, .top)
-            drawText("noLoop() and costs nothing at all.", box.x + 16, box.y + 68,
+            drawText("noLoop() and draws only once.", box.x + 16, box.y + 68,
                      size: 12, color: theme.ink, align: .left, .top)
         }
 

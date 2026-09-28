@@ -36,7 +36,7 @@ final class AppToHand: Sketch {
 
         drawText("A sketch that declares an Installation keeps it inside the app, so the double click",
                  40, 440, size: 13, color: theme.ink, align: .left, .top)
-        drawText("opens the piece full screen and unattended. The wall machine needs no toolchain.",
+        drawText("opens the sketch full screen and unattended. The wall machine needs no toolchain.",
                  40, 462, size: 13, color: theme.ink, align: .left, .top)
     }
 
@@ -72,9 +72,9 @@ final class AppToHand: Sketch {
                      Vector2(icon.x - 14, frame.center.y - 5),
                      Vector2(icon.x - 14, frame.center.y + 5))
         let gap = (frame.x + frame.width + icon.x) / 2
-        drawText("the piece wears", gap, frame.center.y - 44,
+        drawText("the icon is", gap, frame.center.y - 44,
                  size: 11, color: theme.muted, align: .center, .top)
-        drawText("its own face", gap, frame.center.y - 30,
+        drawText("one frame of it", gap, frame.center.y - 30,
                  size: 11, color: theme.muted, align: .center, .top)
 
         drawText("Drop an AppIcon.icns beside build.sh to choose it yourself.",
