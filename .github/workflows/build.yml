@@ -232,6 +232,18 @@ jobs:
               if any(name.endswith(".swift.o") for name in os.listdir(built)):
                   shutil.rmtree(built)
                   discarded.append(target)
+          # A header a Swift target reads through a C module (the shared
+          # CPU-GPU structs under Sources/Ollin/Renderer, imported through
+          # COllinShaders) is cached as a compiled Clang module, and that cache
+          # is keyed on the C target, whose own files never change when the
+          # header does. So a widened struct left every dependent reading the
+          # old layout from the cache while the framework wrote the new one,
+          # and three packing tests failed on the runner alone. Whenever
+          # anything is discarded, the module cache goes with it.
+          if discarding:
+              for cache in sorted(glob.glob(".build/*/*/ModuleCache*")):
+                  shutil.rmtree(cache)
+                  discarded.append(os.path.basename(cache))
 
           os.makedirs(".build", exist_ok=True)
           with open(marker, "w") as file:
