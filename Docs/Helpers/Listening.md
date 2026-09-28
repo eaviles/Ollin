@@ -161,5 +161,5 @@ let heard = try SoundClassifier.classify(resource: "field", withExtension: "wav"
 - [Vision](../Vision/Vision.md) is the counterpart for seeing, and this page follows the shape of its trackers.
 - [Synthesis](Synthesis.md) covers making sound rather than listening to it.
 - [Phone](../3D/Phone.md#what-the-phone-hears) is a tethered iPhone doing the hearing, over the same values.
-- Guide [Chapter 34](../../Guide/34-Listening.md) teaches it, under *Words, and what that noise was*.
+- Guide [Chapter 34](../../Guide/34-Listening.md) teaches it, under *Words, and what that noise was: speech and sound events*.
 - `Examples/Audio/Listening` draws a caption and named sounds over the live microphone.

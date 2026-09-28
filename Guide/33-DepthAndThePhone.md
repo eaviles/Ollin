@@ -600,7 +600,7 @@ Before you build on it, know where the room's origin is. It is wherever the phon
 
 The phone has ears as well as eyes. Switch **Hear** on, under the modes, and it names the sounds around it, a dog, a kettle, applause, or a knock at the door. It is for a sketch that answers what happens in the room. Apple's sound classifier runs on the phone, so only the names cross the cable, never the audio. It needs no camera, which is why it is a switch and not a mode. It runs beside whichever mode is on.
 
-[Chapter 34](34-Listening.md#words-and-what-that-noise-was) teaches the Mac's own `SoundClassifier`, and the phone's ears give the same two kinds of read. One is a level, for a question that rises and falls:
+[Chapter 34](34-Listening.md#sounds-with-names-soundclassifier) teaches the Mac's own `SoundClassifier`, and the phone's ears give the same two kinds of read. One is a level, for a question that rises and falls:
 
 <img src="Images/33-DepthAndThePhone/HeardAsMarks.jpg" alt="Four rows on a dark panel, one per sound: speech, dog bark, clapping, music. Each row is a stepped, filled curve of the phone's confidence over eight seconds with a dashed threshold line across it. A warm ring sits on the line a moment after each climb over it: one for speech, which then stays up, two for the dog, one for the clap, none for music, which hovers just under" width="680">
 
