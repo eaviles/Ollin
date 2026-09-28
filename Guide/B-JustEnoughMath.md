@@ -8,7 +8,7 @@ Every math idea in the guide, re-explained on one page each. Each entry is a pic
 
 The entries are grouped by theme rather than by chapter, so related ideas sit together. Read it straight through if you like, and it's a decent tour of the field's math on its own. But it's built for dipping. Come with one confusion, leave with one picture.
 
-**Contents:** [Where things are](#where-things-are) · [Angles and circles](#angles-and-circles) · [Fractions, mapping, and wrapping](#fractions-mapping-and-wrapping) · [Shaping a value](#shaping-a-value) · [Randomness](#randomness) · [Noise](#noise) · [Moving the paper](#moving-the-paper) · [Vectors, motion, and forces](#vectors-motion-and-forces) · [Fields and following them](#fields-and-following-them) · [Local rules, global structure](#local-rules-global-structure) · [Shapes as regions](#shapes-as-regions) · [Color and light as numbers](#color-and-light-as-numbers) · [Per-pixel thinking and distance](#per-pixel-thinking-and-distance) · [Into three dimensions](#into-three-dimensions) · [Sound as numbers](#sound-as-numbers)
+**Contents:** [Where things are](#where-things-are) · [Angles and circles](#angles-and-circles) · [Fractions, mapping, and wrapping](#fractions-mapping-and-wrapping) · [Shaping a value](#shaping-a-value) · [Randomness](#randomness) · [Noise](#noise) · [Moving the paper](#moving-the-paper) · [Vectors, motion, and forces](#vectors-motion-and-forces) · [Fields and following them](#fields-and-following-them) · [Local rules, global structure](#local-rules-global-structure) · [Iteration: a rule applied again](#iteration-a-rule-applied-again) · [Shapes as regions](#shapes-as-regions) · [Color and light as numbers](#color-and-light-as-numbers) · [Per-pixel thinking and distance](#per-pixel-thinking-and-distance) · [Into three dimensions](#into-three-dimensions) · [Sound as numbers](#sound-as-numbers)
 
 ## Where things are
 
@@ -64,6 +64,15 @@ To stand on a circle's rim, you need how far around (an angle) and how far out (
 
 Once the pattern is yours, it is also one call. `polar(angle, radius, around: center)` lands the same point, and `angles(12)` hands you twelve evenly spaced angles to stand things on. A whole ring becomes a `for` loop with no index arithmetic. This appendix keeps spelling the trig out so you can see it work.
 
+### The angle of an arrow: `atan2`
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../Docs/Images/VectorHeading-dark.jpg">
+  <img src="../Docs/Images/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the long side of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and a quarter turn taking (3, 0) to (0, 3)" width="680">
+</picture>
+
+The entry above goes from an angle to a point. `atan2(y, x)` goes back, from a point to its angle. Given the two parts of an arrow, it answers the angle the arrow points at, measured from the positive x-axis, between `-.pi` and `.pi`. It takes y first. It needs both parts, because an arrow and its opposite have the same ratio of y to x. (1, 1) and (-1, -1) are one example. A vector's `angle` is this call. [Chapter 10](10-Vectors.md) turns a shape to face where it moves with it, and [Chapter 17](17-MarksAndMedia.md) reads the lean of a pen.
+
 ### Sine: a smooth swing
 
 <picture>
@@ -88,6 +97,27 @@ Adding a constant inside `sin(...)` starts the swing partway through its cycle, 
 
 Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau / n`, draw again, n times. Because n equal steps of `tau / n` add up to exactly one full turn, the last copy lands flush against the first with no seam. [Chapter 6](06-GridsAndRepetition.md) builds rosettes and mandalas this way from a single drawing.
 
+### An angle that never closes: the golden angle
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/GoldenAngle.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes the rosette above. Sometimes you want the opposite: many things placed around a center, none of them behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. It is the angle that fractions of whole numbers match most poorly, so no step ever lands close behind an earlier one. A sunflower's seeds grow this way. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 27](27-Landscapes.md) spreads its lamps the same way.
+
+### Numbers that turn: complex multiplication
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/MultiplyingTurns.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+A point `(x, y)` can also be read as one number, written `x + y·i`, where `i` is a number whose square is -1. Read that way, the plane is the **complex plane**, and its use here is multiplication. Multiplying two of these numbers multiplies their lengths and adds their angles. So multiplying by `i`, which has length 1 and points a quarter turn around, turns anything a quarter turn. Two quarter turns make half a turn, which is why `i` times `i` is -1. Squaring a point doubles its angle and squares its length. [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) builds escape-time fractals and domain coloring on this.
+
+### Circles on circles: Fourier
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/EpicycleTerms-dark.jpg">
+  <img src="Images/16-CurvesAndFigures/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
+</picture>
+
+A closed outline can be rebuilt from circles. Each circle turns a whole number of laps while riding on the tip of the one before it, and the last tip traces the shape. A few large, slow circles give the rough form, and more small, fast ones add the detail. This is Joseph Fourier's idea from the 1820s: a repeating shape is a sum of plain waves. [Chapter 16](16-CurvesAndFigures.md) draws with the circles, and [Chapter 21](21-PicturesYouSolve.md) reads a whole picture as waves. [Chapter 31](31-TracedLight.md) finds it in the star around a bright light in a lens. A sound splits the same way, as [the spectrum](#the-spectrum) shows.
+
 ## Fractions, mapping, and wrapping
 
 ### t, the fraction along: lerp and map
@@ -99,11 +129,26 @@ Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau 
 
 A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at the end, and 0.25 a quarter of the way. `lerp(a, b, t)` walks from `a` to `b` by that fraction. `map(v, inLo, inHi, outLo, outHi)` carries a value from one range to another by *keeping* its fraction along. So 75% into the input range comes out 75% into the output range. The same idea squeezes sine's -1…1 into 0…1 (`sin(x) * 0.5 + 0.5`). [Chapter 2](02-Color.md) mixes colors by `t`, and [Chapter 3](03-MotionAndTime.md) makes both calls everyday tools.
 
+### Three fractions at once: barycentric coordinates
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Barycentric.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+`lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. The weights 0.5, 0.3, and 0.2 name a point closest to the first corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three, and a corner's weight is the share of the piece opposite it. The same weights mix anything the corners carry, such as a color or a height. [Chapter 27](27-Landscapes.md) reads them off a point scattered over a mesh, to blend what the mesh stores at its corners.
+
 ### Wrapping: remainder, fract, and pingPong
 
 <img src="Images/B-JustEnoughMath/Wrap.jpg" alt="Three strips over one time axis: raw time rising forever, loopProgress wrapping 0 to 1 every lap, and pingPong folding each lap out and back" width="680">
 
 A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps whole numbers (`i % 4` cycles 0, 1, 2, 3), and `fract` keeps just the fraction of a decimal, wrapping it into 0…1. `loopProgress(over: 3)` is that wrap applied to the sketch clock, "how far through the current 3-second lap". `pingPong` folds each lap, so the trip goes out and back instead of snapping home. [Chapter 1](01-HelloOllin.md) meets `%`, and [Chapter 3](03-MotionAndTime.md) supplies the two helpers.
+
+### What two counts share: the greatest common divisor
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/KolamLoops-dark.jpg">
+  <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
+</picture>
+
+The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 37](37-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
 
 ### The perfect loop
 
@@ -132,7 +177,7 @@ A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. It
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="Comet swarms of glowing dots, each dragging a soft luminous tail that fades with age" width="560">
 
-Multiply a value by a little less than 1 every frame, keeping 93% say, and it melts away smoothly. It falls fast at first, ever slower, and never quite reaches zero. That's exponential decay, and it's the shape of every fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails.
+Multiply a value by a little less than 1 every frame, keeping 93% say, and it melts away smoothly. It falls fast at first, ever slower, and never quite reaches zero. That's exponential decay, and it's the shape of every fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails. [Chapter 34](34-Listening.md) fades a pulse the same way, scaled by `deltaTime` so it falls at the same speed at any frame rate.
 
 ## Randomness
 
@@ -162,6 +207,21 @@ Multiply a value by a little less than 1 every frame, keeping 93% say, and it me
 </picture>
 
 `random(a, b)` spreads values evenly, every part of the range equally likely, which makes a flat histogram. `randomGaussian()` piles them around a center in a bell. The **mean** is where the pile sits, and the **deviation** is how wide it spreads. About two thirds of values land within one deviation of the mean. Uniform reads as "scattered", Gaussian as "clustered, with strays", and [Chapter 4](04-Randomness.md) shows when each texture is the right one.
+
+### Rare but huge: a heavy tail
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/WalkFamily-dark.jpg">
+  <img src="Images/04-Randomness/WalkFamily.jpg" alt="Three panels from the same seed: a dense tangle pooling in one area, a set of tight clusters joined by long straight leaps, and an orange path on a grid that fills the square without ever crossing itself" width="680">
+</picture>
+
+The **tail** of a distribution is its far end, the values that almost never come up. A Gaussian's tail thins fast, so a value three deviations from the mean is rare. A **heavy tail** thins slowly. Most draws stay small, and now and then one is enormous. [Chapter 4](04-Randomness.md)'s Lévy flight takes its step lengths from a heavy tail. That is why the middle walk here moves in tight clusters and then leaps far.
+
+### Even over a disk: the square root
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/SquareRootSpread.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+To scatter points in a disk, pick an angle and a distance from the center. The obvious distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. [Chapter 27](27-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
 
 ### Chance is lumpy
 
@@ -245,6 +305,21 @@ Scatter points across a plane, then ask everywhere how far the nearest one is. T
 
 Repeat "move a little, turn a little, draw" without resetting, and the little moves stack, because each copy starts where the last one ended. A straight repetition then curls into an arc, a spiral, or a helix if you lift by a step each time. Scoping is the control. Resets between copies give you a grid, and no resets give you a staircase. [Chapter 6](06-GridsAndRepetition.md) shows both in 2D, and [Chapter 25](25-3DGently.md) builds these stairs with the same loop.
 
+### The plane turned inside out: inversion in a circle
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/CircleInversion.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+Inversion in a circle moves every point along the line from the circle's center through it. A point at distance d from the center lands at r² / d, where r is the circle's radius. Points on the circle stay where they are, points inside go outside, and points near the center go far away. Inverting twice brings every point back, so the circle works like a mirror. A circle comes out as another circle, or as a straight line when it passes through the center. That is why [Chapter 22](22-IteratedForms.md#circles-used-as-mirrors-inversion-limit-sets)'s limit sets are made of round shapes.
+
+### Four corners anywhere: corner pinning
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/FittingTheWall-dark.jpg">
+  <img src="Images/41-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+</picture>
+
+Translate, rotate, and scale keep a square a square. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 41](41-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
+
 ## Vectors, motion, and forces
 
 ### A vector is a point and an arrow
@@ -283,6 +358,18 @@ A creature that can't teleport steers by comparing wish and state. Compute the v
 
 A force is a push with a direction, and simultaneous pushes on one body simply add, tip to tail, into one total. What the body *does* with the total depends on its mass: `acceleration = force / mass`, so the same wind barely moves a boulder and flings a leaf. Real gravity is the special case that scales *with* mass, so after the division everything falls alike. Drag doesn't scale that way, which is why the feather drifts. [Chapter 11](11-ForcesAndPhysics.md) builds its confetti on exactly this asymmetry.
 
+### Weaker with distance: the inverse square
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/InverseSquare.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+Light from a point spreads out as it travels. At twice the distance, the same light covers four times the area, so each part of it gets a quarter as much. At three times the distance, each part gets a ninth. That is the **inverse square**: the strength falls as one over the distance squared. Gravity follows the same rule, and it is how [Chapter 11](11-ForcesAndPhysics.md)'s `NBody` pulls its bodies together. [Chapter 27](27-Landscapes.md) says why its lamps use a gentler curve that ends.
+
+### Floating: the weight of the water pushed aside
+
+<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each riding lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
+
+A body in water sinks until the water it pushes aside weighs as much as the body. That is Archimedes' principle. So a body half as dense as water floats with half of itself under the surface. One at 0.8 of the water's density floats low, with a fifth above. [Chapter 28](28-WorldsWithWeight.md) works each crate's waterline out from its density alone.
+
 ### The spring's rule
 
 <picture>
@@ -291,6 +378,12 @@ A force is a push with a direction, and simultaneous pushes on one body simply a
 </picture>
 
 A spring has one opinion, its **rest length**. Longer than that and it pulls its ends together, shorter and it pushes them apart, and at rest length it says nothing at all. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from blobs to bridges, is dots connected by this one rule.
+
+### Damping: a swing that dies away
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Damping.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+A spring on its own would swing forever. **Damping** is a force against the velocity, and it takes a little energy out of every swing. With a little damping the spring rings for a long time. With a lot, it creeps back without swinging at all. Between the two is the amount that settles soonest without passing the rest length. [Chapter 3](03-MotionAndTime.md)'s `@Sprung` sets this with `bounce`, and in [Chapter 11](11-ForcesAndPhysics.md) the world's built-in drag calms the springs.
 
 ### Verlet: motion without a velocity
 
@@ -324,12 +417,6 @@ A field is a rule that answers a question at *every* point of the plane. "How br
 
 To trace a line through a direction field, ask the field which way at your position, take a small step that way, and repeat. That loop is Euler integration, and its one parameter is the step size. Big steps cut corners where the field bends, while small steps follow faithfully and cost more asks. Every streamline in [Chapter 14](14-FieldsAndFlow.md) is this loop running until it's told to stop.
 
-### Iterated maps: orbits that pile up
-
-<img src="Images/22-IteratedForms/Plates.jpg" alt="Four glowing density plates: folded translucent attractor forms like X-rays of smoke" width="560">
-
-Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint visits reveals where it likes to be. The ghostly plates in [Chapter 22](22-IteratedForms.md) are nothing but visit counts made luminous.
-
 ### Optical flow: a measured field
 
 <picture>
@@ -350,7 +437,13 @@ Every field so far was invented, while optical flow is *measured*. Comparing one
 
 Distributed systems need a definition of "nearby". That's a perception radius around each creature, inside which others count and outside which they don't exist. Every flocking rule in [Chapter 12](12-FlocksAndSwarms.md) is an average over that circle. The radius is a character dial, since small circles make jittery individualists and large ones make committees.
 
-### Local rules, global structure
+### Everyone against everyone: counting pairs
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/EveryPair.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+Asking every creature about every other one costs more than it seems. A group of n things has n × (n − 1) / 2 pairs, about half of n squared. So twice the things make about four times the pairs. Growth like this, with the square of the count, is called **quadratic**. With 300 boids each looking at the other 299, a frame makes about 90,000 looks. That is where [Chapter 12](12-FlocksAndSwarms.md) starts before it cuts the plane into cells and asks only the nearby ones.
+
+### Emergence: local rules, large patterns
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/LifeRules-dark.jpg">
@@ -358,21 +451,6 @@ Distributed systems need a definition of "nearby". That's a perception radius ar
 </picture>
 
 No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and all the rest emerge unbidden. The same principle runs gentler machinery. Truchet tiles in [Chapter 7](07-Tiles.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 23](23-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
-
-### Recursion: a rule applied to its own output
-
-<img src="Images/13-GrowingThings/TreeByHand.jpg" alt="A bare fractal tree: one trunk splitting into two branches, each splitting again, nine levels deep" width="560">
-
-A branch is a stick with two smaller branches on top, and each of *those* is a stick with two smaller branches on top. A function that calls itself expresses that directly. It needs two guardrails. Something must shrink on each call, the length here, and a floor must say when to stop, a depth counter. Since every level doubles the branches, n levels make 2ⁿ tips, which is why nine levels is already a canopy. [Chapter 13](13-GrowingThings.md) grows this tree in a dozen lines.
-
-### Rewriting growth
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/LSystemExpansion-dark.jpg">
-  <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="The same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, letter counts rising to 1551" width="680">
-</picture>
-
-An L-system grows a *sentence*, not a picture. Start from an axiom, replace every symbol by its rule, and repeat. The string lengthens exponentially. A turtle then walks the final string, reading symbols as "forward", "turn", "branch". The drawing gets richer only because the sentence got longer, and all the botany lives in the rewriting. [Chapter 13](13-GrowingThings.md) writes ferns and lichens this way.
 
 ### Constraint propagation
 
@@ -391,6 +469,29 @@ Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts
 </picture>
 
 Two parameters span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, dead calm nearly everywhere. Rendering the map, one small run per grid cell, turns parameter-fiddling into geography. Interesting settings cluster along the borders between regions. [Chapter 23](23-GridSimulations.md) maps Gray-Scott's feed and kill this way.
+
+## Iteration: a rule applied again
+
+### Recursion: a rule applied to its own output
+
+<img src="Images/13-GrowingThings/TreeByHand.jpg" alt="A bare fractal tree: one trunk splitting into two branches, each splitting again, nine levels deep" width="560">
+
+A branch is a stick with two smaller branches on top, and each of *those* is a stick with two smaller branches on top. A function that calls itself expresses that directly. It needs two guardrails. Something must shrink on each call, the length here, and a floor must say when to stop, a depth counter. Since every level doubles the branches, n levels make 2ⁿ tips, which is why nine levels is already a canopy. [Chapter 13](13-GrowingThings.md) grows this tree in a dozen lines.
+
+### Rewriting growth
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/LSystemExpansion-dark.jpg">
+  <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="The same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, letter counts rising to 1551" width="680">
+</picture>
+
+An L-system grows a *sentence*, not a picture. Start from an axiom, replace every symbol by its rule, and repeat. The string lengthens exponentially. A turtle then walks the final string, reading symbols as "forward", "turn", "branch". The drawing gets richer only because the sentence got longer, and all the botany lives in the rewriting. [Chapter 13](13-GrowingThings.md) writes ferns and lichens this way.
+
+### Iterated maps: orbits that pile up
+
+<img src="Images/22-IteratedForms/Plates.jpg" alt="Four glowing density plates: folded translucent attractor forms like X-rays of smoke" width="560">
+
+Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint visits reveals where it likes to be. The ghostly plates in [Chapter 22](22-IteratedForms.md) are nothing but visit counts made luminous.
 
 ### Escape time
 
@@ -459,6 +560,21 @@ Averaging two colors channel by channel gives the numeric midpoint, and your eye
 
 The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 9](09-Pictures.md) meets this the first time it reads pixels.
 
+### The stored number is not the light: linear light
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/LinearLight.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+A picture file doesn't store the amount of light in each pixel. It stores a number bent toward the dark end, so more of its steps go to dark tones, where the eye notices small changes most. That encoding is **sRGB**. The amount of light itself is called **linear light**, and it is what adds up and averages correctly. Half the light is stored as about 0.74, and a stored 0.5 is only about a fifth of the light. So Ollin mixes and blends in linear light, and turns the result back into stored numbers at the end. [Chapter 9](09-Pictures.md) averages pixels this way, and [Chapter 19](19-LayersAndEffects.md)'s blend modes add light the same way.
+
+### What a device can show: gamut
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/ProofBeforePrint-dark.jpg">
+  <img src="Images/38-FinishingASketch/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
+</picture>
+
+The **gamut** of a screen, a printer, or a file format is the range of colors it can make. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. A color outside sRGB stores components slightly past 0 or 1. [Chapter 38](38-FinishingASketch.md)'s gamut check paints gray over what a press cannot print.
+
 ### Blend modes are arithmetic
 
 <picture>
@@ -521,7 +637,9 @@ Given a distance field, a shape is "all points within r". The edge lives where t
   <img src="Images/30-SculptingWithFields/MeltStrip.jpg" alt="Two circles at four smoothing radii: touching hard, necking together, flowing into a peanut, and fused into one capsule" width="680">
 </picture>
 
-Combine two distance fields and set operations fall out of two tiny functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. The magic option is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes neck together and melt like wax instead of merely touching. The k dial in the picture is that radius. [Chapter 30](30-SculptingWithFields.md) sculpts with it.
+Combine two distance fields and set operations fall out of two tiny functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. Then there is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes neck together and melt like wax instead of merely touching. The k dial in the picture is that radius. At an exact tie the dip is a quarter of `k`, and it shrinks to nothing where the two answers are `k` apart. [Chapter 30](30-SculptingWithFields.md) sculpts with it.
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/SmoothMin.swift (themed). When its image lands, embed it here, below the entry's first picture as a picture tag at width 680, with its dark sibling as the source. -->
 
 ### Sphere tracing: hop by what the field promises
 
@@ -536,7 +654,7 @@ To render a distance field, march a ray from the eye. Ask the field "how far to 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/DomainFold-dark.jpg">
-  <img src="Images/30-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, tiled into a grid, and fanned into a nine-fold rosette" width="680">
+  <img src="Images/30-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, the same cluster tiled into a grid, and a petal fanned into a nine-fold rosette" width="680">
 </picture>
 
 Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. One shape, one evaluation, and the fold makes it appear everywhere the transformed points coincide. A grid of a thousand copies costs the same as one. It's repetition run backward, applied to space itself. [Chapter 30](30-SculptingWithFields.md) mirrors, tiles, and fans with it.
@@ -558,6 +676,12 @@ Three numbers aim a camera at a thing: **azimuth** is how far around, **elevatio
 
 Perspective is one rule, that apparent size falls with distance, so equal spheres shrink as they recede. The **field of view** is the lens angle, wide exaggerating the shrink, narrow flattening it like a telephoto. And notice the hiding, because in 3D drawing order stops deciding who's in front. Every pixel remembers the depth of the nearest surface drawn so far and rejects anything farther, which is the **depth test**. [Chapter 25](25-3DGently.md) leans on both without ceremony.
 
+### Which way a face points: the normal
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/EdgesAndNormal.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both, so `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
+
 ### The pinhole: a pixel plus a depth is a ray
 
 <picture>
@@ -565,7 +689,7 @@ Perspective is one rule, that apparent size falls with distance, so equal sphere
   <img src="Images/33-DepthAndThePhone/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 </picture>
 
-A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far along its ray each pixel's surface was. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. A flat photo plus a flat depth map quietly holds a full 3D scene. [Chapter 33](33-DepthAndThePhone.md) stands its point clouds up with exactly this.
+A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. A flat photo plus a flat depth map quietly holds a full 3D scene. [Chapter 33](33-DepthAndThePhone.md) stands its point clouds up with exactly this.
 
 ### A pose places points in the world
 
@@ -577,7 +701,7 @@ Points recovered from a camera come out in *its* frame, "two meters ahead of me"
 
 <img src="Images/33-DepthAndThePhone/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
 
-A depth image knows only what its rays touched, so behind every object lies a shadow of unmeasured space. View the cloud from the capture's own vantage and it looks whole. Step to the side and the voids yawn open, holes shaped exactly like what stood in front of them. They're not errors: they're an honest record of where the sensor couldn't see, filled only by more viewpoints. [Chapter 33](33-DepthAndThePhone.md) treats them as material.
+A depth image knows only what its rays touched, so behind every object lies a shadow of space nothing measured. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. They record where the sensor could not see, and only more viewpoints fill them. [Chapter 33](33-DepthAndThePhone.md) fills them by fusing frames from a moving camera.
 
 ## Sound as numbers
 
@@ -590,6 +714,30 @@ A depth image knows only what its rays touched, so behind every object lies a sh
 
 Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency, the moment's recipe, bass at the left and brilliance at the right. One more fact makes it drawable. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So useful band bars are log-spaced, giving the low and high octaves equal width instead of letting the treble hog the axis. [Chapter 34](34-Listening.md) turns spectra into instruments.
 
+### Equal steps that multiply: log scales
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Sonification-dark.jpg">
+  <img src="Images/37-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
+</picture>
+
+Some amounts are felt by ratio rather than by difference. The step from 220 Hz to 440 sounds the same as the step from 440 to 880, though the second is twice as many hertz. A **logarithmic scale** spaces values by their ratios, so each doubling takes the same distance. Spread notes evenly in hertz and the high ones bunch together when you hear them. Spread them evenly in semitones, a log scale, and they sit evenly, as the second and third rows here show. [Chapter 37](37-MusicByRule.md) spreads data this way, and [Chapter 22](22-IteratedForms.md)'s flames take the logarithm of their counts to fit a huge range into one picture.
+
+### Pitch as ratios: octaves, semitones, and cents
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Tunings-dark.jpg">
+  <img src="Images/37-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
+</picture>
+
+Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 37](37-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
+
+### Loudness in steps: decibels
+
+<!-- Figure waiting on a render: Figures/B-JustEnoughMath/Decibels.swift (themed). When its image lands, embed it here as a picture tag at width 680, with its dark sibling as the source. -->
+
+Loudness is also heard by ratio, and decibels count it that way. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. [Chapter 36](36-MakingSound.md)'s compressor, gate, and limiter set their thresholds in decibels below full scale.
+
 ### Events, not levels
 
 <picture>
@@ -597,7 +745,7 @@ Any sound, however messy, splits into a sum of pure vibrations. The spectrum rep
   <img src="Images/34-Listening/BeatTimeline.jpg" alt="A six-second timeline: the loudness curve with regular peaks, a beat pulse snapping up at each detection, and tick marks counting beats" width="680">
 </picture>
 
-Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a sustained chord is loud forever without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short refractory pause keeps one drum hit from counting twice. The signal is change over time, not amount. [Chapter 34](34-Listening.md) builds its beat-reactive pieces on that comparison.
+Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a sustained chord is loud forever without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short refractory pause keeps one drum hit from counting twice. The signal is change over time, not amount. [Chapter 34](34-Listening.md) builds its beat-reactive sketches on that comparison.
 
 ---
 
