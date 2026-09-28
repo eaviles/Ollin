@@ -119,7 +119,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 - **[A. Just enough Swift](A-JustEnoughSwift.md).** The language, for people coming from other languages.
 - **[B. Just enough math, visually](B-JustEnoughMath.md).** Every math idea in the guide, each with a picture.
 - **[C. Coming from p5.js and Processing](C-ComingFromP5.md).** A side-by-side translation.
-- **[D. The complete toolbox](D-CompleteToolbox.md).** Everything Ollin can do, one line each, with where it's taught and where it's documented.
+- **[D. The complete toolbox](D-CompleteToolbox.md).** Everything Ollin can do, one row each, grouped by part and chapter, with the section that teaches it and its page in the reference.
 - **[E. Coming from openFrameworks and OPENRNDR](E-ComingFromOpenFrameworksAndOPENRNDR.md).** The big moves from either one, each as a pair of code.
 
 ---
