@@ -1,4 +1,4 @@
-// figure: gif duration=3.5 fps=12 width=360
+// figure: gif duration=2.5 fps=12 width=360
 //
 // Guide figure (Chapter 14): particles riding the field. Every frame, each
 // rider takes a small step along the curl field at its own position, and a
