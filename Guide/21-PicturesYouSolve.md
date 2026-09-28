@@ -20,8 +20,10 @@ withTarget(marks) {
     drawDiffusionCurve(horizon, left: Color(hex: 0xE86F4A), right: Color(hex: 0x101A2E))
     noStroke(); fill(Color(hex: 0xFFE9B0))
     drawCircle(width * 0.7, height * 0.2, 26)
+    fill(Color(hex: 0x2A3D66))
+    drawCircle(width * 0.08, height * 0.08, 20)
 }
-drawImage(marks.filtered(.diffuse()).image, 0, 0)
+drawImage(marks.filtered(.diffuse(sharpness: 1)).image, 0, 0)
 ```
 
 <picture>
@@ -31,11 +33,11 @@ drawImage(marks.filtered(.diffuse()).image, 0, 0)
 
 The rule the solve follows matters, because everything the picture does follows from it. Away from the marks, every pixel ends up the average of its four neighbors. That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
 
-`drawDiffusionCurve` is the form the technique is named for. It draws the same path twice, a hair apart, with a different color on each side. The field jumps across the curve and stays smooth everywhere else. Left and right are named from walking the path in the order its points come, so reversing the points swaps the colors.
+`drawDiffusionCurve` is the form the technique is named for. It draws the same path twice, a small distance apart, with a different color on each side. The field jumps across the curve and stays smooth everywhere else. Left and right are named from walking the path in the order its points come, so reversing the points swaps the colors.
 
-Now compare it to a gradient, which is the tool you would otherwise reach for. A gradient needs a direction and two ends. This needs neither. The shape of the field is decided by where you put the marks. That is why the third panel remakes the whole lower half of the picture with one added curve. You place a few colors and let the space between them work itself out.
+Now compare it to a gradient, the usual tool for a smooth field. A gradient needs a direction and two ends. This needs neither. The shape of the field is decided by where you put the marks. That is why the third panel remakes the whole lower half of the picture with one added curve. You place a few colors and let the space between them work itself out.
 
-Two parameters matter early. A pixel counts as a source when its alpha reaches `threshold`. A half-opaque mark pulls half as hard as a solid one, so a soft brush mark is a suggestion rather than a rule. And `sharpness` decides how much of the work happens at full size. Turn it down for speed while composing, and up when a thin mark's color must stay crisp against it.
+Two parameters matter early. A pixel counts as a source when its alpha reaches `threshold`. A half-opaque mark pulls half as hard as a solid one, so a soft brush mark is a suggestion rather than a rule. And `sharpness` decides how much of the work happens at full size. Turn it down for speed while composing, and up when a thin mark's color must stay crisp right up to the mark.
 
 ## A field you measure: the distance field
 
@@ -60,7 +62,7 @@ The two answers fit together into one line:
     nearest edge  =  pixel + direction * abs(distance)
 ```
 
-`.fieldMap` reads the field back as something you can see, by running the distance through a color ramp over a window you give in pixels. The middle panel above is one call:
+`.fieldMap` reads the field back as something you can see, by running the distance through a color ramp over a window you give in pixels. The middle panel above is one call, with `bands` a ramp of a few stops, dark at the edge and pale after it:
 
 ```swift
 field.filtered(.fieldMap(bands, from: 0, to: 34, repeating: true))
@@ -68,13 +70,13 @@ field.filtered(.fieldMap(bands, from: 0, to: 34, repeating: true))
 
 `repeating` wraps the ramp instead of stretching it. So the same colors come around every 34 pixels, and the marks wear contour lines like a map. Look at where two shapes meet in that panel. Their rings run into each other and stop along a crease. That crease is every place equally far from both, and you did not have to work it out.
 
-Change the window and the same call does other jobs. A ramp that turns over at one distance grows the shape by that much, and shrinks it at a negative one:
+Change the window and the same call does other jobs. A ramp that turns over at one distance grows the shape by that much, and shrinks it at a negative one. Here `ink` is the fill color you want:
 
 ```swift
 field.filtered(.fieldMap(Ramp([ink, .clear]), from: 26, to: 27.5))
 ```
 
-That is a dilate. Blobs that were separate merge as they grow into each other, which is how you get a soft mass out of scattered marks. A ramp that is dark in a narrow band draws an outline at any offset you like, inside or outside. That is the lighthouse's outline.
+That grows the shape, which image tools call a dilate. Blobs that were separate merge as they grow into each other, which is how you get a soft mass out of scattered marks. A ramp that is dark in a narrow band draws an outline at any offset you like, inside or outside. That is the lighthouse's outline.
 
 The third panel is the direction channel doing its work. Each pixel walks to its nearest edge, steps a little past it, and brings back the color it finds:
 
@@ -87,11 +89,11 @@ float4 shade(float2 uv, ShaderInfo info) {
 }
 ```
 
-Every pixel ends up wearing the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points. It costs one lookup per pixel. Run it with `field.combined(with: marks, .shader(...))`.
+Every pixel ends up wearing the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points. It costs one lookup per pixel. `combined(with:_:)` is `filtered` for an effect that reads a second layer, and `.shader` wraps a `Shader` as one, so the call is `field.combined(with: marks, .shader(...))`. The panel dims the territories and draws the marks back on top, so the shapes stay visible.
 
-> **Metal note.** A shader given two layers reads the first with `sampleRaw` and the second with `sampleAux`. It is `sampleRaw` rather than `sample`, the ordinary read of a layer, because the ordinary read hands a layer over as a color. A distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched. `field.r` and `field.gb` pick channels out of a `float4` by letter, the red one and the green-and-blue pair, which [Chapter 18](18-YourFirstShader.md)'s vectors allow. `info.resolution` is the layer's pixel size, from the same `info`.
+> **Metal note.** A shader given two layers reads the first with `sampleRaw` and the second with `sampleAux`. It is `sampleRaw` rather than `sample`, the ordinary read of a layer, because the ordinary read hands a layer over as a color. A distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched. `field.r` and `field.gb` pick channels out of [Chapter 18](18-YourFirstShader.md)'s `float4` by letter, the red one and the green-and-blue pair. `sign` is 1 or -1 by the sign of its argument, so the four-pixel step goes past the edge from either side. `info.resolution` is the layer's pixel size, from the same `info`.
 
-One practical note. Measuring the whole canvas costs a few milliseconds. The measurement works outward in steps, and it needs one step per doubling of the distance it carries. When you only care about a band near the marks, say so and it gets shorter:
+One practical note is the cost. Measuring the whole canvas costs a few milliseconds. The measurement works outward in steps, and it needs one step per doubling of the distance it carries. When you only care about a band near the marks, say so and it gets shorter:
 
 ```swift
 marks.filtered(.distanceField(maxDistance: 64))
@@ -110,12 +112,12 @@ drawImage(lit.image, 0, 0)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/LightField-dark.jpg">
-  <img src="Images/21-PicturesYouSolve/LightField.jpg" alt="Three dark panels. A room drawn flat: walls, a comb of four teeth, a red bar, a yellow disc and a small white dot. The same room as light, with the dot lit and four beams thrown between the teeth into soft shadows. The same again, with the red bar, the yellow disc and the green wall now glowing in their own colors" width="680">
+  <img src="Images/21-PicturesYouSolve/LightField.jpg" alt="Three dark panels. A room drawn flat: walls, a comb of four teeth, a red bar, a yellow disc and a small white dot. The same room as light, with the dot lit and four shadows thrown by the teeth, light through the gaps between them. The same again, with the red bar, the yellow disc and the green wall now glowing in their own colors" width="680">
 </picture>
 
 The base layer is **the scene**: whatever you draw there is solid, and its alpha is how much of a ray it stops. The aux layer is **the lamps**: whatever you draw there gives light off, in its own color. What comes back is the light itself, which is why you draw it as the frame instead of over the scene.
 
-Look at what nobody drew. The comb throws four beams, and they fan out. Each shadow is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a lamp's does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those are all one measurement rather than five effects that have to be kept in step by hand.
+Look at what nobody drew. The comb's four teeth throw four shadows, with light through the gaps, and the shadows fan out. Each is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a lamp's does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those all come from one measurement.
 
 The parameter for that third panel is `bounces`:
 
@@ -125,9 +127,9 @@ scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
 
 At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a look you may want on its own. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass over the whole ladder, and more is softer.
 
-Two more parameters matter early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
+`sky` and `reach` are the two parameters to know next. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
 
-The cost needs saying plainly. This is the most expensive effect in the chapter, and it is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
+The cost needs saying plainly. This is among the most expensive effects in the chapter, level with diffusion at its default quality and far past it at its detail quality. Its cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
 Underneath, the answer is a ladder of light fields. Each one holds a single ring of distance around every point it samples. Close in there are many places and few directions; further out there are few places and many directions, over a span four times as long. That trade is why one lamp on the far side of the room costs no more than one beside you. The rays are marched against the measured field from the step above, which is why an empty room is crossed in a single step.
 
@@ -239,9 +241,9 @@ The lighthouse is about motion, since the beams sweep and the boat rides the swe
 
 ## Other problems a layer can solve: a seamless paste, the frequency domain, and local averages
 
-The lighthouse solved three problems: colors settled between a few marks, light traced from lamps, and distance measured from every silhouette. Three more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price.
+The lighthouse solved three problems: colors settled between a few marks, distance measured from every silhouette, and light traced from lamps. Three more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price.
 
-### Putting a piece of one picture into another: seamlessClone
+### Putting a piece of one picture into another: `.seamlessClone`
 
 `.seamlessClone` drops a patch from one picture into another without its seam. It is for a slab of texture, a cut-out, or anything from elsewhere that would otherwise read as pasted. The rim gives a paste away, and so does the color, since the patch was lit differently wherever it came from. The method is the Poisson image editing that Patrick Pérez, Michel Gangnet, and Andrew Blake published in 2003. It fixes both without touching the patch's detail:
 
@@ -255,7 +257,7 @@ withTarget(patch) { drawImage(stones, 240, 180) }   // transparent everywhere el
 drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
 ```
 
-<img src="Images/21-PicturesYouSolve/SeamlessClone.jpg" alt="Three panels. A green slab of stones on black; the same slab pasted onto a blue-to-orange gradient with an obvious circular rim; and the same slab cloned, where the rim has vanished entirely and the stones themselves have gone blue at the top and orange at the bottom" width="680">
+<img src="Images/21-PicturesYouSolve/SeamlessClone.jpg" alt="Three panels. A green slab of stones on black; the same slab pasted onto a blue-to-orange gradient with an obvious circular rim; and the same slab cloned, where the rim has vanished and the stones themselves have gone blue at the top and orange at the bottom" width="680">
 
 Where the patch layer is opaque is where it lands, so the shape you draw is the shape that gets cloned. Draw it where you want it, and that is the whole of the positioning.
 
@@ -273,11 +275,12 @@ A grid of pixels is one reading of a drawing. A **sum of waves** is another, and
 
 ```swift
 let spectrum = plate.filtered(.fourier())
+drawImage(spectrum.filtered(.spectrum()).image, 0, 0)   // the view of it
 ```
 
-<img src="Images/21-PicturesYouSolve/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a grid of faint dots; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
+<img src="Images/21-PicturesYouSolve/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a row of dots along its middle line; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
 
-The middle panel is that spectrum. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle, and fine detail out at the edges. The star through it is the shapes' straight edges. The grid of dots is the row of stripes, which is one wavelength and so lands in one place.
+The middle panel is that spectrum, drawn through `.spectrum()`, the view that makes its faint values visible. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle, and fine detail out at the edges. The star through it is the shapes' straight edges. The row of dots along the middle line is the stripes: one wavelength, repeated, lands on one line at one spacing.
 
 The reason to make the trip is that filtering by scale, which is awkward on the pixel side, is a multiplication on this side. Draw a shape over the spectrum and you have a filter:
 
@@ -287,9 +290,9 @@ let soft = plate.filtered(.fourier())
     .filtered(.inverseFourier())
 ```
 
-Keep the middle and the fine detail is gone. That is the third panel, and the stripes have become one flat band. Invert the mask and the opposite happens, leaving the edges and nothing else. A ring keeps one band of scales and drops both the coarse and the fine, which no ordinary blur can do at all.
+`.mask()` keeps the base where the second layer is white and drops it where it is black, which is the multiplication. Keep the middle and the fine detail is gone. That is the third panel, and the stripes have become one flat band. Invert the mask and the opposite happens, leaving the edges and nothing else. A ring keeps one band of scales and drops both the coarse and the fine, which no ordinary blur can do.
 
-Three things to know before you reach for it. The layer has to be square with a side that is a power of two (`makeRenderTarget(width: 512, height: 512)`), because the transform works by halving. It reads one channel, the brightness unless you name another, so what comes back is gray. And a hard-edged mask *rings*. The ripples around every shape in the third panel are the price of cutting a band off sharply. Soften the mask's own edge to soften them.
+There are three things to know before you reach for it. The layer has to be square with a side that is a power of two, 256, 512, or 1024, because the transform works by halving. `makeRenderTarget(width: 512, height: 512)` makes one. It reads one channel, the brightness unless you name another, so what comes back is gray. And a hard-edged mask *rings*. The ripples around every shape in the third panel are the price of cutting a band off sharply. Soften the mask's own edge to soften them.
 
 It also runs the other way on its own. Write a spectrum, transform it, and a field comes out that nobody drew. The physics of a sea is written as a spectrum, and that is how [Chapter 27](27-Landscapes.md) makes an ocean. The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rules, and [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift) filters a picture by scale live.
 
@@ -297,9 +300,9 @@ It also runs the other way on its own. Write a spectrum, transform it, and a fie
 
 The [distance field](#a-field-you-measure-the-distance-field) asked every pixel how far away something was. Here is a different question, and a cheaper answer: what does the neighborhood around this pixel look like? It is for a blur that reaches across the canvas. It is also for cutting a page to black and white under light that falls unevenly across it. The table that answers it is Franklin C. Crow's summed-area table, from 1984.
 
-The obvious way to answer costs more the wider you look. A 5-pixel square is 25 reads, a 500-pixel square is 250,000, and a blur that reaches across the canvas is out of the question. The table turns the cost into a flat fee.
+The obvious way to answer costs more the wider you look. A 5-pixel square is 25 reads and a 500-pixel square is 250,000. A blur that reaches across the canvas costs too much to run each frame. The table turns the cost into a flat fee.
 
-Build one table first. Every texel in it holds the sum of everything above and to the left of it. Then the sum over *any* rectangle is a bit of arithmetic on four corners of that table:
+Build one table first. Every cell of the table holds the sum of everything above and to the left of it. Then the sum over *any* rectangle is a bit of arithmetic on four corners of that table:
 
 ```
       A ─────────── B          the shaded box
@@ -319,30 +322,30 @@ layer.filtered(.boxBlur(radius: 4))     // these two
 layer.filtered(.boxBlur(radius: 400))   // cost the same
 ```
 
-It is the plainest blur there is, the average of the square around each pixel, and it is not as good-looking as `gaussianBlur`. Reach for it when the reach is large. Reach for it too when the radius changes while the sketch runs, and you do not want the frame rate changing with it. Three of them in a row look near enough Gaussian that you will stop being able to tell, and that is still three fixed-price passes.
+It is the plainest blur there is, the average of the square around each pixel, and it is not as good-looking as `gaussianBlur`. Reach for it when the reach is large. Reach for it too when the radius changes while the sketch runs, and you do not want the frame rate changing with it. Three of them in a row come close enough to a Gaussian to pass for one, and that is still three fixed-price passes.
 
-The second filter is the one to meet.
+The second filter, `adaptiveThreshold`, is the reason to build the table.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/LocalAverages-dark.jpg">
-  <img src="Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of dark bars and dots on pale paper with a light falling across it, bright at the top left and deep in shadow at the bottom right; the same page cut to black and white by one threshold, which swallows the whole shadowed half into solid black; and the same page cut against each pixel's own neighborhood, where every bar and dot survives on clean white paper" width="680">
+  <img src="Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of printed text with diagonal bands of shadow falling across it; the same page cut to black and white by one threshold, which turns the shadow bands solid black; and the same page cut against each pixel's own neighborhood, where the text comes back through the bands and only dark streaks along their edges remain" width="680">
 </picture>
 
-The left panel is a page with a light falling across it. Try to cut it to black and white with `threshold` and you have to pick one number, and there is no number that works. Pick one that keeps the shadowed corner and you flood the lit one. Pick one that keeps the lit corner and the shadow goes solid black, which is the middle panel.
+The left panel is a page with bands of shadow falling across it. `.threshold(0.3)` is the filter that sends every pixel brighter than one number to white and the rest to black. Try to cut the page with it and you have to pick that number, and there is no number that works. Pick one that keeps the shadowed bands and you flood the lit paper. Pick one that keeps the lit paper and the bands go solid black, which is the middle panel.
 
 `adaptiveThreshold` compares each pixel with the average of its own surroundings instead. The rule is Derek Bradley and Gerhard Roth's, from 2007:
 
 ```swift
-page.filtered(.adaptiveThreshold())
+page.filtered(.adaptiveThreshold(window: 90))
 ```
 
-That is the right panel. Every mark survives, in shadow and in light alike. Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.
+That is the right panel. The text comes back through the shadow, and only the darkest band edges keep a streak. Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.
 
-The parameter that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, make it wide. Left alone it is an eighth of the layer.
+The parameter that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, make it wide. The 90 pixels above suit a page a few hundred pixels across, and left alone it is an eighth of the layer.
 
 There is one more parameter, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, for a reason. Light falling on a page multiplies what comes back off it. So only a test that scales along with the average is unmoved when somebody turns the lamp down.
 
-Two costs, and neither one grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the area you asked for, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway. [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift) runs both filters over a page.
+There are two costs, and neither grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the area you asked for, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway. [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift) runs both filters over a page.
 
 ## Where this comes from
 
