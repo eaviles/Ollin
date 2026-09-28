@@ -170,9 +170,12 @@ func partition(_ body: String) -> (members: [String], statements: [String]) {
 }
 
 /// A stored-property declaration, read as a member only when the block's own
-/// `override` proves it is a type body rather than a function body.
+/// `override` proves it is a type body rather than a function body. A `lazy var`
+/// counts too: a tracker built from the sketch's camera is declared that way
+/// beside the `draw()` that reads it, and read as a statement it would land in
+/// a helper method where `draw()` cannot see it.
 func isPropertyHead(_ trimmed: String) -> Bool {
-    trimmed.hasPrefix("var ") || trimmed.hasPrefix("let ")
+    trimmed.hasPrefix("var ") || trimmed.hasPrefix("let ") || trimmed.hasPrefix("lazy var ")
 }
 
 /// A line that can only live in a type body. `let`/`var` are deliberately absent:

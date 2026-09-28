@@ -770,7 +770,7 @@ c8998367df91  Docs/Helpers/Composition.md:328  cannot find 'synth' in scope
 203624b8b444  Docs/Helpers/Composition.md:373  cannot find 'synth' in scope
 7cdf0786f27e  Docs/Helpers/Composition.md:390  cannot find 'melody' in scope
 c9a9683ac462  Docs/Helpers/Composition.md:402  cannot find 'synth' in scope
-ecdb23d6df15  Docs/Helpers/Composition.md:441  cannot find 'room' in scope
+ecdb23d6df15  Docs/Helpers/Composition.md:441  cannot find 'synth' in scope
 cb8c68156be1  Docs/Helpers/Composition.md:482  missing argument label '_animatableValue:' in subscript
 79b2cb45d17c  Docs/Helpers/Composition.md:497  overriding non-open property outside of its defining module
 01f2f3e68796  Docs/Helpers/Composition.md:55  unary operator cannot be separated from its operand
@@ -947,10 +947,10 @@ c9eb55c85c1a  Docs/Integration/MIDI.md:111  cannot find 'midi' in scope
 d6a82f4e607c  Docs/Integration/MIDI.md:193  cannot find 'midi' in scope
 82131413f3c3  Docs/Integration/MIDI.md:207  cannot find 'midi' in scope
 1b93dfad6978  Docs/Integration/MIDI.md:238  expected '{' in body of function declaration
-19edb5d8f976  Docs/Integration/MIDI.md:256  cannot find 'MIDIInput' in scope
+19edb5d8f976  Docs/Integration/MIDI.md:256  cannot find 'TempoClock' in scope
 31b20ced319c  Docs/Integration/MIDI.md:278  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
 3164313c9f84  Docs/Integration/MIDI.md:293  cannot find type 'Timecode' in scope
-c169feebbbd5  Docs/Integration/MIDI.md:319  cannot find 'MIDIInput' in scope
+c169feebbbd5  Docs/Integration/MIDI.md:319  cannot find 'TimecodeClock' in scope
 cd506c6783d2  Docs/Integration/MIDI.md:338  cannot find 'Timecode' in scope
 987e475e3f82  Docs/Integration/MIDI.md:356  cannot find type 'MIDIEndpoint' in scope
 29df67a1ddf0  Docs/Integration/MIDI.md:377  cannot find 'MIDIOutput' in scope
@@ -1210,9 +1210,9 @@ a9a1aaeb971a  Docs/Tools/SingleFile.md:112  'module' is inaccessible due to 'int
 006426c05db9  Docs/Vision/Vision.md:1003  cannot find type 'Classification' in scope
 5c5a08dabc9f  Docs/Vision/Vision.md:1028  expected '{' to start getter definition
 be62f39682e0  Docs/Vision/Vision.md:104  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-26580fe6f2aa  Docs/Vision/Vision.md:1051  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+26580fe6f2aa  Docs/Vision/Vision.md:1051  cannot find 'ModelTracker' in scope
 34c07e1c39dd  Docs/Vision/Vision.md:1070  expected ',' separator
-5e55049d0db4  Docs/Vision/Vision.md:1085  cannot find 'Camera' in scope
+5e55049d0db4  Docs/Vision/Vision.md:1085  cannot find 'DepthTracker' in scope
 b6753b0533d8  Docs/Vision/Vision.md:1111  expected ',' separator
 9f9bbff3cc23  Docs/Vision/Vision.md:112  cannot find 'Camera' in scope
 bdca8b7007b6  Docs/Vision/Vision.md:1130  cannot find type 'VideoPlayer' in scope
@@ -1241,11 +1241,11 @@ af9590cae86a  Docs/Vision/Vision.md:356  expected ',' separator
 62a08cfbf4fe  Docs/Vision/Vision.md:401  expected '{' to start getter definition
 b7b045af9d05  Docs/Vision/Vision.md:432  cannot find 'tracker' in scope
 ab5db32f2c65  Docs/Vision/Vision.md:445  expected ',' separator
-f3c88e3b9780  Docs/Vision/Vision.md:454  cannot find 'Camera' in scope
+f3c88e3b9780  Docs/Vision/Vision.md:454  cannot find 'PersonSegmenter' in scope
 6bca905e0b7b  Docs/Vision/Vision.md:472  expected ',' separator
-67b991f25891  Docs/Vision/Vision.md:482  cannot find 'Camera' in scope
+67b991f25891  Docs/Vision/Vision.md:482  cannot find 'SubjectSegmenter' in scope
 7436de712186  Docs/Vision/Vision.md:497  expected ',' separator
-227417b04092  Docs/Vision/Vision.md:517  cannot find 'Camera' in scope
+227417b04092  Docs/Vision/Vision.md:517  cannot find 'PointSegmenter' in scope
 d9332481baa6  Docs/Vision/Vision.md:559  expected parameter name followed by ':'
 abd82ee8964d  Docs/Vision/Vision.md:569  cannot find 'Camera' in scope
 9a3fb8aecfe9  Docs/Vision/Vision.md:585  expected ',' separator
@@ -1253,22 +1253,22 @@ abd82ee8964d  Docs/Vision/Vision.md:569  cannot find 'Camera' in scope
 89d002609bbe  Docs/Vision/Vision.md:611  expected ',' separator
 55584877bf97  Docs/Vision/Vision.md:620  cannot find 'Camera' in scope
 25cd10166c62  Docs/Vision/Vision.md:638  expected ',' separator
-e6d547f64144  Docs/Vision/Vision.md:653  cannot find 'Camera' in scope
+e6d547f64144  Docs/Vision/Vision.md:653  cannot find 'ObjectTracker' in scope
 6f077e6e8bb9  Docs/Vision/Vision.md:678  expected '{' to start getter definition
 d1425fc54681  Docs/Vision/Vision.md:692  expected ',' separator
-73f5a04fbfed  Docs/Vision/Vision.md:703  cannot find 'Camera' in scope
+73f5a04fbfed  Docs/Vision/Vision.md:703  cannot find 'TrajectoryTracker' in scope
 9b7a1d5882a9  Docs/Vision/Vision.md:722  expected '{' to start getter definition
 dee10b654a59  Docs/Vision/Vision.md:745  expected ',' separator
 74524523d73d  Docs/Vision/Vision.md:764  expected '{' to start getter definition
-b47c3c5386cf  Docs/Vision/Vision.md:776  cannot find 'Camera' in scope
+b47c3c5386cf  Docs/Vision/Vision.md:776  cannot find 'FlowTracker' in scope
 ddfc90dfdf31  Docs/Vision/Vision.md:804  expected ',' separator
-8d1cbc42f170  Docs/Vision/Vision.md:815  cannot find 'Camera' in scope
+8d1cbc42f170  Docs/Vision/Vision.md:815  cannot find 'ImageClassifier' in scope
 3c4a18f23a50  Docs/Vision/Vision.md:838  expected '{' to start getter definition
 bc92ab8b42ae  Docs/Vision/Vision.md:855  expected ',' separator
-2d6e9d2ffb0e  Docs/Vision/Vision.md:865  cannot find 'Camera' in scope
+2d6e9d2ffb0e  Docs/Vision/Vision.md:865  cannot find 'SaliencyTracker' in scope
 1f6728d0dc5c  Docs/Vision/Vision.md:88  expected ',' separator
 f178c1b8e0e9  Docs/Vision/Vision.md:893  cannot find type 'DetectedRectangle' in scope
 aa1d08606449  Docs/Vision/Vision.md:908  expected ',' separator
-a1d988da022d  Docs/Vision/Vision.md:927  cannot find 'Camera' in scope
+a1d988da022d  Docs/Vision/Vision.md:927  cannot find 'ConceptTracker' in scope
 cfa1e0f3ccb4  Docs/Vision/Vision.md:950  expected ',' separator
-35a19d997464  Docs/Vision/Vision.md:975  cannot find 'Camera' in scope
+35a19d997464  Docs/Vision/Vision.md:975  cannot find 'ModelTracker' in scope

@@ -244,7 +244,7 @@ c6ba8019c2f9  Guide/37-MusicByRule.md:174  cannot find 'Progression' in scope
 b65e733a615b  Guide/37-MusicByRule.md:194  cannot find 'Progression' in scope
 63e8747a07b2  Guide/37-MusicByRule.md:202  cannot find 'Progression' in scope
 3df4f4621bf6  Guide/37-MusicByRule.md:213  cannot find 'Tuning' in scope
-40a4221ae027  Guide/37-MusicByRule.md:228  cannot find 'AudioInput' in scope
+40a4221ae027  Guide/37-MusicByRule.md:228  cannot find 'BeatFollower' in scope
 7b892f6fda28  Guide/37-MusicByRule.md:251  cannot find 'Sonification' in scope
 d714b78b8487  Guide/37-MusicByRule.md:275  cannot find 'marker' in scope
 6249edb6a06a  Guide/37-MusicByRule.md:289  cannot find 'synth' in scope
