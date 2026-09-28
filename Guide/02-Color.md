@@ -120,7 +120,7 @@ fill(p[i])                            // wraps: p[9] is p[1]
 fill(p.color(at: t))                  // 0...1 quantized into eight bands
 ```
 
-It is also a collection, so you can walk it the way you walk an array. The loop `for (i, color) in p.enumerated()` walks it with a counter, which is how you draw a strip of its swatches. You can also use `map`, `first`, `reversed()` and `Array(p)` with it.
+It is also a collection, so you can walk it the way you walk an array. The loop `for (i, color) in p.enumerated()` walks it with a counter, which is how you draw a strip of its swatches. You can also use `map`, `first` and `reversed()` on it, and `Array(p)` turns it into a plain array.
 
 Eight classic sets ship built in, from `.set1` through `.accent`. A palette can also be grown out of one color you chose, and that is what the **harmony builders** do. They pick companions by turning around the hue wheel. The wheel itself is old. Isaac Newton bent the spectrum into a circle in *Opticks* (1704) so that its two ends met. Johannes Itten's *The Art of Color* (1961) gave painters the twelve-hue version most design teaching still uses. On it, the relations that keep coming back are angles.
 
@@ -193,7 +193,7 @@ let one  = try! loadPalette("sunset.hex")     // just the first
 
 > **Swift note.** A call that can fail on the way, like reading a file, is marked `throws`, and you call it with `try`. `try!` says "I promise this works", and crashes if it doesn't, the way `!` did for the optional earlier. `try?` hands you `nil` instead of a crash. [Appendix A](A-JustEnoughSwift.md) has the rest of the story.
 
-A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in the shape `loadPalettes` expects. You do not need npm to use it. The repository holds the files, so take `100.json` or `1000.json` from it and drop the file next to your sketch. The call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use. So Ollin doesn't bundle them, and you should check the terms before selling work that uses them. And so many people have reached for this collection that its first palette shows up in a great deal of generative art. Its colors are `#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, and `#fa6900`. If you want your work to look like yours, [Chapter 9](09-Pictures.md#palettes-from-a-photograph) takes a palette out of a photograph you took.
+A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in the shape `loadPalettes` expects. You do not need npm to use it. The repository holds the files, so take `100.json` or `1000.json` from it and drop the file next to your sketch. The call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use. So Ollin doesn't bundle them, and you should check the terms before selling work that uses them. And so many people have reached for this collection that its first palette shows up in a great deal of generative art. That palette's colors are `#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, and `#fa6900`. If you want your work to look like yours, [Chapter 9](09-Pictures.md#palettes-from-a-photograph) takes a palette out of a photograph you took.
 
 ## Will everybody see it?
 
@@ -231,7 +231,7 @@ if !myPalette.isColorblindSafe() {
 }
 ```
 
-The rule underneath all of this is short. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Measure such a pair in OKLab, the same space a mix works in, where black to white is a distance of 1. For average vision the two sit 0.281 apart, and under the worst kind they sit 0.014 apart. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
+The rule underneath all of this is short. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Distances here are measured in OKLab, the same space a mix works in, where black to white is 1. A red and a green matched for lightness sit 0.281 apart for average vision, and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
 
 ## A recipe borrowed early: random
 
@@ -294,11 +294,11 @@ Run it and walk the interesting lines:
 Directions to try before [Chapter 3](03-MotionAndTime.md):
 
 - Swap the harmony for `.triadic(of: base)` or `.splitComplementary(of: base)` and watch how much more the field contrasts.
-- Swap the ramp for `Colormap.viridis` or `CosinePalette.sunset`, or for a list you picked by hand, like the dusk ramp from [Kits you carry](#kits-you-carry-palette-and-ramp). Neither named one is a `Ramp`, but both answer `color(at:)`. So in the `fill` line, write `Colormap.viridis.color(at: t)` in place of `ramp.color(at: t)`.
+- Swap the ramp for `Colormap.viridis` or `CosinePalette.sunset`, or for a list you picked by hand, like the dusk ramp from [Kits you carry](#kits-you-carry-palette-and-ramp). Neither of the first two is a `Ramp`, but both answer `color(at:)`. So in the `fill` line, write `Colormap.viridis.color(at: t)` in place of `ramp.color(at: t)`.
 - Make the cells circles, or shrink each one by a little `random(0, cell * 0.3)` for a hand-placed feel.
 - Replace the flat background with a `.linear` gradient of the ramp's two end colors.
 
-A variation you like is a seed, and the seed is what each click changed. The one on screen is `7` plus the number of clicks it took, so write that number into the `var fieldSeed` line. Then export a still of it at a frame you name, so the wave sits where you saw it:
+A variation you like is a seed, and the seed is what each click changed. The one on screen is `7` plus the number of clicks it took, so write that number into the `var fieldSeed` line. Then export a still of the sketch at a frame you name, so the wave sits where you saw it:
 
 ```sh
 swift run OllinLive MySketches/ColorField.swift --export field.png --frame 60
@@ -314,7 +314,7 @@ The field above mixes light. Every ramp and every `Color.mix` so far did, becaus
 
 Mixing in `.paint` follows pigment rather than light. It is for ramps and palettes that should behave like a box of paints. There, blue and yellow give green and every mix darkens a little. It comes from the layer optics Paul Kubelka and Franz Munk published in 1931 for paint films, applied to the light each color reflects.
 
-The spaces earlier in the chapter disagree with your childhood. Mix blue and yellow in RGB or the OK family and you land on a neutral or a mud. Neither one reaches the green a paintbox gives. HSB finds green only by walking the hue wheel through it. A screen mixes *light*, and halfway between two opposite lights sits gray. Paint works the other way around: pigment absorbs light, and green is what survives both pigments.
+The spaces earlier in the chapter disagree with your childhood. Mix blue and yellow in RGB or the OK family and you land on a neutral or a mud. Neither space reaches the green a paintbox gives. HSB finds green only by walking the hue wheel through it. A screen mixes *light*, and halfway between two opposite lights sits gray. Paint works the other way around: pigment absorbs light, and green is what survives both pigments.
 
 `.paint` is the second kind of mixing, in the same call:
 
@@ -331,7 +331,7 @@ Behind the call, each color becomes the reflectance curve of a surface painted w
 
 ### Light by wavelength: `Spectrum`
 
-That curve is a type you can hold, called `Spectrum`. It keeps a color as the amount of light at each wavelength rather than as three numbers. It is for colors that come from physics: a single wavelength, a hot body, a soap film. Turning a curve back into a color uses measurements of how the eye weighs each wavelength. The international commission on lighting (the CIE) published them in 1931. Paint mixing is the first thing it is good for, and three more come with it, each one call:
+That curve is a type you can hold, called `Spectrum`. It keeps a color as the amount of light at each wavelength rather than as three numbers. It is for colors that come from physics: a single wavelength, a hot body, a soap film. Turning a curve back into a color uses measurements of how the eye weighs each wavelength. The international commission on lighting (the CIE) published them in 1931. Paint mixing is the first thing a `Spectrum` is good for, and three more come with it, each one call:
 
 ```swift
 Color(wavelength: 590)        // the single wavelength the eye reads as yellow

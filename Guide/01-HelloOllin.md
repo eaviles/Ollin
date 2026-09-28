@@ -245,7 +245,7 @@ You've met `drawCircle`. Its two companions take their numbers the same way, a p
 
 Try each of them in place of your circle. `drawRect(300, 240, 240, 160)` puts a rectangle's top-left corner at `(300, 240)` and makes it 240 wide and 160 tall. `drawLine(100, 200, 700, 400)` runs from one point to another, a pair of numbers per end. A line needs a `stroke` color rather than a `fill`, because it has no interior to fill.
 
-The styling calls set what everything after them wears. Once you set `fill` or `stroke`, every shape you draw from then on uses it, until you change it.
+The styling calls set how everything after them is drawn. Once you set `fill` or `stroke`, every shape you draw from then on uses it, until you change it.
 
 ```swift
 fill(Color(hex: 0xE4572E))   // an orange interior
@@ -413,7 +413,7 @@ The button under the rows writes them down for you. Press **Save parameters to H
 
 Only the parameters you moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
 
-Going the other way is one click. Every parameter you turn wears a small dot after its name. Click it, or right-click the row and choose **Reset**. The value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
+Going the other way is one click. Every parameter you turn shows a small dot after its name. Click it, or right-click the row and choose **Reset**. The value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
 
 A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters because `86` and `86.0` are different types to Swift, and only `86.0` is the `Double` you declared.
 
@@ -527,7 +527,7 @@ The command does two more things beyond running a file, and each has a page of i
 
 ### When one file isn't enough
 
-A loose sketch can load a photograph, a font, or a shader sitting in its own folder. What one file can't hold is a second file's worth of code, or a program you build once and hand to somebody. At that point you want a package, and `ollin new MySketch` writes one. It holds the sketch in a folder that also takes anything the sketch loads. Beside it are a manifest that already knows where the framework is, and a README with the commands in it. `swift run MySketch` runs it from inside the folder. `ollin Sources/MySketch/Sketch.swift` opens the same file in the live window, so the edit-and-save loop is unchanged. `ollin new MySketch --from Basic/HelloCircle` starts the folder from [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) instead of a blank `draw()`. `ollin generate` makes the same choices in a window, running each starting point while you look. [The project generator](../Docs/Tools/ProjectGenerator.md) has every template and option.
+A loose sketch can load a photograph, a font, or a shader sitting in its own folder. What one file can't hold is a second file's worth of code, or a program you build once and hand to somebody. At that point you want a package, and `ollin new MySketch` writes one. It holds the sketch in a folder of its own, a manifest that knows where the framework is, and a README with the commands. Adding `--with images` or `--with text` gives it a folder for pictures or fonts as well. `swift run MySketch` runs it from inside the folder. `ollin Sources/MySketch/Sketch.swift` opens the same file in the live window, so the edit-and-save loop is unchanged. `ollin new MySketch --from Basic/HelloCircle` starts the folder from [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) instead of a blank `draw()`. `ollin generate` makes the same choices in a window, running each starting point while you look. [The project generator](../Docs/Tools/ProjectGenerator.md) has every template and option.
 
 ### Looking something up without leaving the terminal
 

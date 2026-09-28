@@ -126,7 +126,7 @@ drawCircle(x, height / 2, 50)
 
 The dot crosses the canvas in three seconds, snaps back, and crosses again. Inside, `loopProgress(over: 3)` is `fract(time / 3)`, where `fract` keeps a number's fractional part. Seven and a half seconds in, that's `fract(2.5)`, which is halfway through the third lap. You can call `fract` yourself whenever you want to wrap something by hand.
 
-When the snap back to the start is not what you want, ask for the fold instead. The call `pingPong(over:)` runs from 0 up to 1 and back down to 0 over the same period. So the trip retraces itself instead of jumping back to 0:
+When the snap back to the start is not what you want, ask for the fold instead. The call `pingPong(over:)` runs from 0 up to 1 and back down to 0 over the same period. So the trip retraces itself instead of jumping back to the start:
 
 ```swift
 let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
@@ -165,7 +165,7 @@ drawCircle(x, height / 2, 50)
 
 Same dot, same three seconds, but now it *departs* and *arrives*. Inside, the S is one line of algebra, `t * t * (3 - 2 * t)`, and you never need to write it.
 
-Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top". In between, it rises along a soft shoulder. That gives you a way of turning any signal into a smooth spotlight:
+Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top". In between, the value rises along a soft shoulder. That gives you a way of turning any signal into a smooth spotlight:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/WindowCutter-dark.jpg">
@@ -204,7 +204,7 @@ That is the reason to want it. A sketch that holds one curve as a parameter can 
 
 ## Putting it together: a loop that never ends
 
-Here's the sketch from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code, you first choose a `loopTime`. Then you build one beat from it with `loopProgress(over: loopTime) * .tau`, so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets cost you nothing here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
+Here's the sketch from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code, you first choose a `loopTime`. Then you build one beat from it with `loopProgress(over: loopTime) * .tau`, so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets are safe here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
 
 That is all the theory the sketch needs. It also offers its curve as a parameter, the way [A catalog of curves](#a-catalog-of-curves) showed. Make `MySketches/RingPulse.swift`:
 
@@ -301,7 +301,7 @@ The four worked-out shapes all start at the low end, so changing your mind about
 
 ### Values that chase a target: `@Eased` and `@Sprung`
 
-`@Eased` and `@Sprung` are values that move themselves toward a target you set. They are for the shape that should glide to a click and the shape that should follow a drag. They also suit any value you would rather assign than steer. The first runs a curve from the catalog over a duration. Animation tools have moved a value from one setting to the next that way since Flash. The second runs a spring with friction, the model interfaces settle with. Both are written with the `@` prefix `@Param` wears, which marks a property that does something on its own.
+`@Eased` and `@Sprung` are values that move themselves toward a target you set. They are for the shape that should glide to a click and the shape that should follow a drag. They also suit any value you would rather assign than steer. The first runs a curve from the catalog over a duration. Animation tools have moved a value from one setting to the next that way since Flash. The second runs a spring with friction, the model interfaces settle with. Both are written with an `@` prefix, like `@Param`. The prefix marks a property that does something on its own.
 
 **`@Eased`** is for a value with a *target*. Assign where it should go, read where it is now, and it glides over on its own along a curve and duration you pick once:
 
@@ -331,7 +331,7 @@ Click around and the dot glides to each click, with no progress variable for you
 @Sprung(duration: 0.5, bounce: 0.3) var x = 540.0
 ```
 
-The two parameters are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `$x.kick(200)`, reached through the `$` form of the property. It pushes the spring without moving its target, which is how you make something recoil in place. Behind the wrapper, `DampedSpring` uses the formula for a spring with friction. It works out where the spring is at any moment rather than moving it a little each frame. So any frame rate produces the same motion.
+The two arguments are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `$x.kick(200)`, reached through the `$` form of the property. The kick pushes the spring without moving its target, which is how you make something recoil in place. Behind the wrapper, `DampedSpring` uses the formula for a spring with friction. It works out where the spring is at any moment rather than moving it a little each frame. So any frame rate produces the same motion.
 
 ### Choreography: `Timeline`
 
@@ -401,7 +401,7 @@ Nothing changes on its own, and that is deliberate. Only you know which of your 
 
 ## Where this comes from
 
-The named easing curves are Robert Penner's easing equations, published with the 2002 book *Programming Macromedia Flash MX*. They have since been absorbed into most animation systems. Ollin's are written from the formulas cataloged at [easings.net](https://easings.net). The craft behind them is older than software. The animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s. Frank Thomas and Ollie Johnston wrote them down in *The Illusion of Life* (1981). Their point is that the spacing of the drawings is the motion. Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame. That per-pixel world is taught in [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe. Its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations. It's easier to work with than the physical parameters. The argument order of `map` and `lerp` is Processing's, which p5.js and openFrameworks kept, so a call you already know reads the same here. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The named easing curves are Robert Penner's easing equations, published with the 2002 book *Programming Macromedia Flash MX*. They have since been absorbed into most animation systems. Ollin's are written from the formulas cataloged at [easings.net](https://easings.net). The craft behind them is older than software. The animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s. Frank Thomas and Ollie Johnston wrote them down in *The Illusion of Life* (1981). Their point is that the spacing of the drawings is the motion. Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame. That per-pixel world is taught in [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe. Its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations. It's easier to work with than stiffness and damping. The argument order of `map` and `lerp` is Processing's, which p5.js and openFrameworks kept, so a call you already know reads the same here. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
