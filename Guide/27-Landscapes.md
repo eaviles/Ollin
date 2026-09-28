@@ -6,9 +6,7 @@
 
 <img src="Images/27-Landscapes/Valley.jpg" alt="A wide green meadow of individually curved grass blades running to a stand of low-poly pines, with tan hills rising on both sides, a pale scree of boulders on the pass between them, and a clear blue sky above" width="560">
 
-Nobody placed a tree in that picture. This chapter teaches how to grow a landscape and then draw more things on it than you could place by hand. The ground grows from noise and weathers under rain. Then you ask it questions: where it is flat, how high it stands, and where a pine could take root. Ten thousand copies of one mesh go down in one call, spread over a surface by area. A whole world is cut down each frame to what the camera sees. Half a million blades of grass are worked out inside the draw and kept nowhere. The steps end in the valley above. After it comes the water on the land, the rivers read off the ground and a sea made from its own waves. Last comes a courtyard of lamps that each light only their own corner.
-
-[Chapter 26](26-Meshes.md) finished one object until it read as a real material. That is as far as placing things one at a time goes, and it works on a scene you can hold in your head. Here there is too much to hold, so each step after the ground hands more of the work to the GPU.
+A landscape holds more than you could place by hand, so you grow the ground and hand the placing to the GPU. The ground grows from noise and weathers under rain. Then ten thousand copies go down in one call, a world is cut to what the camera sees, and grass is drawn without being built. No tree in the valley above was placed by hand. After it come rivers and a sea, and a courtyard of lamps that each light only their own corner.
 
 ## A landscape you grow: heightfields and erosion
 

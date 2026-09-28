@@ -6,9 +6,7 @@
 
 <img src="Images/31-TracedLight/LamplitRoom.jpg" alt="A room lit by one pendant lamp that flares in the lens: a waxed brown floor, a terracotta wall and a teal one, a glass ball on a white plinth focusing the lamp into a bright spot inside its own shadow, and a red ball beside it" width="560">
 
-A 3D frame usually stops light at the first surface it hits. This chapter follows the light further. Mirrors show what the camera cannot see, and a satin floor shows a blurred room. Light bounces from one wall onto the next, and a glass ball focuses the light it takes into a bright spot. Then the chapter turns to what the camera does with each frame. Edges settle as frames add up, a moving ball leaves a streak, and a bright lamp flares in the lens. Each of these is a line or two added to a scene you already have. Together they make the lamplit room above, one lamp swinging over a waxed floor.
-
-After the room come the techniques it does not use. A still can be traced path by path until it looks photographed, and its grain filtered away. Mirrors can face each other, and highlights can be smaller than a pixel. A lens gives its blur a shape, and a blur can also be built from samples of light. A mesh can change shape between frames, and a heavy scene can render fewer pixels or draw fewer frames.
+Light in most 3D frames stops at the first surface it hits, and here you follow it further. Mirrors see off screen, light bounces from wall to wall, and a glass ball focuses it into a spot. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, and ways to draw fewer pixels and frames.
 
 ## Mirrors that see off screen: ray-traced reflections
 

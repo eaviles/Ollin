@@ -6,9 +6,7 @@
 
 <img src="Images/29-CharactersAndCloth/Yard.jpg" alt="A dark yard: a tan capsule standing in for a figure at the left, a truck on four wheels parked in front of a wall of orange crates, and a teal banner blowing between two wooden posts behind them" width="560">
 
-This chapter covers three things a rigid body models badly: a person who walks, a vehicle on sprung wheels, and cloth. A rigid body is a good model for a crate. People stay upright and walk instead of tumbling. Wheels grip, spring, and steer instead of sliding. Cloth has no single position at all, because every point of it moves separately. So the solver keeps three more kinds of thing, and each one is held up in its own way.
-
-The yard above has one of each. You walk a figure, drawn as a plain capsule, with W, A, S, and D, and drive the truck with the arrows. The banner is a mesh with two corners pinned. The steps build those three, with a machine on tracks beside the truck. After the yard come their relatives. A figure falls as a ragdoll, a skeleton carries a cape, and a rope knows how it is turned. Then the three kinds join the contacts, the water, and the snapshots of [Chapter 28](28-WorldsWithWeight.md).
+Rigid bodies model a crate well, but a person, a vehicle, or a sheet of cloth badly. You learn the three things the solver keeps for them: a figure that stays upright, a vehicle on sprung wheels, and cloth. In the yard at the top, you walk the figure and drive the truck while a banner blows between two posts. Ragdolls, a cape, ropes, and cloth among the contacts, water, and snapshots of [Chapter 28](28-WorldsWithWeight.md) come after it.
 
 ## Someone to be in there: the character controller
 

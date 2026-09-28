@@ -6,9 +6,7 @@
 
 <img src="Images/30-SculptingWithFields/Molten.jpg" alt="A pale mint sculpture like a settling drop of glaze, glossy under studio light, one lobe drooping toward a dark floor that catches its soft shadow" width="560">
 
-This chapter builds shapes out of distance. A shape stored as a signed distance field melts into its neighbors, carves them, and stays one surface however you push it. The same field works flat on the canvas and in space, where a tracer finds its surface by hopping along each ray. The sculpture above is one body of four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse.
-
-[Chapter 15](15-ShapesAsMaterial.md) treated shapes as outlines you cut and joined, like paper. Here they are closer to wax. The steps go from a field on the canvas to the smooth minimum that melts two shapes together. Then the field moves into space, where sphere tracing draws it, a distortion bends it whole, and the finishes of [Chapter 26](26-Meshes.md) light it. After the sculpture come the other ways to combine fields and space folded into copies. Then come fractals that have no formula, and the way out of a field into a mesh.
+A shape stored as a distance field can melt into its neighbors, carve them, and stay one surface however you push it. This chapter builds shapes that way, flat on the canvas and then in space, where a tracer finds the surface by hopping along each ray. The sculpture above is four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse. After it come other ways to combine fields, space folded into copies, fractals, and the way out of a field into a mesh.
 
 ## A shape as a question: the signed distance field
 
