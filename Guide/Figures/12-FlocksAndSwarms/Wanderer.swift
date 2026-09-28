@@ -30,7 +30,7 @@ final class Wanderer: Sketch {
 
         // Fade the last frame a little instead of erasing it: trails.
         noStroke()
-        fill(Color(hex: 0x101318).withAlpha(0.03))
+        fill(Color(hex: 0x101318).withAlpha(0.01))
         drawRect(bounds)
 
         for (i, creature) in creatures.enumerated() {

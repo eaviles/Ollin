@@ -50,12 +50,13 @@ e4ad8ec48e3a  Guide/09-Pictures.md:530  cannot find 'table' in scope
 aec7ca7fcac8  Guide/09-Pictures.md:554  'module' is inaccessible due to 'internal' protection level
 23e899676c54  Guide/09-Pictures.md:63  cannot find 'pictures' in scope
 399caa239353  Guide/09-Pictures.md:93  cannot find 'photo' in scope
-d7900de9175f  Guide/10-Vectors.md:158  cannot find 'target' in scope
-7856a82b5957  Guide/10-Vectors.md:94  cannot find 'target' in scope
-766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:271  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
-903bd8f5d681  Guide/11-ForcesAndPhysics.md:279  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
+d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
+5f55cca8347f  Guide/10-Vectors.md:93  cannot find 'home' in scope
+766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:306  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+903bd8f5d681  Guide/11-ForcesAndPhysics.md:314  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
-c75eb2a20310  Guide/12-FlocksAndSwarms.md:334  cannot find 'crowd' in scope
+c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
 4bd9e3101756  Guide/13-GrowingThings.md:308  missing argument label 'at:' in call
 750461323d36  Guide/14-FieldsAndFlow.md:191  cannot find 'x' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:104  cannot find 'road' in scope

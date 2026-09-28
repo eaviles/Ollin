@@ -134,7 +134,7 @@ final class Wanderer: Sketch {
 
         // Fade the last frame a little instead of erasing it: trails.
         noStroke()
-        fill(Color(hex: 0x101318).withAlpha(0.03))
+        fill(Color(hex: 0x101318).withAlpha(0.01))
         drawRect(bounds)
 
         for (i, creature) in creatures.enumerated() {
@@ -149,7 +149,7 @@ final class Wanderer: Sketch {
 
 Two behaviors are stacked here, and that is the point of forces that compose. `wander` supplies the roaming and `contain` supplies the walls, a push back inside the canvas that only wakes up within `margin` of an edge. Each creature has its own `seed`, because wander is the one behavior that draws random numbers. Two creatures with the same seed roam in lockstep.
 
-The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at three percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a fraction of a second. Lower it to `0.01` and they last ten seconds or so. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
+The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at one percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail that lasts ten seconds or so. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a fraction of a second. Lower it to `0.003` and they last half a minute. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
 
 The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every parameter.
 

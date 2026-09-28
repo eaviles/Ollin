@@ -165,7 +165,7 @@ final class Thrown: Sketch {
 }
 ```
 
-<!-- figure: Thrown (Guide/Figures/10-Vectors/Thrown.swift), waiting on a render; embed Images/10-Vectors/Thrown.jpg here at width 560 -->
+<img src="Images/10-Vectors/Thrown.jpg" alt="A dark canvas with a thin gray floor line near the bottom. A trail of faint amber dots rises from the lower left, peaks, falls to the floor, and bounces on in a row of ever smaller arcs toward the right, where a solid amber ball is coming to rest on the line" width="560">
 
 Run it and a ball arcs across, bounces, and settles. Notice what is stored and what is not. `position` and `velocity` are properties, alive between frames, because motion with memory is stored state. It is the first time this guide writes that state by hand. `gravity` never changes, but every frame it bends `velocity` a little, and the bend is what makes the arc. The bounce is two lines. Put the ball back on the floor, then flip the vertical part of the velocity and keep less than all of it. The `0.82` is the bounciness. The floor takes a little of the sideways speed too, the `0.7`. That is friction, and it is why the ball settles instead of rolling off the edge. Both `+=` lines scale by `deltaTime`, so the throw is the same at 60 and 120 frames a second. The trail is 200 of the ball's recent positions, one every third frame, kept in a list and drawn as faint dots. It lets you see the arc after the ball has left it.
 

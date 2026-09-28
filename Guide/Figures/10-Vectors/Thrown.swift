@@ -1,10 +1,12 @@
-// figure: frame=300
+// figure: frame=600
 //
 // Guide sketch (Chapter 10): the motion trio throwing a ball. Gravity bends
 // the velocity, the velocity moves the position, and the floor flips the
 // vertical part of the velocity while taking a little of both parts. The
 // trail keeps the ball's recent positions so a still shows the arc and the
-// bounces, not only where the ball is now.
+// bounces, not only where the ball is now. Frame 600 is the last one on
+// which the trail still holds the whole flight, from the throw's rise on the
+// left through the two full bounces to the ball settling at the right.
 import Ollin
 
 final class Thrown: Sketch {

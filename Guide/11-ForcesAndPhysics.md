@@ -293,7 +293,7 @@ final class Tumble: Sketch {
 }
 ```
 
-<!-- figure: Tumble (Guide/Figures/11-ForcesAndPhysics/Tumble.swift), waiting on a render; embed Images/11-ForcesAndPhysics/Tumble.jpg here at width 560 -->
+<img src="Images/11-ForcesAndPhysics/Tumble.jpg" alt="Rounded boxes in coral, sand, sage, and lavender and pale cream discs lie in a jumble along the bottom of a dark canvas, some flat, some tilted, a few propped on others, every corner intact, with the space above them empty" width="560">
 
 Twenty-four bodies start in a loose grid, each box turned to a random angle, and fall. They land on their corners, tip over, slide off each other, and come to rest in a jumble that keeps every corner. The world is the same one that piled the discs, with the same `bounds` for walls and the same `advance(by:)` each frame. A particle only had a position, and a body has a `position` *and* an `angle`. So drawing one takes the transform tools from [Chapter 6](06-GridsAndRepetition.md): move to the body, turn to its angle, and draw the shape centered on zero. When a box tumbles, the rectangle you draw tumbles with it, because the rotation is the simulation's own. The discs need no turn, since a circle looks the same at every angle. The world does not remember what a body looks like, only its shape for collisions. So the sketch keeps its boxes and discs in two lists of its own and draws each list its own way.
 
