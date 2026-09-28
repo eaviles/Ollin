@@ -155,9 +155,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
-          key: build-2-${{ steps.swift.outputs.version }}-${{ github.sha }}
+          key: build-3-${{ steps.swift.outputs.version }}-${{ github.sha }}
           restore-keys: |
-            build-2-${{ steps.swift.outputs.version }}-
+            build-3-${{ steps.swift.outputs.version }}-
 
       # What a restored build cannot be trusted with. A cache saved at one
       # commit holds, for every target, objects compiled against the
@@ -347,7 +347,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
-          key: build-2-${{ steps.swift.outputs.version }}-${{ github.sha }}
+          key: build-3-${{ steps.swift.outputs.version }}-${{ github.sha }}
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the
