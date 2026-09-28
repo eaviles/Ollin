@@ -6,7 +6,7 @@
 
 *A practical introduction to creative coding.*
 
-This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react. Along the way you learn the techniques the field is built on: randomness, noise, forces, flocks, shaders, simulation, and 3D. Each chapter teaches a few ideas through short runnable steps, and it ends with a finished piece you made yourself.
+This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react. Along the way you learn the techniques the field is built on: randomness, noise, forces, flocks, shaders, simulation, and 3D. Each chapter teaches a few ideas through short runnable steps, and the steps build a finished sketch you made yourself.
 
 <img src="https://media.ollin.art/heroes/guide-hero.jpg?v=2fd9bbb8" alt="Thirty-two of the sketches the guide's chapters build, one per cell, in chapter order" width="880">
 
@@ -14,16 +14,16 @@ This guide teaches creative coding from zero, using [Ollin](../README.md). You w
 
 **What you need.** A Mac running macOS 26 or newer, and this repository. That's it.
 
-**Where this sits.** The guide is the narrative layer. Read it from start to finish and it teaches you to think in sketches. The [API reference](../Docs/README.md) answers the question "what does this call do", and [`Examples/`](../Examples/) is working code to browse. Chapters link into both as you go.
+**Where this sits.** The guide is the narrative layer, written to be read from start to finish. The [API reference](../Docs/README.md) answers the question "what does this call do", and [`Examples/`](../Examples/) is working code to browse. Chapters link into both as you go.
 
-## Four promises
+## How the guide is made
 
-Guides like this tend to fail in known ways. A concept appears out of nowhere and you're stuck. The examples no longer compile. The theory runs three chapters ahead of anything you can see. So this guide is built around four promises:
+Four rules shape every chapter:
 
-1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If you still get lost on a page, [Appendix B](B-JustEnoughMath.md) explains every math idea in the guide again, with a picture for each.
-2. **Every listing runs.** Each code listing is a real file under [`Figures/`](Figures/), compiled and rendered by a tool in this repository. If the framework changes underneath a listing, the build breaks, so the guide cannot show you code that no longer runs.
-3. **Every image is made by the code next to it.** Ollin itself renders every figure and diagram from committed source. You can open any of them, run it, and change it.
-4. **Practice first.** You see something on your canvas within the first page of every chapter. Everything a chapter teaches ends up in one finished piece.
+1. **Concepts come before they're used.** A concept appears in the guide, with a picture, before any listing or figure leans on it. When math shows up, it comes with a visual and a plain-words intuition first, and the code after. If you still get lost on a page, [Appendix B](B-JustEnoughMath.md) explains every math idea in the guide again, with a picture for each.
+2. **Every listing compiles.** Each full listing is a real file under [`Figures/`](Figures/), compiled and rendered by a tool in this repository. The shorter fragments are checked against the framework too. When a framework change breaks a listing, the build of the figures fails and names it.
+3. **Every image is rendered by the code beside it.** Ollin renders every figure and diagram from committed source. You can open any of them, run it, and change it.
+4. **Something reaches the canvas on the first page.** Each chapter puts something on your canvas within its first page. Its steps then build a finished sketch, and the techniques that sketch does not use follow it in family sections.
 
 Both kinds of image are already on this page. The grid above is thirty-two of the sketches the chapters build, each a committed figure, one per cell, and the first of them is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift). The [Chapter 1](01-HelloOllin.md) diagram below is a sketch too, [`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift):
 
@@ -36,19 +36,19 @@ Both kinds of image are already on this page. The grid above is thirty-two of th
 
 Read the chapters in order the first time, because each one builds only on the ones before it. It also helps to know roughly what each part is going to ask of you. The page counts reckon three hundred words of prose to a page, listings aside.
 
-- **Part I, chapters 1 to 9.** Around 140 pages. It is the base everything else stands on, so it is the one part you cannot skip.
+- **Part I, chapters 1 to 9.** Around 135 pages. It is the base everything else stands on, so it is the one part you cannot skip.
 - **Part II, chapters 10 to 14.** Around 60 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
 - **Part III, chapters 15 to 17.** Around 45 pages, the shortest part. Read chapter 15 first, because the curves and marks after it come back as the shapes it teaches you to hold.
-- **Part IV, chapters 18 to 24.** Around 120 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own, and chapters 20 and 21 filter the layers chapter 19 makes.
+- **Part IV, chapters 18 to 24.** Around 125 pages. Chapter 18 is its gate, because chapters 23 and 24 write shader code of their own. Chapters 20 and 21 filter the layers chapter 19 makes.
 - **Part V, chapters 25 to 31.** Around 150 pages, the longest part. Chapter 25 is its gate, and chapter 28 also wants the physics from chapter 11.
-- **Part VI, chapters 32 to 35.** Around 75 pages. Its chapters barely depend on each other, so read the ones you need in any order.
-- **Part VII, chapters 36 to 41.** Around 130 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
+- **Part VI, chapters 32 to 35.** Around 85 pages. Its chapters barely depend on each other, so read the ones you need in any order.
+- **Part VII, chapters 36 to 41.** Around 135 pages. Chapter 37 plays the instruments chapter 36 builds, and chapter 39 replays a performance through chapter 38's exports.
 
 A few chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 32](32-Seeing.md) you want a webcam, and for [Chapter 33](33-DepthAndThePhone.md) an iPhone, with a LiDAR sensor for its depth streams. [Chapter 34](34-Listening.md) wants a microphone, [Chapter 35](35-ControlsAndSignals.md) a MIDI controller, and [Chapter 41](41-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
 Work along in the live-reload host, `swift run OllinLive path/to/YourSketch.swift`. It recompiles your sketch on save, so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
-If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin, and [Appendix E](E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
+If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. [Appendix E](E-ComingFromOpenFrameworksAndOPENRNDR.md) does the same for openFrameworks and OPENRNDR. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
 ## Contents
 
