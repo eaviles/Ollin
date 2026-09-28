@@ -22,7 +22,7 @@ final class DomainFold: Sketch {
         let coral = Color(hex: 0xE4572E)
         let blue = Color(hex: 0x3A6EA5)
         // One asymmetric cluster, used by all three panels.
-        let cell = SDF.circle(radius: 30).colored(coral)
+        let cluster = SDF.circle(radius: 30).colored(coral)
             .smoothUnion(SDF.rect(width: 52, height: 30, cornerRadius: 9)
                 .colored(blue).at(34, 24), k: 16)
 
@@ -31,8 +31,8 @@ final class DomainFold: Sketch {
             .smoothUnion(SDF.circle(radius: 13).colored(blue).at(52, 0), k: 14)
 
         let tiles: [(String, SDF)] = [
-            ("mirrored(x:)", cell.at(52, 0).mirrored(x: true)),
-            ("repeated(spacing:count:)", cell.scaled(0.72).repeated(spacing: Vector2(88, 88), count: 1)),
+            ("mirrored(x:)", cluster.at(52, 0).mirrored(x: true)),
+            ("repeated(spacing:count:)", cluster.scaled(0.72).repeated(spacing: Vector2(88, 88), count: 1)),
             ("repeatedRadially(count:)", petal.at(82, 0).repeatedRadially(count: 9)),
         ]
 

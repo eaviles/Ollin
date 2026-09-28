@@ -20,15 +20,15 @@ final class Distortions: Sketch {
 
         drawSDF3D(SDF3D.box(width: 0.8, height: 2.4, depth: 0.8)
             .twisted(1.2)
-            .colored(Color(hex: 0x46C2FF)).at(-3.6, 0, 0))
+            .colored(Color(hex: 0x46C2FF)).at(-3.9, 0, 0))
         drawSDF3D(SDF3D.box(width: 2.2, height: 0.5, depth: 0.7)
             .bent(0.6)
-            .colored(Color(hex: 0xFFB454)).at(-1.25, 0, 0))
+            .colored(Color(hex: 0xFFB454)).at(-1.45, 0, 0))
         drawSDF3D(SDF3D.sphere(radius: 0.95)
             .displaced(amplitude: 0.1, frequency: 6)
-            .colored(Color(hex: 0xFF6F61)).at(1.2, 0, 0))
+            .colored(Color(hex: 0xFF6F61)).at(1.15, 0, 0))
         drawSDF3D(SDF3D.sphere(radius: 0.95)
             .roughened(amplitude: 0.15, frequency: 3)
-            .colored(Color(hex: 0x9AA7B8)).at(3.6, 0, 0))
+            .colored(Color(hex: 0x9AA7B8)).at(3.75, 0, 0))
     }
 }

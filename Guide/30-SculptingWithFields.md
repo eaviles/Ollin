@@ -19,20 +19,20 @@ This chapter builds shapes out of distance. A shape stored as a signed distance 
   <img src="Images/30-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
 </picture>
 
-The shape is not stored as an outline. The bold line is only the set of places where the field answers zero. Each band around it is a set of places at one distance from the shape. You have seen the idea before. [Chapter 18](18-YourFirstShader.md) drew a circle per pixel as "all the points within `radius`", with `smoothstep` softening the edge. [Chapter 21](21-PicturesYouSolve.md#a-field-you-measure-the-distance-field) measured a distance field from the marks on a layer. What is new here is what the representation allows. If two shapes are each a distance field, then combining the two answers at every point combines the shapes.
+The shape is not stored as an outline. The bold line is only the set of places where the field answers zero. Each band around it is a set of places at one distance from the shape. You have seen the idea before. [Chapter 18](18-YourFirstShader.md) drew a circle from each pixel's distance to its center, with `smoothstep` softening the edge. [Chapter 21](21-PicturesYouSolve.md#a-field-you-measure-the-distance-field) measured a distance field from the marks on a layer. What is new here is what the representation allows. If two shapes are each a distance field, then combining the two answers at every point combines the shapes.
 
 ## Melting: the smooth minimum
 
 The simplest combination is the union, both shapes at once. At every point you have two answers, one from each field. The nearer surface is the one that counts, so the union answers with the smaller of the two, their minimum. Taking the minimum joins the shapes with a hard crease where they meet, like two overlapping outlines in [Chapter 15](15-ShapesAsMaterial.md).
 
-The **smooth minimum** removes that crease. Far from the seam, one answer is much smaller than the other, and the smooth minimum returns it unchanged. Near the seam, the two answers are almost tied, and there it answers a little less than both. That dip pulls the zero line out into the gap between the shapes and fills the crease with a curve. At an exact tie the dip is a quarter of `k`, and it shrinks to nothing where the two answers are `k` apart. So `k` is how wide the melt is. [Appendix B](B-JustEnoughMath.md#min-melts-max-trims) draws the same idea.
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/MeltStrip-dark.jpg">
-  <img src="Images/30-SculptingWithFields/MeltStrip.jpg" alt="Two circles, orange and blue, at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+  <img src="Images/30-SculptingWithFields/MeltStrip.jpg" alt="Two circles, orange and blue, at four smoothing radii: meeting in a hard crease at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
 </picture>
 
-The strip melts two circles. At `k = 0` the union is hard. As `k` grows, the seam becomes a fillet, then a neck, and then the pair is one body. The colors melt too. The smooth union blends the two shapes' colors across the seam, which is what makes the result read as one object. In Ollin the smooth minimum is `smoothUnion`, a method on the `SDF` value type:
+The strip melts two circles. At `k = 0` the union is hard, and the circles meet in a crease. The **smooth minimum** removes that crease, and it takes one more number, `k`. Far from the seam, one answer is much smaller than the other, and the smooth minimum returns it unchanged. Near the seam, the two answers are almost tied, and there it answers a little less than both. A point in the gap that answered just above zero now answers zero or less. It counts as inside, so the edge moves out to it. That fills the crease with a curve. At an exact tie the dip is a quarter of `k`, and it shrinks to nothing where the two answers are `k` apart. So `k` is how wide the melt is. Along the strip, as `k` grows, the seam becomes a rounded inside corner, then a neck, and then the pair is one body. [Appendix B](B-JustEnoughMath.md#min-melts-max-trims) sets the smooth minimum beside `max`, the intersection.
+
+The colors melt too. The smooth union blends the two shapes' colors across the seam, which is what makes the result read as one object. In Ollin the smooth minimum is `smoothUnion`, a method on the `SDF` value type:
 
 ```swift
 import Ollin
@@ -62,6 +62,8 @@ The order of a chain matters. Every call wraps the field before it, so `circle.a
 Everything above lifts into 3D nearly unchanged. `SDF3D` builds fields in space, and `drawSDF3D` draws the merged surface through [Chapter 25](25-3DGently.md)'s camera, lit by its lights and wearing its materials. `smoothSubtract` is the carving form of the same melt: it cuts one field out of another and rounds the edge of the cut.
 
 ```swift
+import Ollin
+
 final class FirstMarch: Sketch {
     override func draw() {
         background(Color(hex: 0x0D1017))
@@ -82,7 +84,7 @@ final class FirstMarch: Sketch {
 
 <img src="Images/30-SculptingWithFields/FirstMarch.jpg" alt="Two spheres melted into a single teal-to-pink body with a smooth crater carved into its upper left, shaded like polished jade" width="560">
 
-The two spheres are not two surfaces joined at a seam. They are one surface, because the field underneath is one function. Building that from triangle meshes would mean cutting both spheres and stitching a new surface between them. The 3D leaves match the mesh primitives: sphere, box, torus, capsule, cylinder, cone, octahedron, ellipsoid, and more. `line(from:to:radius:)` is a stroke between two points, for sketching limbs and branches for the melt to fill out. Fields and meshes share one scene and hide each other correctly. The [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the full catalog.
+The two spheres are not two surfaces joined at a seam. They are one surface, because the field underneath is one function. Building that from triangle meshes would mean cutting both spheres and stitching a new surface between them. The 3D leaves include the mesh primitives, sphere, box, torus, capsule, cylinder, cone, and octahedron, and more, such as an ellipsoid. `line(from:to:radius:)` is a stroke between two points, for sketching limbs and branches for the melt to fill out. Fields and meshes share one scene and hide each other. The [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the full catalog.
 
 ## How the picture gets made: sphere tracing
 
@@ -93,13 +95,13 @@ A mesh is triangles, and the GPU knows how to draw triangles. A field is a funct
   <img src="Images/30-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in hops that shrink as it passes close to the lower shape and lengthen again, each hop bounded by a circle showing the distance the field reported, the last one ending on a gray blob's surface" width="680">
 </picture>
 
-The hops shrink wherever the ray passes close to a surface, and they grow again in open space. So the ray lands on a surface without stepping through it. You can see them tighten as the ray passes over the lower shape. This is called **sphere tracing**. The same number that lets shapes melt steers the rays that draw them.
+The hops shrink wherever the ray passes close to a surface, and they grow again in open space. No hop is longer than the distance to the nearest surface, so the ray lands on a surface without stepping through it. You can see them tighten as the ray passes over the lower shape. This is called **sphere tracing**. The same number that lets shapes melt steers the rays that draw them.
 
-You get all of this without writing any of it. The one setting is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces within a resolution budget. With the default setting, exports render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further, and an explicit setting applies to exports too.
+You get all of this without writing any of it. The setting to know is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces within a resolution budget. With the default setting, exports render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` lowers that budget to a quarter of the resolution. An explicit setting applies to exports too.
 
 ## Bending the whole form: distortions
 
-Every field so far is a shape you could build from parts. A distortion bends a whole field at once. It is for a column that twists as it rises, a bar that curls, and a surface that ripples or turns to rock. The four here reimplement Inigo Quilez's twist, bend, and displacement operators, with a noise relief beside them.
+Every field so far is a shape you could build from parts. A distortion bends a whole field at once. It is for a column that twists as it rises, a bar that curls, and a surface that ripples or turns to rock. Three of them reimplement Inigo Quilez's twist, bend, and displacement operators, and the fourth adds a noise relief.
 
 <!-- figure: Distortions, waiting on a render. A twisted column, a bent bar, a rippled sphere, and a roughened sphere in a row, from Guide/Figures/30-SculptingWithFields/Distortions.swift. -->
 
@@ -116,13 +118,13 @@ SDF3D.sphere(radius: 0.95)
     .roughened(amplitude: 0.15, frequency: 3)  // a noise relief, the rock look
 ```
 
-`twisted` screws the cross-section around the y axis, and `bent` curls the form about the z axis. For another axis, rotate the field first. `amplitude` is how far the ripples or the relief push the surface, and `frequency` is how many of them fit in one unit.
+`twisted` screws the cross-section around the y axis, and `bent` curls the form about the z axis. For another axis, rotate the field first: `.rotatedX`, `.rotatedY`, and `.rotatedZ` turn a field by an angle in radians about that axis through its origin. `amplitude` is how far the ripples or the relief push the surface, and `frequency` is how tightly they pack.
 
-A distortion has a cost the plain shapes do not. A bent field no longer answers with the exact distance to its surface. It can answer a little more than the true distance, and a ray that hops that far could step through the surface. So the tracer takes shorter hops on a distorted field, scaled to the distortion's strength. The surface never breaks up, and strong settings trace more slowly. The [`3D/Raymarching/RaymarchedDistort`](../Examples/3D/Raymarching/RaymarchedDistort/Sketch.swift) example shows all four with their amounts swinging.
+A distortion has a cost the plain shapes do not. A bent field no longer answers with the exact distance to its surface. It can answer a little more than the true distance, and a ray that hops that far could step through the surface. So the tracer takes shorter hops on a distorted field, scaled to the distortion's strength. The surface never breaks up, and strong settings trace more slowly. The [`3D/Raymarching/RaymarchedDistort`](../Examples/3D/Raymarching/RaymarchedDistort/Sketch.swift) example shows all four, three with their amounts swinging.
 
 ## The light this needs: materials and shadows on a field
 
-A field shades like a mesh, so the finishes of [Chapter 26](26-Meshes.md) reach it. `material(.jade)` gives a melt its glow, an `environment(_:)` lights it as it lights a solid, and `castShadows()` grounds it. A field shadows itself, and it trades shadows with the meshes around it. `material(.glass(...))` works on one too. A tinted interior deepens over the same distance it would inside a mesh of that shape. So a green glass ball comes out the same green, drawn as a field or as a mesh. What is left is the light itself. [Chapter 31](31-TracedLight.md) follows it as it bounces and as it passes through glass, and it borrows from the frames before the current one.
+A field shades like a mesh, so the finishes of [Chapter 26](26-Meshes.md) reach it. `material(.jade)` gives a melt its glow, an `environment(_:)` lights it as it lights a solid, and `castShadows()` grounds it. A field shadows itself, and it trades shadows with the meshes around it. `material(.glass(...))` works on one too. A tinted interior deepens over the same distance it would inside a mesh of that shape. So a green glass ball comes out the same green, drawn as a field or as a mesh. What is left is the light itself. [Chapter 31](31-TracedLight.md) follows it as it bounces and as it passes through glass, and shows what a frame can borrow from the frames before it.
 
 ## Putting it together: molten
 
@@ -169,7 +171,7 @@ final class Molten: Sketch {
 
 Run it and drag to orbit. Here is how the steps show up in it:
 
-- **The smooth minimum.** Three `smoothUnion`s join a sphere, an ellipsoid, a torus, and a small sphere into one body. The first melt's `k` comes from `signedNoise` of the slow clock. The seam between the two lower lobes eases in and out, and the body seems to breathe.
+- **The smooth minimum.** Three `smoothUnion`s join a sphere, an ellipsoid, a torus, and a small sphere into one body. The first melt's `k` comes from `signedNoise` of the slow clock. The seam between the big sphere and the ellipsoid at its foot eases in and out, and the body seems to breathe.
 - **`SDF3D`.** The lobes are 3D leaves placed with `.at`, and `.colored` paints the finished body one color. The torus is moved and then turned. By the chain-order rule from the melting step, `.rotatedZ(0.5)` then swings it about the z axis through the origin. That moves its center about 0.7 units as well as tilting it.
 - **Sphere tracing.** `drawSDF3D` traces the body, and `cameraShowcase` orbits it, so every frame traces it from a new place.
 - **Distortions.** `.twisted(0.3)` screws the body a little around the y axis, after the unions, so the lobes twist together.
@@ -178,9 +180,9 @@ Run it and drag to orbit. Here is how the steps show up in it:
 Then make it yours:
 
 - Replace a lobe with `SDF3D.line(from:to:radius:)` and grow the drop a limb. A few chained lines and a big `k` are how creatures start.
-- Trade the glaze for `.metal(roughness: 0.15)` with `environment(.sunset)`, and add `rayTracedReflections()` if your Mac traces.
+- Trade the glaze for `.metal(roughness: 0.15)` with `environment(.sunset)`, and add [Chapter 31](31-TracedLight.md)'s `rayTracedReflections()` if your Mac traces.
 - Carve it with one `smoothSubtract` of a large sphere, and the sculpture becomes a grotto.
-- Turn the torus before you move it, with `.rotatedZ(0.5).at(-0.55, 1.25, -0.1)`. It tilts in place instead of swinging round.
+- Turn the torus before you move it, with `.rotatedZ(0.5).at(-0.55, 1.25, -0.1)`. It tilts in place instead of swinging around the origin.
 
 The sculpture breathes and turns on its own, so keep it as a video. `swift run OllinLive MySketches/Molten.swift --export-video molten.mp4 --seconds 12` records the first twelve seconds. An export renders every frame of the field at full quality.
 
@@ -190,7 +192,7 @@ Molten melts every lobe with one verb, `smoothUnion`. Fields combine in other wa
 
 ### Carving, overlapping, and halfway: the other verbs
 
-The other verbs are the set operations of distance fields, and a morph. They are for cutting a hole, keeping where two shapes cross, and finding a shape between two. The union takes the minimum of two answers, as the melting step showed. The intersection takes the maximum, so only the overlap answers inside. Subtracting takes the maximum with one answer negated, which turns that shape inside out before the overlap. The picture has six of them on one circle and one rounded rectangle.
+The other verbs are the set operations of distance fields, and a morph. They are for cutting a hole, keeping where two shapes cross, and finding a shape between two. They come from Inigo Quilez's catalog, like the smooth minimum. The union takes the minimum of two answers, as the melting step showed. The intersection takes the maximum, so only the overlap answers inside. Subtracting negates one answer first, which swaps that shape's inside and outside, and then takes the maximum. What is left is the first shape wherever the second is not. The picture has six of them on one circle and one rounded rectangle.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/Verbs-dark.jpg">
@@ -211,11 +213,11 @@ These are [Chapter 15](15-ShapesAsMaterial.md)'s booleans on fields, plus two th
 
 ### Joins like joinery: the machined family
 
-The machined family joins two fields with a shaped seam instead of a melt. It is for forms that should look built rather than poured: a chamfer, steps, a row of columns along the join. These follow hg_sdf, the distance-field library published by the demogroup Mercury. `chamferUnion`, `stairsUnion`, and `columnsUnion` shape the seam, and engrave, groove, tongue, and pipe cut details into a surface. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full set, and the [`3D/Raymarching/RaymarchedJoinery`](../Examples/3D/Raymarching/RaymarchedJoinery/Sketch.swift) example builds with them.
+The machined family joins two fields with a shaped seam instead of a melt. It is for forms that should look built rather than poured: a chamfer, steps, a row of columns along the join. These follow hg_sdf, the distance-field library published by the demogroup Mercury. `chamferUnion`, `stairsUnion`, and `columnsUnion` shape the seam. Engrave and groove cut into a surface along another, tongue raises a ridge there, and pipe keeps only a round bead where two surfaces cross. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full set, and the [`3D/Raymarching/RaymarchedJoinery`](../Examples/3D/Raymarching/RaymarchedJoinery/Sketch.swift) example builds with them.
 
 ### Merging ordinary draw calls: the block form
 
-The block form merges draw calls instead of chained fields. It is for when you would rather draw than build a chain. Every call inside the block becomes a field, and the block joins them all when it closes:
+The block form merges draw calls instead of chained fields. It is for when you would rather draw than build a chain. Its scoped shape was studied from Shader Park, a library for sculpting with distance fields. Every call inside the block becomes a field, and the block joins them all when it closes:
 
 ```swift
 translate(width / 2, height / 2)
@@ -227,11 +229,11 @@ smoothUnion(k: 18) {
 }
 ```
 
-Every analytic region shape can join a block: circles, rectangles, n-gons, and more. That includes shapes the `SDF` type doesn't name, like hearts and trapezoids. Polygons, paths, and filled arcs stay out. Each call's own `fill` becomes its color in the melt.
+Every analytic region shape can join a block: circles, rectangles, n-gons, and more. That includes shapes the `SDF` type doesn't name, like hearts and trapezoids. Polygons, paths, and filled arcs stay out. `drawNgon(x, y, radius, sides:)` is a regular polygon. Each call's own `fill` becomes its color in the melt.
 
 ### Building up and carving away: the sculpt block
 
-The `sculpt { }` block turns the verbs into working state. It is for forms you build up rather than compose, the way a potter adds clay and cuts it away. Shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, and the block reads top to bottom. The composable API of Shader Park, a library for sculpting with distance fields, was studied for this shape.
+The `sculpt { }` block turns the verbs into working state. It is for forms you build up rather than compose, the way a potter adds clay and cuts it away. Shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, and the block reads top to bottom. Shader Park was studied for the sculpt block too.
 
 <img src="Images/30-SculptingWithFields/Vessel.jpg" alt="A round terracotta vessel with a melted-on lip, a hollowed mouth, and a crisp ring pressed flat onto its front, built from spheres and tori inside a sculpt block" width="560">
 
@@ -271,13 +273,13 @@ cluster.scaled(0.72).repeated(spacing: Vector2(88, 88), count: 1)  // a 3×3 til
 petal.at(82, 0).repeatedRadially(count: 9)                         // a rosette
 ```
 
-There is still only one cluster. The mirror needs the cluster moved off its axis first, or it folds onto itself, and the tiling shrinks it to fit its cells. `count` is how many copies go to each side of the first, so `count: 1` makes a three-by-three tiling. The copies cost nothing to add, so a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. The radial fold is exact when the repeated content is symmetric within its wedge. An asymmetric cluster can show a faint seam where the wedges meet, which is why the rosette panel uses a symmetric petal.
+There is still only one cluster. The mirror needs the cluster moved off its axis first, or it folds onto itself, and the tiling shrinks it to fit its cells. `count` is how many copies go to each side of the first, so `count: 1` makes a three-by-three tiling. The copies cost nothing to add, so a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. The radial fold is exact when the repeated content is symmetric within its wedge. An asymmetric cluster can show a faint seam where the wedges meet. So build the wedge symmetric about its center line, like the petal in the rosette panel.
 
 ### Infinite detail: the fractal leaves
 
-Every leaf so far had a distance you could write down. A sphere's is the length of the point minus its radius, and the rest are a page of the same kind of algebra. Three leaves have no such formula. They are fractals. Each one is a rule applied to a point over and over, and the shape is the set of points the rule never flings away. They are for forms with detail at every scale. The Mandelbulb is Daniel White and Paul Nylander's find from 2009, and the Mandelbox is Tom Lowe's from 2010. John C. Hart, Daniel Sandin, and Louis Kauffman first estimated a fractal's distance from how fast the rule flings a point away, in 1989.
+Every leaf so far had a distance you could write down. A sphere's is the length of the point minus its radius, and the rest are a page of the same kind of algebra. Three leaves have no such formula. They are fractals. Each one is a rule applied to a point over and over, and the shape is the set of points the rule never flings away. They are for forms with detail at every scale. The Mandelbulb is Daniel White and Paul Nylander's find from 2009, and the Mandelbox is Tom Lowe's from 2010. The Menger sponge is Karl Menger's, from 1926. John C. Hart, Daniel Sandin, and Louis Kauffman first estimated a fractal's distance from how fast the rule flings a point away, in 1989.
 
-<img src="Images/30-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces carry a deep carved relief" width="680">
+<img src="Images/30-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces are pitted with a fine relief" width="680">
 
 ```swift
 SDF3D.mandelbulb(power: 8, iterations: 8, radius: 1.2)
@@ -285,7 +287,7 @@ SDF3D.mengerSponge(iterations: 3, size: 2.1)
 SDF3D.mandelbox(scale: -1.5, iterations: 12, size: 2.2)
 ```
 
-There is no equation for these surfaces, so the field estimates its distance instead. It runs the rule a few times from the query point and watches how quickly the point escapes. A point about to be flung far must be far from the set. A point that keeps circling must be near it. That rate becomes a length the tracer can hop by, and everything else in this chapter works unchanged. A fractal melts into a sphere, carves a box, mirrors, and repeats.
+So the field estimates its distance instead. It runs the rule a few times from the query point and watches how quickly the point escapes. A point about to be flung far must be far from the set. A point that keeps circling must be near it. That rate becomes a length the tracer can hop by, and everything else in this chapter works unchanged. A fractal melts into a sphere, carves a box, mirrors, and repeats.
 
 `iterations` sets the balance of detail and cost, since every hop runs the rule again. The bulb's `power` is its own shape. Eight is the classic value, and a fractional power is a different bulb, so sweeping it slowly makes it breathe. The box's `scale` plays the same role. The finest detail you can see is set by the tracer, not by the fractal. To look deeper, make the leaf bigger and raise `iterations` rather than moving the camera in. The [`3D/Raymarching/RaymarchedFractals`](../Examples/3D/Raymarching/RaymarchedFractals/Sketch.swift) example puts each one's settings in the inspector.
 
@@ -307,13 +309,13 @@ blobs.add(at: Vector3(1.4, 0.45, -0.2), radius: 0.40)
 drawMesh(blobs.mesh(resolution: 26))
 ```
 
-`radius` is the size a ball reads at on its own. Put two within reach of each other and the values in the gap add up to more than either one makes there. The surface swells across the gap, and the pair runs together. Move them apart and the bridge necks down and snaps. `level` is the value the surface is drawn at. Lowering it fattens everything and makes blobs merge from further away, and raising it thins them until they separate. A negative `strength` carves into a neighbor instead of joining it.
+`radius` is the size a ball reads at on its own. Put two within reach of each other and the values in the gap add up to more than either one makes there. The surface swells across the gap, and the pair runs together. Move them apart and the bridge necks down and snaps. `level` is the value the surface is drawn at, as in `Metaballs(level: 0.4)`. Lowering it fattens everything and makes blobs merge from further away, and raising it thins them until they separate. A negative `strength`, as in `add(at:radius:strength:)`, carves into a neighbor instead of joining it.
 
-`resolution: 26` builds the mesh deliberately coarse, so the triangles show. The right panel is the same mesh with `wireframe()` on. The left panel is that same coarse mesh, and it still looks smooth. Its shading normals come from the field rather than from the flat faces.
+At `resolution: 26` the triangles are big enough to see. Call `wireframe()` before `drawMesh` and they show, as in the right panel. Drawn solid, the same mesh still looks smooth, because its normals come from the field rather than from the flat faces.
 
 ### Any field as a mesh: isosurface
 
-`isosurface` turns any field into a mesh, not only metaballs. It walks a grid of cubes through space, asks the field for a value at every cube corner, and stitches the crossings into triangles. That is marching cubes, from William Lorensen and Harvey Cline in 1987, the 3D form of the contours [Chapter 14](14-FieldsAndFlow.md) drew. It is for sculpting your own field and keeping the result.
+`isosurface` turns any field into a mesh, not only metaballs. It walks a grid of cubes through space, asks the field for a value at every cube corner, and stitches the crossings into triangles. It is for sculpting your own field and keeping the result. The method is marching cubes, from William Lorensen and Harvey Cline in 1987, the 3D form of the contours [Chapter 14](14-FieldsAndFlow.md) drew.
 
 The one thing to know is which side it treats as solid. The surface wraps the region where the field runs above the level. So a distance function, which is negative inside, needs a minus sign in front of it.
 
@@ -326,7 +328,9 @@ let wobbly = isosurface(at: 0.5, in: Box3(center: .zero, size: Vector3(3, 3, 3))
 }
 ```
 
-`resolution` is how many cubes the grid has along each side, and the cost grows with its cube. `Box3(center:size:)` is the region the grid covers.
+`p.lengthSquared` is the squared distance from the center, with no square root taken.
+
+`resolution` is how many cubes the grid has along the longest side of the box, and the shorter sides get proportionally fewer. The cost grows with the cube of `resolution`. `Box3(center:size:)` is the region the grid covers.
 
 ### Corners that stay sharp: dual contouring
 
@@ -346,7 +350,7 @@ let bored = isosurface(at: 0, in: box, resolution: 14, method: .dualContouring) 
 }
 ```
 
-Both blocks come from the same fourteen cells across, and only where the vertices sit differs. The extra work is a dozen more reads of the field at every crossing.
+`block` is the distance to a box two units across, from Quilez's catalog. `hole` is the distance to a cylinder of radius 0.5 along z. `max(block, -hole)` is the subtraction from the verbs above, and the minus in front makes it solid for `isosurface`. Both blocks in the picture come from the same fourteen cells across, and only where the vertices sit differs. The extra work is about a dozen more reads of the field at every crossing.
 
 So there are two ways out of a field, and they cost differently. `drawSDF3D` shades straight to pixels and pays by the pixel. `isosurface` makes geometry and pays by the volume, which grows with the cube of `resolution`. Reach for the mesh when you need an object, and for the traced field when you want it on screen.
 
