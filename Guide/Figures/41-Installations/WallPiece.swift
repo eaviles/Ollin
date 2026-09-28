@@ -1,9 +1,9 @@
 // figure: frame=300
 //
-// Guide payoff (Chapter 41): the wall piece. A slow field declared for a room
+// Guide payoff (Chapter 41): the wall of bars. A slow field declared for a room
 // rather than a window: it fills the screen, keeps the display awake, writes a
 // checkpoint every minute so a power cut costs a minute, restarts itself if it
-// ever stalls, opens and closes with the building, and repeats exactly on a
+// ever stalls, goes dark from eleven at night until six, and repeats on a
 // three minute lap. A strip of LEDs reads the bottom of the canvas, so the wall
 // under it carries the same light. The committed figure pins dusk.
 import Ollin
@@ -17,10 +17,11 @@ final class WallPiece: Sketch {
         Installation(checkpoint: .every(seconds: 60),
                      restarts: .onFailure,
                      schedule: [.from(6, "dawn"), .from(10, "day"),
-                                .from(18, "dusk"), .from(21, "night")])
+                                .from(18, "dusk"), .from(21, "night"),
+                                .dark(from: 23)])
     }
 
-    /// Three minutes a lap, so the piece is exactly where it was every three
+    /// Three minutes a lap, so the sketch is back where it was every three
     /// minutes and the shader clock never has to count a week.
     override var loopDuration: Double? { 180 }
 
@@ -41,7 +42,7 @@ final class WallPiece: Sketch {
     override func setup() {
         noStroke()
         // The wall under the screen: one run of lamps reading the canvas above
-        // them. After this the piece draws as if they were not there.
+        // them. After this the sketch draws as if they were not there.
         leds.addStrip(from: Vector2(90, Double(height) - 54),
                       to: Vector2(Double(width) - 90, Double(height) - 54), leds: 96)
         extend(leds)

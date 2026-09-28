@@ -190,7 +190,7 @@ The wrapper makes two choices for you.
 
 That signs the app with the hardened runtime, the set of protections notarization requires. It sends the app to Apple's notary service and leaves an `Orbit.zip` beside the app, ready to send. Any Mac opens what is inside. [The reference page](../Docs/Output/App.md) has the one-time setup behind the `ollin-notary` name.
 
-The app is also how the finished sketch of [Chapter 41](41-Installations.md#putting-it-together-the-wall-piece) reaches its wall. A sketch that declares an `Installation` keeps it inside the app. A double-click then opens it full screen and unattended, with its opening hours. The machine that runs it needs only the app, not the repository or the toolchain.
+The app is also how the finished sketch of [Chapter 41](41-Installations.md#putting-it-together-the-wall-of-bars) reaches its wall. A sketch that declares an `Installation` keeps it inside the app. A double-click then opens it full screen and unattended, with its opening hours. The machine that runs it needs only the app, not the repository or the toolchain.
 
 ## Putting it together: the sky clock
 
@@ -344,7 +344,7 @@ The rings appear on the phone. A phone runs only code signed inside its app, so 
 
 The phone on the right in the figure is what launches: the rings in their new colors, at the radii the old version had reached. The app writes its state down every second and reads it back at launch. That state is the clock and the seed, every `@Param` value, and every `@Saved` property. So the animation keeps its phase, and a value you tuned stays tuned.
 
-The phone's parameters also open in a browser on the Mac, and a change on either side shows on the other. [Chapter 41](41-Installations.md#tuning-it-from-the-floor) does the same the other way round, with a sketch's parameters on a phone.
+The phone's parameters also open in a browser on the Mac, and a change on either side shows on the other. [Chapter 41](41-Installations.md#tuning-it-from-the-floor-remoteinspector) does the same the other way round, with a sketch's parameters on a phone.
 
 The phone has two conditions. It has to be unlocked for the Mac to open the app. It also has to be on the cable, or awake on the same network. [The sketch on the phone](../Docs/Tools/OnThePhone.md) says what comes along, what stays on the desk, and how to write the app by hand.
 

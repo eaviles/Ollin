@@ -104,14 +104,14 @@ final class BackUp: Sketch {
         fill(ink)
         textSize(15)
         textAlign(.right, .middle)
-        drawText("the piece", left - 16, 165)
+        drawText("the sketch", left - 16, 165)
     }
 
     func caption() {
         fill(soft)
         textSize(16)
         textAlign(.center, .top)
-        drawText("the process you start is the watch; the piece runs as its child, and a new one starts within seconds",
+        drawText("the process you start is the watch; the sketch runs as its child, and a new one starts within seconds",
                  width / 2, 366)
     }
 

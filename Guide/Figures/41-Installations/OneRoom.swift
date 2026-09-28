@@ -28,7 +28,7 @@ final class OneRoom: Sketch {
     override func draw() {
         background(paper)
 
-        drawText("two machines running one piece", 56, 30,
+        drawText("two machines running one sketch", 56, 30,
                  size: 20, color: ink, align: .left, .top)
 
         row(top: 82, title: "each machine's own clock",

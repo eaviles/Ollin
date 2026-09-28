@@ -91,7 +91,7 @@ final class LongRunClock: Sketch {
                note: "every integrator jumps with it",
                tint: accent, y: axis + 104)
         answer(mark: "by the sum of its steps", value: "deltaTime = 0.25 s",
-               note: "the piece carries on where it stopped",
+               note: "the sketch carries on where it stopped",
                tint: good, y: axis + 138)
     }
 
