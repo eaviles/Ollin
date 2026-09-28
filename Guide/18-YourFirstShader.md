@@ -6,7 +6,7 @@
 
 <img src="Images/18-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a violet night sky full of small stars, above a black mountain ridge" width="560">
 
-This chapter teaches you to write a **shader**, a small function the GPU runs at every pixel of the canvas at once. The aurora above is one, under forty lines of shader and no assets. It runs at full resolution at full frame rate because every pixel is answered at the same time. You start from the per-pixel model, which [Chapter 14](14-FieldsAndFlow.md) already gave you as a field with an answer at every point. Then you write a `shade` function and read its `uv`. You draw a shape as a question about distance, and you let time, the mouse, and your parameters in. Last, you reach for the library Ollin splices into every shader. The sketch after those steps is the aurora, built from `fbm`, `smoothstep`, `hash12`, and `palette`. After it come the shaders Ollin ships, the design generators and the pattern fields, with the filter that smooths the edges any generated layer leaves. Then the other ways to a shader. A chain is patched in Swift, and a shader is brought over from GLSL. A helper is shared between files, and a check compiles a file on its own.
+The GPU can run a small function at every pixel of the canvas at once, and that function is a shader. You learn to write one: per-pixel thinking, a `shade` function, distance shaped by `smoothstep`, and the library Ollin splices into every shader. The aurora at the top is under forty lines of shader and no assets. The shaders Ollin ships come after it, and then other ways to a shader, from chains patched in Swift to GLSL brought over.
 
 ## One question, a million times: per-pixel thinking
 

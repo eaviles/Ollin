@@ -6,7 +6,7 @@
 
 <img src="Images/21-PicturesYouSolve/Lighthouse.jpg" alt="A lighthouse on a dark headland at dusk, its lamp throwing beams into a violet and orange sky, the sun on the horizon, and a small boat with a lit mast on the water, every silhouette traced in a thin warm outline" width="560">
 
-Most filters look at a picture and change it. This chapter teaches the ones that treat a layer as a problem to solve. A few colored marks spread into a smooth painting. A drawing becomes a measure of how far every pixel sits from an edge, and which way. A scene and some lamps give back the light that reaches every pixel. Each makes a kind of picture no ordinary filter can, and the finished sketch is a lighthouse at dusk built from all three. Its sky is diffused from a few marks, its beams are worked out by the light, and its outlines are measured. After it, one family holds three more problems a layer can solve. A pasted patch loses its seam. A picture is read as the waves that add up to it. Any window's average comes at a flat price.
+Some filters solve a problem instead of changing a picture. This chapter teaches three: diffusion from a few marks, distance measured from every edge, and light worked out from a scene and its lamps. The lighthouse above uses all three, with its sky diffused, its outlines measured, and its beams worked out. Past it, a pasted patch loses its seam, a picture is read as waves, and any window's average comes at a flat price.
 
 ## A picture made of a few marks: diffusion
 

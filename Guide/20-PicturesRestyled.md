@@ -6,7 +6,7 @@
 
 <img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
-A photograph is a place to start. This chapter teaches the filters that make a picture into another kind of picture. Brushwork paints it and hatching draws it for a pen, both following the picture's own edges. A look grades its color the way a colorist would. Halation and grain give it the texture of film. The design filters press it into paper, or put glass or water in front of it. Each is one `.filtered(...)` on a layer from [Chapter 19](19-LayersAndEffects.md), so they chain, their numbers take a `@Param`, and they move with `time`. The finished sketch stacks five of them into a hand-colored print. After it come two families. The first holds more of the stylize shelf: pen and ink, flat regions with crisp edges, and chromatic aberration. The second holds the filters that read a layer as something other than a picture. They read it as height, as tone, as a center, as a ring that contains itself, and as a brightness to pour.
+One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take parameters. The street above is one photograph with five of them stacked into a hand-colored print. Two families follow it: more of the stylize shelf, and filters that read a layer as height, tone, a center, a ring, or a pour.
 
 ## Paint that follows the picture: brushwork
 

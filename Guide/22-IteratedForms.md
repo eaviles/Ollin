@@ -6,9 +6,7 @@
 
 <img src="Images/22-IteratedForms/OrbitPlate.jpg" alt="Four dark panels on near-black: a coral-red Barnsley fern, a gold folded ribbon from a chaotic map, a teal lace of nested circles from circle inversion, and a violet double spiral from a Kleinian group" width="560">
 
-This chapter teaches pictures made by iteration. Take a point, apply a rule to it, and mark where it lands. Then apply the same rule to the result, and again, a hundred thousand times over. The picture is a record of where that one wandering point spent its time. The four rules behind the plate above differ a great deal. One is a coin flip between four squashing maps, and one is a pair of trigonometric formulas. One is a ring of circles used as mirrors, and one is a group built out of two Möbius transformations. What sits around them is the same, which is why the plate is one plotting function called four times. Building it is the spine of this chapter. After it come the relatives the plate does not use. The fractal flame and the Schottky circles are two more games with transformations. The bifurcation diagram, a ball in a room, and the double pendulum show where iteration turns from order into chaos. And escape time, the Buddhabrot, Newton's basins, and domain coloring ask a question of the plane one pixel at a time. The complex arithmetic under them ends the chapter in a shader of your own.
-
-[Chapter 13](13-GrowingThings.md) grew things that spread through space, and [Chapter 14](14-FieldsAndFlow.md) followed fields across it. The forms here do neither. They have no neighbors and no field. They iterate, and the picture is what the iteration leaves behind.
+Take a point, apply a rule, mark where it lands, and repeat a hundred thousand times. The marks record where the point spent its time, and that record is the picture. You learn four such rules and one plotting function that draws them all, and the plate above is that function called four times. Fractal flames, order turning into chaos, and questions asked of the plane one pixel at a time follow it.
 
 ## The same fern, played as a game: the chaos game
 

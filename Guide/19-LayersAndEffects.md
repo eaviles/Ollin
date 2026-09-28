@@ -6,7 +6,7 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-A layer is a second canvas that lives off screen. This chapter teaches how to draw into one, filter it, and composite it back with a blend mode. Then it declares a whole stack of layers in one `compose` block. After that it turns to what a canvas can keep from one frame to the next: every mark, a running mean, or its own past, warped and fed back in. Light brighter than the screen comes with that, and so does the tone map that rolls it off. The finished sketch is [Chapter 12](12-FlocksAndSwarms.md)'s flock rebuilt as comets, drawn into a feedback layer that comes back bloomed and added as light. After it, one family says what to do when a frame gets slow. It reads the inspector's cost row, and it records drawing that never changes into a batch.
+A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. This chapter teaches all three, from the filter catalog to a canvas that feeds its own past back in. The comets above are the flock of [Chapter 12](12-FlocksAndSwarms.md), drawn into a feedback layer that comes back bloomed and added as light. After them comes what to do when a frame gets slow.
 
 ## A drawing you can hold: render targets
 
