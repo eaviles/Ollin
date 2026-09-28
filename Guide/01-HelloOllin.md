@@ -490,7 +490,7 @@ That limit follows from what the drag is. The file is the sketch, and dragging e
 
 ## A shorter way to run things
 
-Every sketch of yours so far ran as `swift run OllinLive` from the repository folder. Every chapter keeps writing that form, so nothing later depends on this section. It is here because typing the full command every time gets tiring, and because it means every session starts with a `cd`. There is a one-time fix.
+Every sketch of yours so far ran as `swift run OllinLive` from the repository folder, and the chapters keep writing that form. Typing it in full gets tiring, though, and it means every session starts with a `cd`. There is a one-time fix, and it installs an `ollin` command that a few later chapters use for other jobs. [Chapter 18](18-YourFirstShader.md#somebody-elses-shader-glsl-import) brings a shader over with it, [Chapter 26](26-Meshes.md#a-scene-you-can-take-apart-the-scene-written-as-source) turns a scene file into a sketch, and [Chapter 40](40-HandingItOver.md#living-in-the-system-a-screen-saver) starts every project with it.
 
 ```sh
 Scripts/ollin install        # run once, from the repository folder

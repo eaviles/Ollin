@@ -162,7 +162,7 @@ A palette or a ramp can be a `@Param`, which saves a lot of editing and rerunnin
 @Param var dusk = Ramp([.black, .white])             // a band with a handle per stop
 ```
 
-The palette shows in the inspector as its colors side by side. Click one and the color well beside the label edits it. The ramp shows as the gradient itself, and its handles drag along the band to move a stop. The `+` and `−` buttons add and remove a color in either. When you like what you see, copy the colors back into the code.
+The palette shows in the inspector as its colors side by side. Click one and the color well beside the label edits it. The ramp shows as the gradient itself, and its handles drag along the band to move a stop. The `+` and `−` buttons add and remove a color in either. When you like what you see, press **Save parameters**, as in [Chapter 1](01-HelloOllin.md#saving-the-values-you-tuned). It writes the colors back into the code, and a ramp comes back in full, with each stop's position beside its color.
 
 ## Gradients as paint
 
