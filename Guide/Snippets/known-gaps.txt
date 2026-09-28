@@ -121,41 +121,18 @@ ee027f846921  Guide/27-Landscapes.md:91  cannot find 'island' in scope
 f192418e7342  Guide/28-WorldsWithWeight.md:520  errors thrown from here are not handled
 c0fe9fc2affa  Guide/28-WorldsWithWeight.md:636  errors thrown from here are not handled
 56811a58d088  Guide/28-WorldsWithWeight.md:680  errors thrown from here are not handled
-ea4e7ee754d4  Guide/29-CharactersAndCloth.md:105  cannot find 'wheel' in scope
-9fbaf34ee0ea  Guide/29-CharactersAndCloth.md:120  cannot find 'world' in scope
-022caa8e92db  Guide/29-CharactersAndCloth.md:137  cannot find 'crawler' in scope
-011ebbefbaf3  Guide/29-CharactersAndCloth.md:146  cannot find 'crawler' in scope
-6c75cdafb397  Guide/29-CharactersAndCloth.md:163  cannot find 'figure' in scope
-2b29095940c6  Guide/29-CharactersAndCloth.md:172  cannot find 'world' in scope
-ee5202ad147b  Guide/29-CharactersAndCloth.md:182  cannot find 'figure' in scope
-c3c243d3d512  Guide/29-CharactersAndCloth.md:19  cannot find 'walker' in scope
-88bf956b0011  Guide/29-CharactersAndCloth.md:210  cannot find 'cloth' in scope
-2970c04af228  Guide/29-CharactersAndCloth.md:217  cannot find 'world' in scope
-0512e5aaa8ee  Guide/29-CharactersAndCloth.md:227  consecutive statements on a line must be separated by ';'
-a249a33239de  Guide/29-CharactersAndCloth.md:236  labeled block needs 'do'
-67a3b60601e4  Guide/29-CharactersAndCloth.md:244  cannot find 'ball' in scope
-2bcd5d318154  Guide/29-CharactersAndCloth.md:25  cannot find 'walker' in scope
-cb37fe7b03c3  Guide/29-CharactersAndCloth.md:255  cannot find 'banner' in scope
-3114a6ecf639  Guide/29-CharactersAndCloth.md:263  cannot find 'world' in scope
-b9f04ddb2cbc  Guide/29-CharactersAndCloth.md:271  cannot find 'contact' in scope
-9115cde44923  Guide/29-CharactersAndCloth.md:285  cannot find 'cape' in scope
-91cca60da693  Guide/29-CharactersAndCloth.md:296  cannot find 'figure' in scope
-0733fd1ad86d  Guide/29-CharactersAndCloth.md:312  labeled block needs 'do'
-b8fd98ac7549  Guide/29-CharactersAndCloth.md:326  cannot find 'world' in scope
-8d68e6b39c15  Guide/29-CharactersAndCloth.md:337  consecutive statements on a line must be separated by ';'
-b8b9b41bf97f  Guide/29-CharactersAndCloth.md:350  cannot find 'chain' in scope
-82321d69e2a4  Guide/29-CharactersAndCloth.md:372  cannot find 'raft' in scope
-44a58c331290  Guide/29-CharactersAndCloth.md:390  cannot find 'world' in scope
-8915a01acd3a  Guide/29-CharactersAndCloth.md:401  cannot find 'banner' in scope
-f81e8c4e5b7c  Guide/29-CharactersAndCloth.md:407  cannot find 'world' in scope
-30ab716eb034  Guide/29-CharactersAndCloth.md:42  cannot find 'walker' in scope
-200baedfee30  Guide/29-CharactersAndCloth.md:52  cannot find 'walker' in scope
-a3caae6b59cd  Guide/29-CharactersAndCloth.md:59  cannot find 'lookout' in scope
-0f4af3908128  Guide/29-CharactersAndCloth.md:69  cannot find 'car' in scope
-5b41db2dc8f2  Guide/29-CharactersAndCloth.md:84  cannot find 'car' in scope
-b07345766984  Guide/30-SculptingWithFields.md:167  cannot find 'box' in scope
-e94f9d5f972b  Guide/30-SculptingWithFields.md:214  cannot find 'cluster' in scope
-fbd600f5cd66  Guide/30-SculptingWithFields.md:65  cannot find 'a' in scope
+cc0338f303d4  Guide/29-CharactersAndCloth.md:130  errors thrown from here are not handled
+d208686885d8  Guide/29-CharactersAndCloth.md:168  errors thrown from here are not handled
+a249a33239de  Guide/29-CharactersAndCloth.md:198  labeled block needs 'do'
+bca87c9d2861  Guide/29-CharactersAndCloth.md:206  errors thrown from here are not handled
+6c75cdafb397  Guide/29-CharactersAndCloth.md:397  errors thrown from here are not handled
+ab22319f0c05  Guide/29-CharactersAndCloth.md:448  errors thrown from here are not handled
+b8fd98ac7549  Guide/29-CharactersAndCloth.md:491  errors thrown from here are not handled
+44a58c331290  Guide/29-CharactersAndCloth.md:577  errors thrown from here are not handled
+8d9bf733a656  Guide/29-CharactersAndCloth.md:594  errors thrown from here are not handled
+81fc652fd104  Guide/29-CharactersAndCloth.md:72  errors thrown from here are not handled
+8185674df358  Guide/30-SculptingWithFields.md:202  cannot find 'a' in scope
+9b80f0c8f3bd  Guide/30-SculptingWithFields.md:270  cannot find 'cluster' in scope
 206d2dbd05e7  Guide/31-TracedLight.md:133  cannot find 'ribbon' in scope
 5834d913fb21  Guide/31-TracedLight.md:197  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
 c1b390558596  Guide/32-Seeing.md:142  cannot find 'BodyTracker3D' in scope
