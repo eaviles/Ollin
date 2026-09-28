@@ -351,7 +351,7 @@ The [`3D/Physics/Tensegrity`](../Examples/3D/Physics/Tensegrity/) example drops 
 
 ## Water, and what it holds up
 
-[Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of) built a sea to be looked at. A physics world can have water that bodies float in, the same way it has ground. It takes one property, and nothing has to opt in.
+[Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of-an-ocean-spectrum) built a sea to be looked at. A physics world can have water that bodies float in, the same way it has ground. It takes one property, and nothing has to opt in.
 
 ```swift
 world.water = Water(level: 0)

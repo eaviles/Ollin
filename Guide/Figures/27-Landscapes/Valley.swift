@@ -61,31 +61,16 @@ final class Valley: Sketch {
         .eroded(.thermal(talus: 0.014, iterations: 30))
         .normalized()
         // Rain carries material downhill and leaves it in the low ground. Holding
-        // the lowest third at one level is the flood plain that gets the meadow.
+        // every height under 0.3 at one level is the flood plain that gets the meadow.
         field = Heightfield(columns: grown.columns, rows: grown.rows,
                             values: grown.values.map { max($0, floorLevel) })
 
         let ramp = Ramp([Color(hex: 0x54703C), Color(hex: 0x5F7340),
                          Color(hex: 0x8A8452), Color(hex: 0xA69378),
                          Color(hex: 0xB3AEA6), Color(hex: 0xEDEAE3)])
-        var pixels = [UInt8]()
-        pixels.reserveCapacity(field.values.count * 4)
-        for value in field.values {
-            // The flood plain is the ramp's first color, the highest ridge its last.
-            let t = (value - floorLevel) / (1 - floorLevel)
-            let c = ramp.color(at: min(max(t, 0), 1))
-            pixels.append(UInt8((c.red * 255).rounded()))
-            pixels.append(UInt8((c.green * 255).rounded()))
-            pixels.append(UInt8((c.blue * 255).rounded()))
-            pixels.append(255)
-        }
-        let mesh = field.mesh(width: span, depth: span, height: relief)
-        if let skin = Image(width: field.columns, height: field.rows,
-                            premultipliedRGBA: pixels) {
-            land = mesh.textured(skin)
-        } else {
-            land = mesh
-        }
+        // The flood plain is the ramp's first color, the highest ridge its last.
+        land = field.coloredMesh(width: span, depth: span, height: relief,
+                                 ramp, in: floorLevel...1)
     }
 
     /// The ground height under a world x/z, in world units.
@@ -124,8 +109,8 @@ final class Valley: Sketch {
     }
 
     /// The highest ground in the middle distance, away from the sun, which is what
-    /// the shot faces. The sky's sun rises toward +z, so looking the other way puts
-    /// it behind the camera and lights the land instead of silhouetting it.
+    /// the shot faces. The golden-hour key light shines from +x, so looking toward -x
+    /// puts it behind the camera and lights the land instead of silhouetting it.
     func findARidge(from here: Vector2) -> Vector2 {
         var best = Vector2.zero, bestHeight = -1.0
         for a in stride(from: .pi * 0.6, to: .pi * 1.4, by: .tau / 180) {
