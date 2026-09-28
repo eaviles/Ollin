@@ -6,7 +6,7 @@
 
 <img src="Images/24-ParticleSimulations/Drift.jpg" alt="A dark canvas combed into two slow vortices by hundreds of thousands of particle trails, in interleaved threads of coral, teal, and violet light" width="560">
 
-Hundreds of thousands of individuals in one buffer, moved every frame by one small program on the GPU, make a particle system. Unlike a cell on a grid, a particle moves, and it can carry a species, leave marks for others, or be scored and bred. You build the plainest case first, the drift above: a quarter of a million particles reading one field and summed as light. Beyond it, particles ride a strange attractor, get neighbors, become matter, and run a search.
+Hundreds of thousands of individuals in one buffer, moved every frame by one small program on the GPU, make a particle system. Unlike a cell on a grid, a particle moves, and it can carry a species, leave marks for others, or be scored and bred. You build the plainest case first, the drift above: a quarter of a million particles reading one field and summed as light. Beyond it, particles ride a strange attractor, get neighbors, become matter, and run a search, and the same step runs over a grid.
 
 ## A million grains: GPU particles
 
@@ -374,13 +374,53 @@ Mutation here is a chance *per contact*, not per generation, and a particle in a
 
 The color is the recipe itself, three of its numbers read as red, green, and blue. So a takeover reads as one color eating the others, and a mutation as a shift in shade rather than a new color. When one line has won and the picture keeps changing shade, that is the line still drifting inside itself.
 
+## The same step over a grid: `Simulation`
+
+The drift kept its state in a buffer, one slot per grain, and each grain moved on its own. [Chapter 23](23-GridSimulations.md)'s fields kept state the other way, in cells that stay in place and read their neighbors. The Metal step you wrote for the grains can run over a grid as well.
+
+### One step per cell: `Simulation`
+
+`Simulation` is a field on the GPU whose rule is a step snippet, like the one `Particles` takes. The snippet runs once per cell instead of once per grain, and each step writes every cell from the values of the step before. Inside it, `value` is the cell's current value, and `result` is what the cell holds next. `tap(dx, dy)` reads a neighbor, with `dy` counting downward as on the canvas, and the edges wrap around. `gid` is the cell's position and `size` the grid's size, while `u` and `custom` mean what they meant for the grains.
+
+It is for a rule that none of Chapter 23's fields has, written the same way as your particles. [Chapter 23's `Sim.shader`](23-GridSimulations.md#life-rewritten-as-a-kernel-simshader) is the other way to a rule of your own. It keeps that chapter's drawing into the field, its marks, and its choice of edges. `Simulation` keeps the grains' way of working instead. It has `custom` for live numbers, `substeps` for several steps a frame, and a kernel of your own for the first state. A new field starts at zero everywhere, and `compute(_:writing:)` with a `ComputeKernel` can write another first state into `current` before the first step.
+
+Mark Harris, Greg Coombe, Thorsten Scheuermann, and Anselmo Lastra showed how to run a simulation this way on graphics hardware in 2002. They kept a grid's state in a texture and worked out each next state with a small program per pixel. Their examples were convection, reaction-diffusion, and boiling. The field needs two textures, one read while the other is written, and then they swap. That pair is called a ping-pong, and `Simulation` keeps it for you.
+
+Here is a rule none of the fields has, a flame. The two bottom rows get fresh heat each step, in blocks of eight cells that are hot or cold at random. Every other cell takes the average of the cells just below it and loses a little, so heat rises and fades. Heat lives in the red channel, and green and blue are worked out from it:
+
+```swift
+@Param("Cooling", 0.0...0.02) var cooling = 0.004
+
+lazy var flame = Simulation(width: 240, height: 240, substeps: 2, step: """
+    float h;
+    if (gid.y >= size.y - 2) {
+        h = step(0.45, hash12(float2(floor(float(gid.x) / 8.0), float(u.frameCount))));
+    } else {
+        h = (tap(-1, 1).r + tap(0, 1).r + tap(1, 1).r + tap(0, 2).r) * 0.25;
+        h = max(h - custom.x, 0.0);
+    }
+    result = float4(h, h * h, h * h * h * h, 1.0);
+""")
+
+// in draw():
+background(.black)
+stepSimulation(flame, custom: SIMD4<Float>(Float(cooling), 0, 0, 0))
+drawImage(flame.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
+```
+
+`tap(0, 1)` is the cell just below, and `tap(0, 2)` the one below that. `step(0.45, …)` is [Chapter 18](18-YourFirstShader.md)'s step, so each block of eight is either hot or cold. `hash12` turns the block's number and the frame's number into a new random value each frame. The heat is written as red, its square as green, and its fourth power as blue. So cool cells come out dark red, warm ones orange, and the hottest nearly white. `flame.image` is the field as an `Image`, and its values are read as linear light, so those colors come out as written. Raise `cooling` and the flame gets shorter.
+
+The [compute reference](../Docs/Shaders/Compute.md#simulation) lists every name in scope and the texture formats. It also shows the full kernel form, `Simulation(width:height:kernel:)`, for a rule the snippet cannot hold.
+
+[`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift) runs Gray-Scott this way.
+
 ## Where this comes from
 
-GPU particle systems are a demoscene and games inheritance, and the additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go: Lorenz and the collection at dynamicmath.xyz, Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, Chan with Mordvintsev and Niklasson and Randazzo, Müller and his co-authors with Clavet and Beaudoin and Poulin, Hoetzlein, Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, and Sayama. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+GPU particle systems are a demoscene and games inheritance, and the additive rendering the drift uses is the long-exposure idea of [Chapter 19](19-LayersAndEffects.md) with a million sources of light. The families after the drift name their own sources as they go: Lorenz and the collection at dynamicmath.xyz, Ventrella, Schmickl and Stefanec and Crailsheim, Jones, Reynolds, Chan with Mordvintsev and Niklasson and Randazzo, Müller and his co-authors with Clavet and Beaudoin and Poulin, Hoetzlein, Dorigo and Maniezzo and Colorni, Holland and Goldberg with Shiffman and Thorp, Sayama, and Harris with Coombe, Scheuermann, and Lastra. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, and projecting through the sketch's camera from a kernel.
+- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, projecting through the sketch's camera from a kernel, and `Simulation`, the same kind of step over a texture.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): the light particle style's deposit rules and the `develop` print, and the lens that [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) builds on them.
 - [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` parameters, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own. [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift) runs the flow.
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every parameter, plus the matrix rolling and the reproducibility caveat.
@@ -389,7 +429,7 @@ GPU particle systems are a demoscene and games inheritance, and the additive ren
 - [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching parameters, grabbing with the mouse, and what each solver is and is not good for.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can control, and the interactive form.
 - Appendix B draws the idea underneath all of this: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Density as tone](B-JustEnoughMath.md#density-as-tone) for what a million faint marks add up to.
-- Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), and [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift).
+- Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), and [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift).
 
 ---
 

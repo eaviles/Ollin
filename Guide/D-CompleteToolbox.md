@@ -8,7 +8,7 @@ This appendix lists everything Ollin can do, one row for each capability, in the
 
 Use it as an index when you remember a technique from the guide and want to find it again. You can also read it as a list of what you haven't tried yet. A capability taught in more than one chapter sits with the chapter that teaches it most fully. Its row also links the other sections, each marked with its chapter. If something you want isn't here, it isn't in the framework yet, and the [roadmap](../ROADMAP.md) lists what's ahead.
 
-**Contents:** [The ideas underneath](#the-ideas-underneath) · [Part I: Seeing something move](#part-i-seeing-something-move) · [Part II: Systems that come alive](#part-ii-systems-that-come-alive) · [Part III: Shapes, lines, and marks](#part-iii-shapes-lines-and-marks) · [Part IV: Pixels and light](#part-iv-pixels-and-light) · [Part V: The third dimension](#part-v-the-third-dimension) · [Part VI: The world coming in](#part-vi-the-world-coming-in) · [Part VII: Out into the world](#part-vii-out-into-the-world) · [Only in the reference](#only-in-the-reference)
+**Contents:** [The ideas underneath](#the-ideas-underneath) · [Part I: Seeing something move](#part-i-seeing-something-move) · [Part II: Systems that come alive](#part-ii-systems-that-come-alive) · [Part III: Shapes, lines, and marks](#part-iii-shapes-lines-and-marks) · [Part IV: Pixels and light](#part-iv-pixels-and-light) · [Part V: The third dimension](#part-v-the-third-dimension) · [Part VI: The world coming in](#part-vi-the-world-coming-in) · [Part VII: Out into the world](#part-vii-out-into-the-world)
 
 ## The ideas underneath
 
@@ -363,7 +363,7 @@ The capabilities all assume a few ideas. These seven pages in the reference expl
 
 | Capability | What it is | Taught in | Reference |
 |---|---|---|---|
-| Compute kernels | Your own GPU code, written in the chapter as the `Particles` step snippet; kernels over textures, `.metal` files that reload as you edit, and the typed `ComputeKernel` are in the reference | [A million grains: GPU particles](24-ParticleSimulations.md#a-million-grains-gpu-particles) | [Compute](../Docs/Shaders/Compute.md) |
+| Compute kernels | Your own GPU code, written in the chapter as the `Particles` step snippet and the `Simulation` step over a texture; `.metal` files that reload as you edit and the typed `ComputeKernel` are in the reference | [A million grains: GPU particles](24-ParticleSimulations.md#a-million-grains-gpu-particles) | [Compute](../Docs/Shaders/Compute.md) |
 | GPU particles | `Particles`: a million particles moved by a Metal snippet run once per particle and drawn on the GPU, with `stepParticles` and `drawParticles` | [A million grains: GPU particles](24-ParticleSimulations.md#a-million-grains-gpu-particles) | [Compute](../Docs/Shaders/Compute.md) |
 | Artificial life | `ParticleLife`, `PPS` (the Primordial Particle System), `Physarum`, `ParticleLenia`, and `SwarmChemistry`, most of them on the public `SpatialHash` neighbor search | [Particles that see their neighbors: Particle Life, the Primordial Particle System, Physarum, and the flock at scale](24-ParticleSimulations.md#particles-that-see-their-neighbors-particle-life-the-primordial-particle-system-physarum-and-the-flock-at-scale), [Agents that talk through the floor: Physarum](24-ParticleSimulations.md#agents-that-talk-through-the-floor-physarum), [Matter that decides what shape to be: Particle Lenia](24-ParticleSimulations.md#matter-that-decides-what-shape-to-be-particle-lenia), [A rule that spreads by winning arguments: swarm chemistry](24-ParticleSimulations.md#a-rule-that-spreads-by-winning-arguments-swarm-chemistry) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
 | Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [The flock, a thousand times bigger: Swarm](24-ParticleSimulations.md#the-flock-a-thousand-times-bigger-swarm) | [Swarm](../Docs/Simulation/Swarm.md) |
@@ -371,6 +371,7 @@ The capabilities all assume a few ideas. These seven pages in the reference expl
 | Jellies | `SoftBodies`: shape-matched jellies that squash and pile | [Liquids and jellies: SPH and soft bodies](24-ParticleSimulations.md#liquids-and-jellies-sph-and-soft-bodies) | [Fluids](../Docs/Simulation/Fluids.md) |
 | Ant colony | A colony laying pheromone trails, narrowing a web of possible routes down to a short tour | [A search you can watch: ant colony optimization](24-ParticleSimulations.md#a-search-you-can-watch-ant-colony-optimization) | [AntColony](../Docs/Generators/AntColony.md) |
 | Evolution | `Evolution`: GPU populations bred toward a target past obstacles, by tournament selection | [Letting the sketch find it: evolution](24-ParticleSimulations.md#letting-the-sketch-find-it-evolution) | [Evolution](../Docs/Simulation/Evolution.md) |
+| Kernel simulations | `Simulation` runs a Metal step once per cell of a texture, the grains' kind of snippet over a grid, stepped with `stepSimulation(_:custom:)`, with `substeps` for several steps a frame and a kernel of your own for the first state | [One step per cell: `Simulation`](24-ParticleSimulations.md#one-step-per-cell-simulation) | [Compute](../Docs/Shaders/Compute.md#simulation) |
 
 ## Part V: The third dimension
 
@@ -665,14 +666,6 @@ The capabilities all assume a few ideas. These seven pages in the reference expl
 | Room | Several machines drawing one sketch: they find each other by a name with no server, share values and `@Param` parameters, agree on one clock so motion stays in step, and take a seat each across a wall | [Several machines, one sketch: `Room`](41-Installations.md#several-machines-one-sketch-room) | [Room](../Docs/Integration/Room.md) |
 | Remote surface | `RemoteInspector` serves the sketch's `@Param` parameters to a phone on the same Wi-Fi as touch controls, live both ways, for tuning an installation from in front of it | [Tuning it from the floor: `RemoteInspector`](41-Installations.md#tuning-it-from-the-floor-remoteinspector) | [Remote](../Docs/Integration/Remote.md) |
 | MQTT | The message bus a building speaks: a house's sensors subscribed to and read in `draw()` or bound to a parameter, lamps and machines published back to, retained values, a last will for when the sketch is cut off, and a connection that resubscribes and resends on its own | [What the building already says: MQTT](41-Installations.md#what-the-building-already-says-mqtt) | [MQTT](../Docs/Integration/MQTT.md) |
-
-## Only in the reference
-
-One capability has no section in the guide yet. Its page in the reference explains it.
-
-| Capability | What it is | Reference |
-|---|---|---|
-| Simulations with your own kernel | A ping-pong texture simulation whose step is a Metal kernel you write, through `Simulation` and `stepSimulation(_:custom:)` | [Compute](../Docs/Shaders/Compute.md) |
 
 ---
 
