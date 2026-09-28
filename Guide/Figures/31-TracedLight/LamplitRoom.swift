@@ -97,7 +97,6 @@ final class LamplitRoom: Sketch {
                 matcap(bulb)
                 drawSphere(radius: 0.07)
             }
-            matcap(nil)
         }
     }
 }
