@@ -4,11 +4,137 @@
 
 # 24. Automata
 
-Sand piles into avalanches, a crowd sorts itself, and a grid of wires carries signals, each from a rule every cell applies to its neighbors. A rule like that is a cellular automaton. Each one shows a local rule giving a global result, and several show that result appearing all at once past a threshold. The automata here run from Wolfram's rows to Wireworld, then come piles and fires, and crowds that cross a threshold together.
+<img src="Images/24-Automata/Wildfire.jpg" alt="A square field of tiny green and black squares. A large ragged patch of gray and black squares fills the middle, with small green islands inside it, and amber squares glow at points along its edge" width="560">
+
+A cellular automaton is a grid of cells that each change by one rule, reading only their neighbors. Rules that small can sort a crowd, carry a signal, or burn a forest, and some change all at once past a threshold. The wildfire at the top plants a forest by chance, strikes it once in the middle, and burns every tree joined to the strike. After it come more automata from Wolfram's rows to Wireworld, the sandpile, and crowds that sort, freeze, and fall into step.
+
+## When chance acts as a crowd: percolation
+
+**Percolation** is a question asked of a whole grid at once. Fill the grid with cells, each one open with the same probability. Then ask whether the open cells connect from the top edge to the bottom. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet near a probability of 0.5927, the grid's answer flips almost all at once. Below that value the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this grid is its standard model. That is what percolation is for: a phase transition you can draw. It entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone. The square-lattice threshold used here is the value Mark Newman and Robert Ziff measured in 2000.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/24-Automata/ChanceInCrowds-dark.jpg">
+  <img src="Images/24-Automata/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+</picture>
+
+```swift
+seed(9)
+let grid = percolation(columns: 48, rows: 48, probability: 0.6)
+noStroke()
+fill(Color(hex: 0xE8B44A))
+for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
+```
+
+`percolation` hands back the clusters largest first, so cluster `0` is always the giant. The property `grid.spans` answers the top-to-bottom question, and `spanningClusterIndex` names the cluster that did it. `clusterCount` says how many clusters there are, and `isOpen(column:row:)` asks whether one cell is open. Unlike a [field](23-GridSimulations.md#state-that-lives-on-the-gpu-simfield-and-withfield), `percolation` is one roll on the CPU, with no state that steps from frame to frame. The threshold lives in the API as `Percolation.criticalProbability`, so a sketch can move around it without hard-coding the number. [`Examples/Patterns/Percolation`](../Examples/Patterns/Percolation/Sketch.swift) sweeps back and forth through it, and the span snaps into place each time it crosses.
+
+The method `outlines(of:in:)` traces a cluster's boundary as closed loops, around its outside and around each hole in it. A plotter can draw those loops as they are. Wrap them in a `Shape` and one `drawShape` fills the cluster, with its holes left open, as [Chapter 15's shapes](15-ShapesAsMaterial.md#contours-shapes-and-holes) did. The wildfire plants its forest that way, one cluster at a time. The [percolation reference](../Docs/Generators/Percolation.md) has the full surface, including reading clusters off a grid you filled some other way.
+
+## A forest that keeps burning: the forest fire
+
+Read percolation's open cells as trees, and its grid is a forest waiting for a fire. The **forest fire** is an automaton whose rule is three lines. Every cell is bare ground, a tree, or burning. A burning cell is bare ground next step. A tree catches from any burning neighbor, and otherwise catches on its own with a small chance, which is the lightning. Bare ground grows a tree with a small chance. It is for watching a system find its own critical density, which physicists call self-organized criticality. [The sandpile](#a-pile-of-sand-the-abelian-sandpile), later in this chapter, is where that idea began. Barbara Drossel and Franz Schwabl published the forest fire in 1992. They added the lightning to an earlier forest-fire model of Per Bak, Kan Chen, and Chao Tang. The lightning is what puts the field at criticality.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/24-Automata/ForestFire-dark.jpg">
+  <img src="Images/24-Automata/ForestFire.jpg" alt="Left, three boxes in a column, bare ground, a tree, and burning, with arrows down between them labeled it grows with a small chance each step and a neighbor is alight or lightning strikes, and an arrow back up the side labeled always the next step. Right, a field running the rule, a green forest cut by dark scars with amber fire lines in it" width="700">
+</picture>
+
+The forest fire runs in a [field](23-GridSimulations.md#state-that-lives-on-the-gpu-simfield-and-withfield) like Chapter 23's, made once and held, and a [`.gradientMap`](23-GridSimulations.md#a-field-is-data-gradientmap-levels-and-relight) gives its three states their colors:
+
+```swift
+var woods: SimField!
+let colors = Ramp(stops: [(0.0, Color(hex: 0x17120E)),     // bare ground
+                          (0.5, Color(hex: 0x2F7D45)),     // a tree
+                          (1.0, Color(hex: 0xFFC24A))])    // burning
+
+override func setup() {
+    woods = makeSimField(.forestFire(growth: 0.02, lightning: 0.00004), scale: 0.25)
+}
+
+override func draw() {
+    background(.black)
+    drawImage(woods.filtered(.gradientMap(colors)).image, 0, 0)
+}
+```
+
+There is nothing to seed. The field starts bare and grows itself in, and that is the first thing to watch. Trees fill the map, the first strike takes a stand, another takes a bigger one, and after a while the density stops changing. Nothing in the rule names that density. It is the level where a stand is just connected enough for a fire to run through it. The fire then clears the crowd that got it there. Turn `growth` up and the forest closes faster, so fires get bigger. Turn `lightning` up toward `growth` and no tree lives long enough to have neighbors, which is the end of the forest.
+
+The ratio between the two rates is the dial, so keep `lightning` far below `growth`. The block above sets it at five hundred to one, and the default is higher still. In that range fires come in every size, from one tree to most of the map, with no size more typical than another. Drawing into the field stamps a state, as white stamped a live cell into Chapter 23's Life. White sets cells burning, so you can start a fire where you want one. Mid-gray plants trees. Black clears a firebreak, and the flames stop at it while the trees grow back into it. The `Simulation/Automata` example's forest rule is that block with both rates on parameters, which is the fastest way to feel what the ratio does.
+
+Set both rates to zero and nothing grows or strikes on its own anymore. The field then holds only what you draw into it. Plant trees in mid-gray and light one in white, and the fire runs from tree to tree until the trees stop touching. The `neighborhood:` argument decides what touching means. `.vonNeumann`, the default, joins a cell to the four that share a side with it, and `.moore` adds the four diagonal ones. Those four sides are how percolation joins its clusters too, and the finished sketch is built on that match.
+
+## Putting it together: the wildfire
+
+Make `MySketches/Wildfire.swift`. The finished sketch plants a forest with [percolation](#when-chance-acts-as-a-crowd-percolation), a little past the critical probability. Then [the forest fire](#a-forest-that-keeps-burning-the-forest-fire) burns it, with growth and lightning at zero. The fire spreads through the same four sides percolation joins cells by, so it burns every tree joined to the strike and no other. A press starts another fire under the mouse.
+
+```swift
+import Ollin
+
+final class Wildfire: Sketch {
+    let cells = 216                                   // the forest, in cells on a side
+    var forest: Percolation!
+    var woods: SimField!
+
+    let ground = Color(hex: 0x0B0A09)                 // where nothing was planted
+    let colors = Ramp(stops: [(0.0, Color(hex: 0x8A8178)),     // burned: ash
+                              (0.5, Color(hex: 0x2B5F3D)),     // a tree
+                              (1.0, Color(hex: 0xFFB547))])    // burning
+
+    override func setup() {
+        seed(9)
+        forest = percolation(columns: cells, rows: cells,
+                             probability: Percolation.criticalProbability + 0.02)
+        woods = makeSimField(.forestFire(growth: 0, lightning: 0, neighborhood: .vonNeumann),
+                             scale: Double(cells) / width, edge: .clamped)
+    }
+
+    override func draw() {
+        let side = width / Double(cells)              // one cell, in canvas pixels
+        background(ground)                            // first: a background wipes what the frame drew before it, the field's marks too
+        noStroke()
+        withField(woods) {
+            if frameCount == 1 {
+                fill(Color(white: 0.5))               // plant every cluster, by its outline
+                for k in 0 ..< forest.clusterCount {
+                    drawShape(Shape(contours: forest.outlines(of: k, in: bounds)))
+                }
+                fill(.white)                          // and strike the middle, once
+                drawCircle(width / 2, height / 2, side * 3)
+            }
+            if mouseIsPressed {                       // or wherever you press
+                fill(.white)
+                drawCircle(mouseX, mouseY, side * 2)
+            }
+        }
+
+        drawImage(woods.filtered(.gradientMap(colors)).image, 0, 0)
+        fill(ground)                                  // cover the cells never planted
+        for row in 0 ..< cells {
+            for column in 0 ..< cells where !forest.isOpen(column: column, row: row) {
+                drawRect(Double(column) * side, Double(row) * side, side, side)
+            }
+        }
+        postProcess(.bloom(threshold: 0.6, amount: 1.5, radius: 12))
+    }
+}
+```
+
+Run it and the fire starts from the middle on the first frame. By frame 120 it looks like the picture at the top, and ten frames later the scar reaches the top edge. Most green islands inside the scar are other clusters, cut off from the burning one by bare ground, so the fire never reaches them.
+
+The field and the forest line up cell for cell. `scale: Double(cells) / width` makes the field 216 texels across, one for each percolation cell, and `side` is one cell in canvas pixels. `edge: .clamped` gives the field walls, as in [Chapter 23's rule of your own](23-GridSimulations.md#life-rewritten-as-a-kernel-simshader). Percolation's grid has walls too, so a fire that reaches the right edge stops there instead of coming back on the left. The forest is planted on the first frame, one cluster at a time, by filling its outline in mid-gray. An outline runs along the cell borders, so it covers its own cells and no others. A square drawn for each cell would spill a little past its edges. On a gap one cell wide, the spill from both sides would plant a tree.
+
+`background(ground)` has to come first. A background clears everything the frame has drawn so far, including marks meant for a field. Called after `withField`, it leaves nothing planted and nothing burning. The field itself holds only three states, which the ramp colors ash, tree, and fire. To the field, burned ground and ground never planted are the same state, so both come out as ash. The loop after `drawImage` covers each cell percolation left closed with the ground color, and only the burned cells keep their ash. Last, [Chapter 19's bloom](19-LayersAndEffects.md#filters) makes the burning cells glow, since nothing else on the canvas is bright enough to pass its threshold.
+
+Then make it yours:
+
+- Cross the threshold the other way. Change `+ 0.02` to `- 0.05`, and the forest falls apart into islands. The strike burns the few it lands on and goes out.
+- Let the fire jump the gaps. Change `.vonNeumann` to `.moore`, and a tree also catches from its diagonal neighbors. Percolation never counted those as joined, so the fire spreads from cluster to cluster and the scar grows wider.
+- Bring the lightning back. Set `lightning: 0.000001`, and now and then a tree catches on its own, so fires start all over the forest without a press.
+
+The fire spreading is what the sketch is about, so keep it as a video. The command `swift run OllinLive MySketches/Wildfire.swift --export-video wildfire.mp4 --seconds 10` writes the first ten seconds, from the strike on. An export has no mouse, so the video holds the one fire from the middle.
 
 ## More ways to be an automaton: elementary rules, turmites, Lenia, SmoothLife, excitable media, and Wireworld
 
-[Chapter 23's first field](23-GridSimulations.md#the-game-of-life-a-first-field) was the Game of Life, one rule on one grid. It is the best known of a whole family of such rules, and Ollin ships several more. Two of them are cheap enough to run on the CPU, and they hand you plain arrays instead of a field. The rest are fields like Chapter 23's, each with a seed of its own kind.
+The wildfire ran one automaton, the forest fire, and [Chapter 23's first field](23-GridSimulations.md#the-game-of-life-a-first-field) ran the one most people know, the Game of Life. Ollin ships several more. Wolfram's rows and the turmites are cheap enough to run on the CPU, and they hand you plain arrays instead of a field. The rest are fields like the forest fire's, each seeded in its own way.
 
 ### A single row of cells: Wolfram's elementary rules
 
@@ -123,11 +249,11 @@ override func draw() {
 
 > **Swift note.** `legend` is a dictionary, a table from one value to another, written as pairs in brackets. Its keys are `Character` values. The call `row.enumerated()` walks a string one character at a time, so `legend[ch]` looks the cell up by the letter. The dictionary is not called `key` because every sketch already has a `key`, the last key pressed. A stored property of that name would collide with it. The lookup answers an optional, since a letter might be missing, and the `!` takes the answer as [Chapter 14](14-FieldsAndFlow.md) did. `where ch != "."` on the loop is [Chapter 11](11-ForcesAndPhysics.md)'s filter, and `SimField!` is the same shape as [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!`.
 
-The field starts empty and you draw the circuit. The usual way in is text, one character per cell, which is how these circuits are usually shared. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around. The electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
+The field starts empty and you draw the circuit. The usual way in is text, one character per cell, the form these circuits are shared in. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around. The electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
 
-## Piles and fires: the sandpile and the forest fire
+## Avalanches of every size: the sandpile
 
-The automata above grow patterns and creatures, and carry waves and signals. Two more in the catalog are about things piling up and burning down instead, and both are known for the same discovery. Neither has a dial that sets how big its avalanches or its fires get, and each arranges itself so that they come in every size.
+The wildfire used the forest fire with its growth and lightning switched off. Left on, they carry the forest to its own critical density, where fires come in every size. The sandpile found that idea first, with avalanches in place of fires.
 
 ### A pile of sand: the Abelian sandpile
 
@@ -166,57 +292,9 @@ Everything in the figure came out of the rule. A mountain of identical grains an
 
 `topplings` is the pacing dial. An avalanche front moves one cell per pass, so `.sandpile(topplings: 1)` lets you watch each wave roll across the pile. The block above uses 128, which hurries the collapse. The field runs at `scale: 1` here, one cell per canvas pixel, so the lace is as fine as the canvas. A mark you *hold* is a torrent rather than a drop. Its middle stays molten for as long as you keep pouring, with cells at four grains and above churning at the top of the ramp. It crystallizes into lacework when you stop. The [`Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) example's sandpile rule is that sketch, a mountain collapsing in front of you, and a torrent wherever you hold the mouse.
 
-### A forest that keeps burning: the forest fire
+## Crowds that cross a threshold: Schelling's board, the Ising model, and oscillators on a lattice
 
-The **forest fire** is an automaton whose rule is three lines. Every cell is bare ground, a tree, or burning. A burning cell is bare ground next step. A tree catches from any burning neighbor, and otherwise catches on its own with a small chance, which is the lightning. Bare ground grows a tree with a small chance. It is for watching a system find its own critical density. The forest fire is the sandpile's self-organized criticality in a system that looks nothing like a sandpile. Barbara Drossel and Franz Schwabl published the model in 1992. They added the lightning to an earlier forest-fire model of Bak, Kan Chen, and Tang. The lightning is what puts the field at criticality.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/24-Automata/ForestFire-dark.jpg">
-  <img src="Images/24-Automata/ForestFire.jpg" alt="Left, three boxes in a column, bare ground, a tree, and burning, with arrows down between them labeled it grows with a small chance each step and a neighbor is alight or lightning strikes, and an arrow back up the side labeled always the next step. Right, a field running the rule, a green forest cut by dark scars with amber fire lines in it" width="700">
-</picture>
-
-```swift
-var woods: SimField!
-let colors = Ramp(stops: [(0.0, Color(hex: 0x17120E)),     // bare ground
-                          (0.5, Color(hex: 0x2F7D45)),     // a tree
-                          (1.0, Color(hex: 0xFFC24A))])    // burning
-
-override func setup() {
-    woods = makeSimField(.forestFire(growth: 0.02, lightning: 0.00004), scale: 0.25)
-}
-
-override func draw() {
-    background(.black)
-    drawImage(woods.filtered(.gradientMap(colors)).image, 0, 0)
-}
-```
-
-There is nothing to seed. The field starts bare and grows itself in, and that is the first thing to watch. Trees fill the map, the first strike takes a stand, another takes a bigger one, and after a while the density stops changing. Nothing in the rule names that density. It is the level where a stand is just connected enough for a fire to run through it. The fire then clears the crowd that got it there. Turn `growth` up and the forest closes faster, so fires get bigger. Turn `lightning` up toward `growth` and no tree lives long enough to have neighbors, which is the end of the forest.
-
-The ratio between the two rates is the dial, so keep `lightning` far below `growth`. The block above sets it at five hundred to one, and the default is higher still. In that range fires come in every size, from one tree to most of the map, with no size more typical than another. Drawing works as it does everywhere else here. White sets cells burning, so you can start a fire where you want one. Black clears a firebreak, and the flames stop at it while the trees grow back into it. The `Simulation/Automata` example's forest rule is this sketch with both rates on parameters, which is the fastest way to feel what the ratio does.
-
-## Crowds that cross a threshold: percolation, Schelling's board, the Ising model, and oscillators on a lattice
-
-The forest settled at the density where a stand connects, and [Chapter 23's organism](23-GridSimulations.md#putting-it-together-the-organism) grew from a scatter into one connected labyrinth. Percolation, Schelling's board, the Ising model, and oscillators on a lattice are about that moment, a crowd of cells crossing a threshold together. Percolation is a grid of coin flips that suddenly spans. Schelling's board sorts itself, the Ising model is a magnet that freezes, and the lattice falls into step. Two of them run on the CPU and two are fields.
-
-### When chance acts as a crowd: percolation
-
-**Percolation** is a question asked of a whole grid at once. Fill the grid with cells, each one open with the same probability. Then ask whether the open cells connect from the top edge to the bottom. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet near a probability of 0.5927, the grid's answer flips almost all at once. Below that value the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this grid is its standard model. That is what percolation is for: a phase transition you can draw. It entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone. The square-lattice threshold used here is the value Mark Newman and Robert Ziff measured in 2000.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/24-Automata/ChanceInCrowds-dark.jpg">
-  <img src="Images/24-Automata/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
-</picture>
-
-```swift
-seed(9)
-let grid = percolation(columns: 48, rows: 48, probability: 0.6)
-noStroke()
-fill(Color(hex: 0xE8B44A))
-for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
-```
-
-`percolation` hands back the clusters largest first, so cluster `0` is always the giant. The property `grid.spans` answers the top-to-bottom question, and `spanningClusterIndex` names the cluster that did it. The method `outlines(of:in:)` traces any cluster's boundary as closed loops a plotter can draw. Unlike the fields in this chapter, `percolation` is one roll on the CPU, with no state that steps from frame to frame. The threshold lives in the API as `Percolation.criticalProbability`, so a sketch can move around it without hard-coding the number. [`Examples/Patterns/Percolation`](../Examples/Patterns/Percolation/Sketch.swift) sweeps back and forth through it, and the span snaps into place each time it crosses. The [percolation reference](../Docs/Generators/Percolation.md) has the full surface, including reading clusters off a grid you filled some other way.
+The wildfire's forest was percolation, a crowd of coin flips that joins into one cluster all at once past a threshold. Schelling's board, the Ising model, and oscillators on a lattice are crowds of cells that change together too. Schelling's board sorts itself, the Ising model is a magnet that freezes, and the lattice falls into step. The board and the magnet are fields, and the lattice runs on the CPU.
 
 ### A neighborhood sorting itself: Schelling's board
 
@@ -272,15 +350,15 @@ override func draw() {
 }
 ```
 
-<!-- Figure waiting on its prose: Images/24-Automata/LatticeSync.jpg (Figures/24-Automata/LatticeSync.swift), oscillators on a hex lattice, for the fragment above. Rendered on the Mac at frame 300. -->
+<img src="Images/24-Automata/LatticeSync.jpg" alt="A hex grid of 24 by 20 cells on a near-black ground, each cell a bright color. Broad bands of green, cyan, blue, purple, magenta, red, orange, and yellow blend into one another across the grid, and a few pale cells sit where several colors meet" width="560">
+
+In the picture the hue shifts slowly from cell to cell, so nearly every cell agrees with its neighbors and shows full color. At a few points many hues meet around one cell. Its neighbors disagree there, so it shows pale.
 
 The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The [`Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) example is [Chapter 12](12-FlocksAndSwarms.md)'s meadow of fireflies, and a `Kuramoto` given `columns` and `rows` is this lattice. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
 
-<!-- Figure waiting on its prose: Images/24-Automata/Wildfire.jpg (Figures/24-Automata/Wildfire.swift), the wildfire, for the chapter's finished sketch. Rendered on the Mac at frame 120. -->
-
 ## Where this comes from
 
-The Game of Life that this chapter grows from is John Horton Conway's, credited in [Chapter 23](23-GridSimulations.md#where-this-comes-from). Each entry here names its own sources as it goes. The automata name Wolfram, Langton, Chan, Rafler, Greenberg and Hastings, Griffeath, Silverman, Gerhardt and Schuster, and Dewdney. The piles and fires name Bak and Tang and Wiesenfeld, Dhar, Drossel and Schwabl, and Bak and Chen and Tang. The crowds name Broadbent and Hammersley, Newman and Ziff, Schelling, Lenz and Ising and Onsager, Metropolis and the Rosenbluths and the Tellers, and Kuramoto. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The Game of Life that this chapter's automata grow from is John Horton Conway's, credited in [Chapter 23](23-GridSimulations.md#where-this-comes-from). Each section here names its own sources as it goes. The wildfire's percolation names Broadbent and Hammersley, and Newman and Ziff. Its forest fire names Drossel and Schwabl, and Bak and Chen and Tang. The automata after it name Wolfram, Langton, Chan, Rafler, Greenberg and Hastings, Griffeath, Silverman, Gerhardt and Schuster, and Dewdney. The sandpile names Bak and Tang and Wiesenfeld, and Dhar. The crowds name Schelling, Lenz and Ising and Onsager, Metropolis and the Rosenbluths and the Tellers, and Kuramoto. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
