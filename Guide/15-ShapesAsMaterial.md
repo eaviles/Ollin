@@ -525,7 +525,7 @@ for panel in sheet.facets { ... }
 
 Pull two opposite corners of a Miura sheet and the whole thing opens at once, in both directions together. There is no order of operations to remember.
 
-It does one more thing. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out. This does the opposite, and `poissonRatio` is the negative number that says so. Mark Schenk and Simon Guest worked out how the fold behaves as a material. Their account includes the pair of Poisson's ratios that multiply to one.
+It does one more thing. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out. This does the opposite, and `poissonRatio` is the negative number that says so. Mark Schenk and Simon Guest worked out how the fold behaves as a material. Their account gives the Poisson's ratio from the fold's angles alone, and it is always negative.
 
 ### Origami allowed to cut: rotating squares
 
