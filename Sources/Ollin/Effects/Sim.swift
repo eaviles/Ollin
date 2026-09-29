@@ -979,6 +979,7 @@ public struct Sim: Sendable {
         case .excitable:        return "ollin_sim_inject_excite"
         case .briansBrain:      return "ollin_sim_inject_brain"
         case .wireworld:        return "ollin_sim_inject_wire"     // four levels, snapped
+        case .forestFire:       return "ollin_sim_inject_fire"     // three levels, snapped
         case .schelling:        return "ollin_sim_inject_kinds"    // three levels, snapped
         case .ising:            return "ollin_sim_inject_spins"    // two levels, snapped
         case .shader:           return "ollin_sim_inject_data"     // by alpha, the state's own alpha kept

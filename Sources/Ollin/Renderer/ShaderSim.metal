@@ -163,6 +163,17 @@ fragment float4 ollin_sim_inject_kinds(PresentOut in [[stage_in]],
     return ollin_sim_inject_levels(state, seed, samp, in.uv, 3.0);
 }
 
+// The forest fire inject: three states (bare, tree, burning), as halves, so the
+// mid-gray the documentation names plants a tree and a rect's soft rim leaves
+// the cell beside it bare.
+fragment float4 ollin_sim_inject_fire(PresentOut in [[stage_in]],
+                                      texture2d<float> state [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    return ollin_sim_inject_levels(state, seed, samp, in.uv, 3.0);
+}
+
 // The Ising inject: two levels, snapped, so a white mark magnetizes a patch up
 // and a black one flips it down (`IsingSpin` names the two grays).
 fragment float4 ollin_sim_inject_spins(PresentOut in [[stage_in]],

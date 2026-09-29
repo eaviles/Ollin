@@ -144,6 +144,28 @@ struct StateAutomataTests {
         #expect(corners[21][21] == 0)    // the block does: it caught and burned out
     }
 
+    /// A tree stamped the way a sketch stamps one, a `drawRect` a cell in the plain
+    /// gray the documentation names, lands as a tree, and the gap beside it stays
+    /// bare. Through a blending inject, mid-gray would arrive in linear light, a
+    /// third of the way to a tree, and round to bare ground, while a rect's
+    /// anti-aliased rim spilled into the cell beside it. The stand is
+    /// sparse, every third cell each way, so no gap has two trees beside it: two
+    /// rims together reach the inject's three-quarter gate, which is why a dense
+    /// forest is planted by its outlines (`Percolation.outlines(of:in:)`).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aMidGrayRectPlantsATreeAndLeavesItsNeighborsBare() throws {
+        var rng = LCG(seed: 41)
+        var planted = [[Int]](repeating: [Int](repeating: 0, count: 64), count: 64)
+        for y in stride(from: 1, to: 64, by: 3) {
+            for x in stride(from: 1, to: 64, by: 3) { planted[y][x] = rng.next(2) }
+        }
+        let sketch = RectForestSketch()
+        sketch.planted = planted
+        let landed = try grid(sketch, generations: 1, levels: 3)
+        #expect(landed == planted)
+        #expect(planted.joined().filter { $0 == 1 }.count > 100)   // a real stand, not an empty one
+    }
+
     /// The two rates at their limits are deterministic too, and they pin which
     /// branch each state takes: every empty cell grows, and every tree catches.
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -856,6 +878,35 @@ private final class AutomatonProbeSketch: Sketch {
                     let x = Double(s.x), y = Double(s.y)
                     drawPolygon([Vector2(x, y), Vector2(x + 1, y),
                                  Vector2(x + 1, y + 1), Vector2(x, y + 1)])
+                }
+            }
+        }
+        drawImage(field.image, 0, 0)
+    }
+}
+
+/// A still forest (neither rate) planted cell by cell with `drawRect` in
+/// `Color(white: 0.5)`, one texel a cell, as a sketch or a Guide figure plants one.
+private final class RectForestSketch: Sketch {
+    override var canvasSize: CanvasSize { .square(64) }
+    var planted: [[Int]] = []
+
+    private var field: SimField!
+
+    override func setup() {
+        field = makeSimField(.forestFire(growth: 0, lightning: 0), scale: 1)
+    }
+
+    override func draw() {
+        background(.black)
+        withField(field) {
+            if frameCount == 1 {
+                noStroke()
+                fill(Color(white: 0.5))
+                for (y, row) in planted.enumerated() {
+                    for (x, cell) in row.enumerated() where cell == 1 {
+                        drawRect(Double(x), Double(y), 1, 1)
+                    }
                 }
             }
         }
