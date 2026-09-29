@@ -10,7 +10,8 @@
 # carried by more surfaces than anyone can hold in their head: the file itself,
 # both asset trees, the breadcrumb, the H1, two footer links per neighbour, the
 # contents list, the status table, the coverage matrix, Appendix D's table
-# per chapter, and the section pointers in CAPABILITIES.md. Doing that by hand
+# per chapter, the section pointers in CAPABILITIES.md, and the chapter links
+# in the changelog's old entries. Doing that by hand
 # once is a long afternoon. Doing it eleven times is how a Guide quietly stops
 # matching itself, so it is a command instead.
 #
@@ -129,9 +130,16 @@ BARE = r"|^(?P<rowpfx>\|\s*|\*\*)(?P<row>\d+)\. |\bCh\.? *(?P<barech>\d+)\b|\bCh
 WIDE = re.compile(FORMS, re.M)
 NARROW = re.compile(FORMS + BARE, re.M)
 
+# The changelog's old entries are history, so a "Chapter N" or a file name
+# written there stays as it was. Only a link's target moves, since the site
+# builds the changelog into a page and a link to a renamed chapter is dead.
+CHANGELOG = pathlib.Path("CHANGELOG.md")
+LINKED = re.compile(r"(\]\(Guide/)(\d\d)-([A-Za-z0-9]+)(\.md)")
+
 scope = sorted(GUIDE.glob("*.md"))
 scope += [pathlib.Path(p) for p in ("CAPABILITIES.md", "CLAUDE.md", "DESIGN-NOTES.md", "README.md", "ROADMAP.md", "ARCHITECTURE.md")]
 scope += sorted(pathlib.Path("Docs").rglob("*.md"))
+scope += [CHANGELOG]
 scope = [p for p in scope if p.exists()]
 
 bare_scope = {p for p in scope if p.parts[0] == "Guide"}
@@ -181,7 +189,16 @@ def substitute(m):
     return m.group(0)
 
 
+def relink(m):
+    n, name = int(m.group(2)), m.group(3)
+    if n not in mapping or stems.get(n) != name:
+        return m.group(0)
+    return f"{m.group(1)}{renumbered(n, name)}{m.group(4)}"
+
+
 def rewrite(path, body):
+    if path == CHANGELOG:
+        return LINKED.sub(relink, body)
     return (NARROW if path in bare_scope else WIDE).sub(substitute, body)
 
 

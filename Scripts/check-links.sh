@@ -20,7 +20,9 @@
 # This is that gate. Eleven checks, in the order a reader would trip over them:
 #
 #   1. Every relative link target exists, from the file that names it. This
-#      now reads every Guide page, every Docs page, and the root README.
+#      now reads every Guide page, every Docs page, the root README, and the
+#      changelog, whose old entries link chapters by file name and which the
+#      site builds into a page of its own.
 #   2. Every `#anchor` resolves to a heading in the file it points at.
 #   3. Every <img src> file exists, in Guide pages and in Docs/ pages, which
 #      reuse Guide figures by relative path.
@@ -91,7 +93,8 @@ pages = chapters + appendices + [GUIDE / "README.md"]
 authoring = [GUIDE / "PLAN.md", GUIDE / "AUTHORING.md"]
 docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
 root_readme = pathlib.Path("README.md")
-readable = pages + authoring + docs_pages + [root_readme]
+changelog = pathlib.Path("CHANGELOG.md")
+readable = pages + authoring + docs_pages + [root_readme, changelog]
 
 text = {p: p.read_text() for p in readable}
 lines = {p: text[p].splitlines() for p in text}
@@ -116,7 +119,9 @@ def slug(heading):
     s = re.sub(r"<[^>]+>", "", heading)
     s = s.lower()
     s = re.sub(r"[^\w\s-]", "", s)
-    return re.sub(r"\s+", "-", s.strip())
+    # One hyphen per space, as GitHub writes it: "Blur & glow" loses its
+    # ampersand and keeps both spaces, so its anchor is #blur--glow.
+    return re.sub(r"\s", "-", s.strip())
 
 
 def headings(path):
