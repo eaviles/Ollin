@@ -156,14 +156,9 @@ ad66fc5ac5b5  Guide/34-Listening.md:40  'module' is inaccessible due to 'interna
 f941d86cbeeb  Guide/36-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
 7a2173392001  Guide/37-MusicByRule.md:151  expected '}' in class
 3d1a3a00857d  Guide/37-MusicByRule.md:244  extraneous '}' at top level
-9b4b9e9a8ca2  Guide/40-HandingItOver.md:29  cannot find 'Ripple' in scope
 5e5616933ce2  Guide/40-HandingItOver.md:412  'override' can only be specified on class members
 1c00050b8880  Guide/41-Installations.md:204  expected '}' in class
 f5ad01726d75  Guide/41-Installations.md:251  extraneous '}' at top level
-234187e77dcb  Guide/41-Installations.md:463  cannot find 'worldPoint' in scope
-0aaf4e8e011c  Guide/41-Installations.md:506  cannot find 'room' in scope
-2ad43d9886e8  Guide/41-Installations.md:520  cannot find 'room' in scope
-723656c0bbf2  Guide/41-Installations.md:75  cannot find type 'Tile' in scope
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand
