@@ -418,7 +418,7 @@ You do not need a table to try this. The [`TUIOSurface`](../Examples/Integration
 
 ### A wire to the physical world: serial
 
-A light sensor, a bend sensor, or a homemade button doesn't arrive as a finished controller. It arrives as a bare part wired to a small computer board, a microcontroller such as an Arduino. The board reads the sensor and prints numbers. The sketch reads the numbers over a USB cable, which the Mac sees as a *serial port*. Use it when you want to build the controller yourself. This loop is the center of physical computing, the practice Tom Igoe and Dan O'Sullivan taught in their book *Physical Computing*. Wiring and then Arduino made such boards cheap and easy for artists to use.
+A light sensor, a bend sensor, or a homemade button doesn't arrive as a finished controller. It arrives as a bare part wired to a small computer board, a microcontroller such as an Arduino. The board reads the sensor and prints numbers. The sketch reads the numbers over a USB cable, which the Mac sees as a *serial port*. Use it when you want to build the controller yourself. This loop is the center of physical computing, the practice Dan O'Sullivan and Tom Igoe taught in their book *Physical Computing*. Wiring and then Arduino made such boards cheap and easy for artists to use.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/38-ControlsAndSignals/SerialLoop-dark.jpg">
@@ -638,7 +638,7 @@ In an export, the feed waits for one message while `start()` runs, then holds it
 
 ## Where this comes from
 
-MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi, so that instruments from rival makers could talk to each other. It still does four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), for the networked, higher-resolution setups that came after MIDI. The shared network beat is Ableton Link (2016), now spoken by most music apps. Ollin speaks its session protocol through an independent implementation, written from published protocol documentation. The weather comes from Open-Meteo, the open service of Patrick Zippenfenig and contributors. The entries after the rose name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+MIDI was unveiled in 1983 by Dave Smith and Ikutaro Kakehashi, so that instruments from rival makers could talk to each other. It still does four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), for the networked, higher-resolution setups that came after MIDI. The shared network beat is Ableton Link (2016), now spoken by most music apps. Ollin speaks its session protocol through an independent implementation, written from published protocol documentation. The weather comes from Open-Meteo, the open service of Patrick Zippenfenig and contributors. The entries after the rose name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

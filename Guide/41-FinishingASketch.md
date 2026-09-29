@@ -404,7 +404,7 @@ Look at the edge of the white ring in the first two. A pixel the ring half cover
 
 ### The grid a broadcast asks for: named frame rates
 
-A clip for a broadcast or an edit has a frame rate somebody else chose. It is often a fraction, such as the 29.97 frames a second of NTSC, the color television standard North America adopted in 1953. The `--fps` flag takes a name for those, and the name is the safer thing to type:
+A clip for a broadcast or an edit has a frame rate somebody else chose. It is often a fraction, such as the 29.97 frames a second of NTSC, the color television standard the United States adopted in 1953. The `--fps` flag takes a name for those, and the name is the safer thing to type:
 
 ```sh
 swift run OllinLive MySketches/YourSketch.swift --export-video spot.mp4 --seconds 30 --fps ntsc

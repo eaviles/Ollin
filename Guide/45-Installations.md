@@ -631,7 +631,7 @@ The second is what happens when the network drops for a moment. The client recon
 
 ## Where this comes from
 
-DMX512 was standardized by the United States Institute for Theatre Technology in 1986, and it is still what a lighting console speaks. It has lasted by being simple: 512 numbers, sent over and over, with nothing to negotiate. The two ways this chapter puts it on a network came later: Art-Net from Artistic Licence, and sACN as ANSI E1.31. The rest of the chapter uses the usual answers for software that runs unattended. Bound the step, write down what you can lose, and start again when it stops. The families' entries name their own sources, and full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+DMX512 was standardized by the United States Institute for Theatre Technology in 1986, and it is still what a lighting console speaks. It has lasted by being simple: 512 numbers, sent over and over, with nothing to negotiate. The two ways this chapter puts it on a network came later: Art-Net from Artistic Licence, and sACN as ANSI E1.31. Art-Net™ Designed by and Copyright Artistic Licence. The rest of the chapter uses the usual answers for software that runs unattended. Bound the step, write down what you can lose, and start again when it stops. The families' entries name their own sources, and full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

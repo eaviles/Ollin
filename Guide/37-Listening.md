@@ -379,7 +379,7 @@ override func setup() {
 
 ## Where this comes from
 
-The idea that any sound splits into pure vibrations is Joseph Fourier's (1822). The fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation.
+The idea that a signal splits into pure waves is Joseph Fourier's, from his 1822 book on heat. The fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation.
 
 Detecting arrivals by spectral flux is a standard technique from music information retrieval. Bello and colleagues survey it in their onset-detection tutorial (2005). The real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). The pitch and pitch-class entries name their own sources.
 

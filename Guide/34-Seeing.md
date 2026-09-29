@@ -322,7 +322,7 @@ for line in reader.lines { drawRect(line.bounds(in: rect)) }
 
 ### Codes a phone can make: BarcodeScanner
 
-**`BarcodeScanner`** decodes barcodes and QR codes. The QR code was designed in 1994 at the Japanese company Denso Wave to track car parts. Now anyone can make one on a phone. That makes it a friendly way to hand a running installation some input. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Like the rectangle detector, it needs no trained model.
+**`BarcodeScanner`** decodes barcodes and QR codes. The QR code was designed in 1994 at Denso Wave, then a division of the Japanese company Denso, to track parts in manufacturing. Now anyone can make one on a phone. That makes it a friendly way to hand a running installation some input. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Like the rectangle detector, it needs no trained model.
 
 ```swift
 lazy var codes = BarcodeScanner(camera)
