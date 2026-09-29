@@ -83,7 +83,7 @@ for step in counter.steps(upTo: tempo.beats(at: time)) {
 }
 ```
 
-`%` is the remainder after dividing, so `step % 2` is 1 on every second step. Two sixteenth steps make an eighth note, so `tempo.seconds(of: .eighth)` is one pair in seconds. At 96 beats a minute and a swing of 0.62, each offbeat waits about 38 milliseconds.
+`%` is the remainder after dividing, so `step % 2` is 1 on every second step. Two sixteenth steps make an eighth note, so `tempo.seconds(of: .eighth)` is one pair in seconds. At 120 beats a minute and a swing of 0.62, each offbeat waits 30 milliseconds.
 
 The counter hands over a step on the first frame after it falls due. So every note can land up to a frame late, about 17 milliseconds on a 60-hertz display, and the wait adds to that. For a lean placed to the sample, the step sequencer in [Steps with a feel](#steps-with-a-feel-the-sequencer-and-the-arpeggiator) asks for its notes ahead of time.
 
