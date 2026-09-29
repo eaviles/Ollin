@@ -334,7 +334,7 @@ Draws from: `Docs/3D/RGBD.md`, `Docs/3D/DepthCompositing.md`, `Docs/Generators/S
 **36. The iPhone as a sensor.**
 Teaches: the real sensors (Record3D clips and the live stream, Ollin Capture), which hand a sketch the frames Ch 35 read from a pretend camera; then the phone's streams in four groups (the room, people, the picture, the phone in your hand), pointing back to Ch 34 where the Mac reads the same things.
 Assumes: Ch 35 (depth frames, clouds, one world), Ch 34 for the perception streams, Ch 26. The phone is needed for the streams; Ch 35 is the path for a Mac alone.
-Payoff: owed. A sketch driven by the phone's streams, with a recorded fallback so it runs without a phone.
+Payoff: owed, drafted as `SolidDancer`. The dancer in solids: a body drawn as lit capsules and a head on a floor, seen from an angle the film never had, with a fading trail behind each hand and foot. It reads the phone's `latestBody` when a phone streams, and a `BodyTracker3D` on the bundled `SampleClip.dance` otherwise, which hands back the same bones in meters with z turned around, so it runs on any Mac. The spine this asks for is the connection, then the body, then the sketch.
 Figures: the phone's room mesh and surfaces; the body, hands, and gaze; text, attention, flow, and markers; the wand, heard sounds, the glass.
 Draws from: `Docs/3D/Record3D.md`, `Docs/3D/Phone.md`; `Examples/3D/` (the Phone group).
 
