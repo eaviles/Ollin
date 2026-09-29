@@ -13,7 +13,7 @@ import Ollin
 ///                             in: Scale(.minorPentatonic, root: "A3"))
 ///
 /// override func draw() {
-///     for step in counter.steps(at: time) {
+///     for step in counter.steps(upTo: tempo.beats(at: time)) {
 ///         if let note = readings[step] { synth.play(note, tempo: tempo) }
 ///     }
 /// }
@@ -357,7 +357,7 @@ public extension Synth {
     /// Plays one step of a reading, if there is one there.
     ///
     /// ```swift
-    /// for step in counter.steps(at: time) {
+    /// for step in counter.steps(upTo: tempo.beats(at: time)) {
     ///     synth.play(readings, step: step, tempo: tempo)
     /// }
     /// ```

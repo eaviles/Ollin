@@ -69,7 +69,8 @@ final class Card: Sketch {
     @Param var ink = Color(red: 0.2, green: 0.4, blue: 0.9, alpha: 1)
 
     override func setup() {
-        drive($frame, width: "620 + sin(time * tau / 7) * 220")
+        drive($frame, width: "620 + sin(time * tau / 7) * 220",
+                      height: "420 + cos(time * tau / 7) * 120")
         drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
         drive($ink, red: "0.35 + sin(time) * 0.3")
     }

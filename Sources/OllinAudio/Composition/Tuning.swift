@@ -161,8 +161,8 @@ public struct Tuning: Sendable, Hashable {
     /// stop beating while every key stays usable.
     public static let thirtyOne = Tuning.equal(31)
 
-    /// Thirteen equal steps of a *tritave*, which is a third rather than an
-    /// octave, so it has no octave in it at all.
+    /// Thirteen equal steps of a *tritave*, three times the frequency where an
+    /// octave is twice, so it has no octave in it at all.
     ///
     /// Doubling a frequency is so familiar that a tuning without it sounds
     /// wrong before it sounds strange, and then stops sounding wrong. It works

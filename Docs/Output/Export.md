@@ -152,7 +152,7 @@ The flag takes `performance`, `default`, or `detail` (or the aliases `fast`, `ba
 
 ### Render scale
 
-`--render-scale N` draws each exported frame at N times the canvas resolution in each direction. It then averages every block of N by N samples back into one pixel. The picture keeps its canvas size. What changes is how finely it was sampled:
+`--render-scale N` draws each exported frame at N times the canvas resolution in each direction. It then averages every block of N by N pixels back into one. The picture keeps its canvas size. What changes is how finely it was sampled:
 
 ```sh
 swift run --package-path Examples Example-Text-TypeAsGeometry --export poster.png --render-scale 2
@@ -166,7 +166,7 @@ swift run --package-path Examples Example-Shapes-Polygons --export poster.png --
 
 It is the quality-over-speed control for a frame that has no frame-rate deadline. The work grows with the square of the number: four times the pixels at 2, sixteen at 4. That is why the live window never uses it, and why 4 is the ceiling. If you ask for more, the export renders at the ceiling and prints a line saying so.
 
-**What it sharpens.** It sharpens filled shapes and polygons, the glyph outlines that text is made of, and fine dense detail. Those are the things that reach the screen as triangles. It leaves the analytic shapes (circles, rectangles, arcs, the marker catalog), every stroked path, and atlas text (`textMode(.atlas)`) as they were. Each of those carries its own coverage, so it is already crisp at 1.
+**What it sharpens.** It sharpens filled shapes and polygons, the fill of an elliptical or full-turn arc, the glyph outlines that text is made of, and fine dense detail. Those are the things that reach the screen as triangles. It leaves the analytic shapes (circles, rectangles, circular arcs under a full turn, the marker catalog), every stroked path, and atlas text (`textMode(.atlas)`) as they were. Each of those carries its own coverage, so it is already crisp at 1.
 
 **What it does not change.** Everything that treats the finished frame as a picture runs at canvas size at every scale. That is motion blur, the lens flare, `postProcess` filters, and the tone map. So a `.gaussianBlur(radius: 12)` is twelve canvas pixels wide whatever the scale is. Two other things stay at 1 as well. A layer built with `renderTarget` keeps the size it was made at. A piling canvas (`noClear`) carries one surface across frames, so it renders at 1 and prints a line saying so.
 

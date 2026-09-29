@@ -48,7 +48,7 @@ GCode(.mill(depth: 3, depthPerPass: 0.5), width: 150)  // six passes per path
 
 ### Size, origin, and the flip
 
-The canvas width maps to `width` millimeters, and the height follows the canvas aspect ratio. With a `paper`, the height is held to the sheet as well, and the width follows when the sheet is the tighter fit. `margin` adds a border on all sides, so the footprint is `width + 2 * margin` across. The machine origin is the bottom-left corner of the canvas. A canvas grows downward and a bed grows upward, so the program flips the y axis. Every program is in absolute millimeters (`G90`, `G21`), and it ends with the head at home and `M2`.
+The canvas width maps to `width` millimeters, and the height follows the canvas aspect ratio. With a `paper`, the height is held to the sheet as well, and the width follows when the sheet is the tighter fit. `margin` adds a border on all sides, so the footprint is `width + 2 * margin` across. The machine origin sits one margin below and to the left of the canvas's bottom-left corner, so the drawing starts `margin` millimeters in on both axes. A canvas grows downward and a bed grows upward, so the program flips the y axis. Every program is in absolute millimeters (`G90`, `G21`), and it ends with the head at home and `M2`.
 
 ### What the planner does
 

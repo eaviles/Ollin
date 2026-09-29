@@ -825,7 +825,7 @@ bfa36d7f3c9e  Docs/Helpers/Listening.md:99  cannot find 'ears' in scope
 c2c26248e5c8  Docs/Helpers/LiveData.md:84  cannot find 'tide' in scope
 55722fc7743a  Docs/Helpers/MIDIFiles.md:104  cannot find 'now' in scope
 51500ca6ced2  Docs/Helpers/MIDIFiles.md:11  'module' is inaccessible due to 'internal' protection level
-b4c3903406bd  Docs/Helpers/MIDIFiles.md:135  errors thrown from here are not handled
+eb3d4457c490  Docs/Helpers/MIDIFiles.md:135  errors thrown from here are not handled
 9c3561da79ed  Docs/Helpers/MIDIFiles.md:147  errors thrown from here are not handled
 f915388f1eb2  Docs/Helpers/MIDIFiles.md:176  cannot find 'synth' in scope
 8f3726bdcd34  Docs/Helpers/MIDIFiles.md:54  'module' is inaccessible due to 'internal' protection level

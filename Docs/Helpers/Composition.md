@@ -424,7 +424,7 @@ The reason to use one is that equal temperament is a compromise. It makes every 
 | `.pythagorean` | stacked fifths: a pure fifth and a noticeably wide third |
 | `.quarterTones` | twenty four equal steps |
 | `.nineteen` / `.thirtyOne` | equal divisions with sweeter thirds than twelve |
-| `.bohlenPierce` | thirteen equal steps of a *third* rather than an octave |
+| `.bohlenPierce` | thirteen equal steps up to three times the frequency, rather than an octave |
 
 `Tuning.equal(_:period:root:)` builds any equal division, and `Tuning(ratios:)` takes ratios of your own, folded into one period and deduplicated.
 

@@ -260,7 +260,7 @@ public struct MIDIFile: Sendable, Hashable {
     /// var bar = 0.0
     /// var phrase: [ScheduledNote] = []
     /// while bar < 32 {
-    ///     phrase += sequencer.events(upTo: bar)
+    ///     phrase += sequencer.events(upTo: bar + 3.99)   // the bar, up to its last step
     ///     bar += 4
     /// }
     /// try MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")

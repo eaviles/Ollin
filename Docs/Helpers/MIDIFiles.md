@@ -136,7 +136,7 @@ The short form takes notes and a tempo. Anything that answers in `ScheduledNote`
 var phrase: [ScheduledNote] = []
 var bar = 0.0
 while bar < 32 {
-    phrase += sequencer.events(upTo: bar)
+    phrase += sequencer.events(upTo: bar + 3.99)   // the bar, up to its last step
     bar += 4
 }
 try MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
