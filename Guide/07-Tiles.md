@@ -97,7 +97,7 @@ Run it and the arcs merge into pipes, with the color running unbroken through ev
 
 ## Putting it together: a meandering tangle
 
-Now you can build the image at the top. It composes the arcs from [Tiles that agree at their edges](#tiles-that-agree-at-their-edges-truchet) with the strands and the two passes from [Strands as values](#strands-as-values-truchet). It takes its color from [Chapter 5](05-Noise.md). Lay Truchet arcs over a grid, then stroke every strand twice. Draw a wide pass in a dark rim tone, then a narrower colored pass on top. For the color, sample `noise` at each strand's midpoint. Neighbors then wear neighboring colors, and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
+Now you can build the image at the top. It composes the arcs from [Tiles that agree at their edges](#tiles-that-agree-at-their-edges-truchet) with the strands and the two passes from [Strands as values](#strands-as-values-truchet). It takes its color from [Chapter 5](05-Noise.md). Lay Truchet arcs over a grid, then stroke every strand twice. Draw a wide pass in a dark rim tone, then a narrower colored pass on top. For the color, sample `noise` at each strand's midpoint. Neighbors then take neighboring colors, and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
 
 ```swift
 import Ollin
@@ -183,7 +183,7 @@ stroke(.white); strokeWeight(4); strokeCap(.round)
 drawHitomezashi(columns: 24, rows: 24)
 ```
 
-One design has two faces, and `hitomezashi(columns:rows:)` hands you both. `.stitches` is the thread: one short strand per dash, ready for color, hatching, or a pen plotter, like the Truchet strands. `.parities` is the cloth, and it says which of the two tones each cell wears. Draw the fill first and the stitches after, and every tone boundary lands under a stitch:
+One design has two faces, and `hitomezashi(columns:rows:)` hands you both. `.stitches` is the thread: one short strand per dash, ready for color, hatching, or a pen plotter, like the Truchet strands. `.parities` is the cloth, and it says which of the two tones each cell takes. Draw the fill first and the stitches after, and every tone boundary lands under a stitch:
 
 ```swift
 let design = hitomezashi(columns: 24, rows: 24)
@@ -394,7 +394,7 @@ for tile in penroseTiling(.rhombs, tileEdge: 36) {
 
 There is no randomness in it. The variety is the geometry's own. The **spectre** is the single shape from 2023, and mathematicians called the search for it the einstein problem, "one stone". `spectreTiling(tileEdge:curve:)` grows a patch. Give `curve` about `0.5` and the edges bend, so the tile cannot even be flipped over. Each tile flags the rare `isOdd` misfits that sit rotated 30° from all the others, which are the accent marks the pattern wants.
 
-Two more relatives are on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are the squares with colored edges that started the subject, which may only sit together where the colors agree. Run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older. From the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another. Keep the crossings, erase the tiles, and an Islamic star pattern remains. The method is E. H. Hankin's polygons in contact, formalized for the computer by Craig Kaplan. The five traditional girih tiles decorate buildings from medieval Isfahan to Istanbul. It works over *any* edge-to-edge polygons, your hex grid's cells included. The contact angle is one dial that morphs the design from spiky to woven:
+Two more relatives are on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are the squares with colored edges that started the subject, which may only sit together where the colors agree. Run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older. From the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another. Keep the crossings, erase the tiles, and an Islamic star pattern remains. The method is E. H. Hankin's polygons in contact, formalized for the computer by Craig Kaplan. The five traditional girih tiles decorate buildings from medieval Isfahan to Istanbul. The method works over *any* edge-to-edge polygons, your hex grid's cells included. The contact angle is one dial that morphs the design from spiky to woven:
 
 ```swift
 let cells = hexGrid(columns: 9, rows: 8).cells.map(\.corners)

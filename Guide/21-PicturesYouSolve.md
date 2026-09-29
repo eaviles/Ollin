@@ -51,7 +51,7 @@ let field = marks.filtered(.distanceField())
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/MeasuredField-dark.jpg">
-  <img src="Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+  <img src="Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel taking the color of the mark nearest to it" width="680">
 </picture>
 
 That layer is no longer a picture. Its red channel holds the distance in pixels, running negative inside a shape and positive outside it. Its green and blue hold the direction to that nearest edge. A picture of a thing has turned into the measurement of where that thing is.
@@ -68,7 +68,7 @@ The two answers fit together into one line:
 field.filtered(.fieldMap(bands, from: 0, to: 34, repeating: true))
 ```
 
-`repeating` wraps the ramp instead of stretching it. So the same colors come around every 34 pixels, and the marks wear contour lines like a map. Look at where two shapes meet in that panel. Their rings run into each other and stop along a crease. That crease is every place equally far from both, and you did not have to work it out.
+`repeating` wraps the ramp instead of stretching it. So the same colors come around every 34 pixels, and the marks carry contour lines like a map. Look at where two shapes meet in that panel. Their rings run into each other and stop along a crease. That crease is every place equally far from both, and you did not have to work it out.
 
 Change the window and the same call does other jobs. A ramp that turns over at one distance grows the shape by that much, and shrinks it at a negative one. Here `ink` is the fill color you want:
 
@@ -89,7 +89,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 }
 ```
 
-Every pixel ends up wearing the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points. It costs one lookup per pixel. `combined(with:_:)` is `filtered` for an effect that reads a second layer, and `.shader` wraps a `Shader` as one, so the call is `field.combined(with: marks, .shader(...))`. The panel dims the territories and draws the marks back on top, so the shapes stay visible.
+Every pixel ends up with the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points. It costs one lookup per pixel. `combined(with:_:)` is `filtered` for an effect that reads a second layer, and `.shader` wraps a `Shader` as one, so the call is `field.combined(with: marks, .shader(...))`. The panel dims the territories and draws the marks back on top, so the shapes stay visible.
 
 > **Metal note.** A shader given two layers reads the first with `sampleRaw` and the second with `sampleAux`. It is `sampleRaw` rather than `sample`, the ordinary read of a layer, because the ordinary read hands a layer over as a color. A distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched. `field.r` and `field.gb` pick channels out of [Chapter 18](18-YourFirstShader.md)'s `float4` by letter, the red one and the green-and-blue pair. `sign` is 1 or -1 by the sign of its argument, so the four-pixel step goes past the edge from either side. `info.resolution` is the layer's pixel size, from the same `info`.
 
@@ -135,7 +135,7 @@ Underneath, the answer is a ladder of light fields. Each one holds a single ring
 
 ## Putting it together: the lighthouse
 
-The lighthouse is a harbor at dusk, and very little of it is painted. It composes the three steps above. A handful of marks diffuse into the whole sky and sea. Two lamps and a scene give back the light, with its beams and soft shadows worked out by `.light`. And every silhouette wears an outline read off its measured distance field. Make `MySketches/Lighthouse.swift`:
+The lighthouse is a harbor at dusk, and very little of it is painted. It composes the three steps above. A handful of marks diffuse into the whole sky and sea. Two lamps and a scene give back the light, with its beams and soft shadows worked out by `.light`. And every silhouette gets an outline read off its measured distance field. Make `MySketches/Lighthouse.swift`:
 
 ```swift
 import Ollin

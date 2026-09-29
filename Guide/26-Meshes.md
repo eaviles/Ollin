@@ -94,7 +94,7 @@ A texture changes a surface's color. A **normal map** changes how it catches lig
 let hammered = Mesh.sphere(radius: 1).normalMapped(dents)
 ```
 
-All three spheres are the same 96-segment sphere. Only the pictures the first two wear know about the dents and the rings. The silhouettes stay perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles. The edge of the object never learns about them. Games have used this for twenty years, which is why a cobblestone street in one can be six polygons.
+All three spheres are the same 96-segment sphere. Only the pictures on the first two know about the dents and the rings. The silhouettes stay perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles. The edge of the object never learns about them. Games have used this for twenty years, which is why a cobblestone street in one can be six polygons.
 
 **`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates. It sets up the frame of reference the map's directions are expressed in, a *tangent basis*. It's the same standard one other tools bake maps against, so a map made elsewhere lights the same way here. `scale` is a relief dial, where 0 flattens it off, 1 is as authored, and more exaggerates. Loaded models bring their own normal maps along without being asked.
 
@@ -165,7 +165,7 @@ Here it is on `grown`, a folded ball with no uvs, made by the surface growth aft
 drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
 ```
 
-<img src="Images/26-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball wearing the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
+<img src="Images/26-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball with the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
 
 `scale` is the size of one tile in world units, and a `normal:` map uses the same projection. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles. Its normal map is the slope of that photograph's own brightness, which is why the painted design reads as molded rather than printed on. The folded ball has no uvs and no tangent basis, and nobody cut its surface flat to lay a picture on it. The projection works on any mesh you can make or load.
 
@@ -176,9 +176,9 @@ The projection asks one thing of you in return: **the picture has to tile.** It 
 let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
 ```
 
-`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that shows most. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench the steps end in wears its stone this way.
+`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that shows most. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench the steps end in gets its stone this way.
 
-The picture stands still and the surface moves through it, which helps in one case and hurts in another. The cairn is three separate boxes drawn one after another. The pattern runs unbroken across all three, because they stand in the same projected picture. That is why the technique is the usual choice for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along. So a body that travels should wear uvs. A form that grows or changes shape in place shows the pattern flowing across it, as the blob in the `3D/Materials/Triplanar` example does.
+The picture stands still and the surface moves through it, which helps in one case and hurts in another. The cairn is three separate boxes drawn one after another. The pattern runs unbroken across all three, because they stand in the same projected picture. That is why the technique is the usual choice for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along. So a body that travels should have uvs. A form that grows or changes shape in place shows the pattern flowing across it, as the blob in the `3D/Materials/Triplanar` example does.
 
 The projection carries the base texture and a normal map, while the rest of the map set stays with uvs. The [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on parameters.
 
@@ -197,7 +197,7 @@ drawMesh(boulder
 
 <img src="Images/26-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
 
-The left sphere wears only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
+The left sphere has only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
 
 `scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the off switch. A pair tiled dozens of times over is the first thing that would break up in the distance. A loaded picture reads its smaller copies there, but a pair you wrote from bytes has none to fall back on. Keep the scale in the range your framing shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres and the detail pair on one of them. The tile count and amount sit on parameters while the camera sways close.
 
@@ -295,7 +295,7 @@ material(Material(shading: .physicallyBased, metallic: 1,
                   roughness: 0.4, anisotropy: 0.8))
 ```
 
-<img src="Images/26-Meshes/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second wears a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
+<img src="Images/26-Meshes/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second shows a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
 
 The streak is one number. The first two spheres are the same steel, and the band is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, the way a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
 
@@ -464,7 +464,7 @@ final class Bench: Sketch {
 
 > **Swift note.** Some things here are new. A picture is bytes, four per pixel. `[UInt8](repeating: 0, count:)` makes a list of that many zero bytes, and `UInt8(...)` narrows a number into one of them. `Image(width:height:premultipliedRGBA:)` builds a picture from those bytes. It hands back an optional, forced here with `!` because the sizes match by construction. `import Foundation` brings in `URL` and `FileManager`, which the model's path needs, and `while true` runs a loop until a `return` leaves it. The `// MARK:` lines are comments the editor lists in its jump bar, and nothing more. And `normalMap` takes a function as its last argument, `height: (Double, Double) -> Double`, which turns two numbers into one. It calls it as `height(u + d, v)`.
 
-The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball wears four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, read from its file the way the chapter's first listing read a duck.
+The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball carries four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, read from its file the way the chapter's first listing read a duck.
 
 ```swift
     // MARK: the parts
@@ -638,7 +638,7 @@ The third part is the frame. There is one directional light and one environment,
 }
 ```
 
-The bench is five specimens, ten pictures, and one light, and it composes most of the chapter's steps. The crystal is loaded from a file and normalized. The silver star is a cage rounded by two levels of subdivision. The ball wears a normal map, a metallic-roughness map, and a detail pair over its texture. The tile wears a height map read by parallax. The slab is textured from three sides and stamped with a decal. Every finish is a measured one, lit by an environment. The slab and the tile are dielectrics, the star is brushed metal, and the crystal is a thin wall of glass. The plinth is lacquer, the cloth under the egg is felt with its own sheen color, and the egg scatters light under its surface. The ball and the tile have no detail you could find in a vertex, and neither does the slab they stand on. The ball is a plain sphere, the tile a single flat quad, and the slab a box. Everything you can see on them was written into a picture.
+The bench is five specimens, ten pictures, and one light, and it composes most of the chapter's steps. The crystal is loaded from a file and normalized. The silver star is a cage rounded by two levels of subdivision. The ball carries a normal map, a metallic-roughness map, and a detail pair over its texture. The tile carries a height map read by parallax. The slab is textured from three sides and stamped with a decal. Every finish is a measured one, lit by an environment. The slab and the tile are dielectrics, the star is brushed metal, and the crystal is a thin wall of glass. The plinth is lacquer, the cloth under the egg is felt with its own sheen color, and the egg scatters light under its surface. The ball and the tile have no detail you could find in a vertex, and neither does the slab they stand on. The ball is a plain sphere, the tile a single flat quad, and the slab a box. Everything you can see on them was written into a picture.
 
 The camera here is spelled out as a `Camera3D` with an eye, a target, and a projection. It holds one composed shot, where `camera(.orbiting(...))` placed the eye on an orbit. `Color(kelvin:)` names a light's color by its temperature, the way a bulb's box does.
 
@@ -746,7 +746,7 @@ let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $
 drawMesh(car)
 ```
 
-The joined mesh renders the same as the parts drawn one by one, and it costs only the copy. Where two parts overlap, both surfaces stay inside, which is fine on screen and not for a printer. A printer wants `union`, which merges the overlap into one closed skin. The [reference](../Docs/3D/3D.md#join) says what comes along, and why a joined mesh wears one material.
+The joined mesh renders the same as the parts drawn one by one, and it costs only the copy. Where two parts overlap, both surfaces stay inside, which is fine on screen and not for a printer. A printer wants `union`, which merges the overlap into one closed skin. The [reference](../Docs/3D/3D.md#join) says what comes along, and why a joined mesh has one material.
 
 ### One solid, two shadows: shadow art
 
@@ -849,7 +849,7 @@ The bench's finishes were all picked by number. The thin film is the measured fi
 
 Blow a soap bubble and it turns colors that were never in the soap. The wall of that bubble is a film a few hundred nanometers thick, and light reflects off both of its faces. The second reflection travels a little farther, so the two come back out of step. Where they line up a color gets brighter, and where they oppose each other it disappears. What is left is a color made by a distance. A **thin film** finish puts that film on any surface. It is for anodized titanium, oil on a wet road, the inside of a shell, and the bubble itself. The finish is Laurent Belcour and Pascal Barla's 2017 extension of the microfacet model. It adds up the light bouncing between a film's two faces.
 
-<img src="Images/26-Meshes/ThinFilm.jpg" alt="Four spheres in a row labeled bare metal, 360 nm, 600 nm, and soap film. The bare metal is a neutral mirror of a warm room; the 360 nm ball wears a violet and gold band around its edge; the 600 nm ball turns green at the top and red below; the soap film ball is dark and see-through with a colored rim" width="680">
+<img src="Images/26-Meshes/ThinFilm.jpg" alt="Four spheres in a row labeled bare metal, 360 nm, 600 nm, and soap film. The bare metal is a neutral mirror of a warm room; the 360 nm ball shows a violet and gold band around its edge; the 600 nm ball turns green at the top and red below; the soap film ball is dark and see-through with a colored rim" width="680">
 
 ```swift
 fill(Color(white: 0.75))
@@ -861,7 +861,7 @@ m.thinFilmThickness = 480               // nanometers, and this is the color par
 material(m)
 ```
 
-The three metals are the same metal. Only the thickness of the film on them changes, and it sets their color. That number is in **nanometers**, which is light's own scale rather than the scene's. It is the only measurement in the material that is not in world units. So the same value works on a bubble and on a building. The 360 nm ball wears violet and gold, and the 600 nm one turns green and red. The [thin-film reference](../Docs/3D/3D.md#thin-film) walks the thickness through its bands.
+The three metals are the same metal. Only the thickness of the film on them changes, and it sets their color. That number is in **nanometers**, which is light's own scale rather than the scene's. It is the only measurement in the material that is not in world units. So the same value works on a bubble and on a building. The 360 nm ball shows violet and gold, and the 600 nm one turns green and red. The [thin-film reference](../Docs/3D/3D.md#thin-film) walks the thickness through its bands.
 
 Each filmed ball has one thickness, and yet its color changes from the middle of the ball to its edge. A slanted path through the film is a longer path. So the color walks as the surface turns away from you, and it walks again when you move. That is why a bubble's colors shift as you move. The surface *under* the film matters too, since the film's lower face is where the two meet. So the same film over metal and over a dark wet surface look nothing alike.
 
@@ -871,7 +871,7 @@ The fourth ball is the bubble itself. `.soapFilm(thickness:)` is [glass](#glass)
 
 Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface. The tangent-space map is how that idea reached every real-time engine. Parallax occlusion mapping is the marching read of the same picture, from the terrain and surface work of the mid-2000s. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*. The detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles. Character modeling has run on the pair ever since. Projected decals follow the box projection of the real-time decal literature, notably Tiago Sousa and Jean Geffroy's 2016 talk on idTech 6.
 
-The measured finishes are the Cook-Torrance microfacet model. Their form is the metallic-roughness one Brent Burley presented for Disney in 2012, which the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty Estevez, who also wrote the production-friendly sheen used here. The clear coat is the second lobe of Google's Filament documentation. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013. The computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues. It runs over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. The entries after the bench name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The measured finishes are the Cook-Torrance microfacet model. Their form is the metallic-roughness one that Brent Burley presented for Disney in 2012 and that the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty Estevez, who also wrote the production-friendly sheen used here. The clear coat is the second lobe of Google's Filament documentation. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013. The computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues. It runs over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. The entries after the bench name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

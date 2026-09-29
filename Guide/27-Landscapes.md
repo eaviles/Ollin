@@ -38,7 +38,7 @@ let weathered = land
 
 <img src="Images/27-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
 
-Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with smooth normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(u:v:)` samples any point, for placing trees, routing a path, or driving something else entirely. The picture above wears a texture built by walking each height up a `Ramp` from valley green to snow. That is the coloring recipe, and `coloredMesh(width:depth:height:_:in:)` does it in one call, handing back the mesh already wearing the ramp. `in:` says which band of heights the ramp spans. Build it when the field changes, not per frame.
+Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with smooth normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(u:v:)` samples any point, for placing trees, routing a path, or driving something else entirely. The mesh in the picture above has a texture built by walking each height up a `Ramp` from valley green to snow. That is the coloring recipe, and `coloredMesh(width:depth:height:_:in:)` does it in one call, handing back the mesh already colored by the ramp. `in:` says which band of heights the ramp spans. Build it when the field changes, not per frame.
 
 Erosion is work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` draw it.
 
@@ -84,7 +84,7 @@ The tempting shortcut is the vertex list. It is already a list of points on the 
 
 `surfacePoints` picks over the skin instead. A spot is as likely anywhere the surface holds the same area.
 
-<img src="Images/27-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each wearing the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
+<img src="Images/27-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each with the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
 ```swift
 let spots = surfacePoints(on: island, count: 400)
@@ -156,7 +156,7 @@ The blades shade on the same lit path as every solid. The boulders' cast shadows
 
 The finished sketch is a valley you could stand in. It composes the chapter's steps. The land is grown and weathered, and then read back to find where the camera stands and what it looks at. The far world is scattered over the land's own surface with `surfacePoints` and drawn as one culled `MeshField`. The trees near the camera are an instanced draw the wind can reach, and the meadow is grass that does not exist between frames. Make `MySketches/Valley.swift`. It comes in three parts.
 
-The first part grows the ground. Ridged noise across the grid is rained on, then settled by gravity. `.normalized()` stretches the heights to span 0 to 1, before the weathering and after it. Every height below 0.3 is then held at 0.3, through `Heightfield(columns:rows:values:)`, so a meadow has somewhere flat to sit. `coloredMesh` wears a `Ramp` that starts at that flood plain rather than at zero, which keeps the low ground green while the ridges go pale. `ground(atX:z:)` reads the field's height under any world point. `steepness(atX:z:)` compares the heights on either side of it to get the slope.
+The first part grows the ground. Ridged noise across the grid is rained on, then settled by gravity. `.normalized()` stretches the heights to span 0 to 1, before the weathering and after it. Every height below 0.3 is then held at 0.3, through `Heightfield(columns:rows:values:)`, so a meadow has somewhere flat to sit. `coloredMesh` takes a `Ramp` that starts at that flood plain rather than at zero, which keeps the low ground green while the ridges go pale. `ground(atX:z:)` reads the field's height under any world point. `steepness(atX:z:)` compares the heights on either side of it to get the slope.
 
 ```swift
 import Ollin
@@ -422,7 +422,7 @@ What comes back is points, so a river network strokes, hatches, and plots like a
 
 ### The sea, from what a sea is made of: an ocean spectrum
 
-The rivers were lines read off a height. The sea is a surface, and it moves everywhere at once, so it needs a description of its own. An **ocean** here is described by its **spectrum**: how much water stands at each wavelength and heading for a given wind. That description is how oceanographers write down a sea state. It is for open water with waves of every size crossing each other. The spectrum is O. M. Phillips's 1957 model of wind-driven waves. Jerry Tessendorf presented it for rendering in his *Simulating Ocean Water* notes.
+The rivers were lines read off a height. The sea is a surface, and it moves everywhere at once, so it needs a description of its own. An **ocean** here is described by its **spectrum**: how much water stands at each wavelength and heading for a given wind. That description is how oceanographers write down a sea state. It is for open water with waves of every size crossing each other. The spectrum is O. M. Phillips's 1957 model of wind-driven waves. Ollin uses it as Jerry Tessendorf presented it for rendering in his *Simulating Ocean Water* notes.
 
 Placing waves one by one cannot keep up with a sea. The surface has waves at every size, from a swell that takes eight seconds to pass to the ripple on its back. The spectrum is a small, smooth description instead. One inverse Fourier transform ([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform)) turns the whole of it into the surface in one step.
 

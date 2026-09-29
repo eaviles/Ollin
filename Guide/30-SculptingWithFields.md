@@ -57,7 +57,7 @@ The order of a chain matters. Every call wraps the field before it, so `circle.a
 
 ## Into space: `SDF3D` and `drawSDF3D`
 
-Everything above lifts into 3D nearly unchanged. `SDF3D` builds fields in space, and `drawSDF3D` draws the merged surface through [Chapter 25](25-3DGently.md)'s camera, lit by its lights and wearing its materials. `smoothSubtract` is the carving form of the same melt: it cuts one field out of another and rounds the edge of the cut.
+Everything above lifts into 3D nearly unchanged. `SDF3D` builds fields in space, and `drawSDF3D` draws the merged surface through [Chapter 25](25-3DGently.md)'s camera, lit by its lights and shaded with its materials. `smoothSubtract` is the carving form of the same melt: it cuts one field out of another and rounds the edge of the cut.
 
 ```swift
 import Ollin

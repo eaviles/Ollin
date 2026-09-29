@@ -547,7 +547,7 @@ The phrases stay live. Set `concepts` to a new list, or ask `share(of:)` about a
 
 ## The camera in a 3D scene: the room as the light and the surface
 
-The brush drew the camera's motion in 2D. A camera frame is an image, so it goes wherever an image goes, and that includes a 3D scene. It can be the light the scene is lit by, and a surface a mesh wears.
+The brush drew the camera's motion in 2D. A camera frame is an image, so it goes wherever an image goes, and that includes a 3D scene. It can be the light the scene is lit by, and a surface wrapped around a mesh.
 
 ### The room as the light: Environment.feed
 
@@ -575,7 +575,7 @@ A webcam only brings a window, and lighting needs a whole sphere of surroundings
 
 A camera frame is an `Image`, and [Chapter 26](26-Meshes.md#a-picture-wrapped-around-it-textured) put an image on a mesh with `textured(_:)`. So the room you are sitting in can be wrapped around a globe, and lit by itself, in two lines:
 
-<img src="Images/32-Seeing/LiveSurface.jpg" alt="A large sphere wearing the same street photograph as the figure above, a pink wall and its window and balcony wrapped around the globe, beside a small chrome ball reflecting the same street. Both are lit by the picture they show" width="680">
+<img src="Images/32-Seeing/LiveSurface.jpg" alt="A large sphere wrapped in the same street photograph as the figure above, a pink wall and its window and balcony wrapped around the globe, beside a small chrome ball reflecting the same street. Both are lit by the picture they show" width="680">
 
 ```swift
 let globe = Mesh.sphere(radius: 1)            // any mesh with uvs

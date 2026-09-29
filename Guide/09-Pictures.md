@@ -254,7 +254,7 @@ The portrait read one pixel at a time and answered each with a letter. A palette
 
 ### Palettes from a photograph
 
-Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. It is for a sketch that should wear the colors of a photograph you took, and for a poster that reduces one. The grouping is Lloyd's algorithm, the clustering method from 1957. It moves each group's center to the middle of its members until nothing moves. It picks its starting centers the k-means++ way, from a fixed seed, so the same picture gives the same groups. Give `Palette(extractedFrom:count:)` an image and how many colors you want, and it hands back the center of each group:
+Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. It is for a sketch that should take its colors from a photograph you took, and for a poster that reduces one. The grouping is Lloyd's algorithm, the clustering method from 1957. It moves each group's center to the middle of its members until nothing moves. It picks its starting centers the k-means++ way, from a fixed seed, so the same picture gives the same groups. Give `Palette(extractedFrom:count:)` an image and how many colors you want, and it hands back the center of each group:
 
 ```swift
 let photo = try! loadImage("beach.jpg")

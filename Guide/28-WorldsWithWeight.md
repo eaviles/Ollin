@@ -364,7 +364,7 @@ let drop = world.raycast(from: p, to: p - Vector3(0, 20, 0))?.distance
 let below = world.sweep(.sphere(radius: 0.55), from: overhead, to: patrol)
 ```
 
-A ray asks what is in the way, and a sweep asks whether something fits. A sweep is often the better question. A ray threads a gap a shoulder would never get through, and it drops between two crates onto a floor a drone could never reach. Anything a body can wear works as the probe, turned however you like with `rotated:` and `axis:`. The two exceptions are the colliders that describe scenery, a mesh and a heightfield.
+A ray asks what is in the way, and a sweep asks whether something fits. A sweep is often the better question. A ray threads a gap a shoulder would never get through, and it drops between two crates onto a floor a drone could never reach. Any collider shape a body can have works as the probe, turned however you like with `rotated:` and `axis:`. The two exceptions are the colliders that describe scenery, a mesh and a heightfield.
 
 **An overlap** asks what is inside a region right now:
 

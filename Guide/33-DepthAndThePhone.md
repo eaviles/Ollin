@@ -484,7 +484,7 @@ The upright word stands on a wall and the flat one lies on a table, and neither 
 
 Where a picture pulls the gaze is the next reading, as [Chapter 32](32-Seeing.md#where-an-eye-would-go-saliencytracker)'s `SaliencyTracker` gives it on the Mac. It is for spending detail or attention where a viewer will look. In **Attention** mode the phone runs Apple's on-device attention model over the rear camera, a model trained on where people look. Each reading arrives as a `PhoneSaliency`, a coarse heat map of visual attention and the regions it peaks in. The heat comes ready to draw as a tintable glow, and `salience(at:in:)` reads the pull under any canvas point.
 
-<img src="Images/33-DepthAndThePhone/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each wearing a rounded teal frame whose weight follows the model's confidence" width="680">
+<img src="Images/33-DepthAndThePhone/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each with a rounded teal frame whose weight follows the model's confidence" width="680">
 
 In `draw()`, with `rect` the rectangle you draw the phone's camera frame into:
 

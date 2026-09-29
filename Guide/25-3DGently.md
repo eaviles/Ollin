@@ -305,7 +305,7 @@ Some practical notes, in the order you meet them:
 - **Every light casts**, up to four of them, and *Two lights, two shadows* below says what that means. The default rig's key light is directional, so a scene you haven't relit already works.
 - **Nothing needs aiming.** The shadow's frame auto-fits around whatever the camera is looking at.
 
-The three kinds of light cast by different routes, which mostly matters because it explains the cost. A directional or spot light renders the scene once from the light's own viewpoint. The result is a **shadow map**, a picture of how far the light can see. It then darkens whatever that view can't see. A point light casts in every direction at once. So on Apple silicon it traces rays from each lit pixel toward the light. That is exact, with none of the small offsets a shadow map needs, and the most expensive of the three. On a GPU that can't trace rays it falls back to a depth map sampled by direction. Point shadows still work everywhere, and your sketch doesn't change either way.
+The three kinds of light cast by different routes, which mostly matters because it explains the cost. A directional or spot light renders the scene once from the light's own viewpoint. The result is a **shadow map**, a picture of how far the light can see. The light then darkens whatever that view can't see. A point light casts in every direction at once. So on Apple silicon it traces rays from each lit pixel toward the light. That is exact, with none of the small offsets a shadow map needs, and the most expensive of the three. On a GPU that can't trace rays it falls back to a depth map sampled by direction. Point shadows still work everywhere, and your sketch doesn't change either way.
 
 If a penumbra looks grainy rather than smooth, that's the sample count, not the softness. `shadowQuality(.detail)` asks for more samples relative to whatever GPU is running, and `shadowSamples(16)` sets an exact number.
 
@@ -363,7 +363,7 @@ drawSphere(radius: 1)
 
 <img src="Images/25-3DGently/MaterialRow.jpg" alt="Ten spheres in the same teal, each with a different finish: matte, plastic, glossy, iridescent, soap bubble, velvet, jade, toon, gooch, and glitter" width="680">
 
-That's ten finishes on one color. The library runs from matte through glossy to the showpieces. `.iridescent` and `.soapBubble` shift hue as the view moves, `.velvet` glows at the edges, and `.jade` lets light through thin parts. `.toon` and `.gooch` are the stylized cartoon and warm-to-cool looks, and `.glitter` is full of tiny mirror flakes that flash as anything moves. `material(_:)` is drawing state like `fill`, saved by `withState`, so every shape in a frame can wear its own.
+That's ten finishes on one color. The library runs from matte through glossy to the showpieces. `.iridescent` and `.soapBubble` shift hue as the view moves, `.velvet` glows at the edges, and `.jade` lets light through thin parts. `.toon` and `.gooch` are the stylized cartoon and warm-to-cool looks, and `.glitter` is full of tiny mirror flakes that flash as anything moves. `material(_:)` is drawing state like `fill`, saved by `withState`, so every shape in a frame can have its own.
 
 A `Material` is also a plain value you can tweak. Car paint is the classic recipe, gold flakes over a deep red:
 
@@ -394,7 +394,7 @@ drawSphere(radius: 1)
 
 <img src="Images/25-3DGently/Inked.gif" alt="A red sphere, a blue box, and a magenta torus in hard cel bands, each ringed by a thin dark line, under a light that keeps the bands still while the view swings back and forth" width="480">
 
-The line comes from an old trick, and the trick explains what you see. Ollin draws the mesh a second time, with every vertex pushed outward along its normal by the width you asked for. Then it throws away the faces that point at you. What survives of that slightly bigger, inside-out copy is the rim that peeks past the silhouette, in the ink color. Three things follow. The push is measured in screen pixels, like a pen, so the line holds its width as a shape moves away. A nearer shape hides a farther one's line, because the copy takes the depth test like any surface. And the box's corners show a small notch. Each face moved off along its own normal, and at a corner the three normals the solids step counted there part company. A smooth mesh takes a clean line. `outline` is drawing state like `material`, so some shapes can wear it and others not, and `noOutline()` takes it off.
+The line comes from an old trick, and the trick explains what you see. Ollin draws the mesh a second time, with every vertex pushed outward along its normal by the width you asked for. Then it throws away the faces that point at you. What survives of that slightly bigger, inside-out copy is the rim that peeks past the silhouette, in the ink color. Three things follow. The push is measured in screen pixels, like a pen, so the line holds its width as a shape moves away. A nearer shape hides a farther one's line, because the copy takes the depth test like any surface. And the box's corners show a small notch. Each face moved off along its own normal, and at a corner the three normals the solids step counted there part company. A smooth mesh takes a clean line. `outline` is drawing state like `material`, so some shapes can have it and others not, and `noOutline()` turns it off.
 
 Now look at the bands in the figure while the view swings. They stay put on each shape. A world-space light would slide them. Under a sun, a sphere's lit side faces the sun wherever you stand, so as you orbit, the bands move around it. That is right for a sun and wrong for a cartoon, whose light belongs to the drawing rather than to the world. The figure's rig is the same `.threePoint` preset from earlier, read in the camera's frame:
 
@@ -420,13 +420,13 @@ matcap(.chrome)
 drawMesh(knot)
 ```
 
-<img src="Images/25-3DGently/MatcapRow.jpg" alt="The same knot wearing four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
+<img src="Images/25-3DGently/MatcapRow.jpg" alt="The same knot in four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
 
 It takes one call and no lights, from chrome and clay to car paint and cel shading. It works by asking, for each point on the surface, which way that point faces relative to you. That is its normal, read in the camera's frame. Then it reads the color from the matching spot on the sphere picture. Point straight at the camera and you get the middle of the picture. Face away toward the edge and you get the rim. Because the picture was lit once, its lighting comes with it. The color is looked up by the way each point faces the camera, so as the view turns, the highlights move across the form.
 
 The trade is the same fact seen from the other side. A matcap ignores your lights, your `material(_:)`, and your shadows, because it isn't lit at all. The light is a photograph. That makes matcaps a separate axis rather than another finish. They are the wrong choice when an object needs to belong to a scene, matched to its lighting and grounded by a shadow. They are the right one when you want a good-looking surface with no lighting work, such as while you sketch a form.
 
-There are 26 built in, studio captures grouped by family. There are metals like `.chrome` and `.bronze`, clays like `.terracotta` and `.sage`, ceramics like `.pearl`, and translucents like `.wax`. Then there is the neutral studio set, `.toon` and `.toonDark`. A handful of diagnostic ones, `.checkNormal` and `.checkGradient`, are meant for reading geometry rather than looking good. Beyond those, `matcap(_:)` wears any sphere image you find or paint, loaded once with `loadImage` the way [Chapter 9](09-Pictures.md) loads a photograph. `Matcap.shaded(baseColor:metallic:roughness:)` bakes one on the spot with no asset at all. Reach for it when you want a specific color and don't want to ship a file.
+There are 26 built in, studio captures grouped by family. There are metals like `.chrome` and `.bronze`, clays like `.terracotta` and `.sage`, ceramics like `.pearl`, and translucents like `.wax`. Then there is the neutral studio set, `.toon` and `.toonDark`. A handful of diagnostic ones, `.checkNormal` and `.checkGradient`, are meant for reading geometry rather than looking good. Beyond those, `matcap(_:)` takes any sphere image you find or paint, loaded once with `loadImage` the way [Chapter 9](09-Pictures.md) loads a photograph. `Matcap.shaded(baseColor:metallic:roughness:)` bakes one on the spot with no asset at all. Reach for it when you want a specific color and don't want to ship a file.
 
 Two smaller facts. The current `fill` tints the result, so keep it `.white` to see a matcap as captured. And `matcap(_:)` is drawing state like `fill`, so `withState` scopes it and `noMatcap()` returns to the lit path.
 
@@ -484,7 +484,7 @@ Both take a `quality` tier, `.performance`, `.default`, or `.detail`, which trad
 
 ## Putting it together: the plaza
 
-The finished sketch is a small sculpture court you curate yourself. There are five plinths and five pieces, each wearing a different finish, under golden-hour light with soft shadows. The camera orbits until you take over. Make `MySketches/Plaza.swift`:
+The finished sketch is a small sculpture court you curate yourself. There are five plinths and five pieces, each with a different finish, under golden-hour light with soft shadows. The camera orbits until you take over. Make `MySketches/Plaza.swift`:
 
 ```swift
 import Ollin
@@ -559,7 +559,7 @@ final class Plaza: Sketch {
 }
 ```
 
-The showcase camera from *A camera and a sphere* orbits the court and hands the view to the mouse. Its five meshes, a knot, a lathe, a sphere, an icosahedron, and a coarse icosphere, are built once from the catalog. `drawMesh` draws them every frame. The transform stack places each one. A block translates to its spot, draws the plinth, then keeps translating upward for the piece, and two of them turn on `time`. One preset lights the court and one `castShadows()` plants everything on the floor. Each sculpture wears its own material, with the car-paint recipe from the materials step on the sphere. And the last piece is drawn with `wireframe()`, mesh edges only, for a form that's still a proposal.
+The showcase camera from *A camera and a sphere* orbits the court and hands the view to the mouse. Its five meshes, a knot, a lathe, a sphere, an icosahedron, and a coarse icosphere, are built once from the catalog. `drawMesh` draws them every frame. The transform stack places each one. A block translates to its spot, draws the plinth, then keeps translating upward for the piece, and two of them turn on `time`. One preset lights the court and one `castShadows()` plants everything on the floor. Each sculpture has its own material, with the car-paint recipe from the materials step on the sphere. And the last piece is drawn with `wireframe()`, mesh edges only, for a form that's still a proposal.
 
 > **Swift note.** `plinth(_:)` is a function of your own with an unlabeled argument, as [Chapter 17](17-MarksAndMedia.md)'s were. The vase's profile is built by a `map` whose closure has two statements. So it names its result with `return`, the way Chapter 17's returning functions did.
 

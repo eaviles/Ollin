@@ -423,7 +423,7 @@ Escape time asks an orbit when it left. **Newton's method** asks where it ends u
 drawImage(generate(.newton()).image, 0, 0)
 ```
 
-The left panel is the cubic with the three cube roots of one, the picture Cayley asked about. Three roots make three basins, and their borders are not straight lines. Look at the border between any two colors. The third color is there too, as a chain of beads, and each bead wears the other two along its own border. Wherever two basins meet, all three do. That holds at every scale, so the boundary is dust rather than a line. It is the set of points the method never decides, folded over itself all the way down.
+The left panel is the cubic with the three cube roots of one, the picture Cayley asked about. Three roots make three basins, and their borders are not straight lines. Look at the border between any two colors. The third color is there too, as a chain of beads, and each bead has the other two along its own border. Wherever two basins meet, all three do. That holds at every scale, so the boundary is dust rather than a line. It is the set of points the method never decides, folded over itself all the way down.
 
 You place the roots yourself, up to eight. The palette spreads around them in order. `shading` darkens each pixel by how many steps it took, bright at the root and dark toward the edge, with a faint contour per step. `phase` turns the palette without recomputing anything, so it costs nothing to animate.
 
