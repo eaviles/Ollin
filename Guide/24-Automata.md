@@ -272,6 +272,8 @@ override func draw() {
 }
 ```
 
+<!-- Figure waiting on its prose: Images/24-Automata/LatticeSync.jpg (Figures/24-Automata/LatticeSync.swift), oscillators on a hex lattice, for the fragment above. Rendered on the Mac at frame 300. -->
+
 The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The [`Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) example is [Chapter 12](12-FlocksAndSwarms.md)'s meadow of fireflies, and a `Kuramoto` given `columns` and `rows` is this lattice. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
 
 <!-- Figure waiting on its prose: Images/24-Automata/Wildfire.jpg (Figures/24-Automata/Wildfire.swift), the wildfire, for the chapter's finished sketch. Rendered on the Mac at frame 120. -->

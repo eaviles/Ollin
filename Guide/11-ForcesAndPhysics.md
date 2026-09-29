@@ -219,6 +219,8 @@ final class Strand: Sketch {
 }
 ```
 
+<!-- Figure waiting on its prose: Images/11-ForcesAndPhysics/Strand.jpg (Figures/11-ForcesAndPhysics/Strand.swift), the strand swinging down, for the listing above. Rendered on the Mac at frame 45. -->
+
 Fifteen beads, each connected to the one before, the first pinned. The strand starts laid out on a diagonal, so on launch it swings down and sways until the built-in drag calms it. Hold the mouse anywhere and the last bead sticks to your cursor, so you can drag, let go, and watch the whole strand whip. That's a rope in under forty lines, and nothing in `draw()` knows anything about ropes.
 
 `place(at:)` is the right way to move a particle by hand. The reason is in how this world moves things. A particle here doesn't store a velocity. It remembers where it was last frame, and the gap between then and now *is* its velocity. This style of simulation is called Verlet integration, and it's a big part of why springs and piles hold together so calmly here. But it means "just set the position" would secretly also set a velocity, because you'd be widening that gap. `place(at:)` moves the particle *and* its memory together, so the bead lands at your cursor without picking up any speed from the move. If you do want to throw a particle, `p.push(_:)` does that.
