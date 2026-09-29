@@ -11,7 +11,7 @@ import Ollin
 ///
 /// ```sh
 /// ollin Sketch.swift --export-svg scene.svg
-/// ollin Sketch.swift --export-gcode scene.gcode --width 180
+/// ollin Sketch.swift --export-gcode scene.gcode --gcode-width 180
 /// ```
 ///
 /// `Crease` is the angle two faces must meet at before the edge between them is
