@@ -4,7 +4,9 @@
 
 # 36. The iPhone as a sensor
 
-An iPhone carries a depth sensor, cameras, microphones, a touch screen, and a barometer. A sketch can read what the phone learns from each of them. The chapter starts with real depth frames, from recorded clips, a live stream, and the capture app. Then come the phone's other streams: the room, the people in it, what its picture shows, and the phone in your hand.
+<img src="Images/36-ThePhoneAsASensor/SolidDancer.jpg" alt="A figure built from pale capsules with a round head stands in a wide lunge on a dark floor, one arm raised high, seen from the side and a little above, its shadow falling across the floor. A trail of orange beads curls down from the raised hand and darkens toward its old end, a short one sits at the other hand, and blue trails lie at both feet. A small square in the top-left corner shows the film it was read from, a man in the same lunge on a pale ground" width="560">
+
+An iPhone carries a depth sensor, cameras, microphones, a touch screen, and a barometer, and it can stream what each senses to your sketch. Here you connect the phone, as a recorded clip or a live stream, and read a person from it as a skeleton in meters. The dancer at the top dresses that skeleton in solids, and it reads a film that ships with Ollin when no phone is connected. After it come the phone's other streams: the room, hands and a gaze, what its picture shows, and the phone in your hand.
 
 ## The real sensors: a recorded clip, a live stream, and the capture app
 
@@ -58,9 +60,205 @@ The depth and the pose land in the types [Chapter 35](35-Depth.md) used, and the
 
 The app is built onto the phone from its Xcode project, since an iOS app cannot run from `swift run`. It needs an iPhone with an A12 chip or later on iOS 17 or later. The LiDAR streams need a Pro model, and the face and gaze streams the front TrueDepth camera. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup, and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
 
+## A pose you can dress in solids: the body
+
+Of everything the app sends, the finished sketch reads one stream, the body. [Chapter 34](34-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies)'s `BodyTracker3D` estimated a person in meters from a flat picture. The phone's version comes from ARKit's body tracking, which runs on the phone. A LiDAR phone measures the meters rather than estimating them.
+
+`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. It is for a figure you dress in solids that follows a person around the room. `modelTransform(_:)` composes a joint's position and orientation into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. Draw a capsule between each pair of joints with `drawCapsule(from:to:radius:)`, and the skeleton grows bones you can light.
+
+<img src="Images/36-ThePhoneAsASensor/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
+
+In `draw()`:
+
+```swift
+if let body = device.latestBody {
+    for (a, b) in body.bones() {
+        drawCapsule(from: a, to: b, radius: 0.03)
+    }
+    if let pose = body.modelTransform(.head) {
+        withState { transform(pose); drawSphere(radius: 0.11) }
+    }
+}
+```
+
+`bones()` gives the skeleton as pairs of points in meters. They are measured from the pelvis, which the stream calls the root, with y pointing up and z toward the camera.
+
+The camera never saw the blue forearm's joints. ARKit's rig, the standard skeleton it fits to a person, filled them in, and `isObserved(_:)` says so, part by part. Two more readings come with it. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the skeleton where the person is, in the same ARKit world as a swept cloud and [the room mesh](#a-surface-the-phone-already-built-the-room-mesh). Walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example runs it live, a mannequin that follows you around the room.
+
+### When no phone is streaming: the film
+
+The finished sketch should also run on a Mac with no phone attached. [Chapter 34](34-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies)'s `BodyTracker3D` reads a body from any feed, and a playing film is a feed. `SampleClip.dance` is the film that ships with Ollin, one dancer in front of a camera that never moves, as [Chapter 34](34-Seeing.md#when-there-is-no-camera-stills-and-footage) showed:
+
+```swift
+let film = try! VideoPlayer(url: SampleClip.dance.url)   // the clip ships with Ollin
+lazy var tracker = BodyTracker3D(film)
+// in setup(): film.loops = true, then film.play()
+```
+
+The tracker's `bones()` come in nearly the same shape as the phone's. They are pairs of points in meters, measured from the pelvis, with y up. One direction differs. The film's model counts z away from the camera, and the phone's counts z toward it. Turn z around and the two agree:
+
+```swift
+if let body = tracker.body {
+    for (a, b) in body.bones() {
+        drawCapsule(from: Vector3(a.x, a.y, -a.z), to: Vector3(b.x, b.y, -b.z), radius: 0.03)
+    }
+}
+```
+
+The two skeletons differ in smaller ways too. The tracker places 17 joints to the phone's 22. A sketch reads `.centerHead` for `.head`, a wrist for a hand, and an ankle for a foot. It carries no orientations, so `modelTransform(_:)` has no twin. And its figure is an estimate. It assumes a standard height, and it takes its up direction from the film's camera rather than from gravity. So a foot can hang above the floor while the other one stands on it.
+
+## Putting it together: the dancer in solids
+
+The finished sketch is the dancer at the top of the chapter. It reads a body from the phone while one streams and from the film when none does, and it draws both the same way. Each bone becomes a lit capsule on a floor. A trail follows each hand and foot, and the camera circles slowly. It puts together the capture app's `PhoneDevice`, the body, and the film in the phone's place. Make `MySketches/SolidDancer.swift`:
+
+```swift
+import Ollin
+import OllinPhone
+import OllinSamplePhotos
+import OllinVideo
+import OllinVision
+
+final class SolidDancer: Sketch {
+    let device = PhoneDevice()
+    let film = try! VideoPlayer(url: SampleClip.dance.url)   // the clip ships with Ollin
+    lazy var tracker = BodyTracker3D(film)
+
+    let bodyColor = Color(hex: 0xEDE7DA)
+    let handColor = Color(hex: 0xF2A65A)
+    let footColor = Color(hex: 0x6C8CD5)
+    let floorColor = Color(hex: 0x23262E)
+
+    // Where each hand and foot has been, oldest first:
+    // left hand, right hand, left foot, right foot.
+    var trails: [[Vector3]] = [[], [], [], []]
+
+    override func setup() {
+        device.start()                     // the phone, if one is streaming
+        film.loops = true
+        film.play()
+    }
+
+    override func draw() {
+        background(Color(hex: 0x0E1016))
+        camera(.orbiting(target: Vector3(0, 0.85, 0), radius: 4.4,
+                         azimuth: 0.9 + time * 0.12, elevation: 0.22,
+                         fieldOfView: .pi / 4.5))
+        lightingPreset(.studio)
+        castShadows()
+
+        material(.matte)
+        fill(floorColor)
+        drawPlane(width: 12, depth: 12)
+
+        // The phone's body when a phone streams, the film's otherwise.
+        var person: Person?
+        var fromFilm = false
+        if let body = device.latestBody {
+            person = Person(body)
+        } else if let body = tracker.body {
+            person = Person(body)
+            fromFilm = true
+        }
+        guard let person else { return }
+
+        // Stand the figure on the floor: lift it until its lowest point
+        // sits one capsule radius above y = 0.
+        let radius = 0.035
+        var lowest = 0.0
+        for (a, b) in person.bones { lowest = min(lowest, a.y, b.y) }
+        let up = Vector3(0, radius - lowest, 0)
+
+        fill(bodyColor)
+        for (a, b) in person.bones {
+            drawCapsule(from: a + up, to: b + up, radius: radius)
+        }
+        withState {
+            translate(person.head + up)
+            drawSphere(radius: 0.11)
+        }
+
+        // Each hand and foot leaves a trail that thins and fades with age.
+        for (i, end) in person.ends.enumerated() {
+            let p = end + up
+            if let last = trails[i].last, last.distance(to: p) < 0.002 { continue }   // it barely moved
+            trails[i].append(p)
+            if trails[i].count > 36 { trails[i].removeFirst() }                       // keep the newest 36
+        }
+        for (i, trail) in trails.enumerated() {
+            let color = i < 2 ? handColor : footColor
+            for k in 1 ..< trail.count {
+                let t = Double(k) / Double(trail.count)      // near 0 oldest, 1 newest
+                fill(Color.mix(floorColor, color, t))
+                drawCapsule(from: trail[k - 1], to: trail[k], radius: 0.006 + 0.018 * t)
+            }
+        }
+
+        // The flat film the dancer is read from, in the corner.
+        if fromFilm {
+            drawFrame(film, in: Rectangle(x: 28, y: 28, width: 200, height: 200))
+        }
+    }
+}
+
+// One body from either source, in the phone's terms: meters, the root at
+// the origin, y up, and z toward the camera.
+struct Person {
+    var head: Vector3
+    var ends: [Vector3]                 // left hand, right hand, left foot, right foot
+    var bones: [(Vector3, Vector3)] = []
+
+    init?(_ body: PhoneBody) {
+        guard let head = body.position(.head),
+              let leftHand = body.position(.leftHand),
+              let rightHand = body.position(.rightHand),
+              let leftFoot = body.position(.leftFoot),
+              let rightFoot = body.position(.rightFoot)
+        else { return nil }
+        self.head = head
+        ends = [leftHand, rightHand, leftFoot, rightFoot]
+        bones = body.bones()
+    }
+
+    init?(_ body: Body3D) {
+        // The film's body counts z away from the camera, and the phone's
+        // counts it toward the camera. Turning z around makes them agree.
+        func facing(_ p: Vector3) -> Vector3 { Vector3(p.x, p.y, -p.z) }
+        guard let head = body.position(.centerHead),
+              let leftHand = body.position(.leftWrist),
+              let rightHand = body.position(.rightWrist),
+              let leftFoot = body.position(.leftAnkle),
+              let rightFoot = body.position(.rightAnkle)
+        else { return nil }
+        self.head = facing(head)
+        ends = [facing(leftHand), facing(rightHand), facing(leftFoot), facing(rightFoot)]
+        for (a, b) in body.bones() {
+            bones.append((facing(a), facing(b)))
+        }
+    }
+}
+```
+
+> **Swift note.** `init?` is an initializer that can fail. It gives back `nil` when a joint it needs is missing, so `Person(body)` is an optional. `Person` has two of them, one for each kind of body, and Swift picks the one that matches the argument's type.
+
+Taking it apart:
+
+- **Two sources, one shape.** `device.latestBody` answers only while a phone streams, so the sketch asks it first and falls back on `tracker.body`. `Person` turns either body into bones, a head, and four ends, in the phone's terms. So everything after the `guard` draws one kind of thing. `fromFilm` remembers which source answered, and only the film gets a corner.
+- **Standing on the floor.** Both skeletons are measured from the pelvis, so the feet sit below zero. The loop finds the lowest point of any bone, and `up` lifts the whole figure until that point sits one capsule radius above the floor. The lift is worked out again every frame, so whichever foot is lowest is the one that stands.
+- **The body.** Each bone is a capsule and the head is a sphere, in a matte finish under [the studio preset](26-3DGently.md#light-presets-and-the-kinds-of-light). `castShadows()` lays their shadows on the floor. The camera starts about 50 degrees to the side of the film's view and turns slowly. So you see the dancer from sides the film never showed.
+- **The trails.** Each hand and foot keeps its newest 36 positions, and skips a frame when it has barely moved. Each step of a trail is a short capsule, thicker toward the newest end. `Color.mix` from [Chapter 2](02-Color.md#mixing-you-can-trust) fades it into the floor's color as it ages.
+- **The corner.** `drawFrame(film, in:)` draws the film the figure is read from, so the flat picture and the figure sit side by side.
+
+Three things to try:
+
+- Read yourself instead of the film. Declare `let webcam = Camera()`, call `try? webcam.start()` in `setup()`, and build the tracker on `webcam`. Draw `webcam` in the corner too, and [Chapter 34](34-Seeing.md#the-webcam-is-an-image)'s webcam takes the film's place.
+- Keep every position. Take out the line that keeps the newest 36, and let it run for a minute. The trails pile up into a record of the whole dance.
+- Turn the camera by hand. Set `azimuth: mouseX / width * .tau`, and the mouse walks you around the dancer.
+
+The sketch reads a playing film through a live tracker, so record the window rather than exporting it. `swift run OllinLive MySketches/SolidDancer.swift --record` records the window from the first frame until you quit. An export runs on its own clock, and a live tracker cannot promise to answer on the same frames each time. For an export that lands the same every time, step the film yourself. Seek to each frame with `seek(to:)`, take a `snapshot()`, and measure it with `BodyTracker3D.detect(in:)` through `waitFor`.
+
 ## The room from the phone: its mesh, its surfaces, and its light
 
-The ghost room built a room out of points you fused yourself. A LiDAR phone builds the room on the device as you walk, and streams it. The flat surfaces in it and the light it is lit by come along.
+The dancer read one of the phone's streams, and the rest follow here in groups, starting with the room around the person. The ghost room built a room out of points you fused yourself. A LiDAR phone builds the room on the device as you walk, and streams it. The flat surfaces in it and the light it is lit by come along.
 
 ### A surface the phone already built: the room mesh
 
@@ -137,30 +335,9 @@ ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
 
 Only Face mode knows where the light comes from, because ARKit works that out from the shading on a face. A world-facing camera has no face to read, so Room mode gives you brightness and color, and you aim your own key light.
 
-## People from the phone: a body, hands, and a gaze
+## More people from the phone: hands and a gaze
 
-The phone's poses and its room mesh share one world, in meters. The phone places people in that world too. [Chapter 34](34-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) read hands, faces, and bodies from a webcam, and its 3D body tracker estimated meters from a flat picture. A LiDAR phone measures them.
-
-### A pose you can dress in solids: the body
-
-`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. It is for a figure you dress in solids that follows a person around the room. ARKit's body tracking makes the stream on the phone. `modelTransform(_:)` composes a joint's position and orientation into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light.
-
-<img src="Images/36-ThePhoneAsASensor/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
-
-In `draw()`:
-
-```swift
-if let body = device.latestBody {
-    for (a, b) in body.bones() {
-        drawCapsule(from: a, to: b, radius: 0.03)
-    }
-    if let pose = body.modelTransform(.head) {
-        withState { transform(pose); drawSphere(radius: 0.11) }
-    }
-}
-```
-
-The camera never saw the blue forearm's joints. ARKit's rig, the standard skeleton it fits to a person, filled them in, and `isObserved(_:)` says so, part by part. Two more readings come with it. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the skeleton where the person is, in the same ARKit world as the swept cloud and the room mesh. Walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example runs it live, a mannequin that follows you around the room.
+The phone sends more of a person than the body. Hands and faces arrive in the same world as the body and the room mesh, in meters. [Chapter 34](34-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) read both from a webcam, and a LiDAR phone places them in the room.
 
 ### A hand you can reach in with: hands
 
@@ -414,18 +591,19 @@ if let air = device.latestAir {
 
 So it is a fader you play by standing up, and it costs no camera and no model. `pressure` is the weather's own number, about 101.3 kilopascals at sea level, and a door opening in a sealed room moves it.
 
-<!-- Figure waiting on its prose: Images/36-ThePhoneAsASensor/SolidDancer.jpg (Figures/36-ThePhoneAsASensor/SolidDancer.swift), the dancer in solids, for the chapter's finished sketch. Rendered on the Mac at frame 38. -->
-
 ## Where this comes from
 
-The entries name their own sources as they go. Recorded clips and the live stream come from Record3D, Marek Šimoník's iPhone app. Most of the capture app's streams come from Apple's ARKit. The hands, text, attention, and flow come from Apple's Vision framework, and the sounds from Apple's sound classifier. The touches and the air come from the phone's own screen and barometer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The entries name their own sources as they go. Recorded clips and the live stream come from Record3D, Marek Šimoník's iPhone app. Most of the capture app's streams come from Apple's ARKit. The hands, text, attention, and flow come from Apple's Vision framework, and the sounds from Apple's sound classifier. Vision also reads the dancer's body out of the film, which Antoni Shkraba shot and shared on Pexels. The touches and the air come from the phone's own screen and barometer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
 - [The iPhone capture app](../Docs/3D/Phone.md): setup, body, faces and gaze, hands, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, text, attention, flow, markers, the wand, what the phone hears, touches, the air, and world fusion.
+- [BodyTracker3D](../Docs/Vision/Vision.md#bodytracker3d): a body in meters from a webcam or a film, the phone's body when no phone is there.
+- [Sample photos and the film](../Docs/Drawing/SamplePhotos.md): the dance clip the finished sketch reads, with its credit.
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type both sources hand over, the same one [Chapter 35](35-Depth.md) read from a pretend camera.
 - Worked examples: [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`PhoneBodyFigure`](../Examples/3D/Phone/PhoneBodyFigure/Sketch.swift), [`PhoneHands`](../Examples/3D/Phone/PhoneHands/Sketch.swift), [`PhoneGaze`](../Examples/3D/Phone/PhoneGaze/Sketch.swift), [`PhoneWorldText`](../Examples/3D/Phone/PhoneWorldText/Sketch.swift), [`PhoneAttention`](../Examples/3D/Phone/PhoneAttention/Sketch.swift), [`PhoneMarkers`](../Examples/3D/Phone/PhoneMarkers/Sketch.swift), [`PhonePointer`](../Examples/3D/Phone/PhonePointer/Sketch.swift), and [`PhoneTouches`](../Examples/3D/Phone/PhoneTouches/Sketch.swift).
+- [`Examples/Vision/BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift) draws a webcam's body from the side, with the tracker the finished sketch reads the film through.
 
 ---
 

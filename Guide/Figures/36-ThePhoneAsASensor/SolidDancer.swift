@@ -11,7 +11,8 @@
 // request, so the figure renders the same everywhere. Live, the film plays
 // and the sketch reads `tracker.body`, a BodyTracker3D on it. At frame 38 the
 // dancer is in a wide lunge with one arm swept overhead, and the orange trail
-// shows the path that arm took to get there.
+// shows the path that arm took to get there. Apart from `stage` and the
+// corner's picture, the file is the chapter's listing.
 import Ollin
 import OllinPhone
 import OllinSamplePhotos
@@ -27,12 +28,12 @@ final class SolidDancer: Sketch {
     let footColor = Color(hex: 0x6C8CD5)
     let floorColor = Color(hex: 0x23262E)
 
-    /// Where each hand and foot has been, oldest first: left hand, right hand,
-    /// left foot, right foot.
+    // Where each hand and foot has been, oldest first:
+    // left hand, right hand, left foot, right foot.
     var trails: [[Vector3]] = [[], [], [], []]
 
     override func setup() {
-        device.start()                   // the phone, if one is streaming
+        device.start()                     // the phone, if one is streaming
     }
 
     override func draw() {
@@ -59,13 +60,13 @@ final class SolidDancer: Sketch {
         }
         guard let person else { return }
 
-        // Stand the figure on the floor: lift it until its lowest point sits
-        // one capsule radius above y = 0.
+        // Stand the figure on the floor: lift it until its lowest point
+        // sits one capsule radius above y = 0.
         let radius = 0.035
-        let lowest = person.bones.map { min($0.0.y, $0.1.y) }.min() ?? 0
+        var lowest = 0.0
+        for (a, b) in person.bones { lowest = min(lowest, a.y, b.y) }
         let up = Vector3(0, radius - lowest, 0)
 
-        material(.clay)
         fill(bodyColor)
         for (a, b) in person.bones {
             drawCapsule(from: a + up, to: b + up, radius: radius)
@@ -75,39 +76,36 @@ final class SolidDancer: Sketch {
             drawSphere(radius: 0.11)
         }
 
-        // Each hand and foot leaves a trail that thins and darkens with age.
+        // Each hand and foot leaves a trail that thins and fades with age.
         for (i, end) in person.ends.enumerated() {
             let p = end + up
-            if trails[i].last.map({ $0.distance(to: p) > 0.002 }) ?? true {
-                trails[i].append(p)
-            }
-            if trails[i].count > 36 { trails[i].removeFirst() }
+            if let last = trails[i].last, last.distance(to: p) < 0.002 { continue }   // it barely moved
+            trails[i].append(p)
+            if trails[i].count > 36 { trails[i].removeFirst() }                       // keep the newest 36
         }
         for (i, trail) in trails.enumerated() {
             let color = i < 2 ? handColor : footColor
             for k in 1 ..< trail.count {
-                let t = Double(k) / Double(trail.count)        // near 0 oldest, 1 newest
-                fill(color.mixed(with: floorColor, 1 - t))
+                let t = Double(k) / Double(trail.count)      // near 0 oldest, 1 newest
+                fill(Color.mix(floorColor, color, t))
                 drawCapsule(from: trail[k - 1], to: trail[k], radius: 0.006 + 0.018 * t)
             }
         }
 
-        // The flat film the dancer was lifted out of, in the corner.
-        // Live, `drawFrame(film, in: corner)`.
+        // The flat film the dancer is read from, in the corner.
+        // Live, `drawFrame(film, in:)` draws the playing film here.
         if fromFilm, let picture = stage.lastFrame {
-            let corner = Rectangle(x: 28, y: 28, width: 200, height: 200)
-            drawImage(picture, in: corner)
+            drawImage(picture, in: Rectangle(x: 28, y: 28, width: 200, height: 200))
         }
     }
 }
 
-/// One body from either source, in the phone's terms: meters, the root at the
-/// origin, y up, and z toward the camera.
+// One body from either source, in the phone's terms: meters, the root at
+// the origin, y up, and z toward the camera.
 struct Person {
-    var bones: [(Vector3, Vector3)]
     var head: Vector3
-    /// Left hand, right hand, left foot, right foot.
-    var ends: [Vector3]
+    var ends: [Vector3]                 // left hand, right hand, left foot, right foot
+    var bones: [(Vector3, Vector3)] = []
 
     init?(_ body: PhoneBody) {
         guard let head = body.position(.head),
@@ -116,14 +114,14 @@ struct Person {
               let leftFoot = body.position(.leftFoot),
               let rightFoot = body.position(.rightFoot)
         else { return nil }
-        bones = body.bones()
         self.head = head
         ends = [leftHand, rightHand, leftFoot, rightFoot]
+        bones = body.bones()
     }
 
     init?(_ body: Body3D) {
-        // The film's body counts z away from the camera. Turning z around
-        // makes it face the camera the way the phone's body does.
+        // The film's body counts z away from the camera, and the phone's
+        // counts it toward the camera. Turning z around makes them agree.
         func facing(_ p: Vector3) -> Vector3 { Vector3(p.x, p.y, -p.z) }
         guard let head = body.position(.centerHead),
               let leftHand = body.position(.leftWrist),
@@ -131,9 +129,11 @@ struct Person {
               let leftFoot = body.position(.leftAnkle),
               let rightFoot = body.position(.rightAnkle)
         else { return nil }
-        bones = body.bones().map { (facing($0.0), facing($0.1)) }
         self.head = facing(head)
-        ends = [leftHand, rightHand, leftFoot, rightFoot].map(facing)
+        ends = [facing(leftHand), facing(rightHand), facing(leftFoot), facing(rightFoot)]
+        for (a, b) in body.bones() {
+            bones.append((facing(a), facing(b)))
+        }
     }
 }
 
