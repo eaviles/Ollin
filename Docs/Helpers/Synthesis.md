@@ -465,7 +465,7 @@ Ollin bundles one small instrument, so you can hear this working without downloa
 
 #### Why the instrument is set separately from the voice
 
-A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time. That is why a [`ModalBody`](#physical-models) caps at sixteen tones (`ModalBody.maxModes`) and a [`Patch`](#patch) at eight operators (`Patch.maxOperators`). Recordings are megabytes on the heap and cannot ride along. So the recordings live on the `Synth` and the `Voice` says only how to play them.
+A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time. That is why a [`ModalBody`](#physical-models) caps at sixteen tones (`ModalBody.maxModes`) and a [`Patch`](#patch) at eight operators (`Patch.maxOperators`). Recordings are megabytes on the heap and cannot travel with it. So the recordings live on the `Synth` and the `Voice` says only how to play them.
 
 | Member | What it does |
 |---|---|

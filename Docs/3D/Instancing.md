@@ -6,7 +6,7 @@
 
 Drawing one mesh is cheap. Drawing the *same* mesh a thousand times with a loop of `drawMesh` calls is not. Every call expands the mesh's triangles on the CPU again, every frame, once per copy. Instancing removes that loop. `drawMesh(_:instances:)` uploads the mesh once and gives the GPU a list of placements, and the GPU puts every copy in place. So a field of thousands of copies costs one draw call and one small array.
 
-<img src="../../Guide/Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+<img src="../../Guide/Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars rising and falling with a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
 
 ```swift
 override func draw() {

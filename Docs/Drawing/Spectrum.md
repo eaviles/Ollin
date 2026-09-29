@@ -21,7 +21,7 @@ A `Color` is three numbers chosen for the eye. A `Spectrum` is the physical curv
 ```swift
 someColor.spectrum                 // the reflectance curve behind a color
 spectrum.color                     // and back: the color it shows in daylight
-Color(spectrum, alpha: 0.5)        // the initializer form; alpha rides along
+Color(spectrum, alpha: 0.5)        // the initializer form; it takes an alpha too
 Spectrum(samples: values)          // raw: Spectrum.sampleCount samples, 380...780 nm
                                    // (Spectrum.wavelengths are the nanometers they sit on)
 spectrum.intensity(at: 550)        // interpolated between the 5 nm grid points

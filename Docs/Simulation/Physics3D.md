@@ -56,7 +56,7 @@ Distances are the 3D scene's world units, y-up, the same units the camera uses. 
 - [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
 - [Joints](#joints) - hinges, ball-and-sockets, rods, welds, sliders
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
-- [Tracks, ropes, and freedoms](#morejoints) - a path to ride, a pulley, and the general joint
+- [Tracks, ropes, and freedoms](#morejoints) - a path to follow, a pulley, and the general joint
 - [Gears and racks](#links) - one joint driving another
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
@@ -342,12 +342,12 @@ Three more kinds each do something no hinge or slider can.
 **`.path` is a track.** Give it a ring of points. The second body is threaded onto the smooth curve through them, free to travel along it and to do nothing else. That is the rollercoaster car, the bead on a wire, and the camera on a dolly rail:
 
 ```swift
-let ride = world.connect(rails, cart,
-                         .path(through: points, looping: true,
-                               alignment: .followsPath))
-ride.drive(at: 6)          // world units per second along the track
-ride.drive(to: 0.5)        // or seek half way round and hold there
-ride.progress              // 0 at the first point, 1 at the last
+let track = world.connect(rails, cart,
+                          .path(through: points, looping: true,
+                                alignment: .followsPath))
+track.drive(at: 6)         // world units per second along the track
+track.drive(to: 0.5)       // or seek half way round and hold there
+track.progress             // 0 at the first point, 1 at the last
 ```
 
 The curve is a spline *through* the points, not a polyline, so a handful of them describes a long track. The body joins the curve at the point nearest to wherever it already is, so put it on the track before you connect. `alignment` says how much of the body's turning the track takes over.
@@ -357,7 +357,7 @@ The curve is a spline *through* the points, not a polyline, so a handful of them
 - `.followsPath` banks it into every bend.
 - `.fixed` holds the first body's orientation the whole way round.
 
-The track belongs to that first body, so if you hang it off a moving body the whole ride travels with it. A flat `Contour` becomes a track on the ground in one call:
+The track belongs to that first body, so if you hang it off a moving body the track and the body on it travel with it. A flat `Contour` becomes a track on the ground in one call:
 
 ```swift
 world.connect(ground, cart, .path(loop, atHeight: 0.3))   // contour y runs along world z
@@ -376,7 +376,7 @@ Read the call as written: from the tray, over the left hook, across to the right
 **`.allowing` is the general joint, written as what it keeps.** Every other kind is one choice out of a body's six degrees of freedom. When none of them fits, name the freedoms you want:
 
 ```swift
-// A post a platter rides: it may rise and it may spin, and nothing else.
+// A platter on a post: it may rise and it may spin, and nothing else.
 world.connect(post, platter,
               .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
 ```
@@ -673,7 +673,7 @@ Whether a push actually shifts something depends on `pushStrength` against what 
 | `isOnGround` | Standing on ground it can walk on. Use it to gate a jump, or to swap a walk cycle for a falling pose. |
 | `groundState` | The full answer. `.onGround`, `.onSteepSlope` (held, but too steep to climb), `.notSupported` (touching something that can't hold it), `.inAir`. |
 | `groundNormal` | The surface under its feet, to lean a drawn figure into a slope. `isSlopeTooSteep(_:)` answers whether a normal is one it could walk on. |
-| `groundVelocity` | How fast the ground itself is moving, so a character on a moving platform rides along with it. |
+| `groundVelocity` | How fast the ground itself is moving, so a character on a moving platform moves along with it. |
 | `groundBody` | What it is standing on, or `nil` in the air. A moving platform carries the character along with it. |
 | `velocity` | What it is *trying* to do. That is its intent, including the fall and the jump. |
 | `actualVelocity` | What the world let it do, measured from the ground actually covered. |
@@ -815,7 +815,7 @@ Two more parameters sit on the vehicle itself. `maxTilt` caps how far the chassi
 
 - `.cylinder`, the default, sweeps the tire's real footprint and is the steadiest over terrain.
 - `.sphere` rounds off edges.
-- `.ray` is a single cheap ray that can drop a narrow wheel into a gap it should have ridden over.
+- `.ray` is a single cheap ray that can drop a narrow wheel into a gap it should have rolled over.
 
 #### Two wheels
 
@@ -873,7 +873,7 @@ Most of what a wheel offers means the same thing on a band. These do not:
 | `brakeTorque` | Adds up over a band, so the whole band's brake is the sum of its wheels'. There is no separate hand brake, so `handBrake` pulls the same one. |
 | `grip` | Scales a flat pair of friction coefficients rather than a tire's slip curves. This is why a track keeps pulling while it slides, and what lets one climb a bank that would leave a wheel spinning. |
 | `steers` / `maxSteerAngle` / `casterAngle` | Inert. A road wheel never turns, and `steerAngle` always reads zero. |
-| `slip` / `slipAngle` | Always zero. A road wheel only ever turns as fast as the band it rides, so it has no slip of its own to report. |
+| `slip` / `slipAngle` | Always zero. A road wheel only ever turns as fast as the band it rolls on, so it has no slip of its own to report. |
 
 Everything else works exactly as it does on a wheel, the suspension especially. A tracked machine takes `maxTilt`, `wheelContact`, `engineTorque`, and `topSpeed` unchanged. It cannot also `balance`, because a machine on tracks does not lean.
 
@@ -942,7 +942,7 @@ try world.addRagdoll(from: figure, swing: .degrees(50), twist: -0.3...0.3)
 ragdoll.limit("forearmL", swing: .degrees(10))     // an elbow, not a shoulder
 ```
 
-A dense rig, such as a hand with twenty finger bones, does not need twenty bodies. Name the joints that should get one. The rest ride rigidly on the nearest limb above them, keeping their pose and their share of the flesh:
+A dense rig, such as a hand with twenty finger bones, does not need twenty bodies. Name the joints that should get one. The rest move rigidly with the nearest limb above them, keeping their pose and their share of the flesh:
 
 ```swift
 try world.addRagdoll(from: figure,
@@ -1033,10 +1033,10 @@ if let grip { dragSoftGrip(grip, to: Vector2(mouseX, mouseY)) }
 **A soft body is part of the world**, not a thing draped over it, so the rest of this page applies to one:
 
 - **It turns up in `world.contacts`.** A cloth landing on a crate reports a `began` with a point and an approach speed. It reports an `ended` when it comes off, exactly like anything else. `cloth.touching`, `.contacts`, `.arrivals`, and `.departures` read the same lists a body's do, and a sensor sees a cloth sail into it. Two details are its own. A soft body has no single velocity at the moment its first particle lands, so `speed` is the speed the whole surface arrived at. A settled *pile of crates* drops its touches when it falls asleep, while a settled cloth **keeps** its list. The solver stops asking a sleeping soft body what it is against, which is not the same as the cloth having let go.
-- **It floats.** [Water](#water) pushes each of its particles up on its own, and each particle rides the surface directly above it. A raft therefore follows the shape of a swell rather than one flat plane through its middle. How high it rides is decided by `density`, measured against the water's density the same way a collider's is. A *closed* surface works its own density out from the mass and the volume it holds, so a beach ball just floats. A sheet holds no volume to work one out from, so it starts as heavy as water and lies awash. One line makes it a raft:
+- **It floats.** [Water](#water) pushes each of its particles up on its own, and each particle floats on the surface directly above it. A raft therefore follows the shape of a swell rather than one flat plane through its middle. How high it floats is decided by `density`, measured against the water's density the same way a collider's is. A *closed* surface works its own density out from the mass and the volume it holds, so a beach ball just floats. A sheet holds no volume to work one out from, so it starts as heavy as water and lies awash. One line makes it a raft:
 
   ```swift
-  raft.density = 0.3        // rides high; above 1 it sinks
+  raft.density = 0.3        // floats high; above 1 it sinks
   ```
 
   A sheet's area for its weight is enormous, which is exactly what drag measures. So a cloth heavier than water sinks slowly, and a floating one is carried along by a current rather than left behind by it.
@@ -1046,7 +1046,7 @@ if let grip { dragSoftGrip(grip, to: Vector2(mouseX, mouseY)) }
 
 **A soft body is a surface rather than a filled solid**, and `pressure` is what makes it read as full. There is no separate jelly model holding the space inside it, and that is a measured choice rather than a missing feature. A pressurised body already holds a weight without squashing, comes back from a dent perfectly, and costs nothing extra. Filling one with tetrahedra costs half again as many particles, and it comes back from a hard squash permanently out of shape. The reasoning and the numbers are in [`ARCHITECTURE.md`](../../ARCHITECTURE.md).
 
-The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Drape has a banner pegged to a washing line that flaps in a gusting wind. It also has a sheet thrown over a crate, and a beach ball you can let the air out of. Raft has a cloth raft riding a swell with cargo on it. There is also a sounding line that stops at its deck, and a harbor gate that reports it sailing through.
+The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Drape has a banner pegged to a washing line that flaps in a gusting wind. It also has a sheet thrown over a crate, and a beach ball you can let the air out of. Raft has a cloth raft floating on a swell with cargo on it. There is also a sounding line that stops at its deck, and a harbor gate that reports it sailing through.
 
 <a name="ropes"></a>
 
@@ -1089,7 +1089,7 @@ let chain = try world.addRope(through: links, at: Vector3(0, 3, 0),
 
 <a name="segments"></a>
 
-#### Riding a rope
+#### Things attached to a rope
 
 `rope.segments` is the rope read as rods rather than points. Each `RopeSegment3D` carries its `start` and `end`, its `center`, `direction`, and `length`. It also carries a `rotation`, held by the rod itself, which turns as the rope bends *and twists*. A chain of springs could not give you that.
 
@@ -1118,7 +1118,7 @@ for segment in chain.segments {
 }
 ```
 
-The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope wound up looks the same as one that is not. The twist lives in `segments`, which is where anything riding the rope should read it.
+The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope wound up looks the same as one that is not. The twist lives in `segments`, which is where anything attached to the rope should read it.
 
 **What a rope shares with the rest of the tier.** A rope collides with the rigid bodies around it. It turns up in `world.contacts` and in `touching`, and it floats according to its `density`. It takes `applyForce(_:)` for wind, belongs to a collision group, sleeps when it settles, and is saved and restored by [`snapshot()`](#snapshots). Unlike a surface, it needs no `assetName` to be saved. A rope's whole rest shape is a handful of points, so it carries itself.
 
@@ -1178,7 +1178,7 @@ A soft body keeps the `sourceMesh` it was built from, unchanged in its own local
 
 **Call `follow(_:)` before `advance(by:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that easing, and a call after the step leaves the cloth a frame behind. `snap(to:)` is the other call. It puts every carried particle exactly where the skeleton says, and stops it dead. That is what you need for a figure that was *stood* somewhere rather than *moved* there. The cloth then arrives with the figure instead of being dragged across the room.
 
-A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and rides in a snapshot. A snapshot writes down what the closures decided, because it cannot carry the closures themselves. Its own gap is the one every soft body has. A cape **does not collide with itself**, so it passes through its own folds and through any other cloth on the same figure.
+A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and is saved in a snapshot. A snapshot writes down what the closures decided, because it cannot carry the closures themselves. Its own gap is the one every soft body has. A cape **does not collide with itself**, so it passes through its own folds and through any other cloth on the same figure.
 
 The worked example is [`3D/Physics/Cape`](../../Examples/3D/Physics/Cape/), a figure striding with a cape clasped at the neck, which collapses with it when the figure goes limp.
 
@@ -1196,12 +1196,12 @@ Everything already in the world starts floating. What floats and what does not c
 
 ```swift
 world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
-              density: 0.3)   // a cork: rides with a third of it under
+              density: 0.3)   // a cork: floats with a third of it under
 world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // a stone: goes to the bottom
 ```
 
-The waterline is not something you tune. A body of density `d` settles with fraction `d` of itself submerged. That is the volume it has to displace to hold its own weight up. A barrel at `0.5` floats half under, and one at `0.8` rides low with a fifth of it dry. `Water.density` is the same relative scale bodies use, where `1` is water. Raising it to `1.3` for brine floats every one of them higher, without changing anything on the bodies.
+The waterline is not something you tune. A body of density `d` settles with fraction `d` of itself submerged. That is the volume it has to displace to hold its own weight up. A barrel at `0.5` floats half under, and one at `0.8` floats low with a fifth of it dry. `Water.density` is the same relative scale bodies use, where `1` is water. Raising it to `1.3` for brine floats every one of them higher, without changing anything on the bodies.
 
 <img src="../../Guide/Images/28-WorldsWithWeight/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
 
@@ -1218,14 +1218,14 @@ The waterline is not something you tune. A body of density `d` settles with frac
 
 Drag is worth a moment, because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in bounces about its waterline and never stops. The default `0.5` reads like water, so the crate dips, comes back up, and settles within a second or two.
 
-**A swell.** `Water.Waves` gives the surface a shape, and it carries whatever is riding it:
+**A swell.** `Water.Waves` gives the surface a shape, and it carries whatever is floating on it:
 
 ```swift
 world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
                                                  wavelength: 8, speed: 1.5))
 ```
 
-You can draw the same surface, which is what `waterMesh` is for. It hands back the surface the bodies are floating on, so the swell you see and the swell they ride cannot drift apart.
+You can draw the same surface, which is what `waterMesh` is for. It hands back the surface the bodies are floating on, so the swell you see and the swell they float on cannot drift apart.
 
 ```swift
 if let surface = world.waterMesh(extent: 40) {
@@ -1237,15 +1237,15 @@ if let surface = world.waterMesh(extent: 40) {
 
 `waterHeight(at:)` asks the same question for a single point, which is what you use to sit something exactly on the waterline. Both read the surface as it stands this frame. `world.waterPhase` is the clock behind it, for a shader that needs to move in step.
 
-**Riding higher than it should.** `Body3D.buoyancyScale` multiplies what the water would otherwise do to one body. `1` is what its density says, `2` floats it as though it were half as heavy, and `0` sinks it whatever it is made of. Use `density` first, and keep this for the one crate that has to bob higher than the rest.
+**Floating higher than it should.** `Body3D.buoyancyScale` multiplies what the water would otherwise do to one body. `1` is what its density says, `2` floats it as though it were half as heavy, and `0` sinks it whatever it is made of. Use `density` first, and keep this for the one crate that has to bob higher than the rest.
 
-**Cloth floats too.** A [soft body](#softbodies) is floated particle by particle. It has neither the single mass nor the single shape the rigid path works from. Each particle rides the surface directly above it, rather than a flat plane through the body's middle. A raft therefore follows the swell instead of being curled by it. Its own `density` decides how high it rides. A closed surface derives a density from mass and volume, so a beach ball just floats. A sheet holds no volume to derive one from and starts at `1`, so `raft.density = 0.3` is what turns a sail into a raft. Drag bites much harder on cloth than on a crate, because a sheet's area for its weight is enormous. A heavy sheet sinks slowly, and a floating one is carried by a current rather than left behind by it.
+**Cloth floats too.** A [soft body](#softbodies) is floated particle by particle. It has neither the single mass nor the single shape the rigid path works from. Each particle floats on the surface directly above it, rather than a flat plane through the body's middle. A raft therefore follows the swell instead of being curled by it. Its own `density` decides how high it floats. A closed surface derives a density from mass and volume, so a beach ball just floats. A sheet holds no volume to derive one from and starts at `1`, so `raft.density = 0.3` is what turns a sail into a raft. Drag bites much harder on cloth than on a crate, because a sheet's area for its weight is enormous. A heavy sheet sinks slowly, and a floating one is carried by a current rather than left behind by it.
 
 **What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated. A detector volume and a walking figure go where the sketch puts them, rather than where the water would put them. The water itself is an ocean rather than a pool. Everything below `level` is water, out to the horizon. So a container of water needs its own walls built from static bodies, which is all a harbor is.
 
 One thing about sleeping is worth knowing. A floating body settles at its waterline and then goes to sleep, which is what you want. It stops costing anything and holds its level exactly. If you move the water afterwards, by changing the level or any other setting, everything afloat is woken so it can follow. A swell wakes only what it actually washes over. A stone that has sunk to the bottom therefore stays asleep under a rolling sea.
 
-The worked examples are [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Flotsam has crates from cork to nearly waterlogged, each riding a swell at its own depth. There is a stone anchor on the bottom, and a current carrying the lot past. Raft is the same idea with a cloth as the thing afloat. You can drag either one about.
+The worked examples are [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Flotsam has crates from cork to nearly waterlogged, each floating on a swell at its own depth. There is a stone anchor on the bottom, and a current carrying the lot past. Raft is the same idea with a cloth as the thing afloat. You can drag either one about.
 
 <a name="snapshots"></a>
 
@@ -1417,7 +1417,7 @@ The whole lifecycle is also one call, polled in `draw()`:
 dragBodies(in: world)
 ```
 
-`dragBodies(in:)` handles the press, the drag, and the release. While the button is down, the body under the cursor rides a grab joint in its own view-parallel plane, and releasing lets go. A press that lands on nothing grabs nothing for that press. The joint state lives on the world, so several worlds drag independently. Use the split calls above when a sketch needs its own rules in between.
+`dragBodies(in:)` handles the press, the drag, and the release. While the button is down, the body under the cursor is held on a grab joint and dragged in its own view-parallel plane, and releasing lets go. A press that lands on nothing grabs nothing for that press. The joint state lives on the world, so several worlds drag independently. Use the split calls above when a sketch needs its own rules in between.
 
 The camera drag and the body drag both want the mouse, so sketches that grab usually set a hand-placed `perspective(...)` rather than `cameraControl()`.
 

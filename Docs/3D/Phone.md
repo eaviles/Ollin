@@ -791,7 +791,7 @@ if let motion = device.latestFlow {
 
 The map is coarse on purpose, a hundred-odd cells across, because the wire's cost is the grid's size and a sketch samples it every few canvas points anyway. A query reads between the four nearest cells, so a particle drifting across a cell edge never snaps. The phone measures camera-native and the Mac stands the map upright for how the phone was held, turning the grid and every vector in it by the same quarter turns, so the field and `latestFlowFrame` line up in one rectangle.
 
-Motion is only *measurable* where the picture has texture, the same caveat the Mac's field carries. A blank wall does not read as zero motion. It reads as noise, because there is nothing to match from frame to frame. The phone completes a few readings a second, and the last one holds between them. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneFlow`: the field as streaks colored by speed over the live frame, and dust that rides it.
+Motion is only *measurable* where the picture has texture, the same caveat the Mac's field carries. A blank wall does not read as zero motion. It reads as noise, because there is nothing to match from frame to frame. The phone completes a few readings a second, and the last one holds between them. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneFlow`: the field as streaks colored by speed over the live frame, and dust that it carries.
 
 ## What the phone hears
 

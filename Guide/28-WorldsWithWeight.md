@@ -461,8 +461,8 @@ Hand `.path` the points, and the returned joint drives along it like any other:
 
 ```swift
 let track = world.connect(rails, cart,
-                         .path(through: points, looping: true,
-                               alignment: .followsPath))
+                          .path(through: points, looping: true,
+                                alignment: .followsPath))
 track.drive(at: 3.9, strength: 400)   // world units per second along the track
 track.progress              // 0 at the first point, 1 at the last
 ```

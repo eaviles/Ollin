@@ -8,7 +8,7 @@ OllinLiveCoding is a host for live performance. One window holds the running ske
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/39-Performing/StageDiagram-dark.jpg">
-  <img src="../../Guide/Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual sized to fit its black stage, code lines riding over it on translucent strips, an Evaluated toast, an error strip along the bottom, and callouts naming each part" width="680">
+  <img src="../../Guide/Images/39-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual sized to fit its black stage, code lines over it on translucent strips, an Evaluated toast, an error strip along the bottom, and callouts naming each part" width="680">
 </picture>
 
 ```sh
@@ -164,7 +164,7 @@ A button in a layout sends its release as well as its press, and only the press 
 
 A MIDI **program change** calls the cue of that number, on any channel, with nothing to learn; **Next cue** and **Previous cue** are press actions on the Controls card, learned like the others.
 
-**MIDI** has no natural default for a pad, so a control is learned. In the Controls card, press the Learn button on the action, then press the pad or the button, or move the fader. The next control to arrive is the binding. It shows on the row and holds across launches. A pad or key fires an action once per press, on its own channel. A button on a controller sends 127 pressed and 0 released, so it fires once on the way up. A knob or fader rides the backdrop or the code size, and refuses the press actions. The same Learn button binds an OSC address, for a layout that already has its own names. The minus button forgets a control, and a control learned for one action leaves any other it was on.
+**MIDI** has no natural default for a pad, so a control is learned. In the Controls card, press the Learn button on the action, then press the pad or the button, or move the fader. The next control to arrive is the binding. It shows on the row and holds across launches. A pad or key fires an action once per press, on its own channel. A button on a controller sends 127 pressed and 0 released, so it fires once on the way up. A knob or fader controls the backdrop or the code size, and refuses the press actions. The same Learn button binds an OSC address, for a layout that already has its own names. The minus button forgets a control, and a control learned for one action leaves any other it was on.
 
 The card's last line says what the host hears: the OSC port it is listening on, and how many MIDI sources the Mac sees. The sketch side of the same two wires is in [MIDI](../Integration/MIDI.md) and [OSC](../Integration/OSC.md).
 

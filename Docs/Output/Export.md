@@ -129,7 +129,7 @@ Ollin: exported frame 0 → /tmp/frame.exr (1080×1080, ABGRZ linear, 14.0 MB, p
 
 **Two notes.** Under `--render-scale`, the color is averaged down to canvas size as usual. Each canvas pixel's depth is then the nearest of the samples that covered it, which is the front-most surface. `--made-frames` cannot be combined with `--exr`: a made frame is built from two finished frames, and the linear frame is what comes before that.
 
-The recipe that reproduces the frame rides in the file's standard `comments` attribute, the same text the PNG carries in its own chunks. See [Reproducibility metadata](#reproducibility-metadata).
+The recipe that reproduces the frame is stored in the file's standard `comments` attribute, the same text the PNG carries in its own chunks. See [Reproducibility metadata](#reproducibility-metadata).
 
 ### Render quality
 

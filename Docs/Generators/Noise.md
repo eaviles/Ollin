@@ -102,7 +102,7 @@ Fractal (layered) noise in `0...1`. It sums `octaves` samples of the field, and 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/05-Noise/NoiseLayers-dark.jpg">
-  <img src="../../Guide/Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture riding it" width="680">
+  <img src="../../Guide/Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture on top" width="680">
 </picture>
 
 ```swift
@@ -149,7 +149,7 @@ curlNoise(_ x: Double, _ y: Double, _ z: Double) -> Vector3
 curlNoise(_ p: Vector3) -> Vector3
 ```
 
-A divergence-free flow vector, the curl of the Perlin field. The flow only ever swirls. It never gathers into a sink or drains from a source, so points carried by it stay evenly spread however long they ride, which is what makes it the usual basis for flow fields. Take `.normalized` for the direction alone, and sample on scaled-down coordinates such as `x * 0.003` for broad swirls. See the `FlowField` example.
+A divergence-free flow vector, the curl of the Perlin field. The flow only ever swirls. It never gathers into a sink or drains from a source, so points carried by it stay evenly spread however long they travel, which is what makes it the usual basis for flow fields. Take `.normalized` for the direction alone, and sample on scaled-down coordinates such as `x * 0.003` for broad swirls. See the `FlowField` example.
 
 ```swift
 var p = center

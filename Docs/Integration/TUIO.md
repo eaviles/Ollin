@@ -6,7 +6,7 @@
 
 TUIO is the protocol tangible surfaces speak. A table with a camera under it reads printed markers. A touch wall reports fingers. A phone app sends the contacts on its screen. All of them send TUIO, and a sketch reads it as touches, tagged pieces, and shapes. Trackers that speak it include reacTIVision, Community Core Vision, the TUIO Simulator, and the TUIO apps for phones and tablets.
 
-TUIO rides on [OSC](./OSC.md), so it lives in the same library. Add `import OllinOSC` beside `import Ollin` to reach it, and nothing else changes.
+TUIO is sent over [OSC](./OSC.md), so it lives in the same library. Add `import OllinOSC` beside `import Ollin` to reach it, and nothing else changes.
 
 A surface sends three kinds of message per frame, all at one address, in this order:
 

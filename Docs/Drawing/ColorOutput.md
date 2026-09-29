@@ -78,7 +78,7 @@ Two things follow from this, and both are worth knowing before you use `.extende
 | Export | `.standard` | `.wide` | `.extended` |
 | --- | --- | --- | --- |
 | `--export` (PNG) | 8-bit sRGB | 16-bit Display P3 | 16-bit Display P3, highlights clipped to white |
-| `--export` (HEIC) | 8-bit sRGB | 8-bit Display P3 | Display P3 **plus an ISO gain map**: the highlights ride along |
+| `--export` (HEIC) | 8-bit sRGB | 8-bit Display P3 | Display P3 **plus an ISO gain map**: the highlights are kept |
 | `--export-video` | Rec. 709 | P3-D65 | **HDR10**: Rec. 2020 primaries, PQ transfer, 10-bit HEVC |
 | `--export-gif` | sRGB | converted to sRGB | converted to sRGB |
 | `--export-svg` / `--export-pdf` | unaffected (vector output carries its own color) |

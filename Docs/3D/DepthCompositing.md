@@ -81,7 +81,7 @@ The rays of a perspective camera all start at its eye. The rays of an orthograph
 `withBillboard(at: worldPoint) { … }` anchors 2D drawing to a world point. It moves the origin to the point's projected canvas position and sets the depth to the point's depth. So 2D drawing inside the closure, in **local** coordinates around that origin, lands at the point and composites with correct occlusion. The closure is skipped when the point is behind the camera.
 
 ```swift
-// A numbered tag riding a 3D point, hidden when the point swings behind the scene.
+// A numbered tag attached to a 3D point, hidden when the point swings behind the scene.
 withBillboard(at: orbCenter) {
     fill(.white); drawCircle(0, 0, 14)          // local coords: (0,0) is the anchor
     fill(.black); textAlign(.center, .middle)
