@@ -7,8 +7,10 @@
 // for a close look. Each stone is a plain box rounded by three levels of
 // subdivision, which leaves it with no uvs, so its granite is projected on from
 // three sides. Three maple leaves are one decal drifting on the breeze; at the
-// frame kept, the first lies across the rim of the largest stone and the sand
-// beside it. The noise seed is pinned, so every picture comes out the same.
+// frame kept, the first lies on top of the largest stone. (Across its rim, the
+// decal lands twice: once on the stone and once on the sand the rounded side
+// leaves in view below it.) The noise seed is pinned, so every picture comes
+// out the same.
 import Ollin
 
 final class RakedGarden: Sketch {
@@ -100,7 +102,7 @@ final class RakedGarden: Sketch {
         // Three leaves drift across on the breeze, over sand and stone alike.
         if let leaf {
             for (i, lane) in [0.35, 2.4, -2.2].enumerated() {
-                let along = (time * 0.03 + 0.42 + Double(i) * 0.17).truncatingRemainder(dividingBy: 1)
+                let along = (time * 0.03 + 0.37 + Double(i) * 0.17).truncatingRemainder(dividingBy: 1)
                 drawDecal(leaf, at: Vector3(-6 + 12 * along, 0.5, lane), width: 0.42, depth: 3,
                           roll: time * 0.2 + Double(i) * 2)
             }
