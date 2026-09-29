@@ -278,6 +278,8 @@ The frame is **drawn once and rendered twice**. Drawing again would roll the ske
 
 The file records how far apart the eyes that shot it were, so a player can scale the depth it shows. `--meters-per-unit` says what a world unit is, as for a model. [Spatial](../Docs/Output/Spatial.md#spatial-video) has the rest, and `Examples/3D/Geometry/SpatialVideo` is a colonnade that recedes far from the camera, with both numbers on parameters.
 
+<!-- Figure waiting on its prose: Images/42-MakingItPhysical/PrintedKnot.jpg (Figures/42-MakingItPhysical/PrintedKnot.swift), the printed knot, for the chapter's finished sketch. Rendered on the Mac at frame 0. -->
+
 ## Where this comes from
 
 G-code grew out of the numerical control of machine tools in the 1950s and was standardized as RS-274. DXF is Autodesk's, from AutoCAD in 1982, and the stitch files follow Tajima's `.dst` format. A solid written down as the lines a draftsman would draw was first worked out by Lawrence G. Roberts at MIT in 1963. Arthur Appel gave it its classic form in 1967. The separations follow the prepress model, where each ink acts as a colored filter over the paper. The soft proof reads profiles in the format of the International Color Consortium. USDZ is the package Pixar and Apple defined in 2018 around Pixar's USD. The two parallel cameras of spatial video follow the rig Lenny Lipton set out in *Foundations of the Stereoscopic Cinema* in 1982. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
