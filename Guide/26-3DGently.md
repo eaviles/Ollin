@@ -6,7 +6,7 @@
 
 <img src="Images/26-3DGently/Plaza.jpg" alt="A small sculpture court at golden hour: a glossy teal knot, a deep red vase, a sparkling car-paint sphere, an orange faceted gem, and one wireframe sphere, each on a pale plinth, casting long soft shadows" width="560">
 
-With a third axis, a sketch holds solids you can walk around, lit and shadowed like things on a table. This chapter keeps the same `draw()` and adds a camera, solids and the triangles they are made of, light, shadows, and finishes. The steps end in the sculpture court above, which you can grab and turn with the mouse. Area lights, and the contact shadow under a resting thing, come after it.
+With a third axis, a sketch holds solids you can walk around, lit and shadowed like things on a table. This chapter keeps the same `draw()` and adds a camera, solids and the triangles they are made of, light, shadows, and finishes. The steps end in the sculpture court above, which you can grab and turn with the mouse. After it come area lights and contact shadows, visible air, the cartoon and matcap looks, more from depth, and type as a solid.
 
 ## A camera and a sphere
 
@@ -100,36 +100,6 @@ Three things happened at once. `translate` grew a third argument, so it moves th
 
 `drawPlane` is the floor, a flat sheet on the ground, and it's the stage most scenes stand on. Its sibling `drawGround()` is the same stage as a thin slab with its top at `y = 0`. It takes an optional color and material scoped to it. Reach for it once shadows and reflections should read a thickness. Smaller angles of `fieldOfView` are telephoto, which reads calm and flat and suits product shots. Bigger angles are wide-angle, dramatic and stretched at the edges. The default is 60 degrees, a fairly wide lens, so this sketch narrows it to 45 with `.pi / 4`.
 
-### Flat drawing that knows where it is: depth compositing
-
-The spheres hid each other because the depth test compared their distances. Flat 2D drawing can take part in that test too. By default it lays over a 3D frame completely. That's right for a caption and wrong for a label, a tag, a halo, or a sprite that belongs in the scene. Given `anchor`, a point in the world at the middle of a pillar, three calls change it:
-
-```swift
-withState {
-    depth(at: anchor)                        // this mark now sits at a world point's depth
-    noFill()
-    stroke(Color(hex: 0xF5F0E6))
-    strokeWeight(7)
-    if let screen = project(anchor) {        // and here is where that point lands on the canvas
-        drawCircle(center: screen, radius: 96)
-    }
-}
-```
-
-<img src="Images/26-3DGently/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
-
-Those rings are `drawCircle`, flat 2D circles that were handed a depth. They are drawn with everything else, and hidden wherever a pillar stands nearer than they do.
-
-The three calls divide the job, and each does one part of it:
-
-- **`depth(at: worldPoint)`** sets the *depth* of subsequent 2D drawing, and nothing else. The mark still lands wherever its canvas coordinates say. `noDepth()` puts it back on top.
-- **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, so handle that case with `if let` rather than force the value.
-- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there. Inside the block you draw around `(0, 0)`, and it lands on the point at the right depth. The numbered tags above are billboards. The same call labels the solids in the catalog figure below.
-
-The rings keep their size. All three have the same 96-point radius, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually what you want from a label, readable at any distance and correctly occluded. It also means a sprite drawn this way stays the same size at any distance.
-
-Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera. Without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 35](35-Depth.md#drawing-inside-the-picture-a-depth-frame-as-a-stage) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
-
 ## A catalog of solids
 
 The sphere is one solid among many. Each of these is one call, shaded and depth-tested like everything else:
@@ -175,7 +145,7 @@ for (p, n) in zip(ball.positions, ball.normals) {
 }
 ```
 
-`drawTube` sweeps a tube along a path of 3D points, and two points make a straight one. Every catalog shape comes with its normals, and later steps lean on them. The outline pushes a copy of the mesh out along them, and a matcap reads its color from where they point. [Chapter 27](27-Meshes.md#relief-from-a-picture-normal-maps) bends them with a picture without moving a single triangle.
+`drawTube` sweeps a tube along a path of 3D points, and two points make a straight one. Every catalog shape comes with its normals, and later sections lean on them. The outline pushes a copy of the mesh out along them, and a matcap reads its color from where they point. [Chapter 27](27-Meshes.md#relief-from-a-picture-normal-maps) bends them with a picture without moving a single triangle.
 
 ## Placing things: transforms compose
 
@@ -213,38 +183,6 @@ Read the loop closely, because it uses both halves of the tool. The climb and th
 This sketch also shows the plain `camera(.orbiting(...))` call, a fixed pose you specify completely, with no mouse involved. Reach for it when you want to compose a shot, and for `cameraShowcase` when you want the scene alive and explorable.
 
 Nesting `withState` blocks builds solar systems. Translate to a planet and draw it, then translate again and draw its moon, and the moon inherits the planet's motion. The `3D/Geometry/Transforms` example is that, three transforms deep.
-
-### A mesh from a word: type as a solid
-
-The catalog's `drawExtrude` pushes a flat shape into depth, and a letter is a shape. So a word can be a solid that catches the light and throws a shadow, like anything else on the floor.
-
-```swift
-drawText3D("Ollin", size: 2, depth: 0.4)
-```
-
-One number needs care. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, so a capital stands about seven tenths of it. Everything else is what you would expect. The current fill colors it, and a material from later in this chapter finishes it. It sits centered on the origin, so you place it like a box.
-
-For anything that draws every frame, reach past the convenience call to the two builders under it. `Mesh.text` gives you the whole word as one mesh, built once and kept. `Mesh.textGlyphs` gives you the same word a letter at a time, each letter still in its place. Every letter knows its own center, which is what lets one turn about itself instead of about the word. Translate to the pivot, turn, and translate back, and each letter turns in place:
-
-```swift
-let letters = Mesh.textGlyphs("Ollin", size: 1.5, depth: 0.3)   // a stored property, built once
-
-for (i, glyph) in letters.enumerated() {                        // in draw()
-    let pivot = glyph.center
-    withState {
-        translate(pivot)
-        rotateX(sin(time * 1.4 + Double(i) * 0.7))
-        translate(-pivot)
-        drawMesh(glyph)
-    }
-}
-```
-
-<img src="Images/26-3DGently/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O, at the right the same word in pale blue with each letter tipped back at its own angle" width="680">
-
-The call exists because extruding the letter shapes yourself goes wrong in two ways. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
-
-A letter with a hole keeps it, since the caps come from the same triangulator every filled shape uses. An extrusion has no map saying where each part of a picture goes, so a plain texture has nothing to hold on to. [Chapter 27](27-Meshes.md#a-picture-from-three-sides-triplanar) projects a picture onto a shape like this from three sides instead.
 
 ## Light: presets and the kinds of light
 
@@ -381,107 +319,6 @@ There's a further tier, the physically based metals and plastics (`material(.met
 
 One more thing to keep straight as you combine finishes. Ollin draws several *kinds* of 3D thing, and they reach the screen by different routes, so a finish applies unevenly. Solid meshes are the fullest citizens, taking materials, textures, shadows, and reflections. A wireframe takes none of the light, as the solids step showed. The raymarched fields of [Chapter 32](32-SculptingWithFields.md) take materials, environments, and shadows by a route of their own. Point clouds, which [Chapter 35](35-Depth.md) draws, are dots that always face the camera, and they take neither lighting nor shadows. When something you expected to apply does nothing, the [combining reference](../Docs/3D/Combining.md) is a table of what stacks with what.
 
-## The cartoon look: outlines, and a light that follows the camera
-
-`.toon` on its own is only half a cartoon. The other half is the line. A drawn figure has an outline around it, and so a `.toon` sphere wants one too:
-
-```swift
-material(.toon)
-outline(width: 3, color: Color(white: 0.08))   // three pixels of dark ink around every shape
-fill(Color(hex: 0xE8553F))
-drawSphere(radius: 1)
-```
-
-<img src="Images/26-3DGently/Inked.gif" alt="A red sphere, a blue box, and a magenta torus in hard cel bands, each ringed by a thin dark line, under a light that keeps the bands still while the view swings back and forth" width="480">
-
-The line comes from an old trick, and the trick explains what you see. Ollin draws the mesh a second time, with every vertex pushed outward along its normal by the width you asked for. Then it throws away the faces that point at you. What survives of that slightly bigger, inside-out copy is the rim that peeks past the silhouette, in the ink color. Three things follow. The push is measured in screen pixels, like a pen, so the line holds its width as a shape moves away. A nearer shape hides a farther one's line, because the copy takes the depth test like any surface. And the box's corners show a small notch. Each face moved off along its own normal, and at a corner the three normals the solids step counted there part company. A smooth mesh takes a clean line. `outline` is drawing state like `material`, so some shapes can have it and others not, and `noOutline()` turns it off.
-
-Now look at the bands in the figure while the view swings. They stay put on each shape. A world-space light would slide them. Under a sun, a sphere's lit side faces the sun wherever you stand, so as you orbit, the bands move around it. That is right for a sun and wrong for a cartoon, whose light belongs to the drawing rather than to the world. The figure's rig is the same `.threePoint` preset from earlier, read in the camera's frame:
-
-```swift
-lightingPreset(.threePoint.relativeTo(.camera))   // key, fill, and rim placed around the eye
-```
-
-`relativeTo(.camera)` says the light's numbers are measured from the eye: `x` to its right, `y` up, and `z` back toward it. So a light down `Vector3(0, 0, -1)` shines the way the camera looks. The numbers on the light stay the same, and Ollin reads them against the frame's camera each time it draws. So the rig follows an orbit, a showcase move, and a drag alike. The everyday use is the fill. A shape's far side under a sun is dark, and if the camera moves round to it the shape goes black. `headlight()` is a directional light from the eye down the view, read the same way. Whatever faces the camera is lit wherever the camera goes:
-
-```swift
-directionalLight(.white, direction: Vector3(-0.6, -1, -0.35))   // the sun, world space
-headlight(Color(white: 0.5), intensity: 0.4)                    // a fill that follows the eye
-```
-
-It throws no shadow, and it needs none. Seen from the eye, every shadow a headlight would cast hides behind the thing that casts it. World space stays the default for everything else. A sun, a sky, and a product shot all want the light to stay put while you move. Reach for the camera's frame when the light belongs to the view, which is the cartoon's case and the fill's case.
-
-## Shading from a picture: matcaps
-
-The cartoon look read its light in the camera's frame. A **matcap** goes further and takes the lights away. It is the sculptors' shortcut. Instead of lights and materials, the whole look, lighting included, is painted into one photograph of a sphere. Every surface point borrows the color the sphere would have there.
-
-```swift
-matcap(.chrome)
-drawMesh(knot)
-```
-
-<img src="Images/26-3DGently/MatcapRow.jpg" alt="The same knot in four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
-
-It takes one call and no lights, from chrome and clay to car paint and cel shading. It works by asking, for each point on the surface, which way that point faces relative to you. That is its normal, read in the camera's frame. Then it reads the color from the matching spot on the sphere picture. Point straight at the camera and you get the middle of the picture. Face away toward the edge and you get the rim. Because the picture was lit once, its lighting comes with it. The color is looked up by the way each point faces the camera, so as the view turns, the highlights move across the form.
-
-The trade is the same fact seen from the other side. A matcap ignores your lights, your `material(_:)`, and your shadows, because it isn't lit at all. The light is a photograph. That makes matcaps a separate axis rather than another finish. They are the wrong choice when an object needs to belong to a scene, matched to its lighting and grounded by a shadow. They are the right one when you want a good-looking surface with no lighting work, such as while you sketch a form.
-
-There are 26 built in, studio captures grouped by family. There are metals like `.chrome` and `.bronze`, clays like `.terracotta` and `.sage`, ceramics like `.pearl`, and translucents like `.wax`. Then there is the neutral studio set, `.toon` and `.toonDark`. A handful of diagnostic ones, `.checkNormal` and `.checkGradient`, are meant for reading geometry rather than looking good. Beyond those, `matcap(_:)` takes any sphere image you find or paint, loaded once with `loadImage` the way [Chapter 9](09-Pictures.md) loads a photograph. `Matcap.shaded(baseColor:metallic:roughness:)` bakes one on the spot with no asset at all. Reach for it when you want a specific color and don't want to ship a file.
-
-Two smaller facts. The current `fill` tints the result, so keep it `.white` to see a matcap as captured. And `matcap(_:)` is drawing state like `fill`, so `withState` scopes it and `noMatcap()` returns to the lit path.
-
-## Air you can see: fog and volumetric light
-
-Everything so far shows a light only where it lands. Real air shows the light on its way. Dust and haze catch a beam mid-flight, which is why a projector's cone hangs visibly over a cinema audience. It's why sun through a window is a slanted block of bright air. Two calls give a scene that air.
-
-```swift
-fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
-```
-
-`fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is a formula rather than a blur pass, so animating the density is a number moving. The fog half of the `3D/Effects/Atmosphere` example is a colonnade standing in this mist. The density is a thickness per world unit. When you would rather say how much of the scene the air should take, hand `fog` a `Fog` value instead. `fog(.groundMist)` measures the veil against the camera's target distance, so it reads the same at any scene scale. The presets sit on the inspector's menu as a `@Param`.
-
-Fog paints every distance toward one color, which is right for a room. Outdoor air also blues the far ridges and brightens toward the sun. That is **aerial perspective**, and it needs a sky to take its sun from, so [Chapter 28](28-MaterialsAndSurroundings.md#distant-air-aerial-perspective) teaches it after the environments. The second call here is the beam half, and it wants a little haze to live in:
-
-```swift
-castShadows()
-volumetricLight(0.9, anisotropy: 0.45)      // how bright the beams are, and how far forward they throw
-fog(Color(hex: 0x0A0E18), density: 0.02)   // a whisper of haze for the beams to live in
-```
-
-`volumetricLight()` is the beam half. It watches the air along every line of sight and adds the light the haze scatters toward you. Directional and spot lights become *visible in flight*. Everything a light already carries shapes its beam. The spot's cone becomes the projector cone. A cookie's panes read as tilted bars of bright air before they land as a window on the floor. An IES profile's throw shows its shape. And with `castShadows()` on, anything standing in the beam carves a dark shaft out of it, the crepuscular rays of a forest morning.
-
-<img src="Images/26-3DGently/VisibleAir.jpg" alt="A dark set under a warm window-gobo beam slanting down from the upper left: the panes read as bars of bright air, land as a window of light on the floor, and a cylinder, sphere, and box carve dark shafts out of the beam. A faint cool beam crosses low behind the props" width="680">
-
-The `anisotropy` argument runs −1…1 and sets how strongly the haze throws light forward. Near 1, a beam flares when the view swings toward its source, the headlights-in-fog effect. At 0 it glows evenly from every side. And the two calls compose either way. With `fog`, the beams live in the fog's own thickness. Without it, the air stays clear and *only* the beams appear. The `3D/Lighting/VolumetricLight` example lights a dark stage with beams in a thin haze. The air is part of the scene, and light crossing it is something you can draw.
-
-The beam march has a quality dial like the shadows do, `volumetricQuality` with three tiers. The default already does the right thing, frame-rate-safe live, lifted to full quality on export.
-
-## What the depth buffer is for: ambient occlusion and defocus
-
-[Chapter 19](19-LayersAndEffects.md) filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has. For every pixel, it knows how far away the thing at that pixel is. That's the **depth buffer**, and two of the effects that read it are here.
-
-```swift
-let scene = makeRenderTarget()
-withTarget(scene) { /* your 3D scene */ }
-
-let occluded = scene.combined(with: scene.depth, .ambientOcclusion(radius: 0.7, amount: 1.5))
-let focused = scene.combined(with: scene.depth, .defocus(focus: 0.46, range: 0.13, maxBlur: 16))
-drawImage(occluded.image, 0, 0)          // or focused.image
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/26-3DGently/DepthEffects-dark.jpg">
-  <img src="Images/26-3DGently/DepthEffects.jpg" alt="Three panels of the same field of pale blocks on a ground plane: plain, then with ambient occlusion darkening the gaps and contacts, then with depth of field leaving one band of blocks sharp while the front and back blur" width="680">
-</picture>
-
-`scene.depth` is an ordinary layer whose brightness is distance. So it feeds `combined(with:_:)` like any other layer, the call [Chapter 21](21-PicturesYouSolve.md#a-field-you-measure-the-distance-field) used to join two layers through one effect. The filters of [Chapter 19](19-LayersAndEffects.md) still apply to the result.
-
-**`.ambientOcclusion`** darkens the places light struggles to reach. Those are crevices, the gaps between objects, and the line where something meets the ground. Compare the first two panels and the blocks stop floating. That single change is most of what makes a render read as solid rather than pasted together. It costs one line, because the depth layer already knows where the crevices are.
-
-**`.defocus`** is a camera lens. It keeps a band of distance sharp, set by `focus` and `range`. Everything else blurs more the further it is from that band, up to `maxBlur`. It's how you point at one thing in a busy scene. Both `focus` and `range` are read against the depth layer's `0...1`. So they depend on the camera's `near` and `far`, the nearest and farthest distances it records. Set those so they bracket your scene, as in `camera(.orbiting(radius: 9, near: 3, far: 18))`, rather than leaving them enormous.
-
-Both take a `quality` tier, `.performance`, `.default`, or `.detail`, which trades frame rate for smoothness. The tier is relative to your machine rather than an absolute setting. `.default` means "the balanced choice for this GPU", and it buys more samples on a faster one. Raising it to `.detail` for a final export is the usual move, since the export doesn't have to keep up with a display.
-
 ## Putting it together: the plaza
 
 The finished sketch is a small sculpture court you curate yourself. There are five plinths and five pieces, each with a different finish, under golden-hour light with soft shadows. The camera orbits until you take over. Make `MySketches/Plaza.swift`:
@@ -568,7 +405,7 @@ Then make it yours:
 - Recast the show by swapping in a supershape or a lathe of your own profile on the tallest plinth. After [Chapter 27](27-Meshes.md), try a loaded model there.
 - Relight it. `.noir` turns the court into a crime scene, and `.moonlight` into a garden at night. Put the preset on a `@Param` menu parameter.
 - Give the pearl's plinth a slow `rotateY` of its own and let the whole pedestal turn.
-- Try `matcap(.chrome)` on the gem and notice what stops responding. Lights and shadows go quiet, and only the view still matters.
+- After *Shading from a picture* below, try `matcap(.chrome)` on the gem and notice what stops responding. Lights and shadows go quiet, and only the view still matters.
 
 The court turns on its own, so keep it as a video. `swift run OllinLive MySketches/Plaza.swift --export-video plaza.mp4 --seconds 12` records the first twelve seconds of the orbit. For a print, `--export plaza.png --frame 210` keeps one frame as a still.
 
@@ -612,6 +449,177 @@ contactShadows()      // the short march that seats them again
 ```
 
 The three resting solids each get the tight dark line at their base. The hovering sphere, the one thing off the ground, gets only the soft drifted blob a gap produces. That difference is the feature. It seats an object under every light that casts, works on any Mac, and takes one optional dial. `contactShadows(length: 8)` sets the ray's reach in world units, and with no length a short reach comes from the scene's own scale. The limit is that the march can only consult what the camera sees. Off-screen geometry casts no contact shadow, and a curved surface can pick up a touch of extra shading just inside its silhouette. For the seam under a resting thing, which is what it's for, it works.
+
+## Air you can see: fog and volumetric light
+
+The plaza's golden light shows only where it lands, on the plinths and the floor. Real air shows the light on its way. Dust and haze catch a beam mid-flight, which is why a projector's cone hangs visibly over a cinema audience. It's why sun through a window is a slanted block of bright air. Two calls give a scene that air.
+
+```swift
+fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
+```
+
+`fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is a formula rather than a blur pass, so animating the density is a number moving. The fog half of the `3D/Effects/Atmosphere` example is a colonnade standing in this mist. The density is a thickness per world unit. When you would rather say how much of the scene the air should take, hand `fog` a `Fog` value instead. `fog(.groundMist)` measures the veil against the camera's target distance, so it reads the same at any scene scale. The presets sit on the inspector's menu as a `@Param`.
+
+Fog paints every distance toward one color, which is right for a room. Outdoor air also blues the far ridges and brightens toward the sun. That is **aerial perspective**, and it needs a sky to take its sun from, so [Chapter 28](28-MaterialsAndSurroundings.md#distant-air-aerial-perspective) teaches it after the environments. The second call here is the beam half, and it wants a little haze to live in:
+
+```swift
+castShadows()
+volumetricLight(0.9, anisotropy: 0.45)      // how bright the beams are, and how far forward they throw
+fog(Color(hex: 0x0A0E18), density: 0.02)   // a whisper of haze for the beams to live in
+```
+
+`volumetricLight()` is the beam half. It watches the air along every line of sight and adds the light the haze scatters toward you. Directional and spot lights become *visible in flight*. Everything a light already carries shapes its beam. The spot's cone becomes the projector cone. A cookie's panes read as tilted bars of bright air before they land as a window on the floor. An IES profile's throw shows its shape. And with `castShadows()` on, anything standing in the beam carves a dark shaft out of it, the crepuscular rays of a forest morning.
+
+<img src="Images/26-3DGently/VisibleAir.jpg" alt="A dark set under a warm window-gobo beam slanting down from the upper left: the panes read as bars of bright air, land as a window of light on the floor, and a cylinder, sphere, and box carve dark shafts out of the beam. A faint cool beam crosses low behind the props" width="680">
+
+The `anisotropy` argument runs −1…1 and sets how strongly the haze throws light forward. Near 1, a beam flares when the view swings toward its source, the headlights-in-fog effect. At 0 it glows evenly from every side. And the two calls compose either way. With `fog`, the beams live in the fog's own thickness. Without it, the air stays clear and *only* the beams appear. The `3D/Lighting/VolumetricLight` example lights a dark stage with beams in a thin haze. The air is part of the scene, and light crossing it is something you can draw.
+
+The beam march has a quality dial like the shadows do, `volumetricQuality` with three tiers. The default already does the right thing, frame-rate-safe live, lifted to full quality on export.
+
+## More finishes: the cartoon look and matcaps
+
+The plaza gave each sculpture a finish by name, from the material library. Some looks go further than a material can. A cartoon inks a line around a shape and lights it from the eye. A matcap paints the whole look, light and all, into one picture.
+
+### The cartoon look: outlines, and a light that follows the camera
+
+`.toon` on its own is only half a cartoon. The other half is the line. A drawn figure has an outline around it, and so a `.toon` sphere wants one too:
+
+```swift
+material(.toon)
+outline(width: 3, color: Color(white: 0.08))   // three pixels of dark ink around every shape
+fill(Color(hex: 0xE8553F))
+drawSphere(radius: 1)
+```
+
+<img src="Images/26-3DGently/Inked.gif" alt="A red sphere, a blue box, and a magenta torus in hard cel bands, each ringed by a thin dark line, under a light that keeps the bands still while the view swings back and forth" width="480">
+
+The line comes from an old trick, and the trick explains what you see. Ollin draws the mesh a second time, with every vertex pushed outward along its normal by the width you asked for. Then it throws away the faces that point at you. What survives of that slightly bigger, inside-out copy is the rim that peeks past the silhouette, in the ink color. Three things follow. The push is measured in screen pixels, like a pen, so the line holds its width as a shape moves away. A nearer shape hides a farther one's line, because the copy takes the depth test like any surface. And the box's corners show a small notch. Each face moved off along its own normal, and at a corner the three normals the solids step counted there part company. A smooth mesh takes a clean line. `outline` is drawing state like `material`, so some shapes can have it and others not, and `noOutline()` turns it off.
+
+Now look at the bands in the figure while the view swings. They stay put on each shape. A world-space light would slide them. Under a sun, a sphere's lit side faces the sun wherever you stand, so as you orbit, the bands move around it. That is right for a sun and wrong for a cartoon, whose light belongs to the drawing rather than to the world. The figure's rig is the same `.threePoint` preset from earlier, read in the camera's frame:
+
+```swift
+lightingPreset(.threePoint.relativeTo(.camera))   // key, fill, and rim placed around the eye
+```
+
+`relativeTo(.camera)` says the light's numbers are measured from the eye: `x` to its right, `y` up, and `z` back toward it. So a light down `Vector3(0, 0, -1)` shines the way the camera looks. The numbers on the light stay the same, and Ollin reads them against the frame's camera each time it draws. So the rig follows an orbit, a showcase move, and a drag alike. The everyday use is the fill. A shape's far side under a sun is dark, and if the camera moves round to it the shape goes black. `headlight()` is a directional light from the eye down the view, read the same way. Whatever faces the camera is lit wherever the camera goes:
+
+```swift
+directionalLight(.white, direction: Vector3(-0.6, -1, -0.35))   // the sun, world space
+headlight(Color(white: 0.5), intensity: 0.4)                    // a fill that follows the eye
+```
+
+It throws no shadow, and it needs none. Seen from the eye, every shadow a headlight would cast hides behind the thing that casts it. World space stays the default for everything else. A sun, a sky, and a product shot all want the light to stay put while you move. Reach for the camera's frame when the light belongs to the view, which is the cartoon's case and the fill's case.
+
+### Shading from a picture: matcaps
+
+The cartoon look read its light in the camera's frame. A **matcap** goes further and takes the lights away. It is the sculptors' shortcut. Instead of lights and materials, the whole look, lighting included, is painted into one photograph of a sphere. Every surface point borrows the color the sphere would have there.
+
+```swift
+matcap(.chrome)
+drawMesh(knot)
+```
+
+<img src="Images/26-3DGently/MatcapRow.jpg" alt="The same knot in four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
+
+It takes one call and no lights, from chrome and clay to car paint and cel shading. It works by asking, for each point on the surface, which way that point faces relative to you. That is its normal, read in the camera's frame. Then it reads the color from the matching spot on the sphere picture. Point straight at the camera and you get the middle of the picture. Face away toward the edge and you get the rim. Because the picture was lit once, its lighting comes with it. The color is looked up by the way each point faces the camera, so as the view turns, the highlights move across the form.
+
+The trade is the same fact seen from the other side. A matcap ignores your lights, your `material(_:)`, and your shadows, because it isn't lit at all. The light is a photograph. That makes matcaps a separate axis rather than another finish. They are the wrong choice when an object needs to belong to a scene, matched to its lighting and grounded by a shadow. They are the right one when you want a good-looking surface with no lighting work, such as while you sketch a form.
+
+There are 26 built in, studio captures grouped by family. There are metals like `.chrome` and `.bronze`, clays like `.terracotta` and `.sage`, ceramics like `.pearl`, and translucents like `.wax`. Then there is the neutral studio set, `.toon` and `.toonDark`. A handful of diagnostic ones, `.checkNormal` and `.checkGradient`, are meant for reading geometry rather than looking good. Beyond those, `matcap(_:)` takes any sphere image you find or paint, loaded once with `loadImage` the way [Chapter 9](09-Pictures.md) loads a photograph. `Matcap.shaded(baseColor:metallic:roughness:)` bakes one on the spot with no asset at all. Reach for it when you want a specific color and don't want to ship a file.
+
+Two smaller facts. The current `fill` tints the result, so keep it `.white` to see a matcap as captured. And `matcap(_:)` is drawing state like `fill`, so `withState` scopes it and `noMatcap()` returns to the lit path.
+
+## More from the depth test: depth compositing, occlusion, and defocus
+
+The plaza's sculptures hid each other by the depth test, with no sorting on your part. The test compares, at every pixel, how far away each surface is. Those distances have more uses than hiding solids. Flat drawing can join in, and effects can read the distances as a layer.
+
+### Flat drawing that knows where it is: depth compositing
+
+By default, 2D drawing lays over a 3D frame completely. That's right for a caption and wrong for a label, a tag, a halo, or a sprite that belongs in the scene. Given `anchor`, a point in the world at the middle of a pillar, three calls change it:
+
+```swift
+withState {
+    depth(at: anchor)                        // this mark now sits at a world point's depth
+    noFill()
+    stroke(Color(hex: 0xF5F0E6))
+    strokeWeight(7)
+    if let screen = project(anchor) {        // and here is where that point lands on the canvas
+        drawCircle(center: screen, radius: 96)
+    }
+}
+```
+
+<img src="Images/26-3DGently/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
+
+Those rings are `drawCircle`, flat 2D circles that were handed a depth. They are drawn with everything else, and hidden wherever a pillar stands nearer than they do.
+
+The three calls divide the job, and each does one part of it:
+
+- **`depth(at: worldPoint)`** sets the *depth* of subsequent 2D drawing, and nothing else. The mark still lands wherever its canvas coordinates say. `noDepth()` puts it back on top.
+- **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, so handle that case with `if let` rather than force the value.
+- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there. Inside the block you draw around `(0, 0)`, and it lands on the point at the right depth. The numbered tags above are billboards. The labels in the catalog figure are billboards too.
+
+The rings keep their size. All three have the same 96-point radius, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually what you want from a label, readable at any distance and correctly occluded. It also means a sprite drawn this way stays the same size at any distance.
+
+Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera. Without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 35](35-Depth.md#drawing-inside-the-picture-a-depth-frame-as-a-stage) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
+
+### What the depth buffer is for: ambient occlusion and defocus
+
+[Chapter 19](19-LayersAndEffects.md) filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has. For every pixel, it knows how far away the thing at that pixel is. That's the **depth buffer**, and two of the effects that read it are here.
+
+```swift
+let scene = makeRenderTarget()
+withTarget(scene) { /* your 3D scene */ }
+
+let occluded = scene.combined(with: scene.depth, .ambientOcclusion(radius: 0.7, amount: 1.5))
+let focused = scene.combined(with: scene.depth, .defocus(focus: 0.46, range: 0.13, maxBlur: 16))
+drawImage(occluded.image, 0, 0)          // or focused.image
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-3DGently/DepthEffects-dark.jpg">
+  <img src="Images/26-3DGently/DepthEffects.jpg" alt="Three panels of the same field of pale blocks on a ground plane: plain, then with ambient occlusion darkening the gaps and contacts, then with depth of field leaving one band of blocks sharp while the front and back blur" width="680">
+</picture>
+
+`scene.depth` is an ordinary layer whose brightness is distance. So it feeds `combined(with:_:)` like any other layer, the call [Chapter 21](21-PicturesYouSolve.md#a-field-you-measure-the-distance-field) used to join two layers through one effect. The filters of [Chapter 19](19-LayersAndEffects.md) still apply to the result.
+
+**`.ambientOcclusion`** darkens the places light struggles to reach. Those are crevices, the gaps between objects, and the line where something meets the ground. Compare the first two panels and the blocks stop floating. That single change is most of what makes a render read as solid rather than pasted together. It costs one line, because the depth layer already knows where the crevices are.
+
+**`.defocus`** is a camera lens. It keeps a band of distance sharp, set by `focus` and `range`. Everything else blurs more the further it is from that band, up to `maxBlur`. It's how you point at one thing in a busy scene. Both `focus` and `range` are read against the depth layer's `0...1`. So they depend on the camera's `near` and `far`, the nearest and farthest distances it records. Set those so they bracket your scene, as in `camera(.orbiting(radius: 9, near: 3, far: 18))`, rather than leaving them enormous.
+
+Both take a `quality` tier, `.performance`, `.default`, or `.detail`, which trades frame rate for smoothness. The tier is relative to your machine rather than an absolute setting. `.default` means "the balanced choice for this GPU", and it buys more samples on a faster one. Raising it to `.detail` for a final export is the usual move, since the export doesn't have to keep up with a display.
+
+## A mesh from a word: type as a solid
+
+The plaza built its sculptures from the catalog, and the catalog's `drawExtrude` pushes any flat shape into depth. A letter is a shape too. So a word can be a solid that catches the light and throws a shadow, like the sculptures on their plinths.
+
+```swift
+drawText3D("Ollin", size: 2, depth: 0.4)
+```
+
+One number needs care. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, so a capital stands about seven tenths of it. Everything else is what you would expect. The current fill colors it, and a material from the materials step finishes it. It sits centered on the origin, so you place it like a box.
+
+For anything that draws every frame, reach past the convenience call to the two builders under it. `Mesh.text` gives you the whole word as one mesh, built once and kept. `Mesh.textGlyphs` gives you the same word a letter at a time, each letter still in its place. Every letter knows its own center, which is what lets one turn about itself instead of about the word. Translate to the pivot, turn, and translate back, and each letter turns in place:
+
+```swift
+let letters = Mesh.textGlyphs("Ollin", size: 1.5, depth: 0.3)   // a stored property, built once
+
+for (i, glyph) in letters.enumerated() {                        // in draw()
+    let pivot = glyph.center
+    withState {
+        translate(pivot)
+        rotateX(sin(time * 1.4 + Double(i) * 0.7))
+        translate(-pivot)
+        drawMesh(glyph)
+    }
+}
+```
+
+<img src="Images/26-3DGently/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O, at the right the same word in pale blue with each letter tipped back at its own angle" width="680">
+
+The call exists because extruding the letter shapes yourself goes wrong in two ways. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
+
+A letter with a hole keeps it, since the caps come from the same triangulator every filled shape uses. An extrusion has no map saying where each part of a picture goes, so a plain texture has nothing to hold on to. [Chapter 27](27-Meshes.md#a-picture-from-three-sides-triplanar) projects a picture onto a shape like this from three sides instead.
 
 ## Where this comes from
 

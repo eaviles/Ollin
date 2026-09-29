@@ -6,7 +6,7 @@
 
 <img src="Images/34-Seeing/MotionBrush.jpg" alt="A dark canvas with thousands of short colored strokes in greens, magentas, cyans, blues, purples, reds and yellows, gathered into one large tangle across the middle where the picture moved, with the edges mostly empty" width="560">
 
-A camera gives a sketch someone to answer, as a picture and through trackers that turn each frame into values you read in `draw()`. They find a body's joints, lift a person out as pixels, and read the picture's motion, on the Mac with nothing sent away. The brush above paints with that motion. Beyond it, trackers read outlines and print, follow one thing, and name what a picture shows, and the screen becomes a source too.
+A camera gives a sketch someone to answer, as a picture and through trackers that turn each frame into values you read in `draw()`. The steps end on optical flow, the picture's motion read on the Mac with nothing sent away, and the brush above paints with it. Beyond it, trackers find a body's joints, lift out a person, read print, follow one thing, and name what a picture shows. The screen becomes a source too.
 
 ## The webcam is an image
 
@@ -115,61 +115,9 @@ The second half of the diagram is about coordinates. Trackers report geometry in
 
 Pass `mirrored: true` to them when the sketch should answer like a bathroom mirror, left for left. It usually feels right for a sketch you stand in front of. `drawFrame` has no such switch. To show the feed flipped as well, draw it as `withState { translate(width, 0); scale(-1, 1); drawFrame(camera) }`, which flips the canvas left for right.
 
-## The body as a controller: hands, faces, and bodies
-
-The face listing drew what it found. A sketch can also steer by it. A fingertip can stand in for the mouse, a head's turn can swing a scene, and a raised arm can start something. The figure shows the named parts of the three flat trackers, and a fourth reads a body in space:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/Landmarks-dark.jpg">
-  <img src="Images/34-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face drawn as dots grouped into contour, brows, eyes, nose and lips, labeled 76 points in regions, and a body skeleton labeled 19 joints" width="680">
-</picture>
-
-**`HandTracker`** finds up to two hands, and `maxHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures come from arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
-
-**`FaceTracker`** finds every face with its head pose and 76 landmark points. The points come in named regions: `.faceContour`, the brows, the eyes, `.nose`, the lips, and the pupils. The head pose is three angles in radians. `roll` tips the head toward a shoulder, `yaw` turns it left or right, and `pitch` nods it up or down. Each region comes back ready to `drawPolyline`, so a face overlay is a short loop.
-
-**`BodyTracker`** finds every person as a 19-joint pose skeleton, head to ankles. Each body carries a **confidence**, a number from 0 to 1 for how sure the tracker is. Joints it can't see, or is unsure of, are left out, often the legs at a desk. So what you get is what the camera saw.
-
-**`BodyTracker3D`** reads a person as positions in space instead. From the same ordinary webcam it places 17 joints in meters. So the sketch knows how far away someone is standing, and what their pose looks like from the side. You read it in whichever of three spaces suits what you're drawing. `point(_:in:)` and `bones(in:)` behave like the flat tracker's, for an overlay on the feed. `position(_:)` and the no-argument `bones()` give meters with the pelvis at the origin. Plotting `(z, y)` then draws the person from the side and `(x, z)` from above, views no camera was at. And `cameraRelativePosition(_:)` gives meters from the lens, which makes a joint's z its distance. `body.distance` is the shortcut for the whole person's.
-
-```swift
-lazy var pose = BodyTracker3D(camera)
-// in draw(), with `rect` from drawFrame and `side` a spot to draw the side view:
-if let body = pose.body {
-    for (a, b) in body.bones(in: rect) { drawLine(a, b) }        // over the feed
-    for (a, b) in body.bones() {                                 // seen from the side
-        drawLine(side + Vector2(a.z, -a.y) * 200, side + Vector2(b.z, -b.y) * 200)
-    }
-}
-```
-
-`Examples/Vision/BodyPose3D` draws that side view in an inset beside the feed. The 3D tracker differs from the flat one in two ways. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, rather than leaving them out. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
-
-These trackers run trained models, programs that learned from many example pictures rather than rules someone wrote. The heavier ones, body pose and the segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject), want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard notice on the canvas instead of a silent nothing. Most trackers also read a single picture once, with no feed at all. The one-shot call is asynchronous, so a sketch waits for it with `waitFor`. `try? waitFor(photo) { try await FaceTracker.detect(in: $0) }` hands back the faces in `photo`, an `Image` you loaded.
-
-## The person as pixels: lifting the subject
-
-The joints reduce a person to a few points. Sometimes you want the person's pixels instead, to cut them out, glow them, or stamp them. Splitting a picture into its subject and the rest is called **segmentation**. **`PersonSegmenter`** finds the people in the frame. **`SubjectSegmenter`** finds whatever stands out, whether or not it's a person. Both hand back the same two pictures.
-
-```swift
-lazy var people = PersonSegmenter(camera)
-
-override func draw() {
-    background(.black)                       // or anything: this is the new backdrop
-    guard let rect = camera.fittedRectangle(in: bounds) else { return }
-    if let cutout = people.cutout { drawImage(cutout, in: rect) }
-}
-```
-
-The block never draws the frame, since that would cover the new backdrop. `camera.fittedRectangle(in: bounds)` answers where `drawFrame` would have put it, so the cutout lands in the same place.
-
-`matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to draw over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land on the picture.
-
-Stamp the matte every frame without clearing and you have a trail of yourself. It is [Chapter 19](19-LayersAndEffects.md#the-canvas-that-keeps-everything-noclear)'s `noClear`, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found. While nothing in the picture stands out, `count` is `0` and `matte` and `cutout` are `nil`. Both need Apple silicon, like the pose trackers.
-
 ## The picture as a field: optical flow
 
-The trackers so far find a person. The next one does not care who is in frame. It reads how every part of the picture moved. **`FlowTracker`** measures **optical flow**, meaning the motion of each part of the picture since the previous frame. [Chapter 14](14-FieldsAndFlow.md) taught fields as "an answer at every point", and this is the same idea. The difference is that the answers are measured from the world, not computed from noise:
+The face tracker finds a person. The next one does not care who is in frame. It reads how every part of the picture moved. **`FlowTracker`** measures **optical flow**, meaning the motion of each part of the picture since the previous frame. [Chapter 14](14-FieldsAndFlow.md) taught fields as "an answer at every point", and this is the same idea. The difference is that the answers are measured from the world, not computed from noise:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/FlowArrows-dark.jpg">
@@ -249,12 +197,68 @@ The loop throws 900 brushes at random spots and asks the field for the motion un
 Then make it yours:
 
 - Change what motion means by using `field.averageFlow(in: bounds)` to steer one big brush instead of 900 small ones. The sketch becomes a single line that follows the room.
-- Paint with yourself instead of your motion. Swap the flow for `PersonSegmenter` and stamp the `matte`, tinted, wherever you stand, so motion leaves silhouettes.
-- Drive the brush with `HandTracker`'s `.indexTip` instead of flow, and you're drawing in the air.
+- Paint with yourself instead of your motion. Swap the flow for `PersonSegmenter`, from [the person as pixels](#the-person-as-pixels-lifting-the-subject) below. Stamp its `matte`, tinted, wherever you stand, so motion leaves silhouettes.
+- Drive the brush with `HandTracker`'s `.indexTip` instead of flow, and you're drawing in the air. [The body as a controller](#the-body-as-a-controller-hands-faces-and-bodies) below teaches the hand tracker.
 
 To rehearse the brush without standing up, swap `camera` for the film from [When there is no camera](#when-there-is-no-camera-stills-and-footage), with `film.play()` in place of `camera.start()`. The dancer then paints a picture like the one at the top of the chapter, flipped left for right by `mirrored: true`. When the clip loops back to its start, the jump reads as one burst of motion, and `flow.reset()` right after the jump clears it.
 
 This sketch paints from what happens in front of it, so keep it live. A tracker reads nothing during an export, so the usual export flags have no motion to paint with. To keep a painting, record the window with the Mac's own screen recording, Shift-Command-5. Or send the sketch to another app while it runs, as [Chapter 43](43-Performing.md#live-feeds-into-other-apps) shows.
+
+## Reading people: poses, landmarks, and segmentation
+
+The brush read how the picture moved and never asked who was moving. Several trackers read people instead. Some find the named parts of a hand, a face, or a body, and others lift a person's pixels out of the frame.
+
+### The body as a controller: hands, faces, and bodies
+
+The face listing drew what it found. A sketch can also steer by it. A fingertip can stand in for the mouse, a head's turn can swing a scene, and a raised arm can start something. The figure shows the named parts of the three flat trackers, and a fourth reads a body in space:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/Landmarks-dark.jpg">
+  <img src="Images/34-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face drawn as dots grouped into contour, brows, eyes, nose and lips, labeled 76 points in regions, and a body skeleton labeled 19 joints" width="680">
+</picture>
+
+**`HandTracker`** finds up to two hands, and `maxHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures come from arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
+
+**`FaceTracker`** finds every face with its head pose and 76 landmark points. The points come in named regions: `.faceContour`, the brows, the eyes, `.nose`, the lips, and the pupils. The head pose is three angles in radians. `roll` tips the head toward a shoulder, `yaw` turns it left or right, and `pitch` nods it up or down. Each region comes back ready to `drawPolyline`, so a face overlay is a short loop.
+
+**`BodyTracker`** finds every person as a 19-joint pose skeleton, head to ankles. Each body carries a **confidence**, a number from 0 to 1 for how sure the tracker is. Joints it can't see, or is unsure of, are left out, often the legs at a desk. So what you get is what the camera saw.
+
+**`BodyTracker3D`** reads a person as positions in space instead. From the same ordinary webcam it places 17 joints in meters. So the sketch knows how far away someone is standing, and what their pose looks like from the side. You read it in whichever of three spaces suits what you're drawing. `point(_:in:)` and `bones(in:)` behave like the flat tracker's, for an overlay on the feed. `position(_:)` and the no-argument `bones()` give meters with the pelvis at the origin. Plotting `(z, y)` then draws the person from the side and `(x, z)` from above, views no camera was at. And `cameraRelativePosition(_:)` gives meters from the lens, which makes a joint's z its distance. `body.distance` is the shortcut for the whole person's.
+
+```swift
+lazy var pose = BodyTracker3D(camera)
+// in draw(), with `rect` from drawFrame and `side` a spot to draw the side view:
+if let body = pose.body {
+    for (a, b) in body.bones(in: rect) { drawLine(a, b) }        // over the feed
+    for (a, b) in body.bones() {                                 // seen from the side
+        drawLine(side + Vector2(a.z, -a.y) * 200, side + Vector2(b.z, -b.y) * 200)
+    }
+}
+```
+
+`Examples/Vision/BodyPose3D` draws that side view in an inset beside the feed. The 3D tracker differs from the flat one in two ways. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, rather than leaving them out. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
+
+These trackers run trained models, programs that learned from many example pictures rather than rules someone wrote. The heavier ones, body pose and the segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject), want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard notice on the canvas instead of a silent nothing. Most trackers also read a single picture once, with no feed at all. The one-shot call is asynchronous, so a sketch waits for it with `waitFor`. `try? waitFor(photo) { try await FaceTracker.detect(in: $0) }` hands back the faces in `photo`, an `Image` you loaded.
+
+### The person as pixels: lifting the subject
+
+The joints reduce a person to a few points. Sometimes you want the person's pixels instead, to cut them out, glow them, or stamp them. Splitting a picture into its subject and the rest is called **segmentation**. **`PersonSegmenter`** finds the people in the frame. **`SubjectSegmenter`** finds whatever stands out, whether or not it's a person. Both hand back the same two pictures.
+
+```swift
+lazy var people = PersonSegmenter(camera)
+
+override func draw() {
+    background(.black)                       // or anything: this is the new backdrop
+    guard let rect = camera.fittedRectangle(in: bounds) else { return }
+    if let cutout = people.cutout { drawImage(cutout, in: rect) }
+}
+```
+
+The block never draws the frame, since that would cover the new backdrop. `camera.fittedRectangle(in: bounds)` answers where `drawFrame` would have put it, so the cutout lands in the same place.
+
+`matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to draw over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land on the picture.
+
+Stamp the matte every frame without clearing and you have a trail of yourself. It is [Chapter 19](19-LayersAndEffects.md#the-canvas-that-keeps-everything-noclear)'s `noClear`, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found. While nothing in the picture stands out, `count` is `0` and `matte` and `cutout` are `nil`. Both need Apple silicon, like the pose trackers.
 
 ## Reading outlines and print: contours, rectangles, text, and codes
 
@@ -672,7 +676,7 @@ The history costs width times height times four bytes per frame, so push modest 
 
 ## Where this comes from
 
-Camera art that answers the people in front of it goes back to the 1970s. Myron Krueger's *Videoplace*, in the mid-1970s, let people play with their own silhouettes. David Rokeby's *Very Nervous System* turned body motion into sound in 1986. And Camille Utterback and Romy Achituv's *Text Rain* let falling letters rest on your outline in 1999. That lineage runs through today's interactive mirrors, and Golan Levin's writing on computer vision for artists maps it. Optical flow goes back to Berthold Horn and Brian Schunck, and to Bruce Lucas and Takeo Kanade, both in 1981. The perception itself is Apple's Vision framework and Core ML, running on the machine. Ollin adds the typed reading surface, mapped to the canvas, after the approach of Kyle McDonald's ofxCv addon for openFrameworks. The entries after the brush name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Camera art that answers the people in front of it goes back to the 1970s. Myron Krueger's *Videoplace*, in the mid-1970s, let people play with their own silhouettes. David Rokeby's *Very Nervous System* turned body motion into sound in 1986. And Camille Utterback and Romy Achituv's *Text Rain* let falling letters rest on your outline in 1999. That lineage runs through today's interactive mirrors, and Golan Levin's writing on computer vision for artists maps it. Optical flow goes back to Berthold Horn and Brian Schunck, and to Bruce Lucas and Takeo Kanade, both in 1981. The perception itself is Apple's Vision framework and Core ML, running on the machine. Ollin adds the typed reading surface, mapped to the canvas, after the approach of Kyle McDonald's ofxCv addon for openFrameworks. Most entries after the brush name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

@@ -6,7 +6,7 @@
 
 <img src="Images/06-GridsAndRepetition/RoseWall.jpg" alt="A five-by-five wall of cut-paper medallions on cream, each a colored disc with cream arms folded around it, the color drifting diagonally from coral through amber and green to deep indigo" width="560">
 
-Grids give generative art its order, and repetition gives it rhythm. The tools here place, turn, fold, and clip your shapes, and one of them runs a whole sketch inside a cell. The twenty-five medallions at the top all come from one crooked arm, drawn once and then placed, turned, folded, and trimmed. Uneven panels split by recursion and a spiral of numbers come after them.
+Grids give generative art its order, and repetition gives it rhythm. The tools here place, turn, fold, and clip your shapes. The twenty-five medallions at the top all come from one crooked arm, drawn once and then placed, turned, folded, and trimmed. After them come a whole sketch run inside a cell, grids of hexagons and triangles, uneven panels split by recursion, and a spiral of numbers.
 
 ## One loop, not two: `grid`
 
@@ -53,31 +53,6 @@ for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).point
 Two more things are useful to know. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. For margins that differ per edge, `padding:` takes more than a bare number. It also takes `.symmetric(horizontal: 40, vertical: 20)`, or any mix of edges through `Insets`.
 
 > **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. You can also drop the `.cells` and loop the grid itself: `for cell in grid(columns: 12, rows: 12)`. As far as Swift is concerned a grid *is* its cells. It walks them in the same order, working each one out as the loop asks for it, so it never builds the array. Everything Swift can do to a list it reads, it can do to a grid. So after `let g = grid(columns: 12, rows: 12)`, `g.count` works too. The `cell` in the loop is a small value with named parts you read with a dot, such as `cell.frame` and `cell.column`. The `drawRect` call accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. [Chapter 10](10-Vectors.md) teaches vectors properly, and until then you can read `Vector2` as "a point".
-
-## Grids that aren't square: `hexGrid` and `triangleGrid`
-
-`grid` divides a rectangle into rectangles, which covers a great deal but not everything. Two more regular divisions come with Ollin, and both read the same way. Ask for the cells, then loop over them once.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/OtherGrids-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
-</picture>
-
-```swift
-for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
-    drawPolygon(cell.corners)
-}
-for cell in triangleGrid(columns: 21, rows: 10).cells {
-    fill(cell.pointsUp ? .white : .black)
-    drawPolygon(cell.vertices)
-}
-```
-
-> **Swift note.** `cell.pointsUp ? .white : .black` is the compact if, which reads as the condition, then the value when true, then the value when false.
-
-`hexGrid` and `triangleGrid` are the other two regular tilings, the only other *regular polygons* that cover a plane with no gaps and no overlaps. Plenty of irregular shapes manage it, which is [Chapter 7](07-Tiles.md)'s subject. Hexagons cannot stretch the way a rectangle can. So the block keeps its true proportions and centers itself, rather than distorting to fill your bounds. A hex cell hands you its `corners`, and `drawPolygon` draws a closed shape through a list of points, so a whole honeycomb is two lines. A triangle cell says whether it `pointsUp` and hands you its three `vertices`. The hex grid also knows its own geometry. Keep the grid in a `let`, and its `distance(from:to:)` counts rings between two of its cells. That is what colors the first panel, and what a board game needs.
-
-The figure's other two panels are divisions of another kind. The `subdivide` panel splits a rectangle into unequal panels by recursion, which comes after the finished sketch in [Uneven panels by recursion](#uneven-panels-by-recursion-subdivide). The maze is carved by `maze(columns:rows:)`, and [Chapter 7](07-Tiles.md#one-route-between-any-two-perfect-mazes) sets it beside the maze of diagonals and says what makes it perfect.
 
 ## Moving the paper: `translate`, `rotate`, and `scale`
 
@@ -130,9 +105,9 @@ final class Pinwheels: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Pinwheels.jpg" alt="A ten-by-ten field of black right triangles at random quarter turns, a few in red; pinwheels, hourglasses, and arrows emerge from the repetition" width="560">
 
-It is one right triangle, half a cell, drawn by handing `drawPolygon` its three corners. There are four possible spins, and the neighbors do the rest. Hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That is the effect this chapter keeps returning to. It only works because every triangle is the same size in the same place in its cell, so any two spins fit together. [Chapter 7](07-Tiles.md)'s Truchet tiles rest on the same fact.
+It is one right triangle, half a cell. `drawPolygon` draws a closed shape through a list of points, and here the list is the triangle's three corners. There are four possible spins, and the neighbors do the rest. Hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That is the effect this chapter keeps returning to. It only works because every triangle is the same size in the same place in its cell, so any two spins fit together. [Chapter 7](07-Tiles.md)'s Truchet tiles rest on the same fact.
 
-> **Swift note.** `withState { ... }` takes a block of code in braces, like `draw()` itself. Running the block with the paper moved and then restoring it is the whole trick.
+> **Swift note.** `withState { ... }` takes a block of code in braces, like `draw()` itself. Running the block with the paper moved and then restoring it is the whole trick. `random() < 0.12 ? accent : ink` is the compact if, which reads as the condition, then the value when true, then the value when false.
 
 ## Symmetry by hand: rotating around the center
 
@@ -220,34 +195,6 @@ withClip(star) {
 `withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. You never work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
 Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
-
-## A cell that is a whole canvas: `withViewBox`
-
-A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas:
-
-```swift
-for cell in grid(columns: 3, rows: 2, padding: 40).cells {
-    withViewBox(cell.frame) {
-        randomSeed(cell.column + cell.row * 3)
-        drawPetals()
-    }
-}
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ViewBoxSheet-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring of petals under a different seed, each with its own colored wash" width="680">
-</picture>
-
-Inside that block `width` and `height` still report the whole canvas, and `center` is still the middle of it. A circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a sketch written for the whole window to a box, and it runs there unchanged. Here the last call inside the box stands for that whole drawing, under whatever name you gave it.
-
-Two more things are quietly remapped so that stays true. `background` fills the box rather than the whole canvas. The canvas belongs to every box at once, and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive sketch works in each box separately.
-
-The virtual canvas has the *sketch's* shape, not the box's, so in a box shaped like the canvas everything lands as drawn. When the shapes differ, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md). `.contain`, the default, leaves the box showing along two edges, `.cover` fills it and crops, and `.stretch` squashes.
-
-Labels belong outside the block, in canvas coordinates, or they get scaled down with everything else, so a caption under each box stays one size.
-
-Change one number, run six of it, and the seeds that do not work show at once.
 
 ## Putting it together: a wall of rosettes
 
@@ -341,9 +288,60 @@ Before moving on, make it yours:
 - Give the disc a stroke in `ink` and drop the gutter to `4`, so the medallions crowd their neighbors like tiles rather than floating.
 - Drive `reach` from `noise` at the cell center instead of the diagonal, and the color arrives in patches ([Chapter 5](05-Noise.md)) rather than a clean gradient.
 
+## A cell that is a whole canvas: `withViewBox`
+
+The wall moved the paper into each cell by hand and clipped what it drew there. A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas:
+
+```swift
+for cell in grid(columns: 3, rows: 2, padding: 40).cells {
+    withViewBox(cell.frame) {
+        randomSeed(cell.column + cell.row * 3)
+        drawPetals()
+    }
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ViewBoxSheet-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring of petals under a different seed, each with its own colored wash" width="680">
+</picture>
+
+Inside that block `width` and `height` still report the whole canvas, and `center` is still the middle of it. A circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a sketch written for the whole window to a box, and it runs there unchanged. Here the last call inside the box stands for that whole drawing, under whatever name you gave it.
+
+Two more things are quietly remapped so that stays true. `background` fills the box rather than the whole canvas. The canvas belongs to every box at once, and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive sketch works in each box separately.
+
+The virtual canvas has the *sketch's* shape, not the box's, so in a box shaped like the canvas everything lands as drawn. When the shapes differ, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md). `.contain`, the default, leaves the box showing along two edges, `.cover` fills it and crops, and `.stretch` squashes.
+
+Labels belong outside the block, in canvas coordinates, or they get scaled down with everything else, so a caption under each box stays one size.
+
+Change one number, run six of it, and the seeds that do not work show at once.
+
 ## Other ways to divide and walk a grid
 
-The wall's grid divided the canvas into equal blocks and read them the way a page is read, left to right, top to bottom. Neither is the only choice. The wall has no use for the other two. A layout wants panels of different sizes, and a picture of numbers wants a different reading order.
+The wall's grid divided the canvas into equal blocks and read them the way a page is read, left to right, top to bottom. Neither is the only choice, and the wall needs no other. Hexagons and triangles divide the plane evenly too, a layout wants panels of different sizes, and a picture of numbers wants a different reading order.
+
+### Grids that aren't square: `hexGrid` and `triangleGrid`
+
+`grid` divides a rectangle into rectangles, which covers a great deal but not everything. Two more regular divisions come with Ollin, and both read the same way. Ask for the cells, then loop over them once.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/OtherGrids-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+</picture>
+
+```swift
+for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
+    drawPolygon(cell.corners)
+}
+for cell in triangleGrid(columns: 21, rows: 10).cells {
+    fill(cell.pointsUp ? .white : .black)
+    drawPolygon(cell.vertices)
+}
+```
+
+`hexGrid` and `triangleGrid` are the other two regular tilings, the only other *regular polygons* that cover a plane with no gaps and no overlaps. Plenty of irregular shapes manage it, which is [Chapter 7](07-Tiles.md)'s subject. Hexagons cannot stretch the way a rectangle can. So the block keeps its true proportions and centers itself, rather than distorting to fill your bounds. A hex cell hands you its `corners` for `drawPolygon`, so a whole honeycomb is two lines. A triangle cell says whether it `pointsUp` and hands you its three `vertices`, and the compact if from the pinwheels turns that answer into a color. The hex grid also knows its own geometry. Keep the grid in a `let`, and its `distance(from:to:)` counts rings between two of its cells. That is what colors the first panel, and what a board game needs.
+
+The figure's other two panels are divisions of another kind. The `subdivide` panel splits a rectangle into unequal panels by recursion, which comes next, in [Uneven panels by recursion](#uneven-panels-by-recursion-subdivide). The maze is carved by `maze(columns:rows:)`, and [Chapter 7](07-Tiles.md#one-route-between-any-two-perfect-mazes) sets it beside the maze of diagonals and says what makes it perfect.
 
 ### Uneven panels by recursion: `subdivide`
 

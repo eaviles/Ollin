@@ -6,7 +6,7 @@
 
 <img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait of a young woman in a lace headdress built entirely from the word OLLIN repeated in a grid, the letters large and white where the lace is, smaller and warm across the face, and small and dark in the hair and the blouse" width="560">
 
-Pictures and tables arrive from outside your sketch, and you read both the same way, as grids you ask questions of. This chapter reads them one sample at a time and turns each sample into a mark of your own. One photograph, sampled a few thousand times, becomes the portrait at the top, each sample a letter sized and colored by its pixel. The sections after it answer a pixel other ways, from dithering to a shape hidden in a repeat, and then read CSV and JSON.
+Pictures and tables arrive from outside your sketch, and you read both the same way, as grids you ask questions of. This chapter reads them one sample at a time and turns each sample into a mark of your own. One photograph, sampled a few thousand times, becomes the portrait at the top, each sample a letter sized and colored by its pixel. Then the chapter fits a picture to its box, answers a pixel other ways, from dithering to a hidden shape, and reads CSV and JSON.
 
 ## A picture on the canvas: `loadImage` and `drawImage`
 
@@ -55,99 +55,6 @@ A picture arrives at one size, and the size you work at is the next choice:
 A 1600-pixel square is more than a stipple, a dither, or a mosaic needs. Each of those reads every pixel, and they were tuned on a copy a few hundred pixels a side. `resized(width:height:)` makes that copy. `SamplePhoto.city.load().resized(width: 300, height: 300)` is the call, and the copy has twenty-eight times fewer pixels to read. Keep the small copy for the reading and the full picture for the drawing. `cropped(toAspect:)` is the other kind of change. The call `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of the square and scales nothing. So a square photograph can stand in for a wide one.
 
 `SamplePhoto` is where that street came from. Ollin bundles twenty photographs to try, and `import OllinSamplePhotos` makes them available. The call `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress at 1600 pixels square. The [Sample photographs](../Docs/Drawing/SamplePhotos.md) reference shows all twenty on one page, each under its name, with what it is for. Each one carries its `credit`: the photographer, the place, the page it came from, and the terms it is used under. `SamplePhoto.city.credit.line` is the sentence at the foot of the figure, ready to draw. The terms do not ask for it. The Guide gives it anyway.
-
-### A picture you drop on the window
-
-A path typed into `loadImage` is fine for a picture you keep. For one you want to try, drop it on the window. The sketch is told at the drop, the paths arrive through `droppedFiles()`, and `mouse` says where the file landed:
-
-```swift
-override func filesDropped() {
-    for path in droppedFiles() {
-        if let picture = try? loadImage(path) { pictures.append((picture, mouse)) }
-    }
-}
-```
-
-Here `pictures` is a list the sketch keeps. Each entry is a pair, a picture with the point it landed at. Swift writes a pair in parentheses, as `(picture, mouse)`. `mouse` is `mouseX` and `mouseY` as one `Vector2`.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DroppedOnTheWindow-dark.jpg">
-  <img src="Images/09-Pictures/DroppedOnTheWindow.jpg" alt="A diagram of a file tile labeled marigolds.jpg leaving the Finder on a dotted trail that arcs into a dark sketch window, where the picture sits a little turned on a white border under an orange crosshair labeled mouseX, mouseY. An orange line in the window's corner reads not a picture: notes.txt. Callouts say the Finder hands over a path, not a picture, and that a file that is not a picture is still a path to name" width="680">
-</picture>
-
-Reading `droppedFiles()` empties the list of dropped paths. So a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input outside a take, so a replay from [Chapter 43](43-Performing.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
-
-## The box is never the right shape: `fit`
-
-That first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureFit-dark.jpg">
-  <img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 photograph of a city street drawn into three 2:3 boxes: stretched, where the round dome of a church goes narrow; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and only the middle of the width is left" width="680">
-</picture>
-
-- `.stretch` fills the box and gives up the picture's proportions. It is the default, because it is what `drawImage` has always done.
-- `.contain` keeps the proportions and puts the whole picture inside, centered. It gives up part of the box, which shows along two edges.
-- `.cover` keeps the proportions and fills the box, centered. It gives up the picture's own edges, cropped away.
-
-```swift
-drawImage(photo, in: panel, fit: .cover)
-```
-
-Each answer is right for a different loss. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
-
-A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The church dome in the figure gives the game away in all three panels at once.
-
-Cropping costs nothing here. `.cover` does not clip the drawing. It reads a smaller part of the picture instead. So a covered photograph costs the same one quad and one texture read as a stretched one.
-
-## Making it narrower without squashing it: seam carving
-
-The three answers above keep every pixel and change how the picture sits in the box. A fourth changes the picture's own shape, and tries hard to leave the looking alone.
-
-Say a picture is 1200 wide and the space it has to fit is 800. You can squash it with `.stretch`, and everything inside gets a third thinner. You can crop it with `.cover`, and lose whatever was at the edge. **Seam carving** is the fourth answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times. Shai Avidan and Ariel Shamir published the method in 2007 as an answer to a plain engineering problem. A photograph on a web page has to fit whatever window it lands in.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
-  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
-</picture>
-
-```swift
-let narrow = picture.seamCarved(toWidth: 800)
-```
-
-A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
-
-Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
-
-That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
-
-```swift
-let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
-let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
-```
-
-A mask is a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
-
-Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
-
-Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes. Like any heavy work on a picture, that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
-
-```swift
-var seams: SeamMap?   // every seam the picture holds, worked out once
-
-override func setup() {
-    seams = picture.seamMap()
-}
-
-override func draw() {
-    let wanted = Int(300 + sin(time) * 120)
-    if let framed = seams?.image(wanted) { drawImage(framed, in: canvasRectangle) }
-}
-```
-
-> **Swift note.** `seams?.image(wanted)` is optional chaining. When `seams` is `nil` the whole expression is `nil` and the `if let` skips, and when it holds a map the call goes through. `canvasRectangle` is the same rectangle as [Chapter 7](07-Tiles.md)'s `bounds`, the whole canvas.
-
-And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
 
 ## An image you can ask: `image[x, y]`
 
@@ -247,6 +154,103 @@ Then make it yours:
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
 - Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)`, from [A picture as one line](#a-picture-as-one-line-stippling-singleline-and-spanningtree), and the poster becomes one unbroken thread a plotter could draw.
+
+## Getting a picture into place: a drop, `fit`, and seam carving
+
+The portrait loaded a bundled photograph and only read it, never drawing the picture itself. A picture you do draw has to get into the sketch and then into a box, which is rarely its own shape. A drop on the window is the quickest way in, and `fit` and seam carving settle a picture into its box.
+
+### A picture you drop on the window
+
+A path typed into `loadImage` is fine for a picture you keep. For one you want to try, drop it on the window. The sketch is told at the drop, the paths arrive through `droppedFiles()`, and `mouse` says where the file landed:
+
+```swift
+override func filesDropped() {
+    for path in droppedFiles() {
+        if let picture = try? loadImage(path) { pictures.append((picture, mouse)) }
+    }
+}
+```
+
+Here `pictures` is a list the sketch keeps. Each entry is a pair, a picture with the point it landed at. Swift writes a pair in parentheses, as `(picture, mouse)`. `mouse` is `mouseX` and `mouseY` as one `Vector2`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DroppedOnTheWindow-dark.jpg">
+  <img src="Images/09-Pictures/DroppedOnTheWindow.jpg" alt="A diagram of a file tile labeled marigolds.jpg leaving the Finder on a dotted trail that arcs into a dark sketch window, where the picture sits a little turned on a white border under an orange crosshair labeled mouseX, mouseY. An orange line in the window's corner reads not a picture: notes.txt. Callouts say the Finder hands over a path, not a picture, and that a file that is not a picture is still a path to name" width="680">
+</picture>
+
+Reading `droppedFiles()` empties the list of dropped paths. So a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input outside a take, so a replay from [Chapter 43](43-Performing.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
+
+### The box is never the right shape: `fit`
+
+The chapter's first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureFit-dark.jpg">
+  <img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 photograph of a city street drawn into three 2:3 boxes: stretched, where the round dome of a church goes narrow; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and only the middle of the width is left" width="680">
+</picture>
+
+- `.stretch` fills the box and gives up the picture's proportions. It is the default, because it is what `drawImage` has always done.
+- `.contain` keeps the proportions and puts the whole picture inside, centered. It gives up part of the box, which shows along two edges.
+- `.cover` keeps the proportions and fills the box, centered. It gives up the picture's own edges, cropped away.
+
+```swift
+drawImage(photo, in: panel, fit: .cover)
+```
+
+Each answer is right for a different loss. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
+
+A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The church dome in the figure gives the game away in all three panels at once.
+
+Cropping costs nothing here. `.cover` does not clip the drawing. It reads a smaller part of the picture instead. So a covered photograph costs the same one quad and one texture read as a stretched one.
+
+### Making it narrower without squashing it: seam carving
+
+The three answers above keep every pixel and change how the picture sits in the box. A fourth changes the picture's own shape, and tries hard to leave the looking alone.
+
+Say a picture is 1200 wide and the space it has to fit is 800. You can squash it with `.stretch`, and everything inside gets a third thinner. You can crop it with `.cover`, and lose whatever was at the edge. **Seam carving** is the fourth answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times. Shai Avidan and Ariel Shamir published the method in 2007 as an answer to a plain engineering problem. A photograph on a web page has to fit whatever window it lands in.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
+  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
+</picture>
+
+```swift
+let narrow = picture.seamCarved(toWidth: 800)
+```
+
+A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
+
+Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
+
+That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
+
+```swift
+let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
+let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
+```
+
+A mask is a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
+
+Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
+
+Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes. Like any heavy work on a picture, that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
+
+```swift
+var seams: SeamMap?   // every seam the picture holds, worked out once
+
+override func setup() {
+    seams = picture.seamMap()
+}
+
+override func draw() {
+    let wanted = Int(300 + sin(time) * 120)
+    if let framed = seams?.image(wanted) { drawImage(framed, in: canvasRectangle) }
+}
+```
+
+> **Swift note.** `seams?.image(wanted)` is optional chaining. When `seams` is `nil` the whole expression is `nil` and the `if let` skips, and when it holds a map the call goes through. `canvasRectangle` is the same rectangle as [Chapter 7](07-Tiles.md)'s `bounds`, the whole canvas.
+
+And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
 
 ## The colors read back: palettes and dithering
 
@@ -566,7 +570,7 @@ Both loaders belong in `setup()`. Reading a file is slow next to drawing one fra
 
 ## Where this comes from
 
-Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Each way this chapter turns a picture into marks descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster of a young couple as line-printer characters. Then they printed its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is the youngest technique on the spine. Shai Avidan and Ariel Shamir published it in 2007. Its demonstration video was watched around the world, mostly because of the part where a mask makes something disappear.
+Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Each way this chapter turns a picture into marks descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster of a young couple as line-printer characters. Then they printed its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is much younger. Shai Avidan and Ariel Shamir published it in 2007. Its demonstration video was watched around the world, mostly because of the part where a mask makes something disappear.
 
 The families after the sketch name their own sources, from Secord's stipple to Asendorf's sorted pixels. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 

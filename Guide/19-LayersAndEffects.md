@@ -6,7 +6,7 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them comes what to do when a frame gets slow.
+A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them come the `compose` block, the running mean, and what to do when a frame gets slow.
 
 ## A drawing you can hold: render targets
 
@@ -94,50 +94,9 @@ The one to learn first is `.add`. It sums colors the way light sums, so two fain
 
 One pairing comes back through the chapter. A bloomed layer drawn with `blendMode(.add)` reads as added light rather than as a sticker laid over the scene. The finished sketch composites its comets that way.
 
-## The whole stack in one block: compose
-
-By now a frame might go like this. Draw a backdrop layer, blur it, draw a lights layer, bloom it, then composite one normally and one additively. You can wire that by hand with the calls above. Or you can declare it as one `compose { }` block, where each `layer { }` carries its own filters and blend mode:
-
-```swift
-import Ollin
-
-final class ComposeStack: Sketch {
-    override func draw() {
-        background(Color(hex: 0x080B12))
-        compose {
-            layer {                                   // beneath: a soft color field
-                noStroke()
-                fill(Color(hex: 0x2C3A8C)); drawCircle(width * 0.35, height * 0.4, 330)
-                fill(Color(hex: 0x1F7A6B)); drawCircle(width * 0.68, height * 0.62, 300)
-                fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
-            }
-            .post(.gaussianBlur(radius: 60))
-            .scaled(0.5)
-
-            layer {                                   // on top: lights that glow
-                noStroke()
-                for i in 0 ..< 15 {
-                    let a = Double(i) / 15 * .tau
-                    fill(Color(hue: 0.08 + Double(i) * 0.014, saturation: 0.5, brightness: 1))
-                    drawCircle(width / 2 + cos(a) * 300, height / 2 + sin(a) * 300, 10)
-                }
-                stroke(Color(hex: 0xFFD98A)); strokeWeight(3); noFill()
-                drawCircle(width / 2, height / 2, 300)
-            }
-            .post(.bloom(threshold: 0.4, amount: 1.8, radius: 26))
-            .blended(.add)
-        }
-    }
-}
-```
-
-<img src="Images/19-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
-
-Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution, which a layer about to be blurred can afford. All of it is shorthand, since everything `compose` does, the calls you already know can do by hand. What the block adds is that it holds the in-between layers for you. Some effects need *two* layers, a mask or a displacement map. For those the same block takes an `aside { }`, a helper layer drawn only to feed another one. The [effects reference](../Docs/Drawing/Effects.md#aside) covers it.
-
 ## The canvas that keeps everything: noClear
 
-Every layer so far was made for one frame and thrown away with it. The rest of the chapter is about what a canvas can keep from one frame to the next. The plainest case is the canvas itself. [Chapter 12](12-FlocksAndSwarms.md) gave a first look: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
+Every layer so far was made for one frame and thrown away with it. From here to the comets, the steps are about what a canvas can keep from one frame to the next. The plainest case is the canvas itself. [Chapter 12](12-FlocksAndSwarms.md) gave a first look: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
 
 ```swift
 import Ollin
@@ -182,35 +141,6 @@ Each frame draws only 2,600 dots, each at an alpha of 0.045, barely visible alon
 
 While accumulating, `background(_:)` is the reset, so call it on the frame you want to wipe, or never. And a still additive scene only brightens, toward white, for as long as it runs, so keep something moving.
 
-## Converging instead of brightening: the running mean
-
-That second note is a limit of the pile. A `noClear` canvas holds a *sum*, and a sum only grows. What a still scene wants is the *mean*: the sum divided by how many passes went into it. A mean settles at one brightness however long it runs, and only gets smoother. `makeAccumulator()` keeps that for you. Draw each frame's samples into it with `withAccumulator`, and read `image` for the average so far:
-
-```swift
-var light: Accumulator!
-
-override func setup() {
-    light = makeAccumulator()
-}
-
-override func draw() {
-    background(Color(hex: 0x05070C))
-    withAccumulator(light) {                          // one more pass
-        blendMode(.add)
-        noStroke()
-        for _ in 0 ..< 4000 {
-            let p = Vector2(random(width), random(height))
-            let hue = noise(p.x * 0.004, p.y * 0.004)
-            fill(Color(hue: hue, saturation: 0.7, brightness: 1, alpha: 0.5))
-            drawCircle(center: p, radius: 1.2)
-        }
-    }
-    drawImage(light.developed(exposure: 3, ground: Color(hex: 0x05070C)).image, 0, 0)
-}
-```
-
-The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed. It applies an exposure and a Reinhard roll-off, then adds the paper's own tone after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 33](33-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!` again, a property filled in `setup()` before anything reads it.
-
 ## Brighter than the screen: toneMap
 
 That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, because it solves a problem you now have. Additive light does not stop at full brightness. Three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values. Then `toneMap(_:)` decides what happens when the frame finally meets the screen. The default clips every too-bright value to white, which is simple and abrupt:
@@ -223,7 +153,7 @@ Same lamps, same brightness, one line different. `.aces` runs the frame through 
 
 ## The canvas that remembers itself: feedback
 
-Accumulation and the running mean both add new marks to a picture that otherwise sits still. **Feedback** hands you the picture itself. Each frame you get the layer's last picture back as an image. You transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. The transform you choose, a fade, a zoom, a turn, or all three, decides what the effect looks like:
+Accumulation adds new marks to a picture that otherwise sits still. **Feedback** hands you the picture itself. Each frame you get the layer's last picture back as an image. You transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. The transform you choose, a fade, a zoom, a turn, or all three, decides what the effect looks like:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/FeedbackSteps-dark.jpg">
@@ -237,7 +167,7 @@ var trail: Feedback!
 override func setup() { trail = makeFeedback() }
 ```
 
-The `!` is the same promise as the `Accumulator!` above. The finished sketch uses `Feedback?` with a `guard let` instead.
+The `!` is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!` promise again, a property filled in `setup()` before anything reads it. The finished sketch uses `Feedback?` with a `guard let` instead.
 
 Then each frame runs the loop. It reads the past, transforms it, draws it back, and adds the new marks. This is the heart of the finished sketch below:
 
@@ -332,6 +262,76 @@ The comets are motion, so keep them as a few seconds of video:
 ```sh
 swift run OllinLive MySketches/Comets.swift --export-video comets.mp4 --seconds 8
 ```
+
+## The whole stack in one block: compose
+
+The comets composited their one layer by hand, bloomed and drawn with `.add`. A frame with more layers might go like this. Draw a backdrop layer, blur it, draw a lights layer, bloom it, then composite one normally and one additively. You can wire that by hand with the calls above. Or you can declare it as one `compose { }` block, where each `layer { }` carries its own filters and blend mode:
+
+```swift
+import Ollin
+
+final class ComposeStack: Sketch {
+    override func draw() {
+        background(Color(hex: 0x080B12))
+        compose {
+            layer {                                   // beneath: a soft color field
+                noStroke()
+                fill(Color(hex: 0x2C3A8C)); drawCircle(width * 0.35, height * 0.4, 330)
+                fill(Color(hex: 0x1F7A6B)); drawCircle(width * 0.68, height * 0.62, 300)
+                fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
+            }
+            .post(.gaussianBlur(radius: 60))
+            .scaled(0.5)
+
+            layer {                                   // on top: lights that glow
+                noStroke()
+                for i in 0 ..< 15 {
+                    let a = Double(i) / 15 * .tau
+                    fill(Color(hue: 0.08 + Double(i) * 0.014, saturation: 0.5, brightness: 1))
+                    drawCircle(width / 2 + cos(a) * 300, height / 2 + sin(a) * 300, 10)
+                }
+                stroke(Color(hex: 0xFFD98A)); strokeWeight(3); noFill()
+                drawCircle(width / 2, height / 2, 300)
+            }
+            .post(.bloom(threshold: 0.4, amount: 1.8, radius: 26))
+            .blended(.add)
+        }
+    }
+}
+```
+
+<img src="Images/19-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
+
+Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution, which a layer about to be blurred can afford. All of it is shorthand, since everything `compose` does, the calls you already know can do by hand. What the block adds is that it holds the in-between layers for you. Some effects need *two* layers, a mask or a displacement map. For those the same block takes an `aside { }`, a helper layer drawn only to feed another one. The [effects reference](../Docs/Drawing/Effects.md#aside) covers it.
+
+## Converging instead of brightening: the running mean
+
+The comets let their past fade a little every frame, while the sandpainting kept every grain it drew. That pile has a limit. A `noClear` canvas holds a *sum*, and a sum only grows, so a still scene brightens toward white. What a still scene wants is the *mean*: the sum divided by how many passes went into it. A mean settles at one brightness however long it runs, and only gets smoother. `makeAccumulator()` keeps that for you. Draw each frame's samples into it with `withAccumulator`, and read `image` for the average so far:
+
+```swift
+var light: Accumulator!
+
+override func setup() {
+    light = makeAccumulator()
+}
+
+override func draw() {
+    background(Color(hex: 0x05070C))
+    withAccumulator(light) {                          // one more pass
+        blendMode(.add)
+        noStroke()
+        for _ in 0 ..< 4000 {
+            let p = Vector2(random(width), random(height))
+            let hue = noise(p.x * 0.004, p.y * 0.004)
+            fill(Color(hue: hue, saturation: 0.7, brightness: 1, alpha: 0.5))
+            drawCircle(center: p, radius: 1.2)
+        }
+    }
+    drawImage(light.developed(exposure: 3, ground: Color(hex: 0x05070C)).image, 0, 0)
+}
+```
+
+The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed. It applies an exposure and a Reinhard roll-off, then adds the paper's own tone after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 33](33-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` makes the same promise as the feedback section's `Feedback!`.
 
 ## When it gets slow
 

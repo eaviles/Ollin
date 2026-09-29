@@ -6,7 +6,7 @@
 
 <img src="Images/15-ShapesAsMaterial/Plate.jpg" alt="A plotter-style plate: a mosaic of hatched Voronoi cells in dark ink, each hatched at its own angle, parting around a wavy terracotta ribbon filled with crosshatch, all on cream paper" width="560">
 
-Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, scatters and packs them, and hatches them for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, line work can also tell a blade where to score and cut, so the paper itself takes the shape.
+Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, shapes pack, answer questions, and arrive from files, and line work can tell a blade where to score and cut.
 
 ## Shapes you can hold
 
@@ -78,57 +78,6 @@ let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap:
 
 The plate rests on that one call. Once a stroke is a region, it is an ordinary `Shape`, and the chapter's shape tools all work on it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a stroke attribute a tool may read differently. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
 
-### Asking an outline where it goes: contour questions
-
-A contour is a list of points, but it can answer questions about the line those points make. Ask it where it runs closest to the mouse, or which way it heads at some fraction along. Ask where it crosses another line, or itself.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/OutlineQuestions-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/OutlineQuestions.jpg" alt="Three panels. On the left a curve with a probe point beside it, a line dropped to the nearest place on the curve, arrows there for the direction of travel and the side it faces, and the stretch before that place drawn darker. In the middle a loop tangled into a seven-pointed star that crosses itself fourteen times, drawn as a band that passes over and under itself in turn, with a dot on each crossing. On the right a wavy line drawn thick and pale with a thin line of a few dots over it, and below it a star twice, once with its corners rounded and once with them cut flat" width="680">
-</picture>
-
-Every answer is measured along the walk, as a fraction from 0 to 1 of the contour's length, the number `point(at:)` below takes. So the answers fit into each other:
-
-```swift
-let t = path.fraction(of: mouse)                 // how far along the nearest place is
-let foot = path.point(at: t)                     // that place
-let heading = path.tangent(at: t)                // which way the line runs there
-let side = path.normal(at: t)                    // a quarter turn to its right
-let walked = path.piece(from: 0, to: t)          // the stretch up to it
-```
-
-The left panel is those five lines. `fraction(of:)` undoes `point(at:)`: one turns a fraction into a place, the other a place into a fraction. `nearestPoint(to:)` does the first two lines in one call, when the fraction itself is not needed. `piece(from:to:)` cuts out a stretch as its own open contour. On a closed outline it may run through the start, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam.
-
-Crossings come back as a list, sorted along the outline you asked:
-
-```swift
-for crossing in road.crossings(with: river) {
-    drawCircle(center: crossing.point, radius: 10)
-}
-```
-
-Each one carries its `point`, and how far along each line it sits (`fraction` on this one, `otherFraction` on the other). That is enough to cut either line there.
-
-The middle panel asks a loop about itself with `crossings()`. Walk once round and you pass through every crossing twice. Call every second pass "under" and cut a short gap out of the line there, and the loop weaves like a knot. The alternation always works out, because a closed curve passes an even number of crossings between its two visits to one. So every crossing gets one over and one under. The `Shapes/OverUnder` example tangles its loop a little differently every frame and weaves it again.
-
-The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
-
-### Chance inside an outline: points in a shape
-
-A shape can also be the place chance is confined to. `randomPoints(in:count:)` scatters points evenly over its fill, with holes left out and every island given its share. The points come from the same triangles the fill is made of, not from the box around the shape. `randomPoints(along:count:)` scatters them along the outline, even by length. And `poissonDisk(in:radius:)` is [Chapter 4](04-Randomness.md#darts-that-keep-their-distance-poissondisk)'s blue noise kept inside a shape, no two points closer than the radius, every island filled:
-
-```swift
-seed(4)
-let letter = textToShapes("O", 540, 700)[0]
-let stipple = poissonDisk(in: letter, radius: 9)     // inside the letter, none in its counter
-let rim = randomPoints(along: letter, count: 80)     // on the outline, even by length
-noStroke(); fill(.black)
-drawPoints(stipple, size: 3)
-drawPoints(rim, size: 6)
-```
-
-Three lines and a glyph is a stipple. The next section scatters the whole canvas, and this confines the same scatter to a region. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
-
 ## Scatters and territories
 
 So far each shape was one outline. Here the material turns into populations, and the territories start from `poissonDisk(radius:)`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences).
@@ -166,72 +115,9 @@ A **power diagram** gives every site a weight and subtracts it from the squared 
 
 The cells are still convex and they still tile the region exactly, so everything you do to a Voronoi cell you can do to these. What is new is that a site can lose. A small circle inside a large one gets no cell at all, and its entry in `cells` is an empty `Shape` that draws nothing.
 
-### Packing: circles that grow until they touch
-
-Packing reverses that. Instead of carving space between points, you grow shapes until they claim it. The common form scatters candidate seeds and grows each circle until it touches whatever arrived first:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/PackingLapse-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
-</picture>
-
-```swift
-let circles = packCircles(count: 300, minRadius: 4, maxRadius: 120)
-```
-
-The big-first, small-fill rhythm is the signature of the technique, and the finished foam feeds anything that takes circles or shapes.
-
-A packing can also be exact. `apollonianGasket(in:minRadius:)` fills a circle with a foam of ever-smaller kissing circles, each one the single circle that touches its three neighbors. There is no randomness in it at all, so the same circle always gives the same foam. The circles come back in the order they were created, so their index doubles as an age you can color by.
-
-### A circle for every fraction: Ford circles
-
-The gasket's circles touch because each one is built to touch its neighbors. In this one, nothing arranges the touching at all.
-
-Take any fraction `p/q` in lowest terms. Give it a circle of radius `1/(2q²)`, sitting on the number line at `p/q`. Do that for every fraction at once, so a second fraction `r/s` gets its own circle beside the first.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CircleForEveryFraction-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
-</picture>
-
-```swift
-noFill(); stroke(.white)
-for ford in fordCircles(order: 12) { drawCircle(ford.circle) }
-```
-
-**No two of them ever overlap**, though nothing in the rule asks it. Two of them touch exactly when their fractions `p/q` and `r/s` are neighbors, which means `ps - qr` is `1` or `-1`. Lester Ford wrote this down in 1938.
-
-Read the sizes and the picture tells you something. A small denominator gets a big circle, and a big circle is a fraction that stays close to everything near it. That is what "a good approximation" means, drawn.
-
-The fractions come from `fareySequence(order:)`, which is useful on its own. It hands you every fraction from 0 to 1 with a denominator inside the order, in order. Any two terms next to each other are neighbors. The first fraction ever to appear between two of them is their mediant, `(p+r)/(q+s)`. That is the wrong way to add fractions and the right way to grow this sequence.
-
-Growing `order` over a loop is the animation, and it is arrival rather than motion. No circle ever moves, and each new denominator drops its circles into the gaps between the old ones. The `Patterns/FordCircles` example does that, and draws a line between every touching pair on a mouse hold.
-
-### Packing shapes, not circles
-
-Circles are the easy case. Two circles touch when the distance between their centers equals the sum of their radii, and that is one line of arithmetic. Other shapes are harder, because a star is mostly *not* there. It is five points and a lot of empty air between them. `packShapes` takes a bag of shapes and grows each one against its neighbors' **outlines**:
-
-```swift
-let bag = [triangle, square, hexagon, star]
-let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2)
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ShapePacking-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on white. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
-</picture>
-
-Both panels are the same packing, from a bag with more shapes in it than the listing's four. The left one also draws each shape's bounding circle, and **those circles overlap**, which a circle packing could never allow. That overlap is the point. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
-
-The arguments beyond `count` and the radius range change the character rather than the density. `padding` opens a consistent gap between shapes, which helps when they will be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
-
-The output is `[Shape]`, so every shape tool in the chapter takes it. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
-
-`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 12](12-FlocksAndSwarms.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That is what the `Patterns/ShapePacking` example does, filling in for as long as it runs.
-
 ## Outlines and bones
 
-The scatters above were divided and packed. A scatter or a shape also carries structure you can read back out. Hulls wrap a point set from the outside. A fit recovers the shape a scatter was made around, and the two skeletons describe a shape from the inside.
+The Voronoi mosaic divided a scatter into territories. A scatter or a shape also carries structure you can read back out. Hulls wrap a point set from the outside, and the medial axis describes a shape from the inside.
 
 ### What shape are these points? Hulls and alpha shapes
 
@@ -260,26 +146,6 @@ Choosing between them depends on what you will do next. When the result has to b
 
 The number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same argument give the same outline every run. The `Shapes/Hulls` example moves `concavity` from 0 to tight so you can watch the band sink into the gulf.
 
-### The circle they were scattered around: `Fit.minimize`
-
-The hulls wrap a scatter. Sometimes you want the shape it was scattered around instead, and the scatter is all you have. Say a set of marks sits roughly on a circle, and nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are. It walks them downhill until they stop being wrong:
-
-```swift
-let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
-    marks.reduce(0.0) { total, mark in
-        let off = Vector2(p[0], p[1]).distance(to: mark) - p[2]
-        return total + off * off
-    }
-}
-drawCircle(best.values[0], best.values[1], best.values[2])
-```
-
-The closure is the whole of it. You never say how to search, only how to score. `reduce` adds up one number over a list, starting from the value you give it. The closure inside it runs once per mark and returns the running total. Squared distance is the usual scoring. It punishes one badly placed mark much harder than several slightly off ones. That is what makes the answer settle in the middle of the crowd.
-
-It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest. So when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each number a little either side of where it stands. So your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
-
-The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself-radial-basis-functions) is this call, a circle fitted through the middle of a ring of pale marks.
-
 ### The skeleton inside: the medial axis
 
 Hulls describe a region from the outside. The **medial axis** describes it from the inside by finding its middle. Take every disk that fits within the shape while touching the boundary in two or more places. The centers of those disks trace a skeleton. A blob collapses to the veins running down its lobes, and a letterform collapses to the stroke a pen would have made to write it.
@@ -303,40 +169,9 @@ The skeleton also remembers thickness. Each branch carries `radii` alongside `po
 
 Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 8](08-Words.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
-### The straight skeleton
+## Toward the pen: hatching
 
-There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
-</picture>
-
-```swift
-let skeleton = straightSkeleton(of: island)
-for arc in skeleton.arcs {
-    drawLine(arc.start, arc.end)
-}
-```
-
-Arcs whose `startDistance` is 0 rise off the boundary, one per corner. The rest are interior ridges, the creases where shrinking fronts met. Every arc endpoint carries the shrink distance at which the boundary arrived there. `skeleton.maxInset` is the depth where the last of the shape disappears.
-
-The reason to reach for this skeleton is what that distance gives you. The shrinking boundary at depth `d` is your shape inset by `d`, corners still sharp. `inset(by:)` cuts it straight out of the finished skeleton:
-
-```swift
-noFill()
-for d in stride(from: 8.0, to: skeleton.maxInset, by: 8) {
-    drawShape(skeleton.inset(by: d))
-}
-```
-
-That loop is a topographic contour map of any polygon, which is a common way to fill a region on a pen plotter. The rings split on their own where the shape pinches, ring a hole as the region around it thins, and run out at `maxInset`. You met `offset(by:)` earlier in this chapter doing something similar, and the difference matters. `offset` is the general tool, outward as well as inward, with a choice of corner joins, and it does fresh work per ring. The skeleton's inset is inward only and exact, every corner keeping its true miter. A ladder of twelve rings costs one build, and each ring after it is nearly free. The skeleton also hands you `faces`, one flat panel per boundary edge with depths attached, so a shape can be shaded like folded paper.
-
-The same habit carries over from the medial axis. Every boundary corner grows an arc, so a traced or resampled outline grows one arc per sample point. That is correct behavior, but for clean line work, simplify the outline first. The `Shapes/StraightSkeleton` example grows an island with a lake, and lets the contour ladder drift inward for as long as it runs. Every ring is a mitered inset read off one skeleton.
-
-## Toward the pen: hatching and SVG import
-
-The chapter opened by promising a pen plotter, and hatching and SVG import connect the two ends. Fills become line work a pen can follow, and vector files flow in and back out.
+The chapter opened by promising a pen plotter, and hatching is what takes a shape to one.
 
 ### Lines for a pen: hatching
 
@@ -355,35 +190,6 @@ for line in hatch.lines(filling: shape) {
 </picture>
 
 Spacing is the pen's whole idea of tone. Holes and concavities are respected, because the lines are clipped by the shape's own inside rule. For getting work *out*, every sketch already knows how. Run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths. Add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
-
-### Shapes from a file: SVG import
-
-A last source of material comes before the finished sketch, which is shapes you did not draw at all. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
-
-```swift
-if let art = try? loadSVG("boat.svg") {
-    drawSVG(art, in: bounds.inset(by: .all(140)))
-}
-```
-
-`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the [Chapter 8](08-Words.md) move, or hatch it for the pen.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ImportMined-dark.jpg">
-  <img src="Images/15-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
-</picture>
-
-```swift
-let fitted = art.fitted(in: frame)      // a scaled copy, in canvas coordinates
-for (i, shape) in fitted.shapes.enumerated() {
-    let hatch = Hatching(spacing: 4.5, angle: 0.5 + Double(i) * 0.7)
-    for line in hatch.lines(filling: shape) {
-        drawPolyline(line)
-    }
-}
-```
-
-A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things matter before you rely on it. Text does not import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists what the importer reads and skips.
 
 ## Putting it together: the plate
 
@@ -471,6 +277,212 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 **Spacing from the nib.** The hatch spacing is in canvas units, and the sheet decides what a unit is. On a sheet 200 millimeters wide, this canvas puts about 0.19 millimeters in a unit. The tightest cells, hatched at 6.5, then get 1.2 millimeters between lines, and the loosest, at 12.5, get 2.3 millimeters. A 0.3 millimeter nib covers a quarter of the tighter gap, which reads as a light gray. A working rule: lines one nib apart fill solid, two nibs apart read dark, and four to six read light. Every `strokeWeight` in the listing is for the screen, because the pen draws every line at its own width.
 
 **A test plot.** Before the full plate, plot a strip on the same paper with the same pen. Give it the hatch at three spacings and one outline. Check the tone, and check whether the ink bleeds or the pen skips on the sheet. Then change the spacing in the sketch, never the pen. To make the file a true sheet rather than a scaled drawing, declare the canvas as a paper size. Then export the same recording as a PDF. [Chapter 41](41-FinishingASketch.md#sized-for-the-output-fractions-of-the-canvas-and-paper-sizes) covers paper-sized canvases, and the rest of the export surface.
+
+## More from a held outline: contour questions and points in a shape
+
+The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, and it can keep a scatter of points inside itself. The plate asks neither of it.
+
+### Asking an outline where it goes: contour questions
+
+A contour is a list of points, but it can answer questions about the line those points make. Ask it where it runs closest to the mouse, or which way it heads at some fraction along. Ask where it crosses another line, or itself.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/OutlineQuestions-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/OutlineQuestions.jpg" alt="Three panels. On the left a curve with a probe point beside it, a line dropped to the nearest place on the curve, arrows there for the direction of travel and the side it faces, and the stretch before that place drawn darker. In the middle a loop tangled into a seven-pointed star that crosses itself fourteen times, drawn as a band that passes over and under itself in turn, with a dot on each crossing. On the right a wavy line drawn thick and pale with a thin line of a few dots over it, and below it a star twice, once with its corners rounded and once with them cut flat" width="680">
+</picture>
+
+Every answer is measured along the walk, as a fraction from 0 to 1 of the contour's length, the number `point(at:)` below takes. So the answers fit into each other:
+
+```swift
+let t = path.fraction(of: mouse)                 // how far along the nearest place is
+let foot = path.point(at: t)                     // that place
+let heading = path.tangent(at: t)                // which way the line runs there
+let side = path.normal(at: t)                    // a quarter turn to its right
+let walked = path.piece(from: 0, to: t)          // the stretch up to it
+```
+
+The left panel is those five lines. `fraction(of:)` undoes `point(at:)`: one turns a fraction into a place, the other a place into a fraction. `nearestPoint(to:)` does the first two lines in one call, when the fraction itself is not needed. `piece(from:to:)` cuts out a stretch as its own open contour. On a closed outline it may run through the start, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam.
+
+Crossings come back as a list, sorted along the outline you asked:
+
+```swift
+for crossing in road.crossings(with: river) {
+    drawCircle(center: crossing.point, radius: 10)
+}
+```
+
+Each one carries its `point`, and how far along each line it sits (`fraction` on this one, `otherFraction` on the other). That is enough to cut either line there.
+
+The middle panel asks a loop about itself with `crossings()`. Walk once round and you pass through every crossing twice. Call every second pass "under" and cut a short gap out of the line there, and the loop weaves like a knot. The alternation always works out, because a closed curve passes an even number of crossings between its two visits to one. So every crossing gets one over and one under. The `Shapes/OverUnder` example tangles its loop a little differently every frame and weaves it again.
+
+The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
+
+### Chance inside an outline: points in a shape
+
+A shape can also be the place chance is confined to. `randomPoints(in:count:)` scatters points evenly over its fill, with holes left out and every island given its share. The points come from the same triangles the fill is made of, not from the box around the shape. `randomPoints(along:count:)` scatters them along the outline, even by length. And `poissonDisk(in:radius:)` is [Chapter 4](04-Randomness.md#darts-that-keep-their-distance-poissondisk)'s blue noise kept inside a shape, no two points closer than the radius, every island filled:
+
+```swift
+seed(4)
+let letter = textToShapes("O", 540, 700)[0]
+let stipple = poissonDisk(in: letter, radius: 9)     // inside the letter, none in its counter
+let rim = randomPoints(along: letter, count: 80)     // on the outline, even by length
+noStroke(); fill(.black)
+drawPoints(stipple, size: 3)
+drawPoints(rim, size: 6)
+```
+
+Three lines and a glyph is a stipple. The plate scattered its sites over a whole rectangle, and this confines the same scatter to a shape. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
+
+## Filling space by packing: circles, fractions, and shapes
+
+The plate's mosaic carved a space into territories around its points. Packing divides a space too, and the plate does not use it. A circle for every fraction belongs here as well, since those circles pack themselves with no rule asking them to.
+
+### Packing: circles that grow until they touch
+
+Packing reverses the mosaic. Instead of carving space between points, you grow shapes until they claim it. The common form scatters candidate seeds and grows each circle until it touches whatever arrived first:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/PackingLapse-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
+</picture>
+
+```swift
+let circles = packCircles(count: 300, minRadius: 4, maxRadius: 120)
+```
+
+The big-first, small-fill rhythm is the signature of the technique, and the finished foam feeds anything that takes circles or shapes.
+
+A packing can also be exact. `apollonianGasket(in:minRadius:)` fills a circle with a foam of ever-smaller kissing circles, each one the single circle that touches its three neighbors. There is no randomness in it at all, so the same circle always gives the same foam. The circles come back in the order they were created, so their index doubles as an age you can color by.
+
+### A circle for every fraction: Ford circles
+
+The gasket's circles touch because each one is built to touch its neighbors. In this one, nothing arranges the touching at all.
+
+Take any fraction `p/q` in lowest terms. Give it a circle of radius `1/(2q²)`, sitting on the number line at `p/q`. Do that for every fraction at once, so a second fraction `r/s` gets its own circle beside the first.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CircleForEveryFraction-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+</picture>
+
+```swift
+noFill(); stroke(.white)
+for ford in fordCircles(order: 12) { drawCircle(ford.circle) }
+```
+
+**No two of them ever overlap**, though nothing in the rule asks it. Two of them touch exactly when their fractions `p/q` and `r/s` are neighbors, which means `ps - qr` is `1` or `-1`. Lester Ford wrote this down in 1938.
+
+Read the sizes and the picture tells you something. A small denominator gets a big circle, and a big circle is a fraction that stays close to everything near it. That is what "a good approximation" means, drawn.
+
+The fractions come from `fareySequence(order:)`, which is useful on its own. It hands you every fraction from 0 to 1 with a denominator inside the order, in order. Any two terms next to each other are neighbors. The first fraction ever to appear between two of them is their mediant, `(p+r)/(q+s)`. That is the wrong way to add fractions and the right way to grow this sequence.
+
+Growing `order` over a loop is the animation, and it is arrival rather than motion. No circle ever moves, and each new denominator drops its circles into the gaps between the old ones. The `Patterns/FordCircles` example does that, and draws a line between every touching pair on a mouse hold.
+
+### Packing shapes, not circles
+
+Circles are the easy case. Two circles touch when the distance between their centers equals the sum of their radii, and that is one line of arithmetic. Other shapes are harder, because a star is mostly *not* there. It is five points and a lot of empty air between them. `packShapes` takes a bag of shapes and grows each one against its neighbors' **outlines**:
+
+```swift
+let bag = [triangle, square, hexagon, star]
+let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ShapePacking-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on white. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
+</picture>
+
+Both panels are the same packing, from a bag with more shapes in it than the listing's four. The left one also draws each shape's bounding circle, and **those circles overlap**, which a circle packing could never allow. That overlap is the point. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
+
+The arguments beyond `count` and the radius range change the character rather than the density. `padding` opens a consistent gap between shapes, which helps when they will be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
+
+The output is `[Shape]`, so every shape tool in the chapter takes it. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
+
+`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 12](12-FlocksAndSwarms.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That is what the `Patterns/ShapePacking` example does, filling in for as long as it runs.
+
+## More outlines and bones: fitting and the straight skeleton
+
+The plate's variations wrap a scatter in a hull and trace a cell's medial axis. A fit and a second skeleton read structure out of the same material, and the plate uses neither.
+
+### The circle they were scattered around: `Fit.minimize`
+
+The hulls wrap a scatter. Sometimes you want the shape it was scattered around instead, and the scatter is all you have. Say a set of marks sits roughly on a circle, and nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are. It walks them downhill until they stop being wrong:
+
+```swift
+let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
+    marks.reduce(0.0) { total, mark in
+        let off = Vector2(p[0], p[1]).distance(to: mark) - p[2]
+        return total + off * off
+    }
+}
+drawCircle(best.values[0], best.values[1], best.values[2])
+```
+
+The closure is the whole of it. You never say how to search, only how to score. `reduce` adds up one number over a list, starting from the value you give it. The closure inside it runs once per mark and returns the running total. Squared distance is the usual scoring. It punishes one badly placed mark much harder than several slightly off ones. That is what makes the answer settle in the middle of the crowd.
+
+It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest. So when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each number a little either side of where it stands. So your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
+
+The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself-radial-basis-functions) is this call, a circle fitted through the middle of a ring of pale marks.
+
+### The straight skeleton
+
+There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+</picture>
+
+```swift
+let skeleton = straightSkeleton(of: island)
+for arc in skeleton.arcs {
+    drawLine(arc.start, arc.end)
+}
+```
+
+Arcs whose `startDistance` is 0 rise off the boundary, one per corner. The rest are interior ridges, the creases where shrinking fronts met. Every arc endpoint carries the shrink distance at which the boundary arrived there. `skeleton.maxInset` is the depth where the last of the shape disappears.
+
+The reason to reach for this skeleton is what that distance gives you. The shrinking boundary at depth `d` is your shape inset by `d`, corners still sharp. `inset(by:)` cuts it straight out of the finished skeleton:
+
+```swift
+noFill()
+for d in stride(from: 8.0, to: skeleton.maxInset, by: 8) {
+    drawShape(skeleton.inset(by: d))
+}
+```
+
+That loop is a topographic contour map of any polygon, which is a common way to fill a region on a pen plotter. The rings split on their own where the shape pinches, ring a hole as the region around it thins, and run out at `maxInset`. You met `offset(by:)` earlier in this chapter doing something similar, and the difference matters. `offset` is the general tool, outward as well as inward, with a choice of corner joins, and it does fresh work per ring. The skeleton's inset is inward only and exact, every corner keeping its true miter. A ladder of twelve rings costs one build, and each ring after it is nearly free. The skeleton also hands you `faces`, one flat panel per boundary edge with depths attached, so a shape can be shaded like folded paper.
+
+The same habit carries over from the medial axis. Every boundary corner grows an arc, so a traced or resampled outline grows one arc per sample point. That is correct behavior, but for clean line work, simplify the outline first. The `Shapes/StraightSkeleton` example grows an island with a lake, and lets the contour ladder drift inward for as long as it runs. Every ring is a mitered inset read off one skeleton.
+
+## Shapes from a file: SVG import
+
+The plate built every shape it used in code. Shapes can also come from a file you did not draw at all, and the plate has no need of one. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
+
+```swift
+if let art = try? loadSVG("boat.svg") {
+    drawSVG(art, in: bounds.inset(by: .all(140)))
+}
+```
+
+`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the [Chapter 8](08-Words.md) move, or hatch it for the pen.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ImportMined-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
+</picture>
+
+```swift
+let fitted = art.fitted(in: frame)      // a scaled copy, in canvas coordinates
+for (i, shape) in fitted.shapes.enumerated() {
+    let hatch = Hatching(spacing: 4.5, angle: 0.5 + Double(i) * 0.7)
+    for line in hatch.lines(filling: shape) {
+        drawPolyline(line)
+    }
+}
+```
+
+A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things matter before you rely on it. Text does not import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists what the importer reads and skips.
 
 ## A pattern that folds: creases and cuts
 

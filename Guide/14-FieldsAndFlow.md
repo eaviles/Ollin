@@ -6,93 +6,19 @@
 
 <img src="Images/14-FieldsAndFlow/FlowPrint.jpg" alt="A print of flowing ribbons in terracotta, gold, sage, navy, pale blue, and ink on cream, combed across the canvas in curving non-crossing lines of three different widths" width="560">
 
-A field is a question you can ask at every point of the canvas, and its answer is a number or a direction. You draw both kinds, from the lines where a number field equals something to streamlines spaced evenly through a direction field. The print at the top draws itself out of one function that way. Past the print, a field carries particles, combs a whole layer at once, and passes through values you set by hand.
+A field is a question you can ask at every point of the canvas, and its answer is a number or a direction. The steps trace streamlines through a direction field and space them evenly. The print at the top draws itself out of one function that way. Past the print, a number field draws its contours, and a field carries particles, combs a layer, and passes through values you choose.
 
 ## Two kinds of field: a number or a direction at every point
 
 A field is a rule, not a grid of stored values. Hand it any point of the plane and it hands back an answer. It has an answer at every point you could ever ask, between the samples as well as at them. Two kinds of answer make two kinds of field.
 
-A **number field** answers with a number. [Chapter 5](05-Noise.md)'s `noise` is one, and so is any function you write that takes a point and returns a value. A number field makes two kinds of picture. Painted as tone, it is the cloudy gray you know from noise. Traced where it equals some chosen value, it is a set of curves, and those curves are the first thing this chapter draws.
+A **number field** answers with a number. [Chapter 5](05-Noise.md)'s `noise` is one, and so is any function you write that takes a point and returns a value. A number field makes two kinds of picture. Painted as tone, it is the cloudy gray you know from noise. Traced where it equals some chosen value, it is a set of curves. Those curves come after the print, in [Where the field equals something](#where-the-field-equals-something-contours).
 
-A **direction field** answers with a direction, a *which way* at every point. The print at the top of the chapter is made of one. Lines that follow the answers gather into currents, and particles set loose on it drift along them. The chapter turns to the direction field after [the vibrating plate](#standing-waves-chladni-figures), and most of what follows is built on one.
-
-## Where the field equals something: contours
-
-You already have a number field, so start there. Instead of asking a noise field how bright it is at a point, ask where it equals some particular value. The answer is a set of curves.
-
-Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 meters. Walking along one is flat, and crossing several quickly means the slope is steep.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/Isolines-dark.jpg">
-  <img src="Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
-</picture>
-
-In a sketch, one level is one call. `isolines` takes the level, the region to search, and the field as a closure, and hands back the curves:
-
-```swift
-let rings = isolines(at: 0.55, in: bounds, resolution: 200) { p in
-    fbm(p.x * 0.006, p.y * 0.006, octaves: 4)
-}
-noFill()
-for ring in rings { drawPolyline(ring.points, closed: ring.isClosed) }
-```
-
-The method is easy to picture. Sample the field on a grid, then look at one little square at a time. Note which of its four corners are above the level and which are below. There are only sixteen ways that can come out, and each one tells you how the curve crosses that square. Do that everywhere and stitch the crossings together, and the contours fall out. It is called marching squares. `resolution` is how many cells go across the longer side, so raising it tightens the curves at a proportional cost in samples.
-
-For a map you want many levels, and there is a form for that:
-
-```swift
-let levels = Array(stride(from: 0.3, through: 0.75, by: 0.045))
-for (i, group) in isolines(at: levels, in: bounds, field: terrain).enumerated() {
-    strokeWeight(i % 5 == 0 ? 2 : 0.8)      // heavy every fifth, like a printed map
-    for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
-}
-```
-
-Passing all the levels at once samples the field a single time and traces them all from that one pass. Evaluating the field is nearly all of the work, so ten levels cost barely more than one, and a contour map can animate. `stride` counts from one number to another in steps, and `Array(...)` collects the steps into a list. `terrain` stands for the closure from the first listing, given a name and passed with the `field:` label.
-
-Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there is a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That is how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
-
-This is also how you get an outline out of any field. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
-
-## Standing waves: Chladni figures
-
-The noise contours above sit at whatever level you pick. Some fields come with a level that means something on its own, and zero is the usual one. A vibrating plate is the classic example. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that were not. Those lines are the plate's **nodes**, the places where it does not move at all. Chladni toured Europe showing the figures they make.
-
-The square plate's movement has a closed form, so Ollin gives you the value at any point directly instead of a simulation:
-
-```swift
-let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
-```
-
-`u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. The recipe follows from that. Scatter grains, and keep the ones sitting near a nodal line.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/ChladniModes-dark.jpg">
-  <img src="Images/14-FieldsAndFlow/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
-</picture>
-
-One rule matters. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Both are properties of the physics rather than bugs to work around. Keep `m` and `n` apart and every mode gives you a figure.
-
-`m` and `n` do not have to be whole numbers, and that is how you animate one. Fractional modes morph continuously from one figure to the next. A slow tour through mode space makes the sand rearrange itself, the way it does when the bow moves. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
-
-The grains are a picture of the zero level, and the section above already has the tool for the lines themselves. Hand the same function to `isolines` at zero, and the nodal lines come back as contours you can stroke or plot:
-
-```swift
-let plate = Rectangle(x: 90, y: 90, width: 900, height: 900)
-let lines = isolines(at: 0, in: plate, resolution: 240) { p in
-    let uv = plate.uv(of: p)
-    return chladni(uv.x, uv.y, m: 5, n: 2)
-}
-noFill()
-for line in lines { drawPolyline(line.points, closed: line.isClosed) }
-```
-
-`plate.uv(of:)` turns a point on the canvas into the plate's own `0...1` coordinates, which is what `chladni` reads. To fill a whole layer with the plate instead, [Chapter 18](18-YourFirstShader.md#closed-forms-at-every-pixel-the-pattern-fields) evaluates the same closed form on the GPU, once for every pixel.
+A **direction field** answers with a direction, a *which way* at every point. The print at the top of the chapter is made of one. Lines that follow the answers gather into currents, and particles set loose on it drift along them. Every step from here to the print is built on one.
 
 ## A direction at every point: `FlowField`
 
-The two sections above drew where a number field equals something. The other kind of field answers with a direction, and it is the kind the print is made of. A **flow field** is a direction at every point of the plane. Hand it any point and it hands back an angle. In Ollin a `FlowField` is that rule, a wrapped function. The easiest way to make a good one is to let noise pick the angles, which is what the `flowField(...)` helper does. Because noise changes smoothly, nearby points get nearby directions, and the field forms currents.
+A **flow field** is a direction at every point of the plane. Hand it any point and it hands back an angle. In Ollin a `FlowField` is that rule, a wrapped function. The easiest way to make a good one is to let noise pick the angles, which is what the `flowField(...)` helper does. Because noise changes smoothly, nearby points get nearby directions, and the field forms currents.
 
 You cannot see a function, but you can ask it questions. Put down a grid of points, ask the field for its direction at each one, and draw a needle. Make `MySketches/Compass.swift`:
 
@@ -203,6 +129,84 @@ Then make it yours:
 
 A print is a still, and the way to keep this one is as a vector file. Add `--export-svg print.svg` when you run it, and every ribbon exports as a true vector path a pen plotter can draw. [Chapter 15](15-ShapesAsMaterial.md) covers the plotter side.
 
+## Drawing a number field: contours and Chladni figures
+
+The print was made of a direction field. The other kind of field, the number field, makes pictures of its own, and the print uses none of them. Its contours trace where it equals a value, and a vibrating plate is a number field whose zero level is the figure.
+
+### Where the field equals something: contours
+
+Noise is a number field you already have, so start there. Instead of asking a noise field how bright it is at a point, ask where it equals some particular value. The answer is a set of curves.
+
+Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 meters. Walking along one is flat, and crossing several quickly means the slope is steep.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/Isolines-dark.jpg">
+  <img src="Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
+</picture>
+
+In a sketch, one level is one call. `isolines` takes the level, the region to search, and the field as a closure, and hands back the curves:
+
+```swift
+let rings = isolines(at: 0.55, in: bounds, resolution: 200) { p in
+    fbm(p.x * 0.006, p.y * 0.006, octaves: 4)
+}
+noFill()
+for ring in rings { drawPolyline(ring.points, closed: ring.isClosed) }
+```
+
+The method is easy to picture. Sample the field on a grid, then look at one little square at a time. Note which of its four corners are above the level and which are below. There are only sixteen ways that can come out, and each one tells you how the curve crosses that square. Do that everywhere and stitch the crossings together, and the contours fall out. It is called marching squares. `resolution` is how many cells go across the longer side, so raising it tightens the curves at a proportional cost in samples.
+
+For a map you want many levels, and there is a form for that:
+
+```swift
+let levels = Array(stride(from: 0.3, through: 0.75, by: 0.045))
+for (i, group) in isolines(at: levels, in: bounds, field: terrain).enumerated() {
+    strokeWeight(i % 5 == 0 ? 2 : 0.8)      // heavy every fifth, like a printed map
+    for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
+}
+```
+
+Passing all the levels at once samples the field a single time and traces them all from that one pass. Evaluating the field is nearly all of the work, so ten levels cost barely more than one, and a contour map can animate. `stride` counts from one number to another in steps, and `Array(...)` collects the steps into a list. `terrain` stands for the closure from the first listing, given a name and passed with the `field:` label.
+
+Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there is a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That is how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
+
+This is also how you get an outline out of any field. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+
+### Standing waves: Chladni figures
+
+The noise contours above sit at whatever level you pick. Some fields come with a level that means something on its own, and zero is the usual one. A vibrating plate is the classic example. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that were not. Those lines are the plate's **nodes**, the places where it does not move at all. Chladni toured Europe showing the figures they make.
+
+The square plate's movement has a closed form, so Ollin gives you the value at any point directly instead of a simulation:
+
+```swift
+let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
+```
+
+`u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. The recipe follows from that. Scatter grains, and keep the ones sitting near a nodal line.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/ChladniModes-dark.jpg">
+  <img src="Images/14-FieldsAndFlow/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+</picture>
+
+One rule matters. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Both are properties of the physics rather than bugs to work around. Keep `m` and `n` apart and every mode gives you a figure.
+
+`m` and `n` do not have to be whole numbers, and that is how you animate one. Fractional modes morph continuously from one figure to the next. A slow tour through mode space makes the sand rearrange itself, the way it does when the bow moves. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
+
+The grains are a picture of the zero level, and the section above already has the tool for the lines themselves. Hand the same function to `isolines` at zero, and the nodal lines come back as contours you can stroke or plot:
+
+```swift
+let plate = Rectangle(x: 90, y: 90, width: 900, height: 900)
+let lines = isolines(at: 0, in: plate, resolution: 240) { p in
+    let uv = plate.uv(of: p)
+    return chladni(uv.x, uv.y, m: 5, n: 2)
+}
+noFill()
+for line in lines { drawPolyline(line.points, closed: line.isClosed) }
+```
+
+`plate.uv(of:)` turns a point on the canvas into the plate's own `0...1` coordinates, which is what `chladni` reads. To fill a whole layer with the plate instead, [Chapter 18](18-YourFirstShader.md#closed-forms-at-every-pixel-the-pattern-fields) evaluates the same closed form on the GPU, once for every pixel.
+
 ## What else a field can do: advection, line integral convolution, and radial basis functions
 
 The print traced a direction field one line at a time, from starts you chose. Three more things a field can do belong to the same idea, and none of them is in the print. A direction field can carry a population of particles along, one step per frame. A layer can be combed along the field everywhere at once, with no start chosen. And a number field can be built the other way round, from values you set at a few places, so that it passes through them.
@@ -285,7 +289,7 @@ fill(field.value(at: Vector2(x, y)))
 
 The `!` after the call takes the value out of an optional and stops the sketch if there is none. It is the same promise [Chapter 2](02-Color.md)'s `try!` made about a file. The fit fails when two points share a place or all of them sit on one line, and here you know they do neither. The left panel is six colors at six places, read back at every pixel. It looks like a gradient and it is not one. Nothing was blended between two stops. Every pixel is a weighted sum of all six. Look at the rings marking the points. What shows inside each one is the field's own color there, and it matches the color that point was given. A field that passes through its data is interpolating, and one that only heads in the right direction is blurring.
 
-The values do not have to be colors. Give the same call `Vector2`s and each known point says "this place should move to *there*", which makes the field a warp. That is the middle panel: a straight grid, with each of its points read through the warp, bending around six pulls. Read a shape's outline through it instead and the shape bends. The third panel runs the other way, fitting a circle to scattered marks, and [Chapter 15](15-ShapesAsMaterial.md#the-circle-they-were-scattered-around-fitminimize) explains it beside the hulls.
+The values do not have to be colors. Give the same call `Vector2`s and each known point says "this place should move to *there*", which makes the field a warp. That is the middle panel: a straight grid, with each of its points read through the warp, bending around six pulls. Read a shape's outline through it instead and the shape bends. The third panel runs the other way, fitting a circle to scattered marks, and [Chapter 15](15-ShapesAsMaterial.md#the-circle-they-were-scattered-around-fitminimize) explains it.
 
 You can let the field miss its values a little. `smoothing:` trades hitting every value for fewer wobbles between them, which is what noisy data usually wants:
 
@@ -297,7 +301,7 @@ One habit keeps it cheap. Fitting solves a system that grows with the cube of ho
 
 ## Where this comes from
 
-Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top follows Tyler Hobbs, whose flow-field work is the reference for the look. The best known of that work is *Fidenza* (2021), and his essay "Flow Fields" explains the craft. The plate figures are Ernst Chladni's, from *Entdeckungen über die Theorie des Klanges* (1787). The closed form Ollin evaluates follows Paul Bourke's "Chladni Plate Mathematics". Marching squares is the two-dimensional version of the marching cubes algorithm, which William Lorensen and Harvey Cline published in 1987 for medical imaging. The entries after the print name their own sources. Line integral convolution, like the even spacing, came from scientific visualization before artists took it up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them. Creative coding borrowed the flow field as a drawing device, and Processing-era sketches passed the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top follows Tyler Hobbs, whose flow-field work is the reference for the look. The best known of that work is *Fidenza* (2021), and his essay "Flow Fields" explains the craft. The plate figures are Ernst Chladni's, from *Entdeckungen über die Theorie des Klanges* (1787). The closed form Ollin evaluates follows Paul Bourke's "Chladni Plate Mathematics". Marching squares is the two-dimensional version of the marching cubes algorithm, which William Lorensen and Harvey Cline published in 1987 for medical imaging. The other entries after the print name their own sources. Line integral convolution, like the even spacing, came from scientific visualization before artists took it up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

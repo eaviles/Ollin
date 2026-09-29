@@ -111,7 +111,7 @@ Figures: random-vs-noise line comparison; a 2D noise field visualized; a zoom/sc
 Draws from: `Docs/Generators/Noise.md`; `Examples/Randomness/NoiseField` and friends.
 
 **6. Grids and repetition.**
-Teaches: the `grid` helper looped once (cells and points, the `frame`/`center`/`column`/`row` a cell carries, nesting, `Insets` padding); transforms as moving the paper (`translate`/`rotate`/`scale`, `withState`); symmetry by hand and then the kaleidoscope fold (`symmetry`/`noSymmetry`, and why the mirrored form is the one worth having); `withClip` and nested clips; the divisions that aren't square (`hexGrid`, `triangleGrid`, `subdivide`, with the figure's `maze` panel pointing to Ch 7).
+Teaches: the `grid` helper looped once (cells and points, the `frame`/`center`/`column`/`row` a cell carries, nesting, `Insets` padding); transforms as moving the paper (`translate`/`rotate`/`scale`, `withState`); symmetry by hand and then the kaleidoscope fold (`symmetry`/`noSymmetry`, and why the mirrored form is the one worth having); `withClip` and nested clips; then, after the wall, `withViewBox`, the divisions that aren't square (`hexGrid`, `triangleGrid`, `subdivide`, with the figure's `maze` panel pointing to Ch 7), and the Ulam spiral.
 Assumes: Ch 2 (`Ramp`), Ch 4 (seeds and `random`).
 Payoff: a wall of rosettes. One grid, one crooked arm, a fold count per block, and a clip that cuts every medallion to a disc.
 Figures: grid anatomy; the four transform steps; the pinwheel quilt; the rosette; the kaleidoscope triptych; clip regions; the four other divisions; the finished wall.
@@ -163,14 +163,14 @@ Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rul
 Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Pursuit.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`, `Docs/Simulation/Crowds.md`, `Docs/Simulation/Oscillators.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`, `Examples/Simulation/Crowd`, `Examples/Simulation/Kuramoto`.
 
 **13. Growing things.**
-Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; parametric rules (symbols carrying numbers, so lengths can be fractions and a trunk can taper); space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); crack growth (growth by collision: perpendicular cracks subdividing the plane, the one-sided wash); the chance games (the chaos game deriving the same fern a second way, then fractal flames, circle-inversion limit sets, and Kleinian limit curves).
+Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); then, after the garden, parametric rules (symbols carrying numbers, so lengths can be fractions and a trunk can taper), dielectric breakdown, and crack growth (growth by collision: perpendicular cracks subdividing the plane, the one-sided wash); the chance games (the chaos game deriving the same fern a second way, then fractal flames, circle-inversion limit sets, and Kleinian limit curves).
 Assumes: Ch 4 (seeds), Ch 12 (stateful steppers).
 Payoff: a procedural garden.
 Figures: branch-stack diagram; L-system expansion table + drawing per iteration; the three panels of what carrying a number buys; a space-colonization growth sequence; a DLA cluster; the cracked city; the garden.
 Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/DielectricBreakdown.md`, `Docs/Generators/CrackGrowth.md`, `Docs/Generators/Meander.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/ParametricLSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/Cracks`, `Examples/Patterns/Meander`.
 
 **14. Fields and flow.**
-Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; the whole field as combed fiber (line integral convolution); the Chladni plate, a field whose zero level is the figure; a field pinned down through scattered points (`RadialBasis`).
+Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; tracing streamlines; evenly-spaced streamlines; then, after the print, level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); the Chladni plate, a field whose zero level is the figure; advecting particles; the whole field as combed fiber (line integral convolution); a field pinned down through scattered points (`RadialBasis`).
 Assumes: Ch 5 (noise), Ch 10 (vectors).
 Payoff: a flow-field print (the Fidenza look, credited as such).
 Figures: field-of-arrows diagram; streamline tracing step diagram; even-spacing comparison; the streaks pair; attractor plates; the labeled bifurcation diagram; the print.
@@ -179,7 +179,7 @@ Draws from: `Docs/Generators/FlowField.md`, `Docs/Drawing/Attractors.md`, `Docs/
 ### Part III: Shapes, lines, and marks
 
 **15. Shapes as material.**
-Teaches: `Path` and `Shape` (contours, holes); booleans (union/subtract/intersect) as vocabulary; offsetting; Voronoi and Delaunay from scattered points (the blue-noise scatter comes from Ch 4); circle and shape packing, with the Apollonian gasket and Ford circles as packings made by rule; hatching fills for pen plotters; SVG export; then, after the plate, crease patterns: the two flat-folding laws, the Miura fold in three dimensions, and rotating-squares kirigami.
+Teaches: `Path` and `Shape` (contours, holes); booleans (union/subtract/intersect) as vocabulary; offsetting; Voronoi and Delaunay from scattered points (the blue-noise scatter comes from Ch 4); hulls and the medial axis; hatching fills for pen plotters; SVG export; then, after the plate, outline questions and points in a shape, circle and shape packing (the Apollonian gasket and Ford circles as packings made by rule), fitting and the straight skeleton, SVG import, and crease patterns: the two flat-folding laws, the Miura fold in three dimensions, and rotating-squares kirigami.
 Assumes: Ch 4 to 6, Ch 10.
 Payoff: a plotter-ready composition (exported SVG shown beside the raster render).
 Figures: boolean-ops diagram; Voronoi/Delaunay duals; packing time-lapse; a circle for every fraction; hatching close-up; the composition; the crease pattern beside the sheet it folds into.
@@ -209,7 +209,7 @@ Figures: the pixel-grid mental-model diagram; uv-space diagram; smoothstep-as-ed
 Draws from: `Docs/Shaders/Shaders.md`, `Docs/Shaders/Visuals.md`, `Docs/Shaders/ShaderLibrary.md`; `Examples/Shaders/`.
 
 **19. Layers and effects.**
-Teaches: drawing into a layer (`renderTarget`/`withTarget`); filtering a layer (blur, bloom, the catalog at a glance); compositing with blend modes; `compose { }`; feedback (trails, tunnels); accumulation (`noClear`) and long-exposure looks; HDR and `toneMap` (why bright light needs rolling off); then, after the finished sketch, the cost row and retained batches for a frame that gets slow. The generators are Ch 18's, the stylizing and design filters are Ch 20's, and the layers treated as problems are Ch 21's.
+Teaches: drawing into a layer (`renderTarget`/`withTarget`); filtering a layer (blur, bloom, the catalog at a glance); compositing with blend modes; accumulation (`noClear`) and long-exposure looks; HDR and `toneMap` (why bright light needs rolling off); feedback (trails, tunnels); then, after the finished sketch, `compose { }`, the running mean (`Accumulator`), and the cost row and retained batches for a frame that gets slow. The generators are Ch 18's, the stylizing and design filters are Ch 20's, and the layers treated as problems are Ch 21's.
 Assumes: Part I; Ch 14's field mental model helps.
 Payoff: an earlier piece reworked with layers, glow, and feedback.
 Figures: layer-graph diagram; filter-family contact sheet; blend-mode grid; a feedback step sequence; before/after of the rework.
@@ -260,7 +260,7 @@ Draws from: `Docs/Shaders/Compute.md`, `Docs/Simulation/ArtificialLife.md`, `Swa
 ### Part V: The third dimension
 
 **26. 3D, gently.**
-Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look); depth, and flat 2D drawing placed at a depth (`depth(at:)`, `project`, `withBillboard`); solid primitives; a word made solid (`drawText3D`, `Mesh.text`, `Mesh.textGlyphs`); the 3D transform stack; lights and materials by playing (presets, then individual lights); matcap as "shading from a picture"; casting shadows; air you can see (fog and volumetric beams; aerial perspective is Ch 28's, beside the sky); what the depth buffer is for (ambient occlusion and defocus; the screen-space reflection and the shape of a blur are Ch 33's); the scene-inspection views.
+Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look) and the scene-inspection views; depth; solid primitives, their triangles and normals; the 3D transform stack; lights and materials by playing (presets, then individual lights); casting shadows. The families after the plaza: area lights and contact shadows; air you can see (fog and volumetric beams; aerial perspective is Ch 28's, beside the sky); the cartoon look and matcap as "shading from a picture"; flat 2D drawing placed at a depth (`depth(at:)`, `project`, `withBillboard`) and what the depth buffer is for (ambient occlusion and defocus; the screen-space reflection and the shape of a blur are Ch 33's); a word made solid (`drawText3D`, `Mesh.text`, `Mesh.textGlyphs`).
 Assumes: Part I; Ch 10 (vectors; `Vector3` is introduced as "the same, plus z"); Ch 11 (the physics world's shape).
 Payoff: a rotating sculptural scene the viewer can orbit.
 Figures: camera-orbit diagram; primitive catalog sheet; lighting-preset contact sheet; material sweep; the crate collapse; the scene.
@@ -318,7 +318,7 @@ Draws from: `Docs/3D/3D.md` (the traced and temporal tiers), `Docs/3D/Caustics.m
 ### Part VI: The world coming in
 
 **34. Seeing.**
-Teaches: the webcam as a picture, with a still (`Camera.orStill`) or the bundled film (`VideoPlayer`) standing in; the tracker model (attach, read typed results in `draw`) and coordinate mapping; the body as a controller (hands, faces, bodies, the 3D body), the person as pixels (segmenters), and the picture as a field (optical flow), which the sketch paints with. The families after it: outlines and print; following one thing; labels and saliency; models of your own; the frame as the light and the surface of a 3D scene; the screen and slit scan.
+Teaches: the webcam as a picture, with a still (`Camera.orStill`) or the bundled film (`VideoPlayer`) standing in; the tracker model (attach, read typed results in `draw`) and coordinate mapping; and the picture as a field (optical flow), which the sketch paints with. The families after it: the body as a controller (hands, faces, bodies, the 3D body) and the person as pixels (segmenters); outlines and print; following one thing; labels and saliency; models of your own; the frame as the light and the surface of a 3D scene; the screen and slit scan.
 Assumes: Part I; Ch 9 (images), Ch 10 (vectors), Ch 14 (fields), Ch 19 (noClear).
 Payoff: the motion brush. Optical flow paints strokes colored by direction wherever the picture moved, and they sink slowly into the dark.
 Figures: the stand-in still; tracker flow; landmark maps; flow arrows; the motion brush; then contours; the desk read; a trajectory; attention and labels; the live room and the live surface; the screen as material; the slit-scan delay.
@@ -772,10 +772,18 @@ Capabilities that shipped in the framework without a Guide section yet. An entry
 
 Add an entry only when a session genuinely cannot teach the feature it just shipped, and say so in the commit message. Then the *next* session touching that chapter clears it. `Scripts/guide-coverage.sh` prints every entry on every run, and fails the build for a `pointed` row that has no entry.
 
-No entries. The last one, bringing a GLSL shader over owed to Chapter 18, was cleared on 2026-08-12. The one before it, Schottky circle orbits owed to Chapter 13, was cleared on 2026-08-01.
+No capability is owed a section. The last one, bringing a GLSL shader over owed to Chapter 18, was cleared on 2026-08-12. The one before it, Schottky circle orbits owed to Chapter 13, was cleared on 2026-08-01.
+
+The entries below are structure reviews. Moving the spine sections each finished sketch does not use into families (2026-09-29) pushed these chapters' families past the cap in `Guide/AUTHORING.md`, or further past it. A review decides between a split along a family and entries moved to `Docs/` with pointers, and clears the row.
 
 | Capability (Docs page) | Owed to | Since |
 |---|---|---|
+| Structure review: families at about 73% of the prose | Ch 9 | 2026-09-29 |
+| Structure review: families at about 50% of the prose | Ch 13 | 2026-09-29 |
+| Structure review: families at about 59% of the prose | Ch 14 | 2026-09-29 |
+| Structure review: families at about 48% of the prose, 3,361 words | Ch 15 | 2026-09-29 |
+| Structure review: families at about 3,700 words | Ch 26 | 2026-09-29 |
+| Structure review: families at about 60% of the prose, 5,700 words | Ch 34 | 2026-09-29 |
 
 ## Roadmap parking lot
 

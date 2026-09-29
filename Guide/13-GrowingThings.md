@@ -6,7 +6,7 @@
 
 <img src="Images/13-GrowingThings/Garden.jpg" alt="A dark garden bed: a pale branching tree with a thick trunk fills the sky, six green fern-like plants stand along the soil, and gray-green lichen sprawls at the ground line" width="560">
 
-Trees grow branch by branch and frost crystal by crystal, and a sketch can grow a form from a rule the same way. This chapter teaches a function that calls itself, a grammar that rewrites a sentence, growth toward open space, and walkers that freeze where they touch. Everything in the garden above was grown one of those ways. After the garden come rules over shapes, a line that folds as it crowds, cracks that make cities, and a river that wanders.
+Trees grow branch by branch and frost crystal by crystal, and a sketch can grow a form from a rule the same way. This chapter teaches a function that calls itself, a grammar that rewrites a sentence, growth toward open space, and walkers that freeze where they touch. Everything in the garden above was grown one of those ways. After the garden come grammars that carry numbers or rewrite shapes, then growth by voltage, crowding, collision, and wandering.
 
 ## A tree from one rule: recursion
 
@@ -93,51 +93,6 @@ final class Fern: Sketch {
 
 One more idea turns plants into *populations*. Give a symbol several possible rewrites, and let a seeded roll pick one each time it is rewritten. `.randomPlant` does this. Every plant grown from the same grammar is a different individual with the same species' look. The rolls come from your `seed`, so the same seed grows the same garden, down to the last twig, as [Chapter 4](04-Randomness.md) promised.
 
-### When the rules need arithmetic: parametric L-systems
-
-Look again at what that turtle can say. `F` is one step, always the same step. A plain grammar chooses *which* symbols come next and nothing else. So every length it draws is a whole multiple of that one step, and `F → FF` does not make a longer segment. It makes two of them.
-
-Usually that is fine. Sometimes it is what stops you. A real branch is a *fraction* of the one below it. A real trunk is thick at the base and fine at the tips. Neither of those is a count of steps.
-
-**Parametric** L-systems let a symbol carry numbers. `F(3)` means go forward three. `A(1.5)` is a bud that knows how big it is. The rules then do arithmetic on those numbers:
-
-```
-A(s)  :  s > 0.02  ->  F(s)[+A(s*0.5)][-A(s*0.5)]
-```
-
-Read that left to right. When a bud `A` is longer than 0.02, draw a segment its own length, then fork into two buds, each half as long. When it is *not* longer, no rule matches it. A symbol no rule matches is left alone, so that bud stops. Growth ends because the arithmetic ran out, not because you counted the rounds.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CarryingNumbers-dark.jpg">
-  <img src="Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
-</picture>
-
-In Ollin that rule is one string, and the whole system is one value:
-
-```swift
-let branch = ParametricLSystem(
-    axiom: "A(1)",
-    rules: ["A(s) : s > 0.02 -> F(s)[+A(s*0.5)][-A(s*0.5)]"],
-    angle: 30)
-
-stroke(Color(hex: 0x9AD9A0))
-strokeWeight(1.6)
-drawLSystem(branch, iterations: 8)
-```
-
-`drawLSystem` and `lSystem(...)` are the calls you just met. They take either kind of system.
-
-The third panel needs one more symbol. `!(w)` sets the pen width. `[` and `]` put it back along with the position, so a thin twig never thins the trunk holding it. To see those widths, draw the system `tapered`:
-
-```swift
-strokeWeight(14)
-drawLSystem(.taperedTree(), iterations: 10, tapered: true)
-```
-
-Widths arrive as multiples of `strokeWeight`, scaled so the widest is 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of [Chapter 17](17-MarksAndMedia.md) rather than as plain contours.
-
-A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
-
 ## Growth that claims space: space colonization
 
 A grammar grows blind. The fern does not know where the canvas ends or where its own leaves already are, so it cannot fill a shape you hand it. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch node within its reach. Every pulled node grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:
@@ -223,34 +178,6 @@ override func draw() {
 ```
 
 Because particles freeze in arrival order, `cluster.particles[i]` froze `i`-th, and tinting by index paints the cluster's history as rings of color. Each particle also remembers which particle it stuck to, so `segments` gives the branching skeleton as plain lines. `stickiness` below `1` lets walkers slide deeper before freezing, giving denser, mossier clusters. Seeding a *row* of points instead of one center grows frost creeping up from an edge. The `Patterns/Dendrite` example is the ring-tinted version.
-
-### Growth by voltage: dielectric breakdown
-
-Where DLA's walkers arrive most often is also where an electric field would be strongest. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it is strongest. This is how a spark decides where to go, and it is the physics burned into wood and acrylic as Lichtenberg figures. The physicists Lutz Niemeyer, Luciano Pietronero, and Hans Wiesmann proposed the model in 1984, three years after DLA. It explains why real discharges branch the way they do.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/VoltageChooses-dark.jpg">
-  <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
-</picture>
-
-One number sets the character. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a dial DLA never had. At `1` you are back to DLA's bushes. Near `2` the strongest cells win so often that the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
-
-```swift
-var bolt: DielectricBreakdown!
-
-override func setup() {
-    bolt = DielectricBreakdown(seeds: [center], in: bounds, seed: 7)
-}
-
-override func draw() {
-    bolt.step(6)               // the field settles as it grows
-    background(.black)
-    stroke(.white)
-    for (a, b) in bolt.segments { drawLine(a, b) }
-}
-```
-
-`segments` is a list of pairs, one per branch segment. `for (a, b) in` takes each pair apart into its two ends, the tuple from [Chapter 9](09-Pictures.md). It is the same stepper shape as the others, with three more reads on top. `thicknesses(tipWidth:exponent:)` thickens trunks toward the seed, the way a discharge brightens its main channel. `branches()` hands back whole channels as polylines, ready for smoothing or a plotter. And `potential(at:)` reads the solved field itself, so the glow around the figure can be drawn from the same physics that grew it. The `Patterns/Lichtenberg` example watches one arc to the rim.
 
 ## Putting it together: a garden
 
@@ -351,9 +278,54 @@ Then make it yours:
 
 A garden that grows in front of you is best kept as motion. `swift run OllinLive MySketches/Garden.swift --export-video garden.mp4 --seconds 12` records the first twelve seconds, which is the tree climbing and the lichen spreading.
 
-## Other growers: shape grammars, differential growth, cracks, and meanders
+## Other growers: from parametric L-systems to meanders
 
-The garden used a grammar, a space claimer, and frozen walkers. Shape grammars, differential growth, crack growth, and meanders belong to the same idea, a form made by a rule applied over and over. None of them is in the garden. A shape grammar rewrites shapes instead of letters, so it belongs beside the L-systems. Differential growth, crack growth, and meander are steppers you hold, like the tree and the lichen. A line grows by crowding, cracks grow by collision, and a river grows by wandering.
+The garden used a plain grammar, a space claimer, and frozen walkers. Each grower here also makes a form by a rule applied over and over, and none of them is in the garden. Parametric L-systems give a grammar's symbols numbers, and a shape grammar rewrites shapes instead of letters. The others are steppers you hold like the tree and the lichen, growing by voltage, crowding, collision, and wandering.
+
+### When the rules need arithmetic: parametric L-systems
+
+Look again at what the L-system turtle can say. `F` is one step, always the same step. A plain grammar chooses *which* symbols come next and nothing else. So every length it draws is a whole multiple of that one step, and `F → FF` does not make a longer segment. It makes two of them.
+
+Usually that is fine. Sometimes it is what stops you. A real branch is a *fraction* of the one below it. A real trunk is thick at the base and fine at the tips. Neither of those is a count of steps.
+
+**Parametric** L-systems let a symbol carry numbers. `F(3)` means go forward three. `A(1.5)` is a bud that knows how big it is. The rules then do arithmetic on those numbers:
+
+```
+A(s)  :  s > 0.02  ->  F(s)[+A(s*0.5)][-A(s*0.5)]
+```
+
+Read that left to right. When a bud `A` is longer than 0.02, draw a segment its own length, then fork into two buds, each half as long. When it is *not* longer, no rule matches it. A symbol no rule matches is left alone, so that bud stops. Growth ends because the arithmetic ran out, not because you counted the rounds.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CarryingNumbers-dark.jpg">
+  <img src="Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
+</picture>
+
+In Ollin that rule is one string, and the whole system is one value:
+
+```swift
+let branch = ParametricLSystem(
+    axiom: "A(1)",
+    rules: ["A(s) : s > 0.02 -> F(s)[+A(s*0.5)][-A(s*0.5)]"],
+    angle: 30)
+
+stroke(Color(hex: 0x9AD9A0))
+strokeWeight(1.6)
+drawLSystem(branch, iterations: 8)
+```
+
+`drawLSystem` and `lSystem(...)` are the calls the fern and the garden used, and they take either kind of system.
+
+The third panel needs one more symbol. `!(w)` sets the pen width. `[` and `]` put it back along with the position, so a thin twig never thins the trunk holding it. To see those widths, draw the system `tapered`:
+
+```swift
+strokeWeight(14)
+drawLSystem(.taperedTree(), iterations: 10, tapered: true)
+```
+
+Widths arrive as multiples of `strokeWeight`, scaled so the widest is 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of [Chapter 17](17-MarksAndMedia.md) rather than as plain contours.
+
+A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 
 ### Rules over shapes, not symbols: shape grammars
 
@@ -394,6 +366,34 @@ let panes = ShapeGrammar(start: cells,
 ```
 
 Cutting is one move of several. `split` slices a piece at fractions of its width or height, which is all a building front is. A wall becomes floors, a floor becomes windows, a window becomes a pane. `nested` puts a smaller turned copy of a piece inside itself, the oldest figure in the family. The [reference](../Docs/Generators/ShapeGrammar.md) has the rest, including how weight picks between two rules that name the same label. The `Patterns/ShapeGrammar` example builds an ice-ray window frame a sweep at a time.
+
+### Growth by voltage: dielectric breakdown
+
+Where DLA's walkers arrive most often is also where an electric field would be strongest. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it is strongest. This is how a spark decides where to go, and it is the physics burned into wood and acrylic as Lichtenberg figures. The physicists Lutz Niemeyer, Luciano Pietronero, and Hans Wiesmann proposed the model in 1984, three years after DLA. It explains why real discharges branch the way they do.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/VoltageChooses-dark.jpg">
+  <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+</picture>
+
+One number sets the character. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a dial DLA never had. At `1` you are back to DLA's bushes. Near `2` the strongest cells win so often that the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
+
+```swift
+var bolt: DielectricBreakdown!
+
+override func setup() {
+    bolt = DielectricBreakdown(seeds: [center], in: bounds, seed: 7)
+}
+
+override func draw() {
+    bolt.step(6)               // the field settles as it grows
+    background(.black)
+    stroke(.white)
+    for (a, b) in bolt.segments { drawLine(a, b) }
+}
+```
+
+`segments` is a list of pairs, one per branch segment. `for (a, b) in` takes each pair apart into its two ends, the tuple from [Chapter 9](09-Pictures.md). It is the same stepper shape as the others, with three more reads on top. `thicknesses(tipWidth:exponent:)` thickens trunks toward the seed, the way a discharge brightens its main channel. `branches()` hands back whole channels as polylines, ready for smoothing or a plotter. And `potential(at:)` reads the solved field itself, so the glow around the figure can be drawn from the same physics that grew it. The `Patterns/Lichtenberg` example watches one arc to the rim.
 
 ### Growth by crowding: differential growth
 
@@ -495,7 +495,7 @@ Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the Un
 
 Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. The dielectric breakdown model is Lutz Niemeyer, Luciano Pietronero, and Hans Wiesmann's, from 1984. Generative artists have been growing frost and lightning with the two ever since.
 
-The growers after the garden name their own sources in place. Stiny and Gips are credited for shape grammars, Hoff and Webb for differential growth, Tarbell for the cracks, and Howard and Knutson for the river.
+The rest of the growers after the garden name their own sources in place. Stiny and Gips are credited for shape grammars, Hoff and Webb for differential growth, Tarbell for the cracks, and Howard and Knutson for the river.
 
 ## Go deeper
 
