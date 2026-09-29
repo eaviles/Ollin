@@ -330,6 +330,39 @@ struct SceneThroughGlassProbes {
         #expect(r - e > 25, "expected the wall's red inside the glass: shown \(r), env-only \(e)")
     }
 
+    /// Clear glass passes nearly all the light behind it: the read of the scene is
+    /// the frame's finished light, so it reaches the eye weighted only by what the
+    /// surface reflects away (about 4% a face at an index of 1.5), whatever the
+    /// environment's intensity. Each case renders twice, over a gray wall and over a
+    /// black one, so the pane's own reflection cancels and what is left is what it
+    /// lets through. The read used to be scaled by the environment's intensity and
+    /// its exposure on top, so a pane passed about a fifth of the wall at 0.4.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func clearGlassPassesTheLightBehindItAtAnyEnvironmentIntensity() throws {
+        func linear(_ byte: Double) -> Double { Color.srgbToLinear(byte / 255) }
+        func levels(_ sketch: Sketch) throws -> (through: Double, open: Double) {
+            let img = try OllinApp.image(of: sketch, frame: 1)
+            let d = pixels(of: img)
+            func level(_ x: ClosedRange<Double>) -> Double {
+                (0..<3).map { linear(mean(d, width: img.width, height: img.height, channel: $0,
+                                          x: x, y: 0.45...0.55)) }.reduce(0, +) / 3
+            }
+            return (level(0.45...0.55), level(0.05...0.15))   // through the pane, beside it
+        }
+        var passed: [Double] = []
+        for intensity in [0.4, 1.0] {
+            let gray = try levels(PaneOverWall(intensity: intensity, wall: 0.6))
+            let black = try levels(PaneOverWall(intensity: intensity, wall: 0))
+            let wall = gray.open - black.open
+            try #require(wall > 0.05, "the wall is lit: \(wall)")
+            passed.append((gray.through - black.through) / wall)
+        }
+        for share in passed {
+            #expect((0.85...1.02).contains(share), "the share of the wall's light the pane passes: \(passed)")
+        }
+        #expect(abs(passed[0] - passed[1]) < 0.03, "the environment's intensity changed it: \(passed)")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFrameWithNoGlassIsUntouched() throws {
         // The same scene with the sphere opaque: nothing transmits, so the pre-pass
@@ -548,6 +581,35 @@ struct SceneThroughGlassProbes {
 
 /// The probe scene for the screen-space read, one variant per case: a glass body in
 /// front of content the environment knows nothing about, under a fixed camera.
+/// A lit matte wall of gray `wall` filling the frame, with a clear glass pane in front
+/// of its middle, under an environment at `intensity`.
+private final class PaneOverWall: Sketch {
+    let intensity: Double
+    let wall: Double
+    init(intensity: Double, wall: Double) { self.intensity = intensity; self.wall = wall; super.init() }
+    required init() { intensity = 1; wall = 0.6; super.init() }
+
+    override var canvasSize: CanvasSize { .square(160) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: .zero, radius: 5, azimuth: 0, elevation: 0,
+                         fieldOfView: .pi / 4, near: 1, far: 20))
+        environment(Environment.studio.intensified(to: intensity).lightingOnly())
+        directionalLight(.white, direction: Vector3(0.5, -0.5, -0.7), intensity: 1.5)   // its highlight off the pane
+        sceneThroughGlass()
+        withState {
+            fill(Color(white: wall))
+            material(.matte)
+            translate(0, 0, -2)
+            drawBox(width: 12, height: 12, depth: 0.2)
+        }
+        fill(.white)
+        material(.glass(roughness: 0, ior: 1.5))
+        drawBox(width: 1.4, height: 1.4, depth: 0.05)
+    }
+}
+
 private final class SceneThroughGlassProbe: Sketch {
     enum Kind {
         case wallShown, wallEnvOnly

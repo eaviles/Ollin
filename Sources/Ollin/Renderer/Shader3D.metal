@@ -5113,8 +5113,12 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         // Where the scene was not traced, the screen-space read of it stands in
         // (`sceneThroughGlass()`, every GPU), fading back into the refracted environment
         // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
-        // exit point off screen) leaves the environment exactly as it was.
-        if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
+        // exit point off screen) leaves the environment exactly as it was. The read is
+        // the frame's finished light, and this whole ambient is scaled by the
+        // environment's intensity on the way out, so the read is divided by it first,
+        // as the traced walk divides its own light.
+        if (!traced && sceneBehind.a > 0.0)
+            Ft = mix(Ft, sceneBehind.rgb / max(light.iblIntensity, 1e-3), sceneBehind.a);
         float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
@@ -5364,8 +5368,12 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
         // Where the scene was not traced, the screen-space read of it stands in
         // (`sceneThroughGlass()`, every GPU), fading back into the refracted environment
         // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
-        // exit point off screen) leaves the environment exactly as it was.
-        if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
+        // exit point off screen) leaves the environment exactly as it was. The read is
+        // the frame's finished light, and this whole ambient is scaled by the
+        // environment's intensity on the way out, so the read is divided by it first,
+        // as the traced walk divides its own light.
+        if (!traced && sceneBehind.a > 0.0)
+            Ft = mix(Ft, sceneBehind.rgb / max(light.iblIntensity, 1e-3), sceneBehind.a);
         float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }

@@ -36,6 +36,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- Glass shows the scene behind it at the brightness that scene has. With `sceneThroughGlass()` on, the view through a transmissive surface was scaled by the environment's intensity and by the environment's own exposure, so clear glass over a lit floor passed about a fifth of the floor's light under an environment at 0.4 and half at 1. It now passes all but what its surface reflects away, about 96% for glass of index 1.5, whatever the environment. Sketches that use `sceneThroughGlass()` without ray tracing render brighter through their glass.
+
 - Atlas text draws every glyph right on the frame that fills the font's atlas page. The page was cleared and refilled in the middle of that frame, so the glyphs drawn earlier in it pointed into a page that now held other glyphs, and they showed as the wrong characters for that one frame, again each time a long run of text in many scripts filled a page. A full page is now kept as it is and the atlas moves on to a fresh one, so text drawn before, a retained `Batch` that holds atlas text, and a web recording all keep the glyphs they were drawn with. A web export no longer stops when a font fills its page during the recording; each page crosses as its own picture.
 
 - `surfacePoints` with the default `.blueNoise` scatter is about three times faster and returns the same points. Its thinning pass pushed a sample's weight into its queue a second time each time it passed over an outdated entry, so the queue filled with copies. Four hundred thousand points on a terrain took over ten minutes in a debug build, and now take three and a half.

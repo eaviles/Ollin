@@ -58,6 +58,7 @@ The realism tier that builds on the physically-based core (PBR metallic-roughnes
 
 All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
 
+- **A texture on a traced hit.** The live trace shades a hit by its vertex colors and material (`ollin_rt_fetch_surface`), and textures are bound only for the path-traced export, so a picture on a surface is missing from a traced reflection and from the traced view through glass (a layer's `image` on a plane behind a pane was reported as reading near-black there, which is darker than its fill alone would explain and wants a probe before anything is built). Binding the hit's texture in the live trace needs the per-geometry texture table the path tracer builds; until then `Docs/3D/3D.md` says to leave the trace off for such a scene.
 
 ## AR mode and templates (the Meta Spark gap)
 
