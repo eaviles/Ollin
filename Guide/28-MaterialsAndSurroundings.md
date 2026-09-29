@@ -6,7 +6,7 @@
 
 <img src="Images/28-MaterialsAndSurroundings/Bench.jpg" alt="Five objects on a mottled stone bench under warm interior light: a pale translucent crystal on a black lacquered plinth, a small silver cushion, a teal ball whose paint has worn through to gold in patches, a flat tile with a wheel carved into it, and a cream egg resting on a rust-red cushion, with a faint stamped mark on the stone at the left" width="560">
 
-A few numbers a physicist would ask for can make a mesh metal, glass, or skin. A finish set with them behaves correctly in light you have not set up yet. The light comes first, from the surroundings of the scene. Each object on the bench shows a different technique, from the worn paint of [Chapter 27](27-Meshes.md) to an egg that carries light under its surface. Clouds, the haze over distant ground, and the thin film follow the bench.
+A few numbers a physicist would ask for can make a mesh metal, glass, or skin. A finish set with them looks right in any light, so you start with the light that comes from a scene's surroundings. Each object on the bench shows a different technique, from the worn paint of [Chapter 27](27-Meshes.md) to an egg that carries light under its surface. Clouds, the haze over distant ground, and the thin film follow the bench.
 
 ## Finishes you measure: environments and physically based materials
 

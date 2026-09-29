@@ -6,7 +6,7 @@
 
 <img src="Images/33-TracedLight/LamplitRoom.jpg" alt="A room lit by one pendant lamp that flares in the lens: a waxed brown floor, a terracotta wall and a teal one, a glass ball on a white plinth focusing the lamp into a bright spot inside its own shadow, and a red ball beside it" width="560">
 
-Light in most 3D frames stops at the first surface it hits, and here you follow it further. Mirrors see off screen, light bounces from wall to wall, and a glass ball focuses it into a spot. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, and ways to draw fewer pixels and frames.
+Light in most 3D frames stops at the first surface it hits, and here you follow it off mirrors, between walls, and through glass. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, and ways to draw fewer pixels and frames.
 
 ## Mirrors that see off screen: ray-traced reflections
 

@@ -6,7 +6,7 @@
 
 <img src="Images/14-FieldsAndFlow/FlowPrint.jpg" alt="A print of flowing ribbons in terracotta, gold, sage, navy, pale blue, and ink on cream, combed across the canvas in curving non-crossing lines of three different widths" width="560">
 
-A field is a question you can ask at every point of the canvas, and its answer is a number or a direction. You draw both kinds, from the lines where a number field equals something to streamlines spaced evenly through a direction field. The print at the top draws itself out of one function that way. After it, a field carries particles, combs a whole layer at once, and passes through values you set by hand.
+A field is a question you can ask at every point of the canvas, and its answer is a number or a direction. You draw both kinds, from the lines where a number field equals something to streamlines spaced evenly through a direction field. The print at the top draws itself out of one function that way. Past the print, a field carries particles, combs a whole layer at once, and passes through values you set by hand.
 
 ## Two kinds of field: a number or a direction at every point
 

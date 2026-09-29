@@ -6,7 +6,7 @@
 
 <img src="Images/35-Depth/GhostRoom.jpg" alt="A room rendered as woven scan lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
 
-Each pixel of a depth frame holds the distance to what it shows, and that is enough to stand the picture up in space. This chapter turns one frame into a cloud of points and fuses many into a room, on any Mac with a pretend depth camera. The ghost room at the top scans itself into being. The sections after it draw inside a depth frame, keep long scans straight, and turn the cloud into a surface. [Chapter 36](36-ThePhoneAsASensor.md) swaps the pretend camera for a recorded clip, a live stream, and the capture app.
+Each pixel of a depth frame holds the distance to what it shows, and that is enough to stand the picture up in space. This chapter turns one frame into a cloud of points and fuses many into a room, on any Mac with a pretend depth camera. The ghost room at the top scans itself into being. The sections after it draw inside a depth frame, keep long scans straight, and build a surface, and [Chapter 36](36-ThePhoneAsASensor.md) brings the real sensors.
 
 ## What a depth camera sees
 

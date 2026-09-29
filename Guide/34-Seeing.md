@@ -6,7 +6,7 @@
 
 <img src="Images/34-Seeing/MotionBrush.jpg" alt="A dark canvas with thousands of short colored strokes in greens, magentas, cyans, blues, purples, reds and yellows, gathered into one large tangle across the middle where the picture moved, with the edges mostly empty" width="560">
 
-A camera gives a sketch someone to answer. You read the webcam first as a picture, then through trackers that turn each frame into values you read in `draw()`. They find a body's joints, lift a person out as pixels, and read the picture's motion, on the Mac with nothing sent away. The brush above paints with that motion. Beyond it, trackers read outlines and print, follow one thing, and name what a picture shows, and the screen becomes a source too.
+A camera gives a sketch someone to answer, as a picture and through trackers that turn each frame into values you read in `draw()`. They find a body's joints, lift a person out as pixels, and read the picture's motion, on the Mac with nothing sent away. The brush above paints with that motion. Beyond it, trackers read outlines and print, follow one thing, and name what a picture shows, and the screen becomes a source too.
 
 ## The webcam is an image
 
