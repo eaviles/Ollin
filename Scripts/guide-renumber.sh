@@ -9,10 +9,10 @@
 # Splitting a chapter renumbers every chapter after it, and the number is
 # carried by more surfaces than anyone can hold in their head: the file itself,
 # both asset trees, the breadcrumb, the H1, two footer links per neighbour, the
-# contents list, the status table, the coverage matrix, Appendix D's 226 rows,
-# and the section pointers in CAPABILITIES.md. Doing that by hand once is a
-# long afternoon. Doing it eleven times is how a Guide quietly stops matching
-# itself, so it is a command instead.
+# contents list, the status table, the coverage matrix, Appendix D's table
+# per chapter, and the section pointers in CAPABILITIES.md. Doing that by hand
+# once is a long afternoon. Doing it eleven times is how a Guide quietly stops
+# matching itself, so it is a command instead.
 #
 # Two rules make it safe:
 #

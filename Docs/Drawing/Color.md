@@ -412,7 +412,7 @@ The `Palettes` example sweeps all seven. The formula is credited under [Influenc
 
 ### `Colormap`
 
-A `Colormap` is a smooth, perceptually even ramp that maps a value in `0...1` to a color. Colormaps are the standard choice for turning a number into readable color, whether the number is a height, a density, or a field value. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
+A `Colormap` is a smooth ramp that maps a value in `0...1` to a color. Seven of the eight are perceptually even, so perceived brightness climbs steadily from one end to the other. `turbo` is a rainbow instead, brightest in the middle. Colormaps are the standard choice for turning a number into readable color, whether the number is a height, a density, or a field value. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
 
 ```swift
 let t = noise(x * 0.01, y * 0.01)            // 0...1

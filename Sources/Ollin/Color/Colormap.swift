@@ -1,8 +1,9 @@
 import Foundation
 
-/// Perceptual colormaps — smooth, perceptually-uniform ramps that map a value in
-/// `0...1` to a color, the standard choice for turning a number (height, density,
-/// a field value) into legible color.
+/// Colormaps: smooth ramps that map a value in `0...1` to a color, the standard
+/// choice for turning a number (height, density, a field value) into legible
+/// color. Seven are perceptually uniform, their perceived brightness climbing
+/// evenly from end to end; `turbo` is a rainbow, brightest in the middle.
 ///
 /// ```swift
 /// fill(Colormap.viridis.color(at: t))
