@@ -27,22 +27,6 @@ struct Tree {
         return name == "Guide" ? (relative as NSString).lastPathComponent : relative.replacingOccurrences(of: "/", with: "-")
     }
 
-    /// Every satellite any preamble in this tree imports, read from all of them
-    /// rather than from the pages this run happens to be checking. A block's
-    /// error must not depend on what else was checked beside it: with the union
-    /// taken over the selection, `--only 22-Meshes` had no `OllinPhysics` in
-    /// scope, one block there gave a different first error than in the whole
-    /// run, and the recorded baseline then read as broken for a chapter nobody
-    /// had touched. Per tree, so the Guide's union cannot move a Docs error.
-    var sharedImports: Set<String> {
-        let files = (try? FileManager.default.contentsOfDirectory(atPath: snippetsDir)) ?? []
-        var found: Set<String> = []
-        for file in files where file.hasSuffix(".swift") {
-            found.formUnion(preamble(stem: file.replacingOccurrences(of: ".swift", with: "")).imports)
-        }
-        return found
-    }
-
     /// The names the surrounding prose established, per page. A fragment like
     /// `fill(p[i])` is correct prose and cannot compile alone; the preamble is
     /// where that context is written down, once, instead of being pasted into
@@ -132,7 +116,16 @@ while let arg = argv.first {
 
 // MARK: - Collect
 
-struct Job { var tree: Int; var block: Block; var source: String; var preambleLines: Range<Int> }
+/// `prelude` is the imports put above a job's file: Foundation, which a sketch
+/// reaches for as readily as Ollin, and every satellite its page establishes,
+/// in the page's preamble or in an `import` any block on the page writes.
+/// Per page rather than per run, so a block's error does not depend on what
+/// else was checked beside it (a union over the selection would leave
+/// `--only 27-Meshes` without the `OllinPhysics` another chapter imports).
+/// Per page rather than per tree, because two chapters can mean two types by
+/// one name: Chapter 30's fragments mean OllinPhysics' `Body3D` and Chapter
+/// 36's mean OllinVision's, and a union of the two makes both ambiguous.
+struct Job { var tree: Int; var block: Block; var source: String; var preambleLines: Range<Int>; var prelude: String }
 var jobs: [Job] = []
 var skipped: [(Block, String)] = []
 var shellBlocks: [Block] = []
@@ -145,16 +138,22 @@ for (index, tree) in trees.enumerated() {
             FileHandle.standardError.write(Data("check-snippets: cannot read \(page)\n".utf8)); exit(1)
         }
         checkedPages[index].insert(page)
-        let (pre, _) = tree.preamble(stem: tree.preambleStem(for: page))
+        let (pre, preImports) = tree.preamble(stem: tree.preambleStem(for: page))
         nameProblems += exampleNameProblems(page: page, text: text, repo: repo)
-        for block in blocks(in: page, text: text) {
+        let pageBlocks = blocks(in: page, text: text)
+        var pageImports = Set(["import Foundation"] + preImports)
+        for block in pageBlocks where block.language == "swift" {
+            pageImports.formUnion(liftImports(block.body).imports)
+        }
+        let prelude = pageImports.sorted().joined(separator: "\n")
+        for block in pageBlocks {
             if block.language == "sh" { shellBlocks.append(block); continue }
             guard block.language == "swift" else { continue }
             if let reason = block.skip { skipped.append((block, reason)); continue }
             if isElided(block.body) { skipped.append((block, "elided with ...")); continue }
             let source = wrapped(block, preamble: pre)
             jobs.append(Job(tree: index, block: block, source: source,
-                            preambleLines: preambleSpan(of: pre, in: source)))
+                            preambleLines: preambleSpan(of: pre, in: source), prelude: prelude))
         }
     }
 }
@@ -173,7 +172,6 @@ if listSkips {
 
 /// One loader per job, run across the cores. `typecheck` writes its own work
 /// directory per call, so the runs do not collide.
-let importPreludes = trees.map { $0.sharedImports.sorted().joined(separator: "\n") }
 let lock = NSLock()
 var failures: [(Block, String)] = []
 var done = 0
@@ -183,8 +181,7 @@ let quiet = ProcessInfo.processInfo.environment["OLLIN_SNIPPETS_QUIET"] != nil
 DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
     let job = jobs[index]
     let tree = trees[job.tree]
-    let prelude = importPreludes[job.tree]
-    let source = prelude.isEmpty ? job.source : prelude + "\n" + job.source
+    let source = job.prelude.isEmpty ? job.source : job.prelude + "\n" + job.source
     let name = tree.preambleStem(for: job.block.page) + "_\(job.block.line).swift"
     let loader = SketchLoader(sketchPath: tree.snippetsDir + "/" + name)
     let result = loader.typecheck(source, fileName: name)

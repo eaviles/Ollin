@@ -129,26 +129,22 @@ e568d6de03cc  Guide/31-CharactersAndCloth.md:575  errors thrown from here are no
 5e7d649a0114  Guide/31-CharactersAndCloth.md:70  errors thrown from here are not handled
 505abdd13984  Guide/32-SculptingWithFields.md:200  cannot find 'a' in scope
 17e800a28a86  Guide/32-SculptingWithFields.md:268  cannot find 'cluster' in scope
-34315703fb6f  Guide/34-Seeing.md:135  cannot find 'BodyTracker3D' in scope
-d958e7e8da2f  Guide/34-Seeing.md:154  cannot find 'PersonSegmenter' in scope
-e3f4153e6ffa  Guide/34-Seeing.md:179  cannot find 'FlowTracker' in scope
-09147d09c703  Guide/34-Seeing.md:274  cannot find 'ContourDetector' in scope
-ab964ab735c3  Guide/34-Seeing.md:295  cannot find 'RectangleDetector' in scope
-e6e9484ee21c  Guide/34-Seeing.md:309  cannot find 'TextRecognizer' in scope
-10296f99c463  Guide/34-Seeing.md:323  cannot find 'BarcodeScanner' in scope
-3d548b82b7b5  Guide/34-Seeing.md:338  cannot find 'ObjectTracker' in scope
-fe868f649d36  Guide/34-Seeing.md:366  cannot find 'TrajectoryTracker' in scope
-57471c724d6f  Guide/34-Seeing.md:37  cannot find 'Camera' in scope
-c09ae8043967  Guide/34-Seeing.md:400  cannot find 'ImageClassifier' in scope
-a74ee9528a00  Guide/34-Seeing.md:415  cannot find 'SaliencyTracker' in scope
-2cc90665cec7  Guide/34-Seeing.md:438  cannot find 'PointSegmenter' in scope
-e32d94bf2d6a  Guide/34-Seeing.md:469  cannot find 'ModelTracker' in scope
-1c6e923d0f9f  Guide/34-Seeing.md:488  cannot find 'DepthTracker' in scope
-7be5399abdd7  Guide/34-Seeing.md:511  cannot find type 'DepthClip' in scope
-d2bcab332251  Guide/34-Seeing.md:533  cannot find 'ConceptTracker' in scope
-dfaf2fc30509  Guide/34-Seeing.md:560  cannot find 'Camera' in scope
+34315703fb6f  Guide/34-Seeing.md:135  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+d958e7e8da2f  Guide/34-Seeing.md:154  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+e3f4153e6ffa  Guide/34-Seeing.md:179  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+09147d09c703  Guide/34-Seeing.md:274  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+ab964ab735c3  Guide/34-Seeing.md:295  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+e6e9484ee21c  Guide/34-Seeing.md:309  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+10296f99c463  Guide/34-Seeing.md:323  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+3d548b82b7b5  Guide/34-Seeing.md:338  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+fe868f649d36  Guide/34-Seeing.md:366  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+c09ae8043967  Guide/34-Seeing.md:400  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+a74ee9528a00  Guide/34-Seeing.md:415  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+2cc90665cec7  Guide/34-Seeing.md:438  cannot find 'encoderURL' in scope
+e32d94bf2d6a  Guide/34-Seeing.md:469  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+1c6e923d0f9f  Guide/34-Seeing.md:488  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+d2bcab332251  Guide/34-Seeing.md:533  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 491c839e438a  Guide/34-Seeing.md:580  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-6c01f0c89d16  Guide/34-Seeing.md:611  cannot find 'TextRecognizer' in scope
 746879197407  Guide/34-Seeing.md:652  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 6d480cc311b2  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level

@@ -1,6 +1,7 @@
 // The names Chapter 37's prose establishes around its fragments.
 // See Guide/AUTHORING.md, "The code in the prose".
 import OllinAudio
+import OllinSamplePhotos
 import OllinVideo
 
 // The microphone of the first step, and the video player from Chapter 34.
