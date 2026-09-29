@@ -1,7 +1,7 @@
 // figure: frame=600
 //
 // Guide figure (Chapter 19): light that piles up. The canvas never clears;
-// faint additive dots ride a curl field frame after frame, and the tone map
+// faint additive dots follow a curl field frame after frame, and the tone map
 // rolls the built-up light off like film instead of clipping it.
 import Ollin
 

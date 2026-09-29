@@ -6,7 +6,7 @@
 // meet; the lighthouse lamp throws beams through the shutter's gaps and the
 // masthead lamp glows over the water. Every silhouette is outlined a few
 // pixels out, read off its measured distance field. The horizon swells, the
-// shutter turns, and the boat rides the swell.
+// shutter turns, and the boat floats on the swell.
 import Ollin
 
 final class Lighthouse: Sketch {

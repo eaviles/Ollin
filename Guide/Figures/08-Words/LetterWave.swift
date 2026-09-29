@@ -1,6 +1,6 @@
 // figure: frame=45
 //
-// Guide figure (Chapter 8): the per-glyph form of drawText. Each letter rides
+// Guide figure (Chapter 8): the per-glyph form of drawText. Each letter follows
 // the same swing with a head start proportional to its place in the word, and
 // fading echoes trail the motion so the wave reads in a still image.
 import Ollin

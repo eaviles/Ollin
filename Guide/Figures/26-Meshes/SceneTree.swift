@@ -94,7 +94,7 @@ final class SceneTree: Sketch {
         let titles = ["what the file holds", "drawn whole, through its own camera", "the lamp moved by name"]
         let notes = ["nested as the file nests it",
                      "its camera, its lights, drawScene",
-                     "the light it carries rides along"]
+                     "the light it carries moves with it"]
         for (i, box) in ([treeBox] + panels).enumerated() {
             noFill()
             stroke(theme.border)

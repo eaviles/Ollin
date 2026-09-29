@@ -4,8 +4,8 @@
 // at increasing distance, each ringed by an ordinary drawCircle given that
 // pillar's depth. Every ring is cut where its pillar stands in front of it, and
 // every ring is the same 96-point radius on the canvas: a 2D mark keeps its
-// canvas size and only gains a place in the depth test. The numbered tags ride
-// the pillar tops as billboards.
+// canvas size and only gains a place in the depth test. The numbered tags sit
+// on the pillar tops as billboards.
 import Ollin
 
 final class DepthCompositing: Sketch {
@@ -47,7 +47,7 @@ final class DepthCompositing: Sketch {
             }
         }
 
-        // Tags riding the pillar tops, anchored in the world.
+        // Tags on the pillar tops, anchored in the world.
         for (index, post) in posts.enumerated() {
             withBillboard(at: Vector3(post.x, 2.35, post.z)) {
                 noStroke()

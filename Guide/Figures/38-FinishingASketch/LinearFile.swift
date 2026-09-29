@@ -3,7 +3,7 @@
 // Guide figure (Chapter 38): what the linear file carries that the picture
 // cannot. The same frame three ways, all read off one layer: as a screen shows
 // it, four stops down (where a blown highlight turns out to have a shape), and
-// the distance from the eye that rides along as the Z channel.
+// the distance from the eye that the file carries as its Z channel.
 import Ollin
 import OllinDiagram
 

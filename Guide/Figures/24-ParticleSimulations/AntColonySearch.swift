@@ -3,7 +3,7 @@
 // Guide diagram (Chapter 24): one ant-colony search shown at three moments.
 // The same seeded colony solves the same cities in every panel. After one
 // iteration the pheromone web is a haze over every pair; a few iterations
-// condense it; by sixty it has settled, and the best tour rides on top.
+// condense it; by sixty it has settled, and the best tour is drawn over it.
 import Ollin
 
 final class AntColonySearch: Sketch {

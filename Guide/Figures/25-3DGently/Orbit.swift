@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 25): the orbiting camera. The eye rides a sphere
+// Guide diagram (Chapter 25): the orbiting camera. The eye moves on a sphere
 // around the target: azimuth turns it around the up axis, elevation tilts it
 // above the horizon, radius sets how far away it sits. Drawn with the 3D
 // system it explains.
@@ -44,7 +44,7 @@ final class Orbit: Sketch {
         let eye = Vector3(ringR * sin(azimuth), ringH, ringR * cos(azimuth))
         let target = Vector3(0, 0.55, 0)
 
-        // The orbit ring the eye rides at this elevation.
+        // The orbit ring the eye moves along at this elevation.
         withState {
             translate(0, ringH, 0)
             fill(ink.withAlpha(0.45))
@@ -82,7 +82,7 @@ final class Orbit: Sketch {
                            radius * cos(e) * cos(azimuth))
         })
 
-        // Labels ride billboards pinned to world points.
+        // Labels sit on billboards pinned to world points.
         fill(ink); textSize(30)
         label("the target", at: Vector3(0, -0.35, 0.9))
         label("the camera", at: eye + Vector3(0.3, 0.62, 0))

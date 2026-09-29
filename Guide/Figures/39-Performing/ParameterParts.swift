@@ -50,7 +50,7 @@ final class ParameterParts: Sketch {
             strokeWeight(index == 0 ? 2.5 : 1.5)
             drawRect(corner: Vector2(x, y), width: w, height: h)
 
-            // The label rides inside its own edge, so a wide moment never
+            // The label sits inside its own edge, so a wide moment never
             // reaches the listing beside it.
             noStroke()
             fill(index == 0 ? soft : faint)

@@ -46,7 +46,7 @@ final class HalftoneScreen: Sketch {
         textFont(OutlineFont.system)
         textSize(21)
         textAlign(.center, .top)
-        drawText("dot area tracks tone, so the grays ride through unchanged",
+        drawText("dot area tracks tone, so the grays come through unchanged",
                  width / 2, 396)
     }
 

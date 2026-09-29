@@ -2,7 +2,7 @@
 //
 // Guide figure (Chapter 33): the face stream's eyes and gaze made visible. A
 // staged face stands as a wireframe shell, turned slightly one way, while its
-// eyes look another: an eyeball at each streamed eye pose, a pupil riding its
+// eyes look another: an eyeball at each streamed eye pose, a pupil set along its
 // gaze direction, a beam from each eye to the look-at point, and a warm bead
 // where the two beams converge.
 //

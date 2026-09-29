@@ -1,6 +1,6 @@
 // figure: gif duration=4 fps=12 width=480
 //
-// Guide figure (Chapter 25): the cartoon look, and the light that rides the
+// Guide figure (Chapter 25): the cartoon look, and the light that follows the
 // camera. Three toon solids with an ink line, the view swaying to and fro
 // under a three-point rig read relativeTo(.camera): the cel bands stay put
 // on each shape as the view moves, and the line keeps its width like a pen.

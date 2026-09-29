@@ -2,7 +2,7 @@
 //
 // Guide diagram (Chapter 39): the performance host, annotated. A stylized
 // OllinLiveCoding window drawn with Ollin itself: the sketch sits on the black
-// stage, sized to fit, the code rides over it as translucent text, a toast
+// stage, sized to fit, the code sits over it as translucent text, a toast
 // confirms the last evaluation, and the error strip along the bottom holds a
 // typo while the stage plays on. Callouts name the moving parts.
 import Ollin
@@ -36,7 +36,7 @@ final class StageDiagram: Sketch {
             .posterized(levels: 6, gamma: 0.75)
         drawImage(generate(piece, width: 300, height: 300).image, in: stage)
 
-        // The code, riding over the visuals on translucent strips.
+        // The code, over the visuals on translucent strips.
         let lines = [
             "drawVisual(",
             "    .oscillator(frequency: 11, speed: 0.6,",
@@ -87,7 +87,7 @@ final class StageDiagram: Sketch {
 
         // Callouts.
         textSize(15)
-        callout("the code rides on top,", "part of the show",
+        callout("the code sits on top,", "part of the show",
                 at: Vector2(40, 120), to: Vector2(window.x + 26, 150), alignRight: false)
         callout("the sketch, sized to fit,", "sits on the black stage",
                 at: Vector2(40, 330), to: Vector2(stage.x + 40, 360), alignRight: false)

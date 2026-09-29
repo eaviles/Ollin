@@ -45,7 +45,7 @@ final class RoomAsSurface: Sketch {
                     fill(Color(hex: 0xC9C2B6))
                     drawMesh(room.mesh)
                 case 1:
-                    // A color per triangle rides in the mesh, and the colors
+                    // The mesh carries a color per triangle, and the colors
                     // multiply the fill, so white shows them as painted.
                     fill(.white)
                     drawMesh(room.mesh { surface in

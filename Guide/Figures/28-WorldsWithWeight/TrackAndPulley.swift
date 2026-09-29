@@ -1,7 +1,7 @@
 // figure: frame=62
 //
 // Guide figure (Chapter 28): the two most spatial joints. Left, a cart
-// threaded onto a looping .path track, banked into the bend it is riding.
+// threaded onto a looping .path track, banked into the bend it is rounding.
 // Right, a .pulley: a loaded tray sinking on one side of the rope while the
 // counterweight rises on the other. No random anywhere, so it replays
 // identically.

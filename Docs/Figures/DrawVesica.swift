@@ -1,7 +1,7 @@
 // figure: frame=0 themed
 //
 // Docs catalog figure (Drawing/Drawing.md, drawVesica): the pointed lens of
-// two overlapping circles. The tips ride the longer axis, so a tall lens
+// two overlapping circles. The tips sit on the longer axis, so a tall lens
 // points up and down and a wide one left and right; cornerRadius eases the
 // tips toward an ellipse.
 import Ollin

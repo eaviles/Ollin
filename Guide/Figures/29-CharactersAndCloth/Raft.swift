@@ -104,7 +104,7 @@ final class Raft: Sketch {
             drawSphere(radius: onDeck ? 0.11 : 0.07)
         }
 
-        // The sea, drawn from the very surface the raft is riding.
+        // The sea, drawn from the very surface the raft floats on.
         if let surface = world.waterMesh(extent: 26, resolution: 60) {
             fill(Color(hex: 0x2C7C96))
             material(.dielectric(roughness: 0.3))
