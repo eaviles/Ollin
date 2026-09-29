@@ -44,7 +44,7 @@ c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 b33f1f70c329  Docs/3D/DepthCompositing.md:119  cannot find 'device' in scope
 cbd56e33cfb0  Docs/3D/DepthCompositing.md:31  cannot find 'cloud' in scope
 d51768b50cfe  Docs/3D/DepthCompositing.md:70  cannot find 'distance' in scope
-031cf75d491e  Docs/3D/DepthCompositing.md:83  cannot find 'orbCenter' in scope
+d3c80cc947f0  Docs/3D/DepthCompositing.md:83  cannot find 'orbCenter' in scope
 205ca78097b5  Docs/3D/DepthCompositing.md:99  cannot find 'cameraFrame' in scope
 efb8bedfd031  Docs/3D/HopfFibration.md:30  cannot find 'color' in scope
 31879e132211  Docs/3D/Instancing.md:116  cannot find 'field' in scope
@@ -443,7 +443,7 @@ e592306e1cc2  Docs/Drawing/SpatialIndex.md:124  cannot find 'points' in scope
 b8967328df69  Docs/Drawing/SpatialIndex.md:31  cannot find 'points' in scope
 626370b43b6a  Docs/Drawing/SpatialIndex.md:56  cannot find 'points' in scope
 3a15fa371302  Docs/Drawing/SpatialIndex.md:78  cannot use instance member 'canvasRectangle' within property initializer; property initializers run before 'self' is available
-ac9f8e4411e2  Docs/Drawing/Spectrum.md:21  cannot find 'someColor' in scope
+5a595ceec8d3  Docs/Drawing/Spectrum.md:21  cannot find 'someColor' in scope
 42962964f6ab  Docs/Drawing/Spectrum.md:40  cannot find 'a' in scope
 1fcce1341596  Docs/Drawing/Spectrum.md:55  cannot find 'glass' in scope
 7d673b20c71b  Docs/Drawing/Spectrum.md:86  cannot find 'field' in scope
@@ -1104,7 +1104,7 @@ a68dec35c447  Docs/Simulation/Physics.md:347  cannot find 'rim' in scope
 49989805e9fd  Docs/Simulation/Physics.md:70  expected '{' to start getter definition
 756218a29c46  Docs/Simulation/Physics3D.md:1013  cannot find 'banner' in scope
 5198199a8d50  Docs/Simulation/Physics3D.md:1019  cannot find type 'SoftGrip' in scope
-14be8b5aff2f  Docs/Simulation/Physics3D.md:1038  cannot find 'raft' in scope
+0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1038  cannot find 'raft' in scope
 03f3f086ea1e  Docs/Simulation/Physics3D.md:1059  cannot find 'world' in scope
 f800d4a84057  Docs/Simulation/Physics3D.md:1083  cannot find 'world' in scope
 a49b57cb0897  Docs/Simulation/Physics3D.md:1098  cannot find 'vine' in scope
@@ -1113,7 +1113,7 @@ dd5abb4dd2cc  Docs/Simulation/Physics3D.md:113  cannot find 'body' in scope
 885024abe204  Docs/Simulation/Physics3D.md:1135  cannot find 'world' in scope
 e3eaa6a3542d  Docs/Simulation/Physics3D.md:1151  cannot find 'cape' in scope
 6c967a731f05  Docs/Simulation/Physics3D.md:1191  cannot find 'world' in scope
-0fa1fe0546e7  Docs/Simulation/Physics3D.md:1197  cannot find 'world' in scope
+cc09bf811a57  Docs/Simulation/Physics3D.md:1197  cannot find 'world' in scope
 b79fb1ed7e14  Docs/Simulation/Physics3D.md:1223  cannot find 'world' in scope
 17d27515f7e2  Docs/Simulation/Physics3D.md:1230  cannot find 'world' in scope
 6f73212f90db  Docs/Simulation/Physics3D.md:1256  cannot find 'world' in scope
@@ -1142,10 +1142,10 @@ b9ce26196419  Docs/Simulation/Physics3D.md:267  cannot find 'world' in scope
 c0ee9aeeab6f  Docs/Simulation/Physics3D.md:312  cannot find 'door' in scope
 ac0c55cc42e4  Docs/Simulation/Physics3D.md:320  cannot find 'hinge' in scope
 4de59f3f885b  Docs/Simulation/Physics3D.md:329  cannot find 'neck' in scope
-81995084b719  Docs/Simulation/Physics3D.md:344  cannot find 'world' in scope
+f85203ef245a  Docs/Simulation/Physics3D.md:344  cannot find 'world' in scope
 acbc0dd17e61  Docs/Simulation/Physics3D.md:362  cannot find 'world' in scope
 85ef251a7d7b  Docs/Simulation/Physics3D.md:368  cannot find 'world' in scope
-685b3bf21d00  Docs/Simulation/Physics3D.md:378  cannot find 'world' in scope
+936275d7580e  Docs/Simulation/Physics3D.md:378  cannot find 'world' in scope
 8c4eea21626a  Docs/Simulation/Physics3D.md:392  cannot find 'world' in scope
 aabfd4611ab0  Docs/Simulation/Physics3D.md:404  cannot find 'world' in scope
 43919ac2aec2  Docs/Simulation/Physics3D.md:413  cannot find 'world' in scope
