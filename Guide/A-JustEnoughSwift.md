@@ -280,7 +280,6 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) |
 | `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 37](37-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
-| `((step % steps) + steps) % steps` | A remainder that stays between 0 and `steps - 1`. Swift's `%` keeps the sign of the number on its left, so a negative `step` needs the extra `+ steps`. | [Chapter 40](40-MusicByRule.md#putting-it-together-the-music-box) |
 
 ### Loops and choices
 

@@ -1,11 +1,14 @@
 // figure: frame=430
 //
 // Guide payoff (Chapter 40): the music box. A sketch that plays itself out of
-// the chapter's parts (a step counter, three Euclidean rhythms, a scale, a
-// seventh chord on the scale's root, an arpeggio over it, and a Markov chain that
-// keeps a motif's habits) through three kinds of voice: a modeled steel
-// string, an FM bell patched by hand, and a breath pad. What it draws is its
-// own score scrolling past, so the picture is a record of what you can hear.
+// the chapter's parts (a step counter, three Euclidean rhythms with every
+// offbeat swung late, a minor key, a progression whose chord each bar the bell
+// plays as an arpeggio, and a Markov chain that keeps a motif's habits)
+// through three kinds of voice: a modeled steel string, an FM bell patched by
+// hand, and a breath pad. Every voice is recorded, and S writes the take as a
+// MIDI file of three tracks. What it draws is its own score scrolling past,
+// so the picture is a record of what you can hear. The file is the chapter's
+// listing.
 import Ollin
 import OllinAudio
 
@@ -19,6 +22,7 @@ final class MusicBox: Sketch {
 
     let steps = 16
     let tempo: Tempo = 96
+    let swing = 0.62                            // where each offbeat lands in its pair
     var counter = StepCounter(perBeat: 4)
     var motif = MarkovChain<Int>(seed: 4)
 
@@ -48,6 +52,11 @@ final class MusicBox: Sketch {
 
         motif.learn([0, 2, 4, 2, 0, -3, 0, 4], loops: true)
         motif.start(at: 0)
+
+        // Everything the three voices play is written down, to save with S.
+        string.startRecording(tempo: tempo, name: "steel string")
+        bell.startRecording(tempo: tempo, name: "patched bell")
+        air.startRecording(tempo: tempo, name: "breath")
     }
 
     // MARK: the music
@@ -55,7 +64,8 @@ final class MusicBox: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0C10))
 
-        let key = Scale(.minorPentatonic, root: "A2")
+        let key = Scale(.minor, root: "A2")
+        let changes = Progression("i VI iv v", in: Scale(.minor, root: "A3"))
         let low = Rhythm(3, in: steps)          // three strikes, as evenly as sixteen allows
         let mid = Rhythm(5, in: steps)
         let high = Rhythm(2, in: steps)
@@ -63,19 +73,19 @@ final class MusicBox: Sketch {
         let beats = tempo.beats(at: time)
         for step in counter.steps(upTo: beats) {
             let at = Double(step) / 4
+            let bar = step / steps              // one chord of the progression a bar
+            let late = step % 2 == 1 ? (swing - 0.5) * tempo.seconds(of: .eighth) : 0
             if low[step] {
                 let degree = motif.next() ?? 0
-                play(string, key[degree], at: at, beats: 1.1, voice: 0, velocity: 0.9)
+                play(string, key[degree], at: at, late: late, beats: 1.1, voice: 0, velocity: 0.9)
             }
             if mid[step] {
-                let chord = Chord(key[0].transposed(by: 12), .minorSeventh)
-                let figure = Arpeggio(chord, .upDown, octaves: 2)
-                play(bell, key.snap(figure[step]), at: at, beats: 0.5, voice: 1, velocity: 0.55)
+                let figure = Arpeggio(changes.pitches(at: bar), .upDown, octaves: 2)
+                play(bell, figure[step], at: at, late: late, beats: 0.5, voice: 1, velocity: 0.55)
             }
             if high[step] {
-                let inBar = ((step % steps) + steps) % steps
-                let breath = Pitch(76 + Double(inBar % 3) * 5)
-                play(air, key.snap(breath), at: at, beats: 2.4,
+                let breath = Pitch(76 + Double(step % steps % 3) * 5)
+                play(air, key.snap(breath), at: at, late: late, beats: 2.4,
                      voice: 2, velocity: 0.35)
             }
         }
@@ -83,11 +93,22 @@ final class MusicBox: Sketch {
         drawScore(now: beats)
     }
 
-    func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, beats: Double,
-              voice: Int, velocity: Double) {
-        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats))
-        score.append(Played(beat: beat, pitch: pitch.midi, beats: beats,
-                            voice: voice, velocity: velocity))
+    func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, late: Double,
+              beats: Double, voice: Int, velocity: Double) {
+        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats), after: late)
+        score.append(Played(beat: beat + tempo.beats(at: late), pitch: pitch.midi,
+                            beats: beats, voice: voice, velocity: velocity))
+    }
+
+    // Press S to save what has played so far, one track a voice.
+    override func keyPressed() {
+        guard key == "s" else { return }
+        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 0),
+                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 1),
+                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 2)]
+        let file = MIDIFile(format: .parallelTracks, name: "Music box", tracks: parts,
+                            tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
+        try? file.write(to: "music-box.mid")
     }
 
     // MARK: the score it leaves behind
@@ -141,7 +162,7 @@ final class MusicBox: Sketch {
         textFont(OutlineFont.system)
         textSize(21)
         textAlign(.left, .top)
-        drawText("3, 5 and 2 strikes over 16 steps · A minor pentatonic · 96 bpm", 60, 96)
+        drawText("i VI iv v in A minor · swing 0.62 · 96 bpm", 60, 96)
         fill(Color(white: 1, alpha: 0.32))
         textSize(19)
         for (i, name) in ["steel string", "patched bell", "breath"].enumerated() {

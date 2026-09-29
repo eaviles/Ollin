@@ -11,6 +11,9 @@ var counter = StepCounter(perBeat: 4)
 let step = 0
 let degree = 0
 
+// The rhythm of the rhythm step, which the swing step reads at each step.
+let rhythm = Rhythm(5, in: 16)
+
 // The scale of the pitch step, played by the fragments after it, and the
 // major scale of the chord step, which a progression reads.
 let pentatonic = Scale(.minorPentatonic, root: "A3")
@@ -21,7 +24,8 @@ let major = Scale(.major, root: "C3")
 var drums: StepSequencer = "36 . . 36 . . 36 . 38 . . 36 . 38 . ."
 let midi = MIDIInput()
 
-// The two synths the progression plays, a pad for the chords and a bass.
+// The two synths the progression plays, a pad for the chords and a bass,
+// which the MIDI file step writes as two tracks.
 @MainActor let pad = Synth(.pad)
 @MainActor let bass = Synth(.pluck)
 

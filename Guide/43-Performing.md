@@ -6,7 +6,7 @@
 
 <img src="Images/43-Performing/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core" width="560">
 
-Code can be the performance: you type over the running picture and evaluate each change without stopping it. Here you learn live coding in a performance host, and how to record the set, everything you play from start to end. The picture at the top is the last state of a set in five evaluations. Past it come completion and a controller, cues and replay, parameters directed or written as rules, and live feeds into other apps.
+Code can be the performance: you type over the running picture and evaluate each change without stopping it. Here you learn live coding in a performance host, how to record the set from start to end, and cues, looks saved to call back. The picture at the top is the last state of a set in five evaluations. Past it come completion and a controller, replay, parameters directed or written as rules, and live feeds into other apps.
 
 ## Performing the code itself: live coding
 
@@ -56,9 +56,24 @@ swift run OllinLive MySketches/Finale.swift --record
 
 Quitting the host finishes the movie first, and so does Control-C in the terminal, so the file is complete however the take ends. [`Examples/Export/Record`](../Examples/Export/Record/Sketch.swift) is an instrument you drag to play, and [Recording](../Docs/Output/Recording.md) has the rest.
 
+## A look you come back to: cues
+
+A **cue** is a saved look: every parameter's value at once, under a name. Use cues for the looks a set returns to, called up in a moment. They come from theater, where a cue is a planned change of lights or sound called at a moment in the show. `saveCue("night")` saves one in code, and a name typed into the Cues card under the parameters saves one by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the list of cues in order. A cue can be called from anywhere a sketch reads, such as a key, a beat, or a sensor.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/43-Performing/CalledBack-dark.jpg">
+  <img src="Images/43-Performing/CalledBack.jpg" alt="Three square looks of one ring of twelve dots: small violet dots on near-black labeled night, larger green dots with bright cores on gray labeled one second in, and large orange dots with bright cores on cream labeled dawn, with arrows between them under the call cue dawn over 2. Below, four lanes over two seconds: size rising along an eased curve, hue falling along one, ground as a band blending from navy to cream, and lit stepping up at the first frame; a small card at the left lists five cue names with dawn marked" width="680">
+</picture>
+
+The kind of parameter decides whether it eases or jumps. A number, a color, a point, and a range have values between two settings, so they ease there, slowly at both ends. A switch, a menu choice, and a piece of text have nothing in between. They take the cue's value on the first frame of the fade. So the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
+
+The hosts keep the list of cues in a file beside the sketch, named after it, such as `Finale.cues.json`. So a reload never loses a look. On stage, a MIDI program change, a message that asks for a numbered preset, calls a cue by number. `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) holds five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
+
+A cue differs from a parameter's default. The **Save parameters** button above the card writes the values you set into the `@Param` lines, which is where the sketch starts. A cue is where it goes back to.
+
 ## Putting it together: a set in five evaluations
 
-The finished sketch is a short performed set. You build the picture above the way an audience would watch it grow, one evaluation at a time. The set uses the performance host and its evaluate loop, a take recorded with ⌘⇧R, and the `Visual` chains of [Chapter 18](18-YourFirstShader.md#patching-without-typing-metal-visual-chains). Each evaluation adds to one chain.
+The finished sketch is a short performed set. You build the picture above the way an audience would watch it grow, one evaluation at a time. The set uses the performance host and its evaluate loop, a take recorded with ⌘⇧R, cues, and the `Visual` chains of [Chapter 18](18-YourFirstShader.md#patching-without-typing-metal-visual-chains). Each evaluation adds to one chain.
 
 Open the host with a new buffer. It starts with a small sketch of circles. Delete the body of its `draw()`, and type each step into it:
 
@@ -68,23 +83,29 @@ Open the host with a new buffer. It starts with a small sketch of circles. Delet
 </picture>
 
 1. Start with bands. Type `drawVisual(.oscillator(frequency: 11, speed: 0.6, colorShift: 0.5))`, press ⌘↩, and drifting bands fill the stage.
-2. Add `.kaleidoscope(segments: 5)` to the chain. It folds the bands into a five-sided mandala that still moves.
-3. Add `.displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)`, which bends the fold with noise.
-4. Add `.posterized(levels: 6, gamma: 0.75)`, and the bent fold hardens into flat contour bands like a screen print.
+2. Add `@Param(3...12) var segments = 5.0` above `draw()`, and `.kaleidoscope(segments: segments)` to the chain. It folds the bands into a five-sided mandala that still moves, and a `segments` slider appears in the inspector.
+3. Add `@Param(0...0.3) var bend = 0.09` beside it, and `.displaced(by: .noise(scale: 3, speed: 0.25), amount: bend)` to the chain, which bends the fold with noise.
+4. Add `@Param(2...12) var levels = 6.0`, and `.posterized(levels: levels, gamma: 0.75)`. The bent fold hardens into flat contour bands like a screen print.
 5. Add `.rotated(time * 0.03)` and `.colorCycled(time * 0.04)`. The picture turns slowly, and its colors shift a little more every second.
 
-Save the buffer as `MySketches/Finale.swift`. With the class renamed `Finale` and the starter's unused parameter removed, it is this listing:
+Then play between looks. Open the inspector with ⌘/. In the **Cues** card, save the look as it stands under the name `print`. Drag `segments` to 9, `bend` to 0.25, and `levels` to 3, and the print breaks into more folds, bent further and cut into fewer bands. Save that as `shatter`. Press `print` in the card, and the three sliders ease back over the card's fade while the picture keeps turning. The picture at the top is that look, called back.
+
+Save the buffer as `MySketches/Finale.swift`, and the cues are written beside it as `Finale.cues.json`. With the class renamed `Finale` and the starter's unused parameter removed, it is this listing:
 
 ```swift
 import Ollin
 
 final class Finale: Sketch {
+    @Param(3...12) var segments = 5.0
+    @Param(0...0.3) var bend = 0.09
+    @Param(2...12) var levels = 6.0
+
     override func draw() {
         drawVisual(
             .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
-                .kaleidoscope(segments: 5)
-                .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
-                .posterized(levels: 6, gamma: 0.75)
+                .kaleidoscope(segments: segments)
+                .displaced(by: .noise(scale: 3, speed: 0.25), amount: bend)
+                .posterized(levels: levels, gamma: 0.75)
                 .rotated(time * 0.03)
                 .colorCycled(time * 0.04)
         )
@@ -92,18 +113,19 @@ final class Finale: Sketch {
 }
 ```
 
-It is short enough to type from memory on stage. Each step changes only the inside of `draw()`, so the run carries on through all five, and the clock never jumps. `.colorCycled` adds to the hue, the saturation, and the brightness together, so the last look turns lilac and gray rather than only changing hue.
+It is short enough to type from memory on stage. Steps 1 and 5 change only the inside of `draw()`, so the run carries on through them. Steps 2 to 4 each add a parameter, which is a declaration, so the run starts over on each. The clock carries across anyway, and nothing is lost, because the chain paints the whole picture every frame. `.colorCycled` adds to the hue, the saturation, and the brightness together, so the last look turns lilac and gray rather than only changing hue.
 
 Then make it yours:
 
 - Play the steps in another order, or swap step 2's fold for `.repeated(x: 3, y: 3)`, and the mandala becomes wallpaper.
-- Put the oscillator's frequency on a `@Param` and bind it to a MIDI knob, as in [Chapter 38](38-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing). The set then has a second instrument.
+- Bind `bend` to a MIDI knob, as in [Chapter 38](38-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing). The set then has a second instrument. Learn a pad onto **Next cue** in the host's Controls card, as [below](#the-host-on-a-controller-osc-and-learned-midi) shows, and step between the looks without the mouse.
 - Perform a sketch from earlier in the guide, since any of them runs in the host as it is. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring)'s breathing ring has no `setup()`, so every edit to its `draw()` carries the run. A sketch that builds its state in `setup()` starts over on each evaluation instead.
 
-Keep the set as you play it. Press ⌘⇧R before the first evaluation, and the take keeps every evaluation as it happened. Save the buffer with ⌘S. For a clean copy of the finished look, export the saved file as video:
+Keep the set as you play it. Press ⌘⇧R before the first evaluation, and the take keeps every evaluation and every cue as it happened. Save the buffer with ⌘S. For a clean copy of a look, export the saved file as video. `--cue` picks the look it renders:
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 12
+swift run OllinLive MySketches/Finale.swift --export-video shatter.mp4 --seconds 12 --cue shatter
 ```
 
 ## More of the performance host: completion, a controller, and the drag
@@ -122,24 +144,9 @@ The host's own actions, such as evaluating, hiding the code, and recording, can 
 
 The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Use it to place a shape by hand while the audience watches the numbers change. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries on. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
 
-## Looks and nights you come back to: cues and replay
+## A night you can play again: replay
 
-The set moves forward and never returns. A longer set comes back to looks it had before, and a run played by hand can be played again. A cue saves a look to call back later. A take file records a run so it can be played again, frame for frame.
-
-### A look you come back to: cues
-
-A **cue** is a saved look: every parameter's value at once, under a name. Use cues for the looks a set returns to, called up in a moment. They come from theater, where a cue is a planned change of lights or sound called at a moment in the show. `saveCue("night")` saves one in code, and a name typed into the Cues card under the parameters saves one by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the list of cues in order. A cue can be called from anywhere a sketch reads, such as a key, a beat, or a sensor.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/43-Performing/CalledBack-dark.jpg">
-  <img src="Images/43-Performing/CalledBack.jpg" alt="Three square looks of one ring of twelve dots: small violet dots on near-black labeled night, larger green dots with bright cores on gray labeled one second in, and large orange dots with bright cores on cream labeled dawn, with arrows between them under the call cue dawn over 2. Below, four lanes over two seconds: size rising along an eased curve, hue falling along one, ground as a band blending from navy to cream, and lit stepping up at the first frame; a small card at the left lists five cue names with dawn marked" width="680">
-</picture>
-
-The kind of parameter decides whether it eases or jumps. A number, a color, a point, and a range have values between two settings, so they ease there, slowly at both ends. A switch, a menu choice, and a piece of text have nothing in between. They take the cue's value on the first frame of the fade. So the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
-
-The hosts keep the list of cues in a file beside the sketch, named after it, such as `Finale.cues.json`. So a reload never loses a look. On stage, a MIDI program change, a message that asks for a numbered preset, calls a cue by number. `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) holds five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
-
-A cue differs from a parameter's default. The **Save parameters** button above the card writes the values you set into the `@Param` lines, which is where the sketch starts. A cue is where it goes back to.
+The set's cues bring back a look, and its movie keeps what the night looked like. A take file keeps the performance itself, so a run played by hand can be played again, frame for frame.
 
 ### Playing the night again: replay
 

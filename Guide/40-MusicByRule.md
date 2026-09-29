@@ -6,7 +6,7 @@
 
 <img src="Images/40-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold marks low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
 
-Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly, pitch as numbers, scales and chords from a key, and a chain that learned a phrase. The music box above plays by itself and draws each note as it plays it. The families after it hold a sequencer with a feel, progressions and tunings, a beat from the room, and MIDI files.
+Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly and swung, pitch as numbers, chords and progressions from a key, and a chain that learned a phrase. The music box above plays by itself, draws each note as it plays it, and writes what it played to a MIDI file. The families after it hold a sequencer, an arpeggiator, other tunings, a beat from the room, reading a file, and sound from a place.
 
 ## Beats and note lengths: `Tempo` and `NoteLength`
 
@@ -67,6 +67,25 @@ The named ones are on the type, so you rarely have to remember the numbers: `.tr
 ```swift
 let clave: Rhythm = "x..x..x...x.x..."
 ```
+
+## Late on purpose: swing
+
+Every step so far lands exactly on the grid, and players rarely do. The commonest lean is **swing**. Take the steps in pairs, and call the second step of each pair its **offbeat**. Swing delays every offbeat by the same fraction of its pair. It is written as where the offbeat lands in the pair. At 0.5 it lands halfway, which is straight, and at 0.62 a little late. At 0.67 it lands on the last third, the uneven rhythm called a **shuffle**.
+
+A synth can wait before it plays. `play(_:velocity:for:after:)` takes a wait in seconds as `after:`, so the loop over steps can push each offbeat late:
+
+```swift
+let swing = 0.62
+
+for step in counter.steps(upTo: tempo.beats(at: time)) {
+    let late = step % 2 == 1 ? (swing - 0.5) * tempo.seconds(of: .eighth) : 0
+    if rhythm[step] { synth.play(60, for: 0.1, after: late) }
+}
+```
+
+`%` is the remainder after dividing, so `step % 2` is 1 on every second step. Two sixteenth steps make an eighth note, so `tempo.seconds(of: .eighth)` is one pair in seconds. At 96 beats a minute and a swing of 0.62, each offbeat waits about 38 milliseconds.
+
+The counter hands over a step on the first frame after it falls due. So every note can land up to a frame late, about 17 milliseconds on a 60-hertz display, and the wait adds to that. For a lean placed to the sample, the step sequencer in [Steps with a feel](#steps-with-a-feel-the-sequencer-and-the-arpeggiator) asks for its notes ahead of time.
 
 ## Notes as numbers: a pitch primer
 
@@ -145,9 +164,81 @@ The motif here is a list of degrees. `loops: true` treats it as a phrase that co
 
 `order` is how far back the chain looks. At 1, the default, each element depends only on the one before it. At 2 it looks at the last two, which follows the motif more closely and invents less. The chain is seeded, and it keeps its own random generator rather than borrowing the sketch's. So adding one does not change anything else you were drawing at random, and the same seed plays the same line.
 
+## Chords that come out of a key: `Progression`
+
+The chords of [Chords from the key](#chords-from-the-key-chord-and-arpeggio) stand still. A **progression** is a sequence of chords. Use one when the chords under a melody should change and still stay in key. The useful way to write one down is as degrees, in the numerals of the chords step. Music theory writes harmony that way, in what is called Roman numeral analysis.
+
+In this fragment `pad` and `bass` are two synths. At 120 beats a minute `time * 2` counts beats, and a counter with `perBeat: 0.5` takes one step, one chord, every two beats:
+
+```swift
+let changes = Progression("I vi IV V", in: Scale(.major, root: "C3"))
+var chordSteps = StepCounter(perBeat: 0.5)
+
+for step in chordSteps.steps(upTo: time * 2) {
+    pad.play(chord: changes.pitches(at: step), for: 1.8)
+    bass.play(changes.root(at: step).transposed(by: -12), for: 1.6)
+}
+```
+
+Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. Ollin ignores the case of a numeral, since the scale decides major or minor.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Changes-dark.jpg">
+  <img src="Images/40-MusicByRule/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
+</picture>
+
+These are the notes `pitches(at:)` hands back, in two keys, with nothing else changed. Every chord comes out different, each one whatever the scale's own notes make of that degree. The second column is minor in the major key and major in the minor one. The numeral only ever meant "start here and take every other note". A musician would write the minor key's row as i VI iv v, in lowercase where the chords are minor. Ollin names every black key with a sharp, so the minor row's `G#` is the note a score would print as A flat. A **flat** is the key just below a letter, as a sharp is the key just above. So G sharp and A flat are the same pitch. `Examples/Audio/Changes` puts the key on a parameter, so you can hear the chords change while it plays.
+
+A few progressions are named, such as `.pop(in:)`, `.blues(in:)`, `.twoFiveOne(in:)`, and `.andalusian(in:)`. A progression can also leave its cycle:
+
+```swift
+let changes = Progression("I vi IV V ii V", in: major).wandering(32)
+```
+
+`wandering(_:)` learns a Markov chain from the progression's own moves and plays 32 chords from it. It only makes moves the original made, but after a few bars it is somewhere the original never went. It is seeded per call, so a wander you like is one you can ask for again.
+
+When the chords do not all come from one key, write them as chord symbols instead. A symbol names a chord's root and kind. `Dm7` is D minor seventh, `G7` a G seventh chord, `Cmaj7` C major seventh, and `F#m7` F sharp minor seventh:
+
+```swift
+let changes = Progression(symbols: "Dm7 G7 Cmaj7 Cmaj7")
+let chord: Chord = "F#m7"
+```
+
+Symbols stay where they are when the key changes, and degrees move with it.
+
+## Keeping what it played: writing a MIDI file
+
+A **Standard MIDI File**, the `.mid` file, stores notes as MIDI messages with their timing. Every sequencer and notation program reads and writes one. The format is published by the MIDI Association beside the MIDI 1.0 specification. Write one to keep a phrase you liked, or to open the sketch's music in another program.
+
+A `Synth` can write down what it is asked to play. `startRecording(tempo:name:)` starts a **take**, one recorded run of playing. `recordedSoFar()` hands back everything since as a `MIDIFile`, and the take goes on. In `keyPressed()`, `key` is the key just pressed on the Mac's keyboard:
+
+```swift
+override func setup() {
+    synth.startRecording(tempo: tempo, name: "Take")
+}
+
+override func keyPressed() {
+    if key == "s" { try? synth.recordedSoFar().write(to: "take.mid") }
+}
+```
+
+`write(to:)` throws when the file cannot be written, and `try?` skips the write if it does. The notes keep the timing they were played with, each `after:` wait included, so a swung pattern arrives swung. The tempo you give decides only where the bar lines fall around what was played. `stopRecording()` hands back the same file and ends the take.
+
+A file can hold several parts, called **tracks**, each on a MIDI channel of its own. A program that opens the file shows each track as a line of its own. `MIDIFile.Track` wraps one synth's notes as a track, and the long form of `MIDIFile` puts tracks together. Here the progression's pad and bass become two tracks:
+
+```swift
+let parts = [MIDIFile.Track(pad.recordedSoFar().notes, name: "chords", channel: 0),
+             MIDIFile.Track(bass.recordedSoFar().notes, name: "bass", channel: 1)]
+let file = MIDIFile(format: .parallelTracks, name: "Changes", tracks: parts,
+                    tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
+try? file.write(to: "changes.mid")
+```
+
+`.parallelTracks` is the kind of file whose tracks play together. `tempoChanges` gives the file its speed. A file built from tracks has none until you give one, and a program that opens it then assumes 120 beats a minute.
+
 ## Putting it together: the music box
 
-The finished sketch plays by itself and draws what it plays. Make `MySketches/MusicBox.swift`, and run it with the sound on. It counts steps from a tempo and reads three Euclidean rhythms at the same step. Its notes come from one scale. The bell plays a seventh chord on the key's root as an arpeggio, and a Markov chain chooses the low line.
+The finished sketch plays by itself and draws what it plays. Make `MySketches/MusicBox.swift`, and run it with the sound on. It counts steps from a tempo, reads three Euclidean rhythms at the same step, and swings every offbeat late. Its notes come from one key. The bell plays each bar's chord of a progression as an arpeggio, and a Markov chain chooses the low line. Press S and what it has played so far is saved as a MIDI file.
 
 The first part is the music. The bell is a patch from [Chapter 39](39-MakingSound.md#building-an-instrument-instead-of-choosing-one-patches-and-fm). One sine pushes another at a ratio of 3.47, which is not a whole number, so it sounds like metal. The string is the plucked string of [Chapter 39](39-MakingSound.md#a-string-worked-out-sample-by-sample-the-plucked-string), and the breath is a preset.
 
@@ -165,6 +256,7 @@ final class MusicBox: Sketch {
 
     let steps = 16
     let tempo: Tempo = 96
+    let swing = 0.62                            // where each offbeat lands in its pair
     var counter = StepCounter(perBeat: 4)
     var motif = MarkovChain<Int>(seed: 4)
 
@@ -194,6 +286,11 @@ final class MusicBox: Sketch {
 
         motif.learn([0, 2, 4, 2, 0, -3, 0, 4], loops: true)
         motif.start(at: 0)
+
+        // Everything the three voices play is written down, to save with S.
+        string.startRecording(tempo: tempo, name: "steel string")
+        bell.startRecording(tempo: tempo, name: "patched bell")
+        air.startRecording(tempo: tempo, name: "breath")
     }
 
     // MARK: the music
@@ -201,7 +298,8 @@ final class MusicBox: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0C10))
 
-        let key = Scale(.minorPentatonic, root: "A2")
+        let key = Scale(.minor, root: "A2")
+        let changes = Progression("i VI iv v", in: Scale(.minor, root: "A3"))
         let low = Rhythm(3, in: steps)          // three strikes, as evenly as sixteen allows
         let mid = Rhythm(5, in: steps)
         let high = Rhythm(2, in: steps)
@@ -209,19 +307,19 @@ final class MusicBox: Sketch {
         let beats = tempo.beats(at: time)
         for step in counter.steps(upTo: beats) {
             let at = Double(step) / 4
+            let bar = step / steps              // one chord of the progression a bar
+            let late = step % 2 == 1 ? (swing - 0.5) * tempo.seconds(of: .eighth) : 0
             if low[step] {
                 let degree = motif.next() ?? 0
-                play(string, key[degree], at: at, beats: 1.1, voice: 0, velocity: 0.9)
+                play(string, key[degree], at: at, late: late, beats: 1.1, voice: 0, velocity: 0.9)
             }
             if mid[step] {
-                let chord = Chord(key[0].transposed(by: 12), .minorSeventh)
-                let figure = Arpeggio(chord, .upDown, octaves: 2)
-                play(bell, key.snap(figure[step]), at: at, beats: 0.5, voice: 1, velocity: 0.55)
+                let figure = Arpeggio(changes.pitches(at: bar), .upDown, octaves: 2)
+                play(bell, figure[step], at: at, late: late, beats: 0.5, voice: 1, velocity: 0.55)
             }
             if high[step] {
-                let inBar = ((step % steps) + steps) % steps
-                let breath = Pitch(76 + Double(inBar % 3) * 5)
-                play(air, key.snap(breath), at: at, beats: 2.4,
+                let breath = Pitch(76 + Double(step % steps % 3) * 5)
+                play(air, key.snap(breath), at: at, late: late, beats: 2.4,
                      voice: 2, velocity: 0.35)
             }
         }
@@ -229,18 +327,29 @@ final class MusicBox: Sketch {
         drawScore(now: beats)
     }
 
-    func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, beats: Double,
-              voice: Int, velocity: Double) {
-        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats))
-        score.append(Played(beat: beat, pitch: pitch.midi, beats: beats,
-                            voice: voice, velocity: velocity))
+    func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, late: Double,
+              beats: Double, voice: Int, velocity: Double) {
+        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats), after: late)
+        score.append(Played(beat: beat + tempo.beats(at: late), pitch: pitch.midi,
+                            beats: beats, voice: voice, velocity: velocity))
+    }
+
+    // Press S to save what has played so far, one track a voice.
+    override func keyPressed() {
+        guard key == "s" else { return }
+        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 0),
+                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 1),
+                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 2)]
+        let file = MIDIFile(format: .parallelTracks, name: "Music box", tracks: parts,
+                            tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
+        try? file.write(to: "music-box.mid")
     }
 
 ```
 
-> **Swift note.** `MarkovChain<Int>(seed: 4)` makes an empty chain of whole numbers. The type in angle brackets says what the chain holds, which Swift cannot tell from an empty chain. `learn(_:loops:)` teaches it in `setup()`. `struct Played` is declared inside the class, which is how a type that only this sketch uses stays with it. The sketch's own `play(_:_:at:beats:voice:velocity:)` shares its name with the synth's, and Swift tells them apart by their labels.
+> **Swift note.** `MarkovChain<Int>(seed: 4)` makes an empty chain of whole numbers. The type in angle brackets says what the chain holds, which Swift cannot tell from an empty chain. `learn(_:loops:)` teaches it in `setup()`. `struct Played` is declared inside the class, which is how a type that only this sketch uses stays with it. The sketch's own `play(_:_:at:late:beats:voice:velocity:)` shares its name with the synth's, and Swift tells them apart by their labels.
 
-A few lines need a closer look. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out. The scale inside `draw()` is named `key`, which works because it is a local name. A property of the sketch cannot use that name, since `key` is already the sketch's last key pressed. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat. `tempo.seconds(beats:)` turns a length in beats into seconds. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The bell builds a seventh chord an octave above the root and reads it as an arpeggio at the step. It snaps each note to the key, which changes nothing for this chord but keeps the bell in key when you change the scale. The breath takes its pitch from the step's place in the bar, which gives E5 on its first strike and D6 on its second. It snaps that too. `((step % steps) + steps) % steps` is the step's place in the bar, 0 to 15. The `%` is the remainder after dividing, and adding `steps` before the second one keeps the answer in range even for a negative step.
+A few lines need a closer look. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out. The scale inside `draw()` is named `key`, which works because it is a local name. A property of the sketch cannot use that name, since `key` is already the sketch's last key pressed, which `keyPressed()` reads. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat, and `step / steps` is its bar. `late` is the swing's wait, and the sketch's `play` hands it to the synth as `after:`. It also writes the note into `score` at the beat it sounds, wait included. `tempo.seconds(beats:)` turns a length in beats into seconds. The progression is written in the same key an octave up, so the bell's arpeggio climbs through each bar's chord above the low line. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The breath takes its pitch from the step's place in the bar, `step % steps`, which gives E5 on its first strike and D6 on its second. It snaps that to the key.
 
 The second part is the drawing, and it knows nothing about sound. Every note the music played was written into `score` as it went. The picture reads that list, with time across and pitch up. How long each note holds is the length of its mark, and how hard it was struck is its weight. `drawScore` draws a faint line at every fourth beat for the bar lines, then each note, then a line at the current beat.
 
@@ -296,7 +405,7 @@ The second part is the drawing, and it knows nothing about sound. Every note the
         textFont(OutlineFont.system)
         textSize(21)
         textAlign(.left, .top)
-        drawText("3, 5 and 2 strikes over 16 steps · A minor pentatonic · 96 bpm", 60, 96)
+        drawText("i VI iv v in A minor · swing 0.62 · 96 bpm", 60, 96)
         fill(Color(white: 1, alpha: 0.32))
         textSize(19)
         for (i, name) in ["steel string", "patched bell", "breath"].enumerated() {
@@ -309,13 +418,13 @@ The second part is the drawing, and it knows nothing about sound. Every note the
 }
 ```
 
-Read the picture back against the code and each voice's rhythm is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones jump around the chord rather than climbing. The arpeggio is read at the step, and the bell strikes only every third or fourth step, so it skips the notes between. The pink ones hold for 2.4 beats and come every two beats, which is why they overlap. `Examples/Audio/Generative` builds music the same way, with its kind of scale, its chord, and its tempo on parameters.
+Read the picture back against the code and each voice's rhythm is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones jump around each bar's chord rather than climbing, and they move to a new chord at each bar line. The arpeggio is read at the step, and the bell strikes only every third or fourth step, so it skips the notes between. The pink ones hold for 2.4 beats and come every two beats, which is why they overlap. The swing moves an offbeat mark about a quarter of a step to the right, which is easier to hear than to see. `Examples/Audio/Generative` builds music the same way, with its kind of scale, its chord, and its tempo on parameters.
 
 Then make it yours:
 
 - Change the three strike counts. `Rhythm(7, in: 16)` under the string makes a low line busy enough that you have to count it.
-- Give the bell a whole-number ratio, `3` instead of `3.47`. Its partials then line up as harmonics, so it loses the metal and sounds like a plain struck tone. Nothing else in the sketch changes.
-- Swap `Scale(.minorPentatonic, root: "A2")` for `.hirajoshi` or `.blues`. Every wandering degree stays in the new key, because that is what a scale guarantees.
+- Set `swing` to 0.67 for a shuffle, or to 0.5 to hear the same music straight.
+- Change the progression. `"i iv v i"` keeps closer to home, and `Progression.andalusian(in: Scale(.minor, root: "A3"))` steps down from the root. Every chord still comes out of the key.
 
 To keep it, export a video. The file carries the music:
 
@@ -323,17 +432,19 @@ To keep it, export a video. The file carries the music:
 swift run OllinLive MySketches/MusicBox.swift --export-video music-box.mp4 --seconds 20
 ```
 
+Or keep the notes themselves: press S while it plays, and open `music-box.mid` in any program that edits music.
+
 Twenty seconds at 96 beats a minute is eight bars. An export drives the sketch on a fixed clock with no window and no speakers. So the notes are written down as the frames are drawn. At the end, the soundtrack is rendered through the same code that would have fed the speakers. The sound repeats the way the picture does. Export the same sketch twice and the audio comes back the same, sample for sample, which is the promise the seed made in [Chapter 4](04-Randomness.md#seeds-randomness-you-can-keep). `Examples/Audio/SoundInAnExport` shows it on its own.
 
 ## Steps with a feel: the sequencer and the arpeggiator
 
-The music box strikes every hit at the same strength and on the grid, and its bell plays one chord worked out in advance. Tools from hardware instruments loosen that. A step sequencer gives each step its own weight, chance, and timing. An arpeggiator plays whatever chord is held at the moment.
+The music box strikes every hit at the same strength, and its swing can land up to a frame late. Its bell plays chords worked out in advance. Tools from hardware instruments go further. A step sequencer gives each step its own weight and chance, and places every note to the sample. An arpeggiator plays whatever chord is held at the moment.
 
 ### A grid with a feel: `StepSequencer`
 
 A `StepSequencer` is a grid of steps in which each step carries more than on or off. Use it for drum parts and bass lines that should sound played rather than counted. It follows the grid of a hardware drum machine and has the same controls. Each step sets how hard it is struck, its chance to play, and its quick repeats, and the whole grid can lean late.
 
-Write one out as a string, one token per step, where a number is a MIDI note and `.` is a rest. An **offbeat** is the second step of a pair. **Swing** delays every offbeat by the same fraction. At 0.5 the steps are straight, and at 0.58 each second step lands a little late. The loop goes in `draw()`, with `tempo` and `synth` as before:
+Write one out as a string, one token per step, where a number is a MIDI note and `.` is a rest. Its `swing` is the fraction of [Late on purpose](#late-on-purpose-swing). The loop goes in `draw()`, with `tempo` and `synth` as before:
 
 ```swift
 var drums: StepSequencer = "36 . . 36 . . 36 . 38 . . 36 . 38 . ."
@@ -349,7 +460,7 @@ override func draw() {
 }
 ```
 
-This loop differs from the counter's in one way. The sequencer is asked for the notes up to where the music will be at the *end* of the frame. The synth is told where the music is *now*. The synth waits out the difference, to the sample. Without the wait, a note asked for in `draw()` lands with the frame that asked for it. It is close enough for a note on the beat but not for swing. A frame lasts about 17 milliseconds on a 60-hertz display. At 120 beats a minute, a swing of 0.67 moves a note by 42 milliseconds. The call underneath is `play(_:velocity:for:after:)`, which any note can use. `after:` is a wait in seconds, so a strum is three notes and three waits.
+This loop differs from the counter's in one way. The sequencer is asked for the notes up to where the music will be at the *end* of the frame. The synth is told where the music is *now*. The synth waits out the difference, to the sample. Without the wait, a note asked for in `draw()` lands with the frame that asked for it. It is close enough for a note on the beat but not for swing. A frame lasts about 17 milliseconds on a 60-hertz display. At 120 beats a minute, a swing of 0.67 moves a note by 42 milliseconds. Underneath is the `after:` wait the music box swings with, which any note can use. A strum is three notes and three waits.
 
 Each step is a `Step` with a pitch or a rest and three settings. `velocity` is how hard it is struck, from 0 to 1. `probability` is its chance to play on any one bar. `ratchet` squeezes several quick strikes into the step. Set them through the subscript, which wraps like a rhythm's:
 
@@ -363,7 +474,19 @@ drums[13] = StepSequencer.Step(42, probability: 0.5)             // plays half t
   <img src="Images/40-MusicByRule/Sequencer.jpg" alt="Three blocks. Top: one bar of sixteen steps as dots, three rows for straight, swing 0.58, and swing 0.67, the offbeat dots pushed right of their ticks by a growing amount while the first dot of each pair stays on its tick. Middle: one lane over four bars as rows of cells, one cell shorter for a low velocity, one cell drawn as an outline on two of the four bars where a chance step stayed quiet, and one cell split into three narrow strikes for a ratchet. Bottom: two pitch ladders, the first climbing C4 E4 G4 with a B4 joining the ladder after a marked step, the second running up and down over two octaves" width="680">
 </picture>
 
-Read the top block across. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the uneven rhythm called a shuffle. The first step of each pair never moves, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. Each cell is as tall as its velocity, so the short one is a soft step. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's seed. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
+Read the top block across. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the shuffle. The first step of each pair never moves, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. Each cell is as tall as its velocity, so the short one is a soft step. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's seed. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
+
+A sequencer's notes can go to a file without being played. `events(upTo:)` hands back `ScheduledNote` values, each a note with the beat it starts on, and the short form `MIDIFile(_:tempo:name:)` takes them as one track. Ask a fresh sequencer for one bar of four beats at a time, up to just before the next bar starts. A sequencer that has been playing live has moved its count on. This writes eight bars:
+
+```swift
+var phrase: [ScheduledNote] = []
+for bar in 0..<8 {
+    phrase += drums.events(upTo: Double(bar) * 4 + 3.99)
+}
+try? MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
+```
+
+The arpeggiator below answers in the same values, so its notes can be written out the same way.
 
 `Examples/Audio/Sequencer` is a drum machine's grid with an arpeggiator under it. It has three lanes, a swing slider, the hat's offbeats on a chance, two ratchets, and a chord that changes every bar. Click a cell to turn it on or off.
 
@@ -385,51 +508,9 @@ override func draw() {
 
 An `Arpeggio` from the chords step is a pattern worked out once from fixed notes. The arpeggiator follows the notes as they change. The bottom block of the figure shows two patterns. The first is `.up` over C4, E4, and G4. A B4 held from step 5 joins the ladder where it belongs, and the pattern carries on. The second is `.upDown` over two octaves. A new chord after silence starts from its first note. Turn `latches` on, and letting go of every key keeps the last chord playing, like the hold switch on a synthesizer. With nothing held, nothing plays, but the count goes on underneath, so the next note lands on the grid.
 
-## More ways to choose the notes: progressions and tunings
+## More ways to place the notes: tunings
 
-The music box keeps one chord under its bell from start to end, and it plays in the twelve equal semitones of a keyboard. A progression moves the chord along as the music goes. A tuning places the notes at other frequencies than a keyboard's.
-
-### Chords that come out of a key: `Progression`
-
-A **progression** is a sequence of chords. Use one when the chords under a melody should change and still stay in key. The useful way to write one down is as degrees, in the numerals of the chords step. Music theory writes harmony that way, in what is called Roman numeral analysis.
-
-In this fragment `pad` and `bass` are two synths. At 120 beats a minute `time * 2` counts beats, and a counter with `perBeat: 0.5` takes one step, one chord, every two beats:
-
-```swift
-let changes = Progression("I vi IV V", in: Scale(.major, root: "C3"))
-var chordSteps = StepCounter(perBeat: 0.5)
-
-for step in chordSteps.steps(upTo: time * 2) {
-    pad.play(chord: changes.pitches(at: step), for: 1.8)
-    bass.play(changes.root(at: step).transposed(by: -12), for: 1.6)
-}
-```
-
-Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. Ollin ignores the case of a numeral, since the scale decides major or minor.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Changes-dark.jpg">
-  <img src="Images/40-MusicByRule/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
-</picture>
-
-These are the notes `pitches(at:)` hands back, in two keys, with nothing else changed. Every chord comes out different, each one whatever the scale's own notes make of that degree. The second column is minor in the major key and major in the minor one. The numeral only ever meant "start here and take every other note". A musician would write the minor key's row as i VI iv v, in lowercase where the chords are minor. Ollin names every black key with a sharp, so the minor row's `G#` is the note a score would print as A flat. A **flat** is the key just below a letter, as a sharp is the key just above. So G sharp and A flat are the same pitch. `Examples/Audio/Changes` puts the key on a parameter, so you can hear the chords change while it plays.
-
-A few progressions are named, such as `.pop(in:)`, `.blues(in:)`, `.twoFiveOne(in:)`, and `.andalusian(in:)`. A progression can also leave its cycle:
-
-```swift
-let changes = Progression("I vi IV V ii V", in: major).wandering(32)
-```
-
-`wandering(_:)` learns a Markov chain from the progression's own moves and plays 32 chords from it. It only makes moves the original made, but after a few bars it is somewhere the original never went. It is seeded per call, so a wander you like is one you can ask for again.
-
-When the chords do not all come from one key, write them as chord symbols instead. A symbol names a chord's root and kind. `Dm7` is D minor seventh, `G7` a G seventh chord, `Cmaj7` C major seventh, and `F#m7` F sharp minor seventh:
-
-```swift
-let changes = Progression(symbols: "Dm7 G7 Cmaj7 Cmaj7")
-let chord: Chord = "F#m7"
-```
-
-Symbols stay where they are when the key changes, and degrees move with it.
+The music box plays in the twelve equal semitones of a keyboard. A tuning places the notes at other frequencies than a keyboard's.
 
 ### Other divisions of the octave: `Tuning`
 
@@ -522,27 +603,13 @@ Without a reference, a listener needs **absolute pitch**, the rare ability to na
 
 A sketch that draws a column can play the same column from the same numbers, in one more line. `Examples/Audio/Sonification` draws a line across a landscape as a profile and plays it as a tune, with a line marking the note sounding. The picture and the sound are two views of one series, and the sound works for someone who is not looking.
 
-## Where the music goes: a file, and a place in the scene
+## Music from a file, and sound from a place: reading MIDI files and spatial audio
 
-The music box's notes exist only while it runs, and every voice comes out of both speakers alike. A MIDI file keeps the notes for another program to open. A placed synth sounds from a point in a 3D scene.
+The music box writes a MIDI file, and it plays every voice from both speakers alike. A file can come the other way, written somewhere else for the sketch to play. A placed synth sounds from a point in a 3D scene.
 
 ### Music that travels between programs: MIDI files
 
-A **Standard MIDI File**, the `.mid` file, stores notes as MIDI messages with their timing. Every sequencer and notation program reads and writes one. Use it to keep a phrase you liked, to open the sketch's music in another program, or to play a file somebody else wrote. The format is published by the MIDI Association beside the MIDI 1.0 specification.
-
-Writing one takes the notes you already have. Here `drums` is a fresh step sequencer like the one in [A grid with a feel](#a-grid-with-a-feel-stepsequencer). A sequencer that has been playing live has moved its count on. The loop asks it for one bar of four beats at a time, up to just before the next bar starts. It writes eight bars to a file, and `try?` skips the write if it fails:
-
-```swift
-var phrase: [ScheduledNote] = []
-for bar in 0..<8 {
-    phrase += drums.events(upTo: Double(bar) * 4 + 3.99)
-}
-try? MIDIFile(phrase, tempo: 112, name: "Pattern").write(to: "pattern.mid")
-```
-
-`events(upTo:)` hands back `ScheduledNote` values, each a note with the beat it starts on. A file is made of those, so nothing has to be converted. The arpeggiator answers in the same values, so its notes can be written out the same way.
-
-Reading one gives the same values back. Here `prelude.mid` sits in the sketch's folder, found through `.module` as in [Chapter 9](09-Pictures.md). The file is loaded in `setup()`, and `MIDIFile([])` is an empty one to fall back on if it is missing:
+Reading a file gives back `ScheduledNote` values, the same ones the sequencer makes, to play or to draw. Use it to play a file somebody else wrote. Here `prelude.mid` sits in the sketch's folder, found through `.module` as in [Chapter 9](09-Pictures.md). The file is loaded in `setup()`, and `MIDIFile([])` is an empty one to fall back on if it is missing:
 
 ```swift
 var song = MIDIFile([])
@@ -565,25 +632,13 @@ The loop uses the sequencer's look-ahead. It asks for the notes up to where the 
   <img src="Images/40-MusicByRule/MIDIFileFigure.jpg" alt="Two blocks. Top: four bars of a file as a piano roll, long blue bars for held chords on channel one and short red marks climbing above them for a figure on channel two, vertical lines at each bar, and the name of each bar's root note written above it. Bottom: the same four bars on two horizontal rulers, one counted in beats with ticks evenly spaced and one counted in seconds with the first half of the ticks bunched together and the second half spread twice as far apart, sloping lines joining each position on the first ruler to the same position on the second" width="680">
 </picture>
 
-The top of the figure is a file drawn as a piano roll, a chart with time across and pitch up. Reading a file gives you everything the figure shows. The parts, their MIDI channels, and the bar lines from its time signature come back. So do the note names over the bars, which come from its **markers**, names placed at beats. A **time signature** says how many beats a bar holds.
+The top of the figure is a file drawn as a piano roll, a chart with time across and pitch up. Reading a file gives you everything the figure shows. The tracks, their MIDI channels, and the bar lines from its time signature come back. So do the note names over the bars, which come from its **markers**, names placed at beats. A **time signature** says how many beats a bar holds.
 
 The bottom half shows how a file keeps time. Positions in most MIDI files are beats rather than seconds, for the same reason the composition types own no clock. A beat still means the same place in the music when somebody plays the file faster. The **tempo map** joins beats to seconds. It is a list of the places the speed changes, and `beats(at:)` and `seconds(at:)` read it from either side. In the figure the music drops to half speed at beat eight. So the later bars take twice as long on the clock, while sitting where they were in the music. Divide by one tempo instead, and everything after that point comes out wrong. The error is hard to see, because a **playhead**, the line marking the current moment, drifts slowly away from the notes it should be marking.
 
 A file carries more than notes. Control changes, the pitch wheel, the instrument each part asks for, and the names come back too. A few things are passed over, such as aftertouch and key signatures. A marker is put there by whoever wrote the music, and a sketch can use one as the place to change scene.
 
-A `Synth` can also write down what it is asked to play, so a **take**, one recorded run of playing, can be opened somewhere else. In `keyPressed()`, `key` is the key just pressed on the Mac's keyboard, not a scale:
-
-```swift
-override func keyPressed() {
-    switch key {
-    case "r": synth.startRecording(tempo: 96, name: "Take")
-    case "s": try? synth.stopRecording().write(to: "take.mid")
-    default: break
-    }
-}
-```
-
-The notes keep the timing they were played with, down to the wait each one was asked with, so a swung pattern arrives swung. The tempo you give only decides where the bar lines fall around what was played. `Examples/Audio/MIDIFiles` does both directions in one sketch. It composes eight bars, writes them to a file, forgets them, and reads the file back. Everything you then see and hear comes off the disk.
+`Examples/Audio/MIDIFiles` does both directions in one sketch. It composes eight bars, writes them to a file, forgets them, and reads the file back. Everything you then see and hear comes off the disk.
 
 ### Sound from a place in the scene: spatial audio
 
