@@ -36,7 +36,7 @@ One pixel plus one depth is a 3D point. The recipe fits in a sentence. Slide the
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/35-Depth/Unproject-dark.jpg">
-  <img src="Images/35-Depth/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+  <img src="Images/35-Depth/Unproject.jpg" alt="A diagram of unprojection: a lens at the left with its forward axis running out to the right through the image center, an image plane with a marked pixel, and a dashed ray out through the pixel to a 3D point. A dotted line drops from the point square onto the axis, and a dimension line under the axis marks the depth from the lens to that foot, how far along the forward axis. The recovered-coordinates formula sits below" width="680">
 </picture>
 
 That's called **unprojection**, and the intrinsics are the numbers the recipe needs: `cx` and `cy` the image center, `fx` and `fy` the focal lengths. The depth is measured along the camera's forward axis, not along the ray. The camera looks down its own −z, so the point's `z` is minus the depth. You'll rarely unproject one pixel at a time yourself. `pointCloud()` unprojects every depth pixel it trusts, colors each from the color image, and hands the result back as a `PointCloud`. By default it trusts only pixels rated `.high`, and `minConfidence:` lowers the bar.

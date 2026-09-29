@@ -721,7 +721,7 @@ A flat triangle faces one way, and the arrow standing straight out of it is its 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/35-Depth/Unproject-dark.jpg">
-  <img src="Images/35-Depth/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+  <img src="Images/35-Depth/Unproject.jpg" alt="A lens with its forward axis, an image plane with a marked pixel, and a dashed ray out to a 3D point. A dotted drop from the point meets the axis square, and the depth is marked along the axis from the lens to that foot. The recovered-coordinates formula sits below" width="680">
 </picture>
 
 A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. So a flat photo plus a flat depth map holds the 3D shape of everything the camera saw. [Chapter 35](35-Depth.md) builds its point clouds with this recipe.
