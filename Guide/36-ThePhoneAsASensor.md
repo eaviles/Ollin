@@ -414,6 +414,8 @@ if let air = device.latestAir {
 
 So it is a fader you play by standing up, and it costs no camera and no model. `pressure` is the weather's own number, about 101.3 kilopascals at sea level, and a door opening in a sealed room moves it.
 
+<!-- Figure waiting on its prose: Images/36-ThePhoneAsASensor/SolidDancer.jpg (Figures/36-ThePhoneAsASensor/SolidDancer.swift), the dancer in solids, for the chapter's finished sketch. Rendered on the Mac at frame 38. -->
+
 ## Where this comes from
 
 The entries name their own sources as they go. Recorded clips and the live stream come from Record3D, Marek Šimoník's iPhone app. Most of the capture app's streams come from Apple's ARKit. The hands, text, attention, and flow come from Apple's Vision framework, and the sounds from Apple's sound classifier. The touches and the air come from the phone's own screen and barometer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).

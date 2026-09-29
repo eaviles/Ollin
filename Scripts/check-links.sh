@@ -213,12 +213,20 @@ IMG = re.compile(r"<img\s+[^>]*src=\"([^\"]+)\"")
 # for the orphan rule, or every -dark image would be flagged.
 SRCSET = re.compile(r"<source\s+[^>]*srcset=\"([^\"]+)\"")
 
+# A figure rendered before the prose around it is written sits in its chapter
+# as a comment, `<!-- Figure waiting on its prose: Images/…/Name.jpg … -->`,
+# where the picture will go. It holds the image against the orphan rule and is
+# listed as a note until the prose replaces it with the picture.
+WAITING = re.compile(r"<!--\s*Figure waiting on its prose:\s*(\S+?\.(?:jpg|png|gif))\b")
+
 referenced = set()
 # Docs pages reuse Guide figures by relative path, so their <img> tags rot the
 # same way a chapter's do when a figure moves; they get the existence check.
 for p in pages + docs_pages:
     for n, line in enumerate(lines[p], 1):
-        for src in IMG.findall(line) + SRCSET.findall(line):
+        for src in WAITING.findall(line):
+            note(f"{p}:{n}", f"figure waiting on its prose: {src}")
+        for src in IMG.findall(line) + SRCSET.findall(line) + WAITING.findall(line):
             if src.startswith(("http://", "https://")):
                 continue
             dest = (p.parent / src).resolve()
