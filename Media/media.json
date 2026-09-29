@@ -13,7 +13,7 @@
       "leads": {
         "10-Vectors/Swarm": 2,
         "23-GridSimulations/Organism": 10,
-        "24-ParticleSimulations/Drift": 30
+        "25-ParticleSimulations/Drift": 30
       },
       "of": "thirty-two of the sketches the guide's chapters build, in chapter order",
       "sketches": [
@@ -38,17 +38,17 @@
         "20-PicturesRestyled/HandColored",
         "21-PicturesYouSolve/Lighthouse",
         "23-GridSimulations/Organism",
-        "24-ParticleSimulations/Drift",
-        "25-3DGently/Plaza",
-        "26-Meshes/Bench",
-        "27-Landscapes/Valley",
-        "30-SculptingWithFields/Molten",
-        "31-TracedLight/LamplitRoom",
-        "32-Seeing/MotionBrush",
-        "33-DepthAndThePhone/GhostRoom",
-        "34-Listening/Resonator",
-        "39-Performing/Finale",
-        "41-Installations/WallPiece"
+        "25-ParticleSimulations/Drift",
+        "26-3DGently/Plaza",
+        "28-MaterialsAndSurroundings/Bench",
+        "29-Landscapes/Valley",
+        "32-SculptingWithFields/Molten",
+        "33-TracedLight/LamplitRoom",
+        "34-Seeing/MotionBrush",
+        "35-Depth/GhostRoom",
+        "37-Listening/Resonator",
+        "43-Performing/Finale",
+        "45-Installations/WallOfBars"
       ],
       "seconds": 6,
       "width": 1600

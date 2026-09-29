@@ -9,7 +9,7 @@
 import Ollin
 import OllinDMX
 
-final class WallPiece: Sketch {
+final class WallOfBars: Sketch {
     override var canvasSize: CanvasSize { .size(1280, 720) }
 
     /// Everything the room needs to know, in one declaration.

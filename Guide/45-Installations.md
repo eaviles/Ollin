@@ -4,7 +4,7 @@
 
 # 45. Installations
 
-<img src="Images/45-Installations/WallPiece.jpg" alt="A wide dark screen carrying a slow field of vertical bars in dusk colors, orange at a peak left of center, deep plum in a dip right of center, and red-orange again at the right edge, with a separate band of the same colors running along the bottom" width="680">
+<img src="Images/45-Installations/WallOfBars.jpg" alt="A wide dark screen carrying a slow field of vertical bars in dusk colors, orange at a peak left of center, deep plum in a dip right of center, and red-orange again at the right edge, with a separate band of the same colors running along the bottom" width="680">
 
 Left in one place for days with nobody watching, a sketch becomes an installation, and it can light the room around it. You learn what keeps a sketch running that long, from checkpoints to opening hours, and how it sends light to lamps. In the wall of bars above, the bottom band lights a strip of lamps under the screen. Then come a lighting console, a show laser, projectors and many screens, ways to keep watch, and last, where to go next.
 
@@ -197,7 +197,7 @@ After `extend(leds)`, draw as if the LEDs were not there, and whatever lands und
 
 ## Putting it together: the wall of bars
 
-The finished sketch is one you could hang. It is a wall of bars that rise and fall across a slow lap, colored by the part of the day. Everything the room needs is in its declaration. The drawing is slow on purpose, because people pass it many times over a week rather than looking once. Make `MySketches/WallPiece.swift`.
+The finished sketch is one you could hang. It is a wall of bars that rise and fall across a slow lap, colored by the part of the day. Everything the room needs is in its declaration. The drawing is slow on purpose, because people pass it many times over a week rather than looking once. Make `MySketches/WallOfBars.swift`.
 
 The first part is what the room needs to know. One `Installation` fills the screen and keeps it awake, writes a checkpoint every minute, and restarts after a crash or a stall. It also names the parts of the day, and goes dark from eleven at night until six. `loopDuration` says the sketch repeats every three minutes, the lap the drawing reads through `loopProgress`.
 
@@ -205,7 +205,7 @@ The first part is what the room needs to know. One `Installation` fills the scre
 import Ollin
 import OllinDMX
 
-final class WallPiece: Sketch {
+final class WallOfBars: Sketch {
     override var canvasSize: CanvasSize { .size(1280, 720) }
 
     /// Everything the room needs to know, in one declaration.
@@ -301,10 +301,10 @@ Then make it yours:
 - Press Command-K on the running sketch, and drag the corners onto a wall that is not square to the projector. [Fitting a projector: corner pinning](#fitting-a-projector-corner-pinning) shows how.
 - Give it a second display with `displays: .spanning` and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
 
-Work on it with `swift run OllinLive MySketches/WallPiece.swift`, which runs it as an ordinary sketch whatever it declares. Before it goes up, set `showing` to nil, so the palette follows the real clock. Then put it up with `OllinRun`, which reads the declaration, and send its log to a file as [The log](#the-log) shows:
+Work on it with `swift run OllinLive MySketches/WallOfBars.swift`, which runs it as an ordinary sketch whatever it declares. Before it goes up, set `showing` to nil, so the palette follows the real clock. Then put it up with `OllinRun`, which reads the declaration, and send its log to a file as [The log](#the-log) shows:
 
 ```sh
-swift run OllinRun MySketches/WallPiece.swift
+swift run OllinRun MySketches/WallOfBars.swift
 ```
 
 For the gallery machine, make it an app with `--kind mac-app`, as [Chapter 44](44-HandingItOver.md#an-app-to-hand-somebody-signing-and-notarizing) did. The installation, the checkpoint, and the watch all travel inside the app. Add the app to Login Items, as Chapter 44 did for the wallpaper, so it starts again whenever the Mac does.
@@ -540,7 +540,7 @@ Once the wall of bars is up, you are no longer in front of it. Three things repo
 An unattended run writes a line when it starts, when it resumes, and when the machine wakes or the displays change. The schedule and the watch write their own lines. It is for finding out on Monday what happened over the weekend. Servers keep logs for the same reason, a habit Unix made standard with syslog, which Eric Allman wrote in the 1980s. Send the wall's log to a file:
 
 ```sh
-swift run OllinRun MySketches/WallPiece.swift >> ~/wall.log 2>&1
+swift run OllinRun MySketches/WallOfBars.swift >> ~/wall.log 2>&1
 ```
 
 `>>` adds the output to the end of the file, and `2>&1` sends the error lines there too. A few lines from one weekend:
