@@ -274,6 +274,8 @@ override func draw() {
 
 The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The [`Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) example is [Chapter 12](12-FlocksAndSwarms.md)'s meadow of fireflies, and a `Kuramoto` given `columns` and `rows` is this lattice. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
 
+<!-- Figure waiting on its prose: Images/24-Automata/Wildfire.jpg (Figures/24-Automata/Wildfire.swift), the wildfire, for the chapter's finished sketch. Rendered on the Mac at frame 120. -->
+
 ## Where this comes from
 
 The Game of Life that this chapter grows from is John Horton Conway's, credited in [Chapter 23](23-GridSimulations.md#where-this-comes-from). Each entry here names its own sources as it goes. The automata name Wolfram, Langton, Chan, Rafler, Greenberg and Hastings, Griffeath, Silverman, Gerhardt and Schuster, and Dewdney. The piles and fires name Bak and Tang and Wiesenfeld, Dhar, Drossel and Schwabl, and Bak and Chen and Tang. The crowds name Broadbent and Hammersley, Newman and Ziff, Schelling, Lenz and Ising and Onsager, Metropolis and the Rosenbluths and the Tellers, and Kuramoto. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).

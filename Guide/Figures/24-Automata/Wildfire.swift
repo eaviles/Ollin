@@ -32,12 +32,13 @@ final class Wildfire: Sketch {
 
     override func draw() {
         let side = width / Double(cells)              // one cell, in canvas pixels
+        background(ground)                            // first: a background wipes what the frame drew before it, the field's marks too
         noStroke()
         withField(woods) {
             if frameCount == 1 {
-                fill(Color(white: 0.5))               // plant every open cell
+                fill(Color(white: 0.5))               // plant every cluster, by its outline
                 for k in 0 ..< forest.clusterCount {
-                    for cell in forest.cellRects(of: k, in: bounds) { drawRect(cell) }
+                    drawShape(Shape(contours: forest.outlines(of: k, in: bounds)))
                 }
                 fill(.white)                          // and strike the middle, once
                 drawCircle(width / 2, height / 2, side * 3)
@@ -48,7 +49,6 @@ final class Wildfire: Sketch {
             }
         }
 
-        background(ground)
         drawImage(woods.filtered(.gradientMap(colors)).image, 0, 0)
         fill(ground)                                  // cover the cells never planted
         for row in 0 ..< cells {
