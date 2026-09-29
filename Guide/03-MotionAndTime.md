@@ -193,7 +193,7 @@ The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.m
 
 Picking a curve by reading a table is slow work, so a curve can be a parameter instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right. The finished sketch offers its pulse's curve this way.
 
-Once a curve is a value, you can make another from it. `curve.reversed()` runs the same curve from its other end, so an ease-in becomes its ease-out. The trip that lagged and then rushed now leaps and then settles. `curve.mirrored()` puts the curve on the way out and its reverse on the way back, squeezed into one trip. That is how the catalog builds most of its ease-in-out curves from their ease-ins; the back and elastic families carry their own constants instead. Reverse `easeInQuad` and you have `easeOutQuad`. Mirror it and you have `easeInOutQuad`. Mirror an ease-out instead and you get a curve the catalog does not carry, fast at both ends and slow through the middle.
+Once a curve is a value, you can make another from it. `curve.reversed()` runs the same curve from its other end, so an ease-in becomes its ease-out. The trip that lagged and then rushed now leaps and then settles. `curve.mirrored()` puts the curve on the way out and its reverse on the way back, squeezed into one trip. That is how the catalog builds most of its ease-in-out curves from their ease-ins. The back and elastic families carry their own constants instead. Reverse `easeInQuad` and you have `easeOutQuad`. Mirror it and you have `easeInOutQuad`. Mirror an ease-out instead and you get a curve the catalog does not carry, fast at both ends and slow through the middle.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DerivedCurves-dark.jpg">
@@ -387,7 +387,7 @@ if everyFrames(10) { sim.step() }
 
 `everyFrames(10)` counts frames instead of seconds. Reach for it when the beat belongs to the work rather than to the wall clock. A simulation stepping every tenth frame keeps its rate whether the window runs fast or slow, where a beat in seconds does not.
 
-Each one asks the clock a question and keeps nothing. That is what makes them safe to build on. A video export lands the beats on the same seconds the window did, and a recording of a run ([Chapter 39](39-Performing.md)'s takes) replays them exactly. The one thing they cannot do is count. A frame long enough to cover two crossings still answers yes once, because a yes is a yes. [Animation](../Docs/Helpers/Animation.md#timers) has the three in full, and the [`Beats`](../Examples/Motion/Beats/Sketch.swift) example lays them out against a ruler.
+Each one asks the clock a question and keeps nothing. That is what makes them safe to build on. A video export lands the beats on the same seconds the window did. A recording of a run ([Chapter 39](39-Performing.md)'s takes) replays them exactly. The one thing they cannot do is count. A frame long enough to cover two crossings still answers yes once, because a yes is a yes. [Animation](../Docs/Helpers/Animation.md#timers) has the three in full, and the [`Beats`](../Examples/Motion/Beats/Sketch.swift) example lays them out against a ruler.
 
 ### When somebody would rather it stopped: reduced motion
 

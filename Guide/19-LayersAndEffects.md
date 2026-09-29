@@ -209,11 +209,11 @@ override func draw() {
 }
 ```
 
-The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed, with an exposure, a Reinhard roll-off, and the paper's own tone added after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!` again, a property filled in `setup()` before anything reads it.
+The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed. It applies an exposure and a Reinhard roll-off, then adds the paper's own tone after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` is [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!` again, a property filled in `setup()` before anything reads it.
 
 ## Brighter than the screen: toneMap
 
-That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, because it solves a problem you now have. Additive light does not stop at full brightness. Three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values, and `toneMap(_:)` decides what happens when the frame finally meets the screen. The default clips every too-bright value to white, which is simple and abrupt:
+That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, because it solves a problem you now have. Additive light does not stop at full brightness. Three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values. Then `toneMap(_:)` decides what happens when the frame finally meets the screen. The default clips every too-bright value to white, which is simple and abrupt:
 
 <img src="Images/19-LayersAndEffects/ToneClamp.jpg" alt="Three overlapping tinted lamps under the default clamp tone map: the entire overlapping middle blows out to a flat white slab with hard seams" width="680">
 
@@ -346,7 +346,7 @@ The cost row is the last row of the inspector, and it measures one frame. Press 
   <img src="Images/19-LayersAndEffects/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
 </picture>
 
-The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there. A polygon, a curve, or a stroke is cut into triangles before the GPU sees it, while a closed shape like a circle or a rectangle is one instance. The **GPU** bar is what the card spent on the frame, taken from its own clock.
+The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there. A polygon, a curve, or a stroke is cut into triangles before the GPU sees it. A closed shape like a circle or a rectangle is one instance. The **GPU** bar is what the card spent on the frame, taken from its own clock.
 
 Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
 

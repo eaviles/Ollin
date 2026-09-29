@@ -234,7 +234,7 @@ The meadow asked one landscape, the classic `noise`, at two zoom levels. Once yo
 
 ### The same idea on triangles: `simplexNoise`
 
-`simplexNoise` is the same idea as `noise`, smooth and coherent. But its landscape is laid out on triangles, where the classic one is laid out on squares. The practical difference is grain. Simplex is even in every direction, while the classic field carries a faint left-right and up-down bias you can sometimes spot in big soft washes. So simplex is the one to try when a wash looks combed. Ken Perlin designed it in 2001 as a redesign of his own function. The two take identical inputs, so trying both is a one-word edit, and `signedSimplexNoise` swings `-1...1`:
+`simplexNoise` is the same idea as `noise`, smooth and coherent. But its landscape is laid out on triangles, where the classic one is laid out on squares. The practical difference is grain. Simplex is even in every direction. The classic field carries a faint left-right and up-down bias, which you can sometimes spot in big soft washes. So simplex is the one to try when a wash looks combed. Ken Perlin designed it in 2001 as a redesign of his own function. The two take identical inputs, so trying both is a one-word edit, and `signedSimplexNoise` swings `-1...1`:
 
 ```swift
 let n = simplexNoise(x * 0.006, y * 0.006)

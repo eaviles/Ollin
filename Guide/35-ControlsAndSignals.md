@@ -657,7 +657,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi, so that instrument
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Recording](../Docs/Output/Recording.md): keeping a take of a sketch while you play it, with its sound, from a key, a call, or the host's ⌘⇧R.
 - Worked examples: the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/), [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (a day of earthquakes, redrawn as the list changes), and [`Examples/Data/Outside`](../Examples/Data/Outside/Sketch.swift) (the sky over a city, drawn from a weather).
-- Ahead of you: the Mac's own location, so a weather can follow the machine, and a paired Watch's heart rate are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they join the signals in this chapter.
+- Ahead of you: the Mac's own location and a paired Watch's heart rate are not in the framework yet. The location would let a weather follow the machine. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they join the signals in this chapter.
 
 ---
 

@@ -486,7 +486,7 @@ drawCircle(sunX, sunY, 40)     // dragging this moves both parameters
 
 The drag sets those parameters instead of writing the file, so nothing recompiles. The values are kept across the next reload, the way any parameter you change by hand is. Both coordinates have to be parameters for that. With a parameter in one slot and a plain number in the other, the number is still written into the file and the sketch reloads.
 
-That limit follows from what the drag is. The file is the sketch, and dragging edits the file, so anything the file works out for itself has to be changed where it's written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends. It also says what stops a shape from moving past a line that is not ink.
+That limit follows from what the drag is. The file is the sketch, and dragging edits the file. So anything the file works out for itself has to be changed where it's written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends. It also says what stops a shape from moving past a line that is not ink.
 
 ## A shorter way to run things
 
@@ -535,7 +535,7 @@ Everything the reference says is in the folder you cloned, so you can read it wh
 
 ## Where this comes from
 
-The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001. It continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing also gave the field the word *sketch*, and the sketchbook folder its programs live in. Processing and p5.js repeat `draw()` while a sketch runs. Ollin keeps that at the display's refresh rate, and `noLoop()` stops the loop when you want a still. The artists named under [What creative coding is](#what-creative-coding-is) are Georg Nees, Frieder Nake, Vera Molnár, and Sol LeWitt. They are credited with the others in [`Examples/Recreations/`](../Examples/Recreations/README.md). The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 39](39-Performing.md).
+The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org), started by Casey Reas and Ben Fry in 2001. It continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. Processing also gave the field the word *sketch*, and the sketchbook folder its programs live in. Processing and p5.js repeat `draw()` while a sketch runs. Ollin keeps that at the display's refresh rate, and `noLoop()` stops the loop when you want a still. The artists named under [What creative coding is](#what-creative-coding-is) are Georg Nees, Frieder Nake, Vera Molnár, and Sol LeWitt. They are credited with the others in [`Examples/Recreations/`](../Examples/Recreations/README.md). The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools. You'll meet its stage-performance form in [Chapter 39](39-Performing.md).
 
 ## Go deeper
 

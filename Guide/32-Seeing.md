@@ -262,7 +262,7 @@ The brush read motion, and a still room gave it nothing. Much of what a camera s
 
 ### A frame as vector shapes: ContourDetector
 
-**`ContourDetector`** traces the boundaries between dark and light into closed vector outlines. It hands them back as [Chapter 15](15-ShapesAsMaterial.md)'s `Shape`s, holes and all. It is for turning a camera into a live vectorizer, with every shape ready for a boolean, a hatch, or a plotter. Following the border of a light region pixel by pixel is a classic of computer vision, from Satoshi Suzuki and Keiichi Abe's border following of 1985. Apple's Vision framework does the tracing here.
+**`ContourDetector`** traces the boundaries between dark and light into closed vector outlines. It hands them back as [Chapter 15](15-ShapesAsMaterial.md)'s `Shape`s, holes and all. It is for turning a camera into a live vectorizer, with every shape ready for a boolean, a hatch, or a plotter. Following the border of a light region pixel by pixel is a classic of computer vision. It comes from Satoshi Suzuki and Keiichi Abe's border following of 1985. Apple's Vision framework does the tracing here.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/32-Seeing/Contours-dark.jpg">

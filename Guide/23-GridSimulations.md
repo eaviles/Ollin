@@ -61,7 +61,7 @@ The `scale: 0.08` matters, because a sim field's `scale` sets its internal resol
 
 Life's `image` already reads as a picture, because a cell is black or white. Most fields do not. The raw field is *data*. Reaction-diffusion stores two chemicals as dim red and green. The ripple pool stores a height and a velocity, and a pile of sand stores a count of grains as a gray level. `image` hands you that data as stored, which is useful for seeing what a field is doing and rarely what you want on the canvas. So you give a field a look by filtering it, through the same catalog [Chapter 19](19-LayersAndEffects.md#filters) used on a layer. Three filters do most of the work:
 
-- `.gradientMap` reads each texel's brightness and looks a color up along a `Ramp` from [Chapter 2](02-Color.md), or a `Colormap` such as `.viridis` or `.magma`. One color per level is how an automaton's few states become a picture, and a smooth ramp is how a chemical's concentration becomes skin.
+- `.gradientMap` reads each texel's brightness and looks a color up along a `Ramp` from [Chapter 2](02-Color.md), or a `Colormap` such as `.viridis` or `.magma`. One color per level is how an automaton's few states become a picture. A smooth ramp is how a chemical's concentration becomes skin.
 - `.levels(blackPoint:whitePoint:)` stretches a narrow band of values to the full range. A field whose state sits in one narrow band maps to nearly one gray. Pull the band's two ends to black and white, and the structure inside it appears. Do this before the gradient map, so the ramp gets the full range to work with.
 - `.relight` from [Chapter 20](20-PicturesRestyled.md) reads the field as height and lights it, which turns ridges into relief and a height field into water.
 
@@ -103,7 +103,7 @@ Seeding is drawing, as it was for Life. Watch what one mark becomes:
 
 ## Putting it together: the organism
 
-The finished sketch grows a culture. It composes the four steps above. A field is made once and held. A scatter of spores is drawn into it on the first frame, seeding a reaction-diffusion dish in its maze regime. Whatever you draw while it runs joins the chemistry. The display is the data step's pipeline: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished sketch grows a culture. It composes the four steps above. A field is made once and held. A scatter of spores is drawn into it on the first frame, seeding a reaction-diffusion dish in its maze regime. Whatever you draw while it runs joins the chemistry. The display is the data step's pipeline: a levels stretch, a gradient map for the skin, and a liquid relight. The relight is what makes the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin
@@ -230,7 +230,7 @@ In `.excitable` a resting cell fires when a neighbor is firing. A fired cell the
 
 `.briansBrain()` is the fastest of the family. A ready cell fires when *exactly two* of its eight neighbors are firing, rests for one step, and is ready again. Almost any loose sprinkle explodes into gliders that race the grid forever, which is the bottom-left panel's permanent traffic. A solid painted blob dies on the spot. Its interior rests all at once, and along a flat edge every outside cell sees three firing neighbors where a birth needs two. So sprinkle loose soup, never a disc.
 
-`.hodgepodge` models an infection, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction, the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` the way [the organism](#putting-it-together-the-organism) was.
+`.hodgepodge` models an infection, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant, `infectionRate`, the speed of infection. Turn it up and the field locks into curling waves that look like the Belousov-Zhabotinsky reaction. That reaction is the chemical clock the automaton was built to mimic. All four fields are one `makeSimField` call each, recolored through `.gradientMap` the way [the organism](#putting-it-together-the-organism) was.
 
 ### A circuit made of cells: Wireworld
 
@@ -273,7 +273,7 @@ override func draw() {
 
 > **Swift note.** `legend` is a dictionary, a table from one value to another, written as pairs in brackets. Its keys are `Character` values. The call `row.enumerated()` walks a string one character at a time, so `legend[ch]` looks the cell up by the letter. The dictionary is not called `key` because every sketch already has a `key`, the last key pressed. A stored property of that name would collide with it. The lookup answers an optional, since a letter might be missing, and the `!` takes the answer as [Chapter 14](14-FieldsAndFlow.md) did. `where ch != "."` on the loop is [Chapter 11](11-ForcesAndPhysics.md)'s filter, and `SimField!` is the same shape as [Chapter 12](12-FlocksAndSwarms.md)'s `Boids!`.
 
-The field starts empty and you draw the circuit. The usual way in is text, one character per cell, which is how these circuits have been shared since the 1980s. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around, and the electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
+The field starts empty and you draw the circuit. The usual way in is text, one character per cell, which is how these circuits have been shared since the 1980s. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around. The electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
 
 ## Piles and fires: the sandpile and the forest fire
 
@@ -320,7 +320,7 @@ Everything in the figure came out of the rule. A mountain of identical grains an
 
 ### A forest that keeps burning: the forest fire
 
-The **forest fire** is an automaton whose rule is three lines. Every cell is bare ground, a tree, or burning. A burning cell is bare ground next step. A tree catches from any burning neighbor, and otherwise catches on its own with a small chance, which is the lightning. Bare ground grows a tree with a small chance. It is for watching a system find its own critical density. The forest fire is the sandpile's self-organized criticality in a system that looks nothing like a sandpile. Barbara Drossel and Franz Schwabl published the model in 1992. They added the lightning to an earlier forest-fire model of Bak, Kan Chen, and Tang, and the lightning is what puts the field at criticality.
+The **forest fire** is an automaton whose rule is three lines. Every cell is bare ground, a tree, or burning. A burning cell is bare ground next step. A tree catches from any burning neighbor, and otherwise catches on its own with a small chance, which is the lightning. Bare ground grows a tree with a small chance. It is for watching a system find its own critical density. The forest fire is the sandpile's self-organized criticality in a system that looks nothing like a sandpile. Barbara Drossel and Franz Schwabl published the model in 1992. They added the lightning to an earlier forest-fire model of Bak, Kan Chen, and Tang. The lightning is what puts the field at criticality.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/ForestFire-dark.jpg">
@@ -353,7 +353,7 @@ The organism grew from a scatter into one connected labyrinth, and the forest se
 
 ### When chance acts as a crowd: percolation
 
-**Percolation** is a question asked of a whole grid at once. Fill the grid with cells, each one open with the same probability. Then ask whether the open cells connect from the top edge to the bottom. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet the grid's answer flips almost all at once, near a probability of 0.5927. Below it the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this grid is its standard model. That is what percolation is for: a phase transition you can draw. It entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone. The square-lattice threshold used here is the value Mark Newman and Robert Ziff measured in 2000.
+**Percolation** is a question asked of a whole grid at once. Fill the grid with cells, each one open with the same probability. Then ask whether the open cells connect from the top edge to the bottom. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet near a probability of 0.5927, the grid's answer flips almost all at once. Below it the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this grid is its standard model. That is what percolation is for: a phase transition you can draw. It entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone. The square-lattice threshold used here is the value Mark Newman and Robert Ziff measured in 2000.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/ChanceInCrowds-dark.jpg">
@@ -372,7 +372,7 @@ for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
 
 ### A neighborhood sorting itself: Schelling's board
 
-**Schelling's board** holds agents of two kinds, with some cells left empty. Each agent has a mild wish: at least a third of its neighbors should be its own kind. Any agent that is not content moves to a nearby empty cell where it would be. The board is not about physics or chemistry. It is for a question about cities. The answer is the board sorting itself into solid blocks, sharply, from a wish nobody would call intolerant. Thomas Schelling, an economist, played it with coins in 1971. The step-to-a-nearby-empty-cell rule here is his paper's move to the nearest satisfactory square, carried out one hop at a time. `.schelling` is that board on the GPU:
+**Schelling's board** holds agents of two kinds, with some cells left empty. Each agent has a mild wish: at least a third of its neighbors should be its own kind. Any agent that is not content moves to a nearby empty cell where it would be. The board is not about physics or chemistry. It is for a question about cities. The answer is the board sorting itself into solid blocks, sharply, from a wish nobody would call intolerant. Thomas Schelling, an economist, played it with coins in 1971. The rule here steps to a nearby empty cell. That is his paper's move to the nearest satisfactory square, carried out one hop at a time. `.schelling` is that board on the GPU:
 
 <img src="Images/23-GridSimulations/Schelling.jpg" alt="Three square panels of a board of orange and teal cells with dark empty cells scattered through them. Left, an even random mix. Middle, the same board fifteen steps later, the two colors beginning to gather into patches. Right, four hundred steps in, the two colors gathered into patches several cells wide, with empty cells scattered through them" width="700">
 
@@ -485,7 +485,7 @@ field = makeSimField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
 
 ## Fields that move: fluid, ripples, and self-warp
 
-The organism's dish, like every field so far, changes what each cell holds. The fluid, the ripple pool, and the self-warp move what they hold across the grid instead. A fluid carries dye along a flow, a pool carries height as a wave, and the self-warp carries the picture itself along its own motion.
+The organism's dish, like every field so far, changes what each cell holds. The fluid, the ripple pool, and the self-warp move what they hold across the grid instead. A fluid carries dye along a flow, and a pool carries height as a wave. The self-warp carries the picture itself along its own motion.
 
 ### Water you can stir: fluid
 
@@ -590,7 +590,7 @@ You draw the whole scene into the field, background and all, and composite the f
 
 `amount` picks the look. At 1 the carried ghost lands back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears. `decay` a touch under 1 sinks old trails toward black.
 
-The motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal, and a camera or video frame drawn into the field works as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
+The motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal. A camera or video frame drawn into the field works as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
 
 ## Materials: sand that falls and paint that behaves
 

@@ -17,7 +17,7 @@ let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
 drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 ```
 
-A `Heightfield` holds heights between 0 and 1, and you can grow one from any field you like, including everything [Chapter 5](05-Noise.md) taught. `Heightfield(columns: 257, rows: 257) { u, v in fbm(u * 3, v * 3, octaves: 6) }` makes rolling hills. Swapping in `ridgedFbm` creases them into ridges. The `diamondSquare` form above is the classic terrain fractal instead. Set the four corners, then repeatedly fill in each square's center and each edge's midpoint with the average of its neighbors plus a random nudge. The grid step halves and the nudge shrinks each round. `roughness` controls how fast the nudges shrink, and values around 0.5, the default, read as landscape. The `size` rounds up to the grid the subdivision needs, which is why it wants numbers like 129, 257, or 513.
+A `Heightfield` holds heights between 0 and 1, and you can grow one from any field you like, including everything [Chapter 5](05-Noise.md) taught. `Heightfield(columns: 257, rows: 257) { u, v in fbm(u * 3, v * 3, octaves: 6) }` makes rolling hills. Swapping in `ridgedFbm` creases them into ridges. The `diamondSquare` form above is the classic terrain fractal instead. Set the four corners. Then fill in each square's center and each edge's midpoint with the average of its neighbors plus a random nudge, and repeat. The grid step halves and the nudge shrinks each round. `roughness` controls how fast the nudges shrink, and values around 0.5, the default, read as landscape. The `size` rounds up to the grid the subdivision needs, which is why it wants numbers like 129, 257, or 513.
 
 Noise alone gives you a cloud of heights rather than land. Land looks the way it does because water has been running down it for a very long time.
 
@@ -422,7 +422,7 @@ What comes back is points, so a river network strokes, hatches, and plots like a
 
 ### The sea, from what a sea is made of: an ocean spectrum
 
-The rivers were lines read off a height. The sea is a surface, and it moves everywhere at once, so it needs a description of its own. An **ocean** here is described by its **spectrum**: how much water stands at each wavelength and heading for a given wind. That description is how oceanographers write down a sea state. It is for open water with waves of every size crossing each other. The spectrum is O. M. Phillips's 1957 model of wind-driven waves, as Jerry Tessendorf presented it for rendering in his *Simulating Ocean Water* notes.
+The rivers were lines read off a height. The sea is a surface, and it moves everywhere at once, so it needs a description of its own. An **ocean** here is described by its **spectrum**: how much water stands at each wavelength and heading for a given wind. That description is how oceanographers write down a sea state. It is for open water with waves of every size crossing each other. The spectrum is O. M. Phillips's 1957 model of wind-driven waves. Jerry Tessendorf presented it for rendering in his *Simulating Ocean Water* notes.
 
 Placing waves one by one cannot keep up with a sea. The surface has waves at every size, from a swell that takes eight seconds to pass to the ripple on its back. The spectrum is a small, smooth description instead. One inverse Fourier transform ([Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform)) turns the whole of it into the surface in one step.
 
@@ -453,7 +453,7 @@ The valley was lit by one preset, a sun and its fill. The field and the grass tr
 
 ### A courtyard of lamps: many lights
 
-A **light with a reach** stops at a set distance, and a frame can carry many of them. It is for lamps that come in numbers, each lighting only its own corner. Lanterns in a courtyard and a string of bulbs along a street are the usual cases. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. Giving each square of the screen its own short list of lights is Forward+, which Takahiro Harada, Jay McKee, and Jason C. Yang presented in 2012.
+A **light with a reach** stops at a set distance, and a frame can carry many of them. It is for lamps that come in numbers, each lighting only its own corner. Lanterns in a courtyard and a string of bulbs along a street are the usual cases. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. Giving each square of the screen its own short list of lights is called Forward+. Takahiro Harada, Jay McKee, and Jason C. Yang presented it in 2012.
 
 A courtyard wants dozens of lamps, and two things go wrong at once. The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means sixty-four lamps are sixty-four washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one argument, `reach:`. The figure shows twelve lamps without it, the same twelve with it, and sixty-four with it:
 

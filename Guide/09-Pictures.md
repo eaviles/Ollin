@@ -337,7 +337,7 @@ drawHalftone(picture, pitch: 14)
 
 In `drawHalftone`, `pitch` is the cell size and `angle` rotates the screen. The angle defaults to the 45 degrees printers have used for a century, because a diagonal grid is the least visible to the eye. Coverage is exact, so tone is right rather than approximated, and the dots are circles. That last detail is what lets a halftone go straight out to a pen plotter.
 
-Comparing the two panels shows the difference between them. A mosaic has as many tones as it has characters, so it steps, while a halftone's radius is continuous and gives you a smooth ramp. Choose by which texture you want.
+Comparing the two panels shows the difference between them. A mosaic has as many tones as it has characters, so it steps. A halftone's radius is continuous, so it gives you a smooth ramp. Choose by which texture you want.
 
 One polarity trap sits between them. By default, `drawGlyphMosaic` grows its mark with *brightness*, which suits glowing marks on a dark ground. But `drawHalftone` grows its dot with *darkness*, because it is modeling ink on paper. Each takes `inverted: true` to flip. The figure above uses the mosaic's default beside the halftone's inverted form, so both read the same way.
 
@@ -451,7 +451,7 @@ Two notes. The look needs some texture in the source, because run boundaries hav
 
 ### A picture that hides a shape
 
-An autostereogram hides its picture instead of drawing it. It is a field of marks that repeats, with the repeat shortened wherever a shape is nearer. So two eyes looking through it see the shape standing out of the page. It is for the poster that holds a secret, and it needs a depth map rather than a photograph. Christopher Tyler and Maureen Clarke made the first single-image random-dot stereogram in 1990, building on the random-dot stereograms Bela Julesz devised in 1959.
+An autostereogram hides its picture instead of drawing it. It is a field of marks that repeats, with the repeat shortened wherever a shape is nearer. So two eyes looking through it see the shape standing out of the page. It is for the poster that holds a secret, and it needs a depth map rather than a photograph. Christopher Tyler and Maureen Clarke made the first single-image random-dot stereogram in 1990. They built on the random-dot stereograms Bela Julesz devised in 1959.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DepthInARepeat-dark.jpg">

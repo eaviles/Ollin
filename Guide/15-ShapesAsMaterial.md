@@ -115,7 +115,7 @@ The right panel shows three edits. `simplified(tolerance:)` thins a dense trace,
 
 ### Chance inside an outline: points in a shape
 
-A shape can also be the place chance is confined to. `randomPoints(in:count:)` scatters points evenly over its fill, holes left out and every island given its share, because the points come from the same triangles the fill is made of rather than from the box around the shape. `randomPoints(along:count:)` scatters them along the outline, even by length. And `poissonDisk(in:radius:)` is [Chapter 4](04-Randomness.md#darts-that-keep-their-distance-poissondisk)'s blue noise kept inside a shape, no two points closer than the radius, every island filled:
+A shape can also be the place chance is confined to. `randomPoints(in:count:)` scatters points evenly over its fill, with holes left out and every island given its share. The points come from the same triangles the fill is made of, not from the box around the shape. `randomPoints(along:count:)` scatters them along the outline, even by length. And `poissonDisk(in:radius:)` is [Chapter 4](04-Randomness.md#darts-that-keep-their-distance-poissondisk)'s blue noise kept inside a shape, no two points closer than the radius, every island filled:
 
 ```swift
 seed(4)
@@ -127,7 +127,7 @@ drawPoints(stipple, size: 3)
 drawPoints(rim, size: 6)
 ```
 
-Three lines and a glyph is a stipple. The next section scatters the whole canvas; this confines the same scatter to a region, which is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
+Three lines and a glyph is a stipple. The next section scatters the whole canvas, and this confines the same scatter to a region. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
 
 ## Scatters and territories
 
@@ -468,7 +468,7 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 
 **Pen order.** Plot the file with the most lines first, change the pen when the machine stops, and plot the second. Where two pens would cross, the darker one goes last so it sits on top. The plate keeps the pens apart with the halo, so here the order changes nothing.
 
-**Spacing from the nib.** The hatch spacing is in canvas units, and the sheet decides what a unit is. On a sheet 200 millimeters wide, this canvas puts about 0.19 millimeters in a unit. The tightest cells, hatched at 6.5, then get 1.2 millimeters between lines, and the loosest, at 12.5, get 2.3. A 0.3 millimeter nib covers a quarter of the tighter gap, which reads as a light gray. A working rule: lines one nib apart fill solid, two nibs apart read dark, and four to six read light. Every `strokeWeight` in the listing is for the screen, because the pen draws every line at its own width.
+**Spacing from the nib.** The hatch spacing is in canvas units, and the sheet decides what a unit is. On a sheet 200 millimeters wide, this canvas puts about 0.19 millimeters in a unit. The tightest cells, hatched at 6.5, then get 1.2 millimeters between lines, and the loosest, at 12.5, get 2.3 millimeters. A 0.3 millimeter nib covers a quarter of the tighter gap, which reads as a light gray. A working rule: lines one nib apart fill solid, two nibs apart read dark, and four to six read light. Every `strokeWeight` in the listing is for the screen, because the pen draws every line at its own width.
 
 **A test plot.** Before the full plate, plot a strip on the same paper with the same pen. Give it the hatch at three spacings and one outline. Check the tone, and check whether the ink bleeds or the pen skips on the sheet. Then change the spacing in the sketch, never the pen. To make the file a true sheet rather than a scaled drawing, declare the canvas as a paper size. Then export the same recording as a PDF. [Chapter 38](38-FinishingASketch.md#sized-for-the-output-fractions-of-the-canvas-and-paper-sizes) covers paper-sized canvases, and the rest of the export surface.
 
@@ -491,7 +491,7 @@ Two laws test it, and both look at a single vertex. **Kawasaki's law**: walk aro
 
 ### A sheet that opens all at once: the Miura fold
 
-The pattern on the left is the **Miura fold**, a pattern of leaning parallelograms that folds flat and opens in one pull. It is for anything that has to travel folded and open without a sequence of moves. Maps, medical stents, and the solar arrays that open in orbit all use it. The astrophysicist Koryo Miura devised it in 1970 for packing solar arrays into a rocket, and it flew on Japan's Space Flyer Unit in 1995:
+The pattern on the left is the **Miura fold**, a pattern of leaning parallelograms that folds flat and opens in one pull. It is for anything that has to travel folded and open without a sequence of moves. Maps, medical stents, and the solar arrays that open in orbit all use it. The astrophysicist Koryo Miura devised it in 1970 for packing solar arrays into a rocket. It flew on Japan's Space Flyer Unit in 1995:
 
 ```swift
 var sheet = MiuraFold(columns: 8, rows: 5, angle: .pi / 3)
@@ -513,7 +513,7 @@ for panel in sheet.facets { ... }
 
 Pull two opposite corners of a Miura sheet and the whole thing opens at once, in both directions together. There is no order of operations to remember.
 
-It does one more thing. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out. This does the opposite, and `poissonRatio` is the negative number that says so. Mark Schenk and Simon Guest worked out that behavior of the fold as a material, including the pair of Poisson's ratios that multiply to one.
+It does one more thing. The sheet gets narrower as it gets shorter. Squeeze a rubber band and it bulges out. This does the opposite, and `poissonRatio` is the negative number that says so. Mark Schenk and Simon Guest worked out how the fold behaves as a material. Their account includes the pair of Poisson's ratios that multiply to one.
 
 ### Origami allowed to cut: rotating squares
 
@@ -553,9 +553,9 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Ford circles](../Docs/Generators/FordCircles.md): the circles, the Farey sequence and its mediant rule, and the `Fraction` type both rest on.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, `--param`, the paper sizes, plus stills, sequences, video, and GIF.
 - [Crease patterns](../Docs/Drawing/CreasePattern.md): `CreasePattern` and the two laws, `MiuraFold` with its rigid folding in three dimensions, `RotatingSquares`, joining creases into pen strokes, and taking a sheet to a cutter.
-- The Farmanfarmaian homage [`BehindGlass`](../Examples/Recreations/MonirFarmanfarmaian/BehindGlass/Sketch.swift): a spiral built by moving each side of a kite in a little further than the last and taking the corners where the moved lines meet, painted in the order reverse-glass painting needs. Its `--export-svg` writes the marks in that order, so a frame from behind and one from the front compare mark for mark.
+- The Farmanfarmaian homage [`BehindGlass`](../Examples/Recreations/MonirFarmanfarmaian/BehindGlass/Sketch.swift): a spiral built from a kite. Each side moves in a little further than the last, and the corners are taken where the moved lines meet. The spiral is painted in the order reverse-glass painting needs. Its `--export-svg` writes the marks in that order, so a frame from behind and one from the front compare mark for mark.
 - The Felguérez homage [`EspacioMultiple`](../Examples/Recreations/ManuelFelguerez/EspacioMultiple/Sketch.swift): a vocabulary of five outlines, each a plain point list. They are painted flat with `drawPolygon` and raised into a relief with `drawExtrude` from the same points, so the exported plan is what stands off the wall. Its sibling `RelieveLacado` has one concave outline, a quarter ring, and that one goes through `drawShape`. `drawPolygon` fans, and a fan fills a ring's inner arc with a chord.
-- The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is one middle line and a closed outline drawn a fixed distance either side of it, round at both ends, so two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
+- The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is a middle line with a closed outline a fixed distance either side, round at both ends. Two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
 - The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a figure made of circles and circles cut by circles. A crescent is `drawMoon`, a disk with a disk taken out of it, and an eye is `drawVesica`, the overlap of two disks. Everything but the tail is built on one side and reflected to the other.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
 - Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away).
