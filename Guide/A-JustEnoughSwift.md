@@ -362,6 +362,7 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `self.bareness(u, v)` | Inside a closure, `self.` names the sketch's own method. Some closures require it, and a listing may write it anyway to show whose method it is. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `func draw(_ collider: Collider3D, tint: Color?)` | Two functions can share a name when their labels or argument types differ, as this one does with the sketch's `draw()`. | [Chapter 30](30-WorldsWithWeight.md#putting-it-together-the-contraption) |
+| `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
 | `scan.mesh { surface in switch surface { … } }` | A closure that picks its answer with a `switch`, one `return` for each case. | [Chapter 36](36-ThePhoneAsASensor.md#a-surface-the-phone-already-built-the-room-mesh) |
 
 ### Types of your own
@@ -376,7 +377,7 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `lazy var sand = Particles(…)` | A property built the first time it is read, so it can use the sketch's other properties. | [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) |
 | `var paint = Material.glitter` | Copies a preset into a variable, so you can change the copy and leave the preset alone. | [Chapter 26](26-3DGently.md#materials) |
 | `hit.body === crate` | Asks whether two names point at the same object. `!==` asks whether they don't. | [Chapter 30](30-WorldsWithWeight.md#what-is-in-the-way-rays-sweeps-and-overlaps) |
-| `init?(_ body: PhoneBody) { … }` | An initializer that can fail. It gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
+| `init?(_ body: PhoneBody) { … }` | An initializer of your own that can fail. `return nil` inside it gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
 | `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 38](38-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
 | `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 40](40-MusicByRule.md#putting-it-together-the-music-box) |
 | `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |

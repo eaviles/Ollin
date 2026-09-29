@@ -1,6 +1,9 @@
 // The names Chapter 36's prose establishes around its fragments.
 // See Guide/AUTHORING.md, "The code in the prose".
 import OllinPhone
+import OllinSamplePhotos
+import OllinVideo
+import OllinVision
 
 // The phone, and the rectangle a frame landed in.
 @MainActor let device = PhoneDevice()
@@ -20,3 +23,7 @@ var rings: [Ring] = []
 func place(for label: String) -> Vector2 { .zero }
 let pad = Rectangle(x: 48, y: 44, width: 210, height: 396)
 var lift = 0.0
+
+// The film that takes the phone's place, and the tracker that reads it.
+@MainActor let film = try! VideoPlayer(url: SampleClip.dance.url)
+@MainActor let tracker = BodyTracker3D(film)
