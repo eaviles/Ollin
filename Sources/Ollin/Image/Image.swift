@@ -482,12 +482,13 @@ public final class Image {
     /// A write shows on the next `drawImage` (the GPU texture rebuilds from the
     /// edited pixels), so author in `setup()` when you can rather than every frame.
     /// Colors pass through the image's premultiplied storage, so round-tripping a
-    /// translucent color can shift it by a step of `1/255`.
+    /// translucent color can shift it by a step of `1/255`. An image the GPU
+    /// holds (a layer's `image`, a compute texture, a live feed) has no pixels
+    /// here: it reads `.clear` and ignores a write.
     public subscript(x: Int, y: Int) -> Color {
         get {
-            guard x >= 0, x < width, y >= 0, y < height else { return .clear }
-            // A texture-backed image has no CPU pixels to read.
-            if externalTexture != nil { return .clear }
+            // A GPU-backed image has no CPU pixels to read.
+            guard x >= 0, x < width, y >= 0, y < height, hasCPUPixels else { return .clear }
             let buffer = materializePixels()
             let i = (y * width + x) * 4
             let a = Double(buffer[i + 3]) / 255
@@ -499,8 +500,8 @@ public final class Image {
                          alpha: a)
         }
         set {
-            guard x >= 0, x < width, y >= 0, y < height else { return }
-            if externalTexture != nil { return }   // texture-backed: no CPU pixels to write
+            // A GPU-backed image draws its texture, so a write would never show.
+            guard x >= 0, x < width, y >= 0, y < height, hasCPUPixels else { return }
             _ = materializePixels()
             let (r, g, b, a) = Image.premultipliedBytes(newValue)
             let i = (y * width + x) * 4

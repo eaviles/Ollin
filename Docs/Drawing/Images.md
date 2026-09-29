@@ -241,4 +241,6 @@ A write shows on the next `drawImage`, because the GPU texture rebuilds from the
 
 Colors pass through the image's premultiplied storage, so a translucent color that is written and then read back can shift by a step of `1/255`. Reading ignores [`tint`](#tint), so a get returns the stored color, never the tinted one.
 
+Only a picture held in memory has pixels to read. An image the GPU fills, such as a layer's `image` or a compute texture's, reads `.clear` at every point. A write to one is ignored, because what gets drawn is its texture.
+
 The **PixelField** example authors a field with `set`, samples it back with `get`, and animates a `tint` on top of it.

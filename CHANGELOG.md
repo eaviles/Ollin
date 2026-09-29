@@ -46,6 +46,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - Command-Z and Shift-Command-Z no longer reach a sketch's `keyPressed()` when the host has nothing to undo.
 - `TUIOReceiver` reads a real tracker's frame as one frame. TUIO sends each frame's alive list first, then the sets, then the frame number, and the receiver closed a frame on the first `set` after an alive list, so every frame from a tracker was taken twice: `framesReceived` counted double, a lifted finger could leave before the moves of its own frame arrived, and a late datagram's alive list got past the frame-number check, which could blink a finger out. A frame now closes on its frame number, or on the next alive list for a tracker that sends none, and a frame that sends its sets first is still read.
 - The `MIDIFiles` example starts each bar's melody on the bar's downbeat. It restarted the arpeggiator on the downbeat itself, and a reset counts the step at its own position as played, so every bar's figure began an eighth late and the file ran an eighth past its eight bars. It now resets to the step before and reads each bar up to its last eighth.
+- An image the GPU holds, such as a layer's `image` or a compute texture's, reads `.clear` at every pixel and ignores a write, as its documentation says. Its pixel subscript treated it as a picture in memory. A read set aside a buffer the size of the image, and a write was kept there and read back but never drawn.
 
 ## [0.12.0] - 2026-09-27
 

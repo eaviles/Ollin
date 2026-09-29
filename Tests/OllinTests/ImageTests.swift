@@ -1,6 +1,6 @@
 import CoreGraphics
 import Foundation
-import Ollin
+@testable import Ollin
 import Testing
 
 /// CPU-side tests for `Image` pixel access (`subscript`) and the blank
@@ -78,6 +78,20 @@ struct ImageTests {
         #expect(image[5, 5].alpha == 0)
         image[9, 9] = .green   // no-op, no crash
         expectColor(image[0, 0], red: 1, green: 0, blue: 0)
+    }
+
+    /// A layer's image is its texture, so it has no pixels on the CPU side: a
+    /// read is `.clear` and a write is dropped rather than kept where it could
+    /// never be drawn. A write that stuck would read back as itself.
+    @Test func layerImageHasNoPixelsToReadOrWrite() {
+        let drawer = Drawer()
+        let layer = RenderTarget(width: 8, height: 8, scale: 1, drawer: drawer)
+        let image = layer.image
+        #expect(!image.hasCPUPixels)
+        image[2, 3] = .red
+        #expect(image[2, 3].alpha == 0)
+        #expect(image.pixelGeneration == 0)
+        #expect(image.premultipliedPixels() == nil)
     }
 
     /// A bitmap-context-made image must render at face value. The texture loader
