@@ -2719,24 +2719,26 @@
       "width": 1080
     },
     "3D/Materials/SeeThrough": {
-      "bytes": {
-        "loop": 1253636,
-        "loopSmall": 249601,
-        "still": 81623,
-        "stillSmall": 30268
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Materials/SeeThrough/loop.mp4?v=561b1913",
-      "loopSmall": "examples/3D/Materials/SeeThrough/loop-640.mp4?v=601267fe",
-      "motion": 2.711,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.762,
+      "sound": false,
       "source": "1b7aa4790569cb83",
-      "still": "examples/3D/Materials/SeeThrough/still.jpg?v=de89d95a",
-      "stillSmall": "examples/3D/Materials/SeeThrough/still-640.jpg?v=4a4cc60b",
-      "width": 1080
+      "rendered": "2026-09-28",
+      "bytes": {
+        "loop": 1323593,
+        "loopSmall": 261267,
+        "still": 85103,
+        "stillSmall": 31466
+      },
+      "loop": "examples/3D/Materials/SeeThrough/loop.mp4?v=f0393746",
+      "loopSmall": "examples/3D/Materials/SeeThrough/loop-640.mp4?v=cb92aab9",
+      "still": "examples/3D/Materials/SeeThrough/still.jpg?v=1f6595f5",
+      "stillSmall": "examples/3D/Materials/SeeThrough/still-640.jpg?v=ce8834c6",
+      "seed": 1
     },
     "3D/Materials/Subsurface": {
       "bytes": {
