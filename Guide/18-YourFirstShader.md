@@ -238,7 +238,7 @@ drawImage(generate(.chladni(m: 5, n: 2)).image, 0, 0)
 drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
 ```
 
-`.sand` gathers grains onto the nodes, like the scattered sand in Chapter 14. `.wave` shows the plate swinging through its cycle instead. The same rule about `m` and `n` holds here: keep them apart, since equal modes cancel the plate to nothing. The mode numbers can also come from sound. [Chapter 34](34-Listening.md) teaches listening. The `Audio/ChladniResonance` example picks `m` and `n` by which pitches are loud. A piece of music then turns into the plate that would have produced it.
+`.sand` gathers grains onto the nodes, like the scattered sand in Chapter 14. `.wave` shows the plate swinging through its cycle instead. The same rule about `m` and `n` holds here: keep them apart, since equal modes cancel the plate to nothing. The mode numbers can also come from sound. [Chapter 37](37-Listening.md) teaches listening. The `Audio/ChladniResonance` example picks `m` and `n` by which pitches are loud. A piece of music then turns into the plate that would have produced it.
 
 This is the part to do rather than read. Take the gyroid, which is one line: a sum of three `sin` and `cos` products, read at one slice through space, the one `info.time` picks.
 
@@ -381,7 +381,7 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature, and the `using:` option that splices in only the sections you name.
 - [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the pattern-field catalog with every argument, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
-- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 24](24-ParticleSimulations.md).
+- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 25](25-ParticleSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift), and [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) (the heaviest shader in the set, split across two files).
 

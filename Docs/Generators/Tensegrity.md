@@ -13,7 +13,7 @@ fill(.white)
 drawTensegrity(ball)                                  // struts and cables, where they are
 ```
 
-<img src="../../Guide/Images/28-WorldsWithWeight/Tensegrity.jpg" alt="Three tensegrities standing on a dark floor, each built from colored struts and thin pale cables: an orange three-strut prism on the left, a yellow six-strut ball in the middle, and a tall teal mast of three stacked prisms on the right. No strut touches another in the first two." width="680">
+<img src="../../Guide/Images/30-WorldsWithWeight/Tensegrity.jpg" alt="Three tensegrities standing on a dark floor, each built from colored struts and thin pale cables: an orange three-strut prism on the left, a yellow six-strut ball in the middle, and a tall teal mast of three stacked prisms on the right. No strut touches another in the first two." width="680">
 
 ### Contents
 
@@ -125,4 +125,4 @@ Nothing is checked at construction. `addTensegrity` skips a strut whose nodes co
 
 - [3D physics](../Simulation/Physics3D.md), for `World3D`, the joint kinds, and `dragBodies`.
 - [Force-directed layout](ForceLayout.md), the other structure here that finds its own shape.
-- Chapter 28, [Worlds with weight](../../Guide/28-WorldsWithWeight.md#standing-on-cables-tensegrity), which teaches it.
+- Chapter 30, [Worlds with weight](../../Guide/30-WorldsWithWeight.md#standing-on-cables-tensegrity), which teaches it.

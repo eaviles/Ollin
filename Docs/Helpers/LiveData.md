@@ -134,8 +134,8 @@ Polling is slow on purpose, because a sketch on a wall runs for weeks.
 - A run of failures backs off. The wait doubles each time, up to eight times the interval, and the next answer puts it back to the plain interval.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-ControlsAndSignals/NumbersThatKeepArriving-dark.jpg">
-  <img src="../../Guide/Images/35-ControlsAndSignals/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-ControlsAndSignals/NumbersThatKeepArriving-dark.jpg">
+  <img src="../../Guide/Images/38-ControlsAndSignals/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
 </picture>
 
 Keep a feed small. The parse happens off the frame, but a document of many megabytes is still slow to fetch and read. Put a big document in a file and read it once in `setup()`.

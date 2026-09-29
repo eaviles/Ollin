@@ -133,7 +133,7 @@ for (a, b) in body.bones() {            // or: solid bones
 }
 ```
 
-<img src="../../Guide/Images/33-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
+<img src="../../Guide/Images/36-ThePhoneAsASensor/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
 
 ### Where the person stands
 
@@ -221,7 +221,7 @@ face.worldLookAtPoint                // Vector3, the same point in the room
 
 Start with the look-at point. It is one point in space that both eyes agree on. That makes it good for aiming a bead, steering a creature, or moving things with the viewer's glance. The per-eye readers are for drawing the eyes themselves. Put an eyeball at `worldEyePosition`, a pupil a few millimeters along `gazeDirection`, and a beam from each eye to `worldLookAtPoint`. Use the blink blendshapes (`.eyeBlinkLeft` / `.eyeBlinkRight`) alongside them.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
+<img src="../../Guide/Images/36-ThePhoneAsASensor/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneGaze`. It draws eyeballs at the streamed eye poses, with beams converging on the look-at bead.
 
@@ -249,7 +249,7 @@ device.latestHand                    // PhoneHand?, the most confident one
 
 `pinchDistance` is the basic gesture reading. It is the distance from thumb tip to index tip in meters, and it is `nil` unless both lifted. A value under about 2 cm reads as a closed pinch. `PhoneHand.skeleton` names the 20 bones, and `PhoneHand.tips` names the five fingertips. `PhoneHand.fingerChains` gives each finger's chain starting at the wrist, ready to run a tube or a ribbon along.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
+<img src="../../Guide/Images/36-ThePhoneAsASensor/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneHands`.
 
@@ -436,7 +436,7 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 A single depth frame is only the slice of the world in front of the lens. The camera's 6DoF pose, `latestPose`, turns the slices into a whole. ARKit's world is fixed and gravity-aligned, so transforming each frame's camera-space cloud by its pose places it where it really is in the room. Sweep the phone and the slices build up into one scene.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
+<img src="../../Guide/Images/35-Depth/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
 
 `WorldCloud`, in the core, does the fusing. It keeps one point per small cube of space, so seeing a wall again refreshes it in place instead of adding duplicates. Because of that, the cloud's size is bounded by the scene's surface area, not by the number of frames. So a sweep can run as long as you like:
 
@@ -465,7 +465,7 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 ARKit reports its pose with a small error. The error never goes away, so it accumulates. Over a minute of sweeping it grows to tens of centimeters. A wall seen at the start of the scan and again at the end then lands in two places. The fused cloud thickens into a smear. That is drift, and it is the reason a long scan looks worse than a short one.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">
+<img src="../../Guide/Images/35-Depth/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">
 
 `add(_:correcting:)` removes the drift. Before it merges a frame, `WorldCloud` slides and turns that frame until it sits on the surfaces already fused. It keeps that fix and uses it as the starting guess for the next frame:
 
@@ -498,7 +498,7 @@ To see the difference without a phone, run `swift run --package-path Examples Ex
 
 Correcting each frame removes the newest error. It does not revise the poses behind it. Each frame agrees with the frame before it, but the chain of frames can still lean. Walk a full circle around a room, and the far wall lands well away from where it really is.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a full circle inside it. On the left the walls are drawn twice, thick and offset, and the ring of camera positions ends short of where it began. On the right the walls are single and clean and the ring closes on itself" width="680">
+<img src="../../Guide/Images/35-Depth/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a full circle inside it. On the left the walls are drawn twice, thick and offset, and the ring of camera positions ends short of where it began. On the right the walls are single and clean and the ring closes on itself" width="680">
 
 `ScanGraph` fixes that. It fuses and corrects exactly as `WorldCloud` does. It also keeps a **keyframe** every so often. A keyframe holds the pose the frame went in at, and a thinned copy of what that frame saw. A new keyframe that lands where an old one stood is matched against the old one directly. The match ties a late pose to an early one, so the chain becomes a loop that does not quite close. `ScanGraph` shares that gap out over every pose between the two, then lays the fused cloud out again from the keyframes' new poses.
 
@@ -607,7 +607,7 @@ Room mode also reports the flat surfaces in the room. ARKit finds a floor, a wal
 
 The mesh is the whole shape of the room, down to the clutter. The flat surfaces are the few places worth putting something on or hanging something from. They also need **no LiDAR**, because plane detection runs on any phone the capture app installs on.
 
-<img src="../../Guide/Images/33-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
+<img src="../../Guide/Images/36-ThePhoneAsASensor/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
 
 ```swift
 device.planes                        // PhonePlanes, every flat surface found so far

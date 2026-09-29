@@ -121,8 +121,8 @@ The strikes are spread as evenly as whole steps allow, using [Bjorklund's algori
 `.tresillo` `.cinquillo` `.bellPattern` `.bossaNova` `.samba` `.aksak` `.ruchenitza` `.yorkSamai` `.nawakhat` `.agsagSamai` `.fandango`
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/37-MusicByRule/Euclidean-dark.jpg">
-  <img src="../../Guide/Images/37-MusicByRule/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-MusicByRule/Euclidean-dark.jpg">
+  <img src="../../Guide/Images/40-MusicByRule/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
 </picture>
 
 You can also write a rhythm out as text, which is the better form when you already know the pattern:
@@ -230,8 +230,8 @@ scale.chord(on: 0, noteCount: 4) // four notes, so a seventh
 On a major scale the first of those is a major chord and the second is a minor chord, from the same call. That is the point of building a chord out of a key. The quality follows from where you started rather than from a choice you made, so it changes when the key changes.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/37-MusicByRule/ScaleLadder-dark.jpg">
-  <img src="../../Guide/Images/37-MusicByRule/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-MusicByRule/ScaleLadder-dark.jpg">
+  <img src="../../Guide/Images/40-MusicByRule/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
 </picture>
 
 `Scale.Mode` is a `ParamOption`, so a mode can be a parameter:
@@ -270,8 +270,8 @@ for step in counter.steps(upTo: time * 2) {
 It uses degrees rather than names because degrees survive a change of key. A progression written as chord symbols instead holds them in `writtenChords`, since those chords carry their own qualities and the degrees go unused. `I vi IV V` is the same progression in every key. Written that way, the quality of each chord comes from the scale instead of being spelled out. So the same four numerals come out major in a major key and minor in a minor key, with nothing changed.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/37-MusicByRule/Changes-dark.jpg">
-  <img src="../../Guide/Images/37-MusicByRule/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-MusicByRule/Changes-dark.jpg">
+  <img src="../../Guide/Images/40-MusicByRule/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
 </picture>
 
 The text is Roman numerals `I` to `VII`, separated by any other characters. Upper and lower case are both accepted and treated the same, because the key decides major or minor. Anything unreadable is skipped.

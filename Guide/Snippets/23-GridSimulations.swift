@@ -6,7 +6,6 @@
 var life: SimField!
 var dish: SimField!
 var land: SimField!
-var medium: SimField!
 var field: SimField!
 var plate: SimField!
 

@@ -7,8 +7,8 @@
 **`SlitScan`** keeps a rolling history of frames. It rebuilds the image so that every pixel comes from a different moment, and a delay you supply picks the moment. A left-to-right delay gives you the classic slit scan, where each column reads a little further into the past. A radial delay makes time ripple outward. A gray map made from any picture turns that picture into a time-displacement lens. Slow motion stretches into ribbons, and fast motion shears into combs, because the delay has turned time into a spatial dimension.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Seeing/SlitScanDelay-dark.jpg">
-  <img src="../../Guide/Images/32-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with one arm crossing his chest, and the slit-scanned version of the same two seconds, where that arm has become a fan of a dozen sleeves sweeping out to the right" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/SlitScanDelay-dark.jpg">
+  <img src="../../Guide/Images/34-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with one arm crossing his chest, and the slit-scanned version of the same two seconds, where that arm has become a fan of a dozen sleeves sweeping out to the right" width="680">
 </picture>
 
 ### Contents

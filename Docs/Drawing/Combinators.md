@@ -21,8 +21,8 @@ the *whole* merged region or outline as one continuous surface instead. See
 [Gradient paint](#gradient-paint).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/FieldMap-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-SculptingWithFields/FieldMap-dark.jpg">
+  <img src="../../Guide/Images/32-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
 </picture>
 
 ### Contents
@@ -100,8 +100,8 @@ variants take a smoothing radius `k` in canvas points, which sets how wide the b
 also **blend the two operands' colors** across that blend, so a melt reads as one object.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/MeltStrip-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-SculptingWithFields/MeltStrip-dark.jpg">
+  <img src="../../Guide/Images/32-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
 </picture>
 
 ```swift
@@ -122,8 +122,8 @@ remains. `morph` is a *field* blend rather than a crossfade, so at `amount: 0.5`
 is halfway between the two shapes.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/Verbs-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-SculptingWithFields/Verbs-dark.jpg">
+  <img src="../../Guide/Images/32-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
 </picture>
 
 The **joint** family sits beside the smooth, melted family, and it shapes the seam like
@@ -252,8 +252,8 @@ so the copies fan out around it. A domain operator wraps a whole field, so you c
 melted cluster, mirror a carved shape, or ring a wedge into a mandala.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/DomainFold-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-SculptingWithFields/DomainFold-dark.jpg">
+  <img src="../../Guide/Images/32-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
 </picture>
 
 <a name="scoped-blocks"></a>
@@ -342,8 +342,8 @@ meet. It is the 3D sibling of `SDF` and `drawSDF`, with the same combine, modifi
 transform vocabulary.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-SculptingWithFields/MarchRay-dark.jpg">
-  <img src="../../Guide/Images/30-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-SculptingWithFields/MarchRay-dark.jpg">
+  <img src="../../Guide/Images/32-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
 </picture>
 
 ```swift
@@ -410,7 +410,7 @@ reads how fast the orbit escapes, and the same sphere tracer draws the result:
 | `SDF3D.mandelbox(scale:iterations:size:)` | the Mandelbox: a box fold, a sphere fold, and a scale, iterated; `scale` is its own parameter (-1.5 is the classic), and the set is fitted into a cube `size` on a side |
 
 <picture>
-  <img src="../../Guide/Images/30-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces carry a deep carved relief" width="680">
+  <img src="../../Guide/Images/32-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces carry a deep carved relief" width="680">
 </picture>
 
 ```swift

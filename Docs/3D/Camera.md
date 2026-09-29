@@ -9,8 +9,8 @@ A [3D](./3D.md) sketch sets a [`camera`](./3D.md#the-camera) each frame. Two thi
 This page covers both. Each is opt-in, and each reuses the orbit pose ([`Camera3D.orbiting`](./3D.md#the-camera)). An orbit suits the kind of scene Ollin draws, which is an object on a turntable that you look at from around it. It is not a camera flown through a space. The object might be a transforming solid, a particle system, or a point cloud.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/25-3DGently/Orbit-dark.jpg">
-  <img src="../../Guide/Images/25-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-3DGently/Orbit-dark.jpg">
+  <img src="../../Guide/Images/26-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
 </picture>
 
 Most sketches use [`cameraShowcase(_:)`](#showcase), which **combines the two**. It orbits on its own, and it also lets the viewer grab the camera and explore. When the viewer stops, it eases back to the opening shot.

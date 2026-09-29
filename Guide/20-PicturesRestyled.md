@@ -114,7 +114,7 @@ withTarget(shape) {
 drawImage(shape.filtered(.liquidMetal(phase: time)).image, 0, 0)
 ```
 
-`drawHeart` is one of the analytic shapes beside `drawCircle`, and it takes a center and a size the same way. Any silhouette works. It can be text from [Chapter 8](08-Words.md), a shape you built in [Chapter 15](15-ShapesAsMaterial.md), or a tracked hand from [Chapter 32](32-Seeing.md). The filter never knows where the outline came from.
+`drawHeart` is one of the analytic shapes beside `drawCircle`, and it takes a center and a size the same way. Any silhouette works. It can be text from [Chapter 8](08-Words.md), a shape you built in [Chapter 15](15-ShapesAsMaterial.md), or a tracked hand from [Chapter 34](34-Seeing.md). The filter never knows where the outline came from.
 
 One practical note. A strong distortion reads past the layer's edge, and `edges` decides what happens there. On `.flutedGlass` it softens the samples pushed off the layer, and on `.water` it lets the distortion reach the borders. A continuous field takes a strong refraction better than a pattern of separate marks does.
 

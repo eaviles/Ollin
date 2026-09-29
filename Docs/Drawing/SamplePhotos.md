@@ -140,7 +140,7 @@ film.play()
 
 A `VideoPlayer` is both a `FrameSource` and a `VideoFeed`, so it goes wherever a camera goes and every tracker reads it unchanged. That is how `Examples/Vision/OpticalFlow` and `Examples/Vision/ContourTrace` run on a Mac with no camera, and `--photo` takes the film even where a camera would have worked.
 
-A sketch that wants one exact moment of it asks for that moment instead of playing to it. `seek(to:)` and then [`snapshot()`](../Video/Video.md#pixels-and-analysis) hands back that frame's pixels, offline as well as live. Chapter 32's optical-flow and slit-scan figures are built that way, which is why they render the same picture on any machine.
+A sketch that wants one exact moment of it asks for that moment instead of playing to it. `seek(to:)` and then [`snapshot()`](../Video/Video.md#pixels-and-analysis) hands back that frame's pixels, offline as well as live. Chapter 34's optical-flow and slit-scan figures are built that way, which is why they render the same picture on any machine.
 
 <a name="samplephoto"></a>
 

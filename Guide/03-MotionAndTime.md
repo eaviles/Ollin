@@ -387,7 +387,7 @@ if everyFrames(10) { sim.step() }
 
 `everyFrames(10)` counts frames instead of seconds. Reach for it when the beat belongs to the work rather than to the wall clock. A simulation stepping every tenth frame keeps its rate whether the window runs fast or slow, where a beat in seconds does not.
 
-Each one asks the clock a question and keeps nothing. That is what makes them safe to build on. A video export lands the beats on the same seconds the window did. A recording of a run ([Chapter 39](39-Performing.md)'s takes) replays them exactly. The one thing they cannot do is count. A frame long enough to cover two crossings still answers yes once, because a yes is a yes. [Animation](../Docs/Helpers/Animation.md#timers) has the three in full, and the [`Beats`](../Examples/Motion/Beats/Sketch.swift) example lays them out against a ruler.
+Each one asks the clock a question and keeps nothing. That is what makes them safe to build on. A video export lands the beats on the same seconds the window did. A recording of a run ([Chapter 43](43-Performing.md)'s takes) replays them exactly. The one thing they cannot do is count. A frame long enough to cover two crossings still answers yes once, because a yes is a yes. [Animation](../Docs/Helpers/Animation.md#timers) has the three in full, and the [`Beats`](../Examples/Motion/Beats/Sketch.swift) example lays them out against a ruler.
 
 ### When somebody would rather it stopped: reduced motion
 
@@ -406,7 +406,7 @@ The named easing curves are Robert Penner's easing equations, published with the
 ## Go deeper
 
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `lerp`, `dist`, the shaping scalars, and the constants.
-- [Animation](../Docs/Helpers/Animation.md): the full easing catalog, `sway`, `@Eased`, `@Sprung`, `Timeline`, and the timers, plus `@Smoothed`, which [Chapter 35](35-ControlsAndSignals.md) teaches.
+- [Animation](../Docs/Helpers/Animation.md): the full easing catalog, `sway`, `@Eased`, `@Sprung`, `Timeline`, and the timers, plus `@Smoothed`, which [Chapter 38](38-ControlsAndSignals.md) teaches.
 - [Sketch](../Docs/Core/Sketch.md#temporal-state): the clock properties in one table.
 - [Accessibility](../Docs/Helpers/Accessibility.md): `prefersReducedMotion`, and the color half beside it.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.

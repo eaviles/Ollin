@@ -294,7 +294,7 @@ let soft = plate.filtered(.fourier())
 
 There are three things to know before you reach for it. The layer has to be square with a side that is a power of two, 256, 512, or 1024, because the transform works by halving. `makeRenderTarget(width: 512, height: 512)` makes one. It reads one channel, the brightness unless you name another, so what comes back is gray. And a hard-edged mask *rings*. The ripples around every shape in the third panel are the price of cutting a band off sharply. Soften the mask's own edge to soften them.
 
-It also runs the other way on its own. Write a spectrum, transform it, and a field comes out that nobody drew. The physics of a sea is written as a spectrum, and that is how [Chapter 27](27-Landscapes.md) makes an ocean. The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rules, and [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift) filters a picture by scale live.
+It also runs the other way on its own. Write a spectrum, transform it, and a field comes out that nobody drew. The physics of a sea is written as a spectrum, and that is how [Chapter 29](29-Landscapes.md) makes an ocean. The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rules, and [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift) filters a picture by scale live.
 
 ### Averages of a neighborhood, at a flat price: the summed-area table
 

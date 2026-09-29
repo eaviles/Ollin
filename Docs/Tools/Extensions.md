@@ -5,8 +5,8 @@ An Ollin extension is an ordinary Swift package that depends on Ollin. There is 
 So the mechanics need no work from you, and they never have. This page covers the two things that do need your attention. The first is a shared naming convention, so that extensions are easy to recognize. The second is a list of what you can build on. That way you do not start on something that turns out to be closed.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-HandingItOver/ExtensionShape-dark.jpg">
-  <img src="../../Guide/Images/40-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone whose Sources folder adds drawSpiral to Sketch, on the right somebody else's sketch that imports it and calls drawSpiral, with the spiral it draws underneath. A line between them is labeled import above and nothing registers below" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/44-HandingItOver/ExtensionShape-dark.jpg">
+  <img src="../../Guide/Images/44-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone whose Sources folder adds drawSpiral to Sketch, on the right somebody else's sketch that imports it and calls drawSpiral, with the spiral it draws underneath. A line between them is labeled import above and nothing registers below" width="680">
 </picture>
 
 ## Starting one

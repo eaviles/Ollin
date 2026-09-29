@@ -15,7 +15,7 @@ drawMesh(blobs.mesh())
 
 This is the same idea as [isolines](Isolines.md), one dimension up. There, a field over the plane traces closed curves. Here, a field over space encloses a solid.
 
-<img src="../../Guide/Images/30-SculptingWithFields/FieldToMesh.jpg" alt="Two panels: a chain of three pale blobs fused by smooth necks, and the same form again as a light blue wireframe showing the triangles it is made of" width="680">
+<img src="../../Guide/Images/32-SculptingWithFields/FieldToMesh.jpg" alt="Two panels: a chain of three pale blobs fused by smooth necks, and the same form again as a light blue wireframe showing the triangles it is made of" width="680">
 
 ### Contents
 
@@ -134,7 +134,7 @@ let block = isosurface(at: 0, in: box, resolution: 24, method: .dualContouring) 
 
 At every crossing it reads the point on the true surface and the field's normal there. Three faces meet at a corner, so the vertex lands on the corner. Two meet along an edge, so it lands on the edge. On a smooth patch it lands on the patch. Each crossed edge of the grid then becomes one quad joining the four cubes around it. A block's corners land exactly at any resolution, and a bored hole keeps its rim.
 
-<img src="../../Guide/Images/30-SculptingWithFields/SharpFields.jpg" alt="Two panels: a block with a hole bored through it, its corners rounded off and the rim of its hole softened on the left, and the same block on the same coarse grid with square corners and a crisp rim on the right" width="680">
+<img src="../../Guide/Images/32-SculptingWithFields/SharpFields.jpg" alt="Two panels: a block with a hole bored through it, its corners rounded off and the rim of its hole softened on the left, and the same block on the same coarse grid with square corners and a crisp rim on the right" width="680">
 
 What it costs, and what to know:
 

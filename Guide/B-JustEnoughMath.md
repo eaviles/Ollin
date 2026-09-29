@@ -28,22 +28,22 @@ Every position on the canvas is two numbers, counted in pixels from the top-left
   <img src="Images/18-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,1) at the bottom right, the center marked (0.5, 0.5)" width="680">
 </picture>
 
-Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. A shader's `shade` function gets each position in these `uv` coordinates, and [Chapter 18](18-YourFirstShader.md) works in them. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 32](32-Seeing.md)).
+Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. A shader's `shade` function gets each position in these `uv` coordinates, and [Chapter 18](18-YourFirstShader.md) works in them. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 34](34-Seeing.md)).
 
 ### Putting a normalized point onto the canvas
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Seeing/TrackerFlow-dark.jpg">
-  <img src="Images/32-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/TrackerFlow-dark.jpg">
+  <img src="Images/34-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
 </picture>
 
-A point given as fractions of an image becomes a canvas point when you scale it into the rectangle you drew the image in. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). In [Chapter 32](32-Seeing.md), the `in:` helpers such as `bounds(in:)` do the flip and the scale for you, with this same math.
+A point given as fractions of an image becomes a canvas point when you scale it into the rectangle you drew the image in. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). In [Chapter 34](34-Seeing.md), the `in:` helpers such as `bounds(in:)` do the flip and the scale for you, with this same math.
 
 ### The 3D world frame
 
 <img src="Images/B-JustEnoughMath/WorldFrame.jpg" alt="Two labeled frames: the canvas with y growing down from a top-left origin, and the 3D world with y growing up and z coming toward the viewer" width="680">
 
-The 3D world uses its own frame. The origin sits wherever you like, x still grows right, y grows *up*, and z comes toward you. Positions are in world units rather than pixels. A sphere of radius 1 is one unit, and the camera's distance decides how big it looks. The canvas's y-down is a habit of 2D screens, and 3D keeps the y-up of school math. [Chapter 25](25-3DGently.md) makes the switch. Depth data in meters lands in the same kind of frame in [Chapter 33](33-DepthAndThePhone.md).
+The 3D world uses its own frame. The origin sits wherever you like, x still grows right, y grows *up*, and z comes toward you. Positions are in world units rather than pixels. A sphere of radius 1 is one unit, and the camera's distance decides how big it looks. The canvas's y-down is a habit of 2D screens, and 3D keeps the y-up of school math. [Chapter 26](26-3DGently.md) makes the switch. Depth data in meters lands in the same kind of frame in [Chapter 35](35-Depth.md).
 
 ## Angles and circles
 
@@ -104,7 +104,7 @@ Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau 
   <img src="Images/B-JustEnoughMath/GoldenAngle.jpg" alt="The same 500 seeds in three disks, each seed turned by one angle and pushed out by the square root of its number: at 137.5 degrees, the golden angle, in orange, they fill the disk evenly; at 137.0 degrees they line up into curving spokes with gaps between them; at 144 degrees, two fifths of a turn, they make five straight spokes" width="680">
 </picture>
 
-Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes [the rosette](#n-copies-close-the-circle). Sometimes you want the opposite, many things placed around a center with none lined up behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. As a fraction of a turn, it is the number that simple fractions like 2/5 or 3/8 come least close to. So no two steps ever line up, and each new one lands in one of the widest gaps left. A sunflower's seeds grow this way. The middle disk turns the same seeds by 137.0 degrees, which lines them up into curving arms with gaps between them. The right one turns them by 144 degrees, two fifths of a turn, and they fall on five straight spokes. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 27](27-Landscapes.md) spreads its lamps the same way.
+Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes [the rosette](#n-copies-close-the-circle). Sometimes you want the opposite, many things placed around a center with none lined up behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. As a fraction of a turn, it is the number that simple fractions like 2/5 or 3/8 come least close to. So no two steps ever line up, and each new one lands in one of the widest gaps left. A sunflower's seeds grow this way. The middle disk turns the same seeds by 137.0 degrees, which lines them up into curving arms with gaps between them. The right one turns them by 144 degrees, two fifths of a turn, and they fall on five straight spokes. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 29](29-Landscapes.md) spreads its lamps the same way.
 
 ### Numbers that turn: complex multiplication
 
@@ -122,7 +122,7 @@ A point `(x, y)` can also be read as one number, written `x + y·i`, where `i` i
   <img src="Images/16-CurvesAndFigures/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
 </picture>
 
-A closed outline can be rebuilt from circles. Each circle turns a whole number of laps while centered on the tip of the one before it, and the last tip traces the shape. A few large, slow circles give the rough form, and more small, fast ones add the detail. This is Joseph Fourier's idea from the 1820s: a repeating shape is a sum of plain waves. [Chapter 16](16-CurvesAndFigures.md) draws with the circles, and [Chapter 21](21-PicturesYouSolve.md) reads a whole picture as waves. [Chapter 31](31-TracedLight.md) finds it in the star around a bright light in a lens. A sound splits the same way, as [the spectrum](#the-spectrum) shows.
+A closed outline can be rebuilt from circles. Each circle turns a whole number of laps while centered on the tip of the one before it, and the last tip traces the shape. A few large, slow circles give the rough form, and more small, fast ones add the detail. This is Joseph Fourier's idea from the 1820s: a repeating shape is a sum of plain waves. [Chapter 16](16-CurvesAndFigures.md) draws with the circles, and [Chapter 21](21-PicturesYouSolve.md) reads a whole picture as waves. [Chapter 33](33-TracedLight.md) finds it in the star around a bright light in a lens. A sound splits the same way, as [the spectrum](#the-spectrum) shows.
 
 ## Fractions, mapping, and wrapping
 
@@ -142,7 +142,7 @@ A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at 
   <img src="Images/B-JustEnoughMath/Barycentric.jpg" alt="Two triangles with corners a, b, and c. Left, one orange point joined to the corners, which cuts the triangle into three pieces labeled 0.5 of a, 0.3 of b, and 0.2 of c, each weight in the piece opposite its corner. Right, the triangle filled with dots whose colors mix red at a, blue at b, and yellow at c in each dot's own weights. Mixed as light, the colors stay bright through the middle, a pale tan there and a dusty mauve along the edge from a to b" width="680">
 </picture>
 
-`lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. A weight of 0.5 on the first corner puts the point halfway from the opposite edge to that corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three. A corner's weight is the share of the piece opposite it. The orange point on the left has a weight of 0.5 on corner a, so the piece opposite that corner is half the triangle. The same weights mix anything the corners carry, such as a color or a height. The right half of the picture gives each corner a color and mixes the three at every dot. [Chapter 27](27-Landscapes.md) reads the weights off a point scattered over a mesh, to blend what the mesh stores at its corners.
+`lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. A weight of 0.5 on the first corner puts the point halfway from the opposite edge to that corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three. A corner's weight is the share of the piece opposite it. The orange point on the left has a weight of 0.5 on corner a, so the piece opposite that corner is half the triangle. The same weights mix anything the corners carry, such as a color or a height. The right half of the picture gives each corner a color and mixes the three at every dot. [Chapter 29](29-Landscapes.md) reads the weights off a point scattered over a mesh, to blend what the mesh stores at its corners.
 
 ### Wrapping: remainder, fract, and pingPong
 
@@ -157,7 +157,7 @@ A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps who
   <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
 </picture>
 
-The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the greatest divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 37](37-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
+The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the greatest divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 40](40-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
 
 ### The perfect loop
 
@@ -186,7 +186,7 @@ A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. It
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="Comet swarms of glowing dots, each dragging a soft luminous tail that fades with age" width="560">
 
-Multiply a value by a little less than 1 every frame, keeping 93% say, and it fades smoothly. It falls fast at first, then more and more slowly, and never quite reaches zero. That's exponential decay, and it is the shape of a fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails. [Chapter 34](34-Listening.md) fades a pulse the same way, scaled by `deltaTime` so it falls at the same speed at any frame rate.
+Multiply a value by a little less than 1 every frame, keeping 93% say, and it fades smoothly. It falls fast at first, then more and more slowly, and never quite reaches zero. That's exponential decay, and it is the shape of a fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails. [Chapter 37](37-Listening.md) fades a pulse the same way, scaled by `deltaTime` so it falls at the same speed at any frame rate.
 
 ## Randomness
 
@@ -233,7 +233,7 @@ The **tail** of a distribution is its far end, the values that almost never come
   <img src="Images/B-JustEnoughMath/SquareRootSpread.jpg" alt="Two disks of 900 dots, each with an orange circle at half the radius. Left, at random(1) times the radius, the dots crowd the middle and 444 of 900 fall inside the circle. Right, at sqrt(random(1)) times the radius, they spread evenly and 218 of 900 fall inside it" width="680">
 </picture>
 
-To scatter points in a disk, pick an angle and a distance from the center. A plain distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. The picture counts them. With the plain distance, 444 of 900 dots land inside the orange circle, and with the square root, 218 do, about a quarter. [Chapter 27](27-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
+To scatter points in a disk, pick an angle and a distance from the center. A plain distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. The picture counts them. With the plain distance, 444 of 900 dots land inside the orange circle, and with the square root, 218 do, about a quarter. [Chapter 29](29-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
 
 ### Chance is lumpy
 
@@ -313,9 +313,9 @@ Scatter points across a plane, then ask everywhere how far the nearest one is. T
 
 ### Small moves compound
 
-<img src="Images/25-3DGently/Stairs.jpg" alt="A spiral staircase of colored slabs winding up a dark central post" width="560">
+<img src="Images/26-3DGently/Stairs.jpg" alt="A spiral staircase of colored slabs winding up a dark central post" width="560">
 
-Repeat "move a little, turn a little, draw" without resetting, and the little moves stack, because each copy starts where the last one ended. A straight repetition then curls into an arc, a spiral, or a helix if you lift by a step each time. `withState { }` controls where the moves reset. Resets between copies give you a grid, and no resets give you a staircase. [Chapter 6](06-GridsAndRepetition.md) shows both in 2D, and [Chapter 25](25-3DGently.md) builds these stairs with the same loop.
+Repeat "move a little, turn a little, draw" without resetting, and the little moves stack, because each copy starts where the last one ended. A straight repetition then curls into an arc, a spiral, or a helix if you lift by a step each time. `withState { }` controls where the moves reset. Resets between copies give you a grid, and no resets give you a staircase. [Chapter 6](06-GridsAndRepetition.md) shows both in 2D, and [Chapter 26](26-3DGently.md) builds these stairs with the same loop.
 
 ### The plane turned inside out: inversion in a circle
 
@@ -329,11 +329,11 @@ Inversion in a circle moves every point along the line from the circle's center 
 ### Four corners anywhere: corner pinning
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/FittingTheWall-dark.jpg">
-  <img src="Images/41-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/45-Installations/FittingTheWall-dark.jpg">
+  <img src="Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
-Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 41](41-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
+Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 45](45-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
 
 ## Vectors, motion, and forces
 
@@ -380,13 +380,13 @@ A force is a push with a direction, and simultaneous pushes on one body add, tip
   <img src="Images/B-JustEnoughMath/InverseSquare.jpg" alt="Light from a point source spreading through a widening pyramid and crossing three squares at distances 1, 2, and 3, which hold 1, 4, and 9 cells. Beside it, a curve of the light in one cell against distance, falling through 1, 1/4, and 1/9" width="680">
 </picture>
 
-Light from a point spreads out as it travels. At twice the distance, the same light covers four times the area, so each part of it gets a quarter as much. At three times the distance, each part gets a ninth. That is the **inverse square**: the strength falls as one over the distance squared. Its curve in the picture falls steeply near the source and flattens farther out. Gravity follows the same rule, and it is how [Chapter 11](11-ForcesAndPhysics.md)'s `NBody` pulls its bodies together. [Chapter 27](27-Landscapes.md) says why its lamps use a gentler curve that ends.
+Light from a point spreads out as it travels. At twice the distance, the same light covers four times the area, so each part of it gets a quarter as much. At three times the distance, each part gets a ninth. That is the **inverse square**: the strength falls as one over the distance squared. Its curve in the picture falls steeply near the source and flattens farther out. Gravity follows the same rule, and it is how [Chapter 11](11-ForcesAndPhysics.md)'s `NBody` pulls its bodies together. [Chapter 29](29-Landscapes.md) says why its lamps use a gentler curve that ends.
 
 ### Floating: the weight of the water pushed aside
 
-<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
+<img src="Images/30-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
 
-A body in water sinks until the water it pushes aside weighs as much as the body. That is Archimedes' principle. So a body half as dense as water floats with half of itself under the surface. One at 0.8 of the water's density floats low, with a fifth above. [Chapter 28](28-WorldsWithWeight.md) works each crate's waterline out from its density alone.
+A body in water sinks until the water it pushes aside weighs as much as the body. That is Archimedes' principle. So a body half as dense as water floats with half of itself under the surface. One at 0.8 of the water's density floats low, with a fifth above. [Chapter 30](30-WorldsWithWeight.md) works each crate's waterline out from its density alone.
 
 ### The spring's rule
 
@@ -441,11 +441,11 @@ To trace a line through a direction field, ask the field which way at your posit
 ### Optical flow: a measured field
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Seeing/FlowArrows-dark.jpg">
-  <img src="Images/32-Seeing/FlowArrows.jpg" alt="A frame of a dancer, with arrows along both arms pointing opposite ways, a few on one leg and at one foot, and none on his chest" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/FlowArrows-dark.jpg">
+  <img src="Images/34-Seeing/FlowArrows.jpg" alt="A frame of a dancer, with arrows along both arms pointing opposite ways, a few on one leg and at one foot, and none on his chest" width="680">
 </picture>
 
-Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, carry particles through, or paint with, the same way as a field built from noise. The camera becomes a field generator in [Chapter 32](32-Seeing.md).
+Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, carry particles through, or paint with, the same way as a field built from noise. The camera becomes a field generator in [Chapter 34](34-Seeing.md).
 
 ## Local rules, global structure
 
@@ -590,11 +590,11 @@ A picture file stores a number for each pixel. That number gives more of its ste
 ### What a device can show: gamut
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-FinishingASketch/ProofBeforePrint-dark.jpg">
-  <img src="Images/38-FinishingASketch/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/42-MakingItPhysical/ProofBeforePrint-dark.jpg">
+  <img src="Images/42-MakingItPhysical/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
 </picture>
 
-The **gamut** of a screen or a printer is the range of colors it can make. The gamut of a color space is the range it can describe. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. Written in sRGB numbers, the way Ollin's `Color` holds it, a color outside sRGB has components below 0 or above 1. [Chapter 38](38-FinishingASketch.md)'s gamut check paints gray over what a press cannot print.
+The **gamut** of a screen or a printer is the range of colors it can make. The gamut of a color space is the range it can describe. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. Written in sRGB numbers, the way Ollin's `Color` holds it, a color outside sRGB has components below 0 or above 1. The gamut check of [Chapter 42](42-MakingItPhysical.md#seeing-the-print-before-you-print-it-soft-proofs) paints gray over what a press cannot print.
 
 ### Blend modes are arithmetic
 
@@ -607,9 +607,9 @@ Every blend mode is a small per-channel formula for combining the color being dr
 
 ### Density as tone
 
-<img src="Images/24-ParticleSimulations/MillionGrains.jpg" alt="The same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, a smooth field of light" width="560">
+<img src="Images/25-ParticleSimulations/MillionGrains.jpg" alt="The same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, a smooth field of light" width="560">
 
-Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone where they crowd. The count sets the texture, and each tenfold increase trades grain for smoothness. This is how attractor plates, sandpaintings, and [Chapter 24](24-ParticleSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
+Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone where they crowd. The count sets the texture, and each tenfold increase trades grain for smoothness. This is how attractor plates, sandpaintings, and [Chapter 25](25-ParticleSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
 
 ### Light past 1, and bringing it back
 
@@ -642,11 +642,11 @@ A shader is one function answering one question, "what color at this position?",
 ### Signed distance: how far, and which side
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/FieldMap-dark.jpg">
-  <img src="Images/30-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted shape in warm color surrounded by concentric bands of equal distance, with a bold line at zero" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-SculptingWithFields/FieldMap-dark.jpg">
+  <img src="Images/32-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted shape in warm color surrounded by concentric bands of equal distance, with a bold line at zero" width="680">
 </picture>
 
-A signed distance field describes a shape by answering, at every point, "how far to the surface?". The *sign* says which side you're on. Negative is inside, positive is outside, and zero is exactly on the boundary. The shape stops being a list of vertices and becomes a question you can ask anywhere. [Chapter 30](30-SculptingWithFields.md) sculpts with shapes described this way.
+A signed distance field describes a shape by answering, at every point, "how far to the surface?". The *sign* says which side you're on. Negative is inside, positive is outside, and zero is exactly on the boundary. The shape stops being a list of vertices and becomes a question you can ask anywhere. [Chapter 32](32-SculptingWithFields.md) sculpts with shapes described this way.
 
 ### Level sets: an edge at a chosen distance
 
@@ -660,11 +660,11 @@ Given a distance field, a shape is "all points within r". The edge lives where t
 ### min melts, max trims
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/MeltStrip-dark.jpg">
-  <img src="Images/30-SculptingWithFields/MeltStrip.jpg" alt="Two circles at four smoothing radii: touching hard, necking together, flowing into a peanut, and fused into one capsule" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-SculptingWithFields/MeltStrip-dark.jpg">
+  <img src="Images/32-SculptingWithFields/MeltStrip.jpg" alt="Two circles at four smoothing radii: touching hard, necking together, flowing into a peanut, and fused into one capsule" width="680">
 </picture>
 
-Combine two distance fields and set operations come from two small functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. Then there is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes join through a smooth neck instead of only touching. The `k` under each pair of circles is that radius, and the neck widens as `k` grows. [Chapter 30](30-SculptingWithFields.md) sculpts with the smooth minimum.
+Combine two distance fields and set operations come from two small functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. Then there is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes join through a smooth neck instead of only touching. The `k` under each pair of circles is that radius, and the neck widens as `k` grows. [Chapter 32](32-SculptingWithFields.md) sculpts with the smooth minimum.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/SmoothMin-dark.jpg">
@@ -676,37 +676,37 @@ This plot follows the line through the centers of two circles. The plain min com
 ### Sphere tracing: hop by what the field promises
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/MarchRay-dark.jpg">
-  <img src="Images/30-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in shrinking hops, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-SculptingWithFields/MarchRay-dark.jpg">
+  <img src="Images/32-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in shrinking hops, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
 </picture>
 
-To render a distance field, march a ray from the eye. Ask the field "how far to the nearest surface?", and since nothing can be closer than that answer, it is safe to hop that far. Repeat, and the hops shrink as the surface nears, until a hop below a threshold counts as a hit. There are no triangles, only a field asked a few dozen times per pixel. It's how all of [Chapter 30](30-SculptingWithFields.md)'s 3D sculptures reach the screen.
+To render a distance field, march a ray from the eye. Ask the field "how far to the nearest surface?", and since nothing can be closer than that answer, it is safe to hop that far. Repeat, and the hops shrink as the surface nears, until a hop below a threshold counts as a hit. There are no triangles, only a field asked a few dozen times per pixel. It's how all of [Chapter 32](32-SculptingWithFields.md)'s 3D sculptures reach the screen.
 
 ### Folding space
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-SculptingWithFields/DomainFold-dark.jpg">
-  <img src="Images/30-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, the same cluster tiled into a grid, and a petal fanned into a nine-fold rosette" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-SculptingWithFields/DomainFold-dark.jpg">
+  <img src="Images/32-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, the same cluster tiled into a grid, and a petal fanned into a nine-fold rosette" width="680">
 </picture>
 
-Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. The field still holds one shape, and each point asks it only once. The fold makes that shape appear at every point whose folded copy lands on it. A grid of a thousand copies costs the same as one. [Chapter 30](30-SculptingWithFields.md) mirrors, tiles, and fans with it.
+Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. The field still holds one shape, and each point asks it only once. The fold makes that shape appear at every point whose folded copy lands on it. A grid of a thousand copies costs the same as one. [Chapter 32](32-SculptingWithFields.md) mirrors, tiles, and fans with it.
 
 ## Into three dimensions
 
 ### An eye on a sphere
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/25-3DGently/Orbit-dark.jpg">
-  <img src="Images/25-3DGently/Orbit.jpg" alt="A small camera on a ring around an object, with a sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-3DGently/Orbit-dark.jpg">
+  <img src="Images/26-3DGently/Orbit.jpg" alt="A small camera on a ring around an object, with a sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
 </picture>
 
-Three numbers aim a camera at a thing: **azimuth** is how far around, **elevation** how far up, and **radius** how far away. Together they place an eye anywhere on a sphere around the target, which is why orbiting feels like turning an object in your hand. It's the polar-coordinates idea from the circle entries, plus one more angle for up. [Chapter 25](25-3DGently.md) drives its cameras with these three.
+Three numbers aim a camera at a thing: **azimuth** is how far around, **elevation** how far up, and **radius** how far away. Together they place an eye anywhere on a sphere around the target, which is why orbiting feels like turning an object in your hand. It's the polar-coordinates idea from the circle entries, plus one more angle for up. [Chapter 26](26-3DGently.md) drives its cameras with these three.
 
 ### Perspective, and who's in front
 
-<img src="Images/25-3DGently/DepthRow.jpg" alt="Six spheres in a row marching away from the camera, each smaller and partly hidden behind the one before" width="560">
+<img src="Images/26-3DGently/DepthRow.jpg" alt="Six spheres in a row marching away from the camera, each smaller and partly hidden behind the one before" width="560">
 
-Perspective is one rule, that apparent size falls with distance, so equal spheres shrink as they recede. The **field of view** is the lens angle, wide exaggerating the shrink, narrow flattening it like a telephoto. And notice the hiding, because in 3D drawing order stops deciding who's in front. Every pixel remembers the depth of the nearest surface drawn so far and rejects anything farther, which is the **depth test**. [Chapter 25](25-3DGently.md) uses both.
+Perspective is one rule, that apparent size falls with distance, so equal spheres shrink as they recede. The **field of view** is the lens angle, wide exaggerating the shrink, narrow flattening it like a telephoto. And notice the hiding, because in 3D drawing order stops deciding who's in front. Every pixel remembers the depth of the nearest surface drawn so far and rejects anything farther, which is the **depth test**. [Chapter 26](26-3DGently.md) uses both.
 
 ### Which way a face points: the normal
 
@@ -715,57 +715,57 @@ Perspective is one rule, that apparent size falls with distance, so equal sphere
   <img src="Images/B-JustEnoughMath/EdgesAndNormal.jpg" alt="A triangle with corners a, b, and c lying in a flat plane seen at a slant. Arrows for b minus a and c minus a leave corner a along two edges, and an orange arrow labeled (b - a).cross(c - a) stands straight up out of the middle of the face" width="680">
 </picture>
 
-A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both. So `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. In the picture, a, b, and c run counter-clockwise as you look down on the face, so the normal points up. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
+A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both. So `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. In the picture, a, b, and c run counter-clockwise as you look down on the face, so the normal points up. [Chapter 26](26-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
 
 ### The pinhole: a pixel plus a depth is a ray
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/33-DepthAndThePhone/Unproject-dark.jpg">
-  <img src="Images/33-DepthAndThePhone/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/35-Depth/Unproject-dark.jpg">
+  <img src="Images/35-Depth/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 </picture>
 
-A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. So a flat photo plus a flat depth map holds the 3D shape of everything the camera saw. [Chapter 33](33-DepthAndThePhone.md) builds its point clouds with this recipe.
+A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. So a flat photo plus a flat depth map holds the 3D shape of everything the camera saw. [Chapter 35](35-Depth.md) builds its point clouds with this recipe.
 
 ### A pose places points in the world
 
-<img src="Images/33-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of a room fused into one cloud, each camera position marked with a small sphere and sight line" width="680">
+<img src="Images/35-Depth/SweepFuse.jpg" alt="Three tinted captures of a room fused into one cloud, each camera position marked with a small sphere and sight line" width="680">
 
-Points recovered from a camera come out in *its* frame, "two meters ahead of me", wherever "me" was. A **pose** is the transform recording where the camera stood and how it was turned. Applying it carries camera-frame points into one shared world frame. Do that for every frame of a moving sweep and the fragments fuse into a single room, each capture placed where its camera stood. [Chapter 33](33-DepthAndThePhone.md) fuses its scans this way.
+Points recovered from a camera come out in *its* frame, "two meters ahead of me", wherever "me" was. A **pose** is the transform recording where the camera stood and how it was turned. Applying it carries camera-frame points into one shared world frame. Do that for every frame of a moving sweep and the fragments fuse into a single room, each capture placed where its camera stood. [Chapter 35](35-Depth.md) fuses its scans this way.
 
 ### Occlusion voids: what the camera could not see
 
-<img src="Images/33-DepthAndThePhone/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
+<img src="Images/35-Depth/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
 
-A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. Only more viewpoints fill them. [Chapter 33](33-DepthAndThePhone.md) fills them by fusing frames from a moving camera.
+A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. Only more viewpoints fill them. [Chapter 35](35-Depth.md) fills them by fusing frames from a moving camera.
 
 ## Sound as numbers
 
 ### The spectrum
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/Anatomy-dark.jpg">
-  <img src="Images/34-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-Listening/Anatomy-dark.jpg">
+  <img src="Images/37-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
 </picture>
 
-Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. If the bars were spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 34](34-Listening.md) maps these bands onto pictures.
+Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. If the bars were spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 37](37-Listening.md) maps these bands onto pictures.
 
 ### Equal steps that multiply: log scales
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Sonification-dark.jpg">
-  <img src="Images/37-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Sonification-dark.jpg">
+  <img src="Images/40-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
 </picture>
 
-Some amounts are felt by ratio rather than by difference. The step from 220 Hz to 440 sounds the same as the step from 440 to 880, though the second is twice as many hertz. A **logarithmic scale** spaces values by their ratios, so each doubling takes the same distance. Spread notes evenly in hertz and the high ones bunch together when you hear them. Spread them evenly in semitones, a log scale, and they sit evenly, as the second and third rows here show. [Chapter 37](37-MusicByRule.md) spreads data this way, and [Chapter 22](22-IteratedForms.md)'s flames take the logarithm of their counts to fit a huge range into one picture.
+Some amounts are felt by ratio rather than by difference. The step from 220 Hz to 440 sounds the same as the step from 440 to 880, though the second is twice as many hertz. A **logarithmic scale** spaces values by their ratios, so each doubling takes the same distance. Spread notes evenly in hertz and the high ones bunch together when you hear them. Spread them evenly in semitones, a log scale, and they sit evenly, as the second and third rows here show. [Chapter 40](40-MusicByRule.md) spreads data this way, and [Chapter 22](22-IteratedForms.md)'s flames take the logarithm of their counts to fit a huge range into one picture.
 
 ### Pitch as ratios: octaves, semitones, and cents
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/37-MusicByRule/Tunings-dark.jpg">
-  <img src="Images/37-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Tunings-dark.jpg">
+  <img src="Images/40-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
 </picture>
 
-Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 37](37-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
+Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 40](40-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
 
 ### A level in steps: decibels
 
@@ -774,16 +774,16 @@ Doubling a frequency raises a note an octave, and every octave sounds like the s
   <img src="Images/B-JustEnoughMath/Decibels.jpg" alt="Nine bars from 0 dB down to -48 dB in steps of 6, each about half as long as the one above it: 1.0, 0.501, 0.251, and on down to 0.004. The -12 dB bar is orange, with the note that a mix usually sits below it" width="680">
 </picture>
 
-Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. The orange bar in the picture marks -12 dB, and a level you would mix at sits somewhere under it. [Chapter 36](36-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
+Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. The orange bar in the picture marks -12 dB, and a level you would mix at sits somewhere under it. [Chapter 39](39-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
 
 ### Events, not levels
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-Listening/BeatTimeline-dark.jpg">
-  <img src="Images/34-Listening/BeatTimeline.jpg" alt="Three rows over the same stretch of time: the loudness curve with regular peaks, a beat pulse that jumps up at each detection and fades, and a tick for each beat counted" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-Listening/BeatTimeline-dark.jpg">
+  <img src="Images/37-Listening/BeatTimeline.jpg" alt="Three rows over the same stretch of time: the loudness curve with regular peaks, a beat pulse that jumps up at each detection and fades, and a tick for each beat counted" width="680">
 </picture>
 
-Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a held chord stays loud without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short pause after each beat keeps one drum hit from counting twice. So the detector watches change over time rather than loudness. [Chapter 34](34-Listening.md) builds its beat-reactive sketches on that comparison.
+Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a held chord stays loud without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short pause after each beat keeps one drum hit from counting twice. So the detector watches change over time rather than loudness. [Chapter 37](37-Listening.md) builds its beat-reactive sketches on that comparison.
 
 ---
 

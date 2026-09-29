@@ -258,8 +258,8 @@ The [Easing example](../../Examples/Motion/Easing/Sketch.swift) moves four dots 
 `@Eased` moves toward a target you *know*. `@Smoothed` is for a noisy live signal whose true value you *don't* know. That can be a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass filter. The filter stays responsive when the signal moves fast and steady when it moves slowly. A fixed low-pass filter cannot do both.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-ControlsAndSignals/SmoothedSignal-dark.jpg">
-  <img src="../../Guide/Images/35-ControlsAndSignals/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/38-ControlsAndSignals/SmoothedSignal-dark.jpg">
+  <img src="../../Guide/Images/38-ControlsAndSignals/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
 </picture>
 
 Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there is no update step to call:

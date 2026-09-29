@@ -23,8 +23,8 @@ A lit point casts its shadow along the direction of the light. A point can there
 What is left is the **visual hull**, the largest solid that could cast those shadows.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-Meshes/TwoShadowsOneSolid-dark.jpg">
-  <img src="../../Guide/Images/26-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/27-Meshes/TwoShadowsOneSolid-dark.jpg">
+  <img src="../../Guide/Images/27-Meshes/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
 </picture>
 
 ### Contents
@@ -89,7 +89,7 @@ The reason is that the front view and the side view share the same vertical axis
 - **Three agree far less often.** A point of one shadow may have nothing behind it that survives the other two. That part of the shadow is then not cast. The three-letter sculptures are designed around this limit.
 - Compare `shadow(from:)` against the silhouette you passed in. Where the two differ, the thrown shadow is the one you get.
 
-Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 26](../../Guide/26-Meshes.md#one-solid-two-shadows-shadow-art).
+Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 27](../../Guide/27-Meshes.md#one-solid-two-shadows-shadow-art).
 
 ---
 

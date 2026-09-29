@@ -176,7 +176,7 @@ One difference changes how vector code reads. p5's vector methods change the vec
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
 | `img.loadPixels()`, `img.pixels[i]`, `img.updatePixels()` | `img[x, y]` | no load or update step: a write shows the next time the image is drawn ([Chapter 9](09-Pictures.md#an-image-you-can-ask-imagex-y)) |
-| `loadPixels()` and `pixels[]` on the canvas | no read-back inside `draw()` | per-pixel work is a `shade` function ([Chapter 18](18-YourFirstShader.md)); a layer's `image[x, y]` reads `.clear`, because its pixels stay on the GPU; a `SketchExtension` can receive each finished frame ([Chapter 40](40-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension)) |
+| `loadPixels()` and `pixels[]` on the canvas | no read-back inside `draw()` | per-pixel work is a `shade` function ([Chapter 18](18-YourFirstShader.md)); a layer's `image[x, y]` reads `.clear`, because its pixels stay on the GPU; a `SketchExtension` can receive each finished frame ([Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension)) |
 | `createImage(w, h)` | `Image(width:height:)` | |
 | `createGraphics(w, h)` | `makeRenderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 19](19-LayersAndEffects.md)) |
 | `loadTable("data.csv", "csv", "header")`; Processing: `loadTable("data.csv", "header")` | `try? loadTable("data.csv")` | the format and the header row are guessed, or say `format: .csv, hasHeader: true`; read a cell with `row.number("col")`, or `row["col"]` for its text ([Chapter 9](09-Pictures.md#reading-a-table-loadtable)) |
@@ -203,11 +203,11 @@ Each of these gets a chapter, so the table only points.
 | `createSlider`, `createButton`, the DOM | `@Param` parameters in the inspector | [Chapter 1](01-HelloOllin.md) |
 | `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 19](19-LayersAndEffects.md) |
 | `loadShader` / `shader()` | a `Shader` written in Metal, run over a layer with `generate(_:)` and drawn with `drawImage` | [Chapter 18](18-YourFirstShader.md) |
-| `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 25](25-3DGently.md) |
-| `orbitControl()` | `cameraControl()` | [Chapter 25](25-3DGently.md) |
-| `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 25](25-3DGently.md) |
-| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands(_:)`, `beat` | [Chapter 34](34-Listening.md) |
-| `createCapture(VIDEO)`; Processing: `new Capture(this)` from its video library | `Camera()` from `OllinVision`, started in `setup()` and drawn with `drawFrame(camera)` | [Chapter 32](32-Seeing.md) |
+| `WEBGL` mode, `box()`, `sphere()` | `cameraShowcase(…)`, `camera(.orbiting(…))`, or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 26](26-3DGently.md) |
+| `orbitControl()` | `cameraControl()` | [Chapter 26](26-3DGently.md) |
+| `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 26](26-3DGently.md) |
+| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands(_:)`, `beat` | [Chapter 37](37-Listening.md) |
+| `createCapture(VIDEO)`; Processing: `new Capture(this)` from its video library | `Camera()` from `OllinVision`, started in `setup()` and drawn with `drawFrame(camera)` | [Chapter 34](34-Seeing.md) |
 
 Many people who sketch in p5 learn forces and flocks from Daniel Shiffman's *The Nature of Code*. There you write the code for each system by hand. Four chapters here teach the same ground. [Chapter 11](11-ForcesAndPhysics.md) covers forces and a physics world, [Chapter 12](12-FlocksAndSwarms.md) steering and flocks, and [Chapter 13](13-GrowingThings.md) recursion and L-systems. Each starts by hand and moves on to Ollin's own types. [Chapter 14](14-FieldsAndFlow.md) builds flow fields from the `flowField` helper.
 
@@ -221,8 +221,8 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 | `saveFrames(…)` | `--export-sequence out --seconds 5` | |
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
-| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 38](38-FinishingASketch.md)) |
-| the sketch runs in the browser | `--export-web out.html` | a page that plays what the sketch drew, with no framework in the browser ([Chapter 38](38-FinishingASketch.md)) |
+| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 41](41-FinishingASketch.md)) |
+| the sketch runs in the browser | `--export-web out.html` | a page that plays what the sketch drew, with no framework in the browser ([Chapter 41](41-FinishingASketch.md)) |
 
 ## Different on purpose
 
@@ -238,7 +238,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 **The canvas wipes itself.** In p5 the pixels persist, `background()` is the wipe, and leaving it out is the classic trails trick. Ollin clears every frame whether or not you call `background`, so a ported trails sketch loses its trails in silence. The opt-out is one call, `noClear()`, and [Chapter 19](19-LayersAndEffects.md) builds the long-exposure style on it.
 
-**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser as the place you work. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, an SVG, or a page that plays in a browser. [Chapter 38](38-FinishingASketch.md) covers each of them.
+**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser as the place you work. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, an SVG, or a page that plays in a browser. [Chapter 41](41-FinishingASketch.md) covers each of them.
 
 ## Habits to leave behind
 

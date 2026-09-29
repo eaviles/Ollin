@@ -26,8 +26,8 @@ Ripple/
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-HandingItOver/LivingInTheSystem-dark.jpg">
-  <img src="../../Guide/Images/40-HandingItOver/LivingInTheSystem.jpg" alt="A diagram in two columns: on the left, three stacked cards for the files inside Ripple.saver, with an arrow joining the NSPrincipalClass line in the property list to the matching @objc name in the code; on the right, two wide black screens showing a drawing filling one edge to edge and sitting square in the middle of the other" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/44-HandingItOver/LivingInTheSystem-dark.jpg">
+  <img src="../../Guide/Images/44-HandingItOver/LivingInTheSystem.jpg" alt="A diagram in two columns: on the left, three stacked cards for the files inside Ripple.saver, with an arrow joining the NSPrincipalClass line in the property list to the matching @objc name in the code; on the right, two wide black screens showing a drawing filling one edge to edge and sitting square in the middle of the other" width="680">
 </picture>
 
 `SaverView.swift` is all the wiring there is:

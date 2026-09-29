@@ -44,8 +44,8 @@ Everything here runs on the Mac itself, so nothing is uploaded. Speech recogniti
 The split comes from how recognition works. The recognizer guesses early and corrects itself as it hears more. So the words on screen a moment ago may not be the words it settles on.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Listening/Listening-dark.jpg">
-  <img src="../../Guide/Images/34-Listening/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/37-Listening/Listening-dark.jpg">
+  <img src="../../Guide/Images/37-Listening/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
 </picture>
 
 So there are three reads:
@@ -164,5 +164,5 @@ let heard = try SoundClassifier.classify(resource: "field", withExtension: "wav"
 - [Vision](../Vision/Vision.md) is the counterpart for seeing, and this page follows the shape of its trackers.
 - [Synthesis](Synthesis.md) covers making sound rather than listening to it.
 - [Phone](../3D/Phone.md#what-the-phone-hears) is a tethered iPhone doing the hearing, over the same values.
-- Guide [Chapter 34](../../Guide/34-Listening.md) teaches it, under *Words, and what that noise was: speech and sound events*.
+- Guide [Chapter 37](../../Guide/37-Listening.md) teaches it, under *Words, and what that noise was: speech and sound events*.
 - `Examples/Audio/Listening` draws a caption and named sounds over the live microphone.

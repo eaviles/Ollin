@@ -8,7 +8,7 @@
 
 What holds for those sims holds here too. Both systems are chaotic, so the order the GPU sums neighbors in decides where a run goes. An export, or a take playing back, fixes that order, so the same seed draws the same frames on the same machine. A live window keeps the faster order, and another GPU's arithmetic can take a run somewhere else.
 
-<img src="../../Guide/Images/24-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
+<img src="../../Guide/Images/25-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
 
 ### Contents
 
