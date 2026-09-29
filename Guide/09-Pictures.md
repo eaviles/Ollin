@@ -433,7 +433,7 @@ Bold tonal masses knit into a clear figure, which is why a profile winds better 
 
 ## The picture's own pixels: sorting and a hidden shape
 
-Everything so far answered a pixel with a mark of its own. Pixel sorting and the autostereogram keep the picture's own pixels. One rearranges them, and the other reads a depth map's pixels to hide a shape in a field of repeats. Neither is in the portrait. Both read pixels on the CPU, like the stipple and the thread above, so each one is `setup()` work. Run it once, hold the result, and let `draw()` replay it.
+Dithering, glyphs, dots, stipple, and thread each answered a pixel with a mark of their own. Pixel sorting and the autostereogram keep the picture's own pixels. One rearranges them, and the other reads a depth map's pixels to hide a shape in a field of repeats. Neither is in the portrait. Both read pixels on the CPU, like the stipple and the thread above, so each one is `setup()` work. Run it once, hold the result, and let `draw()` replay it.
 
 ### Sorting the pixels
 

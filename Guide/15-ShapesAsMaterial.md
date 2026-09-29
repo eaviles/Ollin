@@ -6,7 +6,7 @@
 
 <img src="Images/15-ShapesAsMaterial/Plate.jpg" alt="A plotter-style plate: a mosaic of hatched Voronoi cells in dark ink, each hatched at its own angle, parting around a wavy terracotta ribbon filled with crosshatch, all on cream paper" width="560">
 
-Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, shapes pack, answer questions, and arrive from files, and line work can tell a blade where to score and cut.
+Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, outlines answer questions, shapes pack and arrive from files, and line work can tell a blade where to score and cut.
 
 ## Shapes you can hold
 
@@ -169,13 +169,9 @@ The skeleton also remembers thickness. Each branch carries `radii` alongside `po
 
 Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 8](08-Words.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
-## Toward the pen: hatching
+## Lines for a pen: hatching
 
-The chapter opened by promising a pen plotter, and hatching is what takes a shape to one.
-
-### Lines for a pen: hatching
-
-The fills so far went to a screen. A pen plotter changes the terms, since it offers no fills and no gray, only lines. The bridge is **hatching**, which converts a filled region into parallel line work, and it is a type you can use directly:
+The chapter opened by promising a pen plotter, and hatching is what takes a shape to one. The fills so far went to a screen. A pen plotter changes the terms, since it offers no fills and no gray, only lines. The bridge is **hatching**, which converts a filled region into parallel line work, and it is a type you can use directly:
 
 ```swift
 let hatch = Hatching(spacing: 6.5, angle: .pi / 4)
@@ -486,7 +482,7 @@ A logo, a scanned drawing auto-traced to paths, a file another sketch exported, 
 
 ## A pattern that folds: creases and cuts
 
-The plate leaves as lines for a pen. Lines can also tell a blade where to score and where to cut, and then the paper itself takes the shape. Three things belong here that the plate does not use. The first is the pattern that writes a fold down. The others are a sheet that opens all at once, and a sheet that is cut instead of folded.
+The plate leaves as lines for a pen. Lines can also tell a blade where to score and where to cut, and then the paper itself takes the shape. The plate uses none of what follows. A crease pattern writes a fold down, the Miura fold opens a sheet all at once, and rotating squares cut the sheet instead of folding it.
 
 ### Mountains and valleys: `CreasePattern` and the two laws
 

@@ -411,7 +411,7 @@ The court turns on its own, so keep it as a video. `swift run OllinLive MySketch
 
 ## More from the lights: area lights and contact shadows
 
-The plaza lit its court with a preset, a rig of lights that are each a point or a direction, and one of them casting. Two more things belong to the same idea. A light can have a body, which changes how soft everything it touches becomes. And the shadow under a resting thing can be finished at the seam where a shadow map gives out.
+The plaza lit its court with a preset, a rig of lights that are each a point or a direction, and one of them casting. More belongs to the same idea. A light can have a body, which changes how soft everything it touches becomes. And the shadow under a resting thing can be finished at the seam where a shadow map gives out.
 
 ### A light with a body: area lights
 

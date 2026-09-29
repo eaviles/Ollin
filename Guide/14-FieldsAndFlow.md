@@ -166,7 +166,7 @@ for (i, group) in isolines(at: levels, in: bounds, field: terrain).enumerated() 
 }
 ```
 
-Passing all the levels at once samples the field a single time and traces them all from that one pass. Evaluating the field is nearly all of the work, so ten levels cost barely more than one, and a contour map can animate. `stride` counts from one number to another in steps, and `Array(...)` collects the steps into a list. `terrain` stands for the closure from the first listing, given a name and passed with the `field:` label.
+Passing all the levels at once samples the field a single time and traces them all from that one pass. Evaluating the field is nearly all of the work, so ten levels cost barely more than one, and a contour map can animate. `stride` counts from one number to another in steps, and `Array(...)` collects the steps into a list. `terrain` stands for the closure from the one-level `isolines` listing, given a name and passed with the `field:` label.
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there is a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That is how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
@@ -209,7 +209,7 @@ for line in lines { drawPolyline(line.points, closed: line.isClosed) }
 
 ## What else a field can do: advection, line integral convolution, and radial basis functions
 
-The print traced a direction field one line at a time, from starts you chose. Three more things a field can do belong to the same idea, and none of them is in the print. A direction field can carry a population of particles along, one step per frame. A layer can be combed along the field everywhere at once, with no start chosen. And a number field can be built the other way round, from values you set at a few places, so that it passes through them.
+The print traced a direction field one line at a time, from starts you chose. Other things a field can do belong to the same idea, and none of them is in the print. A direction field can carry a population of particles along, one step per frame. A layer can be combed along the field everywhere at once, with no start chosen. And a number field can be built the other way round, from values you set at a few places, so that it passes through them.
 
 ### Points the field carries: advection
 
