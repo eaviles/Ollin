@@ -86,10 +86,13 @@ final class MIDIFiles: Sketch {
                     beat: beat, step: chordNotes.count))
             }
 
-            // A figure over it, the ladder restarted on the new chord.
+            // A figure over it, the ladder restarted on the new chord's
+            // downbeat. A reset counts the step at its own position as played,
+            // so it goes to the step before; the first bar has nothing before
+            // it and starts there.
             arp.notes = pitches.map { $0.transposed(by: 12) }
-            arp.reset(to: beat)
-            for note in arp.events(upTo: beat + 4) {
+            if bar > 0 { arp.reset(to: beat - arp.rate.beats) }
+            for note in arp.events(upTo: beat + 3.99) {
                 melodyNotes.append(ScheduledNote(
                     Note(note.pitch, velocity: note.velocity * 0.8, length: .eighth),
                     beat: note.beat, step: melodyNotes.count))
