@@ -135,7 +135,7 @@ Each value glides over a few milliseconds, so calling these every frame with a m
 | What | Where it goes |
 |---|---|
 | `bend` | the pitch, in semitones. Every source follows, the plucked string and the bowed one, the tube, a recording, a wavetable, a patch, all but the struck body, whose tones were decided by the strike |
-| `press` | on the bowed string and the blown tube, that note's drive: from the first press on, this replaces the instrument's `pressure` for that note, and pressed to nothing it goes quiet. On every other voice, the note's level, raised from where it was struck toward full by the voice's `pressureAmount` |
+| `press` | on the bowed string and the blown tube, that note's drive: from the first press on, this replaces the instrument's `pressure` for that note, and pressed to nothing it goes quiet. On a sampled voice, nothing. On every other voice, the note's level, raised from where it was struck toward full by the voice's `pressureAmount` |
 | `slide` | the filter's cutoff, opened above the middle of the key and closed below by the filter's `slideAmount`, in octaves. A voice with no filter ignores it |
 
 `pitchBend` on the instrument bends every note at once, the way a keyboard's wheel does. It adds to whatever each note is bent by on its own.
@@ -383,7 +383,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
 ```
 
-`pressure` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
+`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
 
 This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
@@ -599,7 +599,7 @@ You set the sound on the `Synth`, and the voice says how to cut it up. That is t
 | Member | What it does |
 |---|---|
 | `Synth.grainSource` | which sound. Set it before the notes that need it; notes already sounding keep theirs |
-| `Synth.grainScrub` | how far every sounding note's reading is moved through the sound, in source lengths. Read every sample, so it drags a note that is already playing |
+| `Synth.grainScrub` | how far every sounding note's reading is moved through the sound, in source lengths. Read once every block of a few milliseconds, so it drags a note that is already playing |
 | `Synth.grainCount` | how many grains are sounding, for drawing the cloud |
 | `Voice(granular:)` | how a note cuts it, as a `GrainCloud` |
 
@@ -614,7 +614,7 @@ You set the sound on the `Synth`, and the voice says how to cut it up. That is t
 | `panSpread` | how far each grain is thrown to one side, `0...1` |
 | `timingJitter` | how irregularly they start, `0...1`. At 0 they are on a strict clock, at 1 the gap is random with the same average |
 | `shape` | the envelope applied to one grain, a `GrainShape` |
-| `seed` | which scatter this is. The same seed is the same cloud |
+| `seed` | which random draws the cloud makes, for each grain's start time, place, pitch, and side. The same seed is the same cloud |
 | `.frozen(at:size:density:)` | a cloud held at one place, which is what this is here for |
 
 Three presets are worth starting from. `Voice.cloud` is a held moment spread wide, `Voice.smear` is the sound crawling past at a fraction of its speed in pieces, and `Voice.rain` is short sharp grains heard one at a time.
@@ -654,7 +654,7 @@ At these lengths the envelope is most of the character. The same sound through a
 - **A strict clock is a pitch.** With `timingJitter` at 0 the grains arrive on a clock, and a frozen cloud repeats the same piece of sound at that rate. The output is then periodic at `density` hertz, whatever the sound was. That is a real instrument rather than a fault, and turning `timingJitter` up is how you stop hearing it.
 - **A cloud drops grains rather than waiting for room.** A note may have 48 sounding at once. Past that a new one is dropped, the same bargain everything on the audio thread makes. A cloud dense enough to reach it is already a texture, and one missing grain in it cannot be heard.
 - **`detune` runs two streams rather than two copies.** Every other grain takes the offset, so two interleaved streams a fraction apart beat against each other the way two oscillators do.
-- **A cloud is read when the note starts.** Changing the settings takes the next note, the way every other voice works. What does move a sounding note is `grainScrub`, which is read every sample.
+- **A cloud is read when the note starts.** Changing the settings takes the next note, the way every other voice works. What does move a sounding note is `grainScrub`, which is read every few milliseconds.
 - **`panSpread` needs two channels to spread into.** A `Synth` [placed in the 3D scene](#placing-a-sound) is one stream by definition, because turning one into two is the listener's whole job, so a placed instrument folds the spread back to the middle.
 
 `Examples/Audio/Grains` draws the sound with the band the grains are being cut from lit over it, and lets you drag that band through by hand.

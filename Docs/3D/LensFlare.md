@@ -66,7 +66,7 @@ The ghosts are one half of a flare. The star is the other half, and it sits on t
 
 The arms of the star are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is the opening's own Fourier transform. So what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star, for the same reason they put six sides on a ghost.
 
-<img src="../../Guide/Images/33-TracedLight/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, each a close frayed pair with fine needles between them, around a blown-out core. A pale hexagon sits on the lamp, and up and to the left a small soft disc with a red rim" width="640">
+<img src="../../Guide/Images/33-TracedLight/StarPoints.jpg" alt="A dark stage with a pale floor and a row of seven small blue blocks. A bright lamp over them throws six golden arms, each a close frayed pair with fine needles between them, around a blown-out core. A wide, faint warm disc surrounds the lamp inside a fainter six-sided glow, and a few tiny dots sit to its right" width="640">
 
 ```swift
 lensFlare(LensFlare(amount: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star

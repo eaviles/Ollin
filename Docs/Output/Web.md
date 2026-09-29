@@ -16,7 +16,7 @@ The sketch's source stays in Swift. The page holds only a canvas, the shaders, a
 
 - [Recording a page](#recording-a-page) - the flag, its length, `OllinApp.web` / `exportWeb`
 - [What crosses](#what-crosses) - the analytic shapes, strokes and fills, text, the composed and raymarched fields, the layered effects, and what stops the export
-- [Strokes and fills on the page](#strokes-and-fills-on-the-page) - the points and the style the sketch gave, expanded on the page by the Mac's own expander; a fill's edge through the same four samples
+- [Strokes and fills on the page](#strokes-and-fills-on-the-page) - the points and the style the sketch gave, expanded on the page by the Mac's own expander; a fill's edge through a four-sample buffer
 - [Pictures and text on the page](#pictures-and-text-on-the-page) - a picture once, as its file or its pixels; atlas text over the font's page; a gradient from the strip
 - [Fields on the page](#fields-on-the-page) - a composed field's program on the same machine; a raymarched field through its camera and lights
 - [Layers and shaders on the page](#layers-and-shaders-on-the-page) - the pass graph beside the shapes, the framework's fragments rewritten, a shader of yours live
@@ -76,7 +76,7 @@ On the Mac, a stroke is expanded into bands of triangles, and an anti-aliasing c
 
 What the Mac expanded on a path that keeps no points travels as its vertices, seven numbers each: the position, the coverage, and the color with its alpha. That is outline text, a stroke on outline text, and a fill under a gradient. Either way, a fill's color is linearized, and its edge is left to the rasterizer. A stroke's coverage is remapped to perceptual alpha, so a thin dark line reads as dark on the page as it does on the Mac.
 
-A fill's edge has no analytic coverage of its own. So a page that draws one rasterizes every drawn surface through a four-sample multisampled buffer, as the Mac does, and resolves it afterwards. The sample pattern is fixed in the GPU's own texture space, so a mirrored picture would land on that pattern mirrored too. The page therefore rasterizes the canvas upright in that space. Measured against the Mac, a polygon's edge then agrees to within a level or two. A canvas that accumulates keeps its samples from frame to frame.
+A fill's edge has no analytic coverage of its own. So a page that draws one rasterizes every drawn surface through a four-sample multisampled buffer and resolves it afterwards. The Mac multisamples the same edge, at eight samples where the GPU supports it and four otherwise. The sample pattern is fixed in the GPU's own texture space, so a mirrored picture would land on that pattern mirrored too. The page therefore rasterizes the canvas upright in that space. Measured against the Mac, a polygon's edge then agrees to within a level or two. A canvas that accumulates keeps its samples from frame to frame.
 
 ### Pictures and text on the page
 

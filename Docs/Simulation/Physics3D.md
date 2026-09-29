@@ -48,7 +48,7 @@ Distances are the 3D scene's world units, y-up, the same units the camera uses. 
 
 ### Contents
 
-- [World3D](#world3d) - the simulation, its ground, and the per-frame `step`
+- [World3D](#world3d) - the simulation, its ground, and the per-frame `advance(by:)`
 - [Body3D](#body3d) - a rigid body: pose, velocity, forces
 - [Motion parameters](#motion) - which ways a body may move, its own gravity, checking its path
 - [Collider3D](#collider3d) - the shape catalog
@@ -120,7 +120,7 @@ body.rotationAxis             // …this unit axis (the same pose, read as a pai
 
 body.velocity                 // units per second, get/set
 body.angularVelocity          // radians per second about each axis
-body.mass                     // from collider volume × density (0 when static)
+body.mass                     // from collider volume × density (0 when static or kinematic)
 body.kind                     // switch .dynamic / .static / .kinematic live
 body.friction                 // 0 slick … 1 grippy, get/set
 body.restitution              // how much speed survives a bounce, get/set
@@ -418,7 +418,7 @@ world.ignoreCollisions(between: "gears", and: "gears")
 
 ### Contacts
 
-You poll for touches rather than receive them. Each `step` fills `world.contacts` with everything that started or stopped touching during that step, and `draw()` reads the list the way it reads mouse state:
+You poll for touches rather than receive them. Each `advance(by:)` fills `world.contacts` with everything that started or stopped touching during that step, and `draw()` reads the list the way it reads mouse state:
 
 ```swift
 world.advance(by: deltaTime)
@@ -853,7 +853,7 @@ for side in [1.3, -1.3] {                       // +x is its left, -x its right
 }
 let crawler = try world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
                                at: Vector3(0, 1.2, 0), wheels: wheels,
-                               mass: 4200, topSpeed: 9, isTracked: true)!
+                               mass: 4200, topSpeed: 9, isTracked: true)
 ```
 
 Steering is the one control that reaches the ground differently, because a track has nothing to turn. The number sets how much slower the inside band runs. Half lock stops that band, so the machine turns about its own inside track. Full lock runs it backwards, **which spins the machine where it stands**. It needs throttle to do any of that, the way a real machine does. The engine turns the bands, so with the engine idle there is nothing to run one band against the other.
@@ -951,7 +951,7 @@ try world.addRagdoll(from: figure,
                           "legL", "shinL", "legR", "shinR"])
 ```
 
-**Among the other bodies.** A ragdoll's limbs are ordinary bodies. They collide, they turn up in `world.contacts`, and they can be picked and dragged with `grabBody(at:in:)`. They are kept out of `world.bodies`, because a sketch draws the figure's mesh rather than the capsules under it, and `ragdoll.bodies` is the list instead. Each figure gets its own collision group, so a limb never fights the limb it hangs off, while two figures collide normally. A thigh sits inside the pelvis, and the two simply ignore each other. `applyImpulse(_:)` shoves the whole figure at once, and `world.remove(ragdoll)` takes it and its limbs away together.
+**Among the other bodies.** A ragdoll's limbs are ordinary bodies. They collide, they turn up in `world.contacts`, and they can be picked and dragged with `grabBody(at:in:)`. They are kept out of `world.bodies`, because a sketch draws the figure's mesh rather than the capsules under it, and `ragdoll.bodies` is the list instead. Each figure carries its own filter, apart from its collision `group`. So a limb never fights the limb it hangs off, while two figures collide normally. A thigh sits inside the pelvis, and the two simply ignore each other. `applyImpulse(_:)` shoves the whole figure at once, and `world.remove(ragdoll)` takes it and its limbs away together.
 
 The worked example is [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/). The figure stands and waves while its joints are powered, collapses when they are not, and can be dragged around by an arm either way.
 
@@ -1000,11 +1000,11 @@ cloth.move(index, to: point)   // carry it to a world point over this frame
 | `bend` | resistance to *folding*, `0` limp like fabric (the default) to `1` stiff like card |
 | `pressure` | the gas inside a closed surface, in gravities of outward push |
 | `damping` | how quickly particle motion bleeds away |
-| `friction`, `bounce` | the surface against what it lands on |
+| `friction`, `restitution` | the surface against what it lands on |
 | `iterations` | solver passes per step, and more is stiffer and steadier |
 | `vertexRadius` | how far a particle's own body reaches past its position |
 
-`stiffness` and `bend` are two different things. A bedsheet barely stretches at all and folds freely, which is `stiffness: 1, bend: 0`. `pressure` needs a closed surface to fill, so it does nothing on a sheet. `isClosed` reports which of the two you have, and setting `pressure` on an open surface notes once and is ignored. A `pressure` of `1` just holds the body's own weight up, and `2` to `4` reads as a firm ball that still dents. `pressure`, `iterations`, and `vertexRadius` are all live, so a ball can deflate while you watch.
+`stiffness` and `bend` are two different things. A bedsheet barely stretches at all and folds freely, which is `stiffness: 1, bend: 0`. `pressure` needs a closed surface to fill, so it does nothing on a sheet. `isClosed` reports which of the two you have. An open surface ignores `pressure`, with a note when `addSoftBody` was handed one. A `pressure` of `1` just holds the body's own weight up, and `2` to `4` reads as a firm ball that still dents. `pressure`, `iterations`, and `vertexRadius` are all live, so a ball can deflate while you watch.
 
 **A pressurised shape with corners needs `bend`.** Gas pushes on every face at once, and nothing in a limp surface holds an authored angle. So a soft cube at `bend: 0` inflates into a pillow. Measured on a 1-unit cube, `pressure` alone leaves it holding a fifth more volume than it was built with. The higher the pressure, the rounder it gets. `bend: 1` brings it back to within a few percent of the shape you handed over. Round shapes do not show this, because round is what pressure is already trying to make. So use `bend: 0` for anything meant to read as a bag or a balloon. Use `bend` up near `1` for anything meant to keep its own flat faces.
 
@@ -1026,7 +1026,7 @@ override func mouseReleased() {
     if let grip { releaseSoftGrip(grip) }
     grip = nil
 }
-// in draw(), before world.step:
+// in draw(), before world.advance(by:):
 if let grip { dragSoftGrip(grip, to: Vector2(mouseX, mouseY)) }
 ```
 
@@ -1150,7 +1150,7 @@ drawTensegrity(mast)
 
 ```swift
 cape = try world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
-                         rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                         rotated: .pi / 2, axis: Vector3(1, 0, 0),
                          mass: 1.2, stiffness: 0.92,
                          pinned: { $0.z < -0.58 },        // clasped at the neck
                          skinnedTo: figure,
@@ -1178,7 +1178,7 @@ A soft body keeps the `sourceMesh` it was built from, unchanged in its own local
 
 **Call `follow(_:)` before `advance(by:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that easing, and a call after the step leaves the cloth a frame behind. `snap(to:)` is the other call. It puts every carried particle exactly where the skeleton says, and stops it dead. That is what you need for a figure that was *stood* somewhere rather than *moved* there. The cloth then arrives with the figure instead of being dragged across the room.
 
-A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and is saved in a snapshot. A snapshot writes down what the closures decided, because it cannot carry the closures themselves. Its own gap is the one every soft body has. A cape **does not collide with itself**, so it passes through its own folds and through any other cloth on the same figure.
+A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and is saved in a snapshot once it has an `assetName`. A snapshot writes down what the closures decided, because it cannot carry the closures themselves. Its own gap is the one every soft body has. A cape **does not collide with itself**, so it passes through its own folds and through any other cloth on the same figure.
 
 The worked example is [`3D/Physics/Cape`](../../Examples/3D/Physics/Cape/), a figure striding with a cape clasped at the neck, which collapses with it when the figure goes limp.
 
@@ -1291,7 +1291,7 @@ The snapshot's own `bodyCount` and `jointCount` say what is in it before anythin
 - Every rigid `Body3D` with its collider, pose, velocity, and every parameter `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancyScale.
 - Every `Joint3D` between them, gears and racks included.
 - The collision-group table with its rules.
-- The world's `gravity`, `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`.
+- The world's `gravity`, `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`.
 
 The tiers above a loose body come back too, because none of them holds anything heavier than the shapes a body already writes down:
 
@@ -1309,7 +1309,7 @@ figure = world.ragdolls.first
 
 **What it costs.** A snapshot is self-contained, which is what makes it a file you can commit beside a sketch. It holds geometry the same way, and a `.mesh` or `.heightfield` collider is written out whole. So a world that gives a loaded set piece its colliders carries that set piece inside every snapshot of it. The bytes are packed, which costs nothing and is why a settled arrangement is small. A heap of sixty primitives is about a kilobyte. A world carrying a heightfield and two loaded meshes runs to about a megabyte, roughly half the scenery's own weight. A damaged or half-written file is refused rather than half-read. When that size matters, name the scenery instead of holding it, as described below.
 
-**What does not come back.** A grab is a hand on a body rather than part of the world. Contacts are worked out again by the next `advance(by:)`. Neither of them is saved. Motors are not saved either. `drive(at:)` and the calls beside it are things a sketch says, usually every frame, so say them again after a restore. A soft body is nothing but its mesh. It is saved only when you have given it a name to write down in place of that mesh.
+**What does not come back.** A grab is a hand on a body rather than part of the world. Contacts are worked out again by the next `advance(by:)`. Neither of them is saved. Motors are not saved either. `drive(at:)` and the calls beside it are things a sketch says, usually every frame, so say them again after a restore. A soft body surface is nothing but its mesh. It is saved only when you have given it a name to write down in place of that mesh. A rope carries its own points, so it needs no name.
 
 **The bodies are new objects.** `restore(_:)` empties the world first, so any `Body3D` or `Joint3D` you were holding is gone. Take them from `world.bodies` and `world.joints` again. They come back in the order they were saved in, so an index still names the same body. Each one still knows its own `collider`, which is usually all a drawing loop needs.
 
@@ -1319,7 +1319,7 @@ This is also the honest answer about determinism. Simulating is reproducible wit
 
 #### Naming geometry rather than holding it
 
-Almost everything in a world is small. A box is three numbers, and a joint is a point and an axis. Two things are not small. A `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from. A soft body carries the whole mesh it was built out of. Give either one a name, and the snapshot writes the name down instead:
+Almost everything in a world is small. A box is three numbers, and a joint is a point and an axis. Two things are not small. A `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from. A soft body surface is built out of a whole mesh, and a snapshot never holds that mesh. Give either one a name, and the snapshot writes the name down instead:
 
 ```swift
 let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
@@ -1327,7 +1327,7 @@ let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8
 island.assetName = "island"
 
 let banner = try world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
-banner?.assetName = "banner"
+banner.assetName = "banner"
 ```
 
 Then say what the names mean when the world comes back:
@@ -1349,7 +1349,7 @@ Measured on a world with a 65² terrain, a five-thousand-vertex mesh, and twenty
 Three things are worth knowing:
 
 - **A name that resolves to nothing costs only that one body.** The restore itself still succeeds. The rest of the world comes back, and a note names what was missing. A resolver you have not finished writing yet therefore gives you a yard with no ground, rather than nothing at all.
-- **A soft body needs a name to be saved at all**, because there is nothing else to it. An unnamed one is left out with a note.
+- **A soft body surface needs a name to be saved at all**, because there is nothing else to it. An unnamed one is left out with a note. A rope needs none.
 - **A name that now resolves to *different* geometry is still restored, and it is reported.** The saved poses are the best answer there is. A pose saved against one shape rarely fits another. A fingerprint of the geometry is stored beside the name, and that is what notices. A re-exported mesh or a terrain regrown from another seed is caught.
 
 The worked example is [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/). The yard holds a truck you drive, a figure pacing across it, and a second figure lying where it fell. Its heightfield floor and its cloth banner are named by the file rather than held in it. The arrangement is restored with **R**, written to a file with **S**, and read back with **L**. Quitting and running the sketch again then finds the same yard standing.
@@ -1372,7 +1372,7 @@ let scene = try! loadScene("yard.usda")
 world.addBodies(from: scene)          // every body and joint the file describes
 ```
 
-Nothing else is needed. The bodies are ordinary `Body3D`s, so they collide, stack, take impulses, snapshot, and draw the way any others do. Each one's `assetName` is the name of the prim it came from, which is how a drawing loop tells them apart.
+Nothing else is needed. The bodies are ordinary `Body3D`s, so they collide, stack, take impulses, snapshot, and draw the way any others do. Each one's `assetName` is the name of the prim it came from, which is how a drawing loop tells them apart. A snapshot writes that name in place of an exact-mesh collider, so restoring one needs a [resolver](#naming-geometry).
 
 **What comes across.** Rigid bodies (falling, driven with `physics:kinematicEnabled`, or scenery), with their mass, density, center of mass, velocity, and whether they start asleep. Colliders as boxes, balls, capsules, cylinders, cones, hulls, and exact meshes. Friction and restitution from a bound physics material. The fixed, revolute, prismatic, spherical, and distance joints, with their limits. And the scene's gravity, if you ask for it with `usesSceneGravity: true`.
 
@@ -1405,7 +1405,7 @@ override func mouseReleased() {
     grabbed?.remove()
     grabbed = nil
 }
-// in draw(), before world.step:
+// in draw(), before world.advance(by:):
 if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
 ```
 

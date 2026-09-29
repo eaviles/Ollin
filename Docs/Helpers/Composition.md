@@ -58,7 +58,7 @@ var counter = StepCounter(perBeat: 4)      // four steps to a beat
 for step in counter.steps(upTo: beats) { … }
 ```
 
-It returns a range rather than one step, because at any real tempo a frame is longer than a step. A step whose moment fell inside the frame still has to be played. The first call always includes step 0, so a pattern starts on the downbeat.
+It returns a range rather than one step. Most frames pass no step at all, and the range is empty. A sixteenth at 120 BPM lasts seven and a half frames at 60 fps. A slow frame or a fast rate can pass several steps, and each one still has to be played. The first call always includes step 0, so a pattern starts on the downbeat.
 
 The sketch decides where `beats` comes from. That is deliberate, and it is why the counter works with any clock. Use `tempo.beats(at: time)`, with a [`Tempo`](#tempo-and-note-lengths), to run from the sketch clock, or `clock.beats` from a [`TempoClock`](../Integration/MIDI.md#tempo-sync-tempoclock) to run from a drum machine's clock. A number you advance yourself works too. Nothing in this tier but the tempo knows what a second is.
 
@@ -186,7 +186,7 @@ The settings on the bar as a whole:
 
 `events(upTo:)` hands back a [`ScheduledNote`](#schedulednote) for every note that falls before the beat you give it. A ratchet's strikes come back as separate notes on one step, and a step left to chance comes back or not. The chance is a pure function of the step and the seed. A bar replays the same way, and the sketch's own randomness is untouched.
 
-**Ask for the notes ahead of time.** Hand `events(upTo:)` where the music will be at the end of the frame, and hand `Synth.play(_:tempo:from:)` where it is now. A note whose beat is still ahead then waits for it, to the sample. A swung offbeat lands on its own moment rather than on the frame that asked. Leave `from:` out and every note plays with its frame, which is where every other call on this page lands. That is fine for a straight pattern and not for a swung one, because a frame is longer than the lean.
+**Ask for the notes ahead of time.** Hand `events(upTo:)` where the music will be at the end of the frame, and hand `Synth.play(_:tempo:from:)` where it is now. A note whose beat is still ahead then waits for it, to the sample. A swung offbeat lands on its own moment rather than on the frame that asked. Leave `from:` out and every note plays with its frame, which is where every other call on this page lands. That is fine for a straight pattern and not for a swung one. The counter reaches a swung step at its straight place, so a note played with its frame loses the lean.
 
 `reset(to:)` moves the sequencer without playing the steps in between. `nextStep` is where it has got to, so `nextStep % length` is the playhead. Changing `rate` mid-bar carries on from where the music is.
 
@@ -330,7 +330,7 @@ let arp = Arpeggio(Chord("A3", .minorSeventh), .upDown, octaves: 2)
 synth.play(arp[step], for: 0.1)
 ```
 
-Like a rhythm, you read it by step number, and it wraps. Reading it at the step, rather than counting strikes, keeps the figure in its place in the bar instead of restarting it every time.
+Like a rhythm, you read it by step number, and it wraps. Reading it at the step, rather than counting strikes, gives each strike the note the figure holds at that step. A rhythm that strikes only some steps skips the notes in between, instead of walking through them one by one.
 
 The patterns are: `.up` `.down` `.upDown` `.downUp` `.asPlayed` `.converge` `.diverge` `.random`.
 

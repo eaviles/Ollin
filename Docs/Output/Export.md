@@ -238,7 +238,7 @@ swift run --package-path Examples Example-Export-Cutout --export-video /tmp/cuto
 
 `proRes4444` keeps the alpha losslessly and is the choice for an edit timeline. `hevcWithAlpha` is HEVC with an alpha channel beside the picture, a fraction of the size, and it plays wherever HEVC plays. A player that ignores the alpha shows the picture over black. The other codecs have no alpha channel. A see-through canvas through `h264`, `hevc`, or `proRes422` is composited over black, which is what the window shows for it too. The export says so as it starts. In code, `VideoCodec.carriesAlpha` tells the two kinds apart.
 
-The bytes are premultiplied, which is how every reader of an 8-bit image with alpha expects them. The tone map sees the straight color, so a half-covered pixel keeps the color the sketch drew at half the coverage rather than turning darker. A frame filter runs before that, on the premultiplied frame, so a blur spreads the coverage along with the color. A live feed keeps the alpha as well. A [Syphon](../Integration/Syphon.md) client and a [recording](Recording.md) of a see-through canvas receive the frame with its coverage. A VJ program then layers it as it would any other source. The window itself is opaque and paints the frame over black. Open the PNG to see the transparency. An opaque canvas keeps its opaque tag and its bytes.
+The frame comes off the renderer premultiplied, and it is tagged that way. ImageIO writes it into the PNG as straight alpha, the form PNG defines. A clip keeps it premultiplied and says so in its metadata. The tone map sees the straight color, so a half-covered pixel keeps the color the sketch drew at half the coverage rather than turning darker. A frame filter runs before that, on the premultiplied frame, so a blur spreads the coverage along with the color. A live feed keeps the alpha as well. A [Syphon](../Integration/Syphon.md) client and a [recording](Recording.md) of a see-through canvas receive the frame with its coverage. A VJ program then layers it as it would any other source. The window itself is opaque and paints the frame over black. Open the PNG to see the transparency. An opaque canvas keeps its opaque tag and its bytes.
 
 An `extended` (HDR) clip carries no alpha channel, and `hevcWithAlpha` on such a sketch falls back to `hevc`.
 
@@ -565,7 +565,7 @@ Nothing of yours moves. Your index, your working tree, `HEAD`, and every branch 
 To get the code back, you need only the file name:
 
 ```sh
-git show 93ae989:Sketch.swift      # read one file as it was
+git show 93ae989:./Sketch.swift    # read one file as it was, run from its folder
 git checkout 93ae989               # stand the whole tree up, detached
 git diff HEAD 93ae989              # see what was uncommitted at the time
 ```
@@ -640,15 +640,29 @@ swift run --package-path Examples Example-Live-Parameters --list-params
 ```
 
 ```
-5 parameters, as --param takes them
+14 parameters, as --param takes them
 
-  radius  Double  120      20...300
-  rings   Int     5        1...12
-  paper   Color   #FFFFFF
-  style   menu    dots     Dots, Rings, Mesh Lines
+  Rings
+  radius   Double   175                      10...375
+  rings    Int      5                        1...12
+  style    menu     rings                    Rings, Dots, Beads
+  anchor   Vector2  540,540                  x 0...1080, y 0...1080
 
-  Paper
-  grain   Double  0.35     0...1
+  Motion
+  speed    Double   1                        0...4
+  breathe  Bool     true
+  spacing  menu     linear                   Linear, Ease In Sine, Ease Out Sine, Ease In Out Sine, Ease In Quad, Ease Out Quad, Ease In Out Quad, Ease In Cubic, Ease Out Cubic, Ease In Out Cubic, Ease In Quart, Ease Out Quart, Ease In Out Quart, Ease In Quint, Ease Out Quint, Ease In Out Quint, Ease In Expo, Ease Out Expo, Ease In Out Expo, Ease In Circ, Ease Out Circ, Ease In Out Circ, Ease In Back, Ease Out Back, Ease In Out Back, Ease In Elastic, Ease Out Elastic, Ease In Out Elastic, Ease In Bounce, Ease Out Bounce, Ease In Out Bounce, Smoothstep
+
+  Look
+  paper    Color    #FFFFFF
+  inks     colors   #1B1B1B,#E4572E,#2E86AB  2 to 8 colors
+  fade     colors   #E4572E,#2E86AB          2 to 6 colors
+  weight   Double   2.5                      0.5...12, by 0.5
+  caption  String   rings
+
+  Advanced
+  jitter   Double   0                        0...30
+  orbit    Double   0                        -2...2, by 0.25
 ```
 
 The columns are the name, the kind of value it holds, the value it holds, and what it accepts. Groups are blocks under their own names, the way the inspector stacks its cards. A parameter a [show-rule](../Helpers/Parameters.md#show-rules) is currently hiding says so.

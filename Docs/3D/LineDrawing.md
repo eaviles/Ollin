@@ -69,9 +69,11 @@ Nothing special: the paths are drawn, and the export takes what was drawn.
 
 ```sh
 ollin Scene.swift --export-svg scene.svg
-ollin Scene.swift --export-gcode scene.gcode --width 180
-ollin Scene.swift --export-dxf scene.dxf --width 180
+ollin Scene.swift --export-gcode scene.gcode --gcode-width 180
+ollin Scene.swift --export-dxf scene.dxf --dxf-width 180
 ```
+
+`--gcode-width` and `--dxf-width` set the drawing's physical width in millimeters, 150 by default.
 
 Two habits worth keeping. Draw with `noFill()`, since a filled path is a shape a pen cannot make. And keep the stroke weight honest, since a plotter draws the pen's own width whatever the file says.
 

@@ -40,7 +40,7 @@ override var installation: Installation {
 
 ### The flags
 
-You do not have to edit a sketch to try it on a wall, or to bring a wall piece back to your desk.
+You do not have to edit a sketch to try it on a wall, or to bring it back from the wall to your desk.
 
 ```sh
 swift run --package-path Examples Example-Motion-Orbits --installation        # any sketch, full screen, left running
@@ -156,7 +156,7 @@ A crash at three in the morning leaves the wall dark until somebody notices, whi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/45-Installations/BackUp-dark.jpg">
-  <img src="../../Guide/Images/45-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
+  <img src="../../Guide/Images/45-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars in a row labeled the sketch, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
 </picture>
 
 ```swift
@@ -190,7 +190,7 @@ Restarting is off until you ask for it, even under `.on`. A piece that crashes w
 ```
 Ollin installation [2026-08-15 13:02:06]: watching this run; a piece that stops answering for 10s is started again
 Ollin installation [2026-08-15 13:02:18]: the piece crashed (signal 9) after 12s; starting it again in 1s
-Ollin installation [2026-08-15 13:02:19]: resumed the run saved at 13:02:16 (frame 596, 10s in)
+Ollin installation [2026-08-15 13:02:19]: resumed the run saved at 2026-08-15 13:02:16 (frame 596, 10s in)
 Ollin installation [2026-08-15 13:02:38]: the piece has not answered for 10s; stopping it
 ```
 
@@ -370,7 +370,7 @@ Waking from sleep is handled the same way. The assertion that keeps the display 
 An unattended run writes a log to stdout, and each line is time-stamped and flushed immediately. That log is the only record a piece running for a week has.
 
 ```
-Ollin installation [2026-08-15 08:41:45]: running unattended; Command-Q quits
+Ollin installation [2026-08-15 08:41:45]: running unattended; Command-K lines it up, Command-Q quits
 Ollin installation [2026-08-15 08:41:46]: the displays changed: now 1 (1680x1050)
 Ollin installation [2026-08-16 03:12:08]: the screens woke
 ```

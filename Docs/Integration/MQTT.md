@@ -174,7 +174,7 @@ let bus = MQTTClient(host: "localhost",
                                     text: "gone", retains: true))
 ```
 
-Pull the power on the machine and `gallery/piece/status` reads `gone` a moment later, everywhere on the bus. Call `disconnect()` and the broker discards the will instead, because leaving is not the same as being cut off. That difference is the whole point of the feature, and it is what an installation's watchdog watches.
+Pull the power on the machine and `gallery/piece/status` reads `gone` everywhere on the bus within one and a half times `keepAlive`. That is how long a broker waits on a silent client, 45 seconds at the default of 30. Call `disconnect()` and the broker discards the will instead, because leaving is not the same as being cut off. That difference is the whole point of the feature, and it is what an installation's watchdog watches.
 
 <a name="staying-up"></a>
 

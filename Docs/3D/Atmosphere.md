@@ -108,8 +108,8 @@ noVolumetricLight()
 
 It combines with `fog` in two ways:
 
-- **With fog**: the beams live in the fog's medium. They follow its density and height falloff, and they dim along their own length as they pass through it.
-- **Without fog**, beams only: the air stays clear and nothing dims. Only the beams appear, and they glow as if through a thin invisible haze. That is the dark-stage look. The example `3D/Lighting/VolumetricLight` is a gobo key light and a crossing rim beam over a black set.
+- **With fog**: the beams live in the fog's medium. They follow its density and height falloff, and they dim along their own length as they pass through it. The example `3D/Lighting/VolumetricLight` is a gobo key light and a crossing rim beam over a dark set, in a thin fog (`density: 0.02`).
+- **Without fog**, beams only: the air stays clear and nothing dims. Only the beams appear, and they glow as if through a thin invisible haze. That is the dark-stage look.
 
 <a id="quality"></a>
 ### Quality

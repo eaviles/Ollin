@@ -304,7 +304,7 @@ Timecode(frameNumber:frameRate:)    // and Timecode(seconds:frameRate:)
 var frameNumber: Int                // frames from zero, the dropped numbers not counted
 var totalSeconds: Double            // the same on the wall clock
 var fullFrameSysEx: [UInt8]         // the whole position as one system-exclusive message
-func advanced(by frames: Int) -> Timecode
+func advanced(byFrames frames: Int) -> Timecode
 cueIn < cueOut                      // Comparable, by the moment it names
 (cueIn...cueOut).contains(code)     // so a cue window is a range
 "\(code)"                           // "01:02:03:04", or "00:10:00;02" for drop frame

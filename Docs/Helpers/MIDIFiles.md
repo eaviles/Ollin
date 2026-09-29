@@ -130,7 +130,7 @@ let beat = song.beats(at: time).truncatingRemainder(dividingBy: song.lastBeat)
 
 ### Writing a file
 
-The short form takes notes and a tempo. Anything that answers in `ScheduledNote` values goes straight in, which is every pattern type in [`Composition`](./Composition.md).
+The short form takes notes and a tempo. Anything that answers in `ScheduledNote` values goes straight in, which is what a [`StepSequencer`](./Composition.md#stepsequencer) and an [`Arpeggiator`](./Composition.md#arpeggiator) hand back.
 
 ```swift
 var phrase: [ScheduledNote] = []

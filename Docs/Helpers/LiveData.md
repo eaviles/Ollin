@@ -8,7 +8,7 @@
 
 The request runs on a background queue, so `draw()` never waits for the network. The bytes are read into a `JSON` or a `Table` on that queue too, so no frame pays for the parse.
 
-Nothing throws. Before the first answer arrives, and whenever the network is down, `json` reads as null and `table`, `text`, and `bytes` are `nil`. `problem` says why. A feed with nothing to draw is in one state, not two.
+Nothing throws. Until the first answer arrives, `json` reads as null and `table`, `text`, and `bytes` are `nil`, even when the network is down. A feed with nothing to draw is in one state, not two. A failure after that keeps the last answer. `problem` says why.
 
 ### Contents
 
@@ -79,7 +79,7 @@ final class Tide: Sketch {
 
 ### Telling news from a quiet poll
 
-`updates` counts the answers that differed from the one before. A poll that brings back what the feed already had does not count, so a sketch can use the count to start an entrance:
+`updateCount` counts the answers that differed from the one before. A poll that brings back what the feed already had does not count, so a sketch can use the count to start an entrance:
 
 ```swift
 if tide.updateCount != seen {
@@ -98,7 +98,7 @@ if tide.updateCount != seen {
 |---|---|---|
 | `isRunning` | `Bool` | Whether the feed is asking. |
 | `isWaiting` | `Bool` | Whether a request is in flight right now. |
-| `failures` | `Int` | How many requests have failed in a row. It goes back to zero on the next answer. |
+| `failureCount` | `Int` | How many requests have failed in a row. It goes back to zero on the next answer. |
 | `problem` | `String?` | Why the last request failed, in a sentence a sketch can draw. It is `nil` once an answer arrives. |
 
 A failure never clears what the feed already holds. A sketch can keep drawing the last good answer with the notice over it, instead of going blank:
@@ -193,7 +193,7 @@ for message in edits.messages() {
 
 A feed that nobody drains keeps the newest few hundred messages and drops the oldest, so an undrained buffer never grows without bound.
 
-`updates` counts every message, and on a `PushFeed` a repeat still counts. A poll can bring back what a feed already had, but a push is sent because the server had something to say. `timeSinceUpdate` is seconds since the last message, or `nil` before the first one.
+`updateCount` counts every message, and on a `PushFeed` a repeat still counts. A poll can bring back what a feed already had, but a push is sent because the server had something to say. `timeSinceUpdate` is seconds since the last message, or `nil` before the first one.
 
 <a name="reconnect"></a>
 
@@ -210,7 +210,7 @@ A piece on a wall outlives any socket, so a `PushFeed` has to reconnect. The fee
 | Read | Type | Meaning |
 |---|---|---|
 | `isConnected` | `Bool` | Whether the connection is open right now. |
-| `failures` | `Int` | How many connections have failed or dropped in a row. It goes back to zero once something arrives. |
+| `failureCount` | `Int` | How many connections have failed or dropped in a row. It goes back to zero once something arrives. |
 | `problem` | `String?` | Why the connection is down, in a sentence a sketch can draw. It is `nil` while the connection is up. |
 
 <a name="export"></a>

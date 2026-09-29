@@ -500,8 +500,8 @@ PointSegmenter(_ source: any FrameSource,
 func pick(at: Vector2, in: Rectangle)        // start a fresh pick
 func include(_: Vector2, in: Rectangle)      // the pick must also cover this
 func exclude(_: Vector2, in: Rectangle)      // the pick must not cover this
-func clear()
-var pick: Pick? { get }                      // matte, cutout, score, bounds(in:)
+func reset()                                 // drop the pick and its frozen frame
+var pick: Pick? { get }                      // matte, cutout, confidence, bounds(in:)
 var isPicking: Bool { get }
 func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> Pick?
 ```
@@ -739,7 +739,7 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/FlowArrows-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. A few sit on one leg and at one foot, and none on his chest" width="680">
+  <img src="../../Guide/Images/34-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. A few sit on one leg and at one foot, and none on the chest" width="680">
 </picture>
 
 ```swift
@@ -819,7 +819,7 @@ lazy var classifier = ImageClassifier(camera)
 override func draw() {
     drawFrame(camera)
 
-    for (i, found) in classifier.labels.prefix(5).enumerated() {
+    for (i, found) in classifier.classifications.prefix(5).enumerated() {
         drawText("\(found.name) \(Int(found.confidence * 100))%", 40, 60 + Double(i) * 32)
     }
 }
@@ -827,7 +827,7 @@ override func draw() {
 
 `classifications` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other way to read the result is by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered, so a concept below the floor still reads its true, small value. That is the parameter-shaped form: "how much does this look like a plant" can drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
 
-Two things about the vocabulary are worth knowing. It is hierarchical, so one clear subject also scores every broader label above it: a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of the vocabulary every frame, mostly near zero. So `minConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
+Two things about the vocabulary are worth knowing. It is hierarchical, so one clear subject also scores every broader label above it: a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of the vocabulary every frame, mostly near zero. So `minConfidence` (default `0.1`) is what keeps `classifications` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
 
 The model is neural, so the [availability](#availability) surface applies (`isAvailable` / `unavailableReason`).
 
@@ -967,7 +967,7 @@ func detect(in: Image) async throws -> ModelOutput
 
 A model fills the surfaces that match what it outputs, decoded the same way the built-in trackers decode theirs:
 
-- **Classifier** (label + confidence outputs) → `labels` / `topClassification` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
+- **Classifier** (label + confidence outputs) → `classifications` / `topClassification` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
 - **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*: a white-alpha `Image` like the segmentation matte. `tint(_:)` recolors it, and drawing it into the frame's rectangle stretches it onto the picture. `value(at:in:)` gives the value under any canvas point, the same field-shaped query that [`SaliencyTracker`](#saliencytracker) offers. It answers `0…1`, and out-of-range points clamp to the edge. `image` is the output as a *picture*, in full color, for a model that paints rather than measures. A style-transfer model's stylized frame draws as any image would (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays only for the reading it uses.
 - **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes that `bounds(in:)` maps onto the canvas.
 - **Semantic segmenter** (a model whose output is a plane of class indices, one per pixel, the DeepLabV3 form) → `classMask`, a [`ClassMask`](#classmask). A class mask reads three ways. It says which classes are in frame and how much of the picture they fill. It gives the class under any canvas point. And it hands over each class as a drawable, tintable mask. The model's own vocabulary comes along when it declares one, as Apple's gallery models do.

@@ -4,9 +4,9 @@
 
 ## Variations
 
-A seeded sketch is a *generator*. One number decides which of its many possible pieces you are looking at. Ollin names that number `variation`. It shows the number while the sketch runs and embeds it in every export. It also gives you tools to explore the other pieces the same sketch can produce. You can step to the next seed, roll a random one, or proof a whole range as a contact sheet. Once you find a piece you want to keep, you re-render it at full resolution.
+A seeded sketch is a *generator*. One number decides which of its many possible compositions you are looking at. Ollin names that number `variation`. It shows the number while the sketch runs and embeds it in every export. It also gives you tools to explore the other compositions the same sketch can produce. You can step to the next seed, roll a random one, or proof a whole range as a contact sheet. Once you find a variation you want to keep, you re-render it at full resolution.
 
-Nothing on this page changes what a sketch draws. These tools change only how you find the piece you want to keep.
+Nothing on this page changes what a sketch draws. These tools change only how you find the variation you want to keep.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/SeedSheet-dark.jpg">
@@ -52,7 +52,7 @@ override func setup() {
 }
 ```
 
-A sketch that does this always reproduces the same piece. Use `seed(_:)` once you have found a composition you want to keep. Leave the call out and the sketch keeps rolling a new variation on every run.
+A sketch that does this always reproduces the same composition. Use `seed(_:)` once you have found a composition you want to keep. Leave the call out and the sketch keeps rolling a new variation on every run.
 
 `randomSeed(_:)` and `noiseSeed(_:)` still reseed one generator each. Neither call changes the seed for the whole run, so `variation` still names the seed the sketch started with.
 
@@ -126,13 +126,13 @@ Seed exploration is worthwhile when the seed decides *composition*, not just jit
 
 ```swift
 override func setup() {
-    let palette = randomChoice(palettes)     // which colors this piece uses
+    let palette = randomChoice(palettes)     // which colors this seed uses
     let spacing = random(70, 130) * scale    // how dense it is
     discs = poissonDisk(in: field, radius: spacing).map { … }
 }
 ```
 
-Now every seed is a different piece rather than the same piece with a small jitter. Compare `Examples/Randomness/Variations` (a whole composition per seed) with `Examples/Randomness/RandomBand` (the same band, re-jittered).
+Now every seed is a different composition rather than the same one with a small jitter. Compare `Examples/Randomness/Variations` (a whole composition per seed) with `Examples/Randomness/RandomBand` (the same band, re-jittered).
 
 [`random`](../Generators/Random.md) and [`noise`](../Generators/Noise.md) are both seeded from `variation`. So anything built on them (the scatter helpers, `poissonDisk`, the L-systems, flow fields, packing, boids) follows the seed automatically.
 

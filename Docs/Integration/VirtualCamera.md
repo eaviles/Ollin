@@ -81,7 +81,7 @@ While no sketch is feeding it, the camera shows a broadcast-style test card. The
 
 ### How frames travel
 
-The published frame is the rendered canvas, taken straight from the GPU. It travels the same rendered-texture path that Syphon publishes through. Ollin scales the picture to fit the camera's fixed **1280×720** frame. When the aspect ratio does not match, Ollin centers the picture over black bars. A 16:9 canvas fills the camera frame exactly, so set `canvasSize = .size(1280, 720)` when you want that. The default square canvas gets pillarbox bars. The frame crosses to the camera extension as shared memory (an IOSurface), so there is no CPU round-trip in the sketch's process.
+The published frame is the rendered canvas, taken straight from the GPU. It travels the same rendered-texture path that Syphon publishes through. Ollin scales the picture to fit the camera's fixed **1280×720** frame. When the aspect ratio does not match, Ollin centers the picture over black bars. A 16:9 canvas fills the camera frame exactly, so write `override var canvasSize: CanvasSize { .size(1280, 720) }` when you want that. The default square canvas gets pillarbox bars. The frame crosses to the camera extension as shared memory (an IOSurface), so there is no CPU round-trip in the sketch's process.
 
 Color travels as display-ready bytes, which are sRGB-encoded, so tones in the camera match the sketch window. The camera runs at 30 fps. A faster sketch publishes every other frame, and a slower sketch updates the camera at its own pace.
 

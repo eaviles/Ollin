@@ -7,7 +7,7 @@
 A `Mesh` is geometry, and geometry can be built. Writing a mesh out as STL, OBJ, or 3MF is how a generated form leaves the screen and becomes an object you can hold. This is the 3D counterpart of sending vector line-work to a [pen plotter](./Export.md#vector-svg).
 
 ```swift
-sculpture.write(to: "sculpture.3mf")
+try sculpture.write(to: "sculpture.3mf")
 ```
 
 That is the whole call. The format comes from the file extension. Ollin prepares the mesh on the way out, so the file describes a solid rather than a picture of one.
@@ -19,8 +19,8 @@ That is the whole call. The format comes from the file extension. Ollin prepares
 A `Mesh` carries bare numbers, and a printer needs millimeters. To join the two, you declare what one model unit means, and you scale the mesh to the size you want:
 
 ```swift
-sculpture.normalized(scale: 60).write(to: "pendant.3mf")             // 60 mm across
-sculpture.normalized(scale: 6).write(to: "pendant.3mf", unit: .centimeter)
+try sculpture.normalized(scale: 60).write(to: "pendant.3mf")             // 60 mm across
+try sculpture.normalized(scale: 6).write(to: "pendant.3mf", unit: .centimeter)
 ```
 
 `normalized(scale:)` does the two things a build platform needs. It centers the mesh on the origin, and it fits the longest side to the size you ask for. The `unit` argument then says how to read those numbers. It defaults to millimeters, because nearly every consumer assumes millimeters when a file does not say.
@@ -64,7 +64,7 @@ let check = sculpture.printCheck()
 print(check.summary)          // "9360 triangles, 60.00 x 52.50 x 26.02 units: ready to print"
 
 if check.isPrintable {
-    sculpture.write(to: "sculpture.3mf")
+    try sculpture.write(to: "sculpture.3mf")
 } else {
     for problem in check.problems { print(problem) }
 }

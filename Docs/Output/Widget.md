@@ -64,7 +64,7 @@ The rest of the frame's clock follows from that:
 | `date` | The moment itself, for anything the day of the week or the month decides. |
 | `frameCount` | 1. Every picture is the first frame of its own sketch. |
 
-`date` is worth one more line. A widget's pictures are drawn *before* their moments come, so a piece that asks `Date()` is asking about the wrong time, sometimes by an hour. `date` is the moment being drawn, and at a desk it is simply now, so a piece written against it reads correctly on both. [A day schedule](./Installation.md) reads it too.
+`date` is worth one more line. A widget's pictures are drawn *before* their moments come, so a sketch that asks `Date()` is asking about the wrong time. Under the default run, the last picture is drawn up to 45 minutes early, and a wider spacing makes that longer. `date` is the moment being drawn, and at a desk it is simply now, so a sketch written against it reads correctly on both. [A day schedule](./Installation.md) reads it too.
 
 ### How far apart the pictures sit
 

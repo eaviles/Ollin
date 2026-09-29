@@ -660,7 +660,7 @@ Surfaces share the room mesh's world space and its scan number, so a new run of 
 
 ## The room's light
 
-The phone measures the light around it from its own camera image. It does this in **every** mode, a few times a second, so a sketch can match the light in the room.
+The phone measures the light around it from its own camera image. It does this a few times a second, so a sketch can match the light in the room. Every mode that runs an ARKit session reports it. Selfie, Touch, and Sketch run none, so the last reading holds there.
 
 ```swift
 if let light = device.latestLight {

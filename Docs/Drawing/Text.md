@@ -304,7 +304,7 @@ This trailing-closure form of `drawText` hands you each glyph as a `TextGlyph` i
 ```swift
 textAlign(.center, .middle)
 drawText("ollin", at: center) { g in
-    fill(palette.color(at: g.t))                 // a hue per letter
+    fill(palette.color(at: g.progress))          // a hue per letter
     withState {
         translate(0, sin(time * 3 - Double(g.index) * 0.7) * 60)   // bob on a wave
         g.draw()
@@ -317,7 +317,7 @@ The closure runs once per **piece**. A piece is one character in Latin, a whole 
 A `TextGlyph` carries:
 
 - `text` is the source characters of the piece, and `character` is the first of them.
-- `index` and `count` are its place in the run, and `t` is the normalized position `0...1` across it.
+- `index` and `count` are its place in the run, and `progress` is the normalized position `0...1` across it.
 - The order runs left to right on the canvas, even for a right-to-left script that reads the other way.
 - `position` is the pen origin in canvas space, at the left edge and on the baseline. `center` is the natural pivot for rotating the glyph in place, and `bounds` is its advance box.
 - `shapes` is the glyph geometry in canvas space, for text-as-geometry per letter.

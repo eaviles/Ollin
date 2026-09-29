@@ -53,7 +53,7 @@ Each throws a `Record3DError`: `.fileNotFound` or `.resourceNotFound` when nothi
 
 ```swift
 var frameCount: Int          // RGBD frames in the recording
-var fps: Double              // the clip's frame rate (0 if unstated)
+let frameRate: Double        // the clip's frame rate (0 if unstated)
 var intrinsics: CameraIntrinsics   // at the capture resolution
 ```
 

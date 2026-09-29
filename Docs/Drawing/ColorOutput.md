@@ -47,7 +47,7 @@ Gamut and range are two separate things, and they answer different questions.
 
 ```swift
 let wideRed = Color(displayP3: 1, green: 0, blue: 0)
-// wideRed.red is about 1.08, .green about -0.08: outside sRGB, on purpose
+// wideRed.red is about 1.09, .green about -0.54: outside sRGB, on purpose
 wideRed.isOutsideSRGB          // true
 wideRed.displayP3Components    // back to (1, 0, 0)
 ```
