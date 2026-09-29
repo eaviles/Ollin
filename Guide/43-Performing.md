@@ -121,11 +121,11 @@ Then make it yours:
 - Bind `bend` to a MIDI knob, as in [Chapter 38](38-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing). The set then has a second instrument. Learn a pad onto **Next cue** in the host's Controls card, as [below](#the-host-on-a-controller-osc-and-learned-midi) shows, and step between the looks without the mouse.
 - Perform a sketch from earlier in the guide, since any of them runs in the host as it is. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring)'s breathing ring has no `setup()`, so every edit to its `draw()` carries the run. A sketch that builds its state in `setup()` starts over on each evaluation instead.
 
-Keep the set as you play it. Press ⌘⇧R before the first evaluation, and the take keeps every evaluation and every cue as it happened. Save the buffer with ⌘S. For a clean copy of a look, export the saved file as video. `--cue` picks the look it renders:
+Keep the set as you play it. Press ⌘⇧R before the first evaluation, and the take keeps every evaluation and every cue as it happened. Save the buffer with ⌘S. For a clean copy of a look, export the saved file as video. `--cue` picks the look it renders, and `--cues` names the file the cues were saved in:
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --export-video finale.mp4 --seconds 12
-swift run OllinLive MySketches/Finale.swift --export-video shatter.mp4 --seconds 12 --cue shatter
+swift run OllinLive MySketches/Finale.swift --export-video shatter.mp4 --seconds 12 --cues MySketches/Finale.cues.json --cue shatter
 ```
 
 ## More of the performance host: completion, a controller, and the drag
@@ -146,7 +146,7 @@ The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on th
 
 ## A night you can play again: replay
 
-The set's cues bring back a look, and its movie keeps what the night looked like. A take file keeps the performance itself, so a run played by hand can be played again, frame for frame.
+The set's cues bring back a look, and its movie keeps what the night looked like. A set can also be kept as the run itself, to play again frame for frame.
 
 ### Playing the night again: replay
 

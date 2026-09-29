@@ -6,7 +6,7 @@
 
 <img src="Images/40-MusicByRule/MusicBox.jpg" alt="A dark piano roll scrolling right to left: gold marks low down for a plucked string, blue ones through the middle for a bell, and long pink ones for breath, the highest of them across the top, with faint bar lines and a playhead at the right edge" width="560">
 
-Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly and swung, pitch as numbers, chords and progressions from a key, and a chain that learned a phrase. The music box above plays by itself, draws each note as it plays it, and writes what it played to a MIDI file. The families after it hold a sequencer, an arpeggiator, other tunings, a beat from the room, reading a file, and sound from a place.
+Rules can decide which notes a sketch plays, and when. You learn rhythms spread evenly and swung, pitch as numbers, chords and progressions from a key, and a chain that learned a phrase. The music box above plays by itself, draws each note as it plays it, and writes what it played to a MIDI file. The families after it hold a sequencer, an arpeggiator, other tunings, a beat from the room, numbers played as notes, reading a file, and sound from a place.
 
 ## Beats and note lengths: `Tempo` and `NoteLength`
 
@@ -224,17 +224,17 @@ override func keyPressed() {
 
 `write(to:)` throws when the file cannot be written, and `try?` skips the write if it does. The notes keep the timing they were played with, each `after:` wait included, so a swung pattern arrives swung. The tempo you give decides only where the bar lines fall around what was played. `stopRecording()` hands back the same file and ends the take.
 
-A file can hold several parts, called **tracks**, each on a MIDI channel of its own. A program that opens the file shows each track as a line of its own. `MIDIFile.Track` wraps one synth's notes as a track, and the long form of `MIDIFile` puts tracks together. Here the progression's pad and bass become two tracks:
+A file can hold several parts, called **tracks**, each on a MIDI channel of its own, numbered from 1 to 16. A program that opens the file shows each track as a line of its own. `MIDIFile.Track` wraps one synth's notes as a track, and the long form of `MIDIFile` puts tracks together. Here the progression's pad and bass, each started with `startRecording(tempo:name:)` in `setup()`, become two tracks:
 
 ```swift
-let parts = [MIDIFile.Track(pad.recordedSoFar().notes, name: "chords", channel: 0),
-             MIDIFile.Track(bass.recordedSoFar().notes, name: "bass", channel: 1)]
+let parts = [MIDIFile.Track(pad.recordedSoFar().notes, name: "chords", channel: 1),
+             MIDIFile.Track(bass.recordedSoFar().notes, name: "bass", channel: 2)]
 let file = MIDIFile(format: .parallelTracks, name: "Changes", tracks: parts,
                     tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
 try? file.write(to: "changes.mid")
 ```
 
-`.parallelTracks` is the kind of file whose tracks play together. `tempoChanges` gives the file its speed. A file built from tracks has none until you give one, and a program that opens it then assumes 120 beats a minute.
+`.parallelTracks` is the kind of file whose tracks play together. `tempoChanges` gives the file its speed. Ollin writes the tempo into a first track of its own, which a sequencer shows as the song's tempo rather than as a part. A file built from tracks has none until you give one, and a program that opens it then assumes 120 beats a minute.
 
 ## Putting it together: the music box
 
@@ -337,9 +337,9 @@ final class MusicBox: Sketch {
     // Press S to save what has played so far, one track a voice.
     override func keyPressed() {
         guard key == "s" else { return }
-        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 0),
-                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 1),
-                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 2)]
+        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 1),
+                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 2),
+                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 3)]
         let file = MIDIFile(format: .parallelTracks, name: "Music box", tracks: parts,
                             tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
         try? file.write(to: "music-box.mid")
@@ -349,7 +349,7 @@ final class MusicBox: Sketch {
 
 > **Swift note.** `MarkovChain<Int>(seed: 4)` makes an empty chain of whole numbers. The type in angle brackets says what the chain holds, which Swift cannot tell from an empty chain. `learn(_:loops:)` teaches it in `setup()`. `struct Played` is declared inside the class, which is how a type that only this sketch uses stays with it. The sketch's own `play(_:_:at:late:beats:voice:velocity:)` shares its name with the synth's, and Swift tells them apart by their labels.
 
-A few lines need a closer look. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out. The scale inside `draw()` is named `key`, which works because it is a local name. A property of the sketch cannot use that name, since `key` is already the sketch's last key pressed, which `keyPressed()` reads. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat, and `step / steps` is its bar. `late` is the swing's wait, and the sketch's `play` hands it to the synth as `after:`. It also writes the note into `score` at the beat it sounds, wait included. `tempo.seconds(beats:)` turns a length in beats into seconds. The progression is written in the same key an octave up, so the bell's arpeggio climbs through each bar's chord above the low line. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The breath takes its pitch from the step's place in the bar, `step % steps`, which gives E5 on its first strike and D6 on its second. It snaps that to the key.
+A few lines need a closer look. `polyphony:` is how many notes a synth can sound at once, sixteen when you leave it out. The scale inside `draw()` is named `key`, which works because it is a local name. A property of the sketch cannot use that name, since `key` is already the sketch's last key pressed, which `keyPressed()` reads. `Double(step) / 4` is the step's time in beats, since there are four steps to a beat, and `step / steps` is its bar. `late` is the swing's wait, and the sketch's `play` hands it to the synth as `after:`. It also writes the note into `score` at the beat it sounds, wait included. `tempo.seconds(beats:)` turns a length in beats into seconds. The progression is in the same key an octave up, so the bell plays each bar's chord above the low line. `motif.next() ?? 0` is the Markov step's degree, fed through the key. The breath takes its pitch from the step's place in the bar, `step % steps`, which gives E5 on its first strike and D6 on its second. It snaps that to the key.
 
 The second part is the drawing, and it knows nothing about sound. Every note the music played was written into `score` as it went. The picture reads that list, with time across and pitch up. How long each note holds is the length of its mark, and how hard it was struck is its weight. `drawScore` draws a faint line at every fourth beat for the bar lines, then each note, then a line at the current beat.
 

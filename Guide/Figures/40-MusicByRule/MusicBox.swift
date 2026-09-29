@@ -103,9 +103,9 @@ final class MusicBox: Sketch {
     // Press S to save what has played so far, one track a voice.
     override func keyPressed() {
         guard key == "s" else { return }
-        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 0),
-                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 1),
-                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 2)]
+        let parts = [MIDIFile.Track(string.recordedSoFar().notes, name: "steel string", channel: 1),
+                     MIDIFile.Track(bell.recordedSoFar().notes, name: "patched bell", channel: 2),
+                     MIDIFile.Track(air.recordedSoFar().notes, name: "breath", channel: 3)]
         let file = MIDIFile(format: .parallelTracks, name: "Music box", tracks: parts,
                             tempoChanges: [MIDIFile.TempoChange(beat: 0, tempo: tempo)])
         try? file.write(to: "music-box.mid")

@@ -5,7 +5,7 @@
 // by noise, posterized to a screen-print, set slowly spinning through the
 // color wheel. Three of its numbers are parameters, which the set saves as
 // cues and calls back; this is the look called back, at the values declared.
-// Every value is animated, so the picture never sits still. The file is the
+// The chain moves every frame, so the picture never sits still. The file is the
 // chapter's listing.
 import Ollin
 
