@@ -278,7 +278,7 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `i.isMultiple(of: 2)` | Whether `i` divides evenly by 2, the same test as `i % 2 == 0`. | [Chapter 17](17-MarksAndMedia.md#ink-on-water-marbling) |
 | `60_000` | Underscores group the digits of a long number, and Swift ignores them. | [Chapter 22](22-IteratedForms.md#the-same-fern-played-as-a-game-the-chaos-game) |
 | `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) |
-| `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
 | `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 37](37-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
 
 ### Loops and choices
@@ -321,7 +321,7 @@ Arrays hold most of a sketch's data. The chapters use a few more of their calls,
 | `reserveCapacity(n)` | Sets room aside for `n` elements before a loop fills the list, so it never has to grow. | [Chapter 22](22-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
 | `[Character: WireworldCell]` | A dictionary, a table from keys to values. `legend[ch]` looks a key up and answers an optional, since the key might be missing. | [Chapter 24](24-Automata.md#a-circuit-made-of-cells-wireworld) |
 | `[UInt8](repeating: 0, count: n)` | A list of `n` copies of one value. `UInt8` is a whole number from 0 to 255, one byte. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 29](29-Landscapes.md#putting-it-together-the-valley) |
+| `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
 | `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 37](37-Listening.md#words-as-they-are-spoken-speechlistener) |
 | `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 38](38-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
 | `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 38](38-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
@@ -358,7 +358,7 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `{ i -> Vector2 in … }` | A closure that says what type it returns, for when Swift cannot work it out alone. | [Chapter 15](15-ShapesAsMaterial.md#putting-it-together-the-plate) |
 | `func handwrite(_ path: Contour) -> StrokeMark` | A function that returns a value. The type after `->` is what comes back, and `return` hands it over. A body that is one expression returns it without the word. | [Chapter 17](17-MarksAndMedia.md#putting-it-together-the-monogram) |
 | `func midpoint<V: Vector>(_ a: V, _ b: V) -> V` | A generic function. `V` stands for any type that is a `Vector`, so one function serves `Vector2` and `Vector3`. | [Chapter 26](26-3DGently.md#where-things-are-in-the-world-vector3-and-world-units) |
-| `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
 | `self.bareness(u, v)` | Inside a closure, `self.` names the sketch's own method. Some closures require it, and a listing may write it anyway to show whose method it is. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `func draw(_ collider: Collider3D, tint: Color?)` | Two functions can share a name when their labels or argument types differ, as this one does with the sketch's `draw()`. | [Chapter 30](30-WorldsWithWeight.md#putting-it-together-the-contraption) |
 | `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |

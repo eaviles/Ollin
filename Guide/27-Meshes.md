@@ -4,7 +4,9 @@
 
 # 27. Meshes and maps
 
-Meshes can come from a file, and pictures can decide their surfaces. You load a model, wrap a picture around it, and let the computer round a crude cage into a smooth form. Pictures called maps then tilt the light, say what the surface is made of, and carve depth into it. A picture can also go on from three sides, as detail for a close look, or as a stamp across the scene. Whole scenes from a file and more ways to make a mesh follow.
+<img src="Images/27-Meshes/RakedGarden.jpg" alt="A bed of pale sand seen at a downward slant, raked into straight grooves that run across it and bend into rings around three dark rounded stones: a wide flat one on the left, a tall egg-shaped one farther back in the middle, and a small one on the right. The stones are dark gray, mottled with soft pale patches, and each throws a shadow toward the lower right. Three small red leaves with five pointed lobes lie in the scene, one on top of the wide stone and two on the sand. A dark olive band runs along the far edge" width="560">
+
+A mesh can come from a file or from a rough cage you round, and pictures give its surface color, grain, and depth. With them a plain solid can pass for stone, sand, or worn paint. The raked garden at the top rounds stones from boxes, presses grooves in from a picture, and drifts red leaves over sand and stone. After it come maps that tilt the light and set the material, whole scenes from a file, and more ways to make a mesh.
 
 ## A mesh from a file
 
@@ -78,13 +80,228 @@ Any mesh works as a cage with no preparation: the primitives, an extrusion, a la
 
 This is `setup()`-shaped work. Each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` draw it. Two or three levels is almost always enough.
 
-## Pictures that change the surface: normal, surface, and height maps
+## Depth from a picture: height maps
 
-The cage came out smooth, and the checker on the globe changed only its color. A picture on a mesh can change more than color. A normal map changes the direction a surface faces, and the surface maps change what it is made of from point to point. A height map changes its depth. Normal and height maps hand the renderer detail it would otherwise need geometry for, and the geometry stays as coarse as it was.
+The cage gave you a smooth form, and the pictures so far only colored a surface. A **height map** gives a surface depth. The red channel is height, white is the surface, and darker is carved in below it. One image, and Ollin reads it two ways.
+
+<img src="Images/27-Meshes/HeightRelief.jpg" alt="Three cratered tan spheres seen slightly from the side: a parallax-mapped one whose craters sink deep yet whose outline is a perfect circle, a displaced one with a bumpy cratered rim, and a bare control with flat dark spots" width="680">
+
+```swift
+let moon = base.textured(dust).parallaxMapped(craterHeights, scale: 0.06)
+let rock = base.displaced(by: craterHeights, scale: 0.13).textured(dust)
+```
+
+**`parallaxMapped(_:scale:)`** is the shading read. At every pixel the renderer marches your line of sight down into the height field and finds where it lands. Then it reads the base texture, and every other map on the mesh, *there* instead of at the flat surface. Crevices sink, slide against their rims as the view moves, and hide their far walls, as carving does. And still not one vertex has moved. `scale` is the depth of the relief as a fraction of the picture's tile. It needs the mesh's texture coordinates. At each point it also has to know which way the picture's u and v run across the surface. That frame is the *tangent basis*, and `parallaxMapped` builds it for you.
+
+**`displaced(by:scale:)`** is the geometry read. Every vertex moves along its normal by the height at its spot on the picture, and the normals are recomputed. The relief becomes true of the mesh, with `scale` now in the mesh's own units. It is work done once, so do it in `setup()` and keep the result. The detail you get is the *mesh's* to give, since a plane with more `segments` carves finer.
+
+The outlines in the figure carry the lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read. The shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is cratered, in shadow and reflection too. Inside the outline the two are nearly twins, so parallax gives you the depth without the triangles. When the edge matters, displace. When it doesn't, march.
+
+White stays put in both readings. A height map's white regions *are* the authored surface. So the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. USD files carry the map in and out, since `saveScene` writes it to the preview surface's displacement slot. glTF has no place to put one.
+
+## A picture from three sides: triplanar
+
+The cage step left a small problem. A texture maps through uvs, and a subdivided cage comes back without them. So do the blobs [Chapter 32](32-SculptingWithFields.md) turns from a field into a mesh. `textured(_:)` has nothing to hold onto.
+
+`triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis. Picture three slide projectors aimed down x, y, and z. Every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it. A 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
+
+Here it is on `grown`, a folded ball with no uvs, made by the [surface growth](#a-surface-that-outgrows-itself-differential-growth) later in this chapter:
+
+```swift
+drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
+```
+
+<img src="Images/27-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball with the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
+
+`scale` is the size of one tile in world units. The `normal:` argument takes a **normal map**, a picture that stores which way the surface faces at each point. It tilts the light to show relief without moving the surface, and it uses the same projection. [Its own entry](#relief-from-a-picture-normal-maps) after the finished sketch says more. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles. Its normal map is the slope of that photograph's own brightness, which is why the painted design reads as molded rather than printed on. The folded ball has no uvs and no tangent basis, and nobody cut its surface flat to lay a picture on it. The projection works on any mesh you can make or load.
+
+The projection asks one thing of you in return: **the picture has to tile.** It repeats across the whole surface whatever any wrap setting says. If the left edge and the right edge of your map disagree, every wrap draws a straight line. A picture cut to whole repeats of its pattern joins up. A map authored with `fbm(u * 8, v * 8)` does not join. The field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
+
+```swift
+// u and v run 0...1 across the map you are filling
+let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
+```
+
+`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that shows most. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench in [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) gets its stone this way.
+
+The picture stands still and the surface moves through it, which helps in one case and hurts in another. The cairn is three separate boxes drawn one after another. The pattern runs unbroken across all three, because they stand in the same projected picture. That is why the technique is the usual choice for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along. So a body that travels should have uvs. A form that grows or changes shape in place shows the pattern flowing across it, as the blob in the `3D/Materials/Triplanar` example does.
+
+The projection carries the base texture and a normal map. Every other map still reads uvs, the height map among them. The [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on parameters.
+
+## Texture that survives a close look: detail maps
+
+Triplanar repeats one picture at one size. Every texture has a budget, too, and it is counted in texels, the pixels of a picture laid on a surface. A picture sized to cover a whole boulder spends all its texels on the big shapes. The moment the camera leans in, the surface runs out of information and dissolves into soft nothing. Real rock does not do that. Get closer and there is always another scale of grain waiting.
+
+`detailMapped` adds that second scale. It tiles a much finer texture pair across the base one, a color map and a normal map. They repeat several times per base tile, so the close look finds grain the base never carried.
+
+```swift
+drawMesh(boulder
+    .textured(rock)
+    .normalMapped(rockBumps)
+    .detailMapped(grain, normal: grainBumps, scale: 12))
+```
+
+<img src="Images/27-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
+
+The left sphere has only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. The boulder also carries a base normal map, hung on with `normalMapped`. The detail normal map is *reoriented onto* that base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
+
+`scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the off switch. A pair tiled dozens of times over is the first thing that would break up in the distance. A loaded picture reads its smaller copies there, but a pair you wrote from bytes has none to fall back on. Keep the scale in the range your framing shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres and the detail pair on one of them. The tile count and amount sit on parameters while the camera sways close.
+
+## A picture stamped onto the scene: decals
+
+Everything so far dressed one mesh. A sticker does not care about meshes. Put it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
+
+A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box. Every surface inside the box receives the picture, composited over the surface's own color before lighting. So it shades like paint rather than like a glowing overlay.
+
+```swift
+var sticker: Decal!
+
+override func setup() {
+    sticker = Decal(try! loadImage("label.png"))
+}
+
+override func draw() {
+    // camera, lights, floor, crates ...
+    drawDecal(sticker, at: dropPoint, width: 140)   // projects straight down by default
+}
+```
+
+<img src="Images/27-Meshes/Stamped.jpg" alt="A gray floor with two tan crates: a red, white, and blue roundel stamped across the floor and continuing up over a crate's top, a black and yellow striped tag on the crate's front face, and a half-transparent yellow ring overlapping the roundel on the floor" width="680">
+
+The box has a direction, a width and height, and a depth. The placement is per-frame state like a light. Move `at:` and the stamp slides across the scene. It crosses from the floor up onto a crate and over its far edge, conforming to whatever it touches. Transparency in the image is honored, and later decals composite over earlier ones. A surface standing edge-on to the projection fades the stamp out instead of smearing it down the side. Without that fade, every wall would show the smear.
+
+A decal is paint, so it takes the finish of the surface it lands on. Stamp a rough floor and the mark is matte. Stamp polished metal and it sits under the shine. The [reference page](../Docs/3D/3D.md#decals) has the envelope: eight per frame, which surfaces receive them, and what mirrors show. The `3D/Materials/Decals` example slides a roundel across floor and crates on a loop, with the size, a roll, and a see-through ring on parameters.
+
+## Putting it together: the raked garden
+
+Make `MySketches/RakedGarden.swift`. Its sand is a plane [textured](#a-picture-wrapped-around-it-textured) with a picture, carved by a [height map](#depth-from-a-picture-height-maps) read as geometry, and given grain by a [detail map](#texture-that-survives-a-close-look-detail-maps). Its stones are boxes rounded by [subdivision](#smooth-from-a-cage-subdivision-surfaces), their granite put on by a [triplanar](#a-picture-from-three-sides-triplanar) projection, and its leaves are one [decal](#a-picture-stamped-onto-the-scene-decals) placed three times. Every picture is written in code, so the sketch needs no files.
+
+```swift
+import Ollin
+
+final class RakedGarden: Sketch {
+    // Each stone: where it sits, the box its cage starts as, and how far it is turned.
+    let stones: [(x: Double, z: Double, size: Vector3, turn: Double)] = [
+        (-1.7, 0.3, Vector3(1.9, 0.62, 1.3), 0.3),
+        (-0.2, -1.4, Vector3(0.8, 1.5, 0.75), -0.2),
+        (2.4, 1.2, Vector3(1.0, 0.5, 0.75), 0.9),
+    ]
+    var sand = Mesh(positions: [], indices: [])
+    var pebbles: [Mesh] = []
+    var leaf: Decal?
+
+    /// A square picture from a function of its own coordinates, u across and v down.
+    func picture(size: Int, _ shade: (Double, Double) -> Color) -> Image {
+        let image = Image(width: size, height: size)
+        for y in 0 ..< size {
+            for x in 0 ..< size {
+                image[x, y] = shade((Double(x) + 0.5) / Double(size), (Double(y) + 0.5) / Double(size))
+            }
+        }
+        return image
+    }
+
+    /// The rake's height at a point of the bed: rings around the stones, lines elsewhere.
+    func rake(_ u: Double, _ v: Double) -> Double {
+        let p = Vector2((u - 0.5) * 10, (v - 0.5) * 9)       // the point's x and z on the bed
+        var gap = 99.0                                       // how far to the nearest stone
+        for s in stones {
+            gap = min(gap, p.distance(to: Vector2(s.x, s.z)) - (s.size.x + s.size.z) * 0.25 - 0.1)
+        }
+        let across = gap < 0.9 ? max(gap, 0) : p.y
+        return 0.5 + 0.5 * cos(across * .tau / 0.2)          // one groove every 0.2 units
+    }
+
+    override func setup() {
+        noiseSeed(27)
+
+        // The sand: a picture wrapped on, the rake carved in, and grain for a close look.
+        let heights = picture(size: 800) { u, v in Color(white: rake(u, v)) }
+        let tone = picture(size: 200) { u, v in Color(white: 0.7 + 0.2 * fbm(u * 9, v * 8)) }
+        let grain = picture(size: 64) { u, v in                  // gray is the neutral
+            Color(white: 0.3 + 0.4 * tilingFbm(u, v, detail: 16, octaves: 2))
+        }
+        sand = Mesh.plane(width: 10, depth: 9, segments: 400)
+            .displaced(by: heights, scale: 0.04)
+            .textured(tone)
+            .detailMapped(grain, scale: 18)
+
+        // Boxes rounded into stones. They come back with no uvs, so the granite is projected.
+        let granite = picture(size: 256) { u, v in
+            let n = smoothstep(0.3, 0.7, tilingFbm(u, v, detail: 5, octaves: 5))
+            return Color.mix(Color(hex: 0x3D3F42), Color(hex: 0x9C988F), n)
+        }
+        pebbles = stones.map { s in
+            Mesh.box(width: s.size.x, height: s.size.y, depth: s.size.z)
+                .subdivided(levels: 3)
+                .triplanarTextured(granite, scale: 1.4)
+        }
+
+        // A leaf: five pointed lobes, and clear everywhere outside them.
+        leaf = Decal(picture(size: 128) { u, v in
+            let x = u - 0.5, y = v - 0.5
+            let r = (x * x + y * y).squareRoot()
+            let lobe = abs(sin(atan2(x, -y) * 2.5))           // 0 along a lobe, 1 between two
+            let inside = 1 - smoothstep(-0.01, 0.01, r - 0.45 + 0.27 * lobe)
+            return Color.mix(Color(hex: 0xEC7C2F), Color(hex: 0xA3201A), r / 0.45).withAlpha(inside)
+        })
+    }
+
+    override func draw() {
+        background(Color(hex: 0x1B2024))
+        cameraShowcase(target: Vector3(0, 0.2, 0), radius: 9, elevation: 0.8, fieldOfView: .pi / 4.2)
+        ambientLight(Color(hex: 0x30363F))
+        directionalLight(Color(hex: 0xFFD4A0), direction: Vector3(0.55, -0.5, 0.65), intensity: 1.15)
+        headlight(Color(hex: 0x9DB2D6), intensity: 0.25)     // lifts the sides turned from the sun
+        castShadows()
+
+        material(.matte)
+        fill(Color(hex: 0x323E27))                           // moss around the bed
+        withState { translate(0, -0.05, 0); drawPlane(width: 40, depth: 40) }
+        fill(.white)
+        drawMesh(sand)
+
+        for (s, pebble) in zip(stones, pebbles) {
+            withState { translate(s.x, s.size.y * 0.3, s.z); rotateY(s.turn); drawMesh(pebble) }
+        }
+
+        // Three leaves drift across on the breeze, over sand and stone alike.
+        if let leaf {
+            for (i, lane) in [0.35, 2.4, -2.2].enumerated() {
+                let along = (time * 0.03 + 0.37 + Double(i) * 0.17).truncatingRemainder(dividingBy: 1)
+                drawDecal(leaf, at: Vector3(-6 + 12 * along, 0.5, lane), width: 0.42, depth: 3,
+                          roll: time * 0.2 + Double(i) * 2)
+            }
+        }
+    }
+}
+```
+
+> **Swift note.** `stones` holds tuples, several values carried together as one, and their parts have names. So a stone reads as `s.x` and `s.size` rather than `s.0` and `s.2`. The type after `stones:` names the parts, so each entry lists its values in order without them. `picture` takes a function as its last argument, `shade: (Double, Double) -> Color`, which turns two numbers into a color. Each call hands it a closure after the parentheses, and `picture` calls that closure once for every pixel. `.squareRoot()` is the square root of the number before it. `Mesh(positions: [], indices: [])` is an empty mesh that holds the property's place until `setup()` fills it.
+
+Here is what each part does:
+
+- **The rake.** `rake` is the function the height map is drawn from. It turns the picture's `u` and `v` into a point `p` on the bed, which is 10 units wide and 9 deep. A `Vector2` calls its second part `y`, so `p.y` is the bed's z. `gap` is roughly how far `p` is from the edge of the nearest stone. Within 0.9 of a stone the grooves follow `gap`, so they run in rings. Everywhere else they follow `p.y` and run straight across. The cosine turns either distance into a wave between 0 and 1, one groove every 0.2 units. Where two stones' rings meet, the nearer stone wins.
+- **The sand.** White is the surface and dark is carved in, so `displaced(by: heights, scale: 0.04)` presses each furrow 0.04 deep. Displacement can only move the vertices a mesh has, so the plane gets 400 segments a side, about eight to a groove. `tone` is the sand's color, soft `fbm` between two light grays. `grain` swings around middle gray, since a detail color map multiplies and middle gray changes nothing. It comes from `tilingFbm` because it repeats 18 times across the bed. `fill(.white)` before the sand keeps its pictures untinted.
+- **The stones.** Three levels of subdivision round each box and leave it with no uvs, which is why the granite is projected. A projected picture has to tile, so the granite is built on `tilingFbm`. `smoothstep` pushes that noise toward its two grays, and the stone comes out mottled in soft patches. Rounding also pulls each stone in from its box, so a lift of half the box's height would leave it floating. `s.size.y * 0.3` sets it a little way into the sand instead. `material(.matte)` sets the matte [finish](26-3DGently.md#materials) once, and it covers the moss, the sand, and the stones.
+- **The leaf.** `r` is the distance from the middle of the leaf's picture. `lobe` is 0 at five angles around the middle and 1 halfway between them. So the leaf's edge reaches almost to the picture's border at five points and pulls in between them, and everything outside it is clear. A picture that lives only on the graphics card cannot become a decal, so `Decal(_:)` can fail, and `if let leaf` unwraps it.
+- **The drift.** Each frame places the one decal three times, once in each lane. `along` runs from 0 to 1 and starts over, carrying a leaf 12 units across, from beyond one edge of the bed to beyond the other. `roll` turns it as it goes. The box is 3 units deep, so it reaches from higher than the tallest stone down past the sand. A decal does not know what hides what. So a leaf crossing a stone's rounded rim can show twice for a moment, on the stone and on the sand under the rim.
+
+Then make it yours:
+
+- Stand a model of your own in the garden. Load it in `setup()` as the listing in [A mesh from a file](#a-mesh-from-a-file) did, with `normalized(scale: 1)`, and when it loads, assign it to `pebbles[2]`. It takes the small stone's place and keeps its rings, since the rake reads `stones` rather than the meshes. Its lift still comes from that stone's `size.y`, so raise that number until the model stands on the sand.
+- Rake wider rings. Change `gap < 0.9` to `gap < 1.6`, and each stone gathers about eight rings before the straight grooves take over.
+- Let more leaves fall. Add a z position to `[0.35, 2.4, -2.2]` for each new lane. A frame holds eight decals, so eight lanes is the most that will show.
+
+The garden moves on its own, because the camera circles and the leaves drift, so keep it as a video. `swift run OllinLive MySketches/RakedGarden.swift --export-video raked-garden.mp4 --seconds 20` records twenty seconds of it. `--export raked-garden.png` keeps the opening frame as a still.
+
+## Pictures that change the surface: normal and surface maps
+
+The garden pressed its rake in with a height map read as geometry, and every other picture in it set a color. A picture can also change a surface without moving a vertex. A normal map tilts the light to show relief the geometry does not have. The surface maps say what the surface is made of, point by point.
 
 ### Relief from a picture: normal maps
 
-A texture changes a surface's color. A **normal map** changes how it catches light. Each texel, one pixel of a picture laid on a surface, stores a surface direction instead of a color. At shading time the lighting normal from [Chapter 26](26-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) bends by it. The result is relief without geometry.
+A texture changes a surface's color. A **normal map** changes how it catches light. Each texel stores a surface direction instead of a color. At shading time the lighting normal from [Chapter 26](26-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) bends by it. The result is relief without geometry.
 
 <img src="Images/27-Meshes/SurfaceRelief.jpg" alt="Three gray spheres under the same warm light: one hammered with soft dents, one engraved with concentric rings, and one bare, all with perfectly circular silhouettes" width="680">
 
@@ -94,7 +311,7 @@ let hammered = Mesh.sphere(radius: 1).normalMapped(dents)
 
 All three spheres are the same 96-segment sphere. Only the pictures on the first two know about the dents and the rings. The silhouettes stay perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles. The edge of the object never learns about them. Games have used this for twenty years, which is why a cobblestone street in one can be six polygons.
 
-**`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates. It sets up the frame of reference the map's directions are expressed in, a *tangent basis*. It's the same standard one other tools bake maps against, so a map made elsewhere lights the same way here. `scale` is a relief dial, where 0 flattens it off, 1 is as authored, and more exaggerates. Loaded models bring their own normal maps along without being asked.
+**`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates. It sets up the frame the map's directions are measured in, the *tangent basis* that [parallax](#depth-from-a-picture-height-maps) builds too. It's the same standard one other tools bake maps against, so a map made elsewhere lights the same way here. `scale` is a relief dial, where 0 flattens it off, 1 is as authored, and more exaggerates. Loaded models bring their own normal maps along without being asked.
 
 Where do maps come from? Anywhere images do, and one place is math. Start with a height function, take its slopes, and encode them. The `3D/Materials/NormalMaps` example builds hammered metal, woven cloth, and engraved rings this way in a couple dozen lines, no files involved. One convention matters when authoring by hand. Green marks the slope that faces *up the image*. If a map from elsewhere lights upside down, its green channel is inverted, and flipping that channel fixes it.
 
@@ -127,102 +344,6 @@ drawMesh(ribbon.glowing(1.5))     // each vertex glows in its own hue
 `Mesh.glowing(_:)` sets `emissiveIntensity` on a copy. At 1 it adds the surface's own color once as light, and more is brighter. A `bloom` filter turns the glow into a halo.
 
 Loaded glTF and USD models carry all of these in and out without being asked. `saveScene`, which writes meshes out to a glTF or USD file, keeps them on the round trip. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
-
-### Depth from a picture: height maps
-
-A normal map tilts the light. A **height map** stores the depth itself. The red channel is height, white is the surface, and darker is carved in below it. One image, and Ollin reads it two ways.
-
-<img src="Images/27-Meshes/HeightRelief.jpg" alt="Three cratered tan spheres seen slightly from the side: a parallax-mapped one whose craters sink deep yet whose outline is a perfect circle, a displaced one with a bumpy cratered rim, and a bare control with flat dark spots" width="680">
-
-```swift
-let moon = base.textured(dust).parallaxMapped(craterHeights, scale: 0.06)
-let rock = base.displaced(by: craterHeights, scale: 0.13).textured(dust)
-```
-
-**`parallaxMapped(_:scale:)`** is the shading read. At every pixel the renderer marches your line of sight down into the height field and finds where it lands. Then it reads the base texture, the normal map, and every other map *there* instead of at the flat surface. Crevices sink, slide against their rims as the view moves, and hide their far walls, as carving does. And still not one vertex has moved. `scale` is the depth of the relief as a fraction of the picture's tile. It needs the same texture coordinates and tangent basis a normal map does, and it sets the basis up itself the same way.
-
-**`displaced(by:scale:)`** is the geometry read. Every vertex moves along its normal by the height at its spot on the picture, and the normals are recomputed. The relief becomes true of the mesh, with `scale` now in the mesh's own units. It is work done once, so do it in `setup()` and keep the result. The detail you get is the *mesh's* to give, since a plane with more `segments` carves finer.
-
-The outlines in the figure carry the lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read. The shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is cratered, in shadow and reflection too. Inside the outline the two are nearly twins, so parallax gives you the depth without the triangles. When the edge matters, displace. When it doesn't, march.
-
-White stays put in both readings. A height map's white regions *are* the authored surface. So the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. USD files carry the map in and out, since `saveScene` writes it to the preview surface's displacement slot. glTF has no place to put one.
-
-## More ways to put a picture on: triplanar, detail maps, and decals
-
-The maps above all read a mesh's texture coordinates. Some meshes have none, some pictures need a finer scale than their coordinates carry, and some belong to no one mesh. Triplanar projection needs no texture coordinates at all. Detail maps add a finer scale on top of them. Decals stamp a picture across whatever stands in a box, whatever mesh it is.
-
-### A picture from three sides: triplanar
-
-The cage step left a small problem. A texture maps through uvs, and a subdivided cage comes back without them. So do the blobs [Chapter 32](32-SculptingWithFields.md) turns from a field into a mesh. `textured(_:)` has nothing to hold onto.
-
-`triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis. Picture three slide projectors aimed down x, y, and z. Every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it. A 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
-
-Here it is on `grown`, a folded ball with no uvs, made by the [surface growth](#a-surface-that-outgrows-itself-differential-growth) later in this chapter:
-
-```swift
-drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
-```
-
-<img src="Images/27-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball with the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
-
-`scale` is the size of one tile in world units, and a `normal:` map uses the same projection. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles. Its normal map is the slope of that photograph's own brightness, which is why the painted design reads as molded rather than printed on. The folded ball has no uvs and no tangent basis, and nobody cut its surface flat to lay a picture on it. The projection works on any mesh you can make or load.
-
-The projection asks one thing of you in return: **the picture has to tile.** It repeats across the whole surface whatever any wrap setting says. If the left edge and the right edge of your map disagree, every wrap draws a straight line. A picture cut to whole repeats of its pattern joins up. A map authored with `fbm(u * 8, v * 8)` does not join. The field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
-
-```swift
-// u and v run 0...1 across the map you are filling
-let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
-```
-
-`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that shows most. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench in [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) gets its stone this way.
-
-The picture stands still and the surface moves through it, which helps in one case and hurts in another. The cairn is three separate boxes drawn one after another. The pattern runs unbroken across all three, because they stand in the same projected picture. That is why the technique is the usual choice for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along. So a body that travels should have uvs. A form that grows or changes shape in place shows the pattern flowing across it, as the blob in the `3D/Materials/Triplanar` example does.
-
-The projection carries the base texture and a normal map, while the rest of the map set stays with uvs. The [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on parameters.
-
-### Texture that survives a close look: detail maps
-
-Triplanar repeats one picture at one size. Every texture has a budget, too. A picture sized to cover a whole boulder spends all its texels on the big shapes. The moment the camera leans in, the surface runs out of information and dissolves into soft nothing. Real rock does not do that. Get closer and there is always another scale of grain waiting.
-
-`detailMapped` adds that second scale. It tiles a much finer texture pair across the base one, a color map and a normal map. They repeat several times per base tile, so the close look finds grain the base never carried.
-
-```swift
-drawMesh(boulder
-    .textured(rock)
-    .normalMapped(rockBumps)
-    .detailMapped(grain, normal: grainBumps, scale: 12))
-```
-
-<img src="Images/27-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
-
-The left sphere has only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
-
-`scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the off switch. A pair tiled dozens of times over is the first thing that would break up in the distance. A loaded picture reads its smaller copies there, but a pair you wrote from bytes has none to fall back on. Keep the scale in the range your framing shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres and the detail pair on one of them. The tile count and amount sit on parameters while the camera sways close.
-
-### A picture stamped onto the scene: decals
-
-Everything so far dressed one mesh. A sticker does not care about meshes. Put it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
-
-A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box. Every surface inside the box receives the picture, composited over the surface's own color before lighting. So it shades like paint rather than like a glowing overlay.
-
-```swift
-var sticker: Decal!
-
-override func setup() {
-    sticker = Decal(try! loadImage("label.png"))
-}
-
-override func draw() {
-    // camera, lights, floor, crates ...
-    drawDecal(sticker, at: dropPoint, width: 140)   // projects straight down by default
-}
-```
-
-<img src="Images/27-Meshes/Stamped.jpg" alt="A gray floor with two tan crates: a red, white, and blue roundel stamped across the floor and continuing up over a crate's top, a black and yellow striped tag on the crate's front face, and a half-transparent yellow ring overlapping the roundel on the floor" width="680">
-
-The box has a direction, a width and height, and a depth. The placement is per-frame state like a light. Move `at:` and the stamp slides across the scene. It crosses from the floor up onto a crate and over its far edge, conforming to whatever it touches. Transparency in the image is honored, and later decals composite over earlier ones. A surface standing edge-on to the projection fades the stamp out instead of smearing it down the side. Without that fade, every wall would show the smear.
-
-A decal is paint, so it takes the finish of the surface it lands on. Stamp a rough floor and the mark is matte. Stamp polished metal and it sits under the shine. The [reference page](../Docs/3D/3D.md#decals) has the envelope: eight per frame, which surfaces receive them, and what mirrors show. The `3D/Materials/Decals` example slides a roundel across floor and crates on a loop, with the size, a roll, and a see-through ring on parameters.
 
 ## A whole scene from a file: its camera, its lights, and its motion
 
@@ -383,11 +504,9 @@ Growth is slow on purpose. A form takes hundreds of steps, and stepping once a f
 
 One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space. No two of them meet, and every two of them are linked. Drawn as tubes, it makes a sculpture of linked rings. Heinz Hopf described it in 1931. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
 
-<!-- Figure waiting on its prose: Images/27-Meshes/RakedGarden.jpg (Figures/27-Meshes/RakedGarden.swift), the raked garden, for the chapter's finished sketch. Rendered on the Mac at frame 0. -->
-
 ## Where this comes from
 
-Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface. The tangent-space map is how that idea reached every real-time engine. Parallax occlusion mapping is the marching read of the same picture, from Zoe Brawley and Natalya Tatarchuk's 2004 chapter in *ShaderX3*. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*. The detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles. Character modeling has run on the pair ever since. Projected decals follow the box projection of the real-time decal literature, notably Tiago Sousa and Jean Geffroy's 2016 talk on idTech 6. Loading a scene follows the glTF specification Khronos publishes and the structure of Pixar's OpenUSD. The cuts, shadow art, growth, and the Hopf fibration name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface. The tangent-space map is how that idea reached every real-time engine. Moving the surface itself is displacement mapping, from Robert Cook's 1984 paper on shade trees. Parallax occlusion mapping is the marching read of the same picture, from Zoe Brawley and Natalya Tatarchuk's 2004 chapter in *ShaderX3*. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*. The detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles. Character modeling has run on the pair ever since. Projected decals follow the box projection of the real-time decal literature, notably Tiago Sousa and Jean Geffroy's 2016 talk on idTech 6. Loading a scene follows the glTF specification Khronos publishes and the structure of Pixar's OpenUSD. The cuts, shadow art, growth, and the Hopf fibration name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
