@@ -6,7 +6,7 @@
 
 <img src="Images/28-MaterialsAndSurroundings/Bench.jpg" alt="Five objects on a mottled stone bench under warm interior light: a pale translucent crystal on a black lacquered plinth, a small silver cushion, a teal ball whose paint has worn through to gold in patches, a flat tile with a wheel carved into it, and a cream egg resting on a rust-red cushion, with a faint stamped mark on the stone at the left" width="560">
 
-A few numbers can make a mesh metal, glass, or skin. They are the numbers a physicist would measure on a real surface, so a finish set with them behaves correctly in light you have not set up yet. The light comes first, from the surroundings of the scene. Each object on the bench at the top shows a different technique, from worn paint to an egg that carries light under its own surface. Clouds, the haze over distant ground, and the thin film follow the bench.
+A few numbers a physicist would ask for can make a mesh metal, glass, or skin. A finish set with them behaves correctly in light you have not set up yet. The light comes first, from the surroundings of the scene. Each object on the bench shows a different technique, from the worn paint of [Chapter 27](27-Meshes.md) to an egg that carries light under its surface. Clouds, the haze over distant ground, and the thin film follow the bench.
 
 ## Finishes you measure: environments and physically based materials
 
@@ -163,7 +163,7 @@ Put the light behind your subject and this carries the picture. A body about one
 
 ## Putting it together: the bench
 
-The finished sketch is five specimens on a stone slab, and each one is here to carry a different part of [Chapter 27](27-Meshes.md) and this chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
+The finished sketch is five specimens on a stone slab, each carrying a different part of [Chapter 27](27-Meshes.md) and this chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
 
 The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from [Chapter 27's normal maps](27-Meshes.md#relief-from-a-picture-normal-maps). A color picture is a function of the tile's own coordinates. Two functions sit under them. `bareness` says how far the paint has worn back to metal at a point. `device` is the height of the wheel cut into the tile.
 
@@ -246,7 +246,7 @@ final class Bench: Sketch {
 
 > **Swift note.** Some things here are new. A picture is bytes, four per pixel. `[UInt8](repeating: 0, count:)` makes a list of that many zero bytes, and `UInt8(...)` narrows a number into one of them. `Image(width:height:premultipliedRGBA:)` builds a picture from those bytes. It hands back an optional, forced here with `!` because the sizes match by construction. `import Foundation` brings in `URL` and `FileManager`, which the model's path needs, and `while true` runs a loop until a `return` leaves it. The `// MARK:` lines are comments the editor lists in its jump bar, and nothing more. And `normalMap` takes a function as its last argument, `height: (Double, Double) -> Double`, which turns two numbers into one. It calls it as `height(u + d, v)`.
 
-The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball carries four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, read from its file the way the first listing of [Chapter 27](27-Meshes.md#a-mesh-from-a-file) read a duck.
+The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball carries four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, loaded the way the first listing of [Chapter 27](27-Meshes.md#a-mesh-from-a-file) loaded a duck.
 
 ```swift
     // MARK: the parts

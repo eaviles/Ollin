@@ -4,11 +4,11 @@
 
 # 36. The iPhone as a sensor
 
-An iPhone carries a depth sensor, cameras, microphones, a touch screen, and a barometer, and a sketch can read what each of them senses. The chapter starts with real depth frames, from recorded clips, a live stream, and the capture app. Then come the phone's other streams: the room it builds, the people in it, what its picture shows, and the phone itself in your hand.
+An iPhone carries a depth sensor, cameras, microphones, a touch screen, and a barometer. A sketch can read what the phone learns from each of them. The chapter starts with real depth frames, from recorded clips, a live stream, and the capture app. Then come the phone's other streams: the room, the people in it, what its picture shows, and the phone in your hand.
 
 ## The real sensors: a recorded clip, a live stream, and the capture app
 
-[Chapter 35's ghost room](35-Depth.md#putting-it-together-the-ghost-room) ran on a pretend camera, and so did the marbles, the long scans, and the rebuilt room after it. Every call they made takes a real depth frame as well. So the code stays the same from here on, and only the source of the frames changes.
+[Chapter 35's ghost room](35-Depth.md#putting-it-together-the-ghost-room) ran on a pretend camera, and so did the marbles, the long scans, and the rebuilt room after it. Every call they made takes a real depth frame as well. So their code stays the same, and only the source of the frames changes.
 
 ### Depth footage: Record3D clips and the live stream
 
@@ -204,7 +204,7 @@ The shell is the face mesh drawn under `headTransform`. It stands where the head
 
 ## The picture from the phone: words, attention, motion, and a known print
 
-A depth frame keeps only where things are. The phone can also read what its picture shows. The Mac did that in Chapter 34 with its text reader, its saliency map, and its optical flow. On a LiDAR phone it stands what it finds in the room, and it can find a printed picture you gave it.
+A depth frame says where things are. The phone can also read what its picture shows. The Mac did that in Chapter 34 with its text reader, its saliency map, and its optical flow. On a LiDAR phone it stands what it finds in the room, and it can find a printed picture you gave it.
 
 ### The words on the wall: text
 
@@ -416,7 +416,7 @@ So it is a fader you play by standing up, and it costs no camera and no model. `
 
 ## Where this comes from
 
-The entries name their own sources as they go. Recorded clips and the live stream come from Record3D, Marek Šimoník's iPhone app. The capture app's streams come from Apple's ARKit and the phone's own models for text, attention, and sound, as each section says. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The entries name their own sources as they go. Recorded clips and the live stream come from Record3D, Marek Šimoník's iPhone app. Most of the capture app's streams come from Apple's ARKit. The hands, text, attention, and flow come from Apple's Vision framework, and the sounds from Apple's sound classifier. The touches and the air come from the phone's own screen and barometer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

@@ -6,7 +6,7 @@
 
 <img src="Images/23-GridSimulations/Organism.jpg" alt="A dense teal brain-coral labyrinth grown by reaction-diffusion, its winding ridges lit with a wet sheen against deep navy gaps" width="560">
 
-A simulation field is a grid of cells on the GPU, and every frame each cell changes by asking its neighbors. You seed one by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew from a scatter of dots, and whatever you draw while the sketch runs joins the chemistry. The other rules follow in families: more chemistries, fields that move, materials, and a rule of your own. More automata, from Wolfram's rows to Wireworld, fill [Chapter 24](24-Automata.md).
+A simulation field is a grid of cells on the GPU, and every frame each cell changes by asking its neighbors. You seed one by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew from a scatter of dots, and whatever you draw while the sketch runs joins the chemistry. The other rules follow in families: more chemistries, fields that move, materials, and a rule of your own. More automata, from Wolfram's rows to piles, fires, and crowds, fill [Chapter 24](24-Automata.md).
 
 ## State that lives on the GPU: SimField and withField
 

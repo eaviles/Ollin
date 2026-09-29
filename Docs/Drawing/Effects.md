@@ -886,7 +886,7 @@ The rest of the shape:
 - A compile error is reported at the file and line you wrote the kernel in, the field keeps its last state, and a later clean compile picks it up again, the way every user shader behaves. `ollin check` reads a kernel file as the `simulation` shape (it calls `cell`) or the `inject` shape (it calls `mark`).
 - A field running a kernel of your own is not carried to the [web page](../Output/Web.md) yet; the export names it as the call that stopped it.
 
-See `Simulation/Wind` for a wind carrying dust under two kernels, and Guide chapter 19 for the walk through it.
+See `Simulation/Wind` for a wind carrying dust under two kernels, and Guide [Chapter 23](../../Guide/23-GridSimulations.md#a-rule-of-your-own-simshader) for the walk through it.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

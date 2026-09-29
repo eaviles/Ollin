@@ -4,7 +4,7 @@
 
 # 42. Making it physical
 
-A sketch can leave the screen as something made: lines a machine draws, cuts, or sews, a print in separate inks, or an object to hold. A machine or a press needs the drawing in its own format and in real units, so each one gets its own export. The machines come first, with G-code for a plotter, laser, or router, stitches for an embroidery machine, and DXF for a shop. Separations and proofs for a press follow, then 3D prints, models, and spatial video.
+A sketch can leave the screen as something made. Machines draw, cut, or sew its lines, presses print it in separate inks, and a 3D printer makes it an object to hold. Each machine and press reads its own format, so each one gets its own export. The machines come first, with G-code for a plotter, laser, or router, stitches for an embroidery machine, and DXF for a shop. Separations and proofs for a press follow, then 3D prints, models to walk around, and spatial video to look into.
 
 ## Line work for machines: G-code, embroidery, DXF, and a 3D scene
 
@@ -280,7 +280,7 @@ The file records how far apart the eyes that shot it were, so a player can scale
 
 ## Where this comes from
 
-G-code grew out of the numerical control of machine tools in the 1950s and was standardized as RS-274. DXF is Autodesk's, from AutoCAD in 1982, and the stitch files follow Tajima's `.dst` format. A solid written down as the lines a draftsman would draw was first worked out by Lawrence G. Roberts at MIT in 1963, and Arthur Appel gave it its classic form in 1967. The separations follow the prepress model, where each ink acts as a colored filter over the paper. The soft proof reads profiles in the format of the International Color Consortium. USDZ is the package Pixar and Apple defined in 2018 around Pixar's USD. The two parallel cameras of spatial video follow the rig Lenny Lipton set out in *Foundations of the Stereoscopic Cinema* in 1982. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+G-code grew out of the numerical control of machine tools in the 1950s and was standardized as RS-274. DXF is Autodesk's, from AutoCAD in 1982, and the stitch files follow Tajima's `.dst` format. A solid written down as the lines a draftsman would draw was first worked out by Lawrence G. Roberts at MIT in 1963. Arthur Appel gave it its classic form in 1967. The separations follow the prepress model, where each ink acts as a colored filter over the paper. The soft proof reads profiles in the format of the International Color Consortium. USDZ is the package Pixar and Apple defined in 2018 around Pixar's USD. The two parallel cameras of spatial video follow the rig Lenny Lipton set out in *Foundations of the Stereoscopic Cinema* in 1982. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
