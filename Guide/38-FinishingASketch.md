@@ -241,7 +241,7 @@ Most of the listing is the drawing. The rest is what makes it ready to leave, an
 
 - **The seed** is the keeper from [the contact sheet](#picking-a-keeper-a-contact-sheet-and-a-fixed-seed). The keeper was 4821, so `seed(4821)` fixes it, and every export draws that same chart.
 - **The four parameters** hold the values tuned in the inspector and saved into their declarations.
-- **The lap** is declared. The noise is read with `loop:` from [Chapter 5](05-Noise.md#coming-home-the-loop-parameter), and `loopProgress(over:)` runs it through once every `lapSeconds`, so the field drifts and comes home. The same number is `loopDuration`, which lets the loop export find its own length.
+- **The lap** is declared. The noise is read with `loop:` from [Chapter 5](05-Noise.md#coming-home-the-loop-argument), and `loopProgress(over:)` runs it through once every `lapSeconds`, so the field drifts and comes home. The same number is `loopDuration`, which lets the loop export find its own length.
 - **Every size is a fraction of `unit`**, the shorter side of the canvas, as in [Sized for the output](#sized-for-the-output-fractions-of-the-canvas-and-paper-sizes). The radii and the line weight scale together, so the chart draws the same on any canvas. Every line is stroked, so a pen gets the lines it needs with nothing to hatch.
 - **The description** is built from `rings`, so it stays true when the count changes.
 
@@ -410,7 +410,7 @@ A clip for a broadcast or an edit has a frame rate somebody else chose. It is of
 swift run OllinLive MySketches/YourSketch.swift --export-video spot.mp4 --seconds 30 --fps ntsc
 ```
 
-`ntsc` is 30000/1001 rather than its decimal. So the frames land where a broadcast editor expects them, however long the clip runs. In code the same parameter is a `FrameRate`, and a plain number still stands in for one. The [Export reference](../Docs/Output/Export.md#frame-rates) has the named rates, the fractions they keep, and what drifts when a decimal is used instead. The live window runs at the display's own rate, and `frameRate` on the sketch reads what it measured.
+`ntsc` is 30000/1001 rather than its decimal. So the frames land where a broadcast editor expects them, however long the clip runs. In code the same rate is a `FrameRate`, and a plain number still stands in for one. The [Export reference](../Docs/Output/Export.md#frame-rates) has the named rates, the fractions they keep, and what drifts when a decimal is used instead. The live window runs at the display's own rate, and `frameRate` on the sketch reads what it measured.
 
 ### Slower than it happened: slow motion
 
@@ -761,7 +761,7 @@ The contact sheet is the photographer's, a whole roll printed small to choose fr
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
-- [G-code](../Docs/Output/GCode.md): the three machines and their parameters, a named sheet, what the planner does, previewing the route, and the dry run.
+- [G-code](../Docs/Output/GCode.md): the three machines and their arguments, a named sheet, what the planner does, previewing the route, and the dry run.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
 - [Canvas](../Docs/Core/Canvas.md): the canvas presets, the named paper sheets, and the export size.

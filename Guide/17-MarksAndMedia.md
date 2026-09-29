@@ -86,7 +86,7 @@ let angle = stylus.tiltIsAvailable ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi /
 
 `stylus.tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is. It latches on once a pen has been used, so lifting the stylus out of range does not take the pen path away mid-stroke. Under a mouse everything in `stylus` is zero and false, so a sketch written for a stylus still runs. [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift) is a chisel nib that reads all of it, with a panel that says what the tablet is sending.
 
-Three more practical notes follow. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` parameter matters, because raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end. [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift) is a canvas to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
+Three more practical notes follow. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` argument matters, because raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end. [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift) is a canvas to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
 
 ## Stamps along the path: brushes
 
@@ -105,9 +105,9 @@ It is drawing state, like `strokeCap` or a profile, and `noStrokeBrush()` puts t
   <img src="Images/17-MarksAndMedia/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
 </picture>
 
-The first panel is the one to look at. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the parameter that decides whether a brush is a mark or a scatter. It is measured in stamp sizes rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
+The first panel is the one to look at. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the argument that decides whether a brush is a mark or a scatter. It is measured in stamp sizes rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
 
-The other parameters vary the prints. `sizeJitter` and `opacityJitter` vary each one, and `angle` faces it down the path, at a fixed angle, or anywhere. `scatter` throws it off the line, and `count` lays down several at each step. `spacing`, `sizeJitter`, and `scatter` are fractions of the stamp's size. Everything random comes from a `seed`, so a mark stays where it was frame after frame.
+The other arguments vary the prints. `sizeJitter` and `opacityJitter` vary each one, and `angle` faces it down the path, at a fixed angle, or anywhere. `scatter` throws it off the line, and `count` lays down several at each step. `spacing`, `sizeJitter`, and `scatter` are fractions of the stamp's size. Everything random comes from a `seed`, so a mark stays where it was frame after frame.
 
 The tip does not have to be a circle. `.square` turns with the path, and `.shape` and `.image` take anything you can draw or load. A trail of leaves is a shape tip with a little angle jitter.
 
@@ -363,7 +363,7 @@ The marbling equations are Aubrey Jaffer's closed-form model of a craft that pre
 
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Dashed strokes](../Docs/Drawing/Drawing.md#strokeDash): the pattern and its phase, dots from zero-length dashes, what the cut does to a profile, a brush, and a gradient, which shapes hand their outline over, and what vector export writes.
-- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing parameters do, building a mark without a pointer, the brushes, and what survives vector export.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing arguments do, building a mark without a pointer, the brushes, and what survives vector export.
 - [The stylus](../Docs/Helpers/Input.md#stylus): the lean, the barrel turn, the eraser end, and hovering, read beside `pressure`.
 - [Stroke fonts](../Docs/Drawing/Text.md#strokefont): the single-line pen font the monogram is written in, and loading more of them.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.

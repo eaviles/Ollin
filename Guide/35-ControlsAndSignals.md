@@ -643,7 +643,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi, so that instrument
 ## Go deeper
 
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
-- [`@Smoothed`](../Docs/Helpers/Animation.md#smoothed): the filter's tuning parameters, the raw value and the jump, and `OneEuroFilter` for a value that is not a property.
+- [`@Smoothed`](../Docs/Helpers/Animation.md#smoothed): the filter's tuning arguments, the raw value and the jump, and `OneEuroFilter` for a value that is not a property.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [OSCQuery](../Docs/Integration/OSCQuery.md): the parameters published as a tree, what each kind becomes, and what a client sends back.
@@ -652,7 +652,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi, so that instrument
 - [Game controllers](../Docs/Integration/Controller.md): the sticks, triggers and buttons, the deadzone, motion and the touchpad, several controllers at once, and what an export reads.
 - [Serial](../Docs/Integration/Serial.md): finding a board, the three reads, writing lines back, and staying connected through unplugs, and `FirmataBoard`, a board running StandardFirmata driven pin by pin with no firmware of your own.
 - [Bluetooth](../Docs/Integration/Bluetooth.md): the room in range, the three ways to name a device, the formats that turn bytes into values, and the permission the first run has to get past.
-- [Live data](../Docs/Helpers/LiveData.md): every parameter on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
+- [Live data](../Docs/Helpers/LiveData.md): every argument to `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
 - [Weather](../Docs/Helpers/Weather.md): every read on `Weather` with its unit, the whole `Reading` and how to build one by hand, the condition words and their codes, `Place.sun(at:)`, and where the data comes from.
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Recording](../Docs/Output/Recording.md): keeping a take of a sketch while you play it, with its sound, from a key, a call, or the host's ⌘⇧R.

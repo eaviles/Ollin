@@ -201,7 +201,7 @@ drawImage(generate(.godRays()).image, 0, 0)
 
 <img src="Images/18-YourFirstShader/DesignGenerators.jpg" alt="Ten labeled tiles, each a design generator at its defaults: a violet mesh gradient, blue filaments, a white smoke ring, stacked color panels, a spiral, yellow waves, orbiting dots, a grainy gradient, a pulsing border, and god rays" width="680">
 
-The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters-paper-glass-water-and-a-material-from-a-silhouette) meets those.
+The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of other arguments when you want it to be yours. The same family has filters that transform a picture instead of inventing one, and [Chapter 20](20-PicturesRestyled.md#the-design-filters-paper-glass-water-and-a-material-from-a-silhouette) meets those.
 
 Each of them takes a **`phase`**, and so do the pattern fields in the next entry. They have no clock of their own, so nothing moves until you feed one in:
 
@@ -263,7 +263,7 @@ The two differ, and the differences show what a built-in adds. The bands run a d
 
 `z = info.time` reads a 3D field at a moving slice, which is a general trick to keep. It is why the bands crawl and reconnect instead of sliding.
 
-Two conventions apply across the design and pattern-field sets. Their palettes blend in sRGB, the space design tools work in. So mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer does not get a squashed crystal. When a built-in is close to what you want, take it and adjust its parameters. When it is not, you now know what is inside one.
+Two conventions apply across the design and pattern-field sets. Their palettes blend in sRGB, the space design tools work in. So mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer does not get a squashed crystal. When a built-in is close to what you want, take it and adjust its arguments. When it is not, you now know what is inside one.
 
 ### The edges a shader leaves: post-process anti-aliasing
 
@@ -288,7 +288,7 @@ Three things follow from working on the image alone:
 - **Place it right after whatever wrote the layer.** Put it before a warp, which would smear the ramp it just made.
 - **It halves the stray.** On a measured shallow edge, the filter halves how far the edge strays from the straight line it should lie on. Half rather than none is what a pass reading the finished image can do.
 
-It takes three parameters, and two of them matter most. `threshold` is the contrast an edge needs before the filter touches it at all. Raising it leaves faint edges alone, and lowering it reaches them. `amount` is how much of the result to keep. `amount: 0` hands the layer back as it came, which makes an A and B comparison free. `quality` is how far the pass may follow one edge. [`Examples/Effects/Antialias`](../Examples/Effects/Antialias/Sketch.swift) sets the two side by side.
+It takes three arguments, and two of them matter most. `threshold` is the contrast an edge needs before the filter touches it at all. Raising it leaves faint edges alone, and lowering it reaches them. `amount` is how much of the result to keep. `amount: 0` hands the layer back as it came, which makes an A and B comparison free. `quality` is how far the pass may follow one edge. [`Examples/Effects/Antialias`](../Examples/Effects/Antialias/Sketch.swift) sets the two side by side.
 
 ## Other ways to a shader: chains, GLSL import, a shared helper, and a check
 
@@ -374,12 +374,12 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 
 ## Go deeper
 
-- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the parameters on the pattern. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
+- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the arguments the pattern takes. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files at once.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature, and the `using:` option that splices in only the sections you name.
-- [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the pattern-field catalog with every parameter, and how a generated layer feeds the rest of an effect chain.
+- [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the pattern-field catalog with every argument, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 24](24-ParticleSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).

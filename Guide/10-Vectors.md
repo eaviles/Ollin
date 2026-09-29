@@ -190,7 +190,7 @@ In words, you work out the velocity you *wish* you had, straight at the target a
   <img src="Images/10-Vectors/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
 </picture>
 
-The two caps are the character parameters. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. A high force snaps onto the target like a fly. A low force sails past and swings back in wide arcs. The misses make the motion. The chaser overshoots because it has momentum, and the correction is visible.
+The two caps give the creature its character. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. A high force snaps onto the target like a fly. A low force sails past and swings back in wide arcs. The misses make the motion. The chaser overshoots because it has momentum, and the correction is visible.
 
 Watch the two race. Make `MySketches/Chasers.swift`, two chasers with one number different between them:
 

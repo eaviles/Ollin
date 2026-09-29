@@ -150,7 +150,7 @@ override func draw() {
 
 There is no vertex buffer and no instance list behind that call, and `setup()` built nothing. One step on the GPU looks at each square tile of the patch and skips the ones the camera cannot see. It decides how much detail the rest need. A second step builds the visible ribbons from hashes of each blade's index, four segments near the camera and one far away. Where a blade roots, how it bends, and how it sways on the sketch clock are all arithmetic. It happens during the draw and is never written down anywhere.
 
-The blades shade on the same lit path as every solid. The boulders' cast shadows fall across the grass, the fog veils the far rows, and your `material(_:)` finish applies. The meadow draws from zero bytes of geometry and costs the CPU nothing per frame. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a parameter on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade parameters, the cost, and the fine print. Blades receive shadows but cast none, and the spatial and SVG exporters skip them, while a still or a video records them.
+The blades shade on the same lit path as every solid. The boulders' cast shadows fall across the grass, the fog veils the far rows, and your `material(_:)` finish applies. The meadow draws from zero bytes of geometry and costs the CPU nothing per frame. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a parameter on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade properties, the cost, and the fine print. Blades receive shadows but cast none, and the spatial and SVG exporters skip them, while a still or a video records them.
 
 ## Putting it together: the valley
 
@@ -410,7 +410,7 @@ for river in water.rivers(minFlow: 140, in: mapFrame) {
 
 Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill. The flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like a river map.
 
-`minFlow` is the parameter to put on a slider. It is the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
+`minFlow` is the argument to put on a slider. It is the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
 
 One thing has to happen before any of it works. A landscape is full of hollows with no way out. Water arriving in one has nowhere to go, so the network would end there. Every hollow is filled first, up to the level where water would spill out of it, as a basin does once it has filled. `drainage()` does that for you, and `weathered.filled()` is the same pass on its own.
 
@@ -435,7 +435,7 @@ drawOcean(sea, segments: 320, tiles: 5)
 
 Neither half of that stores geometry. The field is a layer the GPU wrote. At each texel it holds how far the water has moved sideways, how high it stands, and how hard it is folding over there. The draw then works out its grid from vertex indices alone, the way the grass did. It reads the field for where each corner has gone. Nothing is uploaded.
 
-`waveHeight` is the parameter to set first. It is in world units, and it means what a sailor means: the average height of the tallest third of the waves. Ask for 3 and the water stands 3, whatever the wind or the grid resolution is doing. The scale is worked out from the spectrum's own arithmetic.
+`waveHeight` is the argument to set first. It is in world units, and it means what a sailor means: the average height of the tallest third of the waves. Ask for 3 and the water stands 3, whatever the wind or the grid resolution is doing. The scale is worked out from the spectrum's own arithmetic.
 
 ```swift
 let sea = makeOceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
@@ -455,7 +455,7 @@ The valley was lit by one preset, a sun and its fill. The field and the grass tr
 
 A **light with a reach** stops at a set distance, and a frame can carry many of them. It is for lamps that come in numbers, each lighting only its own corner. Lanterns in a courtyard and a string of bulbs along a street are the usual cases. [Chapter 25](25-3DGently.md#light-presets-and-the-kinds-of-light) lit its scenes with a handful of lights placed by hand. Giving each square of the screen its own short list of lights is Forward+, which Takahiro Harada, Jay McKee, and Jason C. Yang presented in 2012.
 
-A courtyard wants dozens of lamps, and two things go wrong at once. The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means sixty-four lamps are sixty-four washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter, `reach:`. The figure shows twelve lamps without it, the same twelve with it, and sixty-four with it:
+A courtyard wants dozens of lamps, and two things go wrong at once. The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means sixty-four lamps are sixty-four washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one argument, `reach:`. The figure shows twelve lamps without it, the same twelve with it, and sixty-four with it:
 
 <img src="Images/27-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
 
@@ -476,7 +476,7 @@ The second thing that goes wrong is cost. Forward lighting shades every pixel ag
 
 The `reach` is what makes that work. A lamp with no bound can arrive anywhere, so it stays in every square and every pixel shades against it. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable. The [reach reference](../Docs/3D/3D.md#reach) has what it saves on an M2.
 
-A few things stay on the frame's first eight lights on purpose. Shadows are the main one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Visible air, the bounced light of [Chapter 31](31-TracedLight.md#light-that-bounces-global-illumination), and the path-traced export read those same eight. [`3D/Lighting/ManyLights`](../Examples/3D/Lighting/ManyLights/Sketch.swift) is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you can see what the parameter does.
+A few things stay on the frame's first eight lights on purpose. Shadows are the main one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Visible air, the bounced light of [Chapter 31](31-TracedLight.md#light-that-bounces-global-illumination), and the path-traced export read those same eight. [`3D/Lighting/ManyLights`](../Examples/3D/Lighting/ManyLights/Sketch.swift) is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you can see what `reach:` does.
 
 ## Where this comes from
 
@@ -488,12 +488,12 @@ The real-time industry came to draw thousands of copies from one call. It came a
 
 ## Go deeper
 
-- [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion parameter, and reading a field out as a mesh, an image, or samples.
+- [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion argument, and reading a field out as a mesh, an image, or samples.
 - [Instancing](../Docs/3D/Instancing.md): the whole `MeshInstance` surface, placements written by a compute kernel so they never visit the CPU, the measured costs, and the `MeshField` fine print (what the cull tests, what it does to shadow casters, the traced-copy budget, what a placed color does to your `fill`).
 - [Points on a surface](../Docs/Generators/SurfaceSampling.md): the whole `surfacePoints` surface, asking by spacing instead of count, what a `SurfaceSample` carries, `alignment(spin:)`, and `surfaceArea` for holding a density rather than a count.
-- [Strands](../Docs/3D/Strands.md): every blade parameter, the distance grading, what a meadow costs, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
+- [Strands](../Docs/3D/Strands.md): every blade property, the distance grading, what a meadow costs, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
 - [Drainage](../Docs/Generators/Drainage.md): the filling pass and its visible details, flow, the network and its threshold, Strahler ordering, and basins. The [`Examples/Patterns/Rivers`](../Examples/Patterns/Rivers/Sketch.swift) example draws one as a contour map.
-- [The ocean](../Docs/3D/Ocean.md): the sea state, the field a transform writes, every look parameter, what it costs, and what it will not do.
+- [The ocean](../Docs/3D/Ocean.md): the sea state, the field a transform writes, every look argument, what it costs, and what it will not do.
 - [How far a light carries](../Docs/3D/3D.md#reach): `reach:`, `Light.reaching(_:)`, the tiles, and the measured saving.
 - Appendix B draws two ideas this chapter leans on: [Layering scales](B-JustEnoughMath.md#layering-scales), which is what makes a heightfield look like land, and [The 3D world frame](B-JustEnoughMath.md#the-3d-world-frame).
 - Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a parameter that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/3D/Lighting/ManyLights`](../Examples/3D/Lighting/ManyLights/Sketch.swift).

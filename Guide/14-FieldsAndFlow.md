@@ -138,7 +138,7 @@ The compass asked the field a question at each point of a grid. The field become
   <img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
 </picture>
 
-The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The `stepLength` is the accuracy parameter, since big steps cut corners on tight curves, like the enlarged arrows in the diagram.
+The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The `stepLength` argument sets the accuracy, since big steps cut corners on tight curves, like the enlarged arrows in the diagram.
 
 ## Lines that keep their distance: evenly spaced streamlines
 
@@ -269,7 +269,7 @@ The walk stops at the layer's edge and at any pixel where the field is zero. A h
 
 ### A field you pin down yourself: radial basis functions
 
-A **radial basis function** field is a number field built from values you know at a few scattered places. It is made so that it passes through every one of them. Every field so far came out of noise or out of a formula. You turned parameters on it, but you never told it what to be at any particular place. Sometimes you want the reverse. You know what you want at a few spots, and you want something sensible everywhere else. That is what this field is for: a smooth color, number, or vector field through scattered readings. Rolland Hardy introduced the method in 1971, to draw the surface of the ground from scattered survey points.
+A **radial basis function** field is a number field built from values you know at a few scattered places. It is made so that it passes through every one of them. Every field so far came out of noise or out of a formula. You adjusted its arguments, but you never told it what to be at any particular place. Sometimes you want the reverse. You know what you want at a few spots, and you want something sensible everywhere else. That is what this field is for: a smooth color, number, or vector field through scattered readings. Rolland Hardy introduced the method in 1971, to draw the surface of the ground from scattered survey points.
 
 If those spots sat on a grid you could interpolate between the neighbors. Scattered points have no fixed neighbors, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave:
 

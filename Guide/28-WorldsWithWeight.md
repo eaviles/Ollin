@@ -565,7 +565,7 @@ The cork bobs and the stone goes to the bottom. A body of density `0.5` settles 
 
 `Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine, and every crate in the scene floats higher without you touching any of them.
 
-The first parameter to know is drag:
+The first argument to know is drag:
 
 ```swift
 world.water = Water(level: 0, linearDrag: 0.5)   // the default
@@ -666,7 +666,7 @@ override func setup() {
 
 Restoring puts things back exactly. Every body returns in the same pose, moving at the same speed and spinning the same way. A body that had gone to sleep is still asleep, so a saved heap does not shudder back into shape as it arrives. A door saved standing half open is still half open. It still stops where it used to, because the snapshot remembers the pose each joint was made in.
 
-A snapshot holds every body with its collider and all its parameters. It holds every joint between them, gears and racks included, and the collision groups with their rules. It holds the world's gravity, ground, bounce, and water. It also holds the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md#snapshots-of-figures-vehicles-and-cloth), which says how each one comes back.
+A snapshot holds every body with its collider and all its settings. It holds every joint between them, gears and racks included, and the collision groups with their rules. It holds the world's gravity, ground, bounce, and water. It also holds the characters, vehicles, and ragdolls of [Chapter 29](29-CharactersAndCloth.md#snapshots-of-figures-vehicles-and-cloth), which says how each one comes back.
 
 Restoring empties the world first, so any `Body3D` you were holding onto is gone. Take the bodies from `world.bodies` again. They come back in the order they were saved, and each still knows its own `collider`. `userData` is not saved, so a color kept there, as the contraption keeps its colors, comes back empty.
 

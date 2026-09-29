@@ -180,7 +180,7 @@ drawSoftBody(cloth)
 
 <img src="Images/29-CharactersAndCloth/Cloth.jpg" alt="A cream sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
 
-Two parameters decide what fabric it is, one for stretching and one for folding:
+Two arguments decide what fabric it is, one for stretching and one for folding:
 
 <!-- snippet: skip an argument list, not a statement -->
 
@@ -427,7 +427,7 @@ figure.apply(ragdoll)                    // where they actually ended up
 
 Push the figure and it resists, gives, and comes back. Keep two copies of the scene. The animation poses one, the target, and the solver poses the other, the one you draw. A `Scene` is a value, like [Chapter 25](25-3DGently.md)'s materials, so `var target = figure` is a separate copy. A figure driven toward the scene it was just posed from has nowhere left to pull.
 
-`strength` is the parameter to play with. It is the most torque a joint may use. Set high, it holds the figure in the pose however it is pushed. Set low, the heavy limbs sag out of the pose, and the figure reads as tired rather than switched off.
+`strength` is the argument to play with. It is the most torque a joint may use. Set high, it holds the figure in the pose however it is pushed. Set low, the heavy limbs sag out of the pose, and the figure reads as tired rather than switched off.
 
 Nothing drives the root, so a powered figure still falls over as a whole. The motors hold its shape, not its place. Make the hips kinematic, with `ragdoll.limbs[0].body.kind = .kinematic`, and it hangs there like a puppet on a hook. The [`3D/Physics/Ragdoll`](../Examples/3D/Physics/Ragdoll/) example does this, and space lets the hips go.
 
@@ -605,7 +605,7 @@ The soft bodies have an academic line you can follow. Position-based dynamics mo
 
 ## Go deeper
 
-- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles (the two-wheeler and the tracked machine's sprocket included), ragdolls, soft bodies, ropes, and buoyancy, with every parameter on the suspension and the cloth solver, and what a snapshot keeps for each.
+- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles (the two-wheeler and the tracked machine's sprocket included), ragdolls, soft bodies, ropes, and buoyancy, with every setting on the suspension and the cloth solver, and what a snapshot keeps for each.
 - Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its parameters live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft`, and `Rigging` (cloth, cloth on water, and ropes), `Chain` (capsule links on ball joints), and `Yard`, which is this sketch with a saved world, an animated figure, and more going on.
 - The Gego homage [`Reticularea`](../Examples/Recreations/Gego/Reticularea/Sketch.swift): a soft body whose mesh the sketch builds rather than loads. It is an irregular net of triangles, held at eight of its vertices and left to hang. Each frame `move(_:to:)` holds those eight points, drifting a little, so the air moves the whole net. `positions` is read back to draw the net as lines.

@@ -6,7 +6,7 @@
 
 <img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
-One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take parameters. Five of them, stacked, turn the street photograph above into a hand-colored print. After it come more of the stylize shelf, and filters that read a layer as height, tone, a center, a ring, or a pour.
+One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take arguments. Five of them, stacked, turn the street photograph above into a hand-colored print. After it come more of the stylize shelf, and filters that read a layer as height, tone, a center, a ring, or a pour.
 
 ## Paint that follows the picture: brushwork
 
@@ -226,7 +226,7 @@ The second move is the shock. Across that direction the filter reads whether the
 
 ### One filter, five pictures: chromatic aberration
 
-Chromatic aberration pulls the color channels apart a little, so a white edge grows a colored rim. It is for the look of glass: a cheap lens, or a fast lens wide open. The name is the lens fault it imitates, where glass bends each wavelength by a slightly different amount and the colors land apart. Most filters have a strength parameter. This one has a strength parameter and a **mode**. Each mode is a different picture, because what the mode decides is *where* the channels get pulled.
+Chromatic aberration pulls the color channels apart a little, so a white edge grows a colored rim. It is for the look of glass: a cheap lens, or a fast lens wide open. The name is the lens fault it imitates, where glass bends each wavelength by a slightly different amount and the colors land apart. Most filters have a strength argument. This one has a strength argument and a **mode**. Each mode is a different picture, because what the mode decides is *where* the channels get pulled.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/20-PicturesRestyled/Dispersion-dark.jpg">
@@ -279,7 +279,7 @@ layer.filtered(.channelMixer(.gray(red: 0.7, green: 0.2, blue: 0.1)))
 
 ## Filters that read the layer as something else: height, tone, a center, a ring, and a pour
 
-Every filter in the print and in the family before it read the layer as a picture and handed back a changed picture. A few filters read the same pixels as *information about something else*. They read a height, a tone, a point to warp around, a ring to repeat, or a brightness to pour by. What you feed them then matters more than their parameters, so each is met on its own here.
+Every filter in the print and in the family before it read the layer as a picture and handed back a changed picture. A few filters read the same pixels as *information about something else*. They read a height, a tone, a point to warp around, a ring to repeat, or a brightness to pour by. What you feed them then matters more than their arguments, so each is met on its own here.
 
 ### Height, tone, and a center: relight, the two-tone dither, and the warps
 
@@ -302,7 +302,7 @@ layer.filtered(.swirl(angle: 4.2, radius: 0.42, center: Vector2(0.3, 0.34)))
 
 **The warp filters read a center.** `.swirl`, `.bulge`, and `.ripple` all distort around the middle of the layer by default. Each takes a `center` given in `0...1` layer coordinates. That one argument is what turns a symmetric effect into a composition. Feed it `bounds.uv(of: mouse)`, the mouse as a fraction of the canvas, and the distortion sits under the pointer. The marked circle in the third panel is the center that swirl was given.
 
-The [effects reference](../Docs/Drawing/Effects.md#filter) has every parameter, and [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift) shows all five finishes side by side.
+The [effects reference](../Docs/Drawing/Effects.md#filter) has every argument, and [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift) shows all five finishes side by side.
 
 ### A picture inside itself: droste
 
@@ -352,7 +352,7 @@ The entries after the print name their own sources. The ink line is the extended
 
 ## Go deeper
 
-- [Layered effects](../Docs/Drawing/Effects.md#filter): the whole filter catalog with every parameter, the stylizing, look, film, warp and design filters among it.
+- [Layered effects](../Docs/Drawing/Effects.md#filter): the whole filter catalog with every argument, the stylizing, look, film, warp and design filters among it.
 - [Looks](../Docs/Drawing/Looks.md): the `.cube` format in both forms, the reader's refusals, the tetrahedral read, and writing a look of your own.
 - [Sample photographs](../Docs/Drawing/SamplePhotos.md): the bundled pictures the chapter's figures and its print start from, and what each one is good for.
 - Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (the scarf photograph as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (the marigolds photograph painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (the portrait flattened into regions by the shock filter), [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) (an engraved landscape with the sun crossing it), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) (a night street through halation and grain), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).

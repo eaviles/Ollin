@@ -115,7 +115,7 @@ The distinctive Swift habit is that arguments carry **labels**, and the labels a
 
 An underscore in the declaration removes a label, which is how APIs offer short positional forms. Ollin uses both on purpose. Everyone knows what the three bare numbers in `drawCircle(x, y, radius)` mean, so labels there would add nothing. The `Vector2` form names its anchor instead: `drawCircle(center: p, radius: r)`.
 
-Arguments can also carry **defaults**, and callers mention only what they want to change. That's why `cameraShowcase(radius: 5)` is a complete call, though the function takes many more parameters. Everything you leave out keeps its default.
+Arguments can also carry **defaults**, and callers mention only what they want to change. That's why `cameraShowcase(radius: 5)` is a complete call, though the function takes many more arguments. Everything you leave out keeps its default.
 
 ## Choosing and repeating
 

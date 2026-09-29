@@ -104,7 +104,7 @@ A creature that only seeks needs a target. A behavior that needs no target at al
   <img src="Images/12-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
 </picture>
 
-Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality parameter. Small values drift in long, calm arcs, and large values get twitchy.
+Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount, the `jitter:` argument, sets the personality. Small values drift in long, calm arcs, and large values get twitchy.
 
 A wanderer shows its character in its trail, and there is a second way to get one that needs no list of positions. [Chapter 9](09-Pictures.md)'s string art already switched clearing off with `noClear()`, and here is what that is for. Every other sketch so far has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far, and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it. Anything that moves grows a tail. Three wanderers, with trails made that way, make `MySketches/Wanderer.swift`:
 
@@ -151,7 +151,7 @@ Two behaviors are stacked here, and that is the point of forces that compose. `w
 
 The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at one percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail that lasts ten seconds or so. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a fraction of a second. Lower it to `0.003` and they last half a minute. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
 
-The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every parameter.
+The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every argument.
 
 ## Three rules make a flock: separation, alignment, and cohesion
 
@@ -446,9 +446,9 @@ Boids are Craig Reynolds' invention. The 1987 SIGGRAPH paper "Flocks, Herds, and
 
 ## Go deeper
 
-- [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and parameter, including pursuit, evasion, and path following.
+- [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and argument, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
-- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's four exact facts, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
+- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's four exact facts, and the properties (`maxTurn`, `catchDistance`, the kept chase lines).
 - [Crowds](../Docs/Simulation/Crowds.md): the `Crowd` reference, what the walkers promise and where the promise ends, obstacles and walls, and every setting.
 - [Coupled oscillators](../Docs/Simulation/Oscillators.md): the `Kuramoto` reference, the order parameter, the critical coupling, the lag, and the ring.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).

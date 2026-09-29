@@ -380,7 +380,7 @@ The primes are only the famous test. To ask your own question, read `numbers`, t
 for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, radius: 2) }
 ```
 
-`start` is the parameter to animate, as in `ulamSpiral(size: 101, start: 1 + frameCount)`. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form. It is the same fact seen from a different place. [Ulam spiral](../Docs/Generators/UlamSpiral.md) is the reference.
+`start` is the argument to animate, as in `ulamSpiral(size: 101, start: 1 + frameCount)`. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form. It is the same fact seen from a different place. [Ulam spiral](../Docs/Generators/UlamSpiral.md) is the reference.
 
 ## Where this comes from
 
@@ -395,7 +395,7 @@ The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, and `pushState`/`popState` (the unscoped siblings of `withState`).
 - [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which do not. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
-- [Tiling and layout](../Docs/Drawing/Tiling.md): every parameter for `HexGrid`, `TriangleGrid`, `Subdivision`, and `Maze`. That includes hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
+- [Tiling and layout](../Docs/Drawing/Tiling.md): every argument for `HexGrid`, `TriangleGrid`, `Subdivision`, and `Maze`. That includes hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Moving the paper](B-JustEnoughMath.md#moving-the-paper).
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour), `Patterns/Kaleidoscope`, and `Shapes/Clipping`.
 - The Rojo homages in [`Examples/Recreations/VicenteRojo/`](../Examples/Recreations/VicenteRojo/): `Negaciones` is one letter on a grid of panels, each a different negation of it. The panels are painted over one at a time. `MexicoBajoLaLluvia` is a grid that covers the square, every cell painted and one mark set on it, with the diagonal deciding the kind. In `Senales`, one sign stands on the middle line, and every piece of it is mirrored. Each worked shape then gets its texture inside a clip of its own outline. So on the whole canvas, only the marks of the painter's hand are not mirrored.

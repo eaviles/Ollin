@@ -452,7 +452,7 @@ fog(Color(hex: 0x0A0E18), density: 0.02)   // a whisper of haze for the beams to
 
 <img src="Images/25-3DGently/VisibleAir.jpg" alt="A dark set under a warm window-gobo beam slanting down from the upper left: the panes read as bars of bright air, land as a window of light on the floor, and a cylinder, sphere, and box carve dark shafts out of the beam. A faint cool beam crosses low behind the props" width="680">
 
-The `anisotropy` parameter runs −1…1 and sets how strongly the haze throws light forward. Near 1, a beam flares when the view swings toward its source, the headlights-in-fog effect. At 0 it glows evenly from every side. And the two calls compose either way. With `fog`, the beams live in the fog's own thickness. Without it, the air stays clear and *only* the beams appear. The `3D/Lighting/VolumetricLight` example lights a dark stage with beams in a thin haze. The air is part of the scene, and light crossing it is something you can draw.
+The `anisotropy` argument runs −1…1 and sets how strongly the haze throws light forward. Near 1, a beam flares when the view swings toward its source, the headlights-in-fog effect. At 0 it glows evenly from every side. And the two calls compose either way. With `fog`, the beams live in the fog's own thickness. Without it, the air stays clear and *only* the beams appear. The `3D/Lighting/VolumetricLight` example lights a dark stage with beams in a thin haze. The air is part of the scene, and light crossing it is something you can draw.
 
 The beam march has a quality dial like the shadows do, `volumetricQuality` with three tiers. The default already does the right thing, frame-rate-safe live, lifted to full quality on export.
 

@@ -37,7 +37,7 @@ The rule the solve follows matters, because everything the picture does follows 
 
 Now compare it to a gradient, the usual tool for a smooth field. A gradient needs a direction and two ends. This needs neither. The shape of the field is decided by where you put the marks. That is why the third panel remakes the whole lower half of the picture with one added curve. You place a few colors and let the space between them work itself out.
 
-Two parameters matter early. A pixel counts as a source when its alpha reaches `threshold`. A half-opaque mark pulls half as hard as a solid one, so a soft brush mark is a suggestion rather than a rule. And `sharpness` decides how much of the work happens at full size. Turn it down for speed while composing, and up when a thin mark's color must stay crisp right up to the mark.
+Two arguments matter early. A pixel counts as a source when its alpha reaches `threshold`. A half-opaque mark pulls half as hard as a solid one, so a soft brush mark is a suggestion rather than a rule. And `sharpness` decides how much of the work happens at full size. Turn it down for speed while composing, and up when a thin mark's color must stay crisp right up to the mark.
 
 ## A field you measure: the distance field
 
@@ -119,7 +119,7 @@ The base layer is **the scene**: whatever you draw there is solid, and its alpha
 
 Look at what nobody drew. The comb's four teeth throw four shadows, with light through the gaps, and the shadows fan out. Each is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a lamp's does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those all come from one measurement.
 
-The parameter for that third panel is `bounces`:
+The argument for that third panel is `bounces`:
 
 ```swift
 scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
@@ -127,7 +127,7 @@ scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
 
 At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a look you may want on its own. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass over the whole ladder, and more is softer.
 
-`sky` and `reach` are the two parameters to know next. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
+`sky` and `reach` are the two arguments to know next. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the argument that sets the speed.
 
 The cost needs saying plainly. This is among the most expensive effects in the chapter, level with diffusion at its default quality and far past it at its detail quality. Its cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
@@ -341,9 +341,9 @@ page.filtered(.adaptiveThreshold(window: 90))
 
 That is the right panel. The text comes back through the shadow, and only the darkest band edges keep a streak. Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.
 
-The parameter that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, make it wide. The 90 pixels above suit a page a few hundred pixels across, and left alone it is an eighth of the layer.
+The argument that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, make it wide. The 90 pixels above suit a page a few hundred pixels across, and left alone it is an eighth of the layer.
 
-There is one more parameter, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, for a reason. Light falling on a page multiplies what comes back off it. So only a test that scales along with the average is unmoved when somebody turns the lamp down.
+There is one more argument, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, for a reason. Light falling on a page multiplies what comes back off it. So only a test that scales along with the average is unmoved when somebody turns the lamp down.
 
 There are two costs, and neither grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the area you asked for, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway. [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift) runs both filters over a page.
 
@@ -355,10 +355,10 @@ The entries after the lighthouse name their own sources. The seamless paste is P
 
 ## Go deeper
 
-- [Diffusion](../Docs/Drawing/Effects.md#generate) and the [seamless paste](../Docs/Drawing/Effects.md#combined): `.diffuse` and `drawDiffusionCurve` with their parameters, and what `.seamlessClone` keeps and where its rim should sit.
+- [Diffusion](../Docs/Drawing/Effects.md#generate) and the [seamless paste](../Docs/Drawing/Effects.md#combined): `.diffuse` and `drawDiffusionCurve` with their arguments, and what `.seamlessClone` keeps and where its rim should sit.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
 - [The frequency domain](../Docs/Drawing/Fourier.md): the transform both ways, filtering by scale, building a field from its spectrum, and what the ladder costs.
-- [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every parameter, the cost at each quality tier, what it will not do, and the ladder underneath it.
+- [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every argument, the cost at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - Worked examples: [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), and [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift).
 

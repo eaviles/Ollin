@@ -110,11 +110,11 @@ The `Clouds` field holds still. To move it, ask for one more dimension. `noise(x
 let n = noise(x * 0.006, y * 0.006, time * 0.15)
 ```
 
-The clouds become weather. Nothing scrolls, since sliding `x` instead of `z` is what does that. The field boils in place, the way clouds do. The `0.15` is the zoom parameter again, pointed at time, so smaller drifts slower.
+The clouds become weather. Nothing scrolls, since sliding `x` instead of `z` is what does that. The field boils in place, the way clouds do. The `0.15` is the zoom multiplier again, pointed at time, so smaller drifts slower.
 
-## Coming home: the `loop:` parameter
+## Coming home: the `loop:` argument
 
-A drift that never returns cannot loop, and [Chapter 3](03-MotionAndTime.md) taught you to care about that. A `z` that grows with `time` never comes back to where it started, so this weather cannot close a GIF loop on its own. You could fold time with [Chapter 3](03-MotionAndTime.md)'s `pingPong`, and out-and-back does loop. But then the weather spends half of every lap running in reverse. Noise has a better answer built in. Walk a *circle* through the field instead of a straight line and you end where you began, facing the way you started. There is no reversal and no seam. That is the `loop:` parameter. In `Clouds`, change the same line again:
+A drift that never returns cannot loop, and [Chapter 3](03-MotionAndTime.md) taught you to care about that. A `z` that grows with `time` never comes back to where it started, so this weather cannot close a GIF loop on its own. You could fold time with [Chapter 3](03-MotionAndTime.md)'s `pingPong`, and out-and-back does loop. But then the weather spends half of every lap running in reverse. Noise has a better answer built in. Walk a *circle* through the field instead of a straight line and you end where you began, facing the way you started. There is no reversal and no seam. That is the `loop:` argument. In `Clouds`, change the same line again:
 
 ```swift
 let n = noise(x * 0.006, y * 0.006, loop: loopProgress(over: 4), radius: 0.6)
@@ -280,7 +280,7 @@ let marble = warpedFbm(x * 0.004, y * 0.004)
 
 [Noise § warpedFbm](../Docs/Generators/Noise.md#warpedFbm) is the reference, and the [`Shaders/DomainWarp`](../Examples/Shaders/DomainWarp/Sketch.swift) example opens up the same recipe in shader code.
 
-Two more live in the reference. `gaborNoise` lays its waves at one wavelength and, if you ask, in one direction, which gives you brushed metal, wood grain, and silk. It takes pixel coordinates and a `seed:` of its own rather than the zoom multiplier and `noiseSeed`. [Noise § gaborNoise](../Docs/Generators/Noise.md#gaborNoise) has its figure and parameters, and the [`Effects/GaborNoise`](../Examples/Effects/GaborNoise/Sketch.swift) example dots the crests of the field the GPU painted. `noiseFields` is the whole family as a plain value that other threads can read. It is for a sketch that asks a field a few hundred thousand times a frame. [Noise § noiseFields](../Docs/Generators/Noise.md#noiseFields) shows the call, and the [`Rendering/LineSpray`](../Examples/Rendering/LineSpray/Sketch.swift) example bends its tens of thousands of lines a frame this way.
+Two more live in the reference. `gaborNoise` lays its waves at one wavelength and, if you ask, in one direction, which gives you brushed metal, wood grain, and silk. It takes pixel coordinates and a `seed:` of its own rather than the zoom multiplier and `noiseSeed`. [Noise § gaborNoise](../Docs/Generators/Noise.md#gaborNoise) has its figure and arguments, and the [`Effects/GaborNoise`](../Examples/Effects/GaborNoise/Sketch.swift) example dots the crests of the field the GPU painted. `noiseFields` is the whole family as a plain value that other threads can read. It is for a sketch that asks a field a few hundred thousand times a frame. [Noise § noiseFields](../Docs/Generators/Noise.md#noiseFields) shows the call, and the [`Rendering/LineSpray`](../Examples/Rendering/LineSpray/Sketch.swift) example bends its tens of thousands of lines a frame this way.
 
 `noise` and `fbm` cover clouds, weather, and terrain. When a sketch wants stone instead of clouds, the field for it is one of the four above. All four share the zoom, the seeding, and the far-apart places. The folded fields and `warpedFbm` also take `loop:`, while `simplexNoise` and `worley` do not.
 

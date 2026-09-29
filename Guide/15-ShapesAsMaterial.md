@@ -223,7 +223,7 @@ let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2
 
 Both panels are the same packing, from a bag with more shapes in it than the listing's four. The left one also draws each shape's bounding circle, and **those circles overlap**, which a circle packing could never allow. That overlap is the point. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
 
-The parameters beyond `count` and the radius range change the character rather than the density. `padding` opens a consistent gap between shapes, which helps when they will be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
+The arguments beyond `count` and the radius range change the character rather than the density. `padding` opens a consistent gap between shapes, which helps when they will be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
 
 The output is `[Shape]`, so every shape tool in the chapter takes it. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
@@ -239,7 +239,7 @@ A scatter usually has an outline you need for something. It may be the footprint
 
 `convexHull(of:)` returns the smallest convex polygon containing every point, the shape a rubber band would snap to around a handful of pins. It is quick and it always comes back as one simple loop. It also can never dip inward, which is the limit as much as the strength. A ring of points comes back as a filled blob. A rubber band has no way to reach into the middle.
 
-`concaveHull(of:concavity:)` lets the band sink into the gulfs between clusters while staying one simple polygon with every point inside it. The `concavity` parameter runs `0...1`, where 0 gives the convex hull itself and 1 hugs the points as tightly as their spacing allows. Around 0.5 to 0.8 it reads as following the scatter. Pushed near 1 it erodes every bridge it can, and starts to look like a maze.
+`concaveHull(of:concavity:)` lets the band sink into the gulfs between clusters while staying one simple polygon with every point inside it. The `concavity` argument runs `0...1`, where 0 gives the convex hull itself and 1 hugs the points as tightly as their spacing allows. Around 0.5 to 0.8 it reads as following the scatter. Pushed near 1 it erodes every bridge it can, and starts to look like a maze.
 
 `alphaShape(of:alpha:)` asks a different question, and it is the one that can say "these are two things". Picture rolling a disk of radius `alpha` over the points and keeping only the parts the disk cannot get into. Nothing requires the answer to be a single piece. A clustered scatter can come back as several islands, and a ring comes back as a ring.
 
@@ -258,7 +258,7 @@ The two hulls hand back boundary points in order, so wrap them in a `Contour` or
 
 Choosing between them depends on what you will do next. When the result has to be one simple polygon, because it is a plotter path or a region you will offset, use a hull. When you want the true footprint of a clumpy scatter, use the alpha shape.
 
-The number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same parameter give the same outline every run. The `Shapes/Hulls` example moves `concavity` from 0 to tight so you can watch the band sink into the gulf.
+The number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same argument give the same outline every run. The `Shapes/Hulls` example moves `concavity` from 0 to tight so you can watch the band sink into the gulf.
 
 ### The circle they were scattered around: `Fit.minimize`
 
@@ -276,7 +276,7 @@ drawCircle(best.values[0], best.values[1], best.values[2])
 
 The closure is the whole of it. You never say how to search, only how to score. `reduce` adds up one number over a list, starting from the value you give it. The closure inside it runs once per mark and returns the running total. Squared distance is the usual scoring. It punishes one badly placed mark much harder than several slightly off ones. That is what makes the answer settle in the middle of the crowd.
 
-It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest. So when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each parameter a little either side of where it stands. So your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
+It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest. So when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each number a little either side of where it stands. So your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
 
 The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-field-you-pin-down-yourself-radial-basis-functions) is this call, a circle fitted through the middle of a ring of pale marks.
 
@@ -297,7 +297,7 @@ for branch in skeleton.branches {
 }
 ```
 
-Two parameters shape the result. `spacing` is how finely the boundary gets sampled, so smaller means a more faithful skeleton and more work. Halving it roughly quadruples the cost. `prune` trims whiskers, removing terminal twigs shorter than the value you give. You want some pruning almost always, because every convex corner of the outline grows a twig. A couple of spacings clears the fuzz while keeping the trunk. Branches come back as polylines, open runs between forks, or closed rings around holes, which is why `drawPolyline` takes `branch.isClosed`.
+Two arguments shape the result. `spacing` is how finely the boundary gets sampled, so smaller means a more faithful skeleton and more work. Halving it roughly quadruples the cost. `prune` trims whiskers, removing terminal twigs shorter than the value you give. You want some pruning almost always, because every convex corner of the outline grows a twig. A couple of spacings clears the fuzz while keeping the trunk. Branches come back as polylines, open runs between forks, or closed rings around holes, which is why `drawPolyline` takes `branch.isClosed`.
 
 The skeleton also remembers thickness. Each branch carries `radii` alongside `points`, one radius per vertex, holding the size of the disk that fits there. So the skeleton knows how fat the shape is at every step along itself. Walk a branch drawing a circle from each pair and you rebuild the region as a train of disks. Size marks by the radius and a drawing swells through the thick parts, then thins into the tips. The largest radius anywhere marks the deepest point of the shape, the spot furthest from any edge.
 
@@ -544,7 +544,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
-- [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the parameter ranges that read well and the cost of each.
+- [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the argument ranges that read well and the cost of each.
 - [Fitting by walking downhill](../Docs/Drawing/Fitting.md#minimize): everything `Fit.minimize` takes, and what it hands back.
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.

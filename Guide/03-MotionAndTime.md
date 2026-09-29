@@ -297,7 +297,7 @@ sway(over: 4, in: 100...300, shape: .triangle)
 
 The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are `pingPong` and `loopProgress`, carried into a range. `.square` does not travel at all. It sits at one end for half the lap and at the other end for the rest. Use it to switch something rather than move it.
 
-`.wander` is the fifth path. It drifts through noise rather than following a curve, and [Chapter 5](05-Noise.md#coming-home-the-loop-parameter) shows how a drift like that can still come home. Every shape here arrives back where it started at the end of a lap. That is what lets a swaying sketch declare a `loopDuration` and export a loop with no visible seam, the way the ring did. [Animation](../Docs/Helpers/Animation.md#sway) has the call in full, and the [`Sway`](../Examples/Motion/Sway/Sketch.swift) example runs the five shapes side by side.
+`.wander` is the fifth path. It drifts through noise rather than following a curve, and [Chapter 5](05-Noise.md#coming-home-the-loop-argument) shows how a drift like that can still come home. Every shape here arrives back where it started at the end of a lap. That is what lets a swaying sketch declare a `loopDuration` and export a loop with no visible seam, the way the ring did. [Animation](../Docs/Helpers/Animation.md#sway) has the call in full, and the [`Sway`](../Examples/Motion/Sway/Sketch.swift) example runs the five shapes side by side.
 
 ### Values that chase a target: `@Eased` and `@Sprung`
 

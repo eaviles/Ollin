@@ -293,7 +293,7 @@ stepSoftBodies(blobs)
 drawParticles(blobs)
 ```
 
-The `squish` property sets how firmly a body pulls back toward its remembered shape. That one parameter is the difference between a bouncing ball and a slime. Bodies collide with each other and flatten where they press together, which is the pile of nine on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as [Physarum](#agents-that-talk-through-the-floor-physarum) and its neighbors.
+The `squish` property sets how firmly a body pulls back toward its remembered shape. That one property is the difference between a bouncing ball and a slime. Bodies collide with each other and flatten where they press together, which is the pile of nine on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as [Physarum](#agents-that-talk-through-the-floor-physarum) and its neighbors.
 
 ## Searches you can watch: ant colony optimization, evolution, and swarm chemistry
 
@@ -319,7 +319,7 @@ drawPolyline(colony.bestTourPoints, closed: true)   // the answer so far
 
 The three panels are one seeded search at three moments. After one iteration the map is a haze, because every ant's tour deposited somewhere. Edges that keep landing in short tours are walked again and grow stronger, and the rest fade. By iteration sixty the web has settled, and the best tour found so far sits on top in orange. Draw `trails` each frame and you watch that condensation happen live.
 
-Two parameters set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer, and the block sets it to 2. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The [`Patterns/AntColony`](../Examples/Patterns/AntColony/Sketch.swift) example runs the whole search as a living sketch, and the [reference](../Docs/Generators/AntColony.md) has the rest of the parameters.
+Two arguments set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer, and the block sets it to 2. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The [`Patterns/AntColony`](../Examples/Patterns/AntColony/Sketch.swift) example runs the whole search as a living sketch, and the [reference](../Docs/Generators/AntColony.md) has the rest of the arguments.
 
 ### Letting the sketch find it: evolution
 
@@ -368,7 +368,7 @@ drawParticles(chem)
 
 The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then a few, then very nearly one. No one chose the winner, and no one could have said in advance which it would be.
 
-`competition` is the one parameter that says what winning means, and it sets the character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added, a fixed mixture of six kinds.
+`competition` is the one property that says what winning means, and it sets the character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added, a fixed mixture of six kinds.
 
 Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is a quarter of the one `Evolution` uses. Set it as high as a generational search would, and the recipes take dozens of nudges inside a single takeover. They arrive as noise, which you see at once. The structures dissolve, and the picture flattens into an even gas.
 
@@ -422,11 +422,11 @@ GPU particle systems come from the demoscene and from games. The additive render
 
 - [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, projecting through the sketch's camera from a kernel, and `Simulation`, the same kind of step over a texture.
 - [Depth of field from light](../Docs/Drawing/DepthOfField.md): the light particle style's deposit rules and the `develop` print, and the lens that [Chapter 31](31-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) builds on them.
-- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` parameters, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can call from a compute kernel of your own. [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift) runs the flow.
-- [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every parameter, plus the matrix rolling and the reproducibility caveat.
+- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` properties, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can call from a compute kernel of your own. [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift) runs the flow.
+- [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every argument and property, plus the matrix rolling and the reproducibility caveat.
 - [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and reading the best tour back out.
-- [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every parameter, and how to pick a temperament rather than a number.
-- [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching parameters, grabbing with the mouse, and what each solver is and is not good for.
+- [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every argument and property, and how to pick a temperament rather than a number.
+- [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching properties, grabbing with the mouse, and what each solver is and is not good for.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can control, and the interactive form.
 - Appendix B draws the idea underneath all of this: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Density as tone](B-JustEnoughMath.md#density-as-tone) for what a million faint marks add up to.
 - Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), and [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift).

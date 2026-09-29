@@ -500,13 +500,13 @@ The growers after the garden name their own sources in place. Stiny and Gips are
 ## Go deeper
 
 - [L-systems](../Docs/Generators/LSystem.md): the grammar type, the turtle alphabet, all thirteen presets, and the [parametric](../Docs/Generators/LSystem.md#parametric) form with its rule language, weighted rules, and botany-literature presets.
-- [Space colonization](../Docs/Generators/SpaceColonization.md): every parameter, plus recipes for venation, lightning, and multi-root plantings.
+- [Space colonization](../Docs/Generators/SpaceColonization.md): every argument, plus recipes for venation, lightning, and multi-root plantings.
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, bounds, and drawing the skeleton.
 - [Dielectric breakdown](../Docs/Generators/DielectricBreakdown.md): the eta regimes, ground as a rim or as electrodes, channel polylines and pipe widths, and reading the field back.
 - [Shape grammars](../Docs/Generators/ShapeGrammar.md): all six rules, how a run picks between them, the fallback a weight of zero writes, and the two facts that hold exactly.
 - [Differential growth](../Docs/Generators/DifferentialGrowth.md): the split length, the three forces, and the grown line as ordinary geometry.
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
-- [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every parameter, and drawing the oxbows and scars.
+- [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every argument, and drawing the oxbows and scars.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the veins grew into and the tree's crown was carved from, first met in [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences).
 - Appendix B draws this chapter's math, one picture per idea: [Iteration: a rule applied again](B-JustEnoughMath.md#iteration-a-rule-applied-again) and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Lichtenberg`](../Examples/Patterns/Lichtenberg/Sketch.swift), [`Examples/Patterns/ShapeGrammar`](../Examples/Patterns/ShapeGrammar/Sketch.swift) (an ice-ray window frame built a sweep at a time), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), and [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars).

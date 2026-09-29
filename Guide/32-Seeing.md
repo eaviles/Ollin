@@ -526,7 +526,7 @@ override func draw() {
 
 `DepthClip` reads the file, so the pass runs before the first exported frame. Frame `k` then carries the map of the clip frame it shows, every time. Make it in `setup()`, not lazily, so the export finds it. `Examples/Vision/FootageDepth` draws a clip's depth as contour lines, over the bundled footage of the *Voladores de Papantla*, flyers circling down a pole on ropes.
 
-### Words as parameters: ConceptTracker
+### Words as numbers: ConceptTracker
 
 The classifier's `confidence(of: "plant")` answers only for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. It runs MobileCLIP, Apple's small model from 2024, by Pavan Kumar Anasosalu Vasu and colleagues. The scores follow the recipe of CLIP, by Alec Radford and colleagues, from 2021.
 

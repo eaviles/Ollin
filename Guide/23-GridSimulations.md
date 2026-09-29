@@ -197,7 +197,7 @@ for painted in ant.paintedCells { /* draw a cell */ }
 dish = makeSimField(.lenia(radius: 13), scale: 0.55)
 ```
 
-The parameters are the model's personality. `radius` is how far the ring reaches. `growthCenter` is the target mass, and `growthWidth` is how forgiving the rule is about missing it. One thing to know before running it: **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, so give it a generous soup of soft marks and a few hundred frames.
+The arguments are the model's personality. `radius` is how far the ring reaches. `growthCenter` is the target mass, and `growthWidth` is how forgiving the rule is about missing it. One thing to know before running it: **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, so give it a generous soup of soft marks and a few hundred frames.
 
 ### Life with soft edges: SmoothLife
 
@@ -475,7 +475,7 @@ That is the whole sketch, and the missing piece is the point. There is no `withF
 
 For the look, try `.relight` before `.gradientMap`. The algorithm is flat and two-dimensional and knows nothing about light, yet the result reads like something photographed under a microscope. McCabe noticed this too, and the resemblance to electron micrographs of diatoms is what the pictures are known for.
 
-Two parameters each make the difference between the pattern and a near miss. Keep the **amounts equal** across scales. Every step renormalizes the field to fill its range, so whichever scale pushes hardest sets that range. It squeezes the others toward mid gray, leaving one scale's pattern with the rest as a faint wash. And **`variationRadius`** decides how large a region a scale can claim, by setting how far each scale's disagreement is averaged before the scales are compared. Read at a single point, a fine scale's disagreement passes through zero along every contour of its own structure. Since *least* disagreement wins, it then takes a dense web of pixels across the field, burying the coarse scales entirely.
+Two arguments each make the difference between the pattern and a near miss. Keep the **amounts equal** across scales. Every step renormalizes the field to fill its range, so whichever scale pushes hardest sets that range. It squeezes the others toward mid gray, leaving one scale's pattern with the rest as a faint wash. And **`variationRadius`** decides how large a region a scale can claim, by setting how far each scale's disagreement is averaged before the scales are compared. Read at a single point, a fine scale's disagreement passes through zero along every contour of its own structure. Since *least* disagreement wins, it then takes a dense web of pixels across the field, burying the coarse scales entirely.
 
 Add `symmetry` and the field folds around its center. `.rosette(n)` does it to every rung at once, which is where the diatom resemblance becomes hard to shake:
 
@@ -667,7 +667,7 @@ Leave a stroke alone and its edge darkens on its own. The wet rim sheds water an
 
 Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine makes the muted green those paints mix. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
 
-There are parameters for the paper too, on the longer form `watercolor(.watercolor(pigments: [.frenchUltramarine], dryBrush: 0.3))`. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you cannot find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
+There are arguments for the paper too, on the longer form `watercolor(.watercolor(pigments: [.frenchUltramarine], dryBrush: 0.3))`. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you cannot find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 
 ## A rule of your own: Sim.shader
 
@@ -697,7 +697,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 It matches the built-in `.gameOfLife()` cell for cell, which is how you know the readers mean what they say. The state is *data*: nothing you return is treated as a color, and nothing you read has been. A cell can hold a temperature, a velocity, a count, whatever four numbers your rule needs.
 
-The second kernel is how a drawn mark gets in. Without one, a mark lands the way it does for the catalog: laid onto the state by its alpha, white writing 1 and black 0. With `inject:`, your own shader runs where the marks landed, and it reads them through `mark(info)`. That second kernel is what turns a brush into a force. A mark can *add* heat instead of setting it. It can push a wind the way the mouse moved, with the motion handed in as the shader's parameters. The region it acts on is whatever the block drew. So a circle, a line, or a rectangle in `withField` is that shape stepped by your rule:
+The second kernel is how a drawn mark gets in. Without one, a mark lands the way it does for the catalog: laid onto the state by its alpha, white writing 1 and black 0. With `inject:`, your own shader runs where the marks landed, and it reads them through `mark(info)`. That second kernel is what turns a brush into a force. A mark can *add* heat instead of setting it. It can push a wind the way the mouse moved, with the motion handed in through the shader's `params`. The region it acts on is whatever the block drew. So a circle, a line, or a rectangle in `withField` is that shape stepped by your rule:
 
 ```swift
 plate = makeSimField(.shader(heatStep, inject: addHeat, substeps: 4), scale: 0.5, edge: .clamped)
@@ -715,12 +715,12 @@ The Game of Life is John Horton Conway's, from 1970, and reached the world throu
 
 ## Go deeper
 
-- [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every parameter, seeding semantics, and field scale.
+- [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every argument, seeding semantics, and field scale.
 - [A simulation of your own](../Docs/Drawing/Effects.md#simfield-shader): the kernel contract, the readers, the inject, `edge`, `precision`, `inputs`, `.arrows`, and `snapshot()`.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Coupled oscillators on a lattice](../Docs/Simulation/Oscillators.md#on-a-lattice): the square and hex layouts, `range`, the neighbors a site listens to, and [where the crowd has locked](../Docs/Simulation/Oscillators.md#local-coherence).
-- [Watercolor](../Docs/Simulation/Watercolor.md): the three layers of the wash, every pigment preset, the paper parameters, and the two verbs between washes.
+- [Watercolor](../Docs/Simulation/Watercolor.md): the three layers of the wash, every pigment preset, the paper arguments, and the two verbs between washes.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) and [A parameter space is a map](B-JustEnoughMath.md#a-parameter-space-is-a-map).
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (thirteen rules on a picker, Wireworld, Schelling's board, the Ising model, and the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 

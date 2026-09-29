@@ -372,7 +372,7 @@ Write that walk by hand once. After that Ollin has it ready, along with two rela
 
 **`randomWalk`** is the one you just wrote, seeded and shipped. Notice what it does with five thousand steps in the first panel: it pools. A walk with equal-sized steps spreads outward only as fast as the square root of the number of steps. So it spends most of its time revisiting a small patch.
 
-**`levyFlight`** changes the step size rule. Its steps are no longer all about the same length. Their lengths come from a distribution where small steps are overwhelmingly likely, but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. Biologists have used it as a model of animals searching for food they cannot see. Benoit Mandelbrot named it after the mathematician Paul Lévy, who studied these heavy-tailed distributions. One parameter needs care. `minStep` must stay above zero, because the distribution runs to infinity at zero, so a zero minimum hands back only the starting point.
+**`levyFlight`** changes the step size rule. Its steps are no longer all about the same length. Their lengths come from a distribution where small steps are overwhelmingly likely, but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. Biologists have used it as a model of animals searching for food they cannot see. Benoit Mandelbrot named it after the mathematician Paul Lévy, who studied these heavy-tailed distributions. One argument needs care. `minStep` must stay above zero, because the distribution runs to infinity at zero, so a zero minimum hands back only the starting point.
 
 **`selfAvoidingWalk`** changes the memory rule. It moves on a grid and refuses to enter a cell it has already visited, so it cannot pool, and it fills its region instead. When every neighbor of a cell has been used, it backs out of the dead end and tries another way. The call hands back the longest path it found. Paul Flory proposed the walk in 1953 as a model of a polymer chain, which cannot pass through itself.
 
@@ -382,7 +382,7 @@ levyFlight(steps: 900, minStep: 1.5, maxStep: 90)
 selfAvoidingWalk(cellSize: 22)
 ```
 
-Each call hands back the walk's points as a list, ready to draw. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every parameter, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
+Each call hands back the walk's points as a list, ready to draw. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every argument, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
 
 ## Chance spread evenly: blue noise and low-discrepancy sequences
 
