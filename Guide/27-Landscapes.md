@@ -48,7 +48,7 @@ Once there is ground, you want many things standing on it: a plaza of columns, a
 
 **Instancing** avoids that. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. The mesh uploads once, and only the placements travel.
 
-<img src="Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+<img src="Images/27-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars rising and falling with a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
 
 ```swift
 let pillar = Mesh.box(width: 0.11, height: 1, depth: 0.11)
@@ -74,7 +74,7 @@ Each seat holds a place on the floor, `x` and `z`, with the radius `r` and the a
 
 A `MeshInstance` is a position, a rotation, a scale, and an optional tint. They apply in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field. Ten thousand small structs cost little next to the ten thousand mesh expansions they replace. And the copies are ordinary objects. They take the current `fill` and material, the scene's lights, the environment, and the fog. They drop shadows, and they stand in a mirror when one is nearby, as if you had drawn each one yourself.
 
-This is the division of labor behind the retained `Batch` in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) and the attractor flow in [Chapter 24](24-ParticleSimulations.md#a-million-riding-the-same-field-attractor-flow). Here it applies to solid geometry. Keep the heavy thing on the GPU and send only what changed. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the loop and the instanced call. Watch the inspector's CPU frame time fall when it flips. When even the placement list is too much for the CPU, a compute kernel can write the placements into a buffer the CPU never touches. The [instancing reference](../Docs/3D/Instancing.md) shows that form, and it has the measured costs of both.
+This is the division of labor behind the retained `Batch` in [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) and the attractor flow in [Chapter 24](24-ParticleSimulations.md#a-million-following-the-same-field-attractor-flow). Here it applies to solid geometry. Keep the heavy thing on the GPU and send only what changed. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the loop and the instanced call. Watch the inspector's CPU frame time fall when it flips. When even the placement list is too much for the CPU, a compute kernel can write the placements into a buffer the CPU never touches. The [instancing reference](../Docs/3D/Instancing.md) shows that form, and it has the measured costs of both.
 
 ## Where the copies go: points on a surface
 

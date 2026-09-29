@@ -372,7 +372,7 @@ The rose takes its hands from things you can buy ready-made: a knob box, a phone
 
 ### A table you put things on: TUIO
 
-A knob and a fader are one hand each. A table surface can follow several hands at once, and objects you slide, turn, and take away. A camera under the glass or a touch sensor tracks them. The tracker reports what it sees in TUIO, a protocol that rides on OSC. Use it for a sketch that people play together around a table, or one steered by printed tokens. Martin Kaltenbrunner, Till Bovermann, Ross Bencina, and Enrico Costanza set TUIO out for table interfaces in 2005. Ollin reads its 1.1 specification.
+A knob and a fader are one hand each. A table surface can follow several hands at once, and objects you slide, turn, and take away. A camera under the glass or a touch sensor tracks them. The tracker reports what it sees in TUIO, a protocol built on OSC. Use it for a sketch that people play together around a table, or one steered by printed tokens. Martin Kaltenbrunner, Till Bovermann, Ross Bencina, and Enrico Costanza set TUIO out for table interfaces in 2005. Ollin reads its 1.1 specification.
 
 A tracker reports three kinds of thing, and each gets its own list. `cursors` are touches: a fingertip, a contact, a pointer from a phone app. `objects` are tagged pieces, printed markers the tracker can name and measure. Each one carries the `symbol` printed on it and the `angle` it is turned to. `blobs` are shapes it found but cannot name, such as a hand or a cup, each with a size and an area. The lists hold what is on the surface right now, with no history, because of how the protocol reports a touch ending:
 
@@ -381,7 +381,7 @@ A tracker reports three kinds of thing, and each gets its own list. `cursors` ar
   <img src="Images/35-ControlsAndSignals/SurfaceFrame.jpg" alt="Two rows. Each has a card of TUIO messages on the left and the surface they describe on the right. The first frame carries two touches, both alive, and a frame number. The second lists only one as alive, and the surface has lost the other, shown as an empty ring" width="680">
 </picture>
 
-A tracker sends everything on the surface many times a second. Each frame is the alive list of what is on the surface, then a `set` for every thing that moved, then the frame number. No message says that a touch ended. The touch stops appearing in the alive list, and Ollin drops it for you. Reading the touches needs no new import, since TUIO rides on OSC:
+A tracker sends everything on the surface many times a second. Each frame is the alive list of what is on the surface, then a `set` for every thing that moved, then the frame number. No message says that a touch ended. The touch stops appearing in the alive list, and Ollin drops it for you. Reading the touches needs no new import, since TUIO is sent over OSC:
 
 ```swift
 let surface = TUIOReceiver()          // port 3333, what trackers use by default

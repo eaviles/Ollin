@@ -460,14 +460,14 @@ A path joint threads the second body onto a smooth curve through a list of point
 Hand `.path` the points, and the returned joint drives along it like any other:
 
 ```swift
-let ride = world.connect(rails, cart,
+let track = world.connect(rails, cart,
                          .path(through: points, looping: true,
                                alignment: .followsPath))
-ride.drive(at: 3.9, strength: 400)   // world units per second along the track
-ride.progress              // 0 at the first point, 1 at the last
+track.drive(at: 3.9, strength: 400)   // world units per second along the track
+track.progress              // 0 at the first point, 1 at the last
 ```
 
-The curve runs through the points rather than between them, so a dozen of them describe a long smooth track. `alignment` decides how much of the body's turning the track takes over. `.free` leaves it tumbling, and `.followsPath` banks it into every bend, which is why the cart in the picture leans. A flat `Contour` becomes a track on the ground in one call, `.path(contour, atHeight: 0.3)`. So you can draw the route with the curve tools from [Chapter 16](16-CurvesAndFigures.md) and then ride it.
+The curve runs through the points rather than between them, so a dozen of them describe a long smooth track. `alignment` decides how much of the body's turning the track takes over. `.free` leaves it tumbling, and `.followsPath` banks it into every bend, which is why the cart in the picture leans. A flat `Contour` becomes a track on the ground in one call, `.path(contour, atHeight: 0.3)`. So you can draw the route with the curve tools from [Chapter 16](16-CurvesAndFigures.md) and then send a body along it.
 
 ### A rope over two hooks: the pulley
 
@@ -486,7 +486,7 @@ A rope resists being pulled longer and goes slack when it is let go. So both end
 Every joint so far keeps some of the six things a body can do, the degrees of freedom from the family before this one. When none of the named kinds fits, `.allowing` says which ones you are keeping. Game engines call this a six-degree-of-freedom joint, since each of the six is a separate choice.
 
 ```swift
-// A post a platter rides: it may rise and it may spin, and nothing else.
+// A post a platter turns on: it may rise and it may spin, and nothing else.
 world.connect(post, platter,
               .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
 ```
@@ -544,7 +544,7 @@ The contraption stands on a flat `ground` at zero, and every other surface in it
 
 Water in a world holds up whatever is lighter than it and lets the rest sink. It is for harbors, flotsam, and anything that bobs. The rule is Archimedes' principle, from his *On Floating Bodies* in the third century BC. A body sinks until the water it pushes aside weighs the same as the body. [Chapter 27](27-Landscapes.md#the-sea-from-what-a-sea-is-made-of-an-ocean-spectrum) built a sea to look at. This one holds bodies up.
 
-<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each riding lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
+<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
 
 Those four crates differ in one number. Their densities run from 0.2 on the left to 0.8 on the right. Water takes one property, like `ground`, and nothing has to opt in:
 
@@ -552,7 +552,7 @@ Those four crates differ in one number. Their densities run from 0.2 on the left
 world.water = Water(level: 0)
 ```
 
-Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it rides. You already said that in the `density` you built it with:
+Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it floats. You already said that in the `density` you built it with:
 
 ```swift
 world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
@@ -561,9 +561,9 @@ world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // stone
 ```
 
-The cork bobs and the stone goes to the bottom. A body of density `0.5` settles with half of itself under the surface. One at `0.8` rides low, with a fifth of it dry. The waterline comes from the density, so you never set it.
+The cork bobs and the stone goes to the bottom. A body of density `0.5` settles with half of itself under the surface. One at `0.8` floats low, with a fifth of it dry. The waterline comes from the density, so you never set it.
 
-`Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine, and every crate in the scene rides higher without you touching any of them.
+`Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine, and every crate in the scene floats higher without you touching any of them.
 
 The first parameter to know is drag:
 
@@ -573,14 +573,14 @@ world.water = Water(level: 0, linearDrag: 0.5)   // the default
 
 At `0`, a crate dropped in bounces about its waterline for a long time, like a ball on a trampoline. The default dips, comes back, and settles in a second or two. `angularDrag` does the same for turning, which stops a long shape rocking for minutes after it lands.
 
-Give the surface a shape and it carries whatever is riding it:
+Give the surface a shape and it carries whatever floats on it:
 
 ```swift
 world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
                                                  wavelength: 8, speed: 1.5))
 ```
 
-Now the water you draw has to match the water they float on. `waterMesh` hands back that surface as an ordinary mesh, so the swell you see is the swell they ride. `extent` is how far it reaches in world units, and `resolution` how many cells it has along each side:
+Now the water you draw has to match the water they float on. `waterMesh` hands back that surface as an ordinary mesh, so the swell you see is the swell they float on. `extent` is how far it reaches in world units, and `resolution` how many cells it has along each side:
 
 ```swift
 if let surface = world.waterMesh(extent: 30, resolution: 40) {
@@ -594,7 +594,7 @@ if let surface = world.waterMesh(extent: 30, resolution: 40) {
 
 `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbor is what you get by putting static walls in it. The water also leaves some things alone. Sensors, static bodies, and the walking characters of [Chapter 29](29-CharactersAndCloth.md) go where you put them rather than where the water would.
 
-The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example puts it in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths. A stone anchor sits on the bottom, and a current carries them all past. Drag one under and let go.
+The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example puts it in one scene. Crates from cork to nearly waterlogged float on a swell at their own depths. A stone anchor sits on the bottom, and a current carries them all past. Drag one under and let go.
 
 ### Ground from a landscape: the heightfield collider
 

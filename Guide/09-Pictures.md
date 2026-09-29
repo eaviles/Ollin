@@ -29,7 +29,7 @@ final class Photo: Sketch {
 }
 ```
 
-`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends). It throws when the path is wrong or the file is not a picture, and `try?` turns that into `nil`. The line `if let photo {` is the short form of [Chapter 2](02-Color.md)'s `if let`. It unwraps the optional under the same name, and it skips the block when there is nothing. `drawImage` places the image by its top-left corner, at native size or scaled into a box. It composites in draw order with everything else and rides the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder. Load it with `try? Image(resource: "leaf", withExtension: "jpg", in: .module)`, where `.module` names the folder the sketch's own files are read from.
+`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends). It throws when the path is wrong or the file is not a picture, and `try?` turns that into `nil`. The line `if let photo {` is the short form of [Chapter 2](02-Color.md)'s `if let`. It unwraps the optional under the same name, and it skips the block when there is nothing. `drawImage` places the image by its top-left corner, at native size or scaled into a box. It composites in draw order with everything else and follows the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder. Load it with `try? Image(resource: "leaf", withExtension: "jpg", in: .module)`, where `.module` names the folder the sketch's own files are read from.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 

@@ -112,7 +112,7 @@ A point `(x, y)` can also be read as one number, written `x + y·i`, where `i` i
   <img src="Images/16-CurvesAndFigures/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
 </picture>
 
-A closed outline can be rebuilt from circles. Each circle turns a whole number of laps while riding on the tip of the one before it, and the last tip traces the shape. A few large, slow circles give the rough form, and more small, fast ones add the detail. This is Joseph Fourier's idea from the 1820s: a repeating shape is a sum of plain waves. [Chapter 16](16-CurvesAndFigures.md) draws with the circles, and [Chapter 21](21-PicturesYouSolve.md) reads a whole picture as waves. [Chapter 31](31-TracedLight.md) finds it in the star around a bright light in a lens. A sound splits the same way, as [the spectrum](#the-spectrum) shows.
+A closed outline can be rebuilt from circles. Each circle turns a whole number of laps while centered on the tip of the one before it, and the last tip traces the shape. A few large, slow circles give the rough form, and more small, fast ones add the detail. This is Joseph Fourier's idea from the 1820s: a repeating shape is a sum of plain waves. [Chapter 16](16-CurvesAndFigures.md) draws with the circles, and [Chapter 21](21-PicturesYouSolve.md) reads a whole picture as waves. [Chapter 31](31-TracedLight.md) finds it in the star around a bright light in a lens. A sound splits the same way, as [the spectrum](#the-spectrum) shows.
 
 ## Fractions, mapping, and wrapping
 
@@ -354,7 +354,7 @@ Light from a point spreads out as it travels. At twice the distance, the same li
 
 ### Floating: the weight of the water pushed aside
 
-<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each riding lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
+<img src="Images/28-WorldsWithWeight/Floating.jpg" alt="Four crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate four fifths above the surface to a dark one with a fifth above it" width="560">
 
 A body in water sinks until the water it pushes aside weighs as much as the body. That is Archimedes' principle. So a body half as dense as water floats with half of itself under the surface. One at 0.8 of the water's density floats low, with a fifth above. [Chapter 28](28-WorldsWithWeight.md) works each crate's waterline out from its density alone.
 

@@ -142,11 +142,11 @@ Before moving on, make it yours:
 
 The drift is motion, so keep it as a video. The command `swift run OllinLive MySketches/Drift.swift --export-video drift.mp4 --seconds 15` records the first fifteen seconds, which is when the trails fill in.
 
-## One field, a million riders: attractor flow
+## One field for a million particles: attractor flow
 
 The drift's particles followed a curl-noise field across the plane. The first family after it follows a different kind of field, a strange attractor. It is the one system here whose particles still never look at each other.
 
-### A million riding the same field: attractor flow
+### A million following the same field: attractor flow
 
 An **attractor flow** puts a million particles into the velocity field of a strange attractor. A continuous system like Lorenz is a **velocity field**: hand it a point in space and it tells you which way that point is moving. [Chapter 22](22-IteratedForms.md#a-formula-that-folds-the-plane-chaotic-maps) plotted the flat maps as ghosts of their own orbits. The 3D systems, Lorenz and its relatives, live in space, so they need a camera. `StrangeAttractor` integrates one starting point through the field and hands back the path, which you draw as a cloud of points. The flow follows the same field with six hundred thousand particles, all of them stepping every frame on the GPU. It is for the attractor seen as a crowd rather than a line, with a second fact, speed, in its color. The Lorenz system comes from Edward Lorenz's 1963 paper on deterministic nonperiodic flow. It is a model of convection, air heated from below and rolling over, cut down from Barry Saltzman's seven variables to three. Its successors are collected at dynamicmath.xyz.
 

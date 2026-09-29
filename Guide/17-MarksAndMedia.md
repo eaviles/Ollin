@@ -347,7 +347,7 @@ drawWatercolor(center: center, radius: 300)
 drawWatercolor(center: center, radius: 300, layers: 60, opacity: 0.03, variance: 40)
 ```
 
-`layers` and `opacity` trade against each other, and more layers at a lower opacity looks smoother and wetter. If a blob reads thin and translucent everywhere, add layers rather than raising opacity. The flat saturated core is most of what reads as paint. `variance` sets how far the edge is free to wander, and it defaults to a fifth of the radius. All of it rides the sketch's seeded `random`. So `seed(_:)` reproduces a painting, and every variation pours a different one.
+`layers` and `opacity` trade against each other, and more layers at a lower opacity looks smoother and wetter. If a blob reads thin and translucent everywhere, add layers rather than raising opacity. The flat saturated core is most of what reads as paint. `variance` sets how far the edge is free to wander, and it defaults to a fifth of the radius. All of it comes from the sketch's seeded `random`. So `seed(_:)` reproduces a painting, and every variation pours a different one.
 
 This is deliberately heavy drawing, since each layer is a full concave fill. Paint it behind `noLoop()`, or once into a retained batch, which [Chapter 19](19-LayersAndEffects.md#record-it-once-batches) teaches, rather than every frame. The cost is one reason, and the other is that regenerating every frame re-rolls the layers and makes the blob shimmer.
 

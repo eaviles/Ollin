@@ -227,7 +227,7 @@ The sketch builds three layers each frame and reads the picture out of them. `ma
 
 The beams come from the shutter. Its eight blades turn with `time`, and the gaps between them let the lamp's light out in spokes. Nothing in the sketch draws a beam. It is the comb from the room above, bent into a ring.
 
-The outline is a `fieldMap` whose ramp runs from clear to gold and back to clear, over a window from 1 to 5 pixels. That lights a thin band just outside every silhouette, the mast and the shutter blades included. The field is measured again every frame, so the band follows the boat as it rides the swell.
+The outline is a `fieldMap` whose ramp runs from clear to gold and back to clear, over a window from 1 to 5 pixels. That lights a thin band just outside every silhouette, the mast and the shutter blades included. The field is measured again every frame, so the band follows the boat as it rocks on the swell.
 
 > **Swift note.** The horizon is built by `stride`, which [Chapter 14](14-FieldsAndFlow.md) used to make a list of levels. Here a `.map` turns each x into a point. `withState(at:rotation:)` is [Chapter 16](16-CurvesAndFigures.md)'s move-and-turn scope, so each blade is drawn at its own place around the lamp. `drawRect(center:width:height:)` places a rectangle by its middle, and `rim.withAlpha(0)` is [Chapter 9](09-Pictures.md)'s way to make a color transparent.
 
@@ -237,7 +237,7 @@ Then make it yours:
 - Chart the water. Measure a second field out to a `maxDistance` of 120, and map it with `repeating: true` over a window of about 18 pixels. It rings the boat and the headland like ripples on a map.
 - Give the land a color. Fill it a dark green instead of near-black, and with the default single bounce the light that lands on the headland comes back green.
 
-The lighthouse is about motion, since the beams sweep and the boat rides the swell, so keep it as a movie. `swift run OllinLive MySketches/Lighthouse.swift --export-video lighthouse.mp4 --seconds 16` writes sixteen seconds of it. An export raises the light to its detail quality, so the file takes longer to write than the window takes to draw.
+The lighthouse is about motion, since the beams sweep and the boat rocks on the swell, so keep it as a movie. `swift run OllinLive MySketches/Lighthouse.swift --export-video lighthouse.mp4 --seconds 16` writes sixteen seconds of it. An export raises the light to its detail quality, so the file takes longer to write than the window takes to draw.
 
 ## Other problems a layer can solve: a seamless paste, the frequency domain, and local averages
 

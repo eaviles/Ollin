@@ -180,7 +180,7 @@ fill(.conic(center: spot, startAngle: -.pi / 2, wheel))            // once aroun
 stroke(.alongPath(wheel))                                          // along the stroke itself
 ```
 
-Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the second panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.conic` sweeps the ramp once around a point you choose, starting from an angle you choose. That is a color wheel, a dial, or a pie in one call. A ramp whose last color repeats its first hides the seam where the sweep comes back around. `.alongPath` runs from the start of a line to its end. On a closed shape it sweeps once around its own center, which is how the ring above became a wheel too.
+Each of them takes a `Ramp` or a plain list of colors. Alpha is kept too, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the second panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.conic` sweeps the ramp once around a point you choose, starting from an angle you choose. That is a color wheel, a dial, or a pie in one call. A ramp whose last color repeats its first hides the seam where the sweep comes back around. `.alongPath` runs from the start of a line to its end. On a closed shape it sweeps once around its own center, which is how the ring above became a wheel too.
 
 ## Palettes from a file
 

@@ -559,7 +559,7 @@ The sheet you draped floats too, in the water [Chapter 28](28-WorldsWithWeight.m
 Floating it is one number:
 
 ```swift
-raft.density = 0.25          // rides high; above 1 it sinks
+raft.density = 0.25          // floats high; above 1 it sinks
 ```
 
 That reads like a crate's `density`, and it means the same thing: how heavy the thing is for its size, against the water. A closed soft body works its own out, because a mass and a volume are all it takes and a beach ball has both. A sheet has no inside, so there is nothing to work it out from. It starts as heavy as water, lying awash in the surface the way a wet sheet does, and setting `density` makes it a raft.

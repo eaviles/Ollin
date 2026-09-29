@@ -132,11 +132,11 @@ drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300, shape: .wander))
 
 ## Layering shape and detail: `fbm`
 
-Look at a mountain ridge and there are two ridges: the huge slow silhouette, and the small jagged texture riding on it. One noise call gives you one or the other, never both, because one zoom level only has features of one size. The fix is to ask twice and add:
+Look at a mountain ridge and there are two ridges: the huge slow silhouette, and the small jagged texture on top of it. One noise call gives you one or the other, never both, because one zoom level only has features of one size. The fix is to ask twice and add:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseLayers-dark.jpg">
-  <img src="Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture riding it" width="680">
+  <img src="Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture on top" width="680">
 </picture>
 
 ```swift
@@ -149,7 +149,7 @@ Ollin also packages the stack as one call. `fbm(x * 0.004)` layers four octaves,
 
 ## Putting it together: a meadow in the wind
 
-The meadow at the top of this chapter puts a noise field, time, and layering to work on about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps do not jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. One call is new here, `strokeCap(.round)`, which rounds the ends of every line so six short segments join into one blade. Make `MySketches/Meadow.swift`:
+The meadow at the top of this chapter puts a noise field, time, and layering to work on about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps do not jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field uses `loop:`, one lap of wind every six seconds, so it sways forever without a seam. One call is new here, `strokeCap(.round)`, which rounds the ends of every line so six short segments join into one blade. Make `MySketches/Meadow.swift`:
 
 ```swift
 import Ollin

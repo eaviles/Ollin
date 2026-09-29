@@ -207,7 +207,7 @@ A print is a still, and the way to keep this one is as a vector file. Add `--exp
 
 The print traced a direction field one line at a time, from starts you chose. Three more things a field can do belong to the same idea, and none of them is in the print. A direction field can carry a population of particles along, one step per frame. A layer can be combed along the field everywhere at once, with no start chosen. And a number field can be built the other way round, from values you set at a few places, so that it passes through them.
 
-### Particles that ride: advection
+### Points the field carries: advection
 
 **Advection** is moving a set of points along a direction field, each by one small step from its own position, every frame. A streamline is the whole journey drawn at once. Advection is the journey lived instead, and it is for smoke, ink, and anything that should read as fluid without simulating fluid. The word is borrowed from fluid dynamics, where it names what a flow carries along. In Ollin it is one call, `advected`, which takes the points and hands back the moved points. Make `MySketches/Drift.swift`:
 
@@ -215,20 +215,20 @@ The print traced a direction field one line at a time, from starts you chose. Th
 import Ollin
 
 final class Drift: Sketch {
-    var riders: [Vector2] = []
+    var dots: [Vector2] = []
 
     override func setup() {
         seed(7)
-        riders = poissonDisk(radius: 36)
+        dots = poissonDisk(radius: 36)
         background(Color(hex: 0x101318))
         noClear()
     }
 
     override func draw() {
         let field = curlField(scale: 0.0022)
-        riders = field.advected(riders, stepLength: 3)
-        for i in riders.indices where !bounds.contains(riders[i]) {
-            riders[i] = Vector2(random(width), random(height))
+        dots = field.advected(dots, stepLength: 3)
+        for i in dots.indices where !bounds.contains(dots[i]) {
+            dots[i] = Vector2(random(width), random(height))
         }
 
         // Fade the last frame a little instead of erasing it: trails.
@@ -237,14 +237,14 @@ final class Drift: Sketch {
         drawRect(bounds)
 
         fill(Color(hex: 0x9AD9CE))
-        drawCircles(riders, radius: 2.4)
+        drawCircles(dots, radius: 2.4)
     }
 }
 ```
 
 <img src="Images/14-FieldsAndFlow/Drift.gif" alt="Short teal streaks swimming along invisible currents on a dark canvas, each dragging a brief trail" width="480">
 
-The riders start on a blue-noise scatter and take a step each frame. A rider that leaves the canvas is put back at a random spot. The trails come from the fade of [Chapter 12](12-FlocksAndSwarms.md). `noClear()` runs in `setup()`, and a faint wash of the background covers the last frame instead of erasing it. The seed is set once, in `setup()`, so the field is the same every frame and the respawns keep drawing from the sketch's own stream. The field is `curlField`, the second builder. Curl noise is built so the flow only ever swirls. The riders never pile up or drain away, and the respawns only fill in what leaves. `bounds.contains` asks whether a point is inside the canvas rectangle. `!` in front of a test means *not*, so the loop visits only the riders outside it. The [flow-field reference](../Docs/Generators/FlowField.md#advect) covers `advected` beside `noClear()`.
+The dots start on a blue-noise scatter and take a step each frame. A dot that leaves the canvas is put back at a random spot. The trails come from the fade of [Chapter 12](12-FlocksAndSwarms.md). `noClear()` runs in `setup()`, and a faint wash of the background covers the last frame instead of erasing it. The seed is set once, in `setup()`, so the field is the same every frame and the respawns keep drawing from the sketch's own stream. The field is `curlField`, the second builder. Curl noise is built so the flow only ever swirls. The dots never pile up or drain away, and the respawns only fill in what leaves. `bounds.contains` asks whether a point is inside the canvas rectangle. `!` in front of a test means *not*, so the loop visits only the dots outside it. The [flow-field reference](../Docs/Generators/FlowField.md#advect) covers `advected` beside `noClear()`.
 
 ### The whole field at once: line integral convolution
 
@@ -305,7 +305,7 @@ Vector fields are old mathematics, since fluid dynamics and electromagnetism bot
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
 - [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
 - [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the amplitude mix that opens up more figures, the nodal lines as geometry, and particles walked down to the nodes. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example tours the modes.
-- [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it ([Chapter 12](12-FlocksAndSwarms.md)'s `follow(_:)`).
+- [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of being carried by it ([Chapter 12](12-FlocksAndSwarms.md)'s `follow(_:)`).
 - [Fitting](../Docs/Drawing/Fitting.md): the kernels `RadialBasis` can use, fields of vectors and colors, smoothing, and everything `Fit.minimize` takes.
 - [Layered effects](../Docs/Drawing/Effects.md): `.streaked(along:length:field:)` and the `.lineIntegralConvolution` combine, with the three field readings.
 - Appendix B draws this chapter's math, one picture per idea: [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).

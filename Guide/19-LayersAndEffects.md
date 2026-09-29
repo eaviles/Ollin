@@ -176,7 +176,7 @@ final class Sandpainting: Sketch {
 
 <img src="Images/19-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
 
-Each frame draws only 2,600 dots, each at an alpha of 0.045, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, with `advected` carrying the grains the way it carried [Chapter 14](14-FieldsAndFlow.md)'s riders. Nothing here is drawn as a line. The lines are where light kept landing.
+Each frame draws only 2,600 dots, each at an alpha of 0.045, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, with `advected` carrying the grains the way it carried [Chapter 14](14-FieldsAndFlow.md)'s dots. Nothing here is drawn as a line. The lines are where light kept landing.
 
 > **Swift note.** `grains.isEmpty` is true while the list has nothing in it, so the scatter is rolled on the first frame only. `continue` skips the rest of the loop body for this grain and goes on to the next one. [Chapter 11](11-ForcesAndPhysics.md)'s `guard` used it the same way.
 
@@ -324,7 +324,7 @@ Then make it yours:
 
 - Adjust the feedback. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of spreading outward.
 - Put a `@Param` on the bloom's `amount` and the tone map's `exposure` and grade the sketch live, like color-timing film.
-- Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected riders, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
+- Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected dots, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Draw a dim `generate(.meshGradient(...))` layer where the flat `background` is, and the comets fly over weather.
 
 The comets are motion, so keep them as a few seconds of video:

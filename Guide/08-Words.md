@@ -31,7 +31,7 @@ final class Hello: Sketch {
 
 When one label wants its own look for one call, say it in the call. For example, `drawText("hello", at: center, size: 32, color: .white, align: .center, .middle)` styles that string alone. Afterward it puts every piece of state back, leftover stroke included. The state calls above are still the way to set a look that several strings share.
 
-A string can hold more than one line (`\n` starts the next one). Everything rides the transform stack from [Chapter 6](06-GridsAndRepetition.md), so you can translate to a point, rotate, and the words rotate with the paper.
+A string can hold more than one line (`\n` starts the next one). Everything follows the transform stack from [Chapter 6](06-GridsAndRepetition.md), so you can translate to a point, rotate, and the words rotate with the paper.
 
 ## Three kinds of letters: outline, bitmap, and stroke fonts
 

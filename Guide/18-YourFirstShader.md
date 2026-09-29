@@ -117,7 +117,7 @@ The library is one source file. It is spliced into the framework's own effects, 
 
 ## Putting it together: aurora
 
-The aurora is one shader, and it composes the steps above. Curtains of light are vertical noise bands whose x position is bent by more noise, from the library's `fbm`. Height fades them in above the horizon through `smoothstep`. A cosine `palette` colors them green at the core and violet at altitude, and `hash12` places the stars. Two parameters ride in as `params`, and `info.time` moves it all. Make `MySketches/Aurora.swift`:
+The aurora is one shader, and it composes the steps above. Curtains of light are vertical noise bands whose x position is bent by more noise, from the library's `fbm`. Height fades them in above the horizon through `smoothstep`. A cosine `palette` colors them green at the core and violet at altitude, and `hash12` places the stars. Two parameters come in as `params`, and `info.time` moves it all. Make `MySketches/Aurora.swift`:
 
 ```swift
 import Ollin
@@ -296,7 +296,7 @@ The aurora was typed as Metal in a string. Three more ways lead to a shader with
 
 ### Patching without typing Metal: Visual chains
 
-A **`Visual` chain** composes per-pixel imagery the way you compose anything else in Swift. You start from a source, warp it, color it, and patch chains into each other. It is for the look of a shader without writing one, and for combining visuals live. Every number in a chain can ride a parameter or a beat without recompiling. The idiom is inspired by Olivia Jack's Hydra, the browser live-coding instrument, and its patching model is what lets visuals be combined live.
+A **`Visual` chain** composes per-pixel imagery the way you compose anything else in Swift. You start from a source, warp it, color it, and patch chains into each other. It is for the look of a shader without writing one, and for combining visuals live. Every number in a chain can follow a parameter or a beat without recompiling. The idiom is inspired by Olivia Jack's Hydra, the browser live-coding instrument, and its patching model is what lets visuals be combined live.
 
 ```swift
 drawVisual(

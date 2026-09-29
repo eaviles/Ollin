@@ -31,7 +31,7 @@ Run it live and drag. The sphere is a shaded ball, and the mouse orbits around i
 
 Notice you set up no lights. Solids are lit by a default rig automatically, so a shape looks three-dimensional from the first frame. We'll take the lights over ourselves in a few pages.
 
-The camera's home position is three numbers. The picture to keep in mind is an eye riding a sphere around a target:
+The camera's home position is three numbers. The picture to keep in mind is an eye moving over a sphere around a target:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/25-3DGently/Orbit-dark.jpg">
