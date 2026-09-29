@@ -33,7 +33,7 @@ final class PrintedKnot: Sketch {
         rotateY(time * 0.1)
         let knot = knotMesh()
 
-        withoutLights {                 // one flat color, for the first drum
+        withoutLights {                 // one flat color, for the pink plate
             fill(blockInk.color)
             drawMesh(knot)
         }

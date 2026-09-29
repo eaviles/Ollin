@@ -4,9 +4,9 @@
 
 # 42. Making it physical
 
-<img src="Images/42-MakingItPhysical/PrintedKnot.jpg" alt="A flat pink knotted loop on white, outlined in thin dark blue lines. Where one strand passes under another, its hidden edges go on as dashed lines across the strand on top, and the lines turn nearly black where they cross" width="560">
+<img src="Images/42-MakingItPhysical/PrintedKnot.jpg" alt="A flat pink knotted loop on white, outlined in thin dark blue lines. Where one strand passes under another, its hidden edges continue as dashed lines across the strand on top. The lines turn nearly black where they cross or overlap" width="560">
 
-A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery and DXF, a proof of the press on screen, and a model and spatial video.
+A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery and DXF, proofs and process plates, and a model and spatial video.
 
 ## Driving the machine itself: G-code
 
@@ -26,7 +26,7 @@ A machine needs real units, so the export asks for a physical width. The flag ma
   <img src="Images/42-MakingItPhysical/OnTheSheet.jpg" alt="Four sheets of paper drawn to one scale, A3 lying wide, A4, A4 again with a tall canvas holding two roses, and US letter, each with its rose curves planned inside its margin and the millimeters they came to printed under it: 267 by 267, 190 by 190, 156 by 277, and 196 by 196" width="680">
 </picture>
 
-The figure plans a drawing of rose curves onto four sheets and prints the size each came to. On A4 with the default margin, the drawing is 190 millimeters square, the sheet's width less ten on each side. The drawing is held to the sheet's height as well as its width. So a canvas much taller than it is wide, 1080 by 1920 here, scales down to the 277 millimeters an A4 leaves for height. It comes out 156 wide. The A3 sheet lies wide with a 15-millimeter margin, which `margin: 15` sets in code and `--gcode-margin 15` sets on the command line. Its square drawing stops at 267 millimeters, the sheet's height less two margins. The drawing starts at the lower-left corner of the margin, one margin in from the corner the machine counts from. So a narrower fit sits at the left of the sheet, and a shorter one sits at the bottom. The [G-code reference](../Docs/Output/GCode.md) lists every named sheet, and `DXF(paper:)` sizes a shop drawing the same way.
+The figure plans a drawing of rose curves onto four sheets and prints the size each came to. On A4 with the default margin, the drawing is 190 millimeters square, the sheet's width less ten on each side. The drawing is held to the sheet's height as well as its width. So a canvas much taller than it is wide, 1080 by 1920 here, scales down to the 277 millimeters an A4 leaves for height. It comes out 156 wide. The A3 sheet lies wide with a 15-millimeter margin, which `margin: 15` sets in code and `--gcode-margin 15` sets on the command line. Its square drawing stops at 267 millimeters, the sheet's height less two margins. The drawing starts at the lower-left corner of the margin, one margin in from the corner the machine counts from. So a narrower fit sits at the left of the sheet, and a shorter one sits at the bottom. The [G-code reference](../Docs/Output/GCode.md) lists every named sheet, and `DXF(paper:)` sizes a [shop drawing](#a-drawing-for-the-shop-dxf) the same way.
 
 The exporter plans the route before it writes a move. Open paths whose ends touch merge, so the pen stays down across them. Then the paths are reordered, each one starting near where the last one ended, to keep the moves with the pen up short:
 
@@ -112,11 +112,11 @@ print(check.summary)        // "9360 triangles, 60.00 x 52.50 x 26.02 units: rea
 
 A shape that closes by construction saves the repair. The metaballs and isosurfaces of [Chapter 32](32-SculptingWithFields.md#the-other-way-out-field-to-mesh) close, since a field has an inside. So do the solid primitives and a tube swept with `closed: true`. A plane, or a lathe without caps, does not.
 
-One more thing happens on the way out. Ollin's mesh generators make flat-shaded meshes, so every triangle carries its own three corners, and neighboring triangles share no corner at all. Read as a solid, that is nothing but holes. The writers merge those duplicate corners first and settle which way each triangle faces against the mesh's own normals. They also stand the model up on the z axis, because Ollin's world has y up and a build platform does not. [Fabrication](../Docs/Output/Fabrication.md) has the details, and `Examples/3D/Geometry/Fabrication` is the knot above, with parameters.
+One more thing happens on the way out. Ollin's mesh generators make flat-shaded meshes, so every triangle carries its own three corners, and neighboring triangles share no corner at all. Read as a solid, that is nothing but holes. The writers merge those duplicate corners first and settle which way each triangle faces against the mesh's own normals. They also stand the model up on the z axis, because Ollin's world has y up and a build platform does not. [Fabrication](../Docs/Output/Fabrication.md) has the details, and `Examples/3D/Geometry/Fabrication` is the figure's gold knot, with parameters.
 
 ## Putting it together: the printed knot
 
-Make `MySketches/PrintedKnot.swift`. It sweeps a knotted path into a closed tube and draws that tube the way each machine will take it. The body is one flat ink, ready for [separations](#printing-one-ink-at-a-time-separations). Its [line drawing](#a-3d-scene-on-the-plotter-linedrawingof) goes on top in a second ink, dashed where the knot hides it, and leaves as [G-code](#driving-the-machine-itself-g-code) for a pen. The tube itself is [the 3D print](#something-you-can-hold-a-3d-print), written when you press S.
+The printed knot sweeps a knotted path into a closed tube and draws that tube the way each machine will take it. The body is one flat ink, ready for [separations](#printing-one-ink-at-a-time-separations). Its [line drawing](#a-3d-scene-on-the-plotter-linedrawingof) goes on top in a second ink, dashed where the knot hides it, and leaves as [G-code](#driving-the-machine-itself-g-code) for a pen. The tube itself is [the 3D print](#something-you-can-hold-a-3d-print), written when you press S. Make `MySketches/PrintedKnot.swift`:
 
 ```swift
 import Ollin
@@ -141,7 +141,7 @@ final class PrintedKnot: Sketch {
         rotateY(time * 0.1)
         let knot = knotMesh()
 
-        withoutLights {                 // one flat color, for the first drum
+        withoutLights {                 // one flat color, for the pink plate
             fill(blockInk.color)
             drawMesh(knot)
         }
@@ -195,13 +195,13 @@ Here is what needs a closer look:
 
 The lines are drawn in multiply, which [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes) described as stacking color like layered ink. Where a blue line lies over the pink, the screen shows the dark purple the two inks make together. `--export-separations` reads each pixel's color back into inks, and that purple comes back as full pink and full blue. So the pink plate stays solid under every line. Drawn in the normal mode, a line over the knot would be plain blue, and the pink plate would have a gap under it. Two passes through a press never line up perfectly, so bare paper would show at the edge of every line.
 
-Multiply costs something on screen. Where two lines cross, it stacks blue on blue, and the crossing turns nearly black. A plate carries one pass of ink, so the blue plate prints a crossing at the same full blue as the rest of the line. On paper the crossings come out lighter than the screen shows them.
+Multiply costs something on screen. Where two lines cross or run over each other, it stacks blue on blue, and those spots turn nearly black. A plate carries one pass of ink, so the blue plate prints them at the same full blue as the rest of the line. On paper they come out lighter than the screen shows them.
 
 Then make it yours:
 
 - Wind it another way. Set `windings` to 5, and the path goes five times around the center before it closes. Keep the two numbers free of a common factor. With 4 and 2 the path goes around one loop twice, and the tube lies over itself.
-- Change the body's ink. Set `blockInk` to `Ink.yellow`, and the body and its plate turn yellow. Where a line crosses the knot, the screen now shows blue over yellow, a dark green.
-- Leave the hidden lines out. Delete the line that draws `drawing.hidden`, and the plot and the blue plate keep only the edges the eye can see, like the right-hand panel in [the line-drawing step](#a-3d-scene-on-the-plotter-linedrawingof).
+- Change the body's ink. Set `blockInk` to `Ink.yellow`, and the body turns yellow and its master becomes `knot-1-yellow.png`. Where a line crosses the knot, the screen now shows blue over yellow, a dark green.
+- Leave the hidden lines out. Delete the line that draws `drawing.hidden`. The plot and the blue plate then keep only the edges the eye can see, like the right panel in [the line-drawing step](#a-3d-scene-on-the-plotter-linedrawingof).
 
 The knot is kept as files, one for each way out. Two commands write the plot and the plates:
 
@@ -210,7 +210,7 @@ swift run OllinLive MySketches/PrintedKnot.swift --export-gcode knot.gcode --gco
 swift run OllinLive MySketches/PrintedKnot.swift --export-separations knot.png
 ```
 
-The first writes the line drawing for a pen on an A4 sheet. It comes to 190 millimeters square, the size `pen` was worked out for, and `--gcode-width 190` gives the same size with no margin. Only the lines travel, since a surface has no line work to plot. The second writes the two masters, `knot-1-fluorescent-pink.png` and `knot-2-medium-blue.png`, and `knot-preview.png` with the two inks overprinted. Both read frame 0, the start of the turn. Give both the same `--frame` for another view, and the plot and the plates still show the same knot. The print needs no command. Run the sketch, click the canvas, and press S, and `knot.3mf` lands in the folder you ran it from.
+The first writes the line drawing for a pen on an A4 sheet. It comes to 190 millimeters square, the size `pen` was worked out for, and `--gcode-width 190` gives the same size with no margin. Only the lines travel, since a surface has no line work to plot. The second writes the two masters, `knot-1-fluorescent-pink.png` and `knot-2-medium-blue.png`, and `knot-preview.png` with the two inks overprinted. Both read frame 0, the start of the turn. Give both the same `--frame` for another view, and the plot and the plates still show the same knot. The print needs no command. Run the sketch and press S, and `knot.3mf` is written to the folder you ran it from.
 
 ## More line work for machines: embroidery and DXF
 

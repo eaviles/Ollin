@@ -174,7 +174,7 @@ A decal is paint, so it takes the finish of the surface it lands on. Stamp a rou
 
 ## Putting it together: the raked garden
 
-Make `MySketches/RakedGarden.swift`. Its sand is a plane [textured](#a-picture-wrapped-around-it-textured) with a picture, carved by a [height map](#depth-from-a-picture-height-maps) read as geometry, and given grain by a [detail map](#texture-that-survives-a-close-look-detail-maps). Its stones are boxes rounded by [subdivision](#smooth-from-a-cage-subdivision-surfaces), their granite put on by a [triplanar](#a-picture-from-three-sides-triplanar) projection, and its leaves are one [decal](#a-picture-stamped-onto-the-scene-decals) placed three times. Every picture is written in code, so the sketch needs no files.
+The garden's sand is a plane [textured](#a-picture-wrapped-around-it-textured) with a picture, carved by a [height map](#depth-from-a-picture-height-maps) read as geometry, and given grain by a [detail map](#texture-that-survives-a-close-look-detail-maps). Its stones are boxes rounded by [subdivision](#smooth-from-a-cage-subdivision-surfaces), their granite put on by a [triplanar](#a-picture-from-three-sides-triplanar) projection, and its leaves are one [decal](#a-picture-stamped-onto-the-scene-decals) placed three times. Every picture is written in code, so the sketch needs no files. Make `MySketches/RakedGarden.swift`:
 
 ```swift
 import Ollin

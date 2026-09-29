@@ -362,7 +362,7 @@ final class Yard: Sketch {
 }
 ```
 
-Run it, click the canvas so it has the keys, and drive. Here is how the steps show up in it:
+Run it and drive. Here is how the steps show up in it:
 
 - **The character controller.** The figure is `addCharacter`, walked by `walk(at:)` and drawn inside `withCharacter`. It stands on `world.ground` like everything else. The floor body at the same height is there to be drawn, since the ground stays out of `world.bodies`.
 - **The vehicle.** The truck is `addVehicle` with four wheels, the front pair steering and the back pair driven and braked. It reads the arrows as the vehicle step did, and it is drawn with `withBody` for the chassis and `withWheel` for each tire. `suspensionLength` and `suspensionTravel` shorten each spring and how far it moves, so the body sits down on its wheels. `mass` is the truck's weight and `engineTorque` how hard the engine pulls. `rotated:axis:` turns it half a turn to face into the yard.

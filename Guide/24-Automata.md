@@ -6,7 +6,7 @@
 
 <img src="Images/24-Automata/Wildfire.jpg" alt="A square field of tiny green and black squares. A large ragged patch of gray and black squares fills the middle, with small green islands inside it, and amber squares glow at points along its edge" width="560">
 
-A cellular automaton is a grid of cells that each change by one rule, reading only their neighbors. Rules that small can sort a crowd, carry a signal, or burn a forest, and some change all at once past a threshold. The wildfire at the top plants a forest by chance, strikes it once in the middle, and burns every tree joined to the strike. After it come more automata from Wolfram's rows to Wireworld, the sandpile, and crowds that sort, freeze, and fall into step.
+A cellular automaton is a grid of cells that each change by one rule, reading only their neighbors. Rules that small can burn a forest, carry a signal, or sort a crowd, and some change all at once past a threshold. The wildfire at the top plants a forest by percolation and burns it with the forest fire, which takes every tree joined to one strike. After it come more automata from Wolfram's rows to Wireworld, the sandpile, and crowds that sort, freeze, and fall into step.
 
 ## When chance acts as a crowd: percolation
 
@@ -64,7 +64,7 @@ Set both rates to zero and nothing grows or strikes on its own anymore. The fiel
 
 ## Putting it together: the wildfire
 
-Make `MySketches/Wildfire.swift`. The finished sketch plants a forest with [percolation](#when-chance-acts-as-a-crowd-percolation), a little past the critical probability. Then [the forest fire](#a-forest-that-keeps-burning-the-forest-fire) burns it, with growth and lightning at zero. The fire spreads through the same four sides percolation joins cells by, so it burns every tree joined to the strike and no other. A press starts another fire under the mouse.
+The finished sketch plants a forest with [percolation](#when-chance-acts-as-a-crowd-percolation), a little past the critical probability. Then [the forest fire](#a-forest-that-keeps-burning-the-forest-fire) burns it, with growth and lightning at zero. The fire spreads through the same four sides percolation joins cells by, so it burns every tree joined to the strike and no other. A press starts another fire under the mouse. Make `MySketches/Wildfire.swift`:
 
 ```swift
 import Ollin
@@ -118,17 +118,17 @@ final class Wildfire: Sketch {
 }
 ```
 
-Run it and the fire starts from the middle on the first frame. By frame 120 it looks like the picture at the top, and ten frames later the scar reaches the top edge. Most green islands inside the scar are other clusters, cut off from the burning one by bare ground, so the fire never reaches them.
+Run it and the fire starts from the middle on the first frame. By frame 120 it looks like the picture at the top, with fire still burning along the scar's edge. Most green islands inside the scar are other clusters, cut off from the burning one by bare ground, so the fire never reaches them.
 
-The field and the forest line up cell for cell. `scale: Double(cells) / width` makes the field 216 texels across, one for each percolation cell, and `side` is one cell in canvas pixels. `edge: .clamped` gives the field walls, as in [Chapter 23's rule of your own](23-GridSimulations.md#life-rewritten-as-a-kernel-simshader). Percolation's grid has walls too, so a fire that reaches the right edge stops there instead of coming back on the left. The forest is planted on the first frame, one cluster at a time, by filling its outline in mid-gray. An outline runs along the cell borders, so it covers its own cells and no others. A square drawn for each cell would spill a little past its edges. On a gap one cell wide, the spill from both sides would plant a tree.
+The field and the forest line up cell for cell. `scale: Double(cells) / width` makes the field 216 texels across, one for each percolation cell, and `side` is one cell in canvas pixels. `edge: .clamped` gives the field walls, as in [Chapter 23's rule of your own](23-GridSimulations.md#life-rewritten-as-a-kernel-simshader). Percolation's grid has walls too, so the two agree. A fire that reaches the right edge stops there instead of coming back on the left. The forest is planted on the first frame, one cluster at a time, by filling its outline in mid-gray. An outline runs along the cell borders, so it covers its own cells and no others. A square drawn for each cell would spill a little past its edges. On a gap one cell wide, the spill from both sides would plant a tree.
 
 `background(ground)` has to come first. A background clears everything the frame has drawn so far, including marks meant for a field. Called after `withField`, it leaves nothing planted and nothing burning. The field itself holds only three states, which the ramp colors ash, tree, and fire. To the field, burned ground and ground never planted are the same state, so both come out as ash. The loop after `drawImage` covers each cell percolation left closed with the ground color, and only the burned cells keep their ash. Last, [Chapter 19's bloom](19-LayersAndEffects.md#filters) makes the burning cells glow, since nothing else on the canvas is bright enough to pass its threshold.
 
 Then make it yours:
 
 - Cross the threshold the other way. Change `+ 0.02` to `- 0.05`, and the forest falls apart into islands. The strike burns the few it lands on and goes out.
-- Let the fire jump the gaps. Change `.vonNeumann` to `.moore`, and a tree also catches from its diagonal neighbors. Percolation never counted those as joined, so the fire spreads from cluster to cluster and the scar grows wider.
-- Bring the lightning back. Set `lightning: 0.000001`, and now and then a tree catches on its own, so fires start all over the forest without a press.
+- Let the fire jump the gaps. Change `.vonNeumann` to `.moore`, and a tree also catches from its diagonal neighbors. Percolation never counted those as joined, so the fire spreads from cluster to cluster and takes nearly the whole forest.
+- Bring the lightning back. Set `lightning: 0.000001`, and trees catch on their own, so fires start across the forest without a press.
 
 The fire spreading is what the sketch is about, so keep it as a video. The command `swift run OllinLive MySketches/Wildfire.swift --export-video wildfire.mp4 --seconds 10` writes the first ten seconds, from the strike on. An export has no mouse, so the video holds the one fire from the middle.
 
@@ -251,11 +251,9 @@ override func draw() {
 
 The field starts empty and you draw the circuit. The usual way in is text, one character per cell, the form these circuits are shared in. The block above stamps its rows on the first frame. That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around. The electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. What decides is how many heads the wire on the far side sees. Coming from the wire's side, the exit wire sees two heads and lights, so the signal crosses. Coming the other way, the exit wire sees three at once and stays dark, so the signal dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
 
-## Avalanches of every size: the sandpile
+## A pile of sand: the Abelian sandpile
 
 The wildfire used the forest fire with its growth and lightning switched off. Left on, they carry the forest to its own critical density, where fires come in every size. The sandpile found that idea first, with avalanches in place of fires.
-
-### A pile of sand: the Abelian sandpile
 
 The **Abelian sandpile** drops grains of sand on a grid. A cell can hold three. The moment it holds four it topples, sending one grain to each of its four neighbors. A neighbor that was sitting at three is now at four, so it topples too. One grain landing in the wrong place can send an avalanche across the field. The order you process the topplings in does not matter, because the pile always settles into the same configuration. That theorem is what puts the *Abelian* in the name. It is also why Ollin can topple every unstable cell at once on the GPU. The pile is for lacework that comes from the rule alone, and for avalanches of every size. Per Bak, Chao Tang, and Kurt Wiesenfeld proposed it in 1987, and Deepak Dhar proved in 1990 that its topplings commute.
 
@@ -334,7 +332,13 @@ There is nothing to seed. The field starts as a random mix, which is the field a
 
 ### In step with the neighbors: oscillators on a lattice
 
-The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. The lattice form of `Kuramoto` is for that geography. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` maps where it has locked. The model is Yoshiki Kuramoto's, the one [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) credits, and the lattice is one layout of it. Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out:
+The spins above agree with their neighbors about which way to point. The fireflies of [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) agree about *when*, and each of them listens to the whole crowd. Put them on a grid and let each listen only to the cells beside it, and the agreement gets a geography. The lattice form of `Kuramoto` is for that geography. Patches fall into step and drift apart, a wave of agreement crosses the field, and `localCoherence` maps where it has locked. The model is Yoshiki Kuramoto's, the one [Chapter 12](12-FlocksAndSwarms.md#falling-into-step-kuramoto) credits, and the lattice is one layout of it.
+
+<img src="Images/24-Automata/LatticeSync.jpg" alt="A hex grid of 24 by 20 cells on a near-black ground, each cell a bright color. Broad bands of green, cyan, blue, purple, magenta, red, orange, and yellow blend into one another across the grid, and a few pale cells sit where several colors meet" width="560">
+
+In the picture the hue changes a little from each cell to the next, so most cells agree with their neighbors and show full color. At a few points every hue meets in a small knot of cells. Neighbors disagree there, so those cells show pale.
+
+Make a `Kuramoto` with `columns` and `rows`, and the neighbors are the cells beside it on a square or hex lattice, listening `range` rings out:
 
 ```swift
 var grid: HexGrid { hexGrid(columns: 24, rows: 20) }
@@ -349,10 +353,6 @@ override func draw() {
     }
 }
 ```
-
-<img src="Images/24-Automata/LatticeSync.jpg" alt="A hex grid of 24 by 20 cells on a near-black ground, each cell a bright color. Broad bands of green, cyan, blue, purple, magenta, red, orange, and yellow blend into one another across the grid, and a few pale cells sit where several colors meet" width="560">
-
-In the picture the hue shifts slowly from cell to cell, so nearly every cell agrees with its neighbors and shows full color. At a few points many hues meet around one cell. Its neighbors disagree there, so it shows pale.
 
 The crowd's site `i` is the cell `grid[i]`, because the lattice and the hex grid stagger their rows the same way. What you draw is what is coupled. Like percolation, this runs on the CPU rather than in a field on the GPU. The [`Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) example is [Chapter 12](12-FlocksAndSwarms.md)'s meadow of fireflies, and a `Kuramoto` given `columns` and `rows` is this lattice. The lesson is the one this family keeps finding: a local rule, a global result, and a threshold where the result appears.
 
