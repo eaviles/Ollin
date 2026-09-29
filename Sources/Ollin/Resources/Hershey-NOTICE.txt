@@ -1,20 +1,34 @@
-Hershey vector fonts — public domain
-=====================================
+Hershey vector fonts: public-domain glyph data, in James Hurt's .jhf form
+=========================================================================
 
 futural.jhf is "Hershey Sans" (a single-stroke sans), one of the Hershey vector
-fonts originally created by Dr. A. V. Hershey while working at the U.S. National
-Bureau of Standards. The Hershey fonts are in the public domain.
+fonts drawn by Dr. A. V. Hershey at the U.S. Naval Weapons Laboratory in
+Dahlgren, Virginia, around 1967, and published by the U.S. National Bureau of
+Standards in 1976. The glyph data is in the public domain.
 
-This file is the ".jhf" (James Hershey Font) per-face form, with one glyph record
-per printable ASCII character. It is bundled as the default for Ollin's
-StrokeFont (single-line / plotter text) and loaded at runtime by the .jhf parser.
+This file is the ".jhf" per-face form (the format James Hurt created), with one
+glyph record per printable ASCII character. It is bundled as the default for
+Ollin's StrokeFont (single-line / plotter text) and loaded at runtime by the
+.jhf parser.
+
+The .jhf distribution may be used by anyone for any purpose, commercial or
+otherwise, provided that these acknowledgements are distributed with the font
+data, and that the data is not converted into the format distributed by the
+U.S. NTIS. The acknowledgements, as the distribution words them:
+
+  - The Hershey Fonts were originally created by Dr. A. V. Hershey while
+    working at the U. S. National Bureau of Standards.
+  - The format of the Font data in this distribution was originally created by
+        James Hurt
+        Cognition, Inc.
+        900 Technology Park Drive
+        Billerica, MA 01821
+        (mit-eddie!ci-dandelion!hurt)
 
 Provenance:
-  - Author: A. V. Hershey / U.S. National Bureau of Standards
-  - Distribution: the widely mirrored public-domain Hershey data
+  - Author: A. V. Hershey (glyph data); James Hurt, Cognition, Inc. (.jhf format)
+  - Distribution: the widely mirrored Hershey data in .jhf form
     (e.g. https://github.com/kamalmostafa/hershey-fonts and
      https://paulbourke.net/dataformats/hershey/)
-  - Status: public domain (no license required)
-
-The public domain imposes no obligations; this notice records provenance for the
-bundled asset, consistent with how Ollin documents everything it ships.
+  - Terms: the two acknowledgements above travel with the data; see
+    THIRD-PARTY-NOTICES.md at the repository root.
