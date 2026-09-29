@@ -264,7 +264,7 @@ redistributed inside this repository.
 > Licensed CC BY-SA 4.0 (Attribution-ShareAlike). Attribution is given above as
 > required. **Changes:** the original Ogg Vorbis file was transcoded to AAC (with
 > short fades) for AVFoundation playback; no other edits. As a ShareAlike work
-> this clip remains under CC BY-SA 4.0 — that obligation rides on the audio file
+> this clip remains under CC BY-SA 4.0, and that obligation applies to the audio file
 > and its adaptations, not on Ollin's source, which stays MIT (the clip is merely
 > bundled alongside it). The root [`LICENSE`](LICENSE) is unaffected.
 
@@ -285,7 +285,7 @@ redistributed inside this repository.
 > The `SoundReactive` variant is a further 16-second excerpt of that trim,
 > muxed with the *El Fandanguito* recording (see its own entry) as the audio
 > track. As a ShareAlike work this clip remains under CC BY-SA 4.0: that
-> obligation rides on the video file and its adaptations, not on Ollin's
+> obligation applies to the video file and its adaptations, not on Ollin's
 > source, which stays MIT (the clip is merely bundled alongside it). The root
 > [`LICENSE`](LICENSE) is unaffected.
 
@@ -333,7 +333,7 @@ redistributed inside this repository.
 > desk cropped in far enough that the print on the notebook can be read. No
 > other edits. The desk photograph carries a notebook whose printed cover names
 > its maker, which the text recognizer reads aloud in the `TextScan` example;
-> that is incidental to a photograph of a desk and is not an endorsement. The licenses ride on the photographs, not on Ollin's code,
+> that is incidental to a photograph of a desk and is not an endorsement. The licenses apply to the photographs, not on Ollin's code,
 > which stays MIT. The root [`LICENSE`](LICENSE) is unaffected.
 
 ---

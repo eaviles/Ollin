@@ -82,7 +82,7 @@ those layers, the main geometry pass, then the post-process and present pass. A
 2D sketch with no targets takes a fast path that is byte-identical to a single
 direct pass.
 
-**Geometry rides several pipelines, cached by descriptor.** The pipeline families
+**Geometry is drawn through several pipelines, cached by descriptor.** The pipeline families
 are a tessellated-triangle path (libtess2 fills under 8x/4x MSAA), an instanced
 analytic-SDF path (one quad per shape, fill/stroke/AA computed in the fragment), a
 fringe-stroke path (the high-quality stroke renderer: CPU edge-expansion plus a
@@ -200,12 +200,12 @@ band) opt out, and the round-dot point opts out by hand since it shares the
 `.ellipse` tag (a solid disk's area-conserving coverage is bypassed for
 `regionFill` only when banding).
 
-**Stroke alignment** (`strokeAlign(_:)`: `.center`/`.inside`/`.outside`) rides
+**Stroke alignment** (`strokeAlign(_:)`: `.center`/`.inside`/`.outside`) uses
 the same coverage tail: the coverage functions take a `strokeBias`
 (`0` / `-hw` / `+hw`) that shifts the stroke band off the edge
 (`abs(d - strokeBias) < hw`) while the fill still stops at `d = 0`, so the
 inset/outset is an exact SDF offset and `.center` (bias 0) is byte-identical
-to before. The 3-state align rides in **bits 8-9 of the `shape` tag** (the tag
+to before. The 3-state align is stored in **bits 8-9 of the `shape` tag** (the tag
 is < 256, so the vertex shader masks `shape & 0xFF` before the switch), which
 costs the instance no room; `.outside` grows the covering quad by another half
 stroke. Hollow forces the bias to 0 (a band already has two edges);
@@ -270,9 +270,9 @@ technique; no SDF, no MSAA/SSAA). The path is edge-expanded CPU-side into
 per-segment butt quads plus a ~1px screen-space anti-aliasing fringe
 (`fw = 1/ctmScale`; coverage ramps 1 to 0 across it, GPU-interpolated so the
 edge stays smooth at *any* angle at native resolution, fixing the staircase
-the SDF capsule's single-sample `fwidth` left on shallow diagonals). It rides
+the SDF capsule's single-sample `fwidth` left on shallow diagonals). It uses
 its own `.fringe` `GeometryKind`/pipeline (`ollin_fringe_vertex`/`_fragment`)
-but **reuses the triangle vertex buffer**: the coverage rides in an `aa` field
+but **reuses the triangle vertex buffer**: the coverage is stored in an `aa` field
 tucked into `OllinVertex`'s existing float2-to-float4 alignment padding
 (stride stays 32, the triangle path byte-identical), with the stroke's rgb
 plus paint alpha in `color`. The fragment remaps **only the coverage** through
@@ -538,7 +538,7 @@ when identity). The encode loop hands it to `encodeRetained`, a contained
 sibling of the main per-kind arms that binds the handle's persistent
 `MTLBuffer`s (made once per device from the immutable arrays, so the
 triple-buffer ring rule doesn't apply: nothing ever rewrites them) at each
-inner run's offset. The draw-time CTM rides new `Uniforms` fields
+inner run's offset. The draw-time CTM is carried in new `Uniforms` fields
 (`batchTransformed` + `batchTransform`) that every 2D vertex shader applies
 *to its output position only*, behind a flag test that stays 0 outside a
 replay, so the ordinary paths' arithmetic is untouched (the whole snapshot
@@ -661,7 +661,7 @@ the `dither` generator takes a `pixelSize`.
 
 Three design-pattern invariants hold across that set. Animation is an explicit
 `phase` parameter (feed `time`), so exports and snapshots are deterministic
-with no hidden clock. Palettes ride as trailing float4 rows after the scalar
+with no hidden clock. Palettes are stored as trailing float4 rows after the scalar
 rows of the packed params buffer. And the fragments blend palettes and
 composite internally in sRGB (`ollin_pat_stop`/`ollin_pat_out`), converting to
 premultiplied linear only on output: designer palettes mixed in linear read as
@@ -1036,7 +1036,7 @@ attribute propagates across module boundaries to example and test targets.
 `Combine` (`Effects/Combine.swift`) is the two-input sibling of `Filter`:
 `base.combined(with: aux, op)` reads two layers, covering what one-input filters
 cannot. It is a `Sendable` value descriptor like `Filter`, but it cannot hold
-the reference-type `RenderTarget`, so the aux rides alongside it and the op
+the reference-type `RenderTarget`, so the aux is carried alongside it and the op
 records a `RenderTarget.Origin.combine(base:aux:op:)` case resolved in the same
 `filterOps` list as filters; record order guarantees both inputs fill first (the
 wiring is detailed under *Shared substrate* in the next section). Six ops:
@@ -1502,7 +1502,7 @@ overlapping bokeh. Three details of the accumulation are load-bearing:
   converging *from* black, weighted `1/(taps+1)` per reaching tap, so a partly
   covered foreground composites that bias over the background. A uniformly white
   layer with a near disc in its depth map came back with a ~12% dark ring.
-- **Alpha rides the gather with the color.** The layers are premultiplied, so
+- **Alpha is gathered with the color.** The layers are premultiplied, so
   blurring rgb past a sharp alpha stops the result being premultiplied at all: a
   shape on a transparent layer kept a razor silhouette however much blur was
   asked for. An opaque layer is unaffected either way.
@@ -1603,7 +1603,7 @@ opt-in.
 **The envelope is the tap budget, and it is worth stating plainly.** The spiral is
 equal-area per tap, so the spacing between taps is `sqrt(pi / budget)` of the rim:
 about 13% at `.default` (192 taps) and 8% at `.detail` (512). A source smaller than
-that spacing is hit or missed rather than resolved, and comes out wearing the
+that spacing is hit or missed rather than resolved, and comes out showing the
 spiral instead of a clean edge. Meanwhile a regular polygon's corners stick out by
 `1 - cos(pi/n)` of the rim: 50% for a triangle, 19% for a pentagon, 13.4% for a
 hexagon. So at `.default` a hexagon's corners sit exactly at the sampling limit,
@@ -1663,7 +1663,7 @@ how they work.
 The typed `SDF` value type (leaf shapes plus combine, modify, and transform ops)
 flattens on the CPU to a flat `SDFNode` program. This is a new render path beside
 the per-instance `SDFInstance` path: its own `SDFGroupInstance` struct, a node
-buffer, a `GeometryKind.sdfGroup`, and a `.sdfGroup` pipeline. It cannot ride the
+buffer, a `GeometryKind.sdfGroup`, and a `.sdfGroup` pipeline. It cannot use the
 per-instance path because `SDFInstance` is full at 144 bytes.
 
 `ollin_sdfgroup_fragment` walks the program per pixel with two fixed-depth stacks
@@ -1750,13 +1750,13 @@ one leaf not centered at the origin, so the flattener bounds it from its two
 endpoints plus the radius rather than a symmetric half-extent, and `pyramid`
 wraps iq's fixed-half-unit-base form in a uniform scale (exact) with a re-center.
 
-Two sculpting op families ride the same node kinds. The **joint and detailing
+Two sculpting op families use the same node kinds. The **joint and detailing
 ops** (the chamfer/stairs/columns union/subtract/intersect trios, OP selectors
 7 through 15, plus `engrave`/`groove`/`tongue`/`pipe`, selectors 16 through 19,
 from hg_sdf under its MIT option) live in both `ollin_sdf_combine` and
 `ollin_sdf3d_combine` (the 2D and 3D switches share the encoding; the op's
 second scalar, the stairs step count, column count, or groove/tongue width,
-rides the OP node's spare `extra`, and the staircase helper uses a GLSL-style
+is stored in the OP node's spare `extra`, and the staircase helper uses a GLSL-style
 floored modulo, `ollin_emod`, because Metal's `fmod` truncates and would break
 the pattern for negative operands). Their color is a crisp pick rather than a
 melt (the nearer operand for the joint trios and `pipe`, the body for
@@ -1775,7 +1775,7 @@ selectors 2/3, iq's `opDisplace`; the MOD case reads the live query point, and
 the noise flavor reuses the shader library's 3D `valueNoise`). All four produce
 distance *bounds*, not exact fields, so the flattener attaches a conservative
 Lipschitz rescale that keeps the sphere trace from overshooting: twist/bend
-compute `1/(1 + rate·reach)` from the child's just-flattened bounds and ride it
+compute `1/(1 + rate·reach)` from the child's just-flattened bounds and store it
 on the scope's RESTORE_P distance scale (the same slot a non-uniform scale
 uses), while displacement bakes `1/(1 + amplitude·frequency·C)` into the MOD
 node's `geo0.x` (C is the displacement's own slope bound: √3 for the sine
@@ -1796,7 +1796,7 @@ coverage over what is behind it. 3D gradient paint is screen-space: a gradient
 `fill` paints the whole merged surface by each hit's projected screen position.
 
 Materials and environment light reach fields with mesh parity. The material
-rides per batch: `ensureSDF3DBatch` records the active `material(_:)` as the
+is set per batch: `ensureSDF3DBatch` records the active `material(_:)` as the
 batch's `finish` and breaks the batch when it changes, exactly like
 `ensureSolidMeshBatch` (the generic `ensureBatch` records no finish, so fields
 routed through it shaded with the default material no matter what the sketch
@@ -1893,7 +1893,7 @@ marches and the result is byte-identical), and a half-res field-shadow pass
 export resolves to `.detail` (scale 1.0) and marches and shadows full-res, so
 default-tier snapshots stay byte-identical and exported art is never downscaled;
 an explicit `raymarchResolution` fraction (or explicit tier) is honored on export
-too, coverage-adaptively. The dial rides the shared `RenderQuality` model, where
+too, coverage-adaptively. The dial follows the shared `RenderQuality` model, where
 `.default` doubles as automatic: live `.default`, export `.detail`, overridable
 by the `--render-quality` flag. All four quality parameters (shadows, defocus, ambient
 occlusion, and raymarch resolution) target frame-rate bands.
@@ -1937,7 +1937,7 @@ The per-frame instanced path (`.meshInstanced`) is the animation tier: the base
 mesh expands once per call into its own ring array (LOCAL space, the model
 matrix deliberately NOT baked, which is the whole saving over the per-mesh
 path's per-copy re-bake), and an 80-byte `OllinMeshInstance` per copy (model
-matrix + tint) rides a second ring. Rebuilding the placement list every frame
+matrix + tint) is stored in a second ring. Rebuilding the placement list every frame
 is the intended idiom, so nothing here is retained. The `MeshField`
 (`.meshField`) is the world tier: everything uploads once into the field's own
 per-device buffers (the `Batch.GPUResources` model), and the per-frame work
@@ -2166,7 +2166,7 @@ axis to shadow from). The RT-reflection hit shade evaluates the **exact LTC
 diffuse** per area light (`ollin_ltc_diffuse`, the identity-transform
 integrals kept in step with `ollin_ltc_light`'s dispatch), so a panel-lit
 surface reads the same in a mirror as head-on: only the disk's
-horizon-clipped-sphere factor reads a table, so the single amp texture rides
+horizon-clipped-sphere factor reads a table, so the single amp texture is passed into
 the trace (threaded through `ollin_pbr_ibl_ambient` to the inline path, and
 bound at texture 9 of the deferred trace pass, whose lighting also resolves
 `ltcEnabled`, or the panel would go dark only in its deferred reflection).
@@ -2192,7 +2192,7 @@ survey found 4,000-character candela lines), so `IESProfile` finds the
 `TILT=` line, tokenizes every whitespace/comma-separated number after it, and
 counts: a skipped `TILT=INCLUDE` block, the 10 + 3 header fields, the two
 angle lists, then one candela block per horizontal angle with the vertical
-angle varying fastest. Lateral symmetry rides the *last* horizontal angle
+angle varying fastest. Lateral symmetry is encoded in the *last* horizontal angle
 (0 = axially symmetric, 90 = quadrant, 180 = bilateral, 360 = full wrap, plus
 the rare 90-first/270-last plane), expanded at sample time by folding the
 query azimuth into the stored wedge. Only Type C photometry parses (the
@@ -2298,7 +2298,7 @@ analytic cone crossing puts every stratum where the beam is. Only the transverse
 case is bounded (a ray running within the cone angle of the axis takes the full
 range under a quadratic near-field warp `t = tEnd·u²`), and the mirror-nappe
 interval is rejected by an axis-side test. (2) *The light-leg extinction*: without
-`exp(−τ(light→sample))` a ray riding inside a cone accumulates without limit and
+`exp(−τ(light→sample))` a ray traveling inside a cone accumulates without limit and
 the frame washes out; with it the integral is bounded by ~σs/σt. Beams-only mode
 (no `fog`) substitutes a 0.05 reference density for both the scattering
 coefficient and that leg, so beams still form and still bound while the view path
@@ -2321,11 +2321,11 @@ spot participate; point and area kinds sit out (no distance falloff means an
 omnidirectional glow has no shape to march), and only the 2D-map caster carves
 shafts, the same one-caster rule as surfaces.
 
-**Budgets and encode sites.** The step budget rides `fogParams2.x`, resolved by
+**Budgets and encode sites.** The step budget is carried in `fogParams2.x`, resolved by
 the renderer (`resolveVolumetricSteps`: 16/32/64 by tier through
 `effectiveQuality`, absolute 8…128) at *both* lighting-resolution sites: the main
 `encode` and `resolveFieldLighting`, so the half-res field tier marches like the
-full-res pass. The air cap rides `fogParams2.y` (the camera far plane, packed by
+full-res pass. The air cap is carried in `fogParams2.y` (the camera far plane, packed by
 the drawer). A frame with no batches at all early-outs of `encode` before the air
 draw, so beams need at least one mesh in frame (documented). Measured M2 1080²
 export tier: the two-spot example costs ~6 ms/frame over its no-volumetrics
@@ -2338,7 +2338,7 @@ on/off differencing, beams-only leaving off-beam surfaces alone), and the `fog` 
 
 **Aerial perspective** (`aerialPerspective(density:haziness:heightFalloff:sun:)`)
 is the fog integral split by wavelength: the classic real-time outdoor-scattering
-model (Hoffman-Preetham, credited in `ATTRIBUTION.md`), riding the same slots
+model (Hoffman-Preetham, credited in `ATTRIBUTION.md`), using the same slots
 under **mode 2 on the fog gate** (`fogColor.w` = 0 off / 1 fog / 2 aerial, so
 every existing `> 0` gate stays armed and the carriers pick the model with one
 compare against 1.5). The shared `ollin_fog_optical_depth` computes one scalar τ
@@ -2379,7 +2379,7 @@ three-way sun resolution with the rotation formula pinned, last-call-wins,
 per-frame reset, the warm low-sun radiance, the ratio constants) and
 `AerialRenderProbes` (off restores byte-identity, the blue-leaning veil,
 distance ordering, sunward brightening, haziness graying, height falloff, the
-sky-pixel byte-hold behind a skybox, the bare-air glow, beams riding the aerial
+sky-pixel byte-hold behind a skybox, the bare-air glow, beams scaling with the aerial
 density, determinism - the sky-skip, flat-ratio, and flipped-lobe sabotages each
 verified red), plus the `aerial-perspective` snapshot.
 
@@ -2502,7 +2502,7 @@ this same generation, which is the design's whole payoff: the backdrop, the
 IBL chain, and every reflection see one weather, an overcast dims the scene's
 light by construction, exports are deterministic (the cloudscape is a pure
 function of the dials, no temporal history), and a still sky costs nothing per
-frame while a drifting one rides the shipped animated-sky re-bake. The plain
+frame while a drifting one uses the shipped animated-sky re-bake. The plain
 `ollin_ibl_sky_gen` stays **verbatim** (the fast-math codegen rule) and a
 cloudy sky selects the `ollin_ibl_sky_gen_clouds` twin, which reproduces the
 clear sky and then marches a spherical shell (1.5-4 km over an earth-radius
@@ -2784,7 +2784,7 @@ reads (no new sampler or pipeline).
 One parameter unifies every caster: the same softness drives the RT point caster's
 area radius (`dist * 0.06 * softness`; the 0.5 default reproduces the old
 `dist * 0.03`, so the `point-shadows` snapshot is byte-identical). The 2D tap
-budget rides `RenderQuality` via `resolveShadowTaps2D` (performance 24 /
+budget follows `RenderQuality` via `resolveShadowTaps2D` (performance 24 /
 default 40 / detail 72, GPU-independent fixed counts since these are cheap
 texture taps, not RT rays; export resolves `.detail`). Shadows are
 soft-by-default, and the penumbra change measured sub-tolerance (~0.2 mean
@@ -2806,7 +2806,7 @@ in *Deferred ray-traced reflection AA* below. The integration facts live here:
   leaves the scene shows the sky), compositing through the same Fresnel/BRDF
   weighting. The primary surface's roughness then blends the sharp mirror
   toward the prefiltered environment (one ray cannot blur).
-- **Per-hit material data is baked per vertex.** Metalness and roughness ride
+- **Per-hit material data is baked per vertex.** Metalness and roughness are stored in
   the spare `OllinMeshVertex` w slots (`normal.w` metallic, `position.w`
   roughness for a PBR lit mesh), inert for the primary render since the lit
   vertex shaders read only xyz.
@@ -2832,14 +2832,14 @@ in *Deferred ray-traced reflection AA* below. The integration facts live here:
   all-mesh accel, and the glossy-cone denoise are the follow-ups). The
   per-hit-material gap is closed: the PBR finish through the baked vertex slots,
   and the stylized ones through a compact per-geometry `OllinRTFinish` record
-  riding the hit table's own buffer (see *Stylized finishes through the trace*).
+  stored in the hit table's own buffer (see *Stylized finishes through the trace*).
 
 ### Stylized finishes through the trace
 
 A reflection shades the surface it finds, and that shade is the physically-based
 one, so a surface whose look comes from somewhere else used to arrive in a mirror
 as the plain diffuse body underneath it: a cel-shaded prop lost its bands, a Gooch
-one its warm-cool ramp, a velvet one its rim. Metalness and roughness ride the
+one its warm-cool ramp, a velvet one its rim. Metalness and roughness are stored in the
 spare `OllinMeshVertex` w slots, but a shading model and its tones do not fit
 there, and they are per batch rather than per vertex anyway.
 
@@ -2849,7 +2849,7 @@ there, and they are per batch rather than per vertex anyway.
   strength. One record per acceleration-structure geometry, then one per copy
   group, indexed by the hit record's material slot, so a copy resolves the finish
   of the draw that placed it.
-- The records **ride the hit table's own buffer**, past a four-word-aligned base
+- The records **are stored in the hit table's own buffer**, past a four-word-aligned base
   named in a two-word header, rather than taking a binding of their own. That is
   the rule the hit records already follow, and it is why none of the tracing entry
   points gained an argument. The block is written **guarded by that base, never by
@@ -2867,9 +2867,9 @@ there, and they are per batch rather than per vertex anyway.
   highlight per light, the Gooch tone from the first punctual light with the
   ambient withheld (`ollin_rt_ambient`, matching the primary path's own gate on
   that model), the wrap term accumulated in the light loop, and the rim applied
-  after it. The light-driven terms ride the same exposure divide as the direct
+  after it. The light-driven terms go through the same exposure divide as the direct
   lights.
-- **The two layered physically-based lobes ride the same record** (`sheen` = the tint
+- **The two layered physically-based lobes are stored in the same record** (`sheen` = the tint
   premultiplied by its strength plus the lobe roughness, `coat` = intensity plus its own
   roughness; stride 112), applied by `ollin_rt_layer_lobes` at the first hit and at the
   pair's second surface in the order the primary shade layers them. The sheen keeps the
@@ -2891,8 +2891,8 @@ there, and they are per batch rather than per vertex anyway.
 
 ### Glass: transmission and refraction
 
-The transmissive material rides the PBR finish (shading model 3), not a new
-model: `transmission` / `ior` / `thickness` / `attenuation` ride the
+The transmissive material uses the PBR finish (shading model 3), not a new
+model: `transmission` / `ior` / `thickness` / `attenuation` are stored in the
 `OllinMaterial` tail, every new branch gates on `transmission > 0`, and the
 normal-incidence Fresnel moved from a hard-coded `0.04` to a CPU-packed
 `mat.f0` that packs the *exact literal* `0.04` at the default IOR 1.5 (the
@@ -2918,7 +2918,7 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   saturate(3/ior − 2))`); Beer-Lambert absorption is `pow(attColor, span /
   attDistance)` with the attenuation color floored at 1e-4 per channel on the
   CPU (a zero channel would hit `pow(0, 0)` NaNs under fast math).
-- **The RT upgrade rides the same `rayTracedReflections()` opt-in**, one
+- **The RT upgrade uses the same `rayTracedReflections()` opt-in**, one
   switch upgrading mirrors and glass together. `ollin_rt_refraction` traces the
   *refracted* entry ray through the same accel: a solid's interior leg
   finding a **back face** found its real exit (refract out there and trace on;
@@ -3004,7 +3004,7 @@ neither shades byte-identically (verified against the whole snapshot suite).
   visibility denominator, no Fresnel, tinted directly by the sheen color (strength
   premultiplied into the packed rgb; roughness in w). Layering follows the
   directional-albedo scaling: the base scales by `1 − max(tint)·E(NoV, roughness)`
-  and the lobe itself rides E in the ambient, which is what keeps a strong white
+  and the lobe itself is scaled by E in the ambient, which is what keeps a strong white
   sheen from adding energy out of nowhere.
 - **The sheen LUT** carries E: there is no closed form, so it bakes by numerical
   integration (uniform hemisphere, 1024 samples) into a 64² `r16Float` texture,
@@ -3053,7 +3053,7 @@ material returns the resolved texture untouched and encodes nothing.
   to unit sum per channel, then the un-scattered share folds back into the center
   tap: energy-conserving at any strength, and *exactly* the identity at strength
   0. Pure function of (falloff, strength) → deterministic exports and a cache
-  that never invalidates. Up to 8 distinct profiles ride one frame's params rows
+  that never invalidates. Up to 8 distinct profiles are packed into one frame's params rows
   (extras reuse the last, noted once).
 - **The mask pass** is a dedicated mesh re-encode (the `encodeMeshNormals` /
   reflection-G-buffer pattern: never a second attachment on the shared geometry
@@ -3153,7 +3153,7 @@ material returns the resolved texture untouched and encodes nothing.
   crosses the terminator smoothly. Three placements are load-bearing: the term
   reads the **pre-shadow attenuation** (a backlit surface stands in its own
   body's shadow, and dimming by that factor would erase exactly the light being
-  transported) while still riding the cone gate and the shaped/tinted light
+  transported) while still using the cone gate and the shaped/tinted light
   copy; it lands **before the screen-space blur**, which diffuses it together
   with the reflectance (the published treatment); and it multiplies by
   `scatterStrength`, the PBR metallic kill, and `diffKeep`, so every gate that
@@ -3186,7 +3186,7 @@ material returns the resolved texture untouched and encodes nothing.
 
 The first slice of the advanced-materials arc: a tangent-space normal map on the
 textured-mesh path, plus the tangent machinery every later surface map (parallax
-occlusion, detail maps) rides.
+occlusion, detail maps) builds on.
 
 **The pipeline is a twin, not a branch.** `ollin_mesh_nm_vertex` /
 `ollin_mesh_nm_fragment` mirror the textured pair verbatim with the perturbation
@@ -3196,7 +3196,7 @@ textured functions are untouched, so unmapped textured frames are byte-identical
 growing a shipped function's control flow re-contracts its expressions and moves
 ulps; a twin can't). The cost is ~40 duplicated fragment lines, taken knowingly.
 
-**The vertex tangent rides the spare 8 bytes.** `OllinMeshVertex` had 8 bytes of
+**The vertex tangent is stored in the spare 8 bytes.** `OllinMeshVertex` had 8 bytes of
 tail padding reserved since the 3D work; the tangent packs into it as four
 Float16s (`OllinHalf4`: `half4` under `__METAL_VERSION__`, `simd_ushort4` of bit
 patterns on the CPU side), so the stride stays 64 and every existing path is
@@ -3265,7 +3265,7 @@ biggest hand-synced twin in the codebase.** `meshLitColor` (~470 lines) and
 `ollin_pbr_ibl_ambient` (~140) read `mat.metallic`/`mat.roughness` from the
 per-batch constant buffer at a dozen sites spread through the LTC area
 lights, the punctual Cook-Torrance branch, the transmission diffKeep, and the
-IBL split-sum; a per-pixel value cannot ride a `constant` reference, and growing
+IBL split-sum; a per-pixel value cannot be passed through a `constant` reference, and growing
 the shipped functions with override parameters is the fast-math re-contract
 gamble the codegen rule exists to forbid. So `meshLitColorMapped` and
 `ollin_pbr_ibl_ambient_mapped` are *mechanical substitution copies*: the body
@@ -3292,7 +3292,7 @@ added after all lighting and before the atmosphere, so fog veils emission like
 any other surface radiance; a constant factor with no map routes down the same
 pipeline against a white stand-in, which is also how a black emissive factor
 with an emissive texture correctly emits nothing (the glTF default). The gates
-ride the finish uniform like `normalScale` (`mrGate`, `occlusionStrength`, and
+are carried in the finish uniform like `normalScale` (`mrGate`, `occlusionStrength`, and
 an `emissive` float4 claiming the last two tail pads plus one appended row),
 zero on every other batch, so unmapped frames keep their exact codegen by
 construction.
@@ -3362,7 +3362,7 @@ The third slice of the advanced-materials arc: a height map on `MeshMaterial`
 authored surface, darker carves in below it**), so the shading fake and the
 real geometry agree about where the relief lives.
 
-**Parallax occlusion rides the maps fragment, not a new twin.** The march
+**Parallax occlusion is built into the maps fragment, not a new twin.** The march
 lives in `ollin_parallax_uv` and a `mat.parallax`-gated branch at the top of
 `ollin_mesh_maps_fragment`; that fragment is slice-2 code, exempt from the
 verbatim rule (its own header says it may branch freely), so no third copy of
@@ -3442,7 +3442,7 @@ faces each axis; `MeshMaterial.triplanarScale` is the tile's world size, and
 `Mesh.triplanarTextured(_:normal:scale:)` is the whole attach (no uvs, no
 tangents, none generated).
 
-**It rides the surface-mapped fragment, not a new twin.** The projection lives
+**It is built into the surface-mapped fragment, not a new twin.** The projection lives
 in `ollin_triplanar_surface` and a `mat.triplanar`-gated branch at the top of
 `ollin_mesh_maps_fragment`; that fragment is slice-2 code, exempt from the
 verbatim rule, and the exemption was re-verified empirically after this growth
@@ -3495,7 +3495,7 @@ rendering technique, not a material property), so the projection is
 Ollin-authored API only, and the spatial exporter's recorder notes that the
 projected maps stayed behind and strips them, exporting the surface in its
 plain color. `TriplanarTests` pins the feature against counterfactuals (the
-no-uv mesh wears the picture, both wall orientations and the top frame read
+no-uv mesh shows the picture, both wall orientations and the top frame read
 upright and unmirrored, the 45-degree seam *mixes* the two projections
 instead of hard-picking one, the projected normal map pushes lighting along
 the frame axes with no tangent basis anywhere, the world anchor, the off
@@ -3575,7 +3575,7 @@ and a frame with no decals keeps its exact prior routing, no shipped
 fragment grown at all. The trade, stated in the docs: a frame *with* decals
 shades its plain meshes through the maps fragment (equivalent shading,
 different codegen), which is the feature's own envelope, not a regression
-surface. Solid meshes ride the nm vertex safely because `OllinMeshVertex()`
+surface. Solid meshes use the nm vertex safely because `OllinMeshVertex()`
 zero-fills, so unwritten uv/tangent fields are deterministic.
 
 **In the fragment,** box space is `[-0.5, 0.5]³` with +y the image's top
@@ -3585,7 +3585,7 @@ fades) so a fade can't fringe the sticker's edge, and two fades guard the
 box's own geometry: a facing fade (`smoothstep(0.05, 0.35, N·−axis)`) that
 melts the stamp off surfaces edge-on to the projection instead of smearing
 it down them, and a depth-end fade over the last tenth of the box so a
-receiver near the far planes never hard-clips. The decal list rides its own
+receiver near the far planes never hard-clips. The decal list is carried in its own
 small uniform (`OllinDecals`, fragment buffer 2, count-gated) beside a
 content-hash-cached `rgba8Unorm_srgb` texture array at texture 24 (the
 cookie array's twin, `shapingStandIn()` when empty). Decals modify albedo
@@ -3681,7 +3681,7 @@ reflection silently no-opped for every field in a deferred frame. Nothing
 crashed, and no snapshot moved, because no snapshot scene combines a field with
 `rayTracedReflections()`. The visible symptom was the silhouette: at grazing
 incidence the reflection is most of the picture, and the raw environment there
-outshines the traced scene, so a field wore a 3-4px blown-white rim band plus one
+outshines the traced scene, so a field showed a 3-4px blown-white rim band plus one
 dark pixel (the reflection sweeping a dark environment region just past the
 body), while the mesh beside it, compositing the traced slab, descended smoothly.
 The isolation is worth recording. A patch mean and the snapshot tolerance both
@@ -3721,7 +3721,7 @@ pieces, each of them load-bearing:
    direction), because the resolve reuses a neighbor's hit *point*: a ray that
    found something close by leaves at a different angle one pixel over. The pass
    is MRT either way, so one fragment serves both paths and they cannot drift.
-   The distance rides an out-parameter on `ollin_rt_reflection_trace` defaulted
+   The distance is returned through an out-parameter on `ollin_rt_reflection_trace` defaulted
    to null, which folds away for every caller that does not ask.
 3. **The resolve is a ratio estimator over the neighborhood**
    (`ollin_rt_reflect_resolve`, written from the published stochastic
@@ -3937,8 +3937,8 @@ effect-target encode so layers sample the same update). Rays per probe
 resolve per GPU like the shadow rays (hardware RT 64/96/192, software
 32/64/96), through the sketch's `globalIlluminationQuality(_:)` tier (a
 persistent `RenderQuality` setting, `.default` following the automatic
-live/export split; the headless iteration count rides the same tier). The
-grid deliberately does *not* ride the tier: more rays refine the same
+live/export split; the headless iteration count follows the same tier). The
+grid deliberately does *not* follow the tier: more rays refine the same
 estimator, but a tier-driven grid would move the probes themselves, and
 `.default`'s automatic export lift would then light an export differently
 from the live window.
@@ -3978,7 +3978,7 @@ slab, so a flat scene's cascades spend a fraction of their 512-probe slots.
 The atlases stack one 512-probe slot per cascade (the same widths, so
 `ollin_gi_atlas_uv` and the carriers' three texture bindings are untouched;
 probe index = slot · 512 + local), allocated at the ladder's capacity: a
-capacity change only ever rides a refit, and the single-volume allocation is
+capacity change only ever happens at a refit, and the single-volume allocation is
 exactly the shipped one, so a room-scale scene keeps byte-identical sampling
 UVs. Live, a cascade scrolls in whole probe planes as the camera moves (the
 infinite-scrolling-volume model, studied via NVIDIA's public RTXGI SDK: a
@@ -4034,7 +4034,7 @@ its irradiance-cube diffuse for a probe-field sample at the *hit* when the
 field is active, pre-divided by the IBL exposure because the whole traced
 radiance is scaled by it on composite (the `ollin_pbr_ibl_ambient` rule), so a
 surface seen in a mirror or through glass carries the same bounce as its
-direct view; the atlases ride into the deferred trace pass (textures 13/14/15
+direct view; the atlases are passed into the deferred trace pass (textures 13/14/15
 in `encodeReflectionPass`, whose lighting packs the field like the LTC/shaping
 mirroring) and thread through `ollin_pbr_ibl_ambient` into the inline trace.
 This is distinct from the recorded flat-pastel-blobs dead end above, which was
@@ -4078,7 +4078,7 @@ particles don't gather (they barely have surfaces to), documented in
 
 **Variance came down in three distinct steps, each a published technique, each fixing a different mechanism.** First, environment importance sampling with the power heuristic (two-level luminance CDFs over a 512×256 latitude-weighted grid, cached per equirect texture; one shared lobe-pdf function feeds both sides of the heuristic, or the estimator biases): this fixed the missing light, not the sparkle. Second, filtered importance sampling: lobe-side environment reads pick the mip whose texel footprint matches the sampled probability's solid angle, and the environment strategy reads the level its tables were built from, so one lamp texel far brighter than its table cell cannot spike. Third (the one that actually killed the single-pixel glitter), path-space regularization: next-event evaluation at an *indirectly seen* vertex floors the surface roughness at 0.25, because a near-mirror NEE term carries the microfacet distribution's full peak with no probability division, and one bounce-sample that happens to align with a light spikes by tens of thousands (no sample count cures a bounded-mean, unbounded-tail estimator). The continuation lobe stays exact, so mirror-in-mirror imagery is unaffected; only a light's glint seen *in* a mirror softens, which the raster reflections (Lambert-only at hits) never showed at all. The depth-isolation experiment that found it: depth 1 was clean, depth 2 sparkled with both environment terms disabled, so the only unbounded term left was light NEE at bounce vertices.
 
-**The grain filter is a separate pass over what the trace wrote down about the surface.** The estimator's own variance work above is where the noise *comes from*; this is what is done with the noise that is left. While it traces, the kernel fills two guide layers at the *first* hit only: the surface's base color after its maps plus the running square of each sample's luminance, and the shading normal plus the primary distance. They are written only while `pt.meshLights.w` is up (the `denoise` flag, which is off unless asked for), and are a one-pixel stand-in otherwise, so the ordinary render allocates nothing extra and writes nothing extra. `encodePathTraceDenoise` then runs four kernels in one waited command buffer: `prepare` turns the sums into per-pixel means, divides the radiance by the surface color (demodulation, so nothing painted on a surface is ever blurred, only the light on it) and computes the unbiased sample variance of the mean, `/(N-1)`, which is why a single-sample render skips the pass outright; `ollin_pt_denoise_atrous` runs five times over a ping-pong pair, doubling its tap spacing each time so a 32-pixel reach costs 25 reads per pass, weighing every tap by normal agreement (power 128), *relative* distance (0.02 of the center's own distance, opened by the tap spacing), and luminance difference divided by the measured variance (3x3-blurred first, since a single pixel's estimate of its own spread is itself noisy); `finish` multiplies the surface color back and writes into `accum` **in accum's own units** (radiance times the coverage count), which is why the composite fragment needed no change at all. Variance rides the alpha channel through the chain and is filtered with squared weights. Three things worth keeping: the guide albedo is forced to 1 on a mostly-transmissive hit (what shows through glass is not its tint, so dividing by that tint would smear the view behind it); the settings were swept rather than copied, and wider luminance blending (4 -> 8 -> 16) buys about 1.5% RMSE while costing about 30% of the kept high-frequency detail, so the published sigma of 4 over five passes stands; and every integrator probe in `PathTraceTests`, plus the `path-traced-3d` snapshot, names `denoise: false` explicitly rather than leaning on the default, because they measure the sampling and not the filter.
+**The grain filter is a separate pass over what the trace wrote down about the surface.** The estimator's own variance work above is where the noise *comes from*; this is what is done with the noise that is left. While it traces, the kernel fills two guide layers at the *first* hit only: the surface's base color after its maps plus the running square of each sample's luminance, and the shading normal plus the primary distance. They are written only while `pt.meshLights.w` is up (the `denoise` flag, which is off unless asked for), and are a one-pixel stand-in otherwise, so the ordinary render allocates nothing extra and writes nothing extra. `encodePathTraceDenoise` then runs four kernels in one waited command buffer: `prepare` turns the sums into per-pixel means, divides the radiance by the surface color (demodulation, so nothing painted on a surface is ever blurred, only the light on it) and computes the unbiased sample variance of the mean, `/(N-1)`, which is why a single-sample render skips the pass outright; `ollin_pt_denoise_atrous` runs five times over a ping-pong pair, doubling its tap spacing each time so a 32-pixel reach costs 25 reads per pass, weighing every tap by normal agreement (power 128), *relative* distance (0.02 of the center's own distance, opened by the tap spacing), and luminance difference divided by the measured variance (3x3-blurred first, since a single pixel's estimate of its own spread is itself noisy); `finish` multiplies the surface color back and writes into `accum` **in accum's own units** (radiance times the coverage count), which is why the composite fragment needed no change at all. Variance is carried in the alpha channel through the chain and is filtered with squared weights. Three things worth keeping: the guide albedo is forced to 1 on a mostly-transmissive hit (what shows through glass is not its tint, so dividing by that tint would smear the view behind it); the settings were swept rather than copied, and wider luminance blending (4 -> 8 -> 16) buys about 1.5% RMSE while costing about 30% of the kept high-frequency detail, so the published sigma of 4 over five passes stands; and every integrator probe in `PathTraceTests`, plus the `path-traced-3d` snapshot, names `denoise: false` explicitly rather than leaning on the default, because they measure the sampling and not the filter.
 
 **The lens is eight lines in the ray generator.** `Camera3D.aperture`/`focusDistance` sample a disk over an orthonormal basis around the view axis and re-aim at the shared focus point; the composite's depth stays the pinhole center-ray depth so the raster kinds composite stably. The camera frame comes from the same `makeUniforms3D` the raster uses (unjittered), so perspective, orthographic, and intrinsic projections all frame identically.
 
@@ -4280,7 +4280,7 @@ deterministic net (`VelocityBufferTests`, 13): the call-site/occurrence/named
 identity rules, skip-a-frame pruning, wireframe and render-target gates, and
 render probes reading the texture back over a 1:1 orthographic scene (the
 exact pixel delta with the exact sign, sentinel elsewhere, written-zero vs
-sentinel, the camera term riding a still mover, the occluder holding a hidden
+sentinel, the camera term applied to a still mover, the occluder holding a hidden
 mover back), plus a crafted-texture probe of the resolve branch itself
 (velocity toward the history's white half vs its black half vs the sentinel's
 identity fallback). The velocity-sign, occluder-drop, and resolve-sign
@@ -4301,7 +4301,7 @@ the exact-motion bar mid-flight reads like the converged static rod, the
 fallback bar is visibly sawtoothed along both silhouettes.
 
 Envelope: render targets and the accumulation surface keep plain MSAA; 2D
-overlays over a *moving* 3D scene ride the scene's reprojection (measured
+overlays over a *moving* 3D scene use the scene's reprojection (measured
 within 1/255 in the static and moving checks). `withMotion` covers solid /
 textured / matcap meshes on the main canvas; a skinned or otherwise
 vertex-deforming mesh is approximated by its node's rigid motion (exact
@@ -4396,7 +4396,7 @@ resolve's own fallback math per-pixel. The result is scaled by the
 half-shutter and magnitude-clamped to the published `[0.5px, k]` (a whisper of
 motion rounds up to half a pixel so the gather's center weight stays bounded;
 nothing streaks past the tile radius the pyramid assumes), and the pixel's
-camera-space depth rides the same texel's z. This fill is, incidentally, the
+camera-space depth is stored in the same texel's z. This fill is, incidentally, the
 full-screen motion texture MetalFX's scaler needs, minus the shutter scale and
 clamp: the camera-baseline-fill prerequisite exists once this runs. Passes 2
 and 3 reduce that field to each k-pixel tile's largest velocity, then each
@@ -4445,7 +4445,7 @@ drawing, the clear color, the environment skybox) writes zero velocity, the
 temporal resolve's own background treatment, so captions and overlays never
 smear under a camera move; the cost is that the sky does not streak under a
 pan, the documented envelope. The soft-depth extent is 1% of the eye-to-target
-distance (the `sceneScale` proxy the sparkle cells and RT bias already ride),
+distance (the `sceneScale` proxy the sparkle cells and RT bias already use),
 not a fixed world constant: the published 1mm-10cm figures assume meter-scale
 scenes, and a tuned screen-space constant hiding a scale assumption is the
 subsurface-scattering lesson repeated.
@@ -4667,7 +4667,7 @@ The seam behind LED mapping (and anything else that turns rendered pixels into
 a few hundred output values a frame): a `package`-access `CanvasSampler` in
 `Sources/Ollin/Renderer/CanvasSampler.swift` that samples N points from the
 rendered display texture with one small compute dispatch and reads back an
-N-entry byte buffer. It rides the rendered-*texture* extension hook
+N-entry byte buffer. It uses the rendered-*texture* extension hook
 (`wantsRenderedTexture` / `frameRendered(_:texture:)`, the frame-sharing seam),
 so the grab is only paid while a consumer is registered, and a headless export
 (which never fires the hook) costs nothing. The design point is
@@ -4728,7 +4728,7 @@ on `Generator`, `Filter`, and `Combine.Kind`, so input count *is* the variant:
 via `sample(info, uv)`), `a.combined(with: b, .shader(s))` (2 inputs, adding
 `sampleAux(info, uv)`). All three resolve through the existing
 `encodeGenerator`/`applyFilter`/`applyCombine` with no new render-graph
-plumbing. The input layer(s) ride *inside* the wrapper's `ShaderInfo` as
+plumbing. The input layer(s) are passed *inside* the wrapper's `ShaderInfo` as
 `texture2d<float>` plus `sampler` members (valid MSL, passed by value to
 `shade`), read back as straight sRGB (`ollin_layer_sample` un-premultiplies and
 applies `linearToSrgb`) so the user works in one color space.
@@ -4744,7 +4744,7 @@ framework-shader reload. `ShaderInfo` is built per frame from
 `encodeEffectTargets`, so the filter/combine call sites need no `drawer`). The
 bound uniform struct `OllinShaderUniforms` is scalars-only (no array) so Swift
 fills it with the plain memberwise init; user params (up to 32 floats, read via
-`param(info, i)`) ride a separate `float4` buffer at index 0.
+`param(info, i)`) are passed in a separate `float4` buffer at index 0.
 
 **The readers are functions, and that is load-bearing.** `param`, `sample`,
 `sampleAux`, `sampleRaw` and `sampleAuxRaw` were function-like macros until
@@ -4780,7 +4780,7 @@ itself for a resource (line 1). `cleanShaderDiagnostics` strips the
 `Compilation failed:` header, rebases `program_source:` lines to the same
 `file:line` as a fallback, and drops compiler-internal `note:` lines pointing
 at `/System/` framework headers (a line naming the user's file is always
-kept). The call-site location rides the composed-source hash, so identical
+kept). The call-site location is included in the composed-source hash, so identical
 shaders at two call sites cache separately (fine; same-site rebuilds like
 `Visual`'s still hit). The error surfaces two ways: stderr (once per source
 hash, for a plain `swift run`) and a pull-model channel to the host: the
@@ -4896,7 +4896,7 @@ byte-identical to the equivalent manual transform-stack calls.
 distinct materials; a USD mesh partitioned by `materialBind` `GeomSubset`
 children) keeps its node's `mesh` *whole*, one merged vertex order, and adds
 internal `SceneMeshPart`s on the node: per-material triangle lists indexing
-that same mesh, plus the material each wears. The one-vertex-order design is
+that same mesh, plus the material each uses. The one-vertex-order design is
 what keeps deformation untouched: morph deltas and skin weights stay aligned
 with the merged positions, posing happens once, and the draw then emits one
 ordinary `drawMesh` per part, a struct copy of the posed mesh with the part's
@@ -4907,7 +4907,7 @@ spans by material index in first-appearance order, emitting parts for two or
 more distinct looks (each material resolves once, shared with the merged
 mesh's own pick); the USD build maps authored faces to part slots (first
 subset claims a contested face, out-of-range face indices are ignored,
-unclaimed faces form a remainder wearing the mesh's own binding, and a subset
+unclaimed faces form a remainder with the mesh's own binding, and a subset
 family other than `materialBind` never partitions) and collects each face's
 fan triangles into its slot during the one triangulation walk, in both the
 indexed and the expanded forms. A single-material node carries no parts and
@@ -4931,7 +4931,7 @@ beside the parts-vs-manual byte-equality probe in `SceneLoaderTests`.
   normalization keeps the authored balance within a kind without letting the
   incomparable units fight each other. Colors arrive linear and re-encode to
   sRGB, the base-color-factor treatment.
-- **Cameras and lights ride their nodes.** The loaders never resolve a pose:
+- **Cameras and lights are attached to their nodes.** The loaders never resolve a pose:
   they attach internal node-local specs (`SceneLightSpec`, everything but the
   pose: kind, color, per-kind-normalized intensity, cone and area extents,
   emitting down local -z; `SceneCameraSpec`, projection + clip range), and
@@ -5006,7 +5006,7 @@ the per-vertex `JOINTS_0`/`WEIGHTS_0` attributes (u8/u16 joints; float or
 normalized-int weights via the existing `readVec4` decode; kept all-or-nothing
 across primitives, the UV rule) and the morph targets' per-vertex POSITION /
 NORMAL displacements (kept only when every primitive declares the same target
-count, which the format requires). Deform data rides the `SceneNode`, not the
+count, which the format requires). Deform data is stored on the `SceneNode`, not the
 public `Mesh`: `skinIndex` + `vertexJoints`/`vertexWeights` + `morphTargets`
 internal, `weights` public (the hand-drivable blend-shape surface; a weights
 animation channel writes the same property). Skins parse into internal
@@ -5202,7 +5202,7 @@ stage's camera ops itself, and `USDXformTests` pins our matrix against its
 The evaluator's first customer was **UsdLux lights** (stage 2 of the arc):
 light prims don't survive the platform importer at all, so
 `SceneLoaderUSDLights.swift` reads them from the raw tree into ordinary
-`Light` values on `Scene.lights`, as node-riding `SceneLightSpec`s the
+`Light` values on `Scene.lights`, as node-attached `SceneLightSpec`s the
 scene walk attaches where it builds each light prim's node, so visibility
 and purpose gate them and the pose resolves through the tree's current
 transforms on every read. The mapping is complete over Ollin's light
@@ -5227,7 +5227,7 @@ and each kind normalizes intensity × 2^exposure to its brightest = 1
 covered by a test-built stored zip (64-byte aligned via the extra-field
 padding scheme the reference writer uses), which both our reader and Model
 I/O accept; `SceneLoaderTests` pins the full rig, and the example stage's
-authored rig (one light of every mapped kind, `make-usd-scene.swift`) rides
+authored rig (one light of every mapped kind, `make-usd-scene.swift`) is rendered in
 the `usd-scene` snapshot.
 
 ### Transform animation (stage 3)
@@ -5285,7 +5285,7 @@ which exercises the crate TimeSamples decode (the doubly-indirected layout,
 previously spec-only) against reference output. The bundled kinetic mobile
 (`make-usd-animated-scene.swift`, one part per authored form: rotateXYZ
 spin, nested counter-spin, translate bob, quaternion orient tumble, the
-pivot-idiom pendulum, scale breathing) rides the `usd-animated-scene`
+pivot-idiom pendulum, scale breathing) is rendered in the `usd-animated-scene`
 snapshot at a fixed sample time, and a Metal-gated probe renders frames one
 authored lap apart byte-identical (the loop-wrap guarantee the example's
 `loopDuration` promises).
@@ -5345,7 +5345,7 @@ equation (bind transforms are world-space at bind; the geometry bind
 transform maps the mesh's authored points to world at bind), and the
 skinned node's own chain stays ignored, the rule glTF already established.
 The skel primvars expand per point: `elementSize` influences each
-(`constant` interpolation is the rigid binding, one shared element riding
+(`constant` interpolation is the rigid binding, one shared element applied to
 every point), the `skel:joints` remap reordering mesh-local indices into
 skeleton order when authored, influences past the pose path's four dropped
 heaviest-first (the blend renormalizes over what's used).
@@ -5358,7 +5358,7 @@ pinned, quats real-first from both containers per the parser rule, a
 static (default-only) channel becoming a single held key. Blend shapes
 pair `skel:blendShapes` names with `skel:blendShapeTargets` prims by
 position; offsets land dense or through the sparse `pointIndices` form
-(zeros elsewhere), `normalOffsets` riding when they pair one-to-one. The
+(zeros elsewhere), `normalOffsets` carried along when they pair one-to-one. The
 weights channel gathers the animation's `blendShapes` token order into the
 mesh's own target order by name (an unnamed shape holds 0) and binds by
 the mesh node's identity, joining the joint tracks and the stage-3 xform
@@ -5379,7 +5379,7 @@ skeleton output serves as a second oracle: our inverse binds must invert
 to its `jointBindTransforms`. The bundled pond
 (`make-usd-skinned-scene.swift`: a sea serpent on a five-joint chain with
 two blended influences per point and a geometry bind transform; a lotus
-breathing on a dense-with-normals bloom and a sparse tip curl) rides the
+breathing on a dense-with-normals bloom and a sparse tip curl) is rendered in the
 `usd-skinned-scene` snapshot at a fixed sample time, with the same
 Metal-gated loop-wrap probe the mobile has.
 
@@ -5419,7 +5419,7 @@ default) and its optional `:indices` indirection (a blocked `None` indices
 attribute reads as unauthored), and a mis-sized set drops whole rather than
 mis-mapping. A mesh whose normals and texture coordinates are per-point (or
 absent) stays **indexed on the authored points**; faceVarying or per-face
-(`uniform`) data can't ride shared vertices, so the general form **expands
+(`uniform`) data can't be stored on shared vertices, so the general form **expands
 one vertex per face corner** and lands each corner's values exactly, with
 missing normals smoothed (which over expanded corners is the honest
 flat-facet look). A deforming mesh must stay indexed, the layout its skel
@@ -5587,7 +5587,7 @@ covering the source grid's cells (4…1024 per side; a 257-sample
 diamond-square field lands on its natural 256) and derives offset/scale to
 reproduce `mesh(width:depth:height:)`'s centered sizing exactly, storing 16
 bits per sample so the collider tracks the drawn mesh to well under a visible
-error. Per-part densities ride each child's own desc (the body's relative
+error. Per-part densities are carried in each child's own desc (the body's relative
 density multiplies the part's). Scene colliders are a walk over the
 package-visible `Scene.visitWorlds`: each mesh node's composed world
 transform is baked into its triangles (general matrices, scale and shear
@@ -5652,7 +5652,7 @@ deliberate difference from the rigid rule, where the solver genuinely reports
 the removal; it is also what tells the buoyancy pass below that a sunk sheet is
 lying on something rather than stalled in mid water.)
 
-Sensors ride `BodyCreationSettings::mIsSensor` plus a fourth object layer
+Sensors use `BodyCreationSettings::mIsSensor` plus a fourth object layer
 (`SENSOR`) that pairs only with `MOVING`, so a trigger volume never spends a
 step colliding against static scenery or another sensor. The DX decision here
 came from the library's own note: a *static* sensor only detects **active**
@@ -5742,7 +5742,7 @@ otherwise they would pass through each other.
 
 Three envelope facts, each measured rather than assumed. `stepHeight` is the
 distance the stair walk probes upward, not a hard ceiling: the capsule's
-rounded foot rides an edge slightly before the probe runs, so a ledge roughly a
+rounded foot slides up an edge slightly before the probe runs, so a ledge roughly a
 quarter taller than the setting may still be climbed (0.4 climbs 0.5, stops at
 0.6). That is inherent to the algorithm, so it is documented rather than
 compensated for, and the tests use a clear margin. Whether `pushStrength`
@@ -5884,7 +5884,7 @@ The motorcycle sibling is the same call with `balances: true`. Getting it to
 work took one thing the car does not need: `casterAngle`, which rakes both
 `mSuspensionDirection` and `mSteeringAxis` back on the front wheel. Without
 it the balance controller cannot hold a line and the machine goes over within a
-second; with 30° of rake it rides, and leans into a corner. Note that a
+second; with 30° of rake it holds a line, and leans into a corner. Note that a
 two-wheeler running dead straight stays up even with the controller *off*,
 because nothing perturbs it, so the counterfactual test starts it leaned over.
 
@@ -5941,7 +5941,7 @@ joint it writes is what its children are placed against, preserves whatever
 scale a node carries (a rigid pose has none, and dividing it out would shrink
 the mesh), and re-syncs a node's TRS animation base to the posed transform so a
 rotation-only track applied next frame does not drag the node back to its
-authored translation. Joints it is not given keep their local transform and ride
+authored translation. Joints it is not given keep their local transform and move with
 their parent, which is what makes a partial ragdoll (one that skips the fingers)
 carry the rest of the figure rigidly.
 
@@ -6109,7 +6109,7 @@ without bound as the enclosed volume shrinks, which is why the pressurised ball
 comes back round every time.
 
 Two things would reopen it: a vertex-follows-tetrahedron binding in the solver
-(so a real surface could ride a lattice instead of hanging off springs, which is
+(so a real surface could follow a lattice instead of hanging off springs, which is
 what a proper embedded solid does and what Jolt's skinned constraints, which
 bind to a *skeleton*, cannot express), or a signed volume constraint that can
 drive an inverted tetrahedron back out.
@@ -6312,7 +6312,7 @@ several stems is several ropes.
 
 Jolt v5.6.0 vendors a whole `Jolt/Physics/Hair/` module beside the soft-body
 solver, with 49 shader files behind it. It simulates a groom of hair strands as
-Cosserat rods, which is the same maths `Rope3D` already rides, plus a velocity
+Cosserat rods, which is the same maths `Rope3D` already uses, plus a velocity
 and density grid that lets strands push on each other, plus an interpolation step
 that draws ten render strands around every simulated one. It is not exposed, and
 the reason is a fit problem before it is a cost problem.
@@ -6420,11 +6420,11 @@ reached rather than at the exact equilibrium).
 normal* per call, not a world-wide plane, so a swell is expressible: each body
 is handed the plane tangent to the surface under its own center of mass. This
 is the library's own boat sample's approach, not an invention, and it carries
-the honest envelope that a body much larger than the wavelength it rides is
+the honest envelope that a body much larger than the wavelength it floats on is
 approximated. The surface function lives in Swift (`Water.surface(at:phase:)`,
 three crossed sines whose gradient is analytic rather than sampled either
 side), which is what lets `waterMesh` and `waterHeight` read the very same
-surface the bodies ride: one source of truth, pinned by a test that every mesh
+surface the bodies float on: one source of truth, pinned by a test that every mesh
 vertex sits at `waterHeight` for its own x and z.
 
 **The query.** `cjolt_world_bodies_in_box` is a broad-phase `CollideAABox` over
@@ -6502,7 +6502,7 @@ body higher, drag settles a body that otherwise still bobs after a minute, a
 sleeping floater holds its level, a tide reaches it, a swell carries what
 floats and lets the bottom sleep, a current drifts a raft, `buoyancy`
 multiplies both ways, sensors and soft bodies are left alone, the drawn surface
-is the ridden one, and identical runs replay identically.
+is the one the bodies float on, and identical runs replay identically.
 
 ### World queries
 
@@ -6575,7 +6575,7 @@ symmetric table on the world (`Sources/OllinPhysics/CollisionGroup.swift`,
 The name is `ExpressibleByStringLiteral`, so a group costs one word at the site
 where a body is made and the rule is one sentence somewhere else.
 
-**The group rides in the object layer, and that choice is the whole design.**
+**The group is stored in the object layer, and that choice is the whole design.**
 Jolt offers two filtering mechanisms and only one of them reaches everywhere a
 pair can meet. A per-body `CollisionGroup`/`GroupFilterTable` is consulted in
 the *narrow phase only*: it would never have reached a query, a character's own
@@ -6690,8 +6690,8 @@ because `rebuildGround` builds a fresh descriptor whenever `ground` or
 ### Tracks, ropes, freedoms, and joint-to-joint links
 
 Five more constraint kinds, split by what each one links. Three connect two
-bodies and ride `JointKind3D` (`.path`, `.pulley`, `.allowing`); two connect two
-*joints* and ride a second enum, `JointLink3D` (`.gear`, `.rackAndPinion`),
+bodies and use `JointKind3D` (`.path`, `.pulley`, `.allowing`); two connect two
+*joints* and use a second enum, `JointLink3D` (`.gear`, `.rackAndPinion`),
 through a `connect(_ a: Joint3D, _ b: Joint3D, _:)` overload. The split follows
 what the solver actually constrains: a gear ties the rotation two hinges allow,
 so naming the hinges gives the bodies, the axes, and the drift-correction
@@ -6708,7 +6708,7 @@ the holonomy a closed loop comes back with is a stated envelope, not a defect.
 space** with the settings' path transform left at identity, which is exactly
 what makes path space equal body-1 *body* space (the center-of-mass offset in
 `mPathToBody1` cancels against the body's own COM transform), so a track hung
-off a moving body rides it. The rider joins at `GetClosestPoint` of where it
+off a moving body moves with it. The rider joins at `GetClosestPoint` of where it
 already is. **Progress is normalized in the bridge**, since a Hermite path's
 fraction runs to its segment count and only the bridge knows that: `drive(to:)`
 scales a 0…1 target up and `cjolt_constraint_current` scales the reading back
@@ -6806,7 +6806,7 @@ lossy for the `Mesh` a sketch reads back out of `body.collider`, and where it
 would help most it is dominated outright by naming the geometry instead of
 holding it. Compression is conditional on being smaller, which the codec reports
 by refusing a destination the source's size, so an incompressible payload simply
-rides uncompressed and the flag says so.
+stays uncompressed and the flag says so.
 
 The checksum is not decoration. **LZFSE's decoder returns the full requested
 length from a truncated stream** rather than reporting the truncation (measured:
@@ -7192,7 +7192,7 @@ endpoints; each pass doubles the point count, iterations capped at 10.
 Examples `Patterns/Spirograph` / `Patterns/Roses` (both declare
 `loopDuration`), `Motion/Lissajous` (the classic table over `Grid`),
 `Motion/Harmonograph` (pendulums rolled from the seeded `random`, one figure
-per `variation`), `Shapes/CornerCutting`; `Patterns/Phyllotaxis` rides the
+per `variation`), `Shapes/CornerCutting`; `Patterns/Phyllotaxis` uses the
 helper. Snapshots `classic-curves` + `harmonograph`; `ClassicCurveTests`
 (astroid/cardioid closed forms, petal counts, exact open-pass Chaikin).
 
@@ -7636,7 +7636,7 @@ spatial hash; an empty shape bag packs plain circles on a fast path.
 `packShapes(_:in:count:…)` runs it to completion; `packShapes(_:around:…)`
 scatters one shape per point. An unbounded `maxRadius` clamps the grid cell
 *and* the search reach to the region size, else the reach is infinite. The
-example rides `noClear()` accumulation and draws only newly added shapes,
+example uses `noClear()` accumulation and draws only newly added shapes,
 keeping per-frame cost flat as the field fills. `PackingTests`; examples
 `Patterns/CirclePacking` + `Patterns/ShapePacking`; snapshots
 `circle-packing` + `shape-packing`.
@@ -7868,7 +7868,7 @@ drag-to-pull); snapshot `force-graph`; `ForceLayoutTests`.
 (lorenz, rossler, aizawa, thomas, halvorsen, dadras, chen, fourWing) under
 RK4; `ChaoticMap` iterates the 2D maps (clifford, deJong, henon). Both
 carry a user-suppliable `@Sendable` closure and emit orbits via
-`orbit(count:settle:)`; 3D rides `PointCloud` through the camera, 2D plots
+`orbit(count:settle:)`; 3D plots as a `PointCloud` through the camera, 2D plots
 as additive density. RK4 lives in `Math/Integration.swift` behind the
 internal `Integrable` protocol, promoted from file-private when the double
 pendulum became its second caller. Examples `3D/StrangeAttractor` +
@@ -8113,7 +8113,7 @@ tint, opt-in). Turning BPC on for the four-step chain misbehaves outright
 
 The live filter exists because the full transform measures about 145 ms on a
 1080 by 1080 canvas. `ProofLUTCache` bakes the condition into a 33 cubed
-lattice instead (about 4.4 ms), rgb in linear light and the gamut flag riding
+lattice instead (about 4.4 ms), rgb in linear light and the gamut flag stored
 in alpha, and hands back **the same `ProofLUT` object** for the same
 condition every frame. That identity is what the renderer's texture cache is
 keyed on, so a steady sketch uploads its 574 KB once rather than per frame.
@@ -8574,7 +8574,7 @@ Sound has no master bus to tap. Every sound object owns a private engine, so
 the recorder discovers the sketch's sources by Mirror walk (the
 `ExportAudioSource` trick) through the core `CaptureAudioSource` seam, and
 each source gets an `AudioCaptureSink` lane. A node allows one tap per bus
-and the analyzer already owns it, so capture rides the same tap through a
+and the analyzer already owns it, so capture uses the same tap through a
 `CaptureTapRelay` slot added to `installAnalyzerTap`'s fan-out. A lane places
 each buffer on the master timeline by its host-time stamp with a running
 counter smoothing the jitter: the counter wins while the stamp disagrees by

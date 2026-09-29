@@ -21,7 +21,7 @@ to answer without a field.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/MeasuredField-dark.jpg">
-  <img src="../../Guide/Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+  <img src="../../Guide/Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel taking the color of the mark nearest to it" width="680">
 </picture>
 
 ### Contents

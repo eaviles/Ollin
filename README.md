@@ -42,7 +42,7 @@ final class HelloCircle: Sketch {
 }
 ```
 
-That's the whole program: a black circle outline, breathing on a white canvas. `@main` boots the window for you, and the draw loop is already running, so there's no call to start the animation, and `time` (seconds since start) is ready to use. Delete `+ sin(time) * 40` and you have a still circle. Or change `width / 2, height / 2` to `mouseX, mouseY` and the circle follows the pointer: `mouseX`, `mouseY`, `mouseIsPressed`, and a `keyPressed()` override are [already on the sketch](Docs/Helpers/Input.md). The shipped `Basic/HelloCircle` is this same sketch, drawn a little larger, with its sizes riding the built-in `scale` factor so they hold at any canvas size.
+That's the whole program: a black circle outline, breathing on a white canvas. `@main` boots the window for you, and the draw loop is already running, so there's no call to start the animation, and `time` (seconds since start) is ready to use. Delete `+ sin(time) * 40` and you have a still circle. Or change `width / 2, height / 2` to `mouseX, mouseY` and the circle follows the pointer: `mouseX`, `mouseY`, `mouseIsPressed`, and a `keyPressed()` override are [already on the sketch](Docs/Helpers/Input.md). The shipped `Basic/HelloCircle` is this same sketch, drawn a little larger, with its sizes multiplied by the built-in `scale` factor so they hold at any canvas size.
 
 ## Run it
 

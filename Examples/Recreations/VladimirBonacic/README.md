@@ -68,7 +68,7 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-GFE164
   ```
 
-  The plan as marks, which is what its invariants are read from. Every square wears its class's color and is lit exactly when the console's two registers both say so. The relief's depths match the corner of the panel the article prints. A later frame's registers are the earlier ones multiplied by x once for every step the rhythm let through:
+  The plan as marks, which is what its invariants are read from. Every square takes its class's color and is lit exactly when the console's two registers both say so. The relief's depths match the corner of the panel the article prints. A later frame's registers are the earlier ones multiplied by x once for every step the rhythm let through:
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-GFE164 --export-svg a.svg --frame 650 --seed 77 --param view=plan

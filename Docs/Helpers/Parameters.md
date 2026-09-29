@@ -263,7 +263,7 @@ In the live host the button writes the file, so the watcher reloads the sketch, 
 
 ### Putting a parameter back
 
-A parameter you turned wears a small dot after its name. Click the dot, or right-click the row and choose **Reset**, and the value goes back to what its `@Param` line declares. **Reset all** beside the save button puts every parameter back, and a group's card offers its own **Reset** once one of its rows is turned. The sketch keeps running: nothing is reloaded and `setup()` does not run again, so the clock, the seed, and an accumulating canvas carry on, and a value that only `setup()` read keeps what `setup()` built from it. A smoothed parameter jumps rather than glides, as it does on a reload. A parameter on a [timeline](../Tools/Timeline.md) track goes back for one frame and then follows its track again.
+A parameter you turned shows a small dot after its name. Click the dot, or right-click the row and choose **Reset**, and the value goes back to what its `@Param` line declares. **Reset all** beside the save button puts every parameter back, and a group's card offers its own **Reset** once one of its rows is turned. The sketch keeps running: nothing is reloaded and `setup()` does not run again, so the clock, the seed, and an accumulating canvas carry on, and a value that only `setup()` read keeps what `setup()` built from it. A smoothed parameter jumps rather than glides, as it does on a reload. A parameter on a [timeline](../Tools/Timeline.md) track goes back for one frame and then follows its track again.
 
 A reset also forgets the value as tuned. The dot leaves, the save button skips the parameter, and the next reload takes the file's value, so a default you then edit by hand is read.
 

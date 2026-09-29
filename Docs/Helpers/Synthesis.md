@@ -582,7 +582,7 @@ A cycle with a corner holds harmonics past any sampling limit. Read fast enough,
 
 ### Grains
 
-A grain is a piece of sound too short to have a pitch of its own, a few thousandths of a second, worn with an envelope so it does not click at either end. Pile enough of them up and what you hear is the statistics of the pile rather than any one of them. That is the whole technique, and it buys one thing nothing else here can do: **how fast the sound is read and how high it sounds stop being the same number.**
+A grain is a piece of sound too short to have a pitch of its own, a few thousandths of a second. An envelope shapes it so it does not click at either end. Pile enough of them up and what you hear is the statistics of the pile rather than any one of them. That is the whole technique, and it buys one thing nothing else here can do: **how fast the sound is read and how high it sounds stop being the same number.**
 
 Everything else that plays a recording moves both together, the way a tape does. A grain cloud has two clocks. The grains are read at whatever speed the note's pitch asks for. The place they are cut from travels at `speed`, which is its own control. Set `speed` to 0 and the position stops while the note keeps going: one moment of a sound, held, for as long as you like.
 
@@ -613,7 +613,7 @@ You set the sound on the `Synth`, and the voice says how to cut it up. That is t
 | `pitchSpread` | how far each grain's pitch strays from the note, in semitones either way, `0...24` |
 | `panSpread` | how far each grain is thrown to one side, `0...1` |
 | `timingJitter` | how irregularly they start, `0...1`. At 0 they are on a strict clock, at 1 the gap is random with the same average |
-| `shape` | the envelope one grain wears, a `GrainShape` |
+| `shape` | the envelope applied to one grain, a `GrainShape` |
 | `seed` | which scatter this is. The same seed is the same cloud |
 | `.frozen(at:size:density:)` | a cloud held at one place, which is what this is here for |
 

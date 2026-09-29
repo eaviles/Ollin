@@ -20,8 +20,8 @@ This group covers what surfaces are made of: stylized finishes, physically based
 
 | Sketch | What it shows |
 | --- | --- |
-| [Materials](Materials/) | The material library. One orbiting sphere grid wears each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), and the view-angle finishes shift as it turns. |
-| [Inked](Inked/) | The cartoon look: toon solids with an ink line around every shape (`outline(width:color:)`), under a three-point rig that rides the camera (`relativeTo(.camera)`), a world sun, or a `headlight()`, switched by a parameter. |
+| [Materials](Materials/) | The material library. One orbiting sphere grid shows each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), and the view-angle finishes shift as it turns. |
+| [Inked](Inked/) | The cartoon look: toon solids with an ink line around every shape (`outline(width:color:)`), under a three-point rig that follows the camera (`relativeTo(.camera)`), a world sun, or a `headlight()`, switched by a parameter. |
 | [PhysicalMaterials](PhysicalMaterials/) | The physically-based finish as a metallic × roughness sweep. `Material.physicallyBased` shades one sphere grid from tight mirror highlights to matte, and from dielectric to metal. |
 | [Matcap](Matcap/) | Matcaps. A whole surface-and-lighting look is baked into one sphere texture and sampled by the view normal (`matcap(_:)`). That gives chrome, clay, wax, or a cel look with no scene lights at all. |
 | [Explorer](Explorer/) | The material explorer. Every finish is shown on one shape, with its parameters to adjust. |

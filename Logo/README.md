@@ -24,7 +24,7 @@ The small form keeps the bars, cut 26 units from the center on the same scale, a
 
 ## The colors
 
-The masters carry none. Where the site draws the mark, ink is `#0B0F14` and paper is `#F4F3F0`. In a page the drawing is inlined with `currentColor`, so it takes the page's text color and follows the reader's light or dark setting. The site's bar wears the full mark, inlined. The favicon and Safari's pinned-tab icon are the small form, the favicon in paper on an ink tile, since a tab bar is whatever color the browser makes it. The social card and the touch icon are the full mark in paper on an ink tile. The README shows the master and switches to the paper twin with the reader's setting.
+The masters carry none. Where the site draws the mark, ink is `#0B0F14` and paper is `#F4F3F0`. In a page the drawing is inlined with `currentColor`, so it takes the page's text color and follows the reader's light or dark setting. The site's bar shows the full mark, inlined. The favicon and Safari's pinned-tab icon are the small form, the favicon in paper on an ink tile, since a tab bar is whatever color the browser makes it. The social card and the touch icon are the full mark in paper on an ink tile. The README shows the master and switches to the paper twin with the reader's setting.
 
 ## After an export
 
