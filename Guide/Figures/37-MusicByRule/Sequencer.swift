@@ -164,7 +164,7 @@ final class SequencerFigure: Sketch {
         let second = turns.events(upTo: 3.99)
 
         let rows: [(String, [ScheduledNote], Int?)] = [
-            (".up, B4 joins at step 5", first, 5),
+            (".up, B4 held at step 5, sounds from step 6", first, 5),
             (".upDown, octaves: 2", second, nil),
         ]
         let pitches: [Double] = [60, 64, 67, 71, 72, 76, 79]

@@ -82,8 +82,9 @@ final class LeavingTheBackground: Sketch {
         }
     }
 
-    /// Another layer for the piece to land on: a warm gradient with a few soft
-    /// shapes, standing in for a camera feed or a second sketch.
+    /// Another layer for the probe to land on: a cool gradient, deep blue to
+    /// teal, with a few soft shapes, standing in for a camera feed or a second
+    /// sketch.
     private func layer(_ r: Rectangle) {
         noStroke()
         let rows = 40

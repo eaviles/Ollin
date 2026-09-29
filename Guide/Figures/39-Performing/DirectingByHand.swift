@@ -198,9 +198,9 @@ final class DirectingByHand: Sketch {
         for t in [0.0, 2.5, 4.0] { key(at: Vector2(tx(t), y + bandH / 2), selected: false) }
     }
 
-    /// A switch lane: two levels and a step between them.
-    /// A parameter a rule works out has no keys to place, so its lane draws
-    /// no curve: it names the rule at its right end, as the panel does.
+    /// A rule's lane. A parameter a rule works out has no keys to place, so
+    /// its lane draws no curve: it names the rule at its right end, as the
+    /// panel does.
     private func ruleLane(_ lane: Rectangle, rule: String) {
         withState {
             textFont(.systemMono)
@@ -282,11 +282,12 @@ final class DirectingByHand: Sketch {
         noStroke()
         drawText("ƒ", insp.x + insp.width - 24, y + 16, size: 14, color: theme.accent,
                  align: .center, .middle)
-        // The switch, dimmed: the rule drives it, so it takes no hand.
-        fill(theme.ink(0.18))
+        // The switch, on at the playhead (time % 6 < 3 holds at 1.6 s), and
+        // dimmed: the rule drives it, so it takes no hand.
+        fill(theme.accent(0.4))
         drawRect(insp.x + 14, y + 31, 34, 18, cornerRadius: 9)
         fill(theme.paper)
-        drawCircle(insp.x + 14 + 9, y + 40, 7)
+        drawCircle(insp.x + 14 + 34 - 9, y + 40, 7)
         // The field under the row, holding the rule as typed.
         fill(theme.paper)
         stroke(theme.border)

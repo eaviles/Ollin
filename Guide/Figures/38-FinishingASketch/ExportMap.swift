@@ -1,9 +1,9 @@
 // figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 38): every way a sketch leaves the machine. Files on
-// one side (still, sequence, video, GIF, SVG), live feeds on the other
-// (Syphon into other apps, the virtual camera into anything with a webcam
-// menu), all from the same draw() code.
+// one side (still, sequence, video, GIF, SVG), live feeds on the other (the
+// window, fullscreen on a projector; Syphon into other apps; the virtual camera
+// into anything with a webcam menu), all from the same draw() code.
 import Ollin
 import OllinDiagram
 
