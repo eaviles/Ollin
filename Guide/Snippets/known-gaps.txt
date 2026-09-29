@@ -23,33 +23,33 @@ c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:89  cannot find 'ink' in scope
 2ab302b50dae  Guide/04-Randomness.md:433  cannot find 'pool' in scope
 34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
-b455e4f737c2  Guide/06-GridsAndRepetition.md:228  cannot find 'drawPetals' in scope
-60af001c8df1  Guide/06-GridsAndRepetition.md:379  cannot find 'spiral' in scope
-e06710580a51  Guide/06-GridsAndRepetition.md:95  cannot find 'cell' in scope
+b455e4f737c2  Guide/06-GridsAndRepetition.md:295  cannot find 'drawPetals' in scope
+60af001c8df1  Guide/06-GridsAndRepetition.md:377  cannot find 'spiral' in scope
+e06710580a51  Guide/06-GridsAndRepetition.md:70  cannot find 'cell' in scope
 6db7db40c038  Guide/07-Tiles.md:341  cannot find 'tiles' in scope
 c68684592154  Guide/07-Tiles.md:81  cannot find 'strands' in scope
 ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
-678b6b363dab  Guide/09-Pictures.md:114  cannot find 'picture' in scope
-ed123e551581  Guide/09-Pictures.md:124  cannot find 'picture' in scope
-8ca70252f031  Guide/09-Pictures.md:135  cannot find 'picture' in scope
-ae33653cb376  Guide/09-Pictures.md:163  cannot find 'c' in scope
-cd4b2fbdddc6  Guide/09-Pictures.md:283  cannot find 'photo' in scope
-91f49fa6cea0  Guide/09-Pictures.md:322  cannot find 'picture' in scope
-10c5114223ae  Guide/09-Pictures.md:332  cannot find 'picture' in scope
-c3c5db53cc82  Guide/09-Pictures.md:355  cannot find 'target' in scope
+23e899676c54  Guide/09-Pictures.md:166  cannot find 'pictures' in scope
+399caa239353  Guide/09-Pictures.md:196  cannot find 'photo' in scope
+678b6b363dab  Guide/09-Pictures.md:217  cannot find 'picture' in scope
+ed123e551581  Guide/09-Pictures.md:227  cannot find 'picture' in scope
+8ca70252f031  Guide/09-Pictures.md:238  cannot find 'picture' in scope
+cd4b2fbdddc6  Guide/09-Pictures.md:287  cannot find 'photo' in scope
+91f49fa6cea0  Guide/09-Pictures.md:326  cannot find 'picture' in scope
+10c5114223ae  Guide/09-Pictures.md:336  cannot find 'picture' in scope
+c3c5db53cc82  Guide/09-Pictures.md:359  cannot find 'target' in scope
 5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
-5a7c4c5605e8  Guide/09-Pictures.md:374  cannot find 'picture' in scope
-4bf5f3360259  Guide/09-Pictures.md:385  cannot find 'dots' in scope
-53973e6b4213  Guide/09-Pictures.md:394  cannot find 'picture' in scope
-68079cdd8056  Guide/09-Pictures.md:410  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:443  cannot find 'picture' in scope
-4bda4ace2c1f  Guide/09-Pictures.md:463  cannot find 'depthMap' in scope
-b414f6435a99  Guide/09-Pictures.md:488  'module' is inaccessible due to 'internal' protection level
-9335f3c2f125  Guide/09-Pictures.md:517  cannot find 'table' in scope
-e4ad8ec48e3a  Guide/09-Pictures.md:530  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:554  'module' is inaccessible due to 'internal' protection level
-23e899676c54  Guide/09-Pictures.md:63  cannot find 'pictures' in scope
-399caa239353  Guide/09-Pictures.md:93  cannot find 'photo' in scope
+5a7c4c5605e8  Guide/09-Pictures.md:378  cannot find 'picture' in scope
+4bf5f3360259  Guide/09-Pictures.md:389  cannot find 'dots' in scope
+53973e6b4213  Guide/09-Pictures.md:398  cannot find 'picture' in scope
+68079cdd8056  Guide/09-Pictures.md:414  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:447  cannot find 'picture' in scope
+4bda4ace2c1f  Guide/09-Pictures.md:467  cannot find 'depthMap' in scope
+b414f6435a99  Guide/09-Pictures.md:492  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:521  cannot find 'table' in scope
+e4ad8ec48e3a  Guide/09-Pictures.md:534  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:558  'module' is inaccessible due to 'internal' protection level
+ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
 5f55cca8347f  Guide/10-Vectors.md:93  cannot find 'home' in scope
@@ -57,18 +57,18 @@ d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
 903bd8f5d681  Guide/11-ForcesAndPhysics.md:314  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
-750461323d36  Guide/14-FieldsAndFlow.md:276  cannot find 'x' in scope
-124acc641125  Guide/15-ShapesAsMaterial.md:104  cannot find 'road' in scope
-bac6f70b2c26  Guide/15-ShapesAsMaterial.md:161  cannot find 'circles' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:214  cannot find 'square' in scope
-6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:292  cannot find 'blob' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:315  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:326  value of type '[Contour]' has no member 'maxInset'
-ff3aae35a44a  Guide/15-ShapesAsMaterial.md:376  cannot find 'art' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:509  unary operator cannot be separated from its operand
+750461323d36  Guide/14-FieldsAndFlow.md:280  cannot find 'x' in scope
+bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
+6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:158  cannot find 'blob' in scope
+45fd2bf76c06  Guide/15-ShapesAsMaterial.md:296  cannot find 'path' in scope
+124acc641125  Guide/15-ShapesAsMaterial.md:308  cannot find 'road' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:385  cannot find 'square' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:436  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:447  value of type '[Contour]' has no member 'maxInset'
+ff3aae35a44a  Guide/15-ShapesAsMaterial.md:475  cannot find 'art' in scope
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:521  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
-45fd2bf76c06  Guide/15-ShapesAsMaterial.md:92  cannot find 'path' in scope
 c8a055fb7cf3  Guide/16-CurvesAndFigures.md:291  cannot convert value of type 'Shape' to expected argument type 'Contour'
 fff55af49a8c  Guide/16-CurvesAndFigures.md:310  cannot find 'ring' in scope
 c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
@@ -129,29 +129,29 @@ e568d6de03cc  Guide/31-CharactersAndCloth.md:575  errors thrown from here are no
 5e7d649a0114  Guide/31-CharactersAndCloth.md:70  errors thrown from here are not handled
 505abdd13984  Guide/32-SculptingWithFields.md:200  cannot find 'a' in scope
 17e800a28a86  Guide/32-SculptingWithFields.md:268  cannot find 'cluster' in scope
-34315703fb6f  Guide/34-Seeing.md:135  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-d958e7e8da2f  Guide/34-Seeing.md:154  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-e3f4153e6ffa  Guide/34-Seeing.md:179  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-09147d09c703  Guide/34-Seeing.md:274  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-ab964ab735c3  Guide/34-Seeing.md:295  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-e6e9484ee21c  Guide/34-Seeing.md:309  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-10296f99c463  Guide/34-Seeing.md:323  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-3d548b82b7b5  Guide/34-Seeing.md:338  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-fe868f649d36  Guide/34-Seeing.md:366  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-c09ae8043967  Guide/34-Seeing.md:400  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-a74ee9528a00  Guide/34-Seeing.md:415  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-2cc90665cec7  Guide/34-Seeing.md:438  cannot find 'encoderURL' in scope
-e32d94bf2d6a  Guide/34-Seeing.md:469  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-1c6e923d0f9f  Guide/34-Seeing.md:488  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-d2bcab332251  Guide/34-Seeing.md:533  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-491c839e438a  Guide/34-Seeing.md:580  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-746879197407  Guide/34-Seeing.md:652  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+e3f4153e6ffa  Guide/34-Seeing.md:127  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+34315703fb6f  Guide/34-Seeing.md:228  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+d958e7e8da2f  Guide/34-Seeing.md:247  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+09147d09c703  Guide/34-Seeing.md:278  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+ab964ab735c3  Guide/34-Seeing.md:299  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+e6e9484ee21c  Guide/34-Seeing.md:313  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+10296f99c463  Guide/34-Seeing.md:327  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+3d548b82b7b5  Guide/34-Seeing.md:342  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+fe868f649d36  Guide/34-Seeing.md:370  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+c09ae8043967  Guide/34-Seeing.md:404  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+a74ee9528a00  Guide/34-Seeing.md:419  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+2cc90665cec7  Guide/34-Seeing.md:442  cannot find 'encoderURL' in scope
+e32d94bf2d6a  Guide/34-Seeing.md:473  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+1c6e923d0f9f  Guide/34-Seeing.md:492  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+d2bcab332251  Guide/34-Seeing.md:537  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+491c839e438a  Guide/34-Seeing.md:584  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+746879197407  Guide/34-Seeing.md:656  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 6d480cc311b2  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
 26aeb599498d  Guide/39-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
-8ae8fc9ef0de  Guide/40-MusicByRule.md:154  expected '}' in class
-58ed622945fe  Guide/40-MusicByRule.md:247  extraneous '}' at top level
+f3eac281f7c3  Guide/40-MusicByRule.md:245  expected '}' in class
+4c5cf3d93c6d  Guide/40-MusicByRule.md:356  extraneous '}' at top level
 656de5f6c561  Guide/44-HandingItOver.md:412  'override' can only be specified on class members
 636645a17f8c  Guide/45-Installations.md:204  expected '}' in class
 47a1213a0f2f  Guide/45-Installations.md:251  extraneous '}' at top level
