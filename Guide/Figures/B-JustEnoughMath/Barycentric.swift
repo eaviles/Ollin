@@ -63,12 +63,13 @@ final class Barycentric: Sketch {
         label("b", at: t.b + Vector2(16, 14))
         label("c", at: t.c + Vector2(0, -18))
 
-        // Each weight sits in the small triangle opposite its corner.
+        // Each weight sits in the small triangle opposite its corner. The one
+        // opposite b is narrow, so its label sits low, where it is widest.
         textSize(15)
-        fill(theme.muted)
+        fill(theme.ink)
         label("\(weights.a) of a", at: (p + t.b + t.c) / 3)
-        label("\(weights.b) of b", at: (p + t.c + t.a) / 3 + Vector2(10, 0))
-        label("\(weights.c) of c", at: (p + t.a + t.b) / 3 + Vector2(0, 10))
+        label("\(weights.b) of b", at: (p + t.c + t.a) / 3 + Vector2(-6, 36))
+        label("\(weights.c) of c", at: (p + t.a + t.b) / 3)
     }
 
     func blendPanel() {
@@ -97,7 +98,7 @@ final class Barycentric: Sketch {
         textSize(15)
         fill(theme.muted)
         label("each dot mixes the corners' colors in its own weights",
-              at: Vector2((t.a.x + t.b.x) / 2, t.a.y + 34))
+              at: Vector2((t.a.x + t.b.x) / 2, t.a.y + 44))
     }
 
     func label(_ text: String, at p: Vector2) {

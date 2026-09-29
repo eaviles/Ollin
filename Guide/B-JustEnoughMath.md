@@ -99,9 +99,19 @@ Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau 
 
 ### An angle that never closes: the golden angle
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/GoldenAngle-dark.jpg">
+  <img src="Images/B-JustEnoughMath/GoldenAngle.jpg" alt="The same 500 seeds in three disks, each seed turned by one angle and pushed out by the square root of its number: at 137.5 degrees, the golden angle, in orange, they fill the disk evenly; at 137.0 degrees they line up into curving spokes with gaps between them; at 144 degrees, two fifths of a turn, they make five straight spokes" width="680">
+</picture>
+
 Turning by a simple fraction of a turn brings you back to the start after a few steps, which is what closes [the rosette](#n-copies-close-the-circle). Sometimes you want the opposite, many things placed around a center with none lined up behind another. The golden angle, about 137.5 degrees or 0.382 of a turn, does that. As a fraction of a turn, it is the number that simple fractions like 2/5 or 3/8 come least close to. So no two steps ever line up, and each new one lands in one of the widest gaps left. A sunflower's seeds grow this way. [Chapter 16](16-CurvesAndFigures.md) turns each seed by the golden angle and pushes it out by the square root of its number. [Chapter 27](27-Landscapes.md) spreads its lamps the same way.
 
 ### Numbers that turn: complex multiplication
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/MultiplyingTurns-dark.jpg">
+  <img src="Images/B-JustEnoughMath/MultiplyingTurns.jpg" alt="Two panels on the complex plane. Left, arrows from the origin for z, length 1.2 at 20 degrees, and w, length 1.5 at 50 degrees, and in orange their product z times w, length 1.8 at 70 degrees. Right, arrows to 1, to i, and to -1, with an orange half circle through them and the note that each multiplication by i is a quarter turn" width="680">
+</picture>
 
 A point `(x, y)` can also be read as one number, written `x + y·i`, where `i` is a number whose square is -1. Read that way, the plane is the **complex plane**, and its use here is multiplication. Multiplying two of these numbers multiplies their lengths and adds their angles. So multiplying by `i`, which has length 1 and points a quarter turn around, turns anything a quarter turn. Two quarter turns make half a turn, which is why `i` times `i` is -1. Squaring a point doubles its angle and squares its length. [Chapter 22](22-IteratedForms.md#multiplying-turns-the-complex-plane) builds escape-time fractals and domain coloring on this.
 
@@ -126,6 +136,11 @@ A closed outline can be rebuilt from circles. Each circle turns a whole number o
 A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at the end, and 0.25 a quarter of the way. `lerp(a, b, t)` walks from `a` to `b` by that fraction. `map(v, inLo, inHi, outLo, outHi)` carries a value from one range to another by *keeping* its fraction along. So 75% into the input range comes out 75% into the output range. The same idea squeezes sine's -1…1 into 0…1 (`sin(x) * 0.5 + 0.5`). [Chapter 2](02-Color.md) mixes colors by `t`, and [Chapter 3](03-MotionAndTime.md) makes both calls everyday tools.
 
 ### Three fractions at once: barycentric coordinates
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/Barycentric-dark.jpg">
+  <img src="Images/B-JustEnoughMath/Barycentric.jpg" alt="Two triangles with corners a, b, and c. Left, one orange point joined to the corners, which cuts the triangle into three pieces labeled 0.5 of a, 0.3 of b, and 0.2 of c, each weight in the piece opposite its corner. Right, the triangle filled with dots whose colors mix red at a, blue at b, and yellow at c in each dot's own weights" width="680">
+</picture>
 
 `lerp` names a point between two ends with one fraction. A point inside a triangle takes three, one for each corner, and the three add up to 1. The point is that much of each corner mixed together. A weight of 0.5 on the first corner puts the point halfway from the opposite edge to that corner. Each weight is also a share of area. Lines from the point to the corners cut the triangle into three, and a corner's weight is the share of the piece opposite it. The same weights mix anything the corners carry, such as a color or a height. [Chapter 27](27-Landscapes.md) reads them off a point scattered over a mesh, to blend what the mesh stores at its corners.
 
@@ -213,6 +228,11 @@ The **tail** of a distribution is its far end, the values that almost never come
 
 ### Even over a disk: the square root
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/SquareRootSpread-dark.jpg">
+  <img src="Images/B-JustEnoughMath/SquareRootSpread.jpg" alt="Two disks of 900 dots, each with an orange circle at half the radius. Left, at random(1) times the radius, the dots crowd the middle and 444 of 900 fall inside the circle. Right, at sqrt(random(1)) times the radius, they spread evenly and 218 of 900 fall inside it" width="680">
+</picture>
+
 To scatter points in a disk, pick an angle and a distance from the center. A plain distance, `random(1)` times the radius, crowds the points toward the middle. Half of them land within half the radius, but that inner circle holds only a quarter of the disk's area. The square root fixes it. With `sqrt(random(1))` as the fraction, a quarter of the points land within half the radius, which matches the area. [Chapter 27](27-Landscapes.md) places its trees this way. [Chapter 16](16-CurvesAndFigures.md)'s sunflower spreads its seeds by the square root of their number for the same reason.
 
 ### Chance is lumpy
@@ -299,6 +319,11 @@ Repeat "move a little, turn a little, draw" without resetting, and the little mo
 
 ### The plane turned inside out: inversion in a circle
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/CircleInversion-dark.jpg">
+  <img src="Images/B-JustEnoughMath/CircleInversion.jpg" alt="An orange mirror circle with its center marked. A point P inside it, at distance d, lies on a dashed ray that runs out to its image at r squared over d. A small gray square inside the circle near its rim comes out as a larger orange shape outside it with curved sides. Notes beside them: the rim stays where it is, inside goes outside and outside comes in, near the center goes far, and straight edges come out curved" width="680">
+</picture>
+
 Inversion in a circle moves every point along the line from the circle's center through it. A point at distance d from the center lands at r² / d, where r is the circle's radius. Points on the circle stay where they are, points inside go outside, and points near the center go far away. Inverting twice brings every point back, so the circle works like a mirror. A circle comes out as another circle, or as a straight line when it passes through the center. That is why [Chapter 22](22-IteratedForms.md#circles-used-as-mirrors-inversion-limit-sets)'s limit sets are made of round shapes.
 
 ### Four corners anywhere: corner pinning
@@ -350,6 +375,11 @@ A force is a push with a direction, and simultaneous pushes on one body add, tip
 
 ### Weaker with distance: the inverse square
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/InverseSquare-dark.jpg">
+  <img src="Images/B-JustEnoughMath/InverseSquare.jpg" alt="Light from a point source spreading through a widening pyramid and crossing three squares at distances 1, 2, and 3, which hold 1, 4, and 9 cells. Beside it, a curve of the light in one cell against distance, falling through 1, 1/4, and 1/9" width="680">
+</picture>
+
 Light from a point spreads out as it travels. At twice the distance, the same light covers four times the area, so each part of it gets a quarter as much. At three times the distance, each part gets a ninth. That is the **inverse square**: the strength falls as one over the distance squared. Gravity follows the same rule, and it is how [Chapter 11](11-ForcesAndPhysics.md)'s `NBody` pulls its bodies together. [Chapter 27](27-Landscapes.md) says why its lamps use a gentler curve that ends.
 
 ### Floating: the weight of the water pushed aside
@@ -368,6 +398,11 @@ A body in water sinks until the water it pushes aside weighs as much as the body
 A spring is built around one number, its **rest length**. When it is longer than that, it pulls its ends together. When it is shorter, it pushes them apart, and at its rest length it does nothing. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from ropes to blobs, is dots connected by this one rule.
 
 ### Damping: a swing that dies away
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/Damping-dark.jpg">
+  <img src="Images/B-JustEnoughMath/Damping.jpg" alt="Three panels of a spring let go from one unit of stretch, over three seconds. With a little damping it swings past the rest length again and again, each swing smaller. With just enough, in orange, it drops to the rest length and stays. With a lot, it creeps toward the rest length and has not reached it at the end" width="680">
+</picture>
 
 A spring on its own would swing forever. **Damping** is a force against the velocity, and it takes a little energy out of every swing. With a little damping the spring rings for a long time. With a lot, it creeps back without swinging at all. Between the two is the amount that settles soonest without passing the rest length. [Chapter 3](03-MotionAndTime.md)'s `@Sprung` sets this with `bounce`, and in [Chapter 11](11-ForcesAndPhysics.md) the world's built-in drag calms the springs.
 
@@ -424,6 +459,11 @@ Every field so far was invented, while optical flow is *measured*. Comparing one
 Systems of many creatures need a definition of "nearby". That's a perception radius around each creature. Others inside it count, and others outside it are ignored. Every flocking rule in [Chapter 12](12-FlocksAndSwarms.md) is an average over that circle. The radius changes how the group behaves. Small circles make creatures that jitter on their own, and large circles make them move together.
 
 ### Everyone against everyone: counting pairs
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/EveryPair-dark.jpg">
+  <img src="Images/B-JustEnoughMath/EveryPair.jpg" alt="Three rings of orange dots with a line joining every pair: 5 dots make 10 pairs, 10 dots make 45, and 20 dots make 190, so many lines that the middle turns gray" width="680">
+</picture>
 
 Asking every creature about every other one grows fast. A group of n things has n × (n − 1) / 2 pairs, about half of n squared. So twice the things make about four times the pairs. Growth like this, with the square of the count, is called **quadratic**. With 300 boids each looking at the other 299, a frame makes about 90,000 looks, two for each of the 44,850 pairs. That is where [Chapter 12](12-FlocksAndSwarms.md) starts before it cuts the plane into cells and asks only the nearby ones.
 
@@ -540,6 +580,11 @@ The eye doesn't weigh channels equally. Green counts most, red less, blue least,
 
 ### Light and the number stored for it: linear light
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/LinearLight-dark.jpg">
+  <img src="Images/B-JustEnoughMath/LinearLight.jpg" alt="Left, a curve of the stored number against the light, bowed above the diagonal, marking half the light stored as 0.74 and a stored 0.5 at a fifth of the light. Right, two strips of nine gray steps: equal steps of the stored number darken evenly, and equal steps of light crowd toward white" width="680">
+</picture>
+
 A picture file stores a number for each pixel. That number gives more of its steps to dark tones, where the eye notices small changes most. That encoding is **sRGB**. The amount of light itself is called **linear light**, and it is what adds up and averages correctly. Half the light is stored as about 0.74, and a stored 0.5 is only about a fifth of the light. So Ollin mixes and blends in linear light, and turns the result back into stored numbers at the end. [Chapter 9](09-Pictures.md) averages pixels this way, and [Chapter 19](19-LayersAndEffects.md)'s blend modes add light the same way.
 
 ### What a device can show: gamut
@@ -621,6 +666,11 @@ Given a distance field, a shape is "all points within r". The edge lives where t
 
 Combine two distance fields and set operations come from two small functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. Then there is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes join through a smooth neck instead of only touching. The k dial in the picture is that radius. At an exact tie the dip is a quarter of `k`, and it shrinks to nothing where the two answers are `k` apart. [Chapter 30](30-SculptingWithFields.md) sculpts with it.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/SmoothMin-dark.jpg">
+  <img src="Images/B-JustEnoughMath/SmoothMin.jpg" alt="A plot of distance to the edge along the line through two circles' centers, with inside shaded below zero. The plain min is a W with a sharp peak above zero where the two distances tie. The smooth min with k = 1.4, in orange, follows it on the outer arms and rounds the peak into a hump a quarter of k lower, below zero, so the gap between the circles counts as inside" width="680">
+</picture>
+
 ### Sphere tracing: hop by what the field promises
 
 <picture>
@@ -657,6 +707,11 @@ Three numbers aim a camera at a thing: **azimuth** is how far around, **elevatio
 Perspective is one rule, that apparent size falls with distance, so equal spheres shrink as they recede. The **field of view** is the lens angle, wide exaggerating the shrink, narrow flattening it like a telephoto. And notice the hiding, because in 3D drawing order stops deciding who's in front. Every pixel remembers the depth of the nearest surface drawn so far and rejects anything farther, which is the **depth test**. [Chapter 25](25-3DGently.md) uses both.
 
 ### Which way a face points: the normal
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/EdgesAndNormal-dark.jpg">
+  <img src="Images/B-JustEnoughMath/EdgesAndNormal.jpg" alt="A triangle with corners a, b, and c lying in a flat plane seen at a slant. Arrows for b minus a and c minus a leave corner a along two edges, and an orange arrow labeled (b - a).cross(c - a) stands straight up out of the middle of the face" width="680">
+</picture>
 
 A flat triangle faces one way, and the arrow standing straight out of it is its **normal**. Light needs it, because a face turned toward a lamp is lit and a face turned away is dark. Two edges from the same corner give it. The cross product of two directions is a third direction at right angles to both. So `(b - a).cross(c - a)` stands straight out of the face. Which side it comes out of depends on the order of the corners. Name them counter-clockwise as you look at the face, and the normal points toward you. [Chapter 25](25-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) builds its solids from triangles and their normals.
 
@@ -711,6 +766,11 @@ Some amounts are felt by ratio rather than by difference. The step from 220 Hz t
 Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 37](37-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
 
 ### A level in steps: decibels
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/Decibels-dark.jpg">
+  <img src="Images/B-JustEnoughMath/Decibels.jpg" alt="Nine bars from 0 dB down to -48 dB in steps of 6, each about half as long as the one above it: 1.0, 0.501, 0.251, and on down to 0.004. The -12 dB bar is orange, with the note that a mix usually sits below it" width="680">
+</picture>
 
 Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. [Chapter 36](36-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
 

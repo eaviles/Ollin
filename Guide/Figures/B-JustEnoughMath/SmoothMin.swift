@@ -45,8 +45,10 @@ final class SmoothMin: Sketch {
         background(theme.paper)
 
         // Inside, below zero, washed; the zero line is the edge of a shape.
+        // The card color rather than a faint ink: in linear light a faint
+        // light ink on the dark paper reads several times stronger.
         noStroke()
-        fill(theme.ink(0.05))
+        fill(theme.card)
         drawRect(corner: point(xRange.0, 0), width: plot.width, height: point(0, yRange.0).y - point(0, 0).y)
         stroke(theme.ink(0.5))
         strokeWeight(1.5)
@@ -75,7 +77,7 @@ final class SmoothMin: Sketch {
         noStrokeDash()
         stroke(theme.ink(0.5))
         strokeWeight(1)
-        drawLine(point(0, 0.7), tie - Vector2(0, 8))
+        drawLine(point(0, 0.66), tie - Vector2(0, 8))
 
         noStroke()
         textSize(14)

@@ -14,7 +14,7 @@ final class CircleInversion: Sketch {
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    let mirrorCenter = Vector2(330, 255)
+    let mirrorCenter = Vector2(330, 230)
     let radius = 110.0
 
     /// Inversion in the mirror circle: same direction, distance r² / d.
@@ -86,7 +86,8 @@ final class CircleInversion: Sketch {
         fill(theme.ink(0.75))
         drawPolygon(corners)
         fill(theme.accent(0.35))
-        drawPolygon(outline.map(inverted))
+        // A shape, not a polygon: the inverted outline is not convex.
+        drawShape(Shape(outline.map(inverted)))
         noFill()
         stroke(theme.accent)
         strokeWeight(2)
@@ -98,14 +99,14 @@ final class CircleInversion: Sketch {
         fill(theme.ink)
         textSize(16)
         textAlign(.left, .top)
-        let x = 620.0
-        drawText("the rim stays where it is", x, 230)
-        drawText("inside goes outside,", x, 270)
-        drawText("and outside comes in", x, 292)
-        drawText("near the center goes far", x, 332)
-        drawText("straight edges come out curved", x, 372)
+        let x = 590.0
+        drawText("the rim stays where it is", x, 205)
+        drawText("inside goes outside,", x, 245)
+        drawText("and outside comes in", x, 267)
+        drawText("near the center goes far", x, 307)
+        drawText("straight edges come out curved", x, 347)
         fill(theme.muted)
         textSize(14)
-        drawText("r is the mirror's radius", x, 420)
+        drawText("r is the mirror's radius", x, 395)
     }
 }
