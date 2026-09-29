@@ -300,8 +300,12 @@ if record {
     for (index, tree) in trees.enumerated() where !checkedPages[index].isEmpty {
         // A scoped run re-records only the pages it checked and keeps every
         // other page's lines, so `--only Docs/Color --record` cannot empty the
-        // file of everything it did not look at.
-        var kept = readRecorded(tree.gapsPath).filter { !checkedPages[index].contains(page(of: $0.value.place)) }
+        // file of everything it did not look at. A line whose page is gone
+        // (renamed or removed) is dropped by any run, since no run checks it.
+        var kept = readRecorded(tree.gapsPath).filter {
+            let recordedPage = page(of: $0.value.place)
+            return !checkedPages[index].contains(recordedPage) && tree.pages.contains(recordedPage)
+        }
         for (print_, entry) in failedNow where entry.block.page.hasPrefix(tree.name + "/") {
             kept[print_] = Recorded(place: "\(entry.block.page):\(entry.block.line)",
                                     message: stableMessage(entry.message))
@@ -332,6 +336,17 @@ for (index, tree) in trees.enumerated() {
             problems.append("\(entry.block.page):\(entry.block.line): the error changed"
                             + "\n    was: \(known.message)\n    now: \(entry.message)")
         }
+    }
+    // A renumber renames a page, and the fingerprint carries the page, so its
+    // blocks come back as new failures while their old lines sit under a name
+    // no run checks. Say so once per page, with the command that settles it.
+    let gone = Dictionary(grouping: recorded.values.map { page(of: $0.place) }
+        .filter { !tree.pages.contains($0) }, by: { $0 })
+    for (missing, lines) in gone.sorted(by: { $0.key < $1.key }) {
+        let count = lines.count == 1 ? "1 line" : "\(lines.count) lines"
+        problems.append("\(missing): no such page any more (renamed or removed), so nothing "
+                        + "checks its \(count) in \(tree.name)/Snippets/known-gaps.txt; "
+                        + "--record drops \(lines.count == 1 ? "it" : "them")")
     }
     for (key, known) in recorded.sorted(by: { $0.value.place < $1.value.place })
     where failedNow[key] == nil && checkedPages[index].contains(page(of: known.place)) {

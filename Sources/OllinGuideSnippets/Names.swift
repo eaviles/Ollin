@@ -78,19 +78,23 @@ func anchorKey(_ text: String) -> String {
 func exampleNameProblems(page: String, text: String, repo: String) -> [NameProblem] {
     var out: [NameProblem] = []
     for (index, line) in text.components(separatedBy: "\n").enumerated() {
-        guard let range = line.range(of: #"\((?:\.\./)+Examples/([A-Za-z0-9]+)/\)"#,
-                                     options: .regularExpression) else { continue }
-        let group = String(line[range])
-            .replacingOccurrences(of: #"^\((?:\.\./)+Examples/"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: "/)", with: "")
-        let folder = repo + "/Examples/" + group
-        let present = Set((try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? [])
-        guard !present.isEmpty else { continue }
-        // Every backticked bare word on the line is read as an example name. A
-        // name with a dot or a slash in it is a file or a path, not one of these.
-        let names = line.matches(of: try! Regex(#"`([A-Z][A-Za-z0-9]+)`"#))
-            .map { String($0.output[1].substring ?? "") }
-        for name in names where !present.contains(name) {
+        // Every link to an example folder on the line, in order. A name belongs
+        // to the nearest link before it (the first link, for a name ahead of
+        // all of them), so a line that links two folders checks each list
+        // against its own. Only a top-level group is read; a nested folder's
+        // line names types and pages as often as examples.
+        let links = line.matches(of: try! Regex(#"\((?:\.\./)+Examples/([A-Za-z0-9/]+)/\)"#))
+            .map { (start: $0.range.lowerBound, group: String($0.output[1].substring ?? "")) }
+        guard let first = links.first else { continue }
+        // Every backticked bare word is read as an example name. A name with a
+        // dot or a slash in it is a file or a path, not one of these.
+        for match in line.matches(of: try! Regex(#"`([A-Z][A-Za-z0-9]+)`"#)) {
+            let group = links.last(where: { $0.start < match.range.lowerBound })?.group ?? first.group
+            guard !group.contains("/") else { continue }
+            let folder = repo + "/Examples/" + group
+            let present = Set((try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? [])
+            let name = String(match.output[1].substring ?? "")
+            guard !present.isEmpty, !present.contains(name) else { continue }
             out.append(NameProblem(page: page, line: index + 1,
                                    message: "`\(name)` is not in Examples/\(group)/"))
         }
