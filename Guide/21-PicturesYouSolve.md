@@ -271,7 +271,7 @@ Two things follow, and both are better known in advance. The patch keeps its own
 
 ### A picture read as waves: the Fourier transform
 
-A grid of pixels is one reading of a drawing. A **sum of waves** is another, and the two hold the same information. The Fourier transform is how you get from one to the other. It is for the jobs that are awkward on the pixel side and easy on the wave side. Those are filtering a picture by scale, and making a field out of a spectrum. The idea is Joseph Fourier's, from the 1820s. The fast form every computer runs is James W. Cooley and John W. Tukey's, from 1965, and in Ollin it runs on the GPU:
+A grid of pixels is one reading of a drawing. A **sum of waves** is another, and the two hold the same information. The Fourier transform is how you get from one to the other. It is for the jobs that are awkward on the pixel side and easy on the wave side. Those are filtering a picture by scale, and making a field out of a spectrum. The idea is Joseph Fourier's, read to the Paris Institute in 1807 and published in 1822. The fast form every computer runs is James W. Cooley and John W. Tukey's, from 1965, and in Ollin it runs on the GPU:
 
 ```swift
 let spectrum = plate.filtered(.fourier())

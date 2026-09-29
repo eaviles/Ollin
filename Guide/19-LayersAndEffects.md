@@ -395,13 +395,13 @@ The rule of thumb: if the drawing does not change between frames, it belongs in 
 
 ## Where this comes from
 
-The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*. The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
+The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper "Compositing Digital Images". The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
 
-Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Peter Shirley, and James Ferwerda's 2002 *Photographic Tone Reproduction for Digital Images*. The film-like curve behind `.aces` is the Academy Color Encoding System's response, in Krzysztof Narkowicz's fitted approximation.
+Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Peter Shirley, and James Ferwerda's 2002 paper "Photographic Tone Reproduction for Digital Images". The film-like curve behind `.aces` is the Academy Color Encoding System's response, in Krzysztof Narkowicz's fitted approximation.
 
 The filter catalog reimplements published image-processing techniques, each written from its method. The menu was cross-read against OPENRNDR's orx-fx, openFrameworks' ofxFX, and AsyncGraphics for which effects exist and how they are approached. The running mean and its print follow Anders Hoff's depth-of-field essays and Domenico Bruzzese's Blurry, read for approach and written independently.
 
-Video feedback is the analog ancestor of the `Feedback` layer. Video artists pointed a camera at its own monitor from the late 1960s on, Nam June Paik and Steina and Woody Vasulka among them. There the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Video feedback is the analog ancestor of the `Feedback` layer. Video artists pointed a camera at its own monitor from the late 1960s on. Steina and Woody Vasulka began that way in New York in 1969, with a tape called *Feedback*. There the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

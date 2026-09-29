@@ -654,7 +654,7 @@ Two properties decide the character. `solver` picks how the chain reaches. The d
 
 ### Gravity at scale: `NBody`
 
-In an `NBody`, every body pulls on every other with gravity, the force that weakens with the square of the distance. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. So it is the tool for a galaxy, a star cluster, or two of them colliding. Adding up every pair would mean millions of pulls a frame for a few thousand bodies. The approximation that makes it cheap is the Barnes-Hut algorithm, published by Josh Barnes and Piet Hut in *Nature* in 1986. A distant clump is treated as a single lump once it is far enough away to look like one. It is what took gravity simulations from a few hundred bodies to a few million.
+In an `NBody`, every body pulls on every other with gravity, the force that weakens with the square of the distance. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. So it is the tool for a galaxy, a star cluster, or two of them colliding. Adding up every pair would mean millions of pulls a frame for a few thousand bodies. The approximation that makes it cheap is the Barnes-Hut algorithm, published by Josh Barnes and Piet Hut in *Nature* in 1986. A distant clump is treated as a single lump once it is far enough away to look like one. The work then grows like N log N for N bodies, where adding up every pair grows like N squared.
 
 It holds a `bodies` array you can read and rearrange between steps, and `advance()` moves the lot on:
 

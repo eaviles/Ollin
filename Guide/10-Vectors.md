@@ -347,7 +347,7 @@ swift run OllinLive MySketches/Swarm.swift --export-video swarm.mp4 --seconds 6
 
 ## Where this comes from
 
-Vectors are the physics notation the 1880s settled on, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside. Position, velocity, and acceleration as arrows is Newton's mechanics written in that notation. The steering recipe, desired minus actual and capped, is Craig Reynolds' *steering behaviors*, from his 1999 paper "Steering Behaviors for Autonomous Characters". That paper generalizes the rules of his 1987 boids, which [Chapter 12](12-FlocksAndSwarms.md) builds. The teaching order of this chapter, arrows first, then the trio, then steering, follows Daniel Shiffman's *The Nature of Code*. That book made this progression the usual way into the subject. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector notation took shape in the 1880s, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside. Position, velocity, and acceleration as arrows is Newton's mechanics written in that notation. The steering recipe, desired minus actual and capped, is Craig Reynolds' *steering behaviors*, from his 1999 paper "Steering Behaviors for Autonomous Characters". That paper generalizes the rules of his 1987 boids, which [Chapter 12](12-FlocksAndSwarms.md) builds. The teaching order of this chapter, arrows first, then the trio, then steering, follows Daniel Shiffman's *The Nature of Code*. That book made this progression the usual way into the subject. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

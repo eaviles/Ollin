@@ -173,7 +173,7 @@ The tangle spent one coin per cell and let the doorways do the rest. The pattern
 
 ### One coin per line: hitomezashi
 
-Hitomezashi is the one-stitch pattern of sashiko, a Japanese mending tradition worked with a running stitch, one stitch per grid space. It gives you woven cloth from almost nothing: one coin flip per grid *line*, where Truchet spent one per cell. The mathematician Katherine Seaton, with Carol Hayes, showed that its designs are that and no more, one bit per line. She also proved that every design splits into regions two tones can fill.
+Hitomezashi is the one-stitch pattern of sashiko, a Japanese mending tradition worked with a running stitch, one stitch per grid space. It gives you woven cloth from almost nothing: one coin flip per grid *line*, where Truchet spent one per cell. The mathematician Katherine Seaton, with Carol Hayes, showed that its designs are that and no more, one bit per line. Every design also splits into regions that two tones can fill, as Colin Defant and Noah Kravitz noted in 2022.
 
 Every line carries a row of short dashes over alternating cells. The line's single bit picks which alternation, starting on the edge or one cell in. That is the whole rule. Neighboring lines shift against each other, so the dashes meet at the crossings and join into steps, staircases, and closed loops.
 
@@ -374,7 +374,7 @@ Every tiling so far sits on a grid that repeats. Slide a hex grid one cell over 
 
 ### Tiles that never repeat: aperiodic tilings
 
-An aperiodic tile set covers the plane, but however you lay it the pattern never repeats, anywhere. It is for a design that wants order without a period. That might be a floor, a screen, or a woven field with five-fold symmetry that no grid can give. Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic. His student Robert Berger proved him wrong with a set of thousands, and Roger Penrose got the count down to two in the 1970s. The one-tile question then stayed open until 2023, when David Smith, a retired print technician playing with paper cutouts, found the hat. The spectre followed, with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss.
+An aperiodic tile set covers the plane, but however you lay it the pattern never repeats, anywhere. It is for a design that wants order without a period. That might be a floor, a screen, or a woven field with five-fold symmetry that no grid can give. Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic. His student Robert Berger proved him wrong with a set of thousands, and Roger Penrose got the count down to two in the 1970s. The one-tile question then stayed open until 2023. David Smith, a retired print technician playing with paper cutouts, had found the hat late in 2022. The spectre followed, with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/AperiodicTiles-dark.jpg">
@@ -496,7 +496,7 @@ The tiles on the outside of the sheet carry their deformed outer edges too, so t
 
 ## Where this comes from
 
-Truchet tiles are named for Sébastien Truchet, a French Carmelite priest. He published a memoir in 1704 on the patterns a single diagonally split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith. His 1987 paper revisited Truchet's work and connected it to how structure builds hierarchy in materials. Generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. For arcs at mixed cell sizes that still agree at the edges, see Christopher Carlson's multi-scale Truchet tiles.
+Truchet tiles are named for Sébastien Truchet, a French Carmelite priest. He published a memoir in 1704 on the patterns a single diagonally split tile can make. He had found such tiles at a château near Orléans, waiting to floor its chapel. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith. His 1987 paper revisited Truchet's work and connected it to how structure builds hierarchy in materials. Generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. For arcs at mixed cell sizes that still agree at the edges, see Christopher Carlson's multi-scale Truchet tiles.
 
 The diagonal tile has its own monument. The Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10` is a maze in thirty-eight characters. Its history got a book of its own, *10 PRINT*, by Nick Montfort and nine co-authors in 2012.
 

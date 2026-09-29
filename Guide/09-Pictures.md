@@ -570,7 +570,7 @@ Both loaders belong in `setup()`. Reading a file is slow next to drawing one fra
 
 ## Where this comes from
 
-Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Each way this chapter turns a picture into marks descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati printed a poster of a young couple as line-printer characters. Then they printed its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is much younger. Shai Avidan and Ariel Shamir published it in 2007. Its demonstration video was watched around the world, mostly because of the part where a mask makes something disappear.
+Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Each way this chapter turns a picture into marks descends from that one idea. In São Paulo in 1969, Waldemar Cordeiro and the physicist Giorgio Moscati turned a photograph of a young couple into line-printer characters. Then they printed its derivative. That is the glyph mosaic's own lineage and the source of the homages linked below. Seam carving is much younger. Shai Avidan and Ariel Shamir published it in 2007. Its demonstration video was watched around the world, mostly because of the part where a mask makes something disappear.
 
 The families after the sketch name their own sources, from Secord's stipple to Asendorf's sorted pixels. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 

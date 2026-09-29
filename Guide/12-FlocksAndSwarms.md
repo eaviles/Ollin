@@ -312,7 +312,7 @@ The flock was a crowd run by three local rules, each creature reading its neighb
 
 ### Everyone chasing somebody: pursuit curves
 
-A pursuit curve is the path of a runner that always heads straight at where its target is *now*, while the target runs too. It is the classic chase. It is the tool for a picture of a chase, since the curves it draws are exact and can be worked out on paper. Pierre Bouguer studied one ship pursuing another in 1732. The version with four runners is from 1877, when Edouard Lucas asked it and Henri Brocard answered it. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
+A pursuit curve is the path of a runner that always heads straight at where its target is *now*, while the target runs too. It is the classic chase. It is the tool for a picture of a chase, since the curves it draws are exact and can be worked out on paper. Pierre Bouguer studied one ship pursuing another in 1732. The version with four runners is from 1877, when Édouard Lucas asked it and Henri Brocard answered it. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
 
 You can answer it by running it. `Pursuit` is a stepper you hold, like `World` in the last chapter and the flock above. Build it, step it, and read the geometry out:
 
@@ -408,7 +408,7 @@ The setting to know is `timeHorizon`. It is how far ahead a walker looks, in sec
 
 ### Falling into step: `Kuramoto`
 
-A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* made it widely known, fireflies and Huygens's clocks included.
+A `Kuramoto` is a crowd of oscillators, each running at its own natural pace and each pulled a little toward the phase of the crowd. It models agreement about *when*, where a flock agrees about where to go. It is the tool for fireflies, applause, and anything that blinks or ticks in company. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks hung side by side had fallen into step, swinging in opposite directions. They went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in a 1975 conference paper. Steven Strogatz's 2003 book *Sync* made it widely known, fireflies and Huygens's clocks included.
 
 ```swift
 let sync = Kuramoto(count: 300, coupling: 2, seed: 7)

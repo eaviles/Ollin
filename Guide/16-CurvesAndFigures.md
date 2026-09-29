@@ -325,7 +325,7 @@ The holes are the part to watch. When the two shapes have different numbers of c
 
 ### A drawing only a mirror can read: anamorphosis
 
-A mirror **anamorphosis** is a drawing built to be read in a curved mirror standing on it. Wrap a picture around a mirrored cylinder on your page. Then work out where each point must be drawn for the reflection to put it back where you wrapped it. What lands on the page reads as a smear. Stand the cylinder on its circle, put your eye where the map was told it would be, and the picture stands upright on the glass. It is for a printed plate with a mirror on it, an object rather than a screen. Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638.
+A mirror **anamorphosis** is a drawing built to be read in a curved mirror standing on it. Wrap a picture around a mirrored cylinder on your page. Then work out where each point must be drawn for the reflection to put it back where you wrapped it. What lands on the page reads as a smear. Stand the cylinder on its circle, put your eye where the map was told it would be, and the picture stands upright on the glass. It is for a printed plate with a mirror on it, an object rather than a screen. Renaissance workshops ruled the construction out by hand, and Jean-François Niceron wrote it down in 1638.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/MirrorReads-dark.jpg">
