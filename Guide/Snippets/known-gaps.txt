@@ -26,8 +26,8 @@ c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 b455e4f737c2  Guide/06-GridsAndRepetition.md:228  cannot find 'drawPetals' in scope
 60af001c8df1  Guide/06-GridsAndRepetition.md:379  cannot find 'spiral' in scope
 e06710580a51  Guide/06-GridsAndRepetition.md:95  cannot find 'cell' in scope
-6db7db40c038  Guide/07-Tiles.md:343  cannot find 'tiles' in scope
-c68684592154  Guide/07-Tiles.md:83  cannot find 'strands' in scope
+6db7db40c038  Guide/07-Tiles.md:341  cannot find 'tiles' in scope
+c68684592154  Guide/07-Tiles.md:81  cannot find 'strands' in scope
 ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
 678b6b363dab  Guide/09-Pictures.md:114  cannot find 'picture' in scope
 ed123e551581  Guide/09-Pictures.md:124  cannot find 'picture' in scope
@@ -86,79 +86,79 @@ cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'Ren
 2065dd8af5c4  Guide/21-PicturesYouSolve.md:250  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
 a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
-70e92ab22ab8  Guide/22-IteratedForms.md:455  reference to member 'domainColoring' cannot be resolved without a contextual type
-a0d4c8d842eb  Guide/26-Meshes.md:111  cannot find 'paint' in scope
-a49346a622b2  Guide/26-Meshes.md:127  cannot find 'ribbon' in scope
-3116ee605b52  Guide/26-Meshes.md:141  cannot find 'base' in scope
-b842f5f92dc5  Guide/26-Meshes.md:166  cannot find 'grown' in scope
-de16d0d4ea1b  Guide/26-Meshes.md:176  cannot find 'u' in scope
-4b1f9e2f920c  Guide/26-Meshes.md:193  cannot find 'boulder' in scope
-4279c6e5416b  Guide/26-Meshes.md:212  cannot find 'dropPoint' in scope
-5590a3024691  Guide/26-Meshes.md:243  cannot find 'ball' in scope
-b0e7c799f2b4  Guide/26-Meshes.md:390  expected '}' in class
-cb73ed16193c  Guide/26-Meshes.md:46  cannot find 'teal' in scope
-7deb4e20fcbe  Guide/26-Meshes.md:471  cannot find 'picture' in scope
-79deeb21380c  Guide/26-Meshes.md:557  extraneous '}' at top level
-db4a3035423c  Guide/26-Meshes.md:56  cannot find 'planks' in scope
-12920b7a4e82  Guide/26-Meshes.md:670  cannot find 'stage' in scope
-cd7cc7722169  Guide/26-Meshes.md:687  cannot find 'stage' in scope
-371520eae381  Guide/26-Meshes.md:732  cannot find 'block' in scope
-b0c465e3a91b  Guide/26-Meshes.md:762  cannot find 'ring' in scope
-3bb451e5be2a  Guide/26-Meshes.md:781  cannot find 'growth' in scope
-4ddb6b362826  Guide/26-Meshes.md:794  cannot find 'ball' in scope
-1a571812c99a  Guide/26-Meshes.md:95  cannot find 'dents' in scope
-1d1f62235737  Guide/27-Landscapes.md:107  cannot find 'terrain' in scope
-e77cf7b0f42e  Guide/27-Landscapes.md:117  cannot find 'stone' in scope
-bd8e3b53904b  Guide/27-Landscapes.md:142  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
-46ca4464bac9  Guide/27-Landscapes.md:163  expected '}' in class
-ed46b0988c49  Guide/27-Landscapes.md:245  cannot find 'floorLevel' in scope
-6829f7c2ee58  Guide/27-Landscapes.md:26  cannot find 'land' in scope
-14d659f831c0  Guide/27-Landscapes.md:337  extraneous '}' at top level
-f2ec3a59a96c  Guide/27-Landscapes.md:405  cannot find 'weathered' in scope
-e25df8430b7c  Guide/27-Landscapes.md:55  cannot find 'seats' in scope
-ee027f846921  Guide/27-Landscapes.md:91  cannot find 'island' in scope
-cc0338f303d4  Guide/29-CharactersAndCloth.md:130  errors thrown from here are not handled
-d208686885d8  Guide/29-CharactersAndCloth.md:168  errors thrown from here are not handled
-a249a33239de  Guide/29-CharactersAndCloth.md:198  labeled block needs 'do'
-bca87c9d2861  Guide/29-CharactersAndCloth.md:206  errors thrown from here are not handled
-6c75cdafb397  Guide/29-CharactersAndCloth.md:397  errors thrown from here are not handled
-ab22319f0c05  Guide/29-CharactersAndCloth.md:448  errors thrown from here are not handled
-b8fd98ac7549  Guide/29-CharactersAndCloth.md:491  errors thrown from here are not handled
-44a58c331290  Guide/29-CharactersAndCloth.md:577  errors thrown from here are not handled
-8d9bf733a656  Guide/29-CharactersAndCloth.md:594  errors thrown from here are not handled
-81fc652fd104  Guide/29-CharactersAndCloth.md:72  errors thrown from here are not handled
-8185674df358  Guide/30-SculptingWithFields.md:202  cannot find 'a' in scope
-9b80f0c8f3bd  Guide/30-SculptingWithFields.md:270  cannot find 'cluster' in scope
-c1b390558596  Guide/32-Seeing.md:137  cannot find 'BodyTracker3D' in scope
-827b2487d61b  Guide/32-Seeing.md:156  cannot find 'PersonSegmenter' in scope
-2dac7c699df3  Guide/32-Seeing.md:181  cannot find 'FlowTracker' in scope
-ecd64ca99939  Guide/32-Seeing.md:276  cannot find 'ContourDetector' in scope
-28a499225d8d  Guide/32-Seeing.md:297  cannot find 'RectangleDetector' in scope
-f6bb7ff022cf  Guide/32-Seeing.md:311  cannot find 'TextRecognizer' in scope
-4b69f6605063  Guide/32-Seeing.md:325  cannot find 'BarcodeScanner' in scope
-873be3e41ecd  Guide/32-Seeing.md:340  cannot find 'ObjectTracker' in scope
-6073eb09d33e  Guide/32-Seeing.md:368  cannot find 'TrajectoryTracker' in scope
-2a80728c8212  Guide/32-Seeing.md:39  cannot find 'Camera' in scope
-b214f2b91857  Guide/32-Seeing.md:402  cannot find 'ImageClassifier' in scope
-73aee52fc967  Guide/32-Seeing.md:417  cannot find 'SaliencyTracker' in scope
-0d38e3be4cb8  Guide/32-Seeing.md:440  cannot find 'PointSegmenter' in scope
-bbef0b2a77e4  Guide/32-Seeing.md:471  cannot find 'ModelTracker' in scope
-3696583136ff  Guide/32-Seeing.md:490  cannot find 'DepthTracker' in scope
-3264783de5ff  Guide/32-Seeing.md:513  cannot find type 'DepthClip' in scope
-1f5c0dd6140f  Guide/32-Seeing.md:535  cannot find 'ConceptTracker' in scope
-ddc10c3c2c06  Guide/32-Seeing.md:562  cannot find 'Camera' in scope
-a43bc3b3351c  Guide/32-Seeing.md:582  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-09cdb84809fc  Guide/32-Seeing.md:613  cannot find 'TextRecognizer' in scope
-62b423f43b64  Guide/32-Seeing.md:654  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
-3dc84979ea9c  Guide/34-Listening.md:370  'module' is inaccessible due to 'internal' protection level
-ad66fc5ac5b5  Guide/34-Listening.md:40  'module' is inaccessible due to 'internal' protection level
-38b204d41c3b  Guide/36-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
-f941d86cbeeb  Guide/36-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
-7a2173392001  Guide/37-MusicByRule.md:151  expected '}' in class
-3d1a3a00857d  Guide/37-MusicByRule.md:244  extraneous '}' at top level
-5e5616933ce2  Guide/40-HandingItOver.md:412  'override' can only be specified on class members
-1c00050b8880  Guide/41-Installations.md:204  expected '}' in class
-f5ad01726d75  Guide/41-Installations.md:251  extraneous '}' at top level
+70e92ab22ab8  Guide/22-IteratedForms.md:453  reference to member 'domainColoring' cannot be resolved without a contextual type
+291fdafb6fdf  Guide/27-Meshes.md:107  cannot find 'paint' in scope
+68f2b1e342d8  Guide/27-Meshes.md:123  cannot find 'ribbon' in scope
+cdcf169eea19  Guide/27-Meshes.md:137  cannot find 'base' in scope
+9154907c71d0  Guide/27-Meshes.md:162  cannot find 'grown' in scope
+a23ac04ffc12  Guide/27-Meshes.md:172  cannot find 'u' in scope
+52bcf0d25836  Guide/27-Meshes.md:189  cannot find 'boulder' in scope
+a5a1becd18ce  Guide/27-Meshes.md:208  cannot find 'dropPoint' in scope
+12f405514567  Guide/27-Meshes.md:240  cannot find 'stage' in scope
+d8b410a46463  Guide/27-Meshes.md:257  cannot find 'stage' in scope
+11169c9041c5  Guide/27-Meshes.md:302  cannot find 'block' in scope
+43b2fc3f26eb  Guide/27-Meshes.md:332  cannot find 'ring' in scope
+65a493466831  Guide/27-Meshes.md:351  cannot find 'growth' in scope
+c3a7d05cd766  Guide/27-Meshes.md:364  cannot find 'ball' in scope
+a3cc26d6c8f4  Guide/27-Meshes.md:42  cannot find 'teal' in scope
+464ad97ecd6f  Guide/27-Meshes.md:52  cannot find 'planks' in scope
+176ac6a236e1  Guide/27-Meshes.md:91  cannot find 'dents' in scope
+2fc02e91a351  Guide/28-MaterialsAndSurroundings.md:170  expected '}' in class
+3846f3d9c837  Guide/28-MaterialsAndSurroundings.md:23  cannot find 'ball' in scope
+f9772692a39c  Guide/28-MaterialsAndSurroundings.md:251  cannot find 'picture' in scope
+1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:337  extraneous '}' at top level
+5e288f34fe35  Guide/29-Landscapes.md:105  cannot find 'terrain' in scope
+817218f25cab  Guide/29-Landscapes.md:115  cannot find 'stone' in scope
+cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+2f8bd49d6684  Guide/29-Landscapes.md:161  expected '}' in class
+ea2ec72bb301  Guide/29-Landscapes.md:24  cannot find 'land' in scope
+0ff82d1cd076  Guide/29-Landscapes.md:243  cannot find 'floorLevel' in scope
+367fd77f5f81  Guide/29-Landscapes.md:335  extraneous '}' at top level
+8fe3a1525343  Guide/29-Landscapes.md:403  cannot find 'weathered' in scope
+54c56af7fa4c  Guide/29-Landscapes.md:53  cannot find 'seats' in scope
+5fe3d9f427a8  Guide/29-Landscapes.md:89  cannot find 'island' in scope
+2c8bf60e2308  Guide/31-CharactersAndCloth.md:128  errors thrown from here are not handled
+1c91a766a54a  Guide/31-CharactersAndCloth.md:166  errors thrown from here are not handled
+b7d3a2e897f3  Guide/31-CharactersAndCloth.md:196  labeled block needs 'do'
+76d7631ccfae  Guide/31-CharactersAndCloth.md:204  errors thrown from here are not handled
+f1146c1aef18  Guide/31-CharactersAndCloth.md:395  errors thrown from here are not handled
+96518df1714d  Guide/31-CharactersAndCloth.md:446  errors thrown from here are not handled
+5abf426954e0  Guide/31-CharactersAndCloth.md:489  errors thrown from here are not handled
+e568d6de03cc  Guide/31-CharactersAndCloth.md:575  errors thrown from here are not handled
+2a1c012c6ce3  Guide/31-CharactersAndCloth.md:592  errors thrown from here are not handled
+5e7d649a0114  Guide/31-CharactersAndCloth.md:70  errors thrown from here are not handled
+505abdd13984  Guide/32-SculptingWithFields.md:200  cannot find 'a' in scope
+17e800a28a86  Guide/32-SculptingWithFields.md:268  cannot find 'cluster' in scope
+34315703fb6f  Guide/34-Seeing.md:135  cannot find 'BodyTracker3D' in scope
+d958e7e8da2f  Guide/34-Seeing.md:154  cannot find 'PersonSegmenter' in scope
+e3f4153e6ffa  Guide/34-Seeing.md:179  cannot find 'FlowTracker' in scope
+09147d09c703  Guide/34-Seeing.md:274  cannot find 'ContourDetector' in scope
+ab964ab735c3  Guide/34-Seeing.md:295  cannot find 'RectangleDetector' in scope
+e6e9484ee21c  Guide/34-Seeing.md:309  cannot find 'TextRecognizer' in scope
+10296f99c463  Guide/34-Seeing.md:323  cannot find 'BarcodeScanner' in scope
+3d548b82b7b5  Guide/34-Seeing.md:338  cannot find 'ObjectTracker' in scope
+fe868f649d36  Guide/34-Seeing.md:366  cannot find 'TrajectoryTracker' in scope
+57471c724d6f  Guide/34-Seeing.md:37  cannot find 'Camera' in scope
+c09ae8043967  Guide/34-Seeing.md:400  cannot find 'ImageClassifier' in scope
+a74ee9528a00  Guide/34-Seeing.md:415  cannot find 'SaliencyTracker' in scope
+2cc90665cec7  Guide/34-Seeing.md:438  cannot find 'PointSegmenter' in scope
+e32d94bf2d6a  Guide/34-Seeing.md:469  cannot find 'ModelTracker' in scope
+1c6e923d0f9f  Guide/34-Seeing.md:488  cannot find 'DepthTracker' in scope
+7be5399abdd7  Guide/34-Seeing.md:511  cannot find type 'DepthClip' in scope
+d2bcab332251  Guide/34-Seeing.md:533  cannot find 'ConceptTracker' in scope
+dfaf2fc30509  Guide/34-Seeing.md:560  cannot find 'Camera' in scope
+491c839e438a  Guide/34-Seeing.md:580  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+6c01f0c89d16  Guide/34-Seeing.md:611  cannot find 'TextRecognizer' in scope
+746879197407  Guide/34-Seeing.md:652  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+6d480cc311b2  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
+917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
+a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
+26aeb599498d  Guide/39-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
+8ae8fc9ef0de  Guide/40-MusicByRule.md:154  expected '}' in class
+58ed622945fe  Guide/40-MusicByRule.md:247  extraneous '}' at top level
+656de5f6c561  Guide/44-HandingItOver.md:412  'override' can only be specified on class members
+636645a17f8c  Guide/45-Installations.md:204  expected '}' in class
+47a1213a0f2f  Guide/45-Installations.md:251  extraneous '}' at top level
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand
