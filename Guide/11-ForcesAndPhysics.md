@@ -607,7 +607,7 @@ Run it with `swift run OllinLive MySketches/Wrecker.swift`, watch the first swin
 - `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds. Here that means within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
 - `held` is an optional `Joint`, and every use goes through `?.`. So the same `draw()` works whether or not you're holding something, with no flag to keep in sync.
 
-> **Swift note.** `Shard` is a struct of your own, a small value with three fields. A shard's body, outline, and color travel together in one list entry. `Shard(body:shape:color:)` builds one, with the field names as labels. Unlike `Look` in the last section it needs no `init`, because a struct gets one for free from its fields. `let w = brickSize.x / 2, h = brickSize.y / 2` declares two constants on one line. `let body: Body` with no value declares the constant first and lets each branch of the `if` fill it once.
+> **Swift note.** `Shard` is a struct of your own, a small value with three fields. A shard's body, outline, and color travel together in one list entry. `Shard(body:shape:color:)` builds one, with the field names as labels. Unlike `Look` in [Breaking things](#breaking-things) it needs no `init`, because a struct gets one for free from its fields. `let w = brickSize.x / 2, h = brickSize.y / 2` declares two constants on one line. `let body: Body` with no value declares the constant first and lets each branch of the `if` fill it once.
 
 Then push it around:
 

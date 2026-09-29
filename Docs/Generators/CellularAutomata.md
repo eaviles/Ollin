@@ -4,7 +4,7 @@
 
 ## Cellular automata
 
-A cellular automaton is a grid of cells that changes by a local rule. Ollin has two families of them. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells one generation at a time. The classic picture stacks the generations as rows. One number picks the rule, and the rule decides whether the picture is ordered, fractal, or chaotic. The second family is the **turmite** family, `Turmite`. A turmite is a small machine that walks a 2D grid and paints the cells it visits, and Langton's ant is the best-known one. Both families run on the CPU and produce geometry. They are deterministic, and they are cheap enough to rebuild live while you change a parameter.
+A cellular automaton is a grid of cells that changes by a local rule. Ollin has two families of them. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells one generation at a time. The classic picture stacks the generations as rows. One number picks the rule, and the rule decides whether the picture is ordered, fractal, or chaotic. Another family is the **turmite** family, `Turmite`. A turmite is a small machine that walks a 2D grid and paints the cells it visits, and Langton's ant is the best-known one. Both families run on the CPU and produce geometry. They are deterministic, and they are cheap enough to rebuild live while you change a parameter.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/24-Automata/WolframAndTurmite-dark.jpg">

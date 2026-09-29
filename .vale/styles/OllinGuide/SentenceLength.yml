@@ -1,4 +1,4 @@
-# Long sentences (Guide/AUTHORING.md, "keep a sentence under 25 words"). A
+# Long sentences (Guide/AUTHORING.md, "25 words or fewer, as the lint counts them"). A
 # sentence past this is almost always two sentences with a semicolon, a colon,
 # or a parenthesis holding them together; splitting it is nearly always an
 # improvement and never a loss.

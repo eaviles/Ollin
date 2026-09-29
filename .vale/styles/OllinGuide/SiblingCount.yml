@@ -1,0 +1,16 @@
+# Counting sibling sections (Guide/AUTHORING.md, "name the neighbor instead of
+# counting the siblings"). "The third grower", "four more games worth knowing",
+# and "the last rule in this chapter" are true on the day they are written and
+# turn false the day a section is added, moved, or cut, and no other gate reads
+# them. Name the section you mean instead.
+#
+# Warning, not error: a count the reader can check on the spot, like the panels
+# of the figure just above or the steps of a listing, is fine.
+extends: existence
+message: "Counts sibling sections ('%s'): name the section you mean (Guide/AUTHORING.md)."
+level: warning
+ignorecase: true
+tokens:
+  - 'the (second|third|fourth|fifth|sixth|seventh|eighth|last|final) (\w+ )?(step|section|entry|family|grower|rule|game|technique|chapter)s? (in|of) (this|the) (chapter|family|section|guide|part)'
+  - '(two|three|four|five|six|seven|eight|nine|ten) more (\w+ )?(steps|sections|entries|families|growers|rules|games|techniques)\b'
+  - 'the (second|third|fourth|fifth|sixth|last) (grower|family|section|entry)\b'
