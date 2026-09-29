@@ -385,7 +385,8 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
     uint k = max(1u, uint(round(sqrt(float(count)))));
     uint2 sub = uint2(sampleIdx % k, sampleIdx / k);
     // The sample's uv in the emission square, jittered inside its own sub-cell
-    // (a pure function of ids + the frame index, so exports reproduce).
+    // (a pure function of ids + the jitter seed, which is the frame index live
+    // and 0 in an export, so an export reproduces and holds still).
     float2 seedP = float2(float(texel.x * 64u + sub.x), float(texel.y * 64u + sub.y));
     float fi = float(cu.counts2.y % 4096u);
     const float2 R2 = float2(0.7548776662, 0.5698402910);

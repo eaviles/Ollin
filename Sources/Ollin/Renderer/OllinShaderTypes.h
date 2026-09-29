@@ -1273,7 +1273,8 @@ typedef struct {
                              // (NDC); w = the photon energy cull threshold
     simd_uint4  counts;      // x = density-map edge, texels; y = quadtree depth (log2 edge);
                              // z = the frame's ray budget; w = max bounces
-    simd_uint4  counts2;     // x = photon capacity; y = frame index (the jitter seed);
+    simd_uint4  counts2;     // x = photon capacity; y = the jitter seed (the frame index
+                             // live, 0 in an export so every frame traces the same photons);
                              // z = 1 emit uniformly (export / first frame, no feedback);
                              // w = total quadtree nodes
     simd_float4 screen;      // xy = the caustics buffer size, px; zw = 1/size

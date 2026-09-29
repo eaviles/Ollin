@@ -89,7 +89,9 @@ extension MetalRenderer {
     /// `supersample` selects the historyless form (headless/export): uniform
     /// emission at the full budget, no history slot touched, so a single exported
     /// frame is a pure function of the frame and a live recording's off-screen
-    /// re-render can't step the on-screen adaptation.
+    /// re-render can't step the on-screen adaptation. It also holds the photon
+    /// jitter's seed at 0, so every exported frame traces the same photons and
+    /// a caustic moves only as its scene does.
     func encodeCausticsPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
                             meshBuffer: MTLBuffer?,
                             causticAccel: MTLAccelerationStructure?,
@@ -221,7 +223,12 @@ extension MetalRenderer {
                           0, 0.004)
         cu.counts = SIMD4(UInt32(edge), UInt32(depth), UInt32(budget), 8)
         let uniformEmission = supersample || !causticsDensityValid
-        cu.counts2 = SIMD4(UInt32(budget), frameComputeUniforms.frameCount,
+        // The frame index seeds the photons' jitter. Live, a new seed every frame
+        // is what the temporal resolve averages into a settled caustic; an export
+        // keeps no history to average them, so it traces the same photons at
+        // every frame and a still caustic holds still across a sequence.
+        let jitterSeed = supersample ? 0 : frameComputeUniforms.frameCount
+        cu.counts2 = SIMD4(UInt32(budget), jitterSeed,
                            uniformEmission ? 1 : 0, UInt32(treeNodes))
         cu.screen = SIMD4(Float(width), Float(height), 1 / Float(width), 1 / Float(height))
 

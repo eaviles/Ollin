@@ -59,6 +59,23 @@ struct CausticRenderProbes {
         }
     }
 
+    /// An export traces the same photons at every frame, so a caustic holds
+    /// still across an exported sequence of a still scene instead of re-rolling
+    /// its sparks each frame (the jitter was keyed to the frame index, and an
+    /// export keeps no history to average the rolls). The scene without caustics
+    /// is the control: it has to match across the two frames as well, or the
+    /// comparison would prove nothing.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func anExportedCausticHoldsStillFromFrameToFrame() throws {
+        let offEarly = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOff), frame: 1))
+        let offLate = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOff), frame: 7))
+        #expect(offLate == offEarly, "the scene itself changed between the two frames")
+        let early = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 1))
+        let late = pixels(of: try OllinApp.image(of: CausticProbe.make(kind: .lensOn), frame: 7))
+        let moved = zip(early, late).filter { $0 != $1 }.count
+        #expect(moved == 0, "the caustic drew \(moved) channel values differently at frame 7")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aLensLandsLightInsideItsOwnShadow() throws {
         // A hovering glass sphere with castShadows() on: direct light cannot reach
