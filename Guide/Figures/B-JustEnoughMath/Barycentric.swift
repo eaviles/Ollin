@@ -5,8 +5,8 @@
 // and 0.2 of c. Lines from the point to the corners cut the triangle into
 // three smaller ones, and each weight is the share of the area opposite its
 // corner. Right, the same triangle filled with dots, each colored by mixing
-// the three corner colors in its own weights. The corner colors depict
-// content, so they stay put in the dark render.
+// the three corner colors in its own weights, in linear light as Ollin mixes.
+// The corner colors depict content, so they stay put in the dark render.
 import Ollin
 import OllinDiagram
 
@@ -83,9 +83,9 @@ final class Barycentric: Sketch {
                 let wb = Double(j) / Double(steps)
                 let wc = 1 - wa - wb
                 let spot = t.a * wa + t.b * wb + t.c * wc
-                fill(Color(red: colorA.red * wa + colorB.red * wb + colorC.red * wc,
-                           green: colorA.green * wa + colorB.green * wb + colorC.green * wc,
-                           blue: colorA.blue * wa + colorB.blue * wb + colorC.blue * wc))
+                // The weights mix light, not the stored numbers.
+                fill(Color(linear: colorA.linearRGB * wa + colorB.linearRGB * wb
+                                   + colorC.linearRGB * wc))
                 drawCircle(center: spot, radius: 3.4)
             }
         }
