@@ -258,7 +258,9 @@ What comes back is an ordinary `Mesh`, so everything [Chapter 26](26-3DGently.md
 
 Sometimes points are their own material rather than a scan, a splash, say, or a swarm dense enough to read as a body. `particleSurface` skins them as one blended form, with no cameras involved. It is the blended particle surface of Yongning Zhu and Robert Bridson, from 2005, written for sand that flows like a fluid. With `points` a list of positions, `particleSurface(of: points, radius: 0.05)` hands back one mesh. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both calls, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
 
-<!-- Figure waiting on its prose: Images/35-Depth/PointsAsMaterial.jpg (Figures/35-Depth/PointsAsMaterial.swift), the splash as points and as particleSurface, for the section above. Rendered on the Mac at frame 0. -->
+<img src="Images/35-Depth/PointsAsMaterial.jpg" alt="Two views of one splash crown on a dark background: on the left, a ring of small cream dots with spikes of dots rising from it, labeled the points; on the right, the same crown as one smooth, glossy light-blue surface with rounded spikes, labeled particleSurface(of:radius:)" width="680">
+
+On the left is a splash crown thrown up around a ring, as points. On the right, `particleSurface(of:radius:)` has skinned the same points into one form, and each spike ends in a rounded tip.
 
 ## Where this comes from
 

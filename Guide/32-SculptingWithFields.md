@@ -51,9 +51,9 @@ final class Melt: Sketch {
 }
 ```
 
-<!-- Figure waiting on its prose: Images/32-SculptingWithFields/Melt.jpg (Figures/32-SculptingWithFields/Melt.swift), the melt in two dimensions, for the listing above. Rendered on the Mac at frame 0. -->
+<img src="Images/32-SculptingWithFields/Melt.jpg" alt="An orange circle joined to a smaller blue rounded rectangle on its right by a smooth, curved neck, the orange shading into blue across the seam, on a near-black canvas" width="560">
 
-Run it and watch the seam. `SDF.circle` and `SDF.rect` are field values, like a `Shape` or a `Color`. `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` draws whatever field you hand it in a single pass. Here `k` swings between 20 and 110 canvas points with `sin(time)`. It is the dial that does most of the work in this chapter, so put it on a parameter and try it.
+The picture is the first frame, where `k` is 65, halfway through its swing. The two shapes already share one outline, and the neck between them shades from orange to blue. Run it and watch the seam. `SDF.circle` and `SDF.rect` are field values, like a `Shape` or a `Color`. `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` draws whatever field you hand it in a single pass. Here `k` swings between 20 and 110 canvas points with `sin(time)`. It is the dial that does most of the work in this chapter, so put it on a parameter and try it.
 
 The order of a chain matters. Every call wraps the field before it, so `circle.at(p).scaled(2)` scales the moved circle, and it lands twice as far out. `circle.scaled(2).at(p)` scales it in place and then moves it. Read a chain from the inside out and it always makes sense.
 
