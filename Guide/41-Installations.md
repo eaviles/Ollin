@@ -41,7 +41,7 @@ The screen saver and a sleeping display are problems you can see. The clock goes
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-Installations/LongRunClock-dark.jpg">
-  <img src="Images/41-Installations/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.00 and one counting normally after a restart" width="680">
+  <img src="Images/41-Installations/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.000 and one counting in even steps from 37.500 after a restart" width="680">
 </picture>
 
 The first is a gap. While the display sleeps, no frames are drawn, and the first frame back comes eight hours after the last one. Read from the wall clock, that frame has a `deltaTime` of eight hours. Anything that moves by `speed * deltaTime` then jumps off the canvas in one step.

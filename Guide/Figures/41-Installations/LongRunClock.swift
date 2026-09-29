@@ -34,11 +34,11 @@ final class LongRunClock: Sketch {
 
         heading("the clock a shader reads, three frames apart", at: Vector2(left, 330))
         readout(title: "after a week, counting seconds",
-                readings: "604800.00   604800.00   604800.00",
+                readings: "604800.000  604800.000  604800.000",
                 note: "stuck: a frame no longer changes it",
                 tint: accent, at: Vector2(left, 366))
         readout(title: "restarted on a whole lap",
-                readings: "37.50   37.52   37.53",
+                readings: "37.500  37.517  37.533",
                 note: "exact again, and the restart is hidden",
                 tint: good, at: Vector2(448, 366))
     }
@@ -88,7 +88,7 @@ final class LongRunClock: Sketch {
         drawText("that one frame is worth:", left, axis + 66)
 
         answer(mark: "by the wall clock", value: "deltaTime = 8 hours",
-               note: "every integrator jumps with it",
+               note: "anything moved by deltaTime jumps",
                tint: accent, y: axis + 104)
         answer(mark: "by the sum of its steps", value: "deltaTime = 0.25 s",
                note: "the sketch carries on where it stopped",
@@ -132,7 +132,7 @@ final class LongRunClock: Sketch {
         drawText(title, card.x + 22, card.y + 16)
 
         fill(ink)
-        textSize(17)
+        textSize(16)
         drawText(readings, card.x + 22, card.y + 46)
 
         fill(tint)

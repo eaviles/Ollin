@@ -115,7 +115,7 @@ final class AppToHand: Sketch {
               reach: "this Mac")
 
         route(at: Rectangle(x: 470, y: 254, width: 370, height: 148),
-              command: "./build.sh --sign \"Developer ID …\" --notarize",
+              command: "./build.sh --sign \"Developer ID …\" \\\n    --notarize ollin-notary",
               headline: "through Apple's notary",
               note: "leaves an Orbit.zip beside the app,\nready to send",
               reach: "any Mac")
@@ -131,17 +131,23 @@ final class AppToHand: Sketch {
         drawRect(box, cornerRadius: 8)
         noStroke()
 
+        // A long command continues on a second line, as a shell writes it.
+        let commandLines = command.split(separator: "\n")
         textFont(.systemMono)
-        drawText(command, box.x + 16, box.y + 14, size: 11, color: theme.accent, align: .left, .top)
+        for (index, line) in commandLines.enumerated() {
+            drawText(String(line), box.x + 16, box.y + 14 + Double(index) * 16,
+                     size: 11, color: theme.accent, align: .left, .top)
+        }
         textFont(.system)
-        drawText(headline, box.x + 16, box.y + 38, size: 14, color: theme.ink, align: .left, .top)
+        let below = box.y + Double(commandLines.count - 1) * 16
+        drawText(headline, box.x + 16, below + 38, size: 14, color: theme.ink, align: .left, .top)
         for (index, line) in note.split(separator: "\n").enumerated() {
-            drawText(String(line), box.x + 16, box.y + 62 + Double(index) * 17,
+            drawText(String(line), box.x + 16, below + 62 + Double(index) * 17,
                      size: 12, color: theme.muted, align: .left, .top)
         }
 
-        // What it reaches, as a small machine with its lid.
-        let mac = Rectangle(x: box.x + box.width - 96, y: box.y + box.height - 62,
+        // What it reaches, as a small machine with its lid, named inside the card.
+        let mac = Rectangle(x: box.x + box.width - 96, y: box.y + box.height - 80,
                             width: 76, height: 44)
         fill(theme.ink(0.12))
         drawRect(mac, cornerRadius: 4)
