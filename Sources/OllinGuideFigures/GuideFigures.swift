@@ -350,7 +350,7 @@ enum GuideFigures {
                         print("guide-figures: the framework changed, but all"
                               + " \(sample.count) probe figure\(plural(sample.count)) drew the"
                               + " same pixels, so the rest are left alone."
-                              + " Run with --no-probe to re-render everything anyway.")
+                              + " Run with --force to re-render everything anyway.")
                     } else {
                         // Any move at all hands the run to the full render,
                         // since a change too small to see on the sample can
@@ -1271,7 +1271,8 @@ enum GuideFigures {
           --force              re-render even figures the cache calls unchanged
           --exact              rewrite a committed image on any pixel move,
                                not only a visible one
-          --no-probe           skip the probe sample; re-render everything
+          --no-probe           after a framework change, skip the probe
+                               sample and re-render everything
           --jobs <n>           worker processes (default \(defaultJobs))
           --verbose            print each shard's full log
           --compare <a> <b>    measure how far one image moved from another,
@@ -1300,7 +1301,9 @@ enum GuideFigures {
         identical means the change was render-neutral and the rest are left
         alone, which turns a ten minute gate into about fifteen seconds. Any
         probe that moved or failed hands the run back to the full re-render.
-        --no-probe skips the sample and re-renders everything.
+        --no-probe skips the sample and re-renders everything; with no
+        framework change since the last trusted run there is nothing for it to
+        skip, and --force is what re-renders every figure.
 
         Every comparison here is of decoded pixels, never encoded bytes: the
         JPEG/PNG encoders are not byte-deterministic, so a fresh render replaces

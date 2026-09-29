@@ -4,7 +4,7 @@
 #
 #   Scripts/preflight.sh              # gates for the working-tree diff vs HEAD
 #   Scripts/preflight.sh --milestone  # everything, regardless of the diff:
-#                                     # full --no-probe figure render, the whole
+#                                     # every figure re-rendered, the whole
 #                                     # test suite, the Examples build, and the
 #                                     # same-seed pass over every example
 #
@@ -78,7 +78,7 @@
 #          signed-bundle builds the everyday run leaves out), Scripts/test.sh
 #          tsan (the handoffs under Thread Sanitizer: a second, instrumented
 #          build of the non-GPU targets, which is why it is not a gate on
-#          every commit), guide-figures --no-probe, site-hero, swift build
+#          every commit), guide-figures --force, site-hero, swift build
 #          --package-path Examples (the examples anti-rot guard; CI runs on
 #          pull requests only, so nothing else compiles them), and
 #          Scripts/check-determinism.sh (every example that runs alone,
@@ -319,9 +319,11 @@ fi
 # The figure gate, last: a framework change may move any figure (the probe
 # decides), and an edited figure sketch or a hand-touched image must
 # re-render or fail. When the probe finds a mover this is the long gate, and
-# the runner says how long before it starts.
+# the runner says how long before it starts. A milestone forces every figure:
+# --no-probe only skips the sample after a framework change, and once a
+# passing probe has trusted the new framework it renders nothing at all.
 if [[ $milestone -eq 1 ]]; then
-    run "guide-figures --no-probe" Scripts/guide-figures.sh --no-probe
+    run "guide-figures --force" Scripts/guide-figures.sh --force
 elif [[ -n "$framework" || -n "$figures" || -n "$images" ]]; then
     run "guide-figures" Scripts/guide-figures.sh
 else
