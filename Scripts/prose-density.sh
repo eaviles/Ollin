@@ -33,6 +33,17 @@
 # A page over a bar is not a defect to fix in one pass. Fix the page you are
 # already editing, and watch the number come down over time.
 #
+# One thing does fail, on a Guide page only: a single framing device used more
+# than CAP times on one page ("worth", sentences opening "That is", "the
+# whole", "exactly", "simply"). Each is the right word a few times and a tic
+# past that, and a tic is one device repeated, which the FRAMES rate averages
+# away. CAP is 13, the lowest count the Guide passes as of 2026-09-29: 13
+# "That is" openers in Chapter 15, 11 of them in Chapter 3, 11 "the whole" in
+# Chapter 6. It would not have caught Chapter 1's twelve "worth" before its
+# revision, so trimming those three pages is what lets it come down. The
+# reference pages are longer and only reported (27 "exactly" on one), and the
+# exit status is nonzero when a Guide page is over.
+#
 # Why a construction and not a word: the tic reworded itself every time
 # ("it's worth two minutes", "a habit worth forming", "worth having under
 # your hand"), so a repeated-phrase measure missed it, and a repeated-word
@@ -67,6 +78,18 @@ FRAMES = {
     "ofcourse":  r"\b(of course|needless to say|as you might expect)\b",
     "noticethat": r"\b(notice that|note that|remember that|bear in mind)\b",
 }
+
+# The framing devices a Guide page may not lean on, and how many times one of
+# them may appear on a page (see the header for how CAP was set).
+CAPPED = {
+    "worth":     FRAMES["worth"],
+    "that is":   r"(?:^|[.!?]\s+)that is\b",
+    "the whole": r"\bthe whole\s+\w",
+    "exactly":   r"\bexactly\b",
+    "simply":    r"\bsimply\b",
+}
+CAP = 13
+capped_over = []
 
 print(f'{"FILE":32} {"LINES":>6} {"COLONS":>7} {"SEMIS":>6} {"DENSITY":>8} '
       f'{"LONG%":>6} {"ASIDES":>7} {"FRAMES":>7}  TOP')
@@ -118,6 +141,12 @@ for name in sys.argv[1:]:
     top = max(hits.items(), key=lambda kv: kv[1])
     top_shown = f"{top[0]}:{top[1]}" if top[1] else "-"
 
+    if name.startswith("Guide/"):
+        for device, pattern in CAPPED.items():
+            count = len(re.findall(pattern, lower, re.M))
+            if count > CAP:
+                capped_over.append(f"{name}: \"{device}\" {count} times, past the cap of {CAP}")
+
     flag = " *" if ((density is not None and density < 2.0)
                     or long_share > 35 or asides > 2.0) else ""
     over_bar += 1 if flag else 0
@@ -134,4 +163,9 @@ print("FRAMES is a report, not a bar: framing constructions per 100 prose "
 print("    commonest named. Guide median 7, highest chapter 12. Read the page "
       "when one")
 print("    construction carries most of the count.")
+if capped_over:
+    print()
+    for line in capped_over:
+        print(f"prose-density: {line}")
+    sys.exit(1)
 PY

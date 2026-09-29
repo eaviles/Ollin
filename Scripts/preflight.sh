@@ -44,6 +44,9 @@
 #       -> Scripts/check-snippets.sh (the code in the prose, compiled)
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
+#   Guide/ prose changed
+#       -> Scripts/prose-density.sh over just those pages, which fails when
+#          one framing device passes its per-page cap
 #   the expander's sources changed (Sources/OllinExpander, the wasm entry,
 #   the vendored tessellator)
 #       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
@@ -250,6 +253,16 @@ elif [[ $milestone -eq 1 ]]; then
     run "prose-lint" Scripts/prose-lint.sh
 else
     skip "prose-lint" "no Guide/ or Docs/ prose change"
+fi
+
+# One framing device repeated past its cap on a Guide page fails; the rest of
+# prose-density's table is a report and prints with it.
+if [[ -n "$guide_prose" ]]; then
+    run "prose-density (framing cap)" Scripts/prose-density.sh ${(f)guide_prose}
+elif [[ $milestone -eq 1 ]]; then
+    run "prose-density (framing cap)" Scripts/prose-density.sh Guide/[0-9]*.md Guide/[A-E]-*.md
+else
+    skip "prose-density" "no Guide/ prose change"
 fi
 
 # The page's expander: the shared expander module compiled to WebAssembly and
