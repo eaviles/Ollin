@@ -6,7 +6,7 @@
 
 <img src="Images/27-Meshes/RakedGarden.jpg" alt="A bed of pale sand seen at a downward slant, raked into straight grooves that run across it and bend into rings around three dark rounded stones: a wide flat one on the left, a tall egg-shaped one farther back in the middle, and a small one on the right. The stones are dark gray, mottled with soft pale patches, and each throws a shadow toward the lower right. Three small red leaves with five pointed lobes lie in the scene, one on top of the wide stone and two on the sand. A dark olive band runs along the far edge" width="560">
 
-A mesh can come from a file or from a rough cage you round, and pictures give its surface color, grain, and depth. With them a plain solid can pass for stone, sand, or worn paint. The raked garden at the top rounds stones from boxes, presses grooves in from a picture, and drifts red leaves over sand and stone. After it come maps that tilt the light and set the material, whole scenes from a file, and more ways to make a mesh.
+A mesh can come from a file and take a picture for its color, or start as a rough cage you round. More pictures give it depth and grain, and with them a plain solid can pass for stone, sand, or worn paint. The raked garden at the top rounds stones from boxes, presses grooves in from a picture, and drifts red leaves over sand and stone. After it come maps that tilt the light and set the material, whole scenes from a file, and more ways to make a mesh.
 
 ## A mesh from a file
 
@@ -97,7 +97,7 @@ let rock = base.displaced(by: craterHeights, scale: 0.13).textured(dust)
 
 The outlines in the figure carry the lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read. The shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is cratered, in shadow and reflection too. Inside the outline the two are nearly twins, so parallax gives you the depth without the triangles. When the edge matters, displace. When it doesn't, march.
 
-White stays put in both readings. A height map's white regions *are* the authored surface. So the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. USD files carry the map in and out, since `saveScene` writes it to the preview surface's displacement slot. glTF has no place to put one.
+White stays put in both readings. A height map's white regions *are* the authored surface. So the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a parameter. A USD file carries the map in, and `saveScene`, which writes meshes out to a glTF or USD file, writes it back out. glTF has no place to put one.
 
 ## A picture from three sides: triplanar
 
@@ -143,7 +143,7 @@ drawMesh(boulder
 
 <img src="Images/27-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
 
-The left sphere has only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. The boulder also carries a base normal map, hung on with `normalMapped`. The detail normal map is *reoriented onto* that base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
+The left sphere has only a base map at the resolution one map covering a whole form would have, so it is soft. The right one adds a detail pair, a patch of the same stone seen close. It is mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. The boulder also carries a base normal map, hung on with `normalMapped`, which [its entry](#relief-from-a-picture-normal-maps) after the finished sketch covers. The detail normal map is *reoriented onto* that base relief rather than replacing it. The fine bumps sit on the large forms the base map already shaped, the way real grain follows the rock it is part of.
 
 `scale` is how many times the pair repeats across the base, and `amount` fades it out, with zero the off switch. A pair tiled dozens of times over is the first thing that would break up in the distance. A loaded picture reads its smaller copies there, but a pair you wrote from bytes has none to fall back on. Keep the scale in the range your framing shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres and the detail pair on one of them. The tile count and amount sit on parameters while the camera sways close.
 
@@ -277,14 +277,14 @@ final class RakedGarden: Sketch {
 }
 ```
 
-> **Swift note.** `stones` holds tuples, several values carried together as one, and their parts have names. So a stone reads as `s.x` and `s.size` rather than `s.0` and `s.2`. The type after `stones:` names the parts, so each entry lists its values in order without them. `picture` takes a function as its last argument, `shade: (Double, Double) -> Color`, which turns two numbers into a color. Each call hands it a closure after the parentheses, and `picture` calls that closure once for every pixel. `.squareRoot()` is the square root of the number before it. `Mesh(positions: [], indices: [])` is an empty mesh that holds the property's place until `setup()` fills it.
+> **Swift note.** `stones` holds tuples, several values carried together as one, and their parts have names. So a stone reads as `s.x` and `s.size` rather than `s.0` and `s.2`. The type after `stones:` names the parts, so each entry lists its values in order without them. `picture`'s last argument is a function named `shade`, of type `(Double, Double) -> Color`, which turns two numbers into a color. Each call hands it a closure after the parentheses, and `picture` calls that closure once for every pixel. `.squareRoot()` is the square root of the number before it. `Mesh(positions: [], indices: [])` is an empty mesh that holds the property's place until `setup()` fills it.
 
 Here is what each part does:
 
 - **The rake.** `rake` is the function the height map is drawn from. It turns the picture's `u` and `v` into a point `p` on the bed, which is 10 units wide and 9 deep. A `Vector2` calls its second part `y`, so `p.y` is the bed's z. `gap` is roughly how far `p` is from the edge of the nearest stone. Within 0.9 of a stone the grooves follow `gap`, so they run in rings. Everywhere else they follow `p.y` and run straight across. The cosine turns either distance into a wave between 0 and 1, one groove every 0.2 units. Where two stones' rings meet, the nearer stone wins.
-- **The sand.** White is the surface and dark is carved in, so `displaced(by: heights, scale: 0.04)` presses each furrow 0.04 deep. Displacement can only move the vertices a mesh has, so the plane gets 400 segments a side, about eight to a groove. `tone` is the sand's color, soft `fbm` between two light grays. `grain` swings around middle gray, since a detail color map multiplies and middle gray changes nothing. It comes from `tilingFbm` because it repeats 18 times across the bed. `fill(.white)` before the sand keeps its pictures untinted.
+- **The sand.** White is the surface and dark is carved in, so `displaced(by: heights, scale: 0.04)` presses each furrow 0.04 deep. Displacement can only move the vertices a mesh has, so the plane gets 400 segments a side, eight or nine to a groove. `tone` is the sand's color, soft `fbm` between two light grays. `grain` swings around middle gray, since a detail color map multiplies and middle gray changes nothing. It comes from `tilingFbm` because it repeats 18 times across the bed. `fill(.white)` before the sand keeps its pictures untinted.
 - **The stones.** Three levels of subdivision round each box and leave it with no uvs, which is why the granite is projected. A projected picture has to tile, so the granite is built on `tilingFbm`. `smoothstep` pushes that noise toward its two grays, and the stone comes out mottled in soft patches. Rounding also pulls each stone in from its box, so a lift of half the box's height would leave it floating. `s.size.y * 0.3` sets it a little way into the sand instead. `material(.matte)` sets the matte [finish](26-3DGently.md#materials) once, and it covers the moss, the sand, and the stones.
-- **The leaf.** `r` is the distance from the middle of the leaf's picture. `lobe` is 0 at five angles around the middle and 1 halfway between them. So the leaf's edge reaches almost to the picture's border at five points and pulls in between them, and everything outside it is clear. A picture that lives only on the graphics card cannot become a decal, so `Decal(_:)` can fail, and `if let leaf` unwraps it.
+- **The leaf.** `r` is the distance from the middle of the leaf's picture. `lobe` is 0 at five angles around the middle and 1 halfway between them. So the leaf's edge reaches almost to the picture's border at five points and pulls in between them. Everything outside it is clear. A picture that lives only on the graphics card cannot become a decal, so `Decal(_:)` can fail, and `if let leaf` unwraps it.
 - **The drift.** Each frame places the one decal three times, once in each lane. `along` runs from 0 to 1 and starts over, carrying a leaf 12 units across, from beyond one edge of the bed to beyond the other. `roll` turns it as it goes. The box is 3 units deep, so it reaches from higher than the tallest stone down past the sand. A decal does not know what hides what. So a leaf crossing a stone's rounded rim can show twice for a moment, on the stone and on the sand under the rim.
 
 Then make it yours:
@@ -293,15 +293,15 @@ Then make it yours:
 - Rake wider rings. Change `gap < 0.9` to `gap < 1.6`, and each stone gathers about eight rings before the straight grooves take over.
 - Let more leaves fall. Add a z position to `[0.35, 2.4, -2.2]` for each new lane. A frame holds eight decals, so eight lanes is the most that will show.
 
-The garden moves on its own, because the camera circles and the leaves drift, so keep it as a video. `swift run OllinLive MySketches/RakedGarden.swift --export-video raked-garden.mp4 --seconds 20` records twenty seconds of it. `--export raked-garden.png` keeps the opening frame as a still.
+The garden moves on its own, because the camera circles and the leaves drift, so keep it as a video. `swift run OllinLive MySketches/RakedGarden.swift --export-video raked-garden.mp4 --seconds 24` records one full turn of the camera. `--export raked-garden.png` keeps the opening frame as a still.
 
 ## Pictures that change the surface: normal and surface maps
 
-The garden pressed its rake in with a height map read as geometry, and every other picture in it set a color. A picture can also change a surface without moving a vertex. A normal map tilts the light to show relief the geometry does not have. The surface maps say what the surface is made of, point by point.
+The garden pressed its rake in with a height map read as geometry, and every other picture in it set a color. The parallax sphere and the triplanar step's normal map already changed a surface without moving a vertex. Here the normal map gets its own entry, and the surface maps say what the surface is made of, point by point.
 
 ### Relief from a picture: normal maps
 
-A texture changes a surface's color. A **normal map** changes how it catches light. Each texel stores a surface direction instead of a color. At shading time the lighting normal from [Chapter 26](26-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) bends by it. The result is relief without geometry.
+A texture changes a surface's color, and a normal map changes how it catches light. Each texel stores a surface direction instead of a color. At shading time the lighting normal from [Chapter 26](26-3DGently.md#what-a-solid-is-made-of-triangles-and-normals) bends by it. The result is relief without geometry.
 
 <img src="Images/27-Meshes/SurfaceRelief.jpg" alt="Three gray spheres under the same warm light: one hammered with soft dents, one engraved with concentric rings, and one bare, all with perfectly circular silhouettes" width="680">
 
@@ -343,7 +343,7 @@ drawMesh(ribbon.glowing(1.5))     // each vertex glows in its own hue
 
 `Mesh.glowing(_:)` sets `emissiveIntensity` on a copy. At 1 it adds the surface's own color once as light, and more is brighter. A `bloom` filter turns the glow into a halo.
 
-Loaded glTF and USD models carry all of these in and out without being asked. `saveScene`, which writes meshes out to a glTF or USD file, keeps them on the round trip. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
+Loaded glTF and USD models carry all of these in and out without being asked. `saveScene` keeps them on the round trip too. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow parameter.
 
 ## A whole scene from a file: its camera, its lights, and its motion
 
@@ -391,7 +391,7 @@ Loading a scene keeps the file in charge, which is what you want while the model
 
 ## More ways to make a mesh: cuts, joins, shadow art, growth, and the Hopf fibration
 
-This chapter made one mesh from another when it rounded a cage, and loaded another from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. And one comes from a formula for a shape that does not fit in the room.
+The garden rounded its stones from boxes, and the chapter opened on a mesh loaded from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. And one comes from a formula for a shape that does not fit in the room.
 
 ### Cutting one solid with another: mesh booleans
 
