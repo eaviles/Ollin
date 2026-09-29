@@ -163,6 +163,30 @@ struct HTMLTests {
         #expect(page.body.contains("<a name=\"color\"></a>"))
     }
 
+    @Test("A comment to the tools leaves nothing on the page, on one line or several")
+    func comments() {
+        let source = """
+        Before.
+
+        <!-- snippet: skip an argument list, not a statement -->
+        ```swift
+        .all
+        ```
+
+        <!-- a note
+        that runs on -->
+        After.
+        """
+        let page = HTML.render(source, resolve: Self.identity)
+        #expect(!page.body.contains("snippet"))
+        #expect(!page.body.contains("runs on"))
+        #expect(!page.body.contains("&lt;!--"))
+        #expect(page.body.contains("<p>Before.</p>"))
+        #expect(page.body.contains("<p>After.</p>"))
+        #expect(page.body.contains("<pre"))
+        #expect(!page.sections.joined().contains("snippet"))
+    }
+
     @Test("A wrapped paragraph is one paragraph")
     func wrapped() {
         let source = "The [whole\nfamily](#combining) is here.\n"

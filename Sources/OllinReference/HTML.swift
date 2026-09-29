@@ -105,6 +105,18 @@ public enum HTML {
                 continue
             }
 
+            // A note to the tools (the snippet checker's skips) is for whoever
+            // edits the page, never for the reader, so it leaves no trace.
+            // Prose wrapped onto the closing line is joined to it, so what
+            // follows the close is read again as a line of its own.
+            if trimmed.hasPrefix("<!--") {
+                while index < lines.count, !lines[index].contains("-->") { index += 1 }
+                guard index < lines.count, let close = lines[index].range(of: "-->") else { break }
+                let rest = lines[index][close.upperBound...].trimmingCharacters(in: .whitespaces)
+                if rest.isEmpty { index += 1 } else { lines[index] = rest }
+                continue
+            }
+
             if isRawBlock(trimmed) {
                 out.append(rewritten(line, resolve: resolve))
                 index += 1
