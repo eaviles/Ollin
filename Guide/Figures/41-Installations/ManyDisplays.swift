@@ -2,7 +2,7 @@
 //
 // Guide diagram (Chapter 41): one canvas, three displays. The canvas is drawn
 // once, at the top, and each display below carries the part of it that its own
-// place in the arrangement covers. The piece is the same picture in both rows,
+// place in the arrangement covers. The sketch is the same picture in both rows,
 // so the reader can see that the three panes are one thing cut in three rather
 // than three pictures in a row.
 import Ollin
@@ -42,7 +42,7 @@ final class ManyDisplays: Sketch {
         drawText("one canvas, three displays", 56, 40)
 
         // The canvas: the whole picture, drawn once.
-        piece(in: canvas, from: 0, to: 1)
+        drawSketch(in: canvas, from: 0, to: 1)
         noFill()
         stroke(rule)
         strokeWeight(1)
@@ -85,7 +85,7 @@ final class ManyDisplays: Sketch {
         // The displays, each carrying its own third at full strength.
         for (part, display) in displays.enumerated() {
             withClip(display) {
-                piece(in: display, from: Double(part) / 3, to: Double(part + 1) / 3)
+                drawSketch(in: display, from: Double(part) / 3, to: Double(part + 1) / 3)
             }
             noFill()
             stroke(ink)
@@ -106,10 +106,10 @@ final class ManyDisplays: Sketch {
                  56, 588)
     }
 
-    /// The piece itself, drawn into `frame` from `from` to `to` of the canvas.
+    /// The sketch itself, drawn into `frame` from `from` to `to` of the canvas.
     /// The same function draws the whole thing and any part of it, which is what
     /// the wall does with the real one.
-    private func piece(in frame: Rectangle, from: Double, to: Double) {
+    private func drawSketch(in frame: Rectangle, from: Double, to: Double) {
         let span = max(to - from, 0.0001)
         func x(_ u: Double) -> Double { frame.x + (u - from) / span * frame.width }
 
@@ -151,14 +151,17 @@ final class ManyDisplays: Sketch {
         strokeWeight(2)
         drawPolyline(wave)
 
-        // The rule along the top, the thing you line a wall up against.
+        // The rule along the top, the thing you line a wall up against. Ticks
+        // are counted in fiftieths rather than summed from 0.02, so every pane
+        // marks the same ticks long as the canvas does.
         stroke(Color(white: 1, alpha: 0.45))
         strokeWeight(1)
-        var tick = (from * 50).rounded(.up) / 50
-        while tick <= to {
-            let long = (tick * 10).rounded() == tick * 10
+        let first = Int((from * 50 - 1e-9).rounded(.up))
+        let last = Int((to * 50 + 1e-9).rounded(.down))
+        for index in first...last {
+            let tick = Double(index) / 50
+            let long = index % 5 == 0
             drawLine(x(tick), frame.y, x(tick), frame.y + (long ? 12 : 6))
-            tick += 0.02
         }
     }
 }

@@ -47,7 +47,9 @@ final class SmallestCanvas: Sketch {
         drawRect(bar)
         noStroke()
 
-        drawText("  Pulse    File    Edit    Window", bar.x + 12, bar.center.y,
+        // The app has no Dock icon and no menus of its own, so the left of the
+        // bar belongs to whichever app is in front.
+        drawText("Finder    File    Edit    View    Go    Window", bar.x + 12, bar.center.y,
                  size: 11, color: theme.ink, align: .left, .middle)
 
         // The status items, ours among them at the size it really is.
@@ -110,13 +112,13 @@ final class SmallestCanvas: Sketch {
             drawText("height 22", 0, 0, size: 12, color: theme.ink, align: .center, .bottom)
         }
 
-        drawText("Everything this guide taught still works. There is simply less room.",
+        drawText("Everything this guide taught still works at that size.",
                  40, 350, size: 13, color: theme.ink, align: .left, .top)
         drawText("The sketch sees a canvas of the strip's own points, so width / 2 is still the middle.",
                  40, 374, size: 12, color: theme.muted, align: .left, .top)
     }
 
-    /// The piece itself: a line that moves, which is all a strip has room for.
+    /// The sketch itself: a line that moves, which is all a strip has room for.
     func pulse(in box: Rectangle) {
         fill(Color(hex: 0x14161A))
         drawRect(box)
@@ -144,25 +146,30 @@ final class SmallestCanvas: Sketch {
                      size: 12, color: theme.ink, align: .left, .top)
         }
 
-        card(at: Rectangle(x: 556, y: 290, width: 284, height: 104),
+        card(at: Rectangle(x: 556, y: 290, width: 284, height: 112),
              title: "a click opens the menu") { box in
-            let menu = Rectangle(x: box.x + 16, y: box.y + 32, width: 150, height: 56)
+            // The menu as the app builds it: the sketch's name as a row that
+            // takes no click, a separator, and Quit.
+            let menu = Rectangle(x: box.x + 16, y: box.y + 32, width: 150, height: 66)
             fill(theme.paper)
             drawRect(menu, cornerRadius: 7)
             stroke(theme.border)
             strokeWeight(1)
             noFill()
             drawRect(menu, cornerRadius: 7)
+            drawLine(Vector2(menu.x + 10, menu.y + 33), Vector2(menu.x + menu.width - 10, menu.y + 33))
             noStroke()
-            drawText("About Pulse", menu.x + 12, menu.y + 10,
+            drawText("Pulse", menu.x + 12, menu.y + 10,
                      size: 12, color: theme.muted, align: .left, .top)
-            drawText("Quit", menu.x + 12, menu.y + 32,
+            drawText("Quit Pulse", menu.x + 12, menu.y + 42,
                      size: 12, color: theme.ink, align: .left, .top)
-            drawText("nothing in the", box.x + 180, box.y + 50,
+            drawText("⌘Q", menu.x + menu.width - 12, menu.y + 42,
+                     size: 12, color: theme.muted, align: .right, .top)
+            drawText("nothing in the", box.x + 180, box.y + 54,
                      size: 12, color: theme.muted, align: .left, .middle)
-            drawText("Dock: there is", box.x + 180, box.y + 66,
+            drawText("Dock: there is", box.x + 180, box.y + 70,
                      size: 12, color: theme.muted, align: .left, .middle)
-            drawText("no window", box.x + 180, box.y + 82,
+            drawText("no window", box.x + 180, box.y + 86,
                      size: 12, color: theme.muted, align: .left, .middle)
         }
     }

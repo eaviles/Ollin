@@ -50,8 +50,10 @@ final class OneWorldManyWindows: Sketch {
 
         // The world, drawn once faintly across the whole desk. Nobody sees
         // this part: it is here so the reader can tell that the windows are
-        // holes cut in one picture rather than three pictures.
-        world(alpha: 0.16)
+        // holes cut in one picture rather than three pictures. Fainter on the
+        // dark paper, where a faint light ink blended in linear light reads
+        // several times stronger than a faint dark one on white.
+        world(alpha: darkTheme ? 0.07 : 0.16)
 
         // Each window: a dark pane with the same world drawn inside it, at
         // full strength, clipped to the pane.
@@ -63,6 +65,16 @@ final class OneWorldManyWindows: Sketch {
                      width: window.width, height: window.height + 18)
             withClip(window) {
                 world(alpha: 1)
+            }
+            // On the dark paper the pane is nearly the paper's own color, so it
+            // takes an edge there.
+            if darkTheme {
+                noFill()
+                stroke(theme.border)
+                strokeWeight(1)
+                drawRect(corner: Vector2(window.x, window.y - 18),
+                         width: window.width, height: window.height + 18)
+                noStroke()
             }
             // Three dots for a title bar, so a pane reads as a window.
             fill(Color(white: 1, alpha: 0.35))
@@ -84,7 +96,11 @@ final class OneWorldManyWindows: Sketch {
                  second.x + second.width, second.y + second.height + 26)
         drawLine(second.x + second.width, second.y + second.height,
                  second.x + second.width, second.y + second.height + 26)
+        // A plate of paper under the label, so no faint dot runs through it.
         noStroke()
+        fill(paper)
+        drawRect(Rectangle(x: second.center.x - 172, y: second.y + second.height + 29,
+                           width: 344, height: 21), cornerRadius: 4)
         fill(accent)
         textSize(13)
         textAlign(.center, .top)

@@ -144,8 +144,10 @@ final class ShowOnPhone: Sketch {
     }
 }
 
-/// The probe: the chapter's `Pour` sketch at the phone's shape, a finger held
-/// down with the paint it has already let fall below it.
+/// The probe: a painting sketch at the phone's shape, the fuller one the
+/// chapter points to in Examples/3D/Phone/PhoneCanvas rather than its short
+/// `Pour`, which draws only the circle under the finger. A finger is held down,
+/// with the paint it has already let fall below it.
 final class PourProbe: Sketch {
     override var canvasSize: CanvasSize { .size(216, 468) }
 

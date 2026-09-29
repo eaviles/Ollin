@@ -1,7 +1,7 @@
 // figure: frame=1 themed
 //
 // Guide diagram (Chapter 41): what a checkpoint buys. The same wall either side
-// of a quit: every tile it had is still where it was, and the piece carries on
+// of a quit: every tile it had is still where it was, and the sketch carries on
 // adding to it rather than starting the wall again.
 import Ollin
 import OllinDiagram

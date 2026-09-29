@@ -1,7 +1,8 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 41): which topics a subscription actually gets. Five
-// topics a house publishes across the top, four filters down the side, and a
+// topics across the top, four a house publishes and one the broker keeps in
+// its own `$SYS` namespace, four filters down the side, and a
 // mark where the one reaches the other. Every mark is read from the shipped
 // rule rather than drawn by hand, so the figure cannot disagree with the code.
 // The point of the figure: the two surprises, `#` covering its own parent and

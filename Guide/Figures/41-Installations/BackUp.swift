@@ -2,7 +2,9 @@
 //
 // Guide diagram (Chapter 41): the two ways an unattended run ends badly, and
 // what the watch does about each. A night on the timeline: a crash, a frame
-// that never finishes, and a piece back up within seconds of both.
+// that never finishes, and a sketch back up within seconds of both. The stall
+// is 30 seconds and each restart a few more, drawn wider than the hours around
+// them so they can be seen at all; the note under the gray stretch says so.
 import Ollin
 import OllinDiagram
 
@@ -84,7 +86,7 @@ final class BackUp: Sketch {
         fill(soft)
         textSize(14)
         textAlign(.center, .top)
-        drawText("nothing arrives, so the watch stops it",
+        drawText("after 30 quiet seconds, drawn wider here, the watch stops it",
                  (x(6.2) + x(6.7)) / 2 + 40, y + 20)
     }
 

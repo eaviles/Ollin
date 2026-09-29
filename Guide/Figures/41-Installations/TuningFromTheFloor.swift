@@ -113,7 +113,7 @@ final class TuningFromTheFloor: Sketch {
         let left = screen.x + 14
         let contentWidth = screen.width - 28
 
-        // The strip that makes the piece's health readable from the floor.
+        // The strip that makes the sketch's health readable from the floor.
         textFont(.systemMono)
         drawText("your-mac.local:9330", left, screen.y + 18,
                  size: 10, color: text3, align: .left, .top)

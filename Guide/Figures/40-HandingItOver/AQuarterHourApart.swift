@@ -1,8 +1,8 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 40): a sketch as a widget. Along the top, the same
-// piece at four moments a quarter of an hour apart, with the gaps between them
-// marked as what they are: nothing runs there. Below, the clock the piece is
+// sketch at four moments a quarter of an hour apart, with the gaps between them
+// marked as what they are: nothing runs there. Below, the clock the sketch is
 // drawn on, and the one thing that follows from a run being thrown away and
 // asked for again.
 import Ollin
@@ -49,7 +49,7 @@ final class AQuarterHourApart: Sketch {
         for (index, moment) in moments.enumerated() {
             let box = Rectangle(x: 40 + Double(index) * (tile + gap), y: top,
                                 width: tile, height: tile)
-            piece(in: box, at: moment.time)
+            drawSketch(in: box, at: moment.time)
             stroke(theme.border)
             strokeWeight(1)
             noFill()
@@ -81,10 +81,10 @@ final class AQuarterHourApart: Sketch {
                  40, top + tile + 34, size: 13, color: theme.ink, align: .left, .top)
     }
 
-    /// The piece itself: a ring that fills through the hour, tinted by the time
+    /// The sketch itself: a ring that fills through the hour, tinted by the time
     /// of day. Deliberately something that reads at a glance, since a glance is
     /// all a picture a quarter of an hour apart gets.
-    func piece(in box: Rectangle, at time: Double) {
+    func drawSketch(in box: Rectangle, at time: Double) {
         let day = time / 86_400
         let hour = (time.truncatingRemainder(dividingBy: 3600)) / 3600
         fill(Color(hex: 0x14161A))

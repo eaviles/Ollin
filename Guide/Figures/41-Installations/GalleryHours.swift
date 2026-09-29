@@ -31,7 +31,7 @@ final class GalleryHours: Sketch {
         (23, "",      Color(hex: 0x151519)),   // nothing on screen
     ]
 
-    /// Where the piece is dark, which is also where the clock lies flat.
+    /// Where the sketch is dark, which is also where the clock lies flat.
     var opens: Double { 6 }
     var closes: Double { 23 }
 
@@ -84,7 +84,7 @@ final class GalleryHours: Sketch {
         }
     }
 
-    /// The sketch clock across the same day: it climbs while the piece draws
+    /// The sketch clock across the same day: it climbs while the sketch draws
     /// and lies flat while it does not.
     func clockLine(y: Double) {
         fill(ink)

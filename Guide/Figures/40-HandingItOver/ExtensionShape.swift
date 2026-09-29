@@ -42,6 +42,7 @@ final class ExtensionShape: Sketch {
             "extension Sketch {",
             "  public func drawSpiral(center: Vector2,",
             "                         radius: Double) {",
+            "    let points = (0...240).map { … }",
             "    drawPolyline(points)",
             "  }",
             "}",

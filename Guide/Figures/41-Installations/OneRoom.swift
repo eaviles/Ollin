@@ -1,8 +1,8 @@
 // figure: frame=1 themed
 //
 // Guide diagram (Chapter 41): what a room fixes. Two machines run the same
-// piece. In the top row each keeps its own clock, so the bead sits in a
-// different place on each screen and the piece reads as two. In the bottom row
+// sketch. In the top row each keeps its own clock, so the bead sits in a
+// different place on each screen and the sketch reads as two. In the bottom row
 // both read the room's clock, so the beads agree. The timelines under each row
 // carry the whole argument: the second machine started later, and only the
 // room's clock puts that difference somewhere the audience cannot see.
@@ -61,7 +61,7 @@ final class OneRoom: Sketch {
                  56, top + 254, size: 14, color: soft, align: .left, .top)
     }
 
-    /// One screen: the piece, which is a bead going round a ring once every four
+    /// One screen: the sketch, which is a bead going round a ring once every four
     /// seconds. Where the bead sits is the whole tell.
     private func screen(_ frame: Rectangle, angle seconds: Double, label: String) {
         diagramFrame(frame, theme: theme)

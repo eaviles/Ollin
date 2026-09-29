@@ -1,9 +1,9 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 40): a sketch as the desktop. On the left, what the
-// screen looks like once it is running: the piece edge to edge, with the icons
+// screen looks like once it is running: the sketch edge to edge, with the icons
 // on it and a window over it, and a pointer that reaches both of those and
-// never the piece. On the right, the three things worth knowing before leaving
+// never the sketch. On the right, the three things worth knowing before leaving
 // one up: one copy per display, the sparkle as the way out, and what it costs
 // to draw all day. The point of the figure: the desktop stays a desktop.
 import Ollin
@@ -15,7 +15,7 @@ final class BehindTheIcons: Sketch {
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    /// The piece's own colors stay put in both themes: it is depicted content,
+    /// The sketch's own colors stay put in both themes: it is depicted content,
     /// a drawing on a screen rather than part of the page.
     let deepBlue = Color(hex: 0x102840)
     let drift = Color(hex: 0x3E7CA6)
@@ -41,13 +41,15 @@ final class BehindTheIcons: Sketch {
     func desktop() {
         let theme = self.theme
         let screen = Rectangle(x: 40, y: 92, width: 480, height: 300)
-        piece(in: screen, phase: 0)
+        drawSketch(in: screen, phase: 0)
 
         // The menu bar across the top, with the sparkle at its right end.
         fill(Color.black.withAlpha(0.3))
         drawRect(Rectangle(x: screen.x, y: screen.y, width: screen.width, height: 22))
         fill(Color.white.withAlpha(0.8))
-        drawText("Drift", screen.x + 12, screen.y + 11, size: 11, align: .left, .middle)
+        // The wallpaper app has no menus of its own; the bar's left belongs
+        // to whichever app is in front.
+        drawText("Finder", screen.x + 12, screen.y + 11, size: 11, align: .left, .middle)
         let sparkle = Vector2(screen.x + screen.width - 46, screen.y + 11)
         star(at: sparkle, radius: 6, color: .white)
         drawText("9:41", screen.x + screen.width - 12, screen.y + 11,
@@ -100,8 +102,8 @@ final class BehindTheIcons: Sketch {
                  size: 12, color: theme.muted, align: .left, .top)
     }
 
-    /// The piece, as it draws behind everything: quiet, slow, edge to edge.
-    func piece(in box: Rectangle, phase: Double) {
+    /// The sketch, as it draws behind everything: quiet, slow, edge to edge.
+    func drawSketch(in box: Rectangle, phase: Double) {
         fill(deepBlue)
         drawRect(box)
         for index in 0 ..< 22 {
@@ -126,7 +128,7 @@ final class BehindTheIcons: Sketch {
             for display in 0 ..< 2 {
                 let mini = Rectangle(x: box.x + 16 + Double(display) * 130, y: box.y + 34,
                                      width: 118, height: 66)
-                piece(in: mini, phase: display == 0 ? 0 : 1.9)
+                drawSketch(in: mini, phase: display == 0 ? 0 : 1.9)
                 stroke(theme.border)
                 strokeWeight(1)
                 noFill()
@@ -135,20 +137,9 @@ final class BehindTheIcons: Sketch {
             }
         }
 
-        y = note(at: y, title: "the way out", height: 106) { box in
+        y = note(at: y, title: "the way out", height: 112) { box in
             star(at: Vector2(box.x + 28, box.y + 44), radius: 8, color: theme.ink)
-            let menu = Rectangle(x: box.x + 62, y: box.y + 32, width: 146, height: 56)
-            fill(theme.card)
-            drawRect(menu, cornerRadius: 7)
-            stroke(theme.border)
-            strokeWeight(1)
-            noFill()
-            drawRect(menu, cornerRadius: 7)
-            noStroke()
-            drawText("About Drift", menu.x + 12, menu.y + 10,
-                     size: 12, color: theme.muted, align: .left, .top)
-            drawText("Quit", menu.x + 12, menu.y + 32,
-                     size: 12, color: theme.ink, align: .left, .top)
+            quitMenu(at: Vector2(box.x + 62, box.y + 32), title: "Drift")
             drawText("in the", box.x + 28, box.y + 58, size: 10, color: theme.muted, align: .center, .top)
             drawText("menu bar", box.x + 28, box.y + 71, size: 10, color: theme.muted, align: .center, .top)
         }
@@ -184,6 +175,24 @@ final class BehindTheIcons: Sketch {
     }
 
     // MARK: Small marks
+
+    /// The status item's menu as the app builds it: the sketch's name as a
+    /// row that takes no click, a separator, and Quit.
+    func quitMenu(at corner: Vector2, title: String) {
+        let theme = self.theme
+        let menu = Rectangle(x: corner.x, y: corner.y, width: 150, height: 66)
+        fill(theme.card)
+        drawRect(menu, cornerRadius: 7)
+        stroke(theme.border)
+        strokeWeight(1)
+        noFill()
+        drawRect(menu, cornerRadius: 7)
+        drawLine(Vector2(menu.x + 10, menu.y + 33), Vector2(menu.x + menu.width - 10, menu.y + 33))
+        noStroke()
+        drawText(title, menu.x + 12, menu.y + 10, size: 12, color: theme.muted, align: .left, .top)
+        drawText("Quit \(title)", menu.x + 12, menu.y + 42, size: 12, color: theme.ink, align: .left, .top)
+        drawText("⌘Q", menu.x + menu.width - 12, menu.y + 42, size: 12, color: theme.muted, align: .right, .top)
+    }
 
     /// The status item's sparkle, drawn as a four-pointed star.
     func star(at center: Vector2, radius: Double, color: Color) {

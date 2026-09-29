@@ -1,11 +1,11 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 41): the canvas leaving the screen as LEDs. A strip
-// rides a wave over a colorful field and a matrix reads a panel of it (the
+// follows a wave over a colorful field and a matrix reads a panel of it (the
 // rings are the sample points, straight off `LEDMap`'s own geometry); below,
 // the same LEDs lit: the strip laid out straight in wire order, the panel
-// beside it, each labeled with the universe it lands on. The point of the
-// figure: the wall is just the canvas, somewhere else.
+// under it, each labeled with the universe it lands on. The point of the
+// figure: the wall is the canvas, somewhere else.
 import Ollin
 import OllinDiagram
 import OllinDMX

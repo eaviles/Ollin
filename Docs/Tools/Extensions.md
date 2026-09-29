@@ -6,7 +6,7 @@ So the mechanics need no work from you, and they never have. This page covers th
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/40-HandingItOver/ExtensionShape-dark.jpg">
-  <img src="../../Guide/Images/40-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone holding one file that adds drawSpiral to Sketch, on the right a sketch that imports it and calls drawSpiral, with the spiral it draws underneath. An arrow between them is labeled import" width="680">
+  <img src="../../Guide/Images/40-HandingItOver/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone whose Sources folder adds drawSpiral to Sketch, on the right somebody else's sketch that imports it and calls drawSpiral, with the spiral it draws underneath. A line between them is labeled import above and nothing registers below" width="680">
 </picture>
 
 ## Starting one

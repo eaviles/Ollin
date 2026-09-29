@@ -15,7 +15,7 @@ final class AppToHand: Sketch {
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    /// The piece's own colors: depicted content, the same in both themes.
+    /// The sketch's own colors: depicted content, the same in both themes.
     let night = Color(hex: 0x141B2B)
     let path = Color(hex: 0x6E8CC4)
     let star = Color(hex: 0xF2C14E)
