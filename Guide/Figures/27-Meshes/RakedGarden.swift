@@ -6,7 +6,7 @@
 // carved by a height map read as real geometry, with a finer grain picture tiled over it
 // for a close look. Each stone is a plain box rounded by three levels of
 // subdivision, which leaves it with no uvs, so its granite is projected on from
-// three sides. Three maple leaves are one decal drifting on the breeze; at the
+// three sides. Three red leaves are one decal drifting on the breeze; at the
 // frame kept, the first lies on top of the largest stone. (Across its rim, the
 // decal lands twice: once on the stone and once on the sand the rounded side
 // leaves in view below it.) The noise seed is pinned, so every picture comes
@@ -71,7 +71,7 @@ final class RakedGarden: Sketch {
                 .triplanarTextured(granite, scale: 1.4)
         }
 
-        // A maple leaf: five pointed lobes, and clear everywhere outside them.
+        // A leaf: five pointed lobes, and clear everywhere outside them.
         leaf = Decal(picture(size: 128) { u, v in
             let x = u - 0.5, y = v - 0.5
             let r = (x * x + y * y).squareRoot()
