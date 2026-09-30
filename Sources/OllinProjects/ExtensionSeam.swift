@@ -152,7 +152,7 @@ extension ExtensionSeam {
         id: "filter",
         title: "A GPU effect",
         summary: "A filter run over a layer on the GPU, written as a shader and wrapped so the call site reads like a built-in one.",
-        callSite: "drawImage(layer.filtered(.vignette()).image, 0, 0)",
+        callSite: "drawImage(layer.filtered(.cornerShade()).image, 0, 0)",
         source: """
         import Ollin
 
@@ -167,8 +167,8 @@ extension ExtensionSeam {
             /// Darkens the corners, the way a lens does.
             ///
             /// - Parameter amount: 0 leaves the layer alone. 1 is a heavy edge.
-            public static func vignette(amount: Double = 0.6) -> Filter {
-                .shader(Shader(vignetteSource, params: [Float(amount)]))
+            public static func cornerShade(amount: Double = 0.6) -> Filter {
+                .shader(Shader(cornerShadeSource, params: [Float(amount)]))
             }
         }
 
@@ -182,7 +182,7 @@ extension ExtensionSeam {
         //
         // Left internal rather than private so the tests beside it can read it:
         // `@testable import` reaches internal, never private.
-        let vignetteSource = \"""
+        let cornerShadeSource = \"""
         float4 shade(float2 uv, ShaderInfo info) {
             float4 color = sample(info, uv);
 
@@ -213,12 +213,12 @@ extension ExtensionSeam {
             //      and reads the pixels back on a machine with a GPU.
 
             @Test func theShaderDeclaresTheEntryPointOllinCallsFor() {
-                #expect(vignetteSource.contains("float4 shade(float2 uv, ShaderInfo info)"))
+                #expect(cornerShadeSource.contains("float4 shade(float2 uv, ShaderInfo info)"))
             }
 
             @Test func theShaderReadsItsInputAndItsParameter() {
-                #expect(vignetteSource.contains("sample(info, uv)"))
-                #expect(vignetteSource.contains("param(info, 0)"))
+                #expect(cornerShadeSource.contains("sample(info, uv)"))
+                #expect(cornerShadeSource.contains("param(info, 0)"))
             }
         }
         """

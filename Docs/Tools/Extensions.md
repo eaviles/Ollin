@@ -77,13 +77,13 @@ The value types are open in the same way. `Vector2`, `Vector3`, `Rectangle`, `Ci
 
 ```swift
 extension Filter {
-    public static func vignette(amount: Double = 0.6) -> Filter {
-        .shader(Shader(vignetteSource, params: [Float(amount)]))
+    public static func cornerShade(amount: Double = 0.6) -> Filter {
+        .shader(Shader(cornerShadeSource, params: [Float(amount)]))
     }
 }
 ```
 
-`Filter.shader(_:)` takes one input layer, `Generator.shader(_:)` takes none, and `Combine.shader(_:)` takes two. Wrap the shader in a static function once, as above, and the call site then reads like a built-in: `layer.filtered(.vignette())`.
+`Filter.shader(_:)` takes one input layer, `Generator.shader(_:)` takes none, and `Combine.shader(_:)` takes two. Wrap the shader in a static function once, as above, and the call site then reads like a built-in: `layer.filtered(.cornerShade())`.
 
 The shader contract is one function. See [user-supplied shaders](../Shaders/Shaders.md) for that contract, and the [shader library](../Shaders/ShaderLibrary.md) for the helpers that are spliced in for you. A shader compiles once per source text, so a filter value that you rebuild every frame costs nothing after the first frame.
 
