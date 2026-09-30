@@ -4,7 +4,7 @@
 
 ## Data
 
-Read a CSV, a TSV, or a JSON file and draw from it. You load both of them once, so call them in `setup()`, keep the result in a property, and read it in `draw()`.
+Read a CSV, a TSV, or a JSON file and draw from it. Reading a file is slow next to drawing one frame, so each loader runs once. Call it in `setup()`, keep the result in a property, and read it in `draw()`.
 
 Both loaders throw a `FileError` when a file can't be read or holds nothing usable: `missing` when nothing is there, `unreadable` when the bytes are not a table or JSON, each with the path and a sentence. Write `try!` to stop the sketch with that sentence, or `try?` to carry on with `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
 
@@ -19,6 +19,7 @@ Both loaders throw a `FileError` when a file can't be read or holds nothing usab
 - [Table](#Table)
 - [Reading rows](#rows)
 - [Reading columns](#columns)
+- [Mapping a column to a mark](#mapping)
 - [How a file is read](#parsing)
 - [loadJSON](#loadJSON)
 - [JSON](#JSON)
@@ -119,6 +120,46 @@ guard let top = highs.max(), let bottom = table.numbers("low").min() else { retu
 
 When rows have to stay lined up with each other, read each row's cells instead.
 
+<a name="mapping"></a>
+
+### Mapping a column to a mark
+
+A file gives you rows and columns. A drawing wants marks, and nothing in the file says which. Each mark asks which column, which of its properties, and over what range. Any property will do, because a length, a radius, a height, a hue, and a turn are all numbers.
+
+The range should come from the file, not from a number typed in. Read the column as a series with `numbers(_:)`, take its ends with `min()` and `max()`, and carry each value across with `map`. `max()` answers `nil` for an empty column, so guard it:
+
+```swift
+let rain = table.numbers("rain")
+guard let most = rain.max() else { return }
+for (index, row) in table.enumerated() {
+    let height = map(row.number("rain") ?? 0, 0, most, 0, 250)
+    drawRect(corner: Vector2(60 + Double(index) * 30, 300 - height), width: 20, height: height)
+}
+```
+
+The low end of the range depends on the property:
+
+- **A length starts at zero**, whatever the column's smallest value is. A bar twice as long stands for a number twice as big only when the scale starts there.
+- **A position runs from the column's smallest value to its largest**, so the marks spread over the space you gave them.
+- **A dot takes the square root.** The eye reads a dot by its area, so give the radius `.squareRoot()` of the mapped value. Then a value twice as big reads twice as big rather than four times.
+
+Two columns place a mark. Read one into x and one into y, and every row becomes a point in a field, the chart called a scatter. The rows in order place a mark too. When they are a sequence, such as the months of a year, the row's index is the x and its number the y. `drawPolyline` through those points draws the line read as time:
+
+```swift
+let high = table.numbers("high")
+guard let lowest = high.min(), let highest = high.max() else { return }
+var points: [Vector2] = []
+for (index, row) in table.enumerated() {
+    let y = map(row.number("high") ?? lowest, lowest, highest, 300, 60)
+    points.append(Vector2(60 + Double(index) * 30, y))
+}
+drawPolyline(points)
+```
+
+Color is one more property. A column can carry it outright, through `row.color(_:)`, or a number can pick it from a [`Ramp`](../Drawing/Color.md#ramp): `ramp.color(at: map(value, lowest, highest, 0, 1))` turns a temperature into a color.
+
+The [Readings example](../../Examples/Data/Readings/Sketch.swift) draws a year from one table. Each month is a bar from its low to its high, in a color the file carries. Under each bar sits a rain dot sized by the rain column.
+
 <a name="parsing"></a>
 
 ### How a file is read
@@ -130,6 +171,8 @@ month,note
 Feb,"the ""thaw"" week"
 May,"long, mild evenings"
 ```
+
+The quotes are not part of the cell. `"long, mild evenings"` arrives as one cell, without them.
 
 Around that rule, parsing is forgiving, because real files are untidy. All of these read without complaint: a byte-order mark, any mix of line endings, blank lines, a missing final newline, and rows of uneven length. A spreadsheet writes that mark at the front of a file, and left in place it would join the first column's name invisibly. An unquoted cell has its surrounding spaces trimmed, so `a, b` reads as `b`. Quote a cell to keep the spaces. A backslash is not an escape here, only a doubled quote is.
 
@@ -167,6 +210,8 @@ override func setup() {
     document = try? loadJSON(resource: "places", withExtension: "json", in: .module)
 }
 ```
+
+The [Places example](../../Examples/Data/Places/Sketch.swift) draws a survey from a document this way.
 
 <a name="JSON"></a>
 
@@ -215,6 +260,8 @@ for point in json["points"].array {
     drawCircle(center: bounds.point(u: at.x, v: at.y), radius: 20)
 }
 ```
+
+When the document is an Optional, as `try?` leaves it, `document?["points"].array ?? []` is the same loop. It runs zero times after a failed load, so the sketch draws nothing rather than stopping.
 
 A missing key and a written null are the same thing here. If your document treats them differently, look for the key in `.object` directly.
 
