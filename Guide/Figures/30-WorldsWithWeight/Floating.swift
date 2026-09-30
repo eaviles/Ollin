@@ -23,8 +23,12 @@ final class Floating: Sketch {
 
         for (index, density) in densities.enumerated() {
             let x = Double(index) * 1.15 - 1.72
+            // Placed at the depth the water will hold it at, its own density
+            // of it under the line, rather than dropped in: a dropped crate
+            // bobs, and the water's drag lets a bob die away only slowly.
+            let y = size * (0.5 - density)
             crates.append(world.addBody(.box(width: size, height: size, depth: size),
-                                        at: Vector3(x, 1.4, 0), density: density,
+                                        at: Vector3(x, y, 0), density: density,
                                         friction: 0.6))
         }
     }
