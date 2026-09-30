@@ -121,6 +121,24 @@ struct DiffusionCurveTests {
         #expect(across > along * 3, "expected the jump at the curve: \(across) against \(along)")
     }
 
+    /// The far side of a curve is the curve's own color, wherever the curve
+    /// sits. The probes above center their curve at y = 128 on a 256 canvas,
+    /// which is a texel boundary at every power-of-two level, so its two sides
+    /// never share a texel and a solve that only cascades from the coarse
+    /// levels looks right there. At y = 131 they share one from 33 across down,
+    /// that texel holds the mean, and the cascade alone left the region below
+    /// the curve the mean of the two sides, a rust brown between orange and
+    /// navy. The multigrid cycles bring it to navy.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aCurveHoldsItsFarSideOffTheAlignment() throws {
+        let image = try OllinApp.image(of: DiffusionProbe.make(.offsetCurve), frame: 1)
+        let data = pixels(of: image)
+        let deep = rgb(data, image, 128, 231)     // a hundred pixels below the curve
+        #expect(deep.2 > 150 && deep.0 < 90, "the far side should be the curve's own navy: \(deep)")
+        let high = rgb(data, image, 128, 31)      // and a hundred above it
+        #expect(high.0 > 150 && high.2 < 110, "the near side should be the orange: \(high)")
+    }
+
     @Test func theParametersAreHeldToTheirRange() {
         // Nothing renders here: a threshold of zero would make every pixel of an
         // empty layer a source, and the sharpness feeds a pass count.
@@ -135,7 +153,7 @@ struct DiffusionCurveTests {
 
 /// A few marks drawn into a layer, diffused, and drawn back at native size.
 private final class DiffusionProbe: Sketch {
-    enum Subject { case twoDots, ring, curve }
+    enum Subject { case twoDots, ring, curve, offsetCurve }
     var subject: Subject = .twoDots
 
     static func make(_ subject: Subject) -> DiffusionProbe {
@@ -160,6 +178,10 @@ private final class DiffusionProbe: Sketch {
                 stroke(Color(hex: 0x00CC44))
                 strokeWeight(6)
                 drawCircle(128, 128, 70)
+            case .offsetCurve:
+                drawDiffusionCurve([Vector2(0, 131), Vector2(128, 131), Vector2(256, 131)],
+                                   left: Color(hex: 0xFF3300), right: Color(hex: 0x0033FF),
+                                   width: 4)
             case .curve:
                 drawDiffusionCurve([Vector2(10, 128), Vector2(128, 128), Vector2(246, 128)],
                                    left: Color(hex: 0xFF3300), right: Color(hex: 0x0033FF),

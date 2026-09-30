@@ -1137,8 +1137,13 @@ extension MetalRenderer {
         // The clone has no such wall to keep (its constraints are one closed rim
         // with nothing to separate), so it takes the faster solver and this keeps
         // the slower one.
+        // `sharpness` buys V-cycles. Each takes about half of what is left of
+        // the far field's error (a hairline's residual sits against its wall,
+        // and the half of it that lands in the wall's own coarse block is
+        // dropped at every level), so three leave a few percent and six leave
+        // nothing a level can measure.
         return relaxedLaplaceField(sources: sources, width: width, height: height,
-                                   finestIterations: Int((6 + sharpness * 18).rounded()),
+                                   cycles: 3 + Int((sharpness * 3).rounded()),
                                    into: cb, pooled: pooled)
     }
 
@@ -1244,70 +1249,149 @@ extension MetalRenderer {
         return field
     }
 
-    /// Settle a Laplace field from a texture of constraints: every texel ends up the
-    /// average of its four neighbors except where a constraint holds it, run coarse to
-    /// fine so a value reaches across the layer in a few passes instead of one texel a
-    /// pass. The constraints arrive premultiplied (value x weight, weight) and pass
-    /// down the ladder in that form.
+    /// The relaxation the diffusion filter runs: a coarse-to-fine cascade of
+    /// Jacobi passes for a first guess, then multigrid V-cycles that solve for
+    /// the correction, with every held texel a wall of zero correction. The
+    /// constraints arrive premultiplied (value x weight, weight) and pass down
+    /// the ladder in that form.
     ///
-    /// Shared by the diffusion filter, whose constraints are the layer's own marks, and
-    /// the seamless clone, whose constraints are the rim of a patch. Both want the same
-    /// settling; only what is held differs.
+    /// The cascade alone is not a solve, and a centered probe curve hides
+    /// that: it sits on a texel boundary at every power-of-two level, so its
+    /// two sides never share a texel. Off that alignment they do, from about
+    /// 33 across down, and the texel holds their mean as a hard wall; a few
+    /// passes per finer level reach a few texels, so a region held by one side
+    /// of the curve alone comes back the mean of both, at any `sharpness`. The
+    /// cycles are what put the far side right, and
+    /// `aCurveHoldsItsFarSideOffTheAlignment` pins it.
     private func relaxedLaplaceField(sources: MTLTexture, width: Int, height: Int,
-                                     finestIterations: Int,
+                                     cycles: Int,
                                      into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
         // The ladder of sizes, coarsest first, each half the next. The finest
-        // level is the layer itself.
-        //
-        // It runs all the way down to a few texels across, and that is the whole
-        // trick. One Jacobi pass averages a texel with its neighbors, so the
-        // error falls like the square of the size: a few dozen passes settle a
-        // 4-across picture completely and barely dent a 32-across one. Starting
-        // at 32 left the inside of a closed shape three quarters of the way to
-        // its color and no further.
+        // level is the layer itself. It runs all the way down to a few texels
+        // across: one Jacobi pass averages a texel with its neighbors, so the
+        // error falls like the square of the size, and a few dozen passes
+        // settle a 4-across picture completely.
         var sizes: [(Int, Int)] = [(width, height)]
         while min(sizes[0].0, sizes[0].1) > 4 {
             sizes.insert((max(1, sizes[0].0 / 2), max(1, sizes[0].1 / 2)), at: 0)
+        }
+        func texel(_ level: Int) -> SIMD4<Float> {
+            SIMD4(1 / Float(sizes[level].0), 1 / Float(sizes[level].1), 0, 0)
+        }
+        func fresh(_ level: Int) -> MTLTexture? {
+            acquireFilterTexture(width: sizes[level].0, height: sizes[level].1, pooled: pooled)
         }
 
         // The constraint pyramid, built downward so every level sees every mark.
         var pyramid: [MTLTexture] = [sources]
         for level in stride(from: sizes.count - 2, through: 0, by: -1) {
-            let (lw, lh) = sizes[level]
-            guard let smaller = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
-            else { return nil }
+            guard let smaller = fresh(level) else { return nil }
             encodeEffectFragment("ollin_fx_diffuse_reduce", inputs: [pyramid[0]], output: smaller,
-                                 params: [SIMD4(1 / Float(sizes[level + 1].0),
-                                                1 / Float(sizes[level + 1].1), 0, 0)], into: cb)
+                                 params: [texel(level + 1)], into: cb)
             pyramid.insert(smaller, at: 0)
         }
 
+        // The first guess: the cascade. The bottom of the ladder takes the
+        // passes, and every level above inherits a settled answer and smooths
+        // the detail its own size adds (the constraints stand in as the first
+        // level's guess; their empty texels read black and wash out at once).
         var solved: MTLTexture? = nil
-        for (level, (lw, lh)) in sizes.enumerated() {
+        var finest: (MTLTexture, MTLTexture)? = nil
+        for level in sizes.indices {
             let isFinest = level == sizes.count - 1
-            // The bottom of the ladder is where the picture is actually solved,
-            // and it is nearly free, so it takes the passes. Every level above
-            // it inherits a settled answer and only has to smooth the detail its
-            // own size adds, which is a fixed handful.
-            let iterations = isFinest ? finestIterations : (level < 3 ? 40 : 14)
-            guard let texA = acquireFilterTexture(width: lw, height: lh, pooled: pooled),
-                  let texB = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
-            else { return nil }
-            // With no coarser solution yet, the constraints stand in as the
-            // first guess: their empty texels read black, which is as good a
-            // start as any and washes out in the first few passes.
+            let iterations = isFinest ? 4 : (level < 3 ? 40 : 14)
+            guard let texA = fresh(level), let texB = fresh(level) else { return nil }
+            if isFinest { finest = (texA, texB) }
             var read = solved ?? pyramid[level]
             for i in 0..<iterations {
                 let out = i % 2 == 0 ? texA : texB
                 encodeEffectFragment("ollin_fx_diffuse_jacobi", inputs: [pyramid[level], read],
-                                     output: out,
-                                     params: [SIMD4(1 / Float(lw), 1 / Float(lh), 0, 0)],
-                                     into: cb)
+                                     output: out, params: [texel(level)], into: cb)
                 read = out
             }
             solved = read
         }
-        return solved
+        guard var u = solved, let pair = finest else { return nil }
+        let top = sizes.count - 1
+        guard top > 0 else { return u }
+
+        // The V-cycles. Per level below the top: the residual the level was
+        // handed, the residual it hands down after its own correction, and a
+        // correction ping-pong pair.
+        var handed: [MTLTexture?] = Array(repeating: nil, count: top)
+        var passed: [MTLTexture?] = Array(repeating: nil, count: top)
+        var corrA: [MTLTexture?] = Array(repeating: nil, count: top)
+        var corrB: [MTLTexture?] = Array(repeating: nil, count: top)
+        for level in 0..<top {
+            handed[level] = fresh(level); passed[level] = fresh(level)
+            corrA[level] = fresh(level); corrB[level] = fresh(level)
+        }
+        guard let fineResidual = fresh(top),
+              handed.allSatisfy({ $0 != nil }), passed.allSatisfy({ $0 != nil }),
+              corrA.allSatisfy({ $0 != nil }), corrB.allSatisfy({ $0 != nil })
+        else { return nil }
+        let preSmooth = 2, coarsePreSmooth = 4, postSmooth = 3, bottomSmooth = 30
+        var correction: [MTLTexture?] = Array(repeating: nil, count: top)
+
+        func relax(_ passes: Int) {
+            for _ in 0..<passes {
+                let out = u === pair.0 ? pair.1 : pair.0
+                encodeEffectFragment("ollin_fx_diffuse_jacobi", inputs: [pyramid[top], u],
+                                     output: out, params: [texel(top)], into: cb)
+                u = out
+            }
+        }
+        // `passes` steps on a level's correction equation, from nothing or
+        // from the correction it already holds.
+        func correct(_ level: Int, passes: Int, fromNothing: Bool) {
+            var current = correction[level]
+            for i in 0..<passes {
+                let out = (current === corrA[level]) ? corrB[level]! : corrA[level]!
+                let none: Float = (i == 0 && fromNothing) ? 1 : 0
+                encodeEffectFragment("ollin_fx_diffuse_correct",
+                                     inputs: [pyramid[level], handed[level]!, current ?? handed[level]!],
+                                     output: out,
+                                     params: [SIMD4(texel(level).x, texel(level).y, none, 0)],
+                                     into: cb)
+                current = out
+            }
+            correction[level] = current
+        }
+
+        for _ in 0..<cycles {
+            relax(preSmooth)
+            encodeEffectFragment("ollin_fx_diffuse_defect", inputs: [pyramid[top], pyramid[top], u],
+                                 output: fineResidual, params: [texel(top)], into: cb)
+            // Down: restrict the residual, correct, and hand down what is left.
+            for level in stride(from: top - 1, through: 0, by: -1) {
+                let above = level == top - 1 ? fineResidual : passed[level + 1]!
+                encodeEffectFragment("ollin_fx_diffuse_restrict", inputs: [pyramid[level], above],
+                                     output: handed[level]!, params: [texel(level + 1)], into: cb)
+                correct(level, passes: level == 0 ? bottomSmooth : coarsePreSmooth, fromNothing: true)
+                if level > 0 {
+                    encodeEffectFragment("ollin_fx_diffuse_defect",
+                                         inputs: [pyramid[level], handed[level]!, correction[level]!],
+                                         output: passed[level]!,
+                                         params: [SIMD4(texel(level).x, texel(level).y, 1, 0)], into: cb)
+                }
+            }
+            // Up: add each level's correction to the one above and smooth again.
+            for level in 1..<top {
+                let out = (correction[level] === corrA[level]) ? corrB[level]! : corrA[level]!
+                encodeEffectFragment("ollin_fx_diffuse_prolong",
+                                     inputs: [pyramid[level], correction[level - 1]!, correction[level]!],
+                                     output: out, params: [texel(level)], into: cb)
+                correction[level] = out
+                correct(level, passes: postSmooth, fromNothing: false)
+            }
+            let out = u === pair.0 ? pair.1 : pair.0
+            encodeEffectFragment("ollin_fx_diffuse_prolong",
+                                 inputs: [pyramid[top], correction[top - 1]!, u],
+                                 output: out, params: [texel(top)], into: cb)
+            u = out
+            relax(postSmooth)
+        }
+        return u
     }
 
     /// Solve the interior-inflation field of `input`'s alpha shape (a constant-

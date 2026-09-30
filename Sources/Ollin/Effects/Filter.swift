@@ -1562,9 +1562,10 @@ public struct Filter: Sendable {
     /// each side, which is the form the technique is named for: the field jumps
     /// across the curve and is smooth everywhere else.
     ///
-    /// `sharpness` (0…1) decides how much of the work is done at full size. Low
-    /// is faster and softer, and 1 keeps a thin mark's color crisp right up
-    /// against it.
+    /// `sharpness` (0…1) decides how far the solve is pushed, from three rounds
+    /// at 0 to six at 1. Each round takes about half of the error left in the
+    /// far field, so three leave a few percent and six leave nothing a level
+    /// can measure, and they cost in proportion.
     public static func diffuse(threshold: Double = 0.35, sharpness: Double = 0.7) -> Filter {
         Filter(kind: .diffuse(threshold: min(max(threshold, 0.01), 1),
                               sharpness: min(max(sharpness, 0), 1)))

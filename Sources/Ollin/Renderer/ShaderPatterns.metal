@@ -2035,11 +2035,12 @@ fragment float4 ollin_gen_newton(PresentOut in [[stage_in]],
 //
 // Run coarse to fine. One Jacobi pass moves information one texel, so a solve
 // at layer size alone would need thousands of passes to carry a color across
-// the picture; starting at 32 across and doubling, a few dozen passes do it.
-// The constraints go down that ladder as a *premultiplied* pyramid (color x
-// weight, weight) rather than being resampled from the layer at each level,
-// which is what keeps a hairline mark alive at the coarse sizes: box-averaging
-// that form keeps the color exactly and lets only the weight fall off.
+// the picture; starting a few texels across and doubling, a few dozen passes
+// do it. The constraints go down that ladder as a *premultiplied* pyramid
+// (color x weight, weight) rather than being resampled from the layer at each
+// level, which is what keeps a hairline mark alive at the coarse sizes: summing
+// that form keeps the color exactly, and a block with any held texel in it is
+// held at every size above.
 
 // The layer's marks as color sources, kept in the premultiplied form the
 // pyramid averages: the layer's own color and alpha where it is opaque enough,
@@ -2056,9 +2057,17 @@ fragment float4 ollin_fx_diffuse_sources(PresentOut in [[stage_in]],
     return c;
 }
 
-// One step down the constraint pyramid: the 2x2 block of the finer level,
-// averaged in the premultiplied form. params[0].xy is the *finer* level's texel
-// size, so the four taps land on its texel centers.
+// One step down the constraint pyramid: the 2x2 block of the finer level
+// *summed* in the premultiplied form, the weight clamped at one and the color
+// kept as the weighted mean. A sum rather than a mean is the operators' scale:
+// each level's step averages a texel with its neighbors one texel away, and a
+// texel here is two of the finer level's, so a mark that holds a texel there
+// holds this one four times as hard. The scale compounds, so a hairline is a
+// wall at every size, one texel wide, and its two sides never share a texel
+// that is free to average them. (A weight that fell off with the size instead
+// left the coarsest levels nearly free to drift, and the correction they sent
+// up grew with each cycle.) params[0].xy is the *finer* level's texel size, so
+// the four taps land on its texel centers.
 fragment float4 ollin_fx_diffuse_reduce(PresentOut in [[stage_in]],
                                         texture2d<float> src [[texture(0)]],
                                         sampler samp [[sampler(0)]],
@@ -2068,26 +2077,16 @@ fragment float4 ollin_fx_diffuse_reduce(PresentOut in [[stage_in]],
                + src.sample(samp, in.uv + float2( 0.5, -0.5) * texel, level(0.0))
                + src.sample(samp, in.uv + float2(-0.5,  0.5) * texel, level(0.0))
                + src.sample(samp, in.uv + float2( 0.5,  0.5) * texel, level(0.0));
-    return sum * 0.25;
+    return sum.a > 1.0 ? sum / sum.a : sum;
 }
 
 // One Jacobi step: every texel becomes the average of its four neighbors, pulled
-// toward its own source color by that source's weight.
-//
-// The weight, and the gain on it, are the whole balance of the coarse levels,
-// and both settings were measured rather than chosen. A texel that only partly
-// covers a curve holds a color the true field never has (the two sides
-// averaged). Holding it *hard* leaves a smooth error the fine levels cannot undo
-// in a few passes, which shows as soft bands and notches along the curve.
-// Pulling it in proportion to its coverage removes those, but then a thin curve
-// stops acting as a wall at the coarse sizes, and the two sides of it leak into
-// each other: measured at a horizontal curve dividing red from blue, the warm
-// side came back a third blue.
-//
-// The gain of 4 is where both go away: a texel covering a quarter of its area is
-// held fully, so a curve still divides its two sides at every size that can see
-// it, while a texel a curve merely grazes says only as much as it covers.
-// Sweeping 2, 4, and 8 against that same probe, 2 still leaked and 4 was clean.
+// toward its own source color by that source's weight. At the layer's own size
+// the weight is the mark's alpha, so a half-covered texel pulls half as hard;
+// at the coarse sizes it is the pyramid's compounded one, and a texel holding
+// both sides of a curve holds their mean. That mean is a color the true field
+// never has, and the cascade alone leaves it as a smooth error along the curve
+// that a few fine passes cannot undo; the V-cycles below are what take it out.
 //
 // The previous field is read by uv, so seeding a finer level from the coarser
 // solution is a free bilinear upsample. params[0].xy is this level's texel size.
@@ -2105,7 +2104,102 @@ fragment float4 ollin_fx_diffuse_jacobi(PresentOut in [[stage_in]],
                + prev.sample(samp, in.uv - float2(0.0, texel.y), level(0.0)).rgb
                + prev.sample(samp, in.uv + float2(0.0, texel.y), level(0.0)).rgb;
     float3 relaxed = sum * 0.25;
-    float weight = min(s.a * 4.0, 1.0);
+    float weight = min(s.a, 1.0);
     float3 source = weight > 1e-4 ? s.rgb / s.a : relaxed;
     return float4(mix(relaxed, source, weight), 1.0);
+}
+
+// The four moves of a multigrid V-cycle over the same pyramid, which is what
+// takes the solve the rest of the way. The cascade above hands down a first
+// guess, and a guess is all it can be: at the coarse sizes both sides of a thin
+// curve land in one texel, which then holds their mean, and the fine passes
+// that follow reach only a few texels from the curve, so a region held by one
+// side of a curve alone came out the mean of both, however many passes it got.
+// A V-cycle solves for the correction instead. The residual of the fine level
+// (what one relaxation step would still move each texel by) is restricted to
+// the level below, the correction is solved there with every held texel a wall
+// of zero correction, so the two sides of a curve stay apart at every size, and
+// the correction is prolonged back up and added wherever a texel is free. The
+// long waves of the error, the far side of a curve at the wrong color, are
+// what the coarse levels are good at, and a few cycles settle them.
+
+// The defect of a relaxation step at `u`: `(1 - w) avg(u) + held - u`, where
+// `held` is `w` times the source color (params[0].z = 0, `term` the level's
+// premultiplied sources) or a residual carried down from a finer level
+// (params[0].z = 1, `term` that residual). Zero at a converged texel.
+fragment float4 ollin_fx_diffuse_defect(PresentOut in [[stage_in]],
+                                        texture2d<float> walls [[texture(0)]],
+                                        texture2d<float> term [[texture(1)]],
+                                        texture2d<float> u [[texture(2)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    bool residual = params[0].z > 0.5;
+    float4 s = walls.sample(samp, in.uv, level(0.0));
+    float w = min(s.a, 1.0);
+    float3 avg = 0.25 * (u.sample(samp, in.uv - float2(texel.x, 0.0), level(0.0)).rgb
+                       + u.sample(samp, in.uv + float2(texel.x, 0.0), level(0.0)).rgb
+                       + u.sample(samp, in.uv - float2(0.0, texel.y), level(0.0)).rgb
+                       + u.sample(samp, in.uv + float2(0.0, texel.y), level(0.0)).rgb);
+    float3 held = residual ? term.sample(samp, in.uv, level(0.0)).rgb
+                           : (w > 1e-4 ? w * (s.rgb / s.a) : float3(0.0));
+    float3 mine = u.sample(samp, in.uv, level(0.0)).rgb;
+    return float4((1.0 - w) * avg + held - mine, 1.0);
+}
+
+// The finer level's residual restricted onto this one: the 2x2 block's mean
+// times four, and nothing at all where this level holds a wall. The four is the
+// operators' scale: each level's step averages a texel with its neighbors one
+// texel away, and a texel here is two of the finer level's, so the same defect
+// stands for four times the curvature. params[0].xy is the *finer* level's
+// texel size, so the four taps land on its texel centers.
+fragment float4 ollin_fx_diffuse_restrict(PresentOut in [[stage_in]],
+                                          texture2d<float> walls [[texture(0)]],
+                                          texture2d<float> fine [[texture(1)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float4 s = walls.sample(samp, in.uv, level(0.0));
+    if (s.a >= 1.0) { return float4(0.0, 0.0, 0.0, 1.0); }
+    float3 sum = fine.sample(samp, in.uv + float2(-0.5, -0.5) * texel, level(0.0)).rgb
+               + fine.sample(samp, in.uv + float2( 0.5, -0.5) * texel, level(0.0)).rgb
+               + fine.sample(samp, in.uv + float2(-0.5,  0.5) * texel, level(0.0)).rgb
+               + fine.sample(samp, in.uv + float2( 0.5,  0.5) * texel, level(0.0)).rgb;
+    return float4(sum, 1.0);
+}
+
+// One step on the correction equation, `e = (1 - w) avg(e) + r`: a held texel
+// (w = 1) stays at its residual, which restriction left at zero. params[0].z = 1
+// says there is no `e` yet, so its average reads as zero.
+fragment float4 ollin_fx_diffuse_correct(PresentOut in [[stage_in]],
+                                         texture2d<float> walls [[texture(0)]],
+                                         texture2d<float> residual [[texture(1)]],
+                                         texture2d<float> prev [[texture(2)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    bool fresh = params[0].z > 0.5;
+    float w = min(walls.sample(samp, in.uv, level(0.0)).a, 1.0);
+    float3 r = residual.sample(samp, in.uv, level(0.0)).rgb;
+    float3 avg = fresh ? float3(0.0)
+               : 0.25 * (prev.sample(samp, in.uv - float2(texel.x, 0.0), level(0.0)).rgb
+                       + prev.sample(samp, in.uv + float2(texel.x, 0.0), level(0.0)).rgb
+                       + prev.sample(samp, in.uv - float2(0.0, texel.y), level(0.0)).rgb
+                       + prev.sample(samp, in.uv + float2(0.0, texel.y), level(0.0)).rgb);
+    return float4((1.0 - w) * avg + r, 1.0);
+}
+
+// The coarser correction prolonged and added: `fine + (1 - w) coarse`, the
+// coarse read by uv so the sampler's own filtering is the bilinear upsample,
+// and a held texel takes none of it.
+fragment float4 ollin_fx_diffuse_prolong(PresentOut in [[stage_in]],
+                                         texture2d<float> walls [[texture(0)]],
+                                         texture2d<float> coarse [[texture(1)]],
+                                         texture2d<float> fine [[texture(2)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    float w = min(walls.sample(samp, in.uv, level(0.0)).a, 1.0);
+    float3 e = coarse.sample(samp, in.uv, level(0.0)).rgb;
+    float3 f = fine.sample(samp, in.uv, level(0.0)).rgb;
+    return float4(f + (1.0 - w) * e, 1.0);
 }

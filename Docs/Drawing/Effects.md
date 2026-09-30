@@ -565,9 +565,10 @@ interpolation. It is not `poissonDisk`, which scatters points.
 
 - **`.diffuse(threshold:sharpness:)`** a pixel counts as a source when its alpha is at
   least `threshold`, and a half-opaque mark pulls half as hard as a solid one. So draw
-  the marks into a layer of their own and filter that. `sharpness` (0…1) decides how much
-  of the solving happens at full size. A low value is faster and softer, and 1 keeps a
-  thin mark's color crisp right up against it.
+  the marks into a layer of their own and filter that. `sharpness` (0…1) decides how far
+  the solve is pushed, from three rounds at 0 to six at 1. Each round takes about half
+  of the error left in the far field, so three leave a few percent and six leave nothing
+  a level can measure.
 - **`drawDiffusionCurve(_:left:right:width:)`** lay down the form the technique is named
   for. It draws the same path twice, a hair apart, carrying a different color on each
   side, so the field jumps across the curve and is smooth everywhere else. Left and right

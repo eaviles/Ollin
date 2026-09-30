@@ -4848,24 +4848,26 @@
       "width": 1080
     },
     "Effects/DiffusionCurves": {
-      "bytes": {
-        "loop": 939796,
-        "loopSmall": 185956,
-        "still": 56609,
-        "stillSmall": 22576
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/DiffusionCurves/loop.mp4?v=dd6d203d",
-      "loopSmall": "examples/Effects/DiffusionCurves/loop-640.mp4?v=701eff75",
-      "motion": 8.543,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.113,
+      "sound": false,
       "source": "ec2cd06ed5013afb",
-      "still": "examples/Effects/DiffusionCurves/still.jpg?v=63f96616",
-      "stillSmall": "examples/Effects/DiffusionCurves/still-640.jpg?v=6ff87d9b",
-      "width": 1080
+      "rendered": "2026-09-30",
+      "bytes": {
+        "loop": 853382,
+        "loopSmall": 165628,
+        "still": 50943,
+        "stillSmall": 21099
+      },
+      "loop": "examples/Effects/DiffusionCurves/loop.mp4?v=880458dd",
+      "loopSmall": "examples/Effects/DiffusionCurves/loop-640.mp4?v=b2817345",
+      "still": "examples/Effects/DiffusionCurves/still.jpg?v=551ea4af",
+      "stillSmall": "examples/Effects/DiffusionCurves/still-640.jpg?v=32cc7d78",
+      "seed": 1
     },
     "Effects/Dispersion": {
       "bytes": {
