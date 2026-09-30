@@ -464,7 +464,7 @@ That leaves you free to make the edges do anything. Each one is a `ParquetDeform
 
 ```swift
 let sheet = parquetDeformation(columns: 14, rows: 7,
-                               from: .straight, to: .tooth(depth: 0.3))
+                               from: .straight, to: .tooth(depth: 0.2))
 stroke(.black); strokeWeight(2)
 for edge in sheet.edges { drawPolyline(edge.points, closed: false) }
 ```
@@ -476,7 +476,7 @@ for edge in sheet.edges { drawPolyline(edge.points, closed: false) }
 
 Each edge blends the `from` profile into the `to` profile by how far across the sheet it sits. The five tiles under the figure are samples from that run. They show the same piece at the start, at a quarter, a half, and three quarters of the way over, and at the end. Every neighbor in the sheet differs by about a fourteenth of the run. The step is small enough that the eye reads one tiling rather than a row of different ones.
 
-The profiles are `.straight`, `.tooth`, `.zigzag`, `.wave`, `.bump`, and `.custom` for one you write out yourself. Any of them can be the start or the end. For example, `.wave(depth: 0.22)` running into `.tooth(depth: 0.3)` turns a soft pinwheel into a square key. A `sweep` sets where the run goes, and the default is left to right. The other sweeps are `.vertical`, `.diagonal`, and `.radial`, whose run starts in the sheet's middle and spreads outward.
+The profiles are `.straight`, `.tooth`, `.zigzag`, `.wave`, `.bump`, and `.custom` for one you write out yourself. Any of them can be the start or the end. For example, `.wave(depth: 0.22)` running into `.tooth(depth: 0.2)` turns a soft pinwheel into a square key. A `sweep` sets where the run goes, and the default is left to right. The other sweeps are `.vertical`, `.diagonal`, and `.radial`, whose run starts in the sheet's middle and spreads outward.
 
 The other form of the builder takes a closure instead of a sweep, and that is where the sheets that move come from. It hands you a point and asks how far along the run that point sits. You can answer with anything: noise, the tone of a photograph, the distance from the mouse, or a front that slides with `time`:
 
@@ -485,7 +485,7 @@ let field = bounds.inset(by: .all(70))
 let front = 0.5 + sin(time * 0.25) * 0.55
 let sheet = ParquetDeformation(grid: Grid(in: field, columns: 15, rows: 15),
                                from: .wave(depth: 0.22),
-                               to: .tooth(depth: 0.3, width: 0.42)) { point in
+                               to: .tooth(depth: 0.2, width: 0.42)) { point in
     smoothstep(front - 0.28, front + 0.28, (point.x - field.x) / field.width)
 }
 ```

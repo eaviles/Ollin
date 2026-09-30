@@ -39,7 +39,7 @@ A sheet of `columns × rows` tiles over `bounds` (the whole canvas by default), 
 
 ```swift
 let sheet = parquetDeformation(columns: 14, rows: 14,
-                               from: .straight, to: .tooth(depth: 0.3))
+                               from: .straight, to: .tooth(depth: 0.2))
 stroke(.black); strokeWeight(2)
 for edge in sheet.edges { drawPolyline(edge.points, closed: false) }
 ```
@@ -94,7 +94,7 @@ let field = bounds.inset(by: .all(70))
 let front = 0.5 + sin(time * 0.25) * 0.55
 let sheet = ParquetDeformation(grid: Grid(in: field, columns: 15, rows: 15),
                                from: .wave(depth: 0.22),
-                               to: .tooth(depth: 0.3, width: 0.42)) { point in
+                               to: .tooth(depth: 0.2, width: 0.42)) { point in
     smoothstep(front - 0.28, front + 0.28, (point.x - field.x) / field.width)
 }
 ```
