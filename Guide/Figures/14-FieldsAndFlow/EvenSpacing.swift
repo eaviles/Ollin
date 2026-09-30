@@ -2,7 +2,7 @@
 //
 // Guide figure (Chapter 14): free streamlines versus evenly-spaced ones.
 // Same field, same seed points. On the left every line runs to its full
-// length, crossing and bunching; on the right each line stops when it comes
+// length, crowding and bunching; on the right each line stops when it comes
 // within the separation distance of one already traced, so the flow reads
 // as combed fibers.
 import Ollin
@@ -27,7 +27,7 @@ final class EvenSpacing: Sketch {
         let right = Rectangle(x: 470, y: 60, width: 370, height: 340)
         let field = flowField(scale: 0.003, z: 0.2)
 
-        panel(left, title: "free: lines cross and bunch")
+        panel(left, title: "free: lines crowd and bunch")
         let leftSeeds = poissonDisk(in: left.inset(by: .all(14)), radius: 30)
         noFill()
         stroke(ink)

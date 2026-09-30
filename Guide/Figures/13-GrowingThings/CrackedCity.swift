@@ -57,11 +57,11 @@ final class CrackedCity: Sketch {
         let parent = hit + Vector2(0, -90)
         stroke(accent)
         strokeWeight(2)
-        drawLine(parent, parent + Vector2(70, 0))
-        drawLine(parent + Vector2(70, 0), parent + Vector2(62, -6))
-        drawLine(parent + Vector2(70, 0), parent + Vector2(62, 6))
-        label("a new crack sets out,", parent + Vector2(52, -34), color: accent)
-        label("perpendicular", parent + Vector2(52, -16), color: accent)
+        drawLine(parent, parent + Vector2(-70, 0))
+        drawLine(parent + Vector2(-70, 0), parent + Vector2(-62, -6))
+        drawLine(parent + Vector2(-70, 0), parent + Vector2(-62, 6))
+        label("a new crack sets out,", parent + Vector2(-12, -34), color: accent, align: .right)
+        label("perpendicular", parent + Vector2(-12, -16), color: accent, align: .right)
 
         // Right: what that builds.
         let right = panel(1)
@@ -98,10 +98,11 @@ final class CrackedCity: Sketch {
         drawText(title, r.x + 2, r.y - 20)
     }
 
-    func label(_ text: String, _ at: Vector2, color: Color? = nil) {
+    func label(_ text: String, _ at: Vector2, color: Color? = nil,
+               align: HorizontalTextAlign = .center) {
         noStroke()
         fill(color ?? faint)
-        textAlign(.center, .middle)
+        textAlign(align, .middle)
         drawText(text, at: at)
     }
 }

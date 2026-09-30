@@ -26,7 +26,10 @@ final class HullTrio: Sketch {
         scatter = []
         seed(9)
         // Panel-local coordinates: a ring of dots around a hub, plus a small
-        // cluster moored off its upper right.
+        // cluster moored off its upper right. The ring reaches 102 from the hub
+        // and the cluster starts 159 out, so at least 57 of clear water
+        // separates them: more than the 52 a probe disk of radius 26 spans,
+        // which is what lets the alpha shape keep the cluster its own island.
         let hub = Vector2(115, 185)
         for band in 0 ..< 4 {
             let radius = 52.0 + Double(band) * 15
@@ -38,7 +41,7 @@ final class HullTrio: Sketch {
             }
         }
         for _ in 0 ..< 26 {
-            scatter.append(Vector2(212, 76) + randomVector(innerRadius: 0, outerRadius: 32))
+            scatter.append(Vector2(232, 52) + randomVector(innerRadius: 0, outerRadius: 18))
         }
     }
 
@@ -68,9 +71,11 @@ final class HullTrio: Sketch {
                 drawPolygon(hull)
             case 1:
                 let hull = concaveHull(of: points, concavity: 0.62)
+                // A concave outline fills through Shape; drawPolygon fans from
+                // one vertex and spills outside a polygon that folds.
                 fill(region)
                 noStroke()
-                drawPolygon(hull)
+                drawShape(Shape(hull))
                 noFill()
                 stroke(accent)
                 strokeWeight(2.2)

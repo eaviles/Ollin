@@ -44,14 +44,20 @@ final class VoltageChooses: Sketch {
         let left = panel(0), right = panel(1)
 
         // Left: the field as a wash (light where the potential is high),
-        // the frontier dotted by the candidates' weights.
+        // the frontier dotted by the candidates' weights. The lattice is
+        // whole cells, so it stops a fraction of one short of the frame's
+        // bottom; the samples are held inside it, since outside it the
+        // potential reads 0, the discharge's own value.
         noStroke()
         let block = 5.0
+        let cell = left.width / 44
+        let lowest = left.y + left.height - cell
         var y = left.y
         while y < left.y + left.height {
             var x = left.x
             while x < left.x + left.width {
-                let p = young.potential(at: Vector2(x + block / 2, y + block / 2))
+                let sample = Vector2(x + block / 2, min(y + block / 2, lowest))
+                let p = young.potential(at: sample)
                 fill(wash.withAlpha(0.05 + (1 - p) * 0.30))
                 drawRect(x, y, block, block)
                 x += block
@@ -66,7 +72,6 @@ final class VoltageChooses: Sketch {
 
         // The frontier: every empty lattice neighbor of the discharge, its
         // dot area the weight the model actually uses (potential to eta).
-        let cell = left.width / 44
         var seen = Set<String>()
         noStroke()
         fill(accent)

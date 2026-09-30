@@ -24,11 +24,15 @@ final class ClaimingSpace: Sketch {
 
     override func setup() {
         growths = []
+        // One scatter of dots, rolled once and shifted into each panel, so
+        // the four panels are one growth at four ages.
         seed(9)
+        let first = panelRect(0)
+        let scatter = poissonDisk(in: first.inset(by: .all(16)), radius: 15)
         for (i, count) in steps.enumerated() {
             let r = panelRect(i)
-            let attractors = poissonDisk(in: r.inset(by: .all(16)), radius: 15)
-            let growth = SpaceColonization(attractors: attractors,
+            let shift = Vector2(r.x - first.x, r.y - first.y)
+            let growth = SpaceColonization(attractors: scatter.map { $0 + shift },
                                            roots: [Vector2(r.x + r.width / 2, r.y + r.height - 8)],
                                            influenceRadius: 70, killRadius: 11, stepLength: 5.5)
             growth.step(count)

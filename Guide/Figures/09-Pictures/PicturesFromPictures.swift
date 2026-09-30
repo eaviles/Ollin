@@ -43,7 +43,7 @@ final class PicturesFromPictures: Sketch {
         // Seven by seven cells from the middle of the same mosaic, enlarged, where
         // the light is: a dark corner would only show that dark tiles are dark.
         withClip(right) {
-            // Seven of the mosaic's twenty-four columns, filling the panel.
+            // Seven of the mosaic's twenty-four cells a side, filling the panel.
             let scale = 24.0 / 7
             let cell = right.width / 7
             let big = Rectangle(x: right.x - 7 * cell, y: right.y - 8 * cell,

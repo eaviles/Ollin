@@ -20,7 +20,10 @@ final class ParquetRun: Sketch {
     let warm = Color(hex: 0xE0A33C)
 
     let start = ParquetDeformation.Profile.straight
-    let end = ParquetDeformation.Profile.tooth(depth: 0.3, width: 0.44)
+    // The notches on a tile's top and right edges each stop (1 - width) / 2
+    // short of their shared corner, so a depth under that keeps them from
+    // crossing, and what is left over is the neck between them.
+    let end = ParquetDeformation.Profile.tooth(depth: 0.2, width: 0.4)
 
     override func draw() {
         background(paper)

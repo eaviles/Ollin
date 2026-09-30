@@ -103,7 +103,7 @@ final class ClassicCurves: Sketch {
         fill(ink)
         textSize(21)
         textAlign(.center, .top)
-        drawText("no randomness anywhere: every one is a formula with a few parameters",
+        drawText("no randomness anywhere: every one is a rule with a few parameters",
                  width / 2, 860)
     }
 

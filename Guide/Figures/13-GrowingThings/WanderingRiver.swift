@@ -63,7 +63,8 @@ final class WanderingRiver: Sketch {
         // The whole train, sliding downstream.
         let low = Vector2(left.x + 267, left.y + 240)
         arrow(from: low + Vector2(-30, 24), to: low + Vector2(36, 24))
-        label("and the bend slides downstream", low + Vector2(0, 48), color: accent)
+        label("and the bend", low + Vector2(0, 44), color: accent)
+        label("slides downstream", low + Vector2(0, 64), color: accent)
 
         // Right: what that builds.
         let right = panel(1)

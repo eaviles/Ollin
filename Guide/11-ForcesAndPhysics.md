@@ -485,8 +485,8 @@ final class Wrecker: Sketch {
 
         var previous = peg
         for i in 1 ... 7 {
-            let center = anchor + linkStep * Double(i)
-            let hinge = anchor + linkStep * (Double(i) - 0.5)
+            let center = anchor + linkStep * (Double(i) - 0.5)
+            let hinge = anchor + linkStep * (Double(i) - 1)
             let body: Body
             if i == 7 {
                 body = world.addBody(.circle(radius: ballRadius), at: center, density: 5)

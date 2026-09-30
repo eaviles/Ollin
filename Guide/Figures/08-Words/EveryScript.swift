@@ -103,7 +103,8 @@ final class EveryScript: Sketch {
         textSize(17)
         drawText("drawText", origin.x, baseline + 34)
         fill(green)
-        drawText("textToShapes: the emoji has none", origin.x + 210, baseline + 34)
+        drawText("textToShapes:", origin.x + 210, baseline + 34)
+        drawText("the emoji has none", origin.x + 210, baseline + 58)
     }
 
     /// A paragraph with nothing to split on still fits its box.

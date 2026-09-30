@@ -27,7 +27,10 @@ final class ClothoidCorner: Sketch {
         panel(x: 46, easement: 0.01,
               title: "one arc: the bend jumps twice",
               note: "the wheel is yanked, then held, then yanked back")
-        panel(x: 486, easement: 82,
+        // A corner may take half of each leg at most, 105 of these 210; at this
+        // radius an easement of 60 needs 102 and one of 82 would need 114, which
+        // scales the corner down and lifts its peak past the other graph's.
+        panel(x: 486, easement: 60,
               title: "an easement each side: the bend ramps",
               note: "the wheel turns in, holds, and unwinds")
 

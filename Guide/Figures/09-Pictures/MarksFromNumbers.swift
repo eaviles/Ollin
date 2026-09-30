@@ -96,29 +96,66 @@ final class MarksFromNumbers: Sketch {
         let high = table.numbers("high")
         guard let mostRain = rain.max(), let lowest = high.min(), let highest = high.max() else { return }
 
-        noStroke()
-        // Two months with the same high and nearly the same rain land on one
-        // spot, so a label that would sit on an earlier one steps a line away,
-        // toward the panel's middle so it stays inside the box.
-        var placed: [Vector2] = []
+        var dots: [(name: String, at: Vector2)] = []
         for row in table {
             guard let r = row.number("rain"), let h = row.number("high") else { continue }
             let x = map(r, 0, mostRain, area.x + 20, area.x + area.width - 20)
             let y = map(h, lowest, highest, area.y + area.height - 20, area.y + 20)
-            fill(accent)
-            drawCircle(center: Vector2(x: x, y: y), radius: 7)
-            var labelY = y
-            let step: Double = y > area.y + area.height / 2 ? -14 : 14
-            while placed.contains(where: { abs($0.x - x) < 46 && abs($0.y - labelY) < 14 }) {
-                labelY += step
-            }
-            placed.append(Vector2(x: x, y: labelY))
-            fill(faint)
-            textFont(OutlineFont.systemMedium)
-            textSize(11)
-            textAlign(.left, .middle)
-            drawText(row["month"] ?? "", x + 11, labelY)
+            dots.append((row["month"] ?? "", Vector2(x: x, y: y)))
         }
+        noStroke()
+        fill(accent)
+        for dot in dots { drawCircle(center: dot.at, radius: 7) }
+
+        // A label sits to the right of its dot. One the frame would cut is
+        // pushed inside it and stepped a line toward the panel's middle until
+        // no dot is under it; one another dot would cover moves to its dot's
+        // left when that side is free, and otherwise stays put.
+        let inside = area.inset(by: .all(4))
+        var placed: [Rectangle] = []
+        fill(faint)
+        textFont(OutlineFont.systemMedium)
+        textSize(11)
+        textAlign(.center, .middle)
+        for dot in dots {
+            let step = Vector2(0, dot.at.y > area.center.y ? -14 : 14)
+            func box(_ center: Vector2) -> Rectangle {
+                Rectangle(center: center, width: 20, height: 8)
+            }
+            func covered(_ box: Rectangle, within margin: Double = 7) -> Bool {
+                dots.contains { nearest(in: box, to: $0.at).distance(to: $0.at) < margin }
+            }
+            func taken(_ box: Rectangle) -> Bool {
+                placed.contains { overlaps($0, box) }
+            }
+            var chosen = box(dot.at + Vector2(21, 0))
+            if chosen.x + chosen.width > inside.x + inside.width {
+                chosen = box(Vector2(inside.x + inside.width - 10, dot.at.y))
+                var tries = 0
+                while tries < 6, covered(chosen) || taken(chosen) {
+                    chosen = box(chosen.center + step)
+                    tries += 1
+                }
+            } else if covered(chosen) || taken(chosen) {
+                let left = box(dot.at - Vector2(21, 0))
+                if left.x >= inside.x, !covered(left, within: 9), !taken(left) {
+                    chosen = left
+                }
+            }
+            placed.append(chosen)
+            drawText(dot.name, at: chosen.center)
+        }
+    }
+
+    /// The point of `box` nearest to `point`.
+    private func nearest(in box: Rectangle, to point: Vector2) -> Vector2 {
+        Vector2(clamp(point.x, box.x, box.x + box.width),
+                clamp(point.y, box.y, box.y + box.height))
+    }
+
+    private func overlaps(_ a: Rectangle, _ b: Rectangle) -> Bool {
+        a.x < b.x + b.width && b.x < a.x + a.width
+            && a.y < b.y + b.height && b.y < a.y + a.height
     }
 
     /// One line through the rows in their own order.
