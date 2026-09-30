@@ -7613,24 +7613,26 @@
       "width": 1080
     },
     "Patterns/ParquetDeformation": {
-      "bytes": {
-        "loop": 5677540,
-        "loopSmall": 1395351,
-        "still": 439327,
-        "stillSmall": 177311
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Patterns/ParquetDeformation/loop.mp4?v=6ed35f0b",
-      "loopSmall": "examples/Patterns/ParquetDeformation/loop-640.mp4?v=c001b248",
-      "motion": 8.475,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "40ec5b5b51ff5f09",
-      "still": "examples/Patterns/ParquetDeformation/still.jpg?v=2bbb495a",
-      "stillSmall": "examples/Patterns/ParquetDeformation/still-640.jpg?v=8045bca9",
-      "width": 1080
+      "frame": 480,
+      "motion": 8.284,
+      "sound": false,
+      "source": "796385918bda1a84",
+      "rendered": "2026-09-30",
+      "bytes": {
+        "loop": 5320538,
+        "loopSmall": 1339677,
+        "still": 438082,
+        "stillSmall": 176937
+      },
+      "loop": "examples/Patterns/ParquetDeformation/loop.mp4?v=f8cb31c8",
+      "loopSmall": "examples/Patterns/ParquetDeformation/loop-640.mp4?v=58484eb9",
+      "still": "examples/Patterns/ParquetDeformation/still.jpg?v=0e126935",
+      "stillSmall": "examples/Patterns/ParquetDeformation/still-640.jpg?v=9fcc1a9f",
+      "seed": 1
     },
     "Patterns/Penrose": {
       "width": 1080,

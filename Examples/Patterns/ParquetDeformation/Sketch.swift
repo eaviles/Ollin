@@ -30,7 +30,7 @@ final class ParquetRun: Sketch {
         let sheet = ParquetDeformation(
             grid: Grid(in: field, columns: 15, rows: 15),
             from: .wave(count: 1, depth: 0.22),
-            to: .tooth(depth: 0.3, width: 0.42)
+            to: .tooth(depth: 0.2, width: 0.42)
         ) { point in
             let u = (point.x - field.x) / field.width
             return smoothstep(front - band / 2, front + band / 2, u)
