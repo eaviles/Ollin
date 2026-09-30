@@ -348,7 +348,7 @@ nonzero; the committed tree reports nothing.
 
 ## What a long run leaves behind
 
-Installation mode, the wallpaper, the screen saver, and the menu-bar piece run
+Installation mode, the wallpaper, the screen saver, and the menu-bar strip run
 for days, and a cache that gains an entry a frame is invisible to any ordinary
 test. Two checks read a long run.
 

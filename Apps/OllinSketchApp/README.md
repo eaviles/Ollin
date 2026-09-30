@@ -22,7 +22,7 @@ Almost nothing.
 - **`Scene` is two types.** The framework has a 3D `Scene` and SwiftUI has one,
   so an `App` in a file that imports both writes `some SwiftUI.Scene`.
 - **The desk features stay on the desk.** The standalone launcher, the export
-  flags, the screen saver, the wallpaper, the menu bar piece, the display wall,
+  flags, the screen saver, the wallpaper, the menu-bar strip, the display wall,
   the detached inspector panel, and the source-editing drag are all macOS only.
   A sketch that uses none of them is portable as written.
 
