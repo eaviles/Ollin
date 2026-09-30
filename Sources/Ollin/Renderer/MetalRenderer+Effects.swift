@@ -2407,16 +2407,29 @@ extension MetalRenderer {
     private func userShaderState(for shader: Shader,
                                  variant: UserShaderVariant,
                                  format: MTLPixelFormat? = nil) -> (MTLRenderPipelineState?, UInt64) {
-        let resolved = resolveUserShaderSource(shader)
-        let sourceName = shader.diagnosticSourceName
-        let startLine = shader.diagnosticStartLine
-        let (composed, offset) = MetalRenderer.composeUserShaderSource(
-            userSource: resolved.source, modules: shader.modules, variant: variant,
-            sourceName: sourceName, sourceStartLine: startLine)
         // The output format is part of the pipeline, so a kernel over a `.float32`
         // field and the same kernel over a half-float one are two states.
         let format = format ?? linearFormat
+        // Composing the source splices the whole shared library in, a few hundred
+        // kilobytes, and hashing that on every encode is what a simulation's
+        // substeps paid for: 17 ms a substep in a debug build, so a 25-substep
+        // field ran at two frames a second with the GPU idle. What the shader
+        // itself says (its text, its file, its modules, the variant and the
+        // format) decides the composed hash, so it is remembered by that.
+        let sourceName = shader.diagnosticSourceName
+        let startLine = shader.diagnosticStartLine
+        let quick = "\(variant)|\(format.rawValue)|\(shader.modules.rawValue)|\(sourceName)|\(startLine)|"
+            + shader.resourcePath + "|" + shader.source
+        if let hash = userShaderHashes[quick] {
+            if let p = userShaderPipelines[hash] { return (p, hash) }
+            if userShaderErrors[hash] != nil { return (nil, hash) }
+        }
+        let resolved = resolveUserShaderSource(shader)
+        let (composed, offset) = MetalRenderer.composeUserShaderSource(
+            userSource: resolved.source, modules: shader.modules, variant: variant,
+            sourceName: sourceName, sourceStartLine: startLine)
         let hash = MetalRenderer.fnv1a(composed + "\n// format \(format.rawValue)")
+        userShaderHashes[quick] = hash
         if let p = userShaderPipelines[hash] { return (p, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
         // An include the resolver could not honor is reported as the shader's error
@@ -2465,6 +2478,7 @@ extension MetalRenderer {
         userShaderPipelines.removeAll()
         userShaderErrors.removeAll()
         userShaderSources.removeAll()
+        userShaderHashes.removeAll()
         printedShaderErrorHashes.removeAll()
     }
 

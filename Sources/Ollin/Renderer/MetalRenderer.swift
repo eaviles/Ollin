@@ -616,6 +616,10 @@ final class MetalRenderer {
     var userShaderLibraries: [UInt64: MTLLibrary] = [:]
     var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
     var userShaderErrors: [UInt64: ShaderCompileError] = [:]
+    /// The composed-source hash a shader's own text, file, modules, variant and
+    /// output format lead to, so an encode never composes or hashes the spliced
+    /// library again for a shader it has already seen.
+    var userShaderHashes: [String: UInt64] = [:]
     /// Contents of `.metal` resource shaders, with their own `#include`s already
     /// resolved, cached by absolute path (read once, not per frame). Cleared on
     /// invalidation so an edited `.metal`, or an edited file it includes, is re-read.
