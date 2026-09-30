@@ -31,13 +31,17 @@ final class WolframAndTurmite: Sketch {
         noStroke()
 
         // Elementary rule 30: 161 generations from one live cell in the middle.
+        // The row is twice as wide as the panel shows, so the triangle reaches
+        // the row's ends only on the last generation and the boundary never
+        // scrambles the picture; the panel shows the middle 161 columns.
         let steps = 161
-        let rows = elementaryCA(rule: 30, width: steps, generations: steps)
+        let margin = steps / 2
+        let rows = elementaryCA(rule: 30, width: steps + 2 * margin, generations: steps)
         let cellA = left.width / Double(steps)
         fill(ink)
         for (r, row) in rows.enumerated() {
-            for (c, on) in row.enumerated() where on {
-                drawRect(left.x + Double(c) * cellA, left.y + Double(r) * cellA,
+            for (c, on) in row.enumerated() where on && c >= margin && c < margin + steps {
+                drawRect(left.x + Double(c - margin) * cellA, left.y + Double(r) * cellA,
                          cellA, cellA)
             }
         }

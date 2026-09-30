@@ -146,7 +146,7 @@ An **elementary cellular automaton** shrinks the grid to a single row. Each cell
 </picture>
 
 ```swift
-let rows = elementaryCA(rule: 30, width: 161, generations: 161)
+let rows = elementaryCA(rule: 30, width: 321, generations: 161)
 ```
 
 `elementaryCA` runs one rule and hands back a row per generation. Rule 30, on the left, is the famous one, because no rule that small should produce something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 is complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
