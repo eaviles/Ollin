@@ -20,11 +20,13 @@ final class BouncedLight: Sketch {
         globalIllumination(intensity: 1.6)
 
         // The room: white floor, ceiling, and back; an orange and a teal wall.
-        withState { fill(Color(white: 0.88)); translate(0, -0.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
-        withState { fill(Color(white: 0.88)); translate(0, 4.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
+        // The floor, the ceiling and the two side walls run on past the camera,
+        // so their open ends sit well outside the frame and off any probe plane.
+        withState { fill(Color(white: 0.88)); translate(0, -0.1, 1.7); drawBox(width: 8.4, height: 0.2, depth: 12) }
+        withState { fill(Color(white: 0.88)); translate(0, 4.1, 1.7); drawBox(width: 8.4, height: 0.2, depth: 12) }
         withState { fill(Color(white: 0.88)); translate(0, 2, -4.3); drawBox(width: 8.4, height: 4.4, depth: 0.2) }
-        withState { fill(Color(hex: 0xd4622a)); translate(-4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
-        withState { fill(Color(hex: 0x2a9d9d)); translate(4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
+        withState { fill(Color(hex: 0xd4622a)); translate(-4.3, 2, 1.7); drawBox(width: 0.2, height: 4.4, depth: 12) }
+        withState { fill(Color(hex: 0x2a9d9d)); translate(4.3, 2, 1.7); drawBox(width: 0.2, height: 4.4, depth: 12) }
 
         // White things between the colored walls, there to be dyed.
         withState {
