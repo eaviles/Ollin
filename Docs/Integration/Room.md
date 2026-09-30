@@ -172,7 +172,7 @@ override func draw() {
     let wall = width * Double(room.seatCount)
     withState {
         translate(-Double(room.seat) * width, 0)
-        drawWholePiece(across: wall)
+        drawWholeSketch(across: wall)
     }
 }
 ```

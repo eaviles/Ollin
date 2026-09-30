@@ -9,8 +9,8 @@ import OllinSceneImport
 /// `ProjectGenerator.plan`.
 ///
 ///     ollin new Dots.swift                 one loose file, as this has always done
-///     ollin new MyPiece                    a folder that builds and runs
-///     ollin new MyPiece --template shader --with audio
+///     ollin new MySketch                    a folder that builds and runs
+///     ollin new MySketch --template shader --with audio
 ///     ollin new --list                     what can be made
 @main
 enum OllinNewCommand {
@@ -423,7 +423,7 @@ enum OllinNewCommand {
             let modules = example.modules.isEmpty ? "" : "  [\(example.modules.joined(separator: ", "))]"
             print("    \(example.path)\(modules)")
         }
-        print("\nStart from one:  ollin new MyPiece --from \(examples[0].path)")
+        print("\nStart from one:  ollin new MySketch --from \(examples[0].path)")
     }
 
     /// The 3D pieces and the rule each one carries, since which of them combine

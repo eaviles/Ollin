@@ -34,7 +34,7 @@ private let xcodegenInstalled: Bool = {
 /// The five that build a whole signed bundle are gated on `buildsBundles`
 /// below: each makes, for its own bundle shape, the check the plain generated
 /// package build already makes, and together they cost 937 s of this suite's
-/// 1,174 s (screen saver 181.7, app 186.2, wallpaper 196.2, menu-bar piece
+/// 1,174 s (screen saver 181.7, app 186.2, wallpaper 196.2, menu-bar strip
 /// 187.3, widget 186.0). They run on the milestone pass instead, where the
 /// examples build already lives, which leaves the everyday suite at 228 s.
 @Suite("Generated projects build", .serialized, .timeLimit(.minutes(15)))
@@ -551,7 +551,7 @@ struct GeneratedProjectBuildTests {
     /// point and a wrapper carrying it, and only a build proves the two files
     /// agree (a stray `@main` on the sketch refuses to compile beside the
     /// wrapper's). The rest is the app's own wrapper, checked the app's way,
-    /// plus the one line that keeps the piece out of the Dock.
+    /// plus the one line that keeps the sketch out of the Dock.
     @Test("A generated wallpaper builds, stays out of the Dock, and renders from its bundle",
           .enabled(if: buildsBundles, bundlesSkipped))
     func aGeneratedWallpaperBuildsAndRuns() throws {
@@ -597,9 +597,9 @@ struct GeneratedProjectBuildTests {
     /// The menu-bar kind is the wallpaper's shape pointed at the other host,
     /// so what this build proves is the one thing that differs: the wrapper's
     /// call compiles against the framework it names.
-    @Test("A generated menu-bar piece builds and renders from its bundle",
+    @Test("A generated menu-bar strip builds and renders from its bundle",
           .enabled(if: buildsBundles, bundlesSkipped))
-    func aGeneratedMenuBarPieceBuildsAndRuns() throws {
+    func aGeneratedMenuBarStripBuildsAndRuns() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let destination = try Self.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: destination) }
@@ -615,7 +615,7 @@ struct GeneratedProjectBuildTests {
         try ProjectGenerator.write(project)
 
         let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
-        #expect(built.succeeded, "the menu-bar piece's own build script failed:\n\(built.output)")
+        #expect(built.succeeded, "the menu-bar strip's own build script failed:\n\(built.output)")
 
         let app = project.root.appendingPathComponent("Pulse.app")
         #expect(FileManager.default.fileExists(atPath: app.path), "no .app came out of the script")

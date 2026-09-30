@@ -2,17 +2,17 @@
 import Foundation
 import os
 
-/// Starts the piece again when it stops badly.
+/// Starts the sketch again when it stops badly.
 ///
 /// A run at a desk ends when somebody quits it. A run on a wall ends in the
 /// other ways: a crash at three in the morning, a frame that never finishes, a
-/// memory the piece ran out of on day four. Nobody is there, so the piece stays
+/// memory the sketch ran out of on day four. Nobody is there, so the sketch stays
 /// dark until somebody notices, which can be a day later.
 ///
 /// The shape is the plain one. The process a person starts becomes a small
-/// supervisor that owns no window, and the piece runs as its child. The
+/// supervisor that owns no window, and the sketch runs as its child. The
 /// supervisor waits. When the child ends badly it starts another one, and the
-/// checkpoint the run was already writing is what brings the piece back where
+/// checkpoint the run was already writing is what brings the sketch back where
 /// it was rather than back at the beginning.
 ///
 /// Two things count as ending badly, and the second is the one the system
@@ -20,7 +20,7 @@ import os
 ///
 /// - **A crash.** The child ends with a bad exit status, or on a signal.
 /// - **A stall.** The child is still there, and no longer answering. It is
-///   found with a heartbeat: the piece writes one file every couple of seconds
+///   found with a heartbeat: the sketch writes one file every couple of seconds
 ///   from the main thread, and a main thread stuck in a frame stops writing it.
 ///   The supervisor stops a child that has gone quiet, then starts another.
 ///
@@ -42,7 +42,7 @@ final class Supervisor: @unchecked Sendable {
                                     = ProcessInfo.processInfo.environment) {
         guard let stalledAfter = stallLimit(watching: installation, in: environment) else { return }
         guard let executable = Bundle.main.executableURL else {
-            ollinInstallationLog("cannot watch this run: the piece's own path is unknown")
+            ollinInstallationLog("cannot watch this run: the sketch's own path is unknown")
             return
         }
         Supervisor(executable: executable,
@@ -51,7 +51,7 @@ final class Supervisor: @unchecked Sendable {
     }
 
     /// The limit a supervisor would watch this run with, or `nil` when this
-    /// process should simply run the piece: either nobody asked for a watch, or
+    /// process should simply run the sketch: either nobody asked for a watch, or
     /// this process is already the child of one.
     static func stallLimit(watching installation: Installation,
                            in environment: [String: String]) -> Double? {
@@ -71,8 +71,8 @@ final class Supervisor: @unchecked Sendable {
 
     private let executable: URL
     private let arguments: [String]
-    /// How long the piece may go without answering before it is stopped and
-    /// started again. Zero waits forever, for a piece that means to block.
+    /// How long the sketch may go without answering before it is stopped and
+    /// started again. Zero waits forever, for a sketch that means to block.
     private let stalledAfter: Double
     private let heartbeat: URL
 
@@ -95,7 +95,7 @@ final class Supervisor: @unchecked Sendable {
         catchStops()
         ollinInstallationLog("watching this run"
                              + (stalledAfter > 0
-                                ? "; a piece that stops answering for \(Int(stalledAfter))s "
+                                ? "; a sketch that stops answering for \(Int(stalledAfter))s "
                                   + "is started again"
                                 : ""))
         var policy = RestartPolicy()
@@ -110,16 +110,16 @@ final class Supervisor: @unchecked Sendable {
                 finish(0)
             }
             if end.isClean {
-                ollinInstallationLog("the piece ended; not starting it again")
+                ollinInstallationLog("the sketch ended; not starting it again")
                 finish(0)
             }
             switch policy.next(ranFor: ranFor) {
             case .giveUp:
-                ollinInstallationLog("the piece has failed \(policy.strikes) times in a row "
+                ollinInstallationLog("the sketch has failed \(policy.strikes) times in a row "
                                      + "without running for long; giving up (\(end.reason))")
                 finish(end.status == 0 ? 70 : end.status)
             case .restart(let after):
-                ollinInstallationLog("the piece \(end.reason) after \(Int(ranFor))s; "
+                ollinInstallationLog("the sketch \(end.reason) after \(Int(ranFor))s; "
                                      + "starting it again in \(Int(after))s")
                 Thread.sleep(forTimeInterval: after)
             }
@@ -133,12 +133,12 @@ final class Supervisor: @unchecked Sendable {
         exit(code)
     }
 
-    /// Start one run of the piece, with the marker and the heartbeat path in its
+    /// Start one run of the sketch, with the marker and the heartbeat path in its
     /// environment. Its output is this process's output, so a log piped to a
     /// file keeps every run in the one file, in order.
     private func start() -> Process? {
         // Gone rather than stale: a missing file is how the wait below knows the
-        // piece has not answered yet, which buys a slow `setup()` its own grace.
+        // sketch has not answered yet, which buys a slow `setup()` its own grace.
         try? FileManager.default.removeItem(at: heartbeat)
         let child = Process()
         child.executableURL = executable
@@ -148,11 +148,11 @@ final class Supervisor: @unchecked Sendable {
         do {
             try child.run()
         } catch {
-            ollinInstallationLog("could not start the piece: \(error)")
+            ollinInstallationLog("could not start the sketch: \(error)")
             return nil
         }
         shared.withLock { $0.child = child.processIdentifier }
-        ollinInstallationLog("started the piece (pid \(child.processIdentifier))")
+        ollinInstallationLog("started the sketch (pid \(child.processIdentifier))")
         return child
     }
 
@@ -163,15 +163,15 @@ final class Supervisor: @unchecked Sendable {
         while child.isRunning {
             Thread.sleep(forTimeInterval: 1)
             guard !shared.withLock({ $0.stopping }) else {
-                // Somebody stopped the watch, and the piece has been asked to
-                // go. Insist here too, or a piece that is already stuck would
+                // Somebody stopped the watch, and the sketch has been asked to
+                // go. Insist here too, or a sketch that is already stuck would
                 // keep this process waiting on it for ever.
                 stop(child)
                 break
             }
             let quiet = Self.quietFor(heartbeat: heartbeat, since: startedAt, now: Date())
             if Self.hasStalled(quietFor: quiet, answered: answered, limit: stalledAfter) {
-                ollinInstallationLog("the piece has not answered for \(Int(quiet))s; stopping it")
+                ollinInstallationLog("the sketch has not answered for \(Int(quiet))s; stopping it")
                 stalled = true
                 stop(child)
                 break
@@ -184,8 +184,8 @@ final class Supervisor: @unchecked Sendable {
                       stalled: stalled)
     }
 
-    /// Whether the piece has written its first heartbeat, so the wait knows
-    /// whether it is watching a start or a running piece.
+    /// Whether the sketch has written its first heartbeat, so the wait knows
+    /// whether it is watching a start or a running sketch.
     private var answered: Bool {
         FileManager.default.fileExists(atPath: heartbeat.path)
     }
@@ -204,13 +204,13 @@ final class Supervisor: @unchecked Sendable {
         }
     }
 
-    /// Pass a stop on to the piece rather than leaving it running with nobody
+    /// Pass a stop on to the sketch rather than leaving it running with nobody
     /// watching it. Control-C reaches both processes on its own, so this is for
     /// the other way a run is stopped: a signal sent to this one by name.
     private func catchStops() {
         for number in [SIGTERM, SIGINT] {
             // The default action has to go first, or this process dies before
-            // the source ever runs, and the piece is left behind.
+            // the source ever runs, and the sketch is left behind.
             signal(number, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: number, queue: .global())
             source.setEventHandler { [self] in
@@ -226,7 +226,7 @@ final class Supervisor: @unchecked Sendable {
 
     // MARK: The rules, on their own
 
-    /// How long the piece has been quiet: since its last heartbeat, or since it
+    /// How long the sketch has been quiet: since its last heartbeat, or since it
     /// started when it has not written one yet.
     static func quietFor(heartbeat: URL, since started: Date, now: Date) -> Double {
         let attributes = try? FileManager.default.attributesOfItem(atPath: heartbeat.path)
@@ -236,28 +236,28 @@ final class Supervisor: @unchecked Sendable {
 
     /// Whether a quiet run counts as stalled.
     ///
-    /// A piece that has not answered yet is starting, and `setup()` may load a
+    /// A sketch that has not answered yet is starting, and `setup()` may load a
     /// model or a film before the first frame, so a start gets a longer wait
-    /// than a running piece. A limit of zero never stalls.
+    /// than a running sketch. A limit of zero never stalls.
     static func hasStalled(quietFor quiet: Double, answered: Bool, limit: Double) -> Bool {
         guard limit > 0 else { return false }
         return quiet > (answered ? limit : max(limit, startupGrace))
     }
 
-    /// The longest a piece may take to draw its first frame before it counts as
+    /// The longest a sketch may take to draw its first frame before it counts as
     /// stalled, whatever the limit says. Long enough for a heavy `setup()`.
     static let startupGrace: Double = 120
 
-    /// How one run of the piece ended.
+    /// How one run of the sketch ended.
     struct Ending {
         var status: Int32
         var onSignal: Bool
-        /// Whether this supervisor stopped it for going quiet. A piece stopped
+        /// Whether this supervisor stopped it for going quiet. A sketch stopped
         /// that way can still exit tidily, saving its state on the way out, and
-        /// a tidy exit must not read as somebody quitting the piece: it is the
+        /// a tidy exit must not read as somebody quitting the sketch: it is the
         /// failure this whole file exists for.
         var stalled = false
-        /// An ordinary end: somebody quit the piece, or it stopped itself.
+        /// An ordinary end: somebody quit the sketch, or it stopped itself.
         var isClean: Bool { status == 0 && !onSignal && !stalled }
         var reason: String {
             if stalled { return "stopped answering" }
@@ -266,10 +266,10 @@ final class Supervisor: @unchecked Sendable {
     }
 }
 
-/// How long to wait before starting the piece again, and when to stop trying.
+/// How long to wait before starting the sketch again, and when to stop trying.
 ///
-/// The two failures are different. A piece that ran for two days and crashed
-/// should come straight back. A piece that fails a second after it starts is
+/// The two failures are different. A sketch that ran for two days and crashed
+/// should come straight back. A sketch that fails a second after it starts is
 /// broken in a way that starting it again will not fix, and a tight loop of
 /// launches is worse than a dark screen: it hides the real failure in a
 /// thousand log lines and keeps the machine busy all night.
@@ -304,14 +304,14 @@ struct RestartPolicy {
     }
 }
 
-/// The piece's side of the watch: one file, touched from the main thread while
+/// The sketch's side of the watch: one file, touched from the main thread while
 /// the main thread is still turning.
 ///
 /// It says something narrower than "the process is alive", and the narrower
 /// thing is the useful one. A run loop that stops turning is what a viewer sees
-/// as a frozen piece, and the process is perfectly alive throughout. Running on the
+/// as a frozen sketch, and the process is perfectly alive throughout. Running on the
 /// run loop rather than the frame loop is also what lets a still sketch
-/// (`noLoop()`) and a piece dark for the night keep answering: neither draws a
+/// (`noLoop()`) and a sketch dark for the night keep answering: neither draws a
 /// frame for hours, and both are working exactly as they should.
 @MainActor
 final class Heartbeat {
@@ -337,7 +337,7 @@ final class Heartbeat {
             MainActor.assumeIsolated { self?.beat() }
         }
         // `.common`, so a menu tracking or a window drag does not read as a
-        // stalled piece.
+        // stalled sketch.
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }

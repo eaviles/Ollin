@@ -20,7 +20,7 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     ///
     /// A windowed program does. A plug-in does not, because the program that
     /// loads it has an entry point already and a second one is at best dead
-    /// weight; and neither does a piece whose program is a wrapper file beside
+    /// weight; and neither does a sketch whose program is a wrapper file beside
     /// the sketch (the wallpaper, menu-bar, and phone kinds), where a second
     /// `@main` would refuse to build. It is the one thing that changes the sketch file
     /// rather than the files around it, which is why it belongs to the kind instead
@@ -75,7 +75,7 @@ extension ProjectKind {
     )
 
     /// A folder with its own manifest, sources, and assets that `swift run`
-    /// builds and runs. The form a piece grows into once it has assets or more
+    /// builds and runs. The form a sketch grows into once it has assets or more
     /// than one file.
     public static let macSketch = ProjectKind(
         id: "mac-sketch",
@@ -84,7 +84,7 @@ extension ProjectKind {
         availability: .available
     )
 
-    /// A finished piece, wrapped as a double-clickable app.
+    /// A finished sketch, wrapped as a double-clickable app.
     ///
     /// The package is the mac sketch's; what this kind adds is the wrapper: a
     /// script that puts the `.app` folder around the built binary, renders the
@@ -149,7 +149,7 @@ extension ProjectKind {
     public static let screenSaver = ProjectKind(
         id: "screen-saver",
         title: "Screen saver",
-        summary: "A sketch that runs as the machine's screen saver, so the piece lives in the system rather than a window.",
+        summary: "A sketch that runs as the machine's screen saver, so the sketch lives in the system rather than a window.",
         availability: .available,
         carriesEntryPoint: false,
         fillsTheDisplay: true
@@ -170,7 +170,7 @@ extension ProjectKind {
     /// items, on screen for the whole working day.
     public static let menuBar = ProjectKind(
         id: "menu-bar",
-        title: "Menu bar piece",
+        title: "Menu bar strip",
         summary: "A sketch that runs as a small live strip in the menu bar, beside the clock all day.",
         availability: .available,
         carriesEntryPoint: false,
@@ -183,7 +183,7 @@ extension ProjectKind {
     public static let widget = ProjectKind(
         id: "widget",
         title: "Desktop widget",
-        summary: "A sketch shown as a widget, redrawn a few times an hour, so the piece changes through the day rather than moving.",
+        summary: "A sketch shown as a widget, redrawn a few times an hour, so the sketch changes through the day rather than moving.",
         availability: .available,
         carriesEntryPoint: false,
         fillsTheDisplay: true

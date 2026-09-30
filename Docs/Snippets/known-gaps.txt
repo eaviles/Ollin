@@ -120,7 +120,7 @@ b87dbe4c4c89  Docs/3D/Record3D.md:45  'throws' may only occur before '->'
 baf5617f4831  Docs/3D/Scenes.md:119  cannot find 'tank' in scope
 75ed85778694  Docs/3D/Scenes.md:131  cannot find 'stage' in scope
 d5db9189c881  Docs/3D/Scenes.md:139  cannot find 'stage' in scope
-4e7e9eb817ed  Docs/3D/Scenes.md:179  cannot find 'scene' in scope
+fbf920eccea7  Docs/3D/Scenes.md:179  cannot find 'scene' in scope
 858dc60e5d17  Docs/3D/Scenes.md:44  cannot find 'url' in scope
 234985aebeac  Docs/3D/Scenes.md:71  cannot find 'stage' in scope
 46b3aaaa1676  Docs/3D/Scenes.md:87  cannot find 'stage' in scope
@@ -235,9 +235,9 @@ d7e175ab4cc3  Docs/Drawing/Drawing.md:1235  expected ',' separator
 ee564943cad2  Docs/Drawing/Drawing.md:126  expected ',' separator
 62a57a467e83  Docs/Drawing/Drawing.md:1263  expected ',' separator
 613a9ba9ed9d  Docs/Drawing/Drawing.md:1295  expected ',' separator
-5c1a6281f480  Docs/Drawing/Drawing.md:1301  cannot find 'drawThePiece' in scope
+3dae88ad284d  Docs/Drawing/Drawing.md:1301  cannot find 'drawTheSketch' in scope
 4ed540340851  Docs/Drawing/Drawing.md:1325  expected expression in list of expressions
-487239db150d  Docs/Drawing/Drawing.md:1331  cannot find 'drawTheWholePiece' in scope
+64e7d0198175  Docs/Drawing/Drawing.md:1331  cannot find 'drawTheWholeSketch' in scope
 14769638dbef  Docs/Drawing/Drawing.md:1358  expected ',' separator
 5e56b7ee3652  Docs/Drawing/Drawing.md:1378  cannot find 'p' in scope
 7104eda5800a  Docs/Drawing/Drawing.md:143  expected ',' separator
@@ -949,7 +949,7 @@ e030253dd69a  Docs/Integration/Room.md:116  cannot find 'room' in scope
 200e9defc0c3  Docs/Integration/Room.md:126  cannot find 'room' in scope
 64a008920353  Docs/Integration/Room.md:148  cannot find 'room' in scope
 e15ad158f539  Docs/Integration/Room.md:155  cannot find 'room' in scope
-98607231c614  Docs/Integration/Room.md:170  cannot find 'room' in scope
+963718fd44c9  Docs/Integration/Room.md:170  cannot find 'room' in scope
 14e754f13c64  Docs/Integration/Room.md:45  invalid redeclaration of 'room'
 44944c5ffe50  Docs/Integration/Room.md:56  cannot find 'room' in scope
 0af7670058d6  Docs/Integration/Room.md:67  cannot find 'room' in scope

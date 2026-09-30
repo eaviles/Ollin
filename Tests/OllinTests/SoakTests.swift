@@ -5,7 +5,7 @@ import MetalKit
 import Testing
 
 /// What a long run leaves behind. Installation mode, the wallpaper, the screen
-/// saver, and the menu-bar piece run for days, and a cache that gains one entry
+/// saver, and the menu-bar strip run for days, and a cache that gains one entry
 /// a frame is invisible in any test shorter than that. So one sketch that
 /// churns everything the renderer keeps across frames (pictures made again,
 /// layers made and dropped, a batch rebuilt, glyph-atlas text that keeps
@@ -15,7 +15,7 @@ import Testing
 ///
 /// The invariant: no count in the last half of the run goes above the most it
 /// reached between frames 2,000 and 4,000, give or take a margin. The first
-/// minutes fill every pool and cache to the size the piece needs; after that a
+/// minutes fill every pool and cache to the size the sketch needs; after that a
 /// run that only repeats itself has nothing new to keep. The margin (a quarter,
 /// and at least 8) is for the caches that fill and clear on a cycle of their
 /// own and so peak at slightly different heights, the glyph atlas's page most

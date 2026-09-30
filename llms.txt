@@ -256,7 +256,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Bluetooth](Docs/Integration/Bluetooth.md): `import OllinBluetooth` to read a Bluetooth Low Energy sensor in `draw()` (or bound to a `@Param`) and write back to it.
 - [MQTT](Docs/Integration/MQTT.md): `import OllinMQTT` to join the message bus a building speaks.
 - [Remote](Docs/Integration/Remote.md): `import OllinRemote` to serve the sketch's `@Param` parameters to a phone or a second machine on the local network: a touch surface in any browser, live in both directions, for…
-- [Room](Docs/Integration/Room.md): `import OllinRoom` to let several machines on one network draw one piece.
+- [Room](Docs/Integration/Room.md): `import OllinRoom` to let several machines on one network draw one work.
 - [DMX](Docs/Integration/DMX.md): `import OllinDMX` to drive stage lights and dimmers from `draw()` over Art-Net or sACN (a `DMXUniverse` of 512 channels, with a named-fixture shorthand).
 - [Laser](Docs/Integration/Laser.md): `import OllinLaser` to draw with a show laser from `draw()`. Line work is optimized into the point stream a projector scans (spacing, corner and blanking dwell, path order, the…
 - [Syphon](Docs/Integration/Syphon.md): `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming…
@@ -284,15 +284,15 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [G-code](Docs/Output/GCode.md): write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly
 - [DXF](Docs/Output/DXF.md): write a frame as a DXF drawing a CAD program or a laser cutter's software opens: lines, polylines, and true circles in millimeters, each color on its own layer
 - [Embroidery](Docs/Output/Embroidery.md): write a frame as the stitches an embroidery machine sews, a `.dst` file with strokes as running stitch, fills as rows, and each color as its own thread
-- [Running unattended](Docs/Output/Installation.md): leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that restarts it, and the building's hours
-- [A sketch as an app](Docs/Output/App.md): wrap a finished piece as a signed, double-clickable Mac app that runs without the toolchain, with a frame of itself as its icon
+- [Running unattended](Docs/Output/Installation.md): leave a sketch running for days: full screen, no pointer, a clock that survives a week, a watch that restarts it, and the building's hours
+- [A sketch as an app](Docs/Output/App.md): wrap a finished sketch as a signed, double-clickable Mac app that runs without the toolchain, with a frame of itself as its icon
 - [A sketch as the machine's screen saver](Docs/Output/ScreenSaver.md): wrap a sketch as the machine's screen saver: one command writes the project, one script installs it, and the sketch stays an ordinary sketch
 - [A sketch as the desktop wallpaper](Docs/Output/Wallpaper.md): run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar item to quit it
 - [A sketch in the menu bar](Docs/Output/MenuBar.md): run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
-- [A sketch as a widget](Docs/Output/Widget.md): show a sketch as a widget on the desktop, drawn one picture per moment, so the piece changes through the day rather than moving
+- [A sketch as a widget](Docs/Output/Widget.md): show a sketch as a widget on the desktop, drawn one picture per moment, so the sketch changes through the day rather than moving
 - [Print separations](Docs/Output/PrintSeparations.md): split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
 - [Print color](Docs/Output/PrintColor.md): soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures
-- [Spatial export](Docs/Output/Spatial.md): write a 3D frame or a `Scene` as USDZ, so a piece opens in Quick Look, sends in a message, and stands on a real table through AR.
+- [Spatial export](Docs/Output/Spatial.md): write a 3D frame or a `Scene` as USDZ, so the work opens in Quick Look, sends in a message, and stands on a real table through AR.
 
 ## Tools
 

@@ -3,9 +3,9 @@
 The generator starts a sketch for you, so you do not have to copy boilerplate out of somewhere else. It asks a few questions and hands back a folder that already runs. Use `ollin new` in the terminal, or `ollin generate` in a window.
 
 ```sh
-ollin new MyPiece                                  # a folder that builds and runs
-ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
-ollin new MyPiece --from Basic/HelloCircle          # start from an example, material and all
+ollin new MySketch                                  # a folder that builds and runs
+ollin new MySketch --template shader --with audio   # wired for a shader and the microphone
+ollin new MySketch --from Basic/HelloCircle          # start from an example, material and all
 ollin new Dots.swift                               # one loose file, nothing around it
 ollin new Rings --kind ios-app                     # an app for the phone and the tablet
 ollin new                                          # one loose file, named by the next serial
@@ -79,7 +79,7 @@ The examples are the largest body of working Ollin code there is, and you can st
 
 ```sh
 ollin new --examples                       # every one, grouped as they are filed
-ollin new MyPiece --from Patterns/Marbling
+ollin new MySketch --from Patterns/Marbling
 ```
 
 The copy is yours. The generator renames the type after your project and links the libraries the sketch imports. It copies everything the sketch loads in beside it and declares it, whether that is a picture, a mesh, a shader, or a clip. So the copy builds and runs before you have changed a line.
@@ -96,7 +96,7 @@ A blocked chip is dimmed, marked, and **names its cause** on the chip itself. Th
 
 ```sh
 ollin new --3d-options                  # every piece and the rule it carries
-ollin new MyPiece --template 3d --3d mesh,pbr,environment,shadows,ray-traced,tone-map
+ollin new MySketch --template 3d --3d mesh,pbr,environment,shadows,ray-traced,tone-map
 ```
 
 The rules are a hierarchy, which is what keeps the panel easy to move around in. **Geometry is never blocked**. Picking a wireframe settles the finish and drops whatever a wireframe cannot take, rather than refusing the click. What gets refused is a finish its geometry has no surface for, or an extra that its geometry or finish rules out.
@@ -151,23 +151,23 @@ The starter is checked against the framework on this machine, the way a sketch i
 ## What a project folder looks like
 
 ```
-MyPiece/
+MySketch/
   Package.swift
   README.md
   .gitignore
-  Sources/MyPiece/
+  Sources/MySketch/
     Sketch.swift
     effect.metal          # with --with shaders
     Images/               # with --with images
 ```
 
-Run it with `swift run MyPiece` from inside the folder. To edit it and see each save land without the window closing, open the same file through the live host instead:
+Run it with `swift run MySketch` from inside the folder. To edit it and see each save land without the window closing, open the same file through the live host instead:
 
 ```sh
-ollin Sources/MyPiece/Sketch.swift
+ollin Sources/MySketch/Sketch.swift
 ```
 
-Everything the sketch loads lives beside it in `Sources/MyPiece/`. A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit:
+Everything the sketch loads lives beside it in `Sources/MySketch/`. A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit:
 
 ```swift
 let picture = try? Image(resource: "photo", withExtension: "jpg", in: .module)
@@ -178,8 +178,8 @@ let picture = try? Image(resource: "photo", withExtension: "jpg", in: .module)
 A generated manifest points by path at the copy of Ollin the generator was run from. The project then builds straight away, with nothing to fetch. Two flags change that:
 
 ```sh
-ollin new MyPiece --remote                      # point at the published framework
-ollin new MyPiece --framework-path ~/dev/Ollin  # point at a particular copy
+ollin new MySketch --remote                      # point at the published framework
+ollin new MySketch --framework-path ~/dev/Ollin  # point at a particular copy
 ```
 
 The path form is the right default on a machine that has the framework, because the project builds with nothing to fetch. Switch to `--remote` for a project you mean to hand to someone who does not have that folder. The manifest then pins the newest tagged release and stays on that minor, because a pre-1.0 minor can break.

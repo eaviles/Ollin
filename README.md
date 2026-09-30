@@ -157,7 +157,7 @@ For a live performance, `swift run OllinLiveCoding` opens the editor over the vi
 When a piece outgrows one file, the [project generator](Docs/Tools/ProjectGenerator.md) makes a folder already wired for what you're about to use:
 
 ```sh
-ollin new MyPiece --template shader --with audio   # a folder that builds and runs
+ollin new MySketch --template shader --with audio   # a folder that builds and runs
 ollin generate                                     # the same, in a window
 ```
 

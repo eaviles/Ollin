@@ -17,7 +17,7 @@ struct WidgetProjectTests {
         let paths = project.files.map(\.path)
 
         #expect(paths.contains("Sources/Ripple/Sketch.swift"))
-        #expect(paths.contains("Sources/Ripple/Piece.swift"))
+        #expect(paths.contains("Sources/Ripple/Door.swift"))
         #expect(paths.contains("Sources/RippleApp/Main.swift"))
         #expect(paths.contains("Sources/RippleWidget/Widget.swift"))
         #expect(paths.contains("Package.swift"))
@@ -32,7 +32,7 @@ struct WidgetProjectTests {
     func theSketchStaysOrdinary() throws {
         let project = try plan(named: "Ripple")
         let sketch = try #require(project.files.first { $0.path == "Sources/Ripple/Sketch.swift" }).contents
-        let door = try #require(project.files.first { $0.path == "Sources/Ripple/Piece.swift" }).contents
+        let door = try #require(project.files.first { $0.path == "Sources/Ripple/Door.swift" }).contents
 
         // A public class would force `public override func draw()` on every
         // override in it, which is a sketch written differently from every
@@ -43,7 +43,7 @@ struct WidgetProjectTests {
         // Two entry points refuse to build, and neither program here is the
         // sketch.
         #expect(!sketch.split(separator: "\n").contains("@main"))
-        #expect(door.contains("public enum RipplePiece"))
+        #expect(door.contains("public enum RippleDoor"))
         #expect(door.contains("@MainActor public static func make() -> Sketch { Ripple() }"))
     }
 
@@ -65,7 +65,7 @@ struct WidgetProjectTests {
         let widget = try #require(project.files.first { $0.path == "Sources/RippleWidget/Widget.swift" }).contents
 
         #expect(main.contains("@main"))
-        #expect(main.contains("OllinApp.run(RipplePiece.make())"))
+        #expect(main.contains("OllinApp.run(RippleDoor.make())"))
         // The export flags keep working, which is how build.sh renders the
         // icon and how `--export-widget` shows the run without waiting for it.
         #expect(main.contains("OllinApp.handleCommandLine"))

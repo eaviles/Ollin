@@ -35,7 +35,7 @@ struct ExampleAndNamingTests {
     func foreignNamesAreIgnored() throws {
         let folder = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: folder) }
-        for name in ["Sketch2026007-old", "Sketch2026abc", "MyPiece", "Sketch2025099"] {
+        for name in ["Sketch2026007-old", "Sketch2026abc", "MySketch", "Sketch2025099"] {
             try "".write(to: folder.appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
         // Only the 2025 one is a serial at all, and it is a different year.

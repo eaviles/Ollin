@@ -1302,7 +1302,7 @@ Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is 
 for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumerated() {
     withViewBox(cell.frame) {
         randomSeed(i)
-        drawThePiece()              // written as though it owned the window
+        drawTheSketch()              // written as though it owned the window
     }
 }
 ```
@@ -1332,7 +1332,7 @@ Hand the view of the canvas to whoever is watching, so they can drag to pan and 
 override func draw() {
     background(.white)
     viewControl()
-    drawTheWholePiece()          // now pannable and zoomable
+    drawTheWholeSketch()          // now pannable and zoomable
 }
 ```
 

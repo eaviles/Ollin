@@ -32,7 +32,7 @@ Ripple/
   build.sh                   builds the app and packs the widget inside it
   Sources/Ripple/
     Sketch.swift             an ordinary sketch
-    Piece.swift              one public line, the door the two programs use
+    Door.swift               one public line, the door the two programs use
   Sources/RippleApp/
     Main.swift               the app the widget is packed inside
   Sources/RippleWidget/
@@ -44,7 +44,7 @@ Three targets, which is more than any other kind writes. The reason is structura
 That would normally mean making the sketch `public`, and a public class makes every `override func draw()` in it public too, which is a sketch written differently from every other kind's. So the library exposes one line instead, and the sketch stays ordinary:
 
 ```swift
-public enum RipplePiece {
+public enum RippleDoor {
     @MainActor public static func make() -> Sketch { Ripple() }
 }
 ```

@@ -56,7 +56,7 @@ struct ProjectGeneratorTests {
         func typeName(_ name: String) -> String {
             request(name: name).typeName
         }
-        #expect(typeName("MyPiece") == "MyPiece")
+        #expect(typeName("MySketch") == "MySketch")
         #expect(typeName("my piece") == "Mypiece")
         #expect(typeName("dots-and-lines") == "Dotsandlines")
         #expect(typeName("3D thing") == "MySketch")     // cannot start with a digit
@@ -102,11 +102,11 @@ struct ProjectGeneratorTests {
 
     @Test("A project folder carries a manifest, a sketch, and the notes around them")
     func macSketchShape() throws {
-        let project = try ProjectGenerator.plan(request(name: "MyPiece"))
+        let project = try ProjectGenerator.plan(request(name: "MySketch"))
         let paths = Set(project.files.map(\.path))
 
         #expect(paths.contains("Package.swift"))
-        #expect(paths.contains("Sources/MyPiece/Sketch.swift"))
+        #expect(paths.contains("Sources/MySketch/Sketch.swift"))
         #expect(paths.contains("README.md"))
         #expect(paths.contains(".gitignore"))
         #expect(project.files.allSatisfy { !$0.isExecutable })

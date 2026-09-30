@@ -247,7 +247,7 @@ public enum ProjectGenerator {
         )
     }
 
-    /// A sketch wrapped as a menu-bar piece: the same app shape as the
+    /// A sketch wrapped as a menu-bar strip: the same app shape as the
     /// wallpaper, with the strip's host in the wrapper file instead.
     private static func planMenuBar(_ request: ProjectRequest) -> GeneratedProject {
         let root = request.destination.appendingPathComponent(request.folderName)
@@ -882,13 +882,13 @@ public enum ProjectGenerator {
         let identifier = "com.example.\(target.lowercased())"
         let binary = executable ?? target
 
-        // A piece that lives on the desktop or in the menu bar has no window
+        // A sketch that lives on the desktop or in the menu bar has no window
         // of its own to stand behind a Dock icon, so the app stays out of the
         // Dock and the app switcher.
         let accessoryKeys = accessory ? """
 
 
-                <!-- The piece lives in the system, not in a window, so the app
+                <!-- The sketch lives in the system, not in a window, so the app
                      keeps out of the Dock and the app switcher. Quit lives in
                      its menu-bar item. -->
                 <key>LSUIElement</key>
@@ -1088,7 +1088,7 @@ public enum ProjectGenerator {
 
         \(request.template.summary)
 
-        An Ollin sketch wrapped as a Mac app, so the piece can be opened with a double click on a machine that has never seen the toolchain.
+        An Ollin sketch wrapped as a Mac app, so the sketch can be opened with a double click on a machine that has never seen the toolchain.
 
         ## Making the app
 
@@ -1142,7 +1142,7 @@ public enum ProjectGenerator {
     *.zip
     """
 
-    // MARK: - The pieces that live in the system
+    // MARK: - The sketches that live in the system
 
     /// The program for a kind whose sketch does not run itself: one wrapper
     /// file that keeps the shared command-line surface and then hands the
@@ -1152,7 +1152,7 @@ public enum ProjectGenerator {
         import Ollin
 
         // The program around the sketch. The export flags keep working, which
-        // is also how build.sh renders the icon from a frame of the piece.
+        // is also how build.sh renders the icon from a frame of the sketch.
         @main
         enum \(target)Main {
             @MainActor static func main() {
@@ -1169,7 +1169,7 @@ public enum ProjectGenerator {
 
         \(request.template.summary)
 
-        An Ollin sketch wrapped as the desktop wallpaper: the piece runs across every display, behind the icons, while the machine is used for everything else.
+        An Ollin sketch wrapped as the desktop wallpaper: the sketch runs across every display, behind the icons, while the machine is used for everything else.
 
         ## Seeing it
 
@@ -1177,7 +1177,7 @@ public enum ProjectGenerator {
         swift run \(target)
         ```
 
-        The desktop becomes the piece. The sparkle at the right end of the menu bar is the way out: click it and pick Quit.
+        The desktop becomes the sketch. The sparkle at the right end of the menu bar is the way out: click it and pick Quit.
 
         ## Making the app
 
@@ -1185,7 +1185,7 @@ public enum ProjectGenerator {
         ./build.sh
         ```
 
-        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the piece start with the machine, add the app under System Settings, General, Login Items.
+        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the sketch start with the machine, add the app under System Settings, General, Login Items.
 
         The icon is a frame the sketch renders of itself; drop an `AppIcon.icns` of your own beside `build.sh` to replace it. `build.sh` alone signs for this machine only; `./build.sh --sign "Developer ID Application: Your Name (TEAMID)" --notarize <profile>` makes one that travels, and the script says which of the two it made every time.
 
@@ -1211,7 +1211,7 @@ public enum ProjectGenerator {
 
         \(request.template.summary)
 
-        An Ollin sketch wrapped as a menu-bar piece: a small live strip among the status items, on screen for the whole working day.
+        An Ollin sketch wrapped as a menu-bar strip: a small live picture among the status items, on screen for the whole working day.
 
         ## Seeing it
 
@@ -1237,7 +1237,7 @@ public enum ProjectGenerator {
         ./build.sh
         ```
 
-        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the piece start with the machine, add the app under System Settings, General, Login Items. `--sign` and `--notarize` make one that travels, exactly as the Mac app kind does.
+        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the sketch start with the machine, add the app under System Settings, General, Login Items. `--sign` and `--notarize` make one that travels, exactly as the Mac app kind does.
 
         ## Working on it
 
@@ -1260,7 +1260,7 @@ public enum ProjectGenerator {
     /// through the app it is inside, so there are two programs here rather
     /// than one, and two programs cannot share a folder of sources. So the
     /// sketch moves into a library of its own that both of them reach through
-    /// one small public door (`Piece.swift`), and stays an ordinary sketch,
+    /// one small public door (`Door.swift`), and stays an ordinary sketch,
     /// internal and unadorned like every other kind's.
     private static func planWidget(_ request: ProjectRequest) -> GeneratedProject {
         let root = request.destination.appendingPathComponent(request.folderName)
@@ -1270,8 +1270,8 @@ public enum ProjectGenerator {
         let widget = "\(target)Widget"
         var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
 
-        files.append(GeneratedFile(path: "\(sourceDir)/Piece.swift",
-                                   contents: piecePublicDoor(target: target)))
+        files.append(GeneratedFile(path: "\(sourceDir)/Door.swift",
+                                   contents: publicDoor(target: target)))
         files.append(GeneratedFile(path: "Sources/\(app)/Main.swift",
                                    contents: widgetContainerMain(target: target, app: app)))
         files.append(GeneratedFile(path: "Sources/\(widget)/Widget.swift",
@@ -1318,14 +1318,14 @@ public enum ProjectGenerator {
     /// making the sketch itself public would make every `override func draw()`
     /// in it public too, which is a sketch written differently from every
     /// other kind's. One door instead, so the sketch stays ordinary.
-    private static func piecePublicDoor(target: String) -> String {
+    private static func publicDoor(target: String) -> String {
         """
         import Ollin
 
         // The door the two programs around this sketch come in by: the app you
         // double-click, and the widget the system draws. The sketch next door is
         // an ordinary sketch, exactly as it would be in a window.
-        public enum \(target)Piece {
+        public enum \(target)Door {
             @MainActor public static func make() -> Sketch { \(target)() }
         }
         """
@@ -1335,7 +1335,7 @@ public enum ProjectGenerator {
     ///
     /// It has to exist, because the system finds a widget through its app, and
     /// it has to be somewhere the system looks. What it does while it is open
-    /// is the piece itself, which is also how `build.sh` renders the icon.
+    /// is the sketch itself, which is also how `build.sh` renders the icon.
     private static func widgetContainerMain(target: String, app: String) -> String {
         """
         import Ollin
@@ -1343,15 +1343,15 @@ public enum ProjectGenerator {
 
         // The app the widget is packed inside. The system finds a widget through
         // its app, so this program exists to hold one; while it is open it runs
-        // the piece in a window, which is also how build.sh renders the icon.
+        // the sketch in a window, which is also how build.sh renders the icon.
         //
         // The export flags all work here, `--export-widget <dir>` among them,
         // which writes the run the widget would show without waiting for it.
         @main
         enum \(app)Main {
             @MainActor static func main() {
-                if OllinApp.handleCommandLine(makeSketch: { \(target)Piece.make() }) { return }
-                OllinApp.run(\(target)Piece.make())
+                if OllinApp.handleCommandLine(makeSketch: { \(target)Door.make() }) { return }
+                OllinApp.run(\(target)Door.make())
             }
         }
         """
@@ -1387,7 +1387,7 @@ public enum ProjectGenerator {
             func getSnapshot(in context: Context, completion: @escaping @Sendable (Moment) -> Void) {
                 let size = pixels(context)
                 Task { @MainActor in
-                    let frames = OllinApp.widgetFrames(size: size, count: 1) { \(target)Piece.make() }
+                    let frames = OllinApp.widgetFrames(size: size, count: 1) { \(target)Door.make() }
                     completion(Moment(date: frames.first?.date ?? Date(), picture: frames.first?.image))
                 }
             }
@@ -1399,8 +1399,8 @@ public enum ProjectGenerator {
                              completion: @escaping @Sendable (WidgetKit.Timeline<Moment>) -> Void) {
                 let size = pixels(context)
                 Task { @MainActor in
-                    let spacing = \(target)Piece.make().widgetTimeline.spacing
-                    let frames = OllinApp.widgetFrames(size: size) { \(target)Piece.make() }
+                    let spacing = \(target)Door.make().widgetTimeline.spacing
+                    let frames = OllinApp.widgetFrames(size: size) { \(target)Door.make() }
                     let moments = frames.map { Moment(date: $0.date, picture: $0.image) }
                     // Come back once the last picture has been up for one step.
                     // Asking sooner does not make the system come sooner.
@@ -1677,7 +1677,7 @@ public enum ProjectGenerator {
 
         \(request.template.summary)
 
-        An Ollin sketch shown as a widget, so the piece sits on the desktop and changes through the day.
+        An Ollin sketch shown as a widget, so the sketch sits on the desktop and changes through the day.
 
         ## Putting it on this machine
 
@@ -1689,11 +1689,11 @@ public enum ProjectGenerator {
 
         ## What a widget is, and what it does to a sketch
 
-        A widget is not a window. The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. So the piece here is one that **changes** rather than one that moves: each picture is drawn on its own, from the moment it stands for, and what a viewer sees is the difference between two of them.
+        A widget is not a window. The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. So the sketch here is one that **changes** rather than one that moves: each picture is drawn on its own, from the moment it stands for, and what a viewer sees is the difference between two of them.
 
         Three things follow, and all three are in the sketch rather than in the wrapper.
 
-        **The clock is the time of day.** `time` is seconds since midnight of the moment being drawn, so `time / 3600` is the hour and the piece reads the same at four this afternoon as at four tomorrow. An elapsed clock could not do that: the system throws a run away and asks for a new one, and a piece counting from zero would jump back every time it did.
+        **The clock is the time of day.** `time` is seconds since midnight of the moment being drawn, so `time / 3600` is the hour and the sketch reads the same at four this afternoon as at four tomorrow. An elapsed clock could not do that: the system throws a run away and asks for a new one, and a sketch counting from zero would jump back every time it did.
 
         **How far apart the pictures sit is yours.** The sketch says so:
 
@@ -1718,7 +1718,7 @@ public enum ProjectGenerator {
 
         ## Where things go
 
-        `Sources/\(target)/` is the sketch and everything it loads. `Piece.swift` beside it is one public line, the door the two programs come in by. `Sources/\(app)/` is the app the widget is packed inside, and `Sources/\(target)Widget/` is the widget itself: the run it asks for, and the view that shows one picture of it.
+        `Sources/\(target)/` is the sketch and everything it loads. `Door.swift` beside it is one public line, the door the two programs come in by. `Sources/\(app)/` is the app the widget is packed inside, and `Sources/\(target)Widget/` is the widget itself: the run it asks for, and the view that shows one picture of it.
 
         The split into three is what a widget costs. The system finds a widget through the app it is inside, so there are two programs here, and two programs cannot share a folder of sources.
 

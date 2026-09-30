@@ -188,10 +188,10 @@ Installation(restarts: .onFailure(stalledAfter: 0))     // crashes only, and wai
 Restarting is off until you ask for it, even under `.on`. A sketch that crashes while you work on it should stay crashed, so that you can read the error. `--no-installation` turns the watch off along with everything else.
 
 ```
-Ollin installation [2026-08-15 13:02:06]: watching this run; a piece that stops answering for 10s is started again
-Ollin installation [2026-08-15 13:02:18]: the piece crashed (signal 9) after 12s; starting it again in 1s
+Ollin installation [2026-08-15 13:02:06]: watching this run; a sketch that stops answering for 10s is started again
+Ollin installation [2026-08-15 13:02:18]: the sketch crashed (signal 9) after 12s; starting it again in 1s
 Ollin installation [2026-08-15 13:02:19]: resumed the run saved at 2026-08-15 13:02:16 (frame 596, 10s in)
-Ollin installation [2026-08-15 13:02:38]: the piece has not answered for 10s; stopping it
+Ollin installation [2026-08-15 13:02:38]: the sketch has not answered for 10s; stopping it
 ```
 
 ### Keeping hours
