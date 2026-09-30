@@ -99,7 +99,7 @@ A `Paint` is a flat `.color` or a `.gradient`, and `solidColor` reads the flat o
 - **Backruns.** Blot a wash, then *hold* a clean-water touch in it. The water floods back through the damp paint and pushes pigment ahead of it into a pale bloom with a dark, branching edge. A single tap only nudges the paint. The bloom comes from holding the wet brush, which means painting the drop over consecutive frames.
 - **Granulation.** Paint with a granulating pigment, such as `.frenchUltramarine` or `.burntUmber`, and the wash dries speckled along the sheet's texture.
 - **Flow effects.** Paint wet-in-wet, which means a loaded stroke into a wash that is still wet. The color spreads soft and feathery, and the paper steers it.
-- **Glazing.** Dry the sheet, then wash over it. The layers mix optically rather than additively, so hansa yellow over ultramarine reads as the muted green those real paints make.
+- **Glazing.** Dry the sheet, then wash over it. The layers mix as filters, each taking its own light out of what the one below reflects, so hansa yellow over ultramarine reads as a warm gray: the measured ultramarine absorbs green as hard as red, and the yellow takes the blue, leaving little for either to reflect. Yellow over cerulean is the glaze that comes out green.
 
 <a id="parameters"></a>
 ### Parameters
