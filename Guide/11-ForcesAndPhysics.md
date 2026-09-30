@@ -96,7 +96,7 @@ final class Confetti: Sketch {
 }
 ```
 
-<img src="Images/11-ForcesAndPhysics/Confetti.jpg" alt="A shower of small colored paper pieces falling through a dark canvas, the short light pieces blown sideways by wind while the long heavy pieces hang nearly vertical" width="560">
+<img src="Images/11-ForcesAndPhysics/Confetti.jpg" alt="A shower of small colored paper pieces falling through a dark canvas, the short light pieces blown sideways by wind while the long heavy pieces fall on a steeper slant" width="560">
 
 The state is [Chapter 10](10-Vectors.md)'s parallel lists again, with one addition. Every piece gets its own `mass`, and its drawn length comes from it, so you can tell them apart. The wind is a single `signedNoise` value shared by the whole shower, wandering the way [Chapter 5](05-Noise.md)'s noise wanders. Run it and watch what mass does. When a gust arrives, the small pieces get thrown almost sideways while the long ones sway a little and keep plowing downward. The code treats every piece the same. The same three forces act on all of them, and the one division by mass makes the light ones flighty and the heavy ones stubborn. Each piece also draws itself rotated to its own velocity (`rotate(velocities[i].angle)`, from [Chapter 10](10-Vectors.md)), so when the wind leans, the whole shower leans with it.
 
@@ -235,7 +235,7 @@ Everything so far, particles and the springs between them, is **soft**. A partic
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SoftVsRigid-dark.jpg">
-  <img src="Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
+  <img src="Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting flat, three in a staggered stack and one beside it, corners intact" width="680">
 </picture>
 
 For bricks, the same `World` holds a second kind of body. A `Body` is rigid. It has a shape with corners and an angle, so it rotates, tips, and rests in stable stacks. You add one with a shape called a **collider**, and the collider can be a `.circle(radius:)`, a `.box(width:height:)`, a `.capsule(from:to:radius:)`, or a convex `.polygon([...])`. A body also takes three numbers. `friction` is surface grip from 0 to 1, `density` sets how heavy it is for its size, and `restitution` is its bounciness. Make `MySketches/Tumble.swift` and drop a few of each:
@@ -691,7 +691,7 @@ The one new idea is *temperature*. Each step caps how far a node may move, and t
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/GraphSettles-dark.jpg">
-  <img src="Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
+  <img src="Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a scatter of long crossing edges at the seeded random start, the web drawing in and untangling mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
 </picture>
 
 Because the layout freezes, a change is a deliberate act. `reheat(0.3)` warms the temperature back up so the layout can absorb whatever you did. Growing a network is `addNode`, `connect`, reheat, and the web makes room. Dragging is `nearestNode(to:)` to pick one up, then `pinned[i] = true` so the solver leaves it in your hand. Write its position each frame, with a little heat kept on so the neighbors follow, and unpin on release. `idealDistance` is the size dial, so raise it and the web opens up. The seed picks which of the many equally good untanglings you get, so a graph sketch has variations like any other seeded sketch. The worked example is [`Examples/Patterns/ForceGraph`](../Examples/Patterns/ForceGraph/Sketch.swift), a network that grows node by node with a preference for already-popular nodes. Hubs emerge while the layout reflows live, and any node drags with the web trailing behind.

@@ -15,7 +15,7 @@ A contour that closes inside the bounds comes back as a closed `Contour`. A cont
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/14-FieldsAndFlow/Isolines-dark.jpg">
-  <img src="../../Guide/Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
+  <img src="../../Guide/Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then orange contours tracing a single level through it, then a full stack of black contours reading as a topographic map" width="680">
 </picture>
 
 ### Contents

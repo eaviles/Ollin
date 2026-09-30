@@ -1,7 +1,7 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 11): the same graph at three temperatures. Left, the
-// seeded random start: a huddle of tangled edges. Middle, mid-cooling: edges
+// seeded random start: long edges crossing everywhere. Middle, mid-cooling: edges
 // evening out, crossings resolving. Right, settled: an even web, frozen.
 import Ollin
 import OllinDiagram

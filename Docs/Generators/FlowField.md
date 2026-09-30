@@ -58,7 +58,7 @@ Pass a `separation` and the lines are traced **evenly spaced**. A line stops whe
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/14-FieldsAndFlow/EvenSpacing-dark.jpg">
-  <img src="../../Guide/Images/14-FieldsAndFlow/EvenSpacing.jpg" alt="Two panels of streamlines through the same field: on the left free lines cross and bunch into dense ropes; on the right evenly spaced lines stop before touching and read as combed fibers" width="680">
+  <img src="../../Guide/Images/14-FieldsAndFlow/EvenSpacing.jpg" alt="Two panels of streamlines through the same field: on the left free lines converge and bunch into dense ropes; on the right evenly spaced lines stop before touching and read as combed fibers" width="680">
 </picture>
 
 ```swift

@@ -373,7 +373,7 @@ Where DLA's walkers arrive most often is also where an electric field would be s
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/VoltageChooses-dark.jpg">
-  <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+  <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and small in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
 </picture>
 
 One number sets the character. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a dial DLA never had. At `1` you are back to DLA's bushes. Near `2` the strongest cells win so often that the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
@@ -465,7 +465,7 @@ A **meander** is a river channel that migrates sideways by its own curvature. Wa
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/WanderingRiver-dark.jpg">
-  <img src="Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded tan and pale blue ribbons of its old positions, with pale blue crescent lakes beside it" width="680">
+  <img src="Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded tan ribbons of its old positions, with pale blue crescent lakes beside it" width="680">
 </picture>
 
 Let it run and a loop eventually pinches shut. The river takes the shortcut, and the abandoned loop is left beside it as a crescent lake. `Meander` is the stepper, and like the others it hands you geometry:

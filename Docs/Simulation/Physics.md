@@ -12,7 +12,7 @@ The same `World` also holds a second kind of body. On the **soft** side, [`Parti
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid-dark.jpg">
-  <img src="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
+  <img src="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting flat, three in a staggered stack and one beside it, corners intact" width="680">
 </picture>
 
 The usual pattern is to build the world once in `setup()`. Then, in `draw()`, you call `advance(by:)` and draw from its particles.

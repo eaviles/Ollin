@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/VoltageChooses-dark.jpg">
-  <img src="../../Guide/Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+  <img src="../../Guide/Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and small in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
 </picture>
 
 `DielectricBreakdown` is a stateful stepper you hold on to, like the other growth models. `step()` adds one site, `step(_:)` adds a batch per frame, and `grow()` runs until the arc connects. The model is seeded, so the same seed grows the same figure.

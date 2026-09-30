@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/GraphSettles-dark.jpg">
-  <img src="../../Guide/Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
+  <img src="../../Guide/Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a scatter of long crossing edges at the seeded random start, the web drawing in and untangling mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
 </picture>
 
 You provide only a node count and index pairs for the edges. Positions start at seeded random spots and improve step by step. In each step every node moves a little along its summed force, and a temperature caps how far it moves. The temperature cools linearly to zero, so the layout moves a lot at first, then refines in smaller moves, and then freezes. The layout is deterministic, so the same seed replays the same run.

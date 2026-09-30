@@ -64,15 +64,15 @@ The compass asked the field a question at each point of a grid. The field become
   <img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
 </picture>
 
-The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The `stepLength` argument sets the accuracy, since big steps cut corners on tight curves, like the enlarged arrows in the diagram.
+The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The `stepLength` argument sets the accuracy, since big steps cut corners on tight curves.
 
 ## Lines that keep their distance: evenly spaced streamlines
 
-Streamlines from scattered starts have one flaw as art. Nothing stops them from crossing or bunching into ropes. The fix, from scientific visualization, is a single added rule, and it is what gives a flow-field print its look:
+Streamlines from scattered starts have one flaw as art. Nothing stops them from crowding together or bunching into ropes. The fix, from scientific visualization, is a single added rule, and it is what gives a flow-field print its look:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/EvenSpacing-dark.jpg">
-  <img src="Images/14-FieldsAndFlow/EvenSpacing.jpg" alt="Two panels of streamlines through the same field: on the left free lines cross and bunch into dense ropes; on the right evenly spaced lines stop before touching and read as combed fibers" width="680">
+  <img src="Images/14-FieldsAndFlow/EvenSpacing.jpg" alt="Two panels of streamlines through the same field: on the left free lines converge and bunch into dense ropes; on the right evenly spaced lines stop before touching and read as combed fibers" width="680">
 </picture>
 
 Pass a `separation` and each line is traced watching all the lines drawn before it. The moment it comes within that distance of any of them, it stops. Lines never cross, density stays even, and the field reads as combed fiber:
@@ -141,7 +141,7 @@ Those curves are **level curves**, or contours, and you have read thousands of t
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/Isolines-dark.jpg">
-  <img src="Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
+  <img src="Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then orange contours tracing a single level through it, then a full stack of black contours reading as a topographic map" width="680">
 </picture>
 
 In a sketch, one level is one call. `isolines` takes the level, the region to search, and the field as a closure, and hands back the curves:
@@ -284,7 +284,7 @@ fill(field.value(at: Vector2(x, y)))
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/Fitting-dark.jpg">
-  <img src="Images/14-FieldsAndFlow/Fitting.jpg" alt="Three panels. A soft field of orange, pink, blue, green and yellow filling a square with six small dark rings marking the points it was fitted through; a white grid on black bent into curves by six orange arrows pulling on it; and a ring of pale dots wobbling around a circle, with a gold circle drawn through the middle of them and a gold dot at its center" width="680">
+  <img src="Images/14-FieldsAndFlow/Fitting.jpg" alt="Three panels. A soft field of orange, pink, blue, green and yellow filling a square with six small dark rings marking the points it was fitted through; a white grid on black bent into curves by six orange pulls, each a short line ending in a dot; and a ring of pale dots wobbling around a circle, with a gold circle drawn through the middle of them and a gold dot at its center" width="680">
 </picture>
 
 The `!` after the call takes the value out of an optional and stops the sketch if there is none. It is the same promise [Chapter 2](02-Color.md)'s `try!` made about a file. The fit fails when two points share a place or all of them sit on one line, and here you know they do neither. The left panel is six colors at six places, read back at every pixel. It looks like a gradient and it is not one. Nothing was blended between two stops. Every pixel is a weighted sum of all six. Look at the rings marking the points. What shows inside each one is the field's own color there, and it matches the color that point was given. A field that passes through its data is interpolating, and one that only heads in the right direction is blurring.

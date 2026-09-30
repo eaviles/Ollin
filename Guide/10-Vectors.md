@@ -237,9 +237,9 @@ final class Chasers: Sketch {
 }
 ```
 
-<img src="Images/10-Vectors/Chasers.jpg" alt="Two chaser trails on a dark canvas following a lure that hops between spots: the coral trail curls tightly at the old spot, darts straight to the lure and buzzes around it, while the sky-blue trail sweeps wide past both spots and sails beyond the lure into the corner" width="560">
+<img src="Images/10-Vectors/Chasers.jpg" alt="Two chaser trails on a dark canvas following a lure that hops between spots: the coral trail curls tightly at the old spot, darts straight past the lure and hooks back toward it, while the sky-blue trail sweeps wide past both spots and sails beyond the lure into the corner" width="560">
 
-Both share the lure and the top speed, and only `maxForce` differs. The coral chaser corrects hard, so each time the lure hops it turns, darts, and settles into a tight little orbit around the new spot. It never quite stops, because the recipe always asks for full speed toward the target. The small knot at the lure is what that rule looks like. The blue one can barely turn. It sails past the lure, swings back in wide arcs because it keeps its momentum, and often meets the next hop before it ever settles. Hold the mouse down and both come to you, each in its own way.
+Both share the lure and the top speed, and only `maxForce` differs. The coral chaser corrects hard, so each time the lure hops it turns, darts, and settles into a tight little orbit around the new spot. It never quite stops, because the recipe always asks for full speed toward the target. In the picture it has shot past the new spot and is hooking back, the start of that orbit. The blue one can barely turn. It sails past the lure, swings back in wide arcs because it keeps its momentum, and often meets the next hop before it ever settles. Hold the mouse down and both come to you, each in its own way.
 
 > **Swift note.** `positions.indices` counts `0..<count`, so one `i` reaches into the parallel lists together. Chaser `i`'s position, velocity, force, and tint all live at index `i`. `trails` is a list of lists, one trail per chaser, so `trails[i].append(...)` grows only chaser `i`'s. `Int(time / 4) % spots.count` turns the clock into a spot number that steps every four seconds and wraps back to `0`.
 
