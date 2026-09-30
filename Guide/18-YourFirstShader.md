@@ -4,7 +4,7 @@
 
 # 18. Your first shader
 
-<img src="Images/18-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a violet night sky full of small stars, above a black mountain ridge" width="560">
+<img src="Images/18-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a deep blue night sky full of small stars, above a black mountain ridge" width="560">
 
 The GPU can run a small function at every pixel of the canvas at once, and that function is a shader. You learn to write one: per-pixel thinking, a `shade` function, distance shaped by `smoothstep`, time and parameters, and the library Ollin splices in. Under forty lines of shader and no assets make the aurora at the top. The shaders Ollin ships follow it, with other ways to a shader, such as chains patched in Swift and GLSL brought over.
 
@@ -117,7 +117,7 @@ The library is one source file. It is spliced into the framework's own effects, 
 
 ## Putting it together: aurora
 
-The aurora is one shader, and it composes the steps above. Curtains of light are vertical noise bands whose x position is bent by more noise, from the library's `fbm`. Height fades them in above the horizon through `smoothstep`. A cosine `palette` colors them green at the core and violet at altitude, and `hash12` places the stars. Two parameters come in as `params`, and `info.time` moves it all. Make `MySketches/Aurora.swift`:
+The aurora is one shader, and it composes the steps above. Curtains of light are vertical noise bands whose x position is bent by more noise, from the library's `fbm`. Height fades them in above the horizon through `smoothstep`. A cosine `palette` colors them green at the core and blue at altitude, and `hash12` places the stars. Two parameters come in as `params`, and `info.time` moves it all. Make `MySketches/Aurora.swift`:
 
 ```swift
 import Ollin
@@ -145,7 +145,7 @@ final class Aurora: Sketch {
         float height = smoothstep(0.1, 0.38, y1) * smoothstep(1.15, 0.4, y1);
         float glow = band * height;
 
-        // Aurora colors from a cosine palette: green cores fading violet as
+        // Aurora colors from a cosine palette: green cores fading blue as
         // the curtain climbs.
         float3 aurora = palette(0.5 + glow * 0.22 - y1 * 0.3,
                                 float3(0.16, 0.5, 0.38), float3(0.24, 0.5, 0.45),
@@ -346,7 +346,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/18-YourFirstShader/SharedHelper-dark.jpg">
-  <img src="Images/18-YourFirstShader/SharedHelper.jpg" alt="On the left a helper file holding one swirl function. On the right two shader files, each naming that helper in an include line and calling it with a different amount, and beside each one a grid warped by that amount" width="680">
+  <img src="Images/18-YourFirstShader/SharedHelper.jpg" alt="On the left a helper file holding one swirl function. On the right two shader files, each naming that helper in an include line and calling it with a different amount, and beside each one a set of parallel lines warped by that amount" width="680">
 </picture>
 
 A file is read once, however many shaders name it. A mistake inside the helper is reported against the helper, at its own line. [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) keeps its physics in one file and its picture in another, so a test can load the physics alone. Ollin's own library needs no include, since `palette`, `fbm`, and the rest are already in every shader. The [reference](../Docs/Shaders/Shaders.md#pulling-in-another-file) has the rest. It covers a file that is not there, a loop of files that include each other, and a compute kernel sharing the same helper.

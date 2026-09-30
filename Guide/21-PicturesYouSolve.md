@@ -28,7 +28,7 @@ drawImage(marks.filtered(.diffuse(sharpness: 1)).image, 0, 0)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/Diffusion-dark.jpg">
-  <img src="Images/21-PicturesYouSolve/Diffusion.jpg" alt="Three dark panels. A black field with a thin two-color curve and two dots; the same marks after diffusing into a smooth dusk sky over deep water with a glowing sun; and the same again with a second curve added low down, which reorganizes the whole lower half into a lit shore" width="680">
+  <img src="Images/21-PicturesYouSolve/Diffusion.jpg" alt="Three panels. A black field with a thin two-color curve and two dots; the same marks after diffusing into a smooth dusk sky over deep water with a glowing sun; and the same again with a second curve added low down, which reorganizes the whole lower half into a lit shore" width="680">
 </picture>
 
 The rule the solve follows matters, because everything the picture does follows from it. Away from the marks, every pixel ends up the average of its four neighbors. That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
@@ -51,7 +51,7 @@ let field = marks.filtered(.distanceField())
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/MeasuredField-dark.jpg">
-  <img src="Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel taking the color of the mark nearest to it" width="680">
+  <img src="Images/21-PicturesYouSolve/MeasuredField.jpg" alt="Three panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel taking the color of the mark nearest to it" width="680">
 </picture>
 
 That layer is no longer a picture. Its red channel holds the distance in pixels, running negative inside a shape and positive outside it. Its green and blue hold the direction to that nearest edge. A picture of a thing has turned into the measurement of where that thing is.
@@ -278,9 +278,9 @@ let spectrum = plate.filtered(.fourier())
 drawImage(spectrum.filtered(.spectrum()).image, 0, 0)   // the view of it
 ```
 
-<img src="Images/21-PicturesYouSolve/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a row of dots along its middle line; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
+<img src="Images/21-PicturesYouSolve/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a comb of evenly spaced vertical lines crossing its middle line; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
 
-The middle panel is that spectrum, drawn through `.spectrum()`, the view that makes its faint values visible. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle, and fine detail out at the edges. The star through it is the shapes' straight edges. The row of dots along the middle line is the stripes: one wavelength, repeated, lands on one line at one spacing.
+The middle panel is that spectrum, drawn through `.spectrum()`, the view that makes its faint values visible. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle, and fine detail out at the edges. The star through it is the shapes' straight edges. The evenly spaced vertical lines are the stripes. One wavelength, repeated, lands at one spacing along the middle line. The stripe band is short, so each of those points stretches into a vertical line.
 
 The reason to make the trip is that filtering by scale, which is awkward on the pixel side, is a multiplication on this side. Draw a shape over the spectrum and you have a filter:
 

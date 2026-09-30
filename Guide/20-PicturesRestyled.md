@@ -52,7 +52,7 @@ The tone is the other half. Under the strokes is a stroke texture, made by combi
 
 Brushwork and hatching change what the picture is made of. A print shop's next step changes its color. The tool for that is a **look**, a table that says, for every color, which color to show instead. Color tools trade them as `.cube` files. A colorist builds one in a grading suite and hands it over. A film stock's character ships as one, and a camera maker publishes one for its footage. Ollin reads that file into a `ColorLUT`, and `.lut` applies it to a layer or to the whole frame.
 
-<img src="Images/20-PicturesRestyled/Look.jpg" alt="Two panels and two strips: a portrait of a young woman in a lace headdress plain on the left and through a warm print look on the right, her skin warmer and the shadows cooler; below them a gray ramp and a sweep of hues, each drawn plain above and through the same look beneath, the ramp's black lifted and its white held short of paper, the hues warmed at the bright end" width="680">
+<img src="Images/20-PicturesRestyled/Look.jpg" alt="Two panels and two strips: a portrait of a young woman in a lace headdress plain on the left and through a warm print look on the right, her skin warmer and the shadows cooler; below them a gray ramp and a sweep of hues, each drawn plain above and through the same look beneath, the ramp's black lifted and its white held short of paper, the hues mostly held, with cyan turned toward teal" width="680">
 
 ```swift
 var look = ColorLUT.warmPrint                       // the bundled look, a warm print
@@ -67,7 +67,7 @@ override func draw() {
 }
 ```
 
-Read the two strips before the portrait. The gray ramp says what the look does to tone. This one lifts black off the floor, holds white short of paper, and bends the middle into a gentle S. The sweep of hues says what it does to color: warm at the bright end, cool at the dark. Every look is those two things, and a ramp and a sweep through it tell you more than a portrait does.
+Read the two strips before the portrait. The gray ramp says what the look does to tone. This one lifts black off the floor, holds white short of paper, and bends the middle into a gentle S. It also tints the ramp, warm at the bright end and cool at the dark. The sweep of hues says what the look does to each hue. This one mostly leaves them in place and turns cyan toward teal. Every look is those two things, and a ramp and a sweep through it tell you more than a portrait does.
 
 A word on how the table is read, because it decides whether a neutral stays neutral. A `.cube` holds a color at every node of a lattice. An input between nodes has to be interpolated from the corners of its cell. Ollin cuts the cell into six tetrahedra along its gray diagonal, the way a grading suite does. It then weighs the four corners of the one that holds the point. Every one of those tetrahedra has the cell's black and white corners. So a gray input meets only the two gray corners, and a look that leaves gray alone does so between its nodes too. The plain trilinear read of a texture sampler would mix the colored corners in and tint a neutral.
 
@@ -77,9 +77,9 @@ Two more things to know. A file that is not a `.cube` is refused with the line t
 
 A look grades the color. Two more filters give a frame the *texture* of film, the two things a stock does to a picture that a sensor does not.
 
-<img src="Images/20-PicturesRestyled/FilmLook.jpg" alt="Two panels and two strips: a night street of lamps over dark facades drawn plain on the left and through halation and film grain on the right, each lamp with a warm ring and the walls carrying a fine grain; below them one lamp magnified four times, plain and halated, its white core unchanged and an orange fringe around it, and a gray ramp drawn plain above and grained beneath, the grain absent at both ends and heaviest in the middle" width="680">
+<img src="Images/20-PicturesRestyled/FilmLook.jpg" alt="Two panels and two strips: a night street of lamps over dark facades drawn plain on the left and through halation and film grain on the right, each lamp with a warm ring and the walls carrying a fine grain; below them one lamp magnified four times, plain and halated, its white core unchanged and a deep red fringe around it, and a gray ramp drawn plain above and grained beneath, the grain absent at both ends and heaviest in the middle" width="680">
 
-The first is **halation**, the warm fringe film shows around its brightest highlights. Light that gets through the emulsion reflects off the base and exposes the layers again around the point it entered. The red-sensitive layer sits deepest, so it takes most of that second exposure, and the fringe comes out orange. `.halation(threshold:radius:tint:amount:)` builds it the way `.bloom` builds a glow. The pixels above `threshold` are blurred by `radius`, colored by `tint`, and added back. The difference is where the halo lands. Scattered light changes nothing in a layer that is already fully exposed. So each channel takes the halo in proportion to how far it sits below white. A white lamp keeps its white core and gains a ring, where a glow would have tinted the core too. Under the pictures, the same lamp is magnified four times, plain and halated, so you can see the core hold. A frame with nothing above the threshold comes back untouched, byte for byte.
+The first is **halation**, the warm fringe film shows around its brightest highlights. Light that gets through the emulsion reflects off the base and exposes the layers again around the point it entered. The red-sensitive layer sits deepest, so it takes most of that second exposure, and the fringe comes out red. `.halation(threshold:radius:tint:amount:)` builds it the way `.bloom` builds a glow. The pixels above `threshold` are blurred by `radius`, colored by `tint`, and added back. The difference is where the halo lands. Scattered light changes nothing in a layer that is already fully exposed. So each channel takes the halo in proportion to how far it sits below white. A white lamp keeps its white core and gains a ring, where a glow would have tinted the core too. Under the pictures, the same lamp is magnified four times, plain and halated, so you can see the core hold. A frame with nothing above the threshold comes back untouched, byte for byte.
 
 The second is **film grain**. A developed frame is a scatter of grains, each one developed or not, and that is what makes its noise follow the tone. Where nothing developed there is nothing to vary, and where every grain did there is nothing either. The grain lives in the middle, and its spread goes as the square root of the tone times what is left to white. `.filmGrain(amount:size:seed:)` applies that rule to each channel on the displayed picture. `amount` is the spread at mid-gray as a fraction of the way to white, so 0.05 is about twelve levels of a display byte. `size` is how many pixels across a clump is, and a coarser grain is not a fainter one. The mean of any flat region is kept, so grain never lifts or darkens a picture. The ramp along the bottom shows the rule: nothing at the black end, nothing at white, the most in the middle. Feed `seed` your `frameCount` and every frame gets the fresh grain a film has. The older `.grain` is plain per-pixel noise, the same at every tone. It is still the right call for a static or a signal look.
 
@@ -192,7 +192,7 @@ The print painted its color with brushwork and drew its line with hatching. Both
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/20-PicturesRestyled/InkLines-dark.jpg">
-  <img src="Images/20-PicturesRestyled/InkLines.jpg" alt="Two panels: a photograph of an elderly woman in a yellow scarf, and the same layer drawn as pen and ink, with a line along every fold and wrinkle and solid ink in the shadows of the scarf" width="680">
+  <img src="Images/20-PicturesRestyled/InkLines.jpg" alt="Two panels: a photograph of an elderly woman in a yellow scarf, and the same layer drawn as pen and ink, with lines along the folds of the scarf and the features of the face, and soft gray where the background is dark" width="680">
 </picture>
 
 ```swift
@@ -211,7 +211,7 @@ The part that makes the lines read as drawn rather than detected is the flow. It
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/20-PicturesRestyled/FlatRegions-dark.jpg">
-  <img src="Images/20-PicturesRestyled/FlatRegions.jpg" alt="Two panels: a photograph of a young woman in a lace headdress and an embroidered blouse, and the same layer through the shock filter, the shading of her face snapped into flat bands with crisp edges and the lace drawn out into smooth strokes" width="680">
+  <img src="Images/20-PicturesRestyled/FlatRegions.jpg" alt="Two panels: a photograph of a young woman in a lace headdress, and the same layer through the shock filter, the shading of her face snapped into flat bands with crisp edges and the lace drawn out into smooth strokes" width="680">
 </picture>
 
 ```swift

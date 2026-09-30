@@ -157,7 +157,7 @@ Accumulation adds new marks to a picture that otherwise sits still. **Feedback**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/FeedbackSteps-dark.jpg">
-  <img src="Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+  <img src="Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a long tail that dims along the dot's path, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 </picture>
 
 A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame. The layer itself starts every frame cleared, so if you never draw `prev` back, the past is gone:
@@ -193,7 +193,7 @@ The `tint` alpha is the decay ([Chapter 9](09-Pictures.md) used `tint` to fade a
 
 [Chapter 12](12-FlocksAndSwarms.md#putting-it-together-the-living-flock) built a flock of triangles trailing fading paint. Here is the same flock rebuilt from four of this chapter's steps. They are the feedback loop, the bloom filter, the `.add` blend mode, and the ACES tone map. The boids draw as bright dots into a feedback layer, which gives them wakes that drift and curl. The layer comes back bloomed and added as light, and the tone map rolls the hot cores off like film. For contrast, here is the before:
 
-<img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 12's flock: colored triangles with short painted trails on a flat dark canvas" width="480">
+<img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 12's flock: small colored triangles in loose groups on a flat dark canvas" width="480">
 
 Make `MySketches/Comets.swift`:
 

@@ -28,7 +28,7 @@ final class Aurora: Sketch {
         float height = smoothstep(0.1, 0.38, y1) * smoothstep(1.15, 0.4, y1);
         float glow = band * height;
 
-        // Aurora colors from a cosine palette: green cores fading violet as
+        // Aurora colors from a cosine palette: green cores fading blue as
         // the curtain climbs.
         float3 aurora = palette(0.5 + glow * 0.22 - y1 * 0.3,
                                 float3(0.16, 0.5, 0.38), float3(0.24, 0.5, 0.45),

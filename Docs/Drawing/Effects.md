@@ -686,7 +686,7 @@ This is not the same as the [accumulation surface](../Drawing/Accumulation.md) (
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-LayersAndEffects/FeedbackSteps-dark.jpg">
-  <img src="../../Guide/Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+  <img src="../../Guide/Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a long tail that dims along the dot's path, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 </picture>
 
 ```swift
