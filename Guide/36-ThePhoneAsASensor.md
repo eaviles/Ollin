@@ -66,7 +66,7 @@ Of everything the app sends, the finished sketch reads one stream, the body. [Ch
 
 `latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. It is for a figure you dress in solids that follows a person around the room. `modelTransform(_:)` composes a joint's position and orientation into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. Draw a capsule between each pair of joints with `drawCapsule(from:to:radius:)`, and the skeleton grows bones you can light.
 
-<img src="Images/36-ThePhoneAsASensor/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
+<img src="Images/36-ThePhoneAsASensor/BodyAsFigure.jpg" alt="The same staged standing pose twice, one arm raised overhead: on the left as ivory dots and dotted bones with the left forearm's in blue, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue. A legend below reads seen by the camera, in ivory, and filled in by the rig, in blue" width="680">
 
 In `draw()`:
 
@@ -549,7 +549,7 @@ An event is a crossing from below. The phone sends its whole judgment, every lab
 
 Tap **Touch** and the phone stops watching altogether. No camera runs, so no light readings arrive either. The screen under the modes becomes the surface, and the phone sends every finger on it. It is for playing a sketch with your fingers on the glass, the phone as a touch pad. The touches come from the phone's own touchscreen.
 
-<img src="Images/36-ThePhoneAsASensor/GlassAsPad.jpg" alt="Two panels on a dark ground. Left, a phone-shaped outline with two teal discs on it, a small one labeled 1 and a wide one labeled 2, and warm rings expanding from where each landed. Right, a timeline of the same two seconds: three rows labeled id 1, id 2, id 3, each a teal bar while that finger is down with a warm dot marked taps() where it landed. Pale vertical lines mark every draw. The id 3 bar sits entirely between two of them, noted as down and gone between two draws, and a marker where the last finger left the glass" width="680">
+<img src="Images/36-ThePhoneAsASensor/GlassAsPad.jpg" alt="Two panels on a dark ground. Left, a phone-shaped outline with two teal discs on it, a small one labeled 1 and a wide one labeled 2, and warm rings expanding from where each landed. Right, a timeline of the same two seconds: three rows labeled id 1, id 2, id 3, each a teal bar while that finger is down with a warm dot marked taps() where it landed. Pale vertical lines mark every draw. The id 3 bar sits entirely between two of them, noted as down and gone between two draws. A brighter line at 0.95 seconds, labeled the glass, left, marks the moment the left panel shows" width="680">
 
 In `draw()`, with `pad` the rectangle on your canvas that stands for the glass:
 

@@ -650,7 +650,7 @@ A `SlitScan` is a rolling history of frames. You push the newest one every time 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/34-Seeing/SlitScanDelay-dark.jpg">
-  <img src="Images/34-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with both forearms raised in front of his face, and the slit-scanned version of the same two seconds, where an arm has become a fan of a dozen sleeves sweeping out to the right" width="680">
+  <img src="Images/34-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with both forearms raised in front of the face, and the slit-scanned version of the same two seconds, where a hand has become a fan of pink slices sweeping out to the right" width="680">
 </picture>
 
 ```swift
@@ -668,7 +668,7 @@ override func draw() {
 
 The closure decides everything. It receives a pixel's position as fractions across the picture, from the top left, and returns how far back to read there. In that answer, 0 is the newest frame and 1 is the oldest one still held. Returning `uv.x` makes the left edge now and the right edge the oldest moment held. So time runs back from left to right across the image.
 
-The figure's history holds forty-eight frames of the bundled film, just under two seconds. The arm that swung through those two seconds comes back as a fan of sleeves toward the right. Each column caught it at another moment. The leg he kept planted looks ordinary. Any delay map works. `1 - uv.y` puts now at the bottom, since `uv.y` grows downward. `uv.distance(to: Vector2(0.5, 0.5)) / 0.71` makes time ripple outward from the center, with 0.71 about half the diagonal so the corners read the oldest frame. There's also a form that takes an `Image` as the delay map, so you can paint where time runs slow.
+The figure's history holds forty-eight frames of the bundled film, just under two seconds. The hand that swung through those two seconds comes back as a fan of slices toward the right. Each column caught it at another moment. The leg the dancer kept planted looks ordinary. Any delay map works. `1 - uv.y` puts now at the bottom, since `uv.y` grows downward. `uv.distance(to: Vector2(0.5, 0.5)) / 0.71` makes time ripple outward from the center, with 0.71 about half the diagonal so the corners read the oldest frame. There's also a form that takes an `Image` as the delay map, so you can paint where time runs slow.
 
 The history costs width times height times four bytes per frame, so push modest sizes, as the block does with [Chapter 9](09-Pictures.md)'s `resized`. Resizing costs some time every frame, so keep the size small. The first push fixes the size, and after that frames of another size are skipped with a note in the console. A camera frame pushes straight in. A film's frames live on the GPU, so push `film.snapshot()` instead.
 

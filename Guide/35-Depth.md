@@ -183,7 +183,7 @@ Sweep for a minute and the scan starts to fog. The camera's estimate of where it
 
 `add(_:correcting:)` corrects it. It slides and turns each arriving frame onto the surfaces already fused, then merges it. It is for any scan that runs longer than a few seconds. The method is the iterative closest point fit of Paul Besl and Neil McKay, from 1992. It measures against surfaces, as Yang Chen and Gérard Medioni did the same year. Kok-Lim Low's linearization, from 2004, turns each round of the fit into a small set of straight-line equations.
 
-<img src="Images/35-Depth/DriftFixed.jpg" alt="The same staged room fused twice side by side, each labeled with its point count. On the left, as the camera reported it, 146,248 points, the walls smear into one slanting sheet. On the right, lined up against the scan, 78,256 points, the two walls meet in a clean corner behind the ball and crate" width="680">
+<img src="Images/35-Depth/DriftFixed.jpg" alt="The same staged room fused twice side by side, each labeled with its point count. On the left, as the camera reported it, 146,248 points, the walls smear into one slanting sheet. On the right, lined up against the scan, 78,256 points, the two walls meet in a clean corner to the left of the ball and crate" width="680">
 
 The call takes a frame's `cloud` and `reportedPose`, the pose the camera reported with it:
 
