@@ -4,7 +4,7 @@
 
 ## SVG import
 
-Read vector artwork into the same `Shape`s and `Contour`s the rest of the framework uses. A logo traced in a design tool arrives as geometry. So does a scanned drawing auto-traced to paths, or a file exported from another sketch. Once it is loaded you can draw it as authored, respace it into dots, offset it, or hatch it. You can also run it through the [shape booleans](./Geometry.md), or send it back out through the [SVG export](../Output/Export.md).
+Read vector artwork into the same `Shape`s and `Contour`s the rest of the framework uses. SVG is the W3C's plain-text vector format, published in 2001, and every design tool exports it. A logo traced in a design tool arrives as geometry. So does a scanned drawing auto-traced to paths, or a file exported from another sketch. Once it is loaded you can draw it as authored, respace it into dots, offset it, or hatch it. You can also run it through the [shape booleans](./Geometry.md), or send it back out through the [SVG export](../Output/Export.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ImportMined-dark.jpg">
@@ -129,9 +129,22 @@ for contour in art.fitted(in: frame).contours {
 // Booleans against drawn geometry (see Geometry.md).
 let cut = art.shapes[0].subtracting(stamp)
 
+// Nested outlines, each a step inside the last (see Shape.offset).
+let inner = art.shapes[0].offset(by: -6)
+
+// Pen hatching, at a different angle per part (see Hatching).
+for (i, shape) in art.fitted(in: frame).shapes.enumerated() {
+    let hatch = Hatching(spacing: 4.5, angle: 0.5 + Double(i) * 0.7)
+    for line in hatch.lines(filling: shape) {
+        drawPolyline(line)
+    }
+}
+
 // Plotter output: import, transform, re-export as vectors.
 // swift run MySketch --export-svg out.svg
 ```
+
+Fit the artwork before you resample or hatch it, so a spacing is measured in canvas pixels rather than document units. The offset is on the [geometry page](./Geometry.md#shape-offset), and `Hatching` is with the [plotter export](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter). A reworked file leaves again through `--export-svg`, so a sketch can import a drawing, rework it, and hand the result to a plotter.
 
 A `<path>` with several contours stays one `Shape`, so holes keep cutting. Its `fill-rule` maps onto the shape's `winding`, which is `nonzero` by default and `evenodd` when the file was authored that way.
 

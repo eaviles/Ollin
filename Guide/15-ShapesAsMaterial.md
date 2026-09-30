@@ -453,15 +453,7 @@ The same habit carries over from the medial axis. Every boundary corner grows an
 
 ## Shapes from a file: SVG import
 
-The plate built every shape it used in code. Shapes can also come from a file you did not draw at all, and the plate has no need of one. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
-
-```swift
-if let art = try? loadSVG("boat.svg") {
-    drawSVG(art, in: bounds.inset(by: .all(140)))
-}
-```
-
-`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the [Chapter 8](08-Words.md) move, or hatch it for the pen.
+The plate built its shapes in code, but a shape can also come from a file. SVG is the W3C's plain-text vector format, published in 2001, and every design tool exports it. `loadSVG` reads a file into the `Shape`s this chapter edits, each carrying its authored fill and stroke. `drawSVG` draws the file as its author saw it. `art.shapes` and `art.contours` hand over the bare geometry, which every tool in this chapter takes. Subtract a logo from a mosaic, respace a traced drawing into dots, or hatch either for the pen.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ImportMined-dark.jpg">
@@ -469,16 +461,16 @@ if let art = try? loadSVG("boat.svg") {
 </picture>
 
 ```swift
-let fitted = art.fitted(in: frame)      // a scaled copy, in canvas coordinates
-for (i, shape) in fitted.shapes.enumerated() {
-    let hatch = Hatching(spacing: 4.5, angle: 0.5 + Double(i) * 0.7)
-    for line in hatch.lines(filling: shape) {
-        drawPolyline(line)
+if let art = try? loadSVG("boat.svg") {
+    drawSVG(art, in: bounds.inset(by: .all(140)))      // as authored
+    let hatch = Hatching(spacing: 4.5, angle: 0.5)     // or as bare geometry
+    for shape in art.fitted(in: bounds).shapes {
+        for line in hatch.lines(filling: shape) { drawPolyline(line) }
     }
 }
 ```
 
-A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things matter before you rely on it. Text does not import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists what the importer reads and skips.
+The [SVG import reference](../Docs/Drawing/SVG.md) has loading, the element type, what the importer skips, and the plotter round trip, and [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift) is the worked example.
 
 ## A pattern that folds: creases and cuts
 
