@@ -453,7 +453,8 @@ final class MetalRenderer {
         // the instanced sibling: instanced-mesh copies cast into the same 2D map
         static let meshInstancedShadow = PipelineKey(vertex: "ollin_mesh_instanced_shadow_vertex",
                                                      fragment: "", isShadow: true)
-        // the MeshField siblings: a field casts uncculled, its draw-time matrix composed
+        // the MeshField siblings: a field casts through its light-culled draws, its
+        // draw-time matrix composed
         static let meshFieldShadow = PipelineKey(vertex: "ollin_mesh_field_shadow_vertex",
                                                  fragment: "", isShadow: true)
         static let meshFieldPointShadowMin = PipelineKey(
@@ -654,7 +655,7 @@ final class MetalRenderer {
     var passLog: [String] = []
 
     /// The last finished command buffer's GPU time, in milliseconds. Written
-    /// from the completed handler, which runs off the main actor, so it rides a
+    /// from the completed handler, which runs off the main actor, so it uses a
     /// lock rather than the renderer's own (main-actor) state. Read one or two
     /// frames later, which the smoothing in `FrameStats` hides.
     let gpuFrameMS = OSAllocatedUnfairLock(initialState: 0.0)
@@ -961,7 +962,7 @@ final class MetalRenderer {
     /// mesh's own structure (`rtCopyAccels`, one per instanced batch) and carrying
     /// that copy's matrix. That is what puts a copy in a mirror, in a traced shadow,
     /// and in the bounce light, all of which see one structure. Same grow-in-place
-    /// rule as the scene structure, and the descriptors ride the per-frame ring
+    /// rule as the scene structure, and the descriptors use the per-frame ring
     /// because the build reads them on the GPU.
     var rtCopyAccels: [MTLAccelerationStructure] = []
     var rtCopyAccelCapacities: [Int] = []
@@ -980,7 +981,7 @@ final class MetalRenderer {
     /// Ray-traced reflections: per-geometry base-vertex offsets (one `UInt32` per coalesced
     /// caster geometry in `shadowAccel`) so a reflection hit's `(geometryId, primitiveId)`
     /// resolves to a vertex in the flat mesh buffer. Filled CPU-side in `buildShadowAccel`,
-    /// so it rides the same per-frame ring as every other CPU-written buffer: an in-flight
+    /// so it uses the same per-frame ring as every other CPU-written buffer: an in-flight
     /// frame may still be tracing with the previous offsets while the next frame encodes.
     /// `dummyGeoOffsets` is the 1-element stand-in bound when reflections are off, so the
     /// RT-compiled mesh fragment's declared offsets argument is always satisfied.
@@ -989,7 +990,7 @@ final class MetalRenderer {
     /// Per-geometry caustic materials (`OllinCausticGeo`, parallel to the offsets):
     /// what the photon trace needs at a hit that the baked vertex slots don't carry
     /// (transmission, index of refraction, the interior attenuation). CPU-filled at
-    /// accel-build time, so it rides the same per-frame ring as the offsets.
+    /// accel-build time, so it uses the same per-frame ring as the offsets.
     var causticGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     /// Per-geometry full batch finishes (`OllinMaterial`, parallel to the offsets) for
     /// the offline path-traced export: the accel build breaks its coalesced runs where
@@ -1486,7 +1487,7 @@ final class MetalRenderer {
     /// GPU-private buffers hold the adaptive-emission state (light-space density,
     /// feedback accumulators, the quadtree task buffer, leaf ray counts), the
     /// photon records, and the splat pass's indirect-draw arguments. All GPU-written
-    /// and frame-serialized on the one queue, so none of them ride the CPU ring.
+    /// and frame-serialized on the one queue, so none of them use the CPU ring.
     var causticsGBuf: (normal: MTLTexture, material: MTLTexture, albedo: MTLTexture,
                        depth: MTLTexture, w: Int, h: Int)?
     var causticsDensity: MTLBuffer?      // float per emission texel (live adaptivity)
@@ -3240,7 +3241,7 @@ final class MetalRenderer {
 
         // Command buffers complete in the order they were committed and the run
         // loop runs its blocks in the order they were given, so the deliveries
-        // land in frame order. They ride the run loop rather than the main queue:
+        // land in frame order. They use the run loop rather than the main queue:
         // a main-queue block cannot run while another one is spinning the run
         // loop (a modal loop, a test's wait), and a run-loop block can. Every
         // common mode, so a frame lands during a drag too, and a wake-up so it

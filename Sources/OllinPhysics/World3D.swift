@@ -164,10 +164,10 @@ public final class World3D {
     var groundGroup: CollisionGroup = .default
 
     /// How far into the swell the water is, in seconds of simulated time, so
-    /// the surface a sketch draws and the surface the bodies ride are read at
+    /// the surface a sketch draws and the surface the bodies float on are read at
     /// the same moment. Advanced by `advance(by:)`, so a fixed timestep replays
     /// the same waves. Read it to drive a shader's own waves in step with the
-    /// ones the bodies are riding.
+    /// ones the bodies are floating on.
     public internal(set) var waterPhase: Double = 0
 
     /// Whether the water changed since the last step, which is what tells the
@@ -401,7 +401,7 @@ public final class World3D {
     /// its `wheels`.
     ///
     /// ```swift
-    /// let car = world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+    /// let car = try world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
     ///                            at: Vector3(0, 2, 0),
     ///                            wheels: [
     ///                                .wheel(at: Vector3( 0.9, -0.1,  1.3), steers: true),
@@ -414,7 +414,7 @@ public final class World3D {
     /// The vehicle drives along the chassis's local **+z**.
     ///
     /// - Parameters:
-    ///   - chassis: the body's shape. Anything a `Body3D` can wear.
+    ///   - chassis: the body's shape. Anything a `Body3D` can take.
     ///   - position: where it starts, in world units.
     ///   - wheels: where the wheels are bolted on and what each one does.
     ///     Wheels level with each other along the vehicle share an axle.
@@ -490,7 +490,7 @@ public final class World3D {
     ///
     /// ```swift
     /// var figure = try! loadScene("figure.gltf")
-    /// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+    /// let ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
     /// ```
     ///
     /// Returns `nil` for a scene with no skin.
@@ -502,7 +502,7 @@ public final class World3D {
     ///     file authored.
     ///   - joints: the names of the joints that get their own body. `nil` (the
     ///     default) gives every joint one. A named subset always keeps the
-    ///     root, and every joint left out rides the nearest one that is in, so
+    ///     root, and every joint left out moves with the nearest one that is in, so
     ///     naming a dozen joints of a hundred-bone rig makes a figure with a
     ///     dozen limbs rather than a broken one.
     ///   - swing: how far a joint's bone may lean off where it started, in
@@ -556,7 +556,7 @@ public final class World3D {
     /// The mesh's coincident vertices are merged into shared particles first, so
     /// a flat-shaded generator mesh (whose triangles share no vertex index)
     /// still comes out as one connected sheet. Everything the mesh carries
-    /// besides positions rides through to the simulated copy.
+    /// besides positions passes through to the simulated copy.
     ///
     /// - Parameters:
     ///   - mesh: the rest shape. An open surface is cloth; a closed one can be
@@ -689,7 +689,7 @@ public final class World3D {
     /// rope: hand-placed points, a sampled `Path`, a `Contour`, a `randomWalk`.
     ///
     /// ```swift
-    /// let line = world.addRope(through: (0...30).map { Vector3(0, 4 - Double($0) * 0.1, 0) },
+    /// let line = try world.addRope(through: (0...30).map { Vector3(0, 4 - Double($0) * 0.1, 0) },
     ///                          radius: 0.03,
     ///                          pinned: { $0.y > 3.9 })
     /// ```
@@ -793,7 +793,7 @@ public final class World3D {
     /// `bottom` is zero stands on `ground` when `position.y` is zero.
     ///
     /// ```swift
-    /// let mast = world.addTensegrity(Tensegrity.tower(levels: 3),
+    /// let mast = try world.addTensegrity(Tensegrity.tower(levels: 3),
     ///                                at: Vector3(0, 0.02, 0))
     /// // each frame:
     /// world.advance(by: deltaTime)
@@ -903,7 +903,7 @@ public final class World3D {
         let poseB = b.map { Pose3D(of: $0) } ?? .identity
         var desc = CJoltConstraintDesc()
         // A track is the one kind that carries a list rather than a handful of
-        // numbers, so its points ride a buffer the create call borrows.
+        // numbers, so its points go in a buffer the create call borrows.
         var spline: PathSpline?
         switch kind {
         case .revolute(let at, let axis, let limits):

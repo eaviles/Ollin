@@ -17,9 +17,9 @@ import Foundation
 /// }
 /// ```
 ///
-/// It returns a range rather than one step because a frame is longer than a
-/// step at any decent tempo, and a step that fell inside a frame still has to
-/// be played. Which is also why the beat number comes from outside: from the
+/// It returns a range rather than one step because a frame can pass no step,
+/// one, or several: at any usual tempo most frames pass none, and a frame that
+/// runs long can pass more than one, each of which still has to be played. Which is also why the beat number comes from outside: from the
 /// sketch clock through a `Tempo`, from a beat detected in the music, or from
 /// a `TempoClock` following a drum machine. This tier stays out of it.
 ///

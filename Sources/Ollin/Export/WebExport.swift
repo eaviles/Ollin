@@ -103,7 +103,7 @@ struct WebRecording {
     var atlases: [WebAtlas] = []
     /// The gradient rows the shapes read, each once, the page's strip.
     var gradientRows: [[UInt8]] = []
-    /// The split-sum table (`WebBRDFLUT`) when a field wears a physically-based
+    /// The split-sum table (`WebBRDFLUT`) when a field has a physically-based
     /// finish; empty otherwise.
     var brdfLUT: [UInt16] = []
     /// The parameters the page offers as controls, the axes that carry them,
@@ -652,7 +652,7 @@ struct WebShaders {
     /// in one: a vertex already in sketch space mapped into clip space with y
     /// down, its color and its coverage handed on. A retained batch's draw-time
     /// transform was applied to the recorded vertices on the Mac side, so no
-    /// transform rides here.
+    /// transform is passed here.
     static let triangleVertex = """
     #version 300 es
     precision highp float;
@@ -2252,16 +2252,17 @@ enum WebPlayer {
       }
       var main = makeSurface(W, H);
       if (!main.ok) { format = gl.RGBA8; main = makeSurface(W, H); }
-      // A drawn surface's multisampled buffer, four samples like the Mac's
-      // canvas, made once per surface and resolved into its texture after each
-      // fill. A surface that persists (the canvas, a feedback pair) keeps its
-      // samples, so an accumulating canvas loads them as the Mac's does. The
-      // items are rasterized into it upright in the GPU's own texture space
-      // (the page otherwise keeps its pictures bottom-up), because the sample
-      // pattern is fixed in that space and a mirrored picture meets it
-      // mirrored: a diagonal edge then differs from the Mac's by a sample or
-      // two, where an upright one matches to a level. The resolve turns the
-      // picture back over on its way into the surface's texture.
+      // A drawn surface's multisampled buffer, four samples (the Mac's canvas
+      // takes eight where the GPU supports it), made once per surface and
+      // resolved into its texture after each fill. A surface that persists
+      // (the canvas, a feedback pair) keeps its samples, so an accumulating
+      // canvas loads them as the Mac's does. The items are rasterized into it
+      // upright in the GPU's own texture space (the page otherwise keeps its
+      // pictures bottom-up), because the sample pattern is fixed in that
+      // space and a mirrored picture meets it mirrored: a diagonal edge then
+      // differs from the Mac's by a sample or two, where an upright one
+      // matches to a level. The resolve turns the picture back over on its
+      // way into the surface's texture.
       var MSAA = !!D.msaa;
       var samples = MSAA ? Math.min(4, gl.getParameter(gl.MAX_SAMPLES)) : 0;
       if (samples < 2) MSAA = false;

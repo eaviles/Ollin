@@ -18,7 +18,7 @@ struct RagdollLimit {
 ///
 /// ```swift
 /// var figure = try! loadScene("figure.gltf")
-/// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))!
+/// let ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 /// // each frame:
 /// world.advance(by: deltaTime)
 /// figure.apply(ragdoll)        // the pose the solver just found
@@ -44,7 +44,7 @@ struct RagdollLimit {
 public final class Ragdoll3D {
 
     /// One limb of the figure: the body standing at a joint, plus the shape it
-    /// wears and where that shape sits inside it. A limb's body is posed at the
+    /// carries and where that shape sits inside it. A limb's body is posed at the
     /// *joint*, so the capsule filling the bone is pushed out from there, which
     /// is what `withLimb(_:)` accounts for.
     public struct Limb {
@@ -474,7 +474,7 @@ extension Scene {
     /// The ragdoll simulates in world space, so draw the scene without a
     /// transform of your own (or move the whole world instead) if you want the
     /// figure to land where the bodies are. Joints the ragdoll skipped keep
-    /// their pose and ride the limb above them.
+    /// their pose and move with the limb above them.
     public mutating func apply(_ ragdoll: Ragdoll3D) {
         let worlds = ragdoll.limbWorlds()
         guard worlds.count == ragdoll.jointSource.count else { return }

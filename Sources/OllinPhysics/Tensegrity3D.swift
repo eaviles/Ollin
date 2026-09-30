@@ -9,7 +9,7 @@ internal import CJolt
 /// `drawTensegrity(_:)` or by walking `struts` and `cables` yourself.
 ///
 /// ```swift
-/// let ball = world.addTensegrity(Tensegrity.icosahedron(strutLength: 1.6),
+/// let ball = try world.addTensegrity(Tensegrity.icosahedron(strutLength: 1.6),
 ///                                at: Vector3(0, 3, 0))
 /// // each frame:
 /// world.advance(by: deltaTime)

@@ -122,7 +122,7 @@ public final class GrainSource: @unchecked Sendable {
     }()
 }
 
-// MARK: - The envelope one grain wears
+// MARK: - The envelope of one grain
 
 /// The shape a single grain fades in and out with.
 ///
@@ -251,8 +251,8 @@ public struct GrainCloud: Sendable, Hashable, Codable {
     /// The shape each grain fades in and out with.
     public var shape: GrainShape
 
-    /// Which timingJitter this is. The same seed gives the same cloud, so a cloud
-    /// can be tuned and kept.
+    /// Which random draws the cloud makes. The same seed gives the same cloud,
+    /// so a cloud can be tuned and kept.
     public var seed: Int
 
     public init(size: Double = 0.06, density: Double = 30, position: Double = 0,

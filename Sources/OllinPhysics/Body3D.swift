@@ -47,7 +47,7 @@ public final class Body3D {
 
     /// How hard `World3D.water` pushes this body up, against what its own
     /// weight and volume already say. `1`, the default, floats it exactly where
-    /// its `density` puts it; above 1 rides it higher than it should; `0` sinks
+    /// its `density` puts it; above 1 floats it higher than it should; `0` sinks
     /// it whatever it is made of. Reach for `density` first and keep this for
     /// the one crate that has to bob higher than the rest.
     public var buoyancyScale: Double = 1
@@ -64,7 +64,7 @@ public final class Body3D {
     /// ```swift
     /// island.assetName = "island"
     /// // …and when the world comes back:
-    /// world.restore(saved) { $0 == "island" ? .heightfield(terrain) : nil }
+    /// try world.restore(saved) { $0 == "island" ? .heightfield(terrain) : nil }
     /// ```
     ///
     /// `userData` is the sibling for everything that is not going in a file.

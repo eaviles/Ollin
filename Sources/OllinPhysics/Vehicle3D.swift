@@ -13,7 +13,7 @@ internal import CJolt
 /// can be hit like any other, while the wheels are the vehicle's.
 ///
 /// ```swift
-/// let car = world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+/// let car = try world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
 ///                            at: Vector3(0, 2, 0),
 ///                            wheels: [
 ///                                .wheel(at: Vector3( 0.9, -0.1,  1.3), steers: true),
@@ -51,7 +51,7 @@ public final class Vehicle3D {
     /// How a wheel finds the ground each step.
     public enum WheelContact {
         /// A single ray straight down from the mounting point: the cheapest,
-        /// and a narrow wheel drops into gaps it should have ridden over.
+        /// and a narrow wheel drops into gaps it should have rolled over.
         case ray
         /// A swept ball the width of the tire, which rounds off edges.
         case sphere
@@ -434,8 +434,8 @@ public final class Vehicle3D {
         }
 
         // The driver's right is -x (forward × up), so the left band carries the
-        // wheels at positive x. A wheel dead on the centerline has to ride one
-        // of them; it rides the left.
+        // wheels at positive x. A wheel dead on the centerline has to go in one
+        // of them; it goes in the left.
         var sides: [[Int]] = [[], []]
         for (index, wheel) in wheels.enumerated() {
             sides[wheel.position.x >= 0 ? 0 : 1].append(index)

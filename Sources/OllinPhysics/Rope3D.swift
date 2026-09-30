@@ -52,7 +52,7 @@ public struct RopeSegment3D: Sendable {
 /// so a rope can follow anything from three hand-placed points to a `Contour`:
 ///
 /// ```swift
-/// let rope = world.addRope(through: (0...24).map { Vector3(0, 3 - Double($0) * 0.1, 0) },
+/// let rope = try world.addRope(through: (0...24).map { Vector3(0, 3 - Double($0) * 0.1, 0) },
 ///                          radius: 0.04,
 ///                          pinned: { $0.y > 2.9 })       // hung from the top
 /// // each frame:
@@ -61,7 +61,7 @@ public struct RopeSegment3D: Sendable {
 /// ```
 ///
 /// What sets a rope apart from a sheet is that every segment carries its own
-/// orientation, so geometry can ride it:
+/// orientation, so geometry can follow it:
 ///
 /// ```swift
 /// for segment in rope.segments {
@@ -161,7 +161,7 @@ public final class Rope3D: SoftBody3D {
     /// sheet. The tube's own cross-section is carried by a twist-free frame
     /// rather than by the rods, so a rope that has been wound up looks the same
     /// as one that has not; the twist is in `segments`, which is where anything
-    /// riding the rope should read it.
+    /// placed along the rope should read it.
     public override var mesh: Mesh {
         if let cachedTube, cachedTubeGeneration == world.stepGeneration {
             return cachedTube

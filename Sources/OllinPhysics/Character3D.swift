@@ -73,8 +73,8 @@ public final class Character3D {
     /// The horizontal velocity the character is trying to walk at, in world
     /// units per second (its vertical part is ignored: falling and jumping are
     /// the world's business). It holds until changed, so a character told to
-    /// walk keeps walking; set it every frame from the keys. `move(_:)` is the
-    /// sugar for it.
+    /// walk keeps walking; set it every frame from the keys. `walk(at:)` and
+    /// `walk(x:z:)` are the sugar for it.
     public var desiredVelocity: Vector3 = .zero
 
     /// The steepest slope the character can walk up, in radians. Anything

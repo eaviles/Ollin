@@ -4,8 +4,9 @@ import simd
 
 /// Reads the room's light off an ARKit frame and turns it into a `PhoneLightSample`.
 ///
-/// Every mode gets one of these, because every ARKit session estimates the light and
-/// a sketch wants it whatever the phone is pointed at. A camera frame arrives sixty
+/// Every mode that runs an ARKit session gets one of these (all of them but Selfie,
+/// Touch, and Sketch, which run none), because every ARKit session estimates the
+/// light and a sketch wants it whatever the phone is pointed at. A camera frame arrives sixty
 /// times a second and the light in a room does not change nearly that fast, so this
 /// sends a few times a second instead.
 ///

@@ -12,7 +12,7 @@ internal import CJolt
 /// ```swift
 /// let settled = world.snapshot()      // after the pile has come to rest
 /// // …knock it over, rummage through it…
-/// world.restore(settled)              // exactly the pile you had
+/// try? world.restore(settled)         // exactly the pile you had
 /// ```
 ///
 /// A snapshot is the answer to a pile that took a while to make. Simulating is
@@ -23,22 +23,25 @@ internal import CJolt
 ///
 /// ```swift
 /// // in setup()
-/// if let saved = try? PhysicsSnapshot(contentsOf: file) {
-///     world.restore(saved)
-/// } else {
+/// do {
+///     try world.restore(PhysicsSnapshot(contentsOf: file))
+/// } catch {                               // no file yet, or one that will not read
 ///     buildAndSettle()
 ///     try? world.snapshot().write(to: file)
 /// }
 /// ```
 ///
-/// What it holds is the rigid tier: `Body3D`s (with their colliders, poses,
-/// motion, and every parameter `addBody` takes), the `Joint3D`s between them,
-/// gears and racks, the collision-group table, and the world's `gravity`,
-/// `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`. Characters,
-/// vehicles, ragdolls, and soft bodies are each built from something a
-/// snapshot has no way to carry (a rig, a wheel layout, a skinned scene, a
-/// mesh), so they are left out, with a note naming what was skipped. Contacts
-/// are left out too: they are worked out again by the next `advance(by:)`.
+/// What it holds: `Body3D`s (with their colliders, poses, motion, and the
+/// parameters `addBody` takes, all but a mass or center of mass handed in,
+/// which come back worked out from the collider and `density`), the
+/// `Joint3D`s between them, gears and racks, characters, vehicles, ragdolls,
+/// tensegrities, ropes, the collision-group table, and the world's `gravity`,
+/// `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`. Any
+/// other soft body is nothing but its mesh, so it is saved only when it has
+/// an `assetName` to write down in place of the mesh, which
+/// `restore(_:resolving:)` turns back into one; an unnamed one is left out,
+/// with a note. Contacts are left out too: they are worked out again by the
+/// next `advance(by:)`.
 public struct PhysicsSnapshot: Sendable, Equatable {
 
     /// The bytes. Write them anywhere; hand them back to `init(data:)`.
@@ -460,7 +463,7 @@ extension World3D {
         waterMoved = false
 
         // A body whose geometry was named and could not be found is left out
-        // rather than restored wearing something else, and the joints that
+        // rather than restored with something else, and the joints that
         // named it are dropped with it. The saved indices still have to line
         // up, so the gaps are kept as nils.
         var restoredBodies: [Body3D?] = []
@@ -788,7 +791,7 @@ private enum SavedCollider {
         case .namedMesh(let name, let print):
             guard let mesh = resolve?(name)?.mesh else {
                 note("this world names a mesh \"\(name)\" that nothing was "
-                     + "handed back for, so the body wearing it is left out; "
+                     + "handed back for, so the body using it is left out; "
                      + "pass a resolver to restore(_:resolving:)")
                 return nil
             }
@@ -797,7 +800,7 @@ private enum SavedCollider {
         case .namedHeightfield(let name, let print, let width, let depth, let height):
             guard let field = resolve?(name)?.heightfield else {
                 note("this world names a heightfield \"\(name)\" that nothing "
-                     + "was handed back for, so the body wearing it is left "
+                     + "was handed back for, so the body using it is left "
                      + "out; pass a resolver to restore(_:resolving:)")
                 return nil
             }

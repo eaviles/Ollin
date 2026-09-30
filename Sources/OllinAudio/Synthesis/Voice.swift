@@ -73,8 +73,8 @@ public struct Voice: Sendable, Hashable, Codable {
     /// a controller's aftertouch read through `heldNotes`) raises it from
     /// there: at 1 full pressure takes any note to full level, at 0 pressure
     /// is ignored. A note nobody presses sounds exactly as it did. The bowed
-    /// string and the blown tube take pressure as their drive instead, so
-    /// this does not apply to them.
+    /// string and the blown tube take pressure as their drive instead, and a
+    /// sampled voice ignores it, so this does not apply to them.
     public var pressureAmount: Double
 
     public init(

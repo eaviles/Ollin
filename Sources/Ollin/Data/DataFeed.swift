@@ -24,11 +24,13 @@ import os
 /// than in the frame that first asks for them.
 ///
 /// Until an answer arrives, `json` reads as null and `table`, `text`, and
-/// `bytes` are `nil`. That is also what a feed reads when the network is down or
-/// the server is unhappy: there is nothing to draw yet, rather than an error to
-/// handle. `problem` says why, for a sketch that wants to show it.
+/// `bytes` are `nil`, which is also what a feed whose first request fails
+/// reads: there is nothing to draw yet, rather than an error to handle. A
+/// failure after that keeps the last answer, so a network that drops or a
+/// server that is unhappy leaves the sketch drawing what it last read.
+/// `problem` says why, for a sketch that wants to show it.
 ///
-/// `updates` counts the answers that differed from the one before, so a sketch
+/// `updateCount` counts the answers that differed from the one before, so a sketch
 /// can tell news from a poll that changed nothing:
 ///
 /// ```swift

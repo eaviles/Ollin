@@ -133,7 +133,7 @@ final class SynthRenderer: @unchecked Sendable {
 
     /// How hard a driven voice is being bowed or blown, `0...1`.
     ///
-    /// A bow and a breath keep happening, so this is read every sample rather
+    /// A bow and a breath keep happening, so this is read once a block rather
     /// than at the start of a note, which is what gives a driven note a middle
     /// that can change. It travels as one atomic word for the same reason
     /// `gain` does: a torn read on the render thread would be audible.
@@ -147,7 +147,7 @@ final class SynthRenderer: @unchecked Sendable {
     /// How far a sounding grain cloud's reading is moved through its source,
     /// in source lengths.
     ///
-    /// Read every sample for the reason `pressure` is: a cloud dragged by hand
+    /// Read once a block for the reason `pressure` is: a cloud dragged by hand
     /// is a control that has to move while the note sounds, and a block is a
     /// few milliseconds. One atomic word, so a torn read cannot jump it.
     var grainScrub: Double {

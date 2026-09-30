@@ -168,7 +168,7 @@ public final class Synth: AudioSource {
     /// synth.grainScrub = mouseX / width
     /// ```
     ///
-    /// Read every sample rather than once a note, so it moves a note that is
+    /// Read once a block rather than once a note, so it moves a note that is
     /// already sounding. Leaving it at 0 is what every note does by itself.
     public var grainScrub: Double {
         get { renderer.grainScrub }
@@ -456,8 +456,9 @@ public final class Synth: AudioSource {
     ///
     /// On the bowed string and the blown tube this is the note's own drive,
     /// replacing the instrument's ``pressure`` for that note from the first
-    /// press on. On every other voice it raises the note's level above the
-    /// one it was struck at, by the voice's `pressureAmount`.
+    /// press on. A sampled voice ignores it, since its recordings already carry
+    /// their dynamics. On every other voice it raises the note's level above
+    /// the one it was struck at, by the voice's `pressureAmount`.
     public func press(_ note: PlayingNote, _ pressure: Double) {
         express(note, kind: .press, amount: min(max(0, pressure), 1))
     }

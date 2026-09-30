@@ -479,7 +479,7 @@ extension MetalRenderer {
                                            instancedMeshBuffer: instancedMeshBuffer,
                                            meshInstanceBuffer: meshInstanceBuffer, faces: 1)
             }
-            // MeshFields cast from their retained buffers, whole (no culling here).
+            // MeshFields cast from their retained buffers, culled against the light's frustum.
             if hasFieldCasters, let fp = try? pipeline(.meshFieldShadow) {
                 encoder.setRenderPipelineState(fp)
                 drawFieldShadowCasters(drawer, encoder: encoder, faces: 1)
@@ -696,7 +696,7 @@ extension MetalRenderer {
         pass.renderTargetArrayLength = 6 * casters.count
         guard let encoder = countedEncoder(commandBuffer, pass) else { return nil }
         // The instanced siblings share the pass: each phase draws the plain casters,
-        // then the instanced ones under the matching MIN/MAX pipeline (blend rides
+        // then the instanced ones under the matching MIN/MAX pipeline (blend is part of
         // the pipeline, so order within a phase doesn't matter).
         let instancedMin = instancedMeshBuffer != nil
             ? try? pipeline(.meshInstancedPointShadowMin) : nil
@@ -1927,7 +1927,7 @@ extension MetalRenderer {
         let eye = camera.eye.simd3
         let fwd = simd_normalize(camera.target.simd3 - eye)
         // The soft-depth extent scales with the scene (the eye-to-target framing
-        // proxy every scale-dependent constant here rides), so "how close is a
+        // proxy every scale-dependent constant here scales by), so "how close is a
         // depth tie" means the same thing in a hand-sized scene and a terrain.
         let sceneScale = max(simd_distance(camera.eye.simd3, camera.target.simd3), 1)
         var params = [SIMD4<Float>](repeating: .zero, count: 12)
@@ -2233,7 +2233,7 @@ extension MetalRenderer {
             trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
             trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
             // The sheen table (tex 12), at the slot every mesh carrier binds it: a hit whose
-            // surface wears sheen reads its directional albedo from it, and a frame with no
+            // surface has sheen reads its directional albedo from it, and a frame with no
             // sheen anywhere never samples the stand-in.
             trace.setFragmentTexture(sheenLUT ?? gbuf.normal, index: 12)
             // The GI probe atlases (tex 13/14/15), so a hit's diffuse carries the bounce
@@ -2467,7 +2467,7 @@ extension MetalRenderer {
     /// Ordered coarsest first (the cascade table's order; the sampler walks it from
     /// the finest down). A pure function of (volume, eye, working scale), so headless
     /// re-derivation reproduces bit-exactly and the unit tests pin it; the quality
-    /// tier deliberately never touches it (the grid-never-rides-the-tier rule).
+    /// tier deliberately never touches it (the grid-never-follows-the-tier rule).
     static func giCascadeLadder(volumeOrigin: SIMD3<Float>, volumeSpan: SIMD3<Float>,
                                 spacing: SIMD3<Float>, eye: SIMD3<Float>,
                                 workingScale: Float) -> [GICascadeState] {
@@ -2753,7 +2753,7 @@ extension MetalRenderer {
             let capacity = 1 + ladder.count
             if giState == nil || giState!.slotCapacity != capacity {
                 // (Re)allocate at this ladder's slot capacity, the atlases stacking one
-                // 512-probe slot per cascade. A capacity change only ever rides a refit
+                // 512-probe slot per cascade. A capacity change only happens on a refit
                 // (the coarseness threshold is crossed by scene growth or a big camera
                 // rescale), and the single-volume allocation is exactly the shipped
                 // one, so a room-scale scene keeps its sampling UVs byte-identical.
@@ -2777,7 +2777,7 @@ extension MetalRenderer {
             state.ladderScale = workingScale
             state.valid = false
             state.lastTraceOffsets = nil
-            // Relocation offsets (and the per-probe validity riding their w) belong
+            // Relocation offsets (and the per-probe validity stored in their w) belong
             // to a grid; a new grid starts from zero.
             let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
             clearFloatTexture(state.offA, color: clear, into: cb)
@@ -3132,7 +3132,7 @@ extension MetalRenderer {
                pathTraced: pathTraced,
                skippingTransmissive: true)
         enc.endEncoding()
-        // The mip chain the roughness blur rides. Generated after the resolve wrote
+        // The mip chain the roughness blur reads. Generated after the resolve wrote
         // level 0, in its own blit, so the whole layer is finished before any glass
         // fragment reads it.
         if let blit = cb.makeBlitCommandEncoder() {
@@ -3216,7 +3216,7 @@ extension MetalRenderer {
         }
         enc.endEncoding()
 
-        // Stage 2: the march. One fullscreen pass; the config rides params row 0
+        // Stage 2: the march. One fullscreen pass; the config is passed in params row 0
         // (w is the camera-ward ray-start lift as a fraction of the eye distance,
         // the no-normals self-occlusion guard; the acceptance band derives in the
         // shader from the ray's own projected span, so the one parameter stays one),
@@ -3280,11 +3280,11 @@ extension MetalRenderer {
         var anyTransmission: Bool      // any traced geometry transmits
     }
 
-    /// The gated surface-map set one traced geometry wears: each slot carries the
+    /// The gated surface-map set one traced geometry uses: each slot carries the
     /// mesh material's map only when the batch finish's matching gate is up (the
     /// raster encode's own binding rule), so identity over the slots is exactly
     /// "would a hit read different texels", both for the accel run-breaking and
-    /// for the table upload. The base slot has no gate; a texture-wearing batch
+    /// for the table upload. The base slot has no gate; a textured batch
     /// on a sampling pipeline always reads it.
     struct PTGeoMaps {
         var base: Image?
@@ -3310,7 +3310,7 @@ extension MetalRenderer {
         let batches = drawer.batches
         // What a traced hit needs of a batch's finish past the metalness and roughness its
         // vertices carry: the stylized shading models, and the two light-independent layers
-        // that ride any of them. Every field is zero for a standard or physically-based
+        // that apply to any of them. Every field is zero for a standard or physically-based
         // finish with neither, which is the whole of an ordinary scene, so the record
         // doubles as the gate: nothing to say means no table, no run broken where two
         // batches differ only in something the trace never looks at, and the plain
@@ -3479,7 +3479,7 @@ extension MetalRenderer {
         }
         // The GPU-resident sibling of a copy group: an instanced draw whose
         // placements live in a compute buffer a kernel writes, so the CPU knows
-        // how many copies there are and which base mesh they wear, but never
+        // how many copies there are and which base mesh they use, but never
         // where one stands. Its instance descriptors are written by a kernel
         // (`encodeRTInstanceWrites`) into slots reserved here.
         struct GPUCopyGroup {
@@ -3775,7 +3775,7 @@ extension MetalRenderer {
         var head: [UInt32] = [UInt32(totalInstances), 0]
         head.append(contentsOf: records)
         let tailStart = 2 + totalInstances * 5
-        // The finish table rides the same buffer rather than a binding of its own, the
+        // The finish table is stored in the same buffer rather than a binding of its own, the
         // rule the hit records already follow, so no tracing entry point gains an
         // argument. It sits past the geometry tail on a four-word boundary, since a
         // record reads as five `float4` rows. A frame with nothing stylized to say leaves
@@ -3847,7 +3847,7 @@ extension MetalRenderer {
         instanceEnc.build(accelerationStructure: accel, descriptor: instanceDesc,
                           scratchBuffer: scratch, scratchBufferOffset: instanceScratchOffset)
         instanceEnc.endEncoding()
-        // The per-geometry caustic materials, riding the same per-frame ring.
+        // The per-geometry caustic materials, carried in the same per-frame ring.
         var matsBuffer: MTLBuffer? = nil
         if causticMats {
             let matsLength = max(MemoryLayout<OllinCausticGeo>.stride,
@@ -3894,7 +3894,7 @@ extension MetalRenderer {
         // base slot's sample is then the identity; the gated slots are never
         // read unbound), so the kernel indexes without a gate. Base and emissive
         // are color (sRGB), the value-encoding maps data (the raster encode's
-        // own split). The textures ride along for the encoder's residency call.
+        // own split). The textures go along for the encoder's residency call.
         guard let white = whiteStandIn() else { return nil }
         var textureList: [MTLTexture] = [white]
         var ids: [UInt64] = []

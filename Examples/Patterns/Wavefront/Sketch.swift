@@ -1,6 +1,7 @@
 import Ollin
 
-/// Where a wave will be, worked out the way Huygens did it in 1678.
+/// Where a wave will be, worked out the way Huygens did it in 1678, in the
+/// treatise he finished that year and published in 1690, *Traité de la lumière*.
 ///
 /// Every point of a front sends out a little wave of its own. A moment later the
 /// front is not the sum of those wavelets, it is the curve they all lean on: their

@@ -1,4 +1,4 @@
-//  Recreation after Gego (Gertrud Goldschmidt) - the Chorros, 1970 to 1971:
+//  Recreation after Gego (Gertrud Goldschmidt) - the Chorros, 1971:
 //  tall falls of aluminum and steel rods hooked end to end, hung from a point
 //  in the ceiling and let down to the floor, first shown together at the Betty
 //  Parsons Gallery in New York in 1971.
@@ -13,7 +13,7 @@
 import Ollin
 import OllinPhysics
 
-/// A Chorro (Gego, 1970 to 1971). Rods hooked end to end into long falls,
+/// A Chorro (Gego, 1971). Rods hooked end to end into long falls,
 /// all hung from one point, that come down to the floor and lie out across it
 /// wherever they land. **Drag** a rod to take hold of it.
 ///

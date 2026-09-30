@@ -96,7 +96,7 @@ struct GrainVoice {
         self.alternate = false
         self.pans = cloud.panSpread > 0
         // The cloud's own seed rather than the voice's alone, so the same
-        // settings timingJitter the same way wherever they are played, and a
+        // settings make the same random draws wherever they are played, and a
         // different seed is a different cloud of the same shape.
         self.random = (seed &+ UInt64(bitPattern: Int64(cloud.seed)) &* 0x9E37_79B9_7F4A_7C15) | 1
         readHead = min(max(0, cloud.position), 1) * Double(source.frames.count)

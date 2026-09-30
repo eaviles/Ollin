@@ -4,7 +4,7 @@ import Foundation
 //
 // The conversions are implemented from the published OKLab reference math
 // (credited in the README's Techniques list). Hue is a turn in `0...1`
-// throughout, like the HSB initializer; alpha rides on `Color`, never on the
+// throughout, like the HSB initializer; alpha is stored on `Color`, never on the
 // component values.
 
 // MARK: - sRGB transfer
@@ -71,7 +71,7 @@ public extension Color {
     /// P3" gives you.
     ///
     /// P3 reaches saturations sRGB cannot hold, so the stored components come
-    /// out beyond 0…1 (a pure P3 red is about `(1.079, -0.077, -0.021)` in
+    /// out beyond 0…1 (a pure P3 red is about `(1.093, -0.543, -0.254)` in
     /// sRGB terms). That is not a bug to clamp: the whole pipeline carries the
     /// out-of-range value through, and it lands as the color that was asked for
     /// on a sketch whose `colorOutput` is `.wide` or `.extended`. On a

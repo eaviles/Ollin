@@ -5,9 +5,12 @@ import Ollin
 ///
 /// Most of what a world is made of is small: a box is three numbers, a joint is
 /// a point and an axis. Two things are not. A `.mesh` or `.heightfield`
-/// collider carries every vertex of whatever it was cut from, and a soft body
-/// carries the mesh it was built out of. A world that collides a loaded set
-/// piece writes that whole set piece into every snapshot of it.
+/// collider carries every vertex of whatever it was cut from, and a world that
+/// collides a loaded set piece writes that whole set piece into every snapshot
+/// of it. A soft body is nothing but the mesh it was built out of, and a
+/// snapshot never writes that mesh: an unnamed soft body is left out, and a
+/// named one is saved as its name. (A rope is the exception, being a handful of
+/// points, and is written whole.)
 ///
 /// So give the geometry a name and hand the snapshot that instead:
 ///
@@ -20,7 +23,7 @@ import Ollin
 /// and say what the names mean when the world comes back:
 ///
 /// ```swift
-/// world.restore(saved) { name in
+/// try world.restore(saved) { name in
 ///     name == "island" ? .heightfield(terrain) : nil
 /// }
 /// ```

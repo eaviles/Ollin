@@ -83,18 +83,18 @@ public struct Sim: Sendable {
     /// dedicated pass chain (`runSelfWarp`) over its own source / flow / history
     /// state, so its parameters travel here rather than in `params`.
     struct SelfWarpConfig: Sendable {
-        var strength: Float     // how far history rides the measured motion (1 = with it)
+        var strength: Float     // how far history follows the measured motion (1 = with it)
         var refresh: Float      // how much of this frame's drawing re-enters (0...1)
         var decay: Float        // per-frame multiplier on the carried history (1 = keep)
         var smoothing: Float    // temporal steadying of the motion field (0...0.98)
     }
 
     /// Gray-Scott **reaction-diffusion**: two chemicals diffuse and react, and where
-    /// they balance, Turing patterns emerge — coral, spots, stripes, mitosis. Draw
-    /// light marks into the field to inject chemical B (it spreads from there). `feed`
-    /// and `kill` pick the regime; the defaults give persistent dividing cells
-    /// (mitosis). State is chemical A in red, B in green, so the raw `image` reads
-    /// reddish — recolor it with `.filtered(.gradientMap(...))` or `.threshold(...)`.
+    /// they balance, Turing patterns emerge: coral, spots, stripes, dividing cells.
+    /// Draw light marks into the field to inject chemical B (it spreads from there).
+    /// `feed` and `kill` pick the regime; the defaults grow coral, a maze of winding
+    /// ridges. State is chemical A in red, B in green, so the raw `image` reads
+    /// reddish; recolor it with `.filtered(.gradientMap(...))` or `.threshold(...)`.
     public static func reactionDiffusion(feed: Double = 0.055, kill: Double = 0.062) -> Sim {
         Sim(kind: .reactionDiffusion(feed: max(0, feed), kill: max(0, kill),
                                      toFeed: max(0, feed), toKill: max(0, kill)))
@@ -104,7 +104,7 @@ public struct Sim: Sendable {
     /// a layer to the field's `modulation` and its brightness re-tunes the chemistry
     /// per texel: where the map is black the field runs at `feed`/`kill`, where it is
     /// white at `toFeed`/`toKill`, sliding smoothly between. One continuous field then
-    /// wears different patterns in different places (stripes inside a camera matte,
+    /// shows different patterns in different places (stripes inside a camera matte,
     /// spots outside it), and because it is a single simulation the pattern crosses
     /// the boundary instead of seaming at it. Draw the map layer each frame before
     /// reading the field; a frame with no map falls back to the plain `feed`/`kill`
@@ -328,7 +328,7 @@ public struct Sim: Sendable {
     /// ```
     ///
     /// - Parameters:
-    ///   - amount: How far the history rides the measured motion each frame, as a
+    ///   - amount: How far the history follows the measured motion each frame, as a
     ///     multiple of it, and the dial that picks the look. Below 1 the picture
     ///     outruns its history and stretches it into ribbons trailing the motion
     ///     (the default regime); at 1 the carried ghost lands exactly back under the
@@ -461,7 +461,7 @@ public struct Sim: Sendable {
 
     /// Griffeath's **cyclic cellular automaton**: every cell holds one of `states`
     /// colors arranged in a circle, and a cell advances to the next color the moment
-    /// at least `threshold` of its neighbors already wear it, so each color eats
+    /// at least `threshold` of its neighbors already have it, so each color eats
     /// the one before it and is eaten by the one after. From its random start the
     /// field self-organizes through the famous four acts: colored static, then
     /// growing single-color droplets, then the first spiral defects, and finally a
@@ -1050,7 +1050,7 @@ public struct Sim: Sendable {
         case .selfWarp:
             return []   // unused: self-warp binds per-pass parameters itself
         case .shader:
-            return []   // the kernel's own `params` ride the user-shader buffer
+            return []   // the kernel's own `params` go in the user-shader buffer
         }
     }
 
@@ -1259,7 +1259,7 @@ public struct TuringScale: Sendable, Equatable {
     }
 
     /// A coarser, sparser ladder: three widely separated scales, so the field settles into
-    /// big smooth lobes with just a little structure riding on them.
+    /// big smooth lobes with just a little structure on top of them.
     public static let broad: [TuringScale] = [
         TuringScale(activatorRadius: 5,  inhibitorRadius: 12, amount: 0.02),
         TuringScale(activatorRadius: 16, inhibitorRadius: 40, amount: 0.02),

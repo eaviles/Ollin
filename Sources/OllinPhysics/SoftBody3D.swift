@@ -12,7 +12,7 @@ internal import CJolt
 /// Build one from any `Mesh` and draw the simulated mesh each frame:
 ///
 /// ```swift
-/// let cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, columns: 24, rows: 24),
+/// let cloth = try world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
 ///                               at: Vector3(0, 3, 0),
 ///                               pinned: { $0.z < -1.4 })   // hung from one edge
 /// // each frame:
@@ -42,7 +42,7 @@ public class SoftBody3D {
     /// all: an unnamed one is left out with a note.
     ///
     /// ```swift
-    /// let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+    /// let banner = try world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
     /// banner.assetName = "banner"
     /// ```
     public var assetName: String?
@@ -562,7 +562,7 @@ public class SoftBody3D {
 
     /// Which way each rod points, in world space, in the order the rods were
     /// built. A rod's local +z runs from the first of its two particles to the
-    /// second, so this is what geometry riding the rod is turned by.
+    /// second, so this is what geometry attached to the rod is turned by.
     func rodOrientations() -> [simd_quatd] {
         guard !isDestroyed, rodCount > 0 else { return [] }
         let written = rodRotations.withUnsafeMutableBufferPointer { buffer in
@@ -660,7 +660,7 @@ public class SoftBody3D {
     // MARK: Tuning it while it runs
 
     /// How heavy the surface is compared with the water it may be dropped in,
-    /// exactly the way a collider's `density` is: `0.3` is a cork raft riding
+    /// exactly the way a collider's `density` is: `0.3` is a cork raft sitting
     /// high, `1` floats awash, and anything above sinks. It changes nothing but
     /// buoyancyScale, so the body keeps the `mass` it was built with.
     ///

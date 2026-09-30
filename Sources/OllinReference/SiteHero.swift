@@ -316,16 +316,17 @@ enum SiteHero {
       }
       var main = makeSurface(W, H);
       if (!main.ok) { format = gl.RGBA8; main = makeSurface(W, H); }
-      // A drawn surface's multisampled buffer, four samples like the Mac's
-      // canvas, made once per surface and resolved into its texture after each
-      // fill. A surface that persists (the canvas, a feedback pair) keeps its
-      // samples, so an accumulating canvas loads them as the Mac's does. The
-      // items are rasterized into it upright in the GPU's own texture space
-      // (the page otherwise keeps its pictures bottom-up), because the sample
-      // pattern is fixed in that space and a mirrored picture meets it
-      // mirrored: a diagonal edge then differs from the Mac's by a sample or
-      // two, where an upright one matches to a level. The resolve turns the
-      // picture back over on its way into the surface's texture.
+      // A drawn surface's multisampled buffer, four samples (the Mac's canvas
+      // takes eight where the GPU supports it), made once per surface and
+      // resolved into its texture after each fill. A surface that persists
+      // (the canvas, a feedback pair) keeps its samples, so an accumulating
+      // canvas loads them as the Mac's does. The items are rasterized into it
+      // upright in the GPU's own texture space (the page otherwise keeps its
+      // pictures bottom-up), because the sample pattern is fixed in that
+      // space and a mirrored picture meets it mirrored: a diagonal edge then
+      // differs from the Mac's by a sample or two, where an upright one
+      // matches to a level. The resolve turns the picture back over on its
+      // way into the surface's texture.
       var MSAA = !!D.msaa;
       var samples = MSAA ? Math.min(4, gl.getParameter(gl.MAX_SAMPLES)) : 0;
       if (samples < 2) MSAA = false;

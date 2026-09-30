@@ -103,8 +103,8 @@ final class Generative: Sketch {
         if rings[1][step] {
             // The chord is built out of the scale rather than named, so it
             // changes color with the key rather than fighting it. The figure
-            // is read at the step, which is why it keeps its place in the
-            // pattern instead of restarting on every strike.
+            // is read at the step, so each strike plays the note the figure
+            // holds at that step.
             let chord = Chord(key[0].transposed(by: 12), quality)
             let arp = Arpeggio(chord, figure, octaves: 2)
             let pitch = key.snap(arp[step])

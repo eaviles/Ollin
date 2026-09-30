@@ -8,10 +8,10 @@ import COllinShaders
 /// `place(_:at:)` scatters copies of any mesh; `drawMeshField(_:)` then draws
 /// the whole field with ONE call, every frame, no matter how many meshes and
 /// copies it holds. Each frame a compute pass tests every copy against the
-/// camera and writes a draw command for each mesh's visible copies into an
-/// indirect command buffer; the render pass executes that buffer whole. The CPU
-/// never touches a copy again after `place`: no per-copy record, no per-mesh
-/// draw call, and everything the camera can't see costs (almost) nothing.
+/// camera and writes, for each mesh, the draw arguments for its visible copies;
+/// the render pass then issues one indirect draw per mesh from them. The CPU
+/// never touches a copy again after `place`: no per-copy record or draw call,
+/// and everything the camera can't see costs (almost) nothing.
 ///
 /// ```swift
 /// let field = MeshField()
@@ -30,8 +30,9 @@ import COllinShaders
 ///
 /// Copies shade like solid meshes (lights, shadows received, image-based
 /// lighting, fog) through the current `material(_:)` finish, and they cast into
-/// the shadow maps (uncculled there: a tree behind the camera still throws its
-/// shadow into view). Surface color bakes when a mesh is placed: the mesh
+/// the shadow maps, culled against the light's own frustum rather than the
+/// camera's, so a tree behind the camera still throws its shadow into view (a
+/// point light's cube map takes every copy). Surface color bakes when a mesh is placed: the mesh
 /// material's base color times its per-vertex colors, with each copy's
 /// `MeshInstance.color` as the per-copy tint. The draw-time `fill` does not
 /// tint a field. Like a `Batch`, a field is persistent: build it in `setup()`

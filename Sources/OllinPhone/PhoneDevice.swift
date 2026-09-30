@@ -66,8 +66,9 @@ import Darwin
 /// finger on the glass (`down`) beside every finger that landed since you last
 /// looked (`taps()`). No camera runs, so the phone stays cool.
 ///
-/// `latestLight` says how bright and how warm the room is. It arrives in every mode,
-/// so a sketch can match the light it is standing in.
+/// `latestLight` says how bright and how warm the room is. It arrives in every
+/// mode that runs an ARKit session, which is all of them but Selfie, Touch, and
+/// Sketch, so a sketch can match the light it is standing in.
 ///
 /// `latestAir` is the barometer: how hard the air presses, and how far the phone
 /// has risen since it started measuring. It needs no camera either, so it arrives

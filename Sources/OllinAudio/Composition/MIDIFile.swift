@@ -252,9 +252,8 @@ public struct MIDIFile: Sendable, Hashable {
 
     /// A file of one part, from notes a sketch worked out.
     ///
-    /// What a ``StepSequencer`` run, an ``Arpeggiator``, a ``MarkovChain``
-    /// wander, or anything else that answers in ``ScheduledNote`` values hands
-    /// back goes straight in.
+    /// What a ``StepSequencer`` run, an ``Arpeggiator``, or anything else that
+    /// answers in ``ScheduledNote`` values hands back goes straight in.
     ///
     /// ```swift
     /// var bar = 0.0
