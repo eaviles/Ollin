@@ -150,7 +150,7 @@ The drift's particles followed a curl-noise field across the plane. The first fa
 
 An **attractor flow** puts a million particles into the velocity field of a strange attractor. A continuous system like Lorenz is a **velocity field**: hand it a point in space and it tells you which way that point is moving. [Chapter 22](22-IteratedForms.md#a-formula-that-folds-the-plane-chaotic-maps) plotted the flat maps as ghosts of their own orbits. The 3D systems, Lorenz and its relatives, live in space, so they need a camera. `StrangeAttractor` integrates one starting point through the field and hands back the path, which you draw as a cloud of points. The flow follows the same field with six hundred thousand particles, all of them stepping every frame on the GPU. It is for the attractor seen as a crowd rather than a line, with a second fact, speed, in its color. The Lorenz system comes from Edward Lorenz's 1963 paper on deterministic nonperiodic flow. It is a model of convection, air heated from below and rolling over, cut down from Barry Saltzman's seven variables to three. Its successors are collected at dynamicmath.xyz.
 
-<img src="Images/25-ParticleSimulations/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
+<img src="Images/25-ParticleSimulations/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a white cloud of points from one long orbit, tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
 ```swift
 var flow: AttractorFlow!
@@ -356,7 +356,7 @@ Evolution has a second half with no score at all, where a person picks and the p
 
 **Swarm chemistry** takes the generation away from evolution and sees what is left. Every particle carries its own copy of the rule it moves by, eight numbers called a recipe. Three of them are how far it sees, the speed it likes, and the speed it can reach. The other five are the strengths of cohesion, alignment, separation, random steering, and pace-keeping. When two particles touch, one recipe overwrites the other. Nothing is scored and nothing is aimed at. A recipe spreads because the particles holding it keep meeting particles holding something else and winning. It is for a contest you can watch with no judge in it. The model is Hiroki Sayama's swarm chemistry of 2009, and the heritable recipes follow his later work on open-ended evolution in it.
 
-<img src="Images/25-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split three ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
+<img src="Images/25-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split five ways. At 401 steps, two larger bodies and a bar split three ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 ```swift
 chem = makeSwarmChemistry(count: 4000, kinds: 6)
@@ -366,7 +366,7 @@ stepSwarmChemistry(chem)
 drawParticles(chem)
 ```
 
-The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then a few, then very nearly one. No one chose the winner, and no one could have said in advance which it would be.
+The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Five lines in the first bar, then three, then very nearly one. No one chose the winner, and no one could have said in advance which it would be.
 
 `competition` is the one property that says what winning means, and it sets the character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added, a fixed mixture of six kinds.
 

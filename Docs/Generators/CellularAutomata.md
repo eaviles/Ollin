@@ -8,7 +8,7 @@ A cellular automaton is a grid of cells that changes by a local rule. Ollin has 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/24-Automata/WolframAndTurmite-dark.jpg">
-  <img src="../../Guide/Images/24-Automata/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+  <img src="../../Guide/Images/24-Automata/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle that meets both sides halfway down. It is irregular and dotted with white triangles, with regular stripes only along its left slope. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
 </picture>
 
 The GPU version of the idea is **Lenia**, a continuous form of the Game of Life. It runs as a `Sim` on a persistent field, so it is documented with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.

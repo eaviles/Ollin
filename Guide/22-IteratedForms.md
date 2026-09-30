@@ -429,7 +429,7 @@ You place the roots yourself, up to eight. The palette spreads around them in or
 
 The middle panel changes the step. `relaxation` scales it. Below 1 the method creeps and the basins fatten. Above 1 it overshoots, and the basins spiral and throw off islands. Five roots at 1.3 is what the panel shows. Feed the dial a slow sine and the whole plane breathes. [`Examples/Effects/NewtonBasins`](../Examples/Effects/NewtonBasins/Sketch.swift) holds the dial still and sends its roots along orbits of their own instead.
 
-The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2, the step sends 0 to 1 and 1 back to 0. That cycle pulls in everything near it. Those pixels are painted `trapped`, the two dark pools in the panel, one at 0 and one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
+The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2, the step sends 0 to 1 and 1 back to 0. That cycle pulls in everything near it. Those pixels are painted `trapped`: a large dark pool at 0 and a small one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
 
 ### A picture of a function: domain coloring
 
@@ -437,7 +437,7 @@ Everything so far in this family asked a question about a **loop**. **Domain col
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/DomainColoring-dark.jpg">
-  <img src="Images/22-IteratedForms/DomainColoring.jpg" alt="Three panels. A smooth color wheel filling a square, all hues meeting at the middle; two color wheels side by side on a plain field, ringed and labeled zero and pole; and tan z ruled into a grid of curved tiles, with small wheels marching along a line" width="680">
+  <img src="Images/22-IteratedForms/DomainColoring.jpg" alt="Three panels. A smooth color wheel filling a square, all hues meeting at the middle; two color wheels side by side on a field of shifting hues, ringed and labeled zero and pole; and tan z ruled into a grid of curved tiles, with small wheels marching along a line" width="680">
 </picture>
 
 ```swift
@@ -456,7 +456,7 @@ You place them yourself, which is what lets you rearrange the field:
 
 Move a zero and the whole field reorganizes around it. Repeat a point for a double zero. Leave the poles out and you have a polynomial. There are named functions too: `.power`, `.exponential`, `.sine`, `.tangent`, and `.logarithm`. A fractional `.power` and the `.logarithm` both leave a **branch cut**, a line where the colors jump. The answer there had to pick one of two equally good values.
 
-The size you set aside can come back as shading. `.modulus`, the default, ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and away from the interesting points its tiles are little squares. The squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
+The size you set aside can come back as shading. `.modulus`, the default, ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and close to each wheel its tiles are little squares. The squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
 
 `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever. [`Examples/Effects/DomainColoring`](../Examples/Effects/DomainColoring/Sketch.swift) swims a pair of zeros around a pair of poles. The field pours from one arrangement into the next, and nothing was animated except two points.
 

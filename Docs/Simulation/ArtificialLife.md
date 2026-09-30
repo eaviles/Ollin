@@ -186,7 +186,7 @@ A `SwarmChemistry.Recipe` is those eight, and it reads back field by field: `per
 
 The color of a particle is its recipe. Cohesion, alignment, and separation are drawn as red, green, and blue, which is the published visualization. A takeover therefore looks like one color replacing the others, and a mutation looks like a shift in shade rather than a new color.
 
-<img src="../../Guide/Images/25-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
+<img src="../../Guide/Images/25-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split five ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 Read the state back with `snapshotLineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `snapshotLineageCounts()` reports how many particles each opening line still holds, which is the scoreboard the model never keeps for itself. All three wait until the GPU has caught up, so call them a few times a second rather than every frame.
 

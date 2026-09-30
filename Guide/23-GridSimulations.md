@@ -4,7 +4,7 @@
 
 # 23. Simulations on a grid
 
-<img src="Images/23-GridSimulations/Organism.jpg" alt="A dense teal brain-coral labyrinth grown by reaction-diffusion, its winding ridges lit with a wet sheen against deep navy gaps" width="560">
+<img src="Images/23-GridSimulations/Organism.jpg" alt="A dense brain-coral labyrinth grown by reaction-diffusion, its winding slate-gray ridges rimmed in teal with a wet sheen, against deep navy gaps" width="560">
 
 A simulation field is a grid of cells on the GPU, and every frame each cell changes by asking its neighbors. You seed one by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew from a scatter of dots, and whatever you draw while the sketch runs joins the chemistry. More chemistries, fields that move, materials, and a rule of your own come after the sketch, and [Chapter 24](24-Automata.md) holds more automata.
 
@@ -164,7 +164,7 @@ The organism's reaction-diffusion is one chemistry, two quantities feeding and c
 
 The **predator-prey field** puts prey and predators on one land and lets both wander. Prey breed toward what the land can hold. Predators eat them, but a full predator eats no faster, and predators die off at their own rate when the prey run out. It is for invasion fronts and the spiral waves that wind up behind them, the picture of spatial ecology. The model is the one Alfred Lotka wrote down in 1925 and Vito Volterra in 1926. It runs here in the form Michael Rosenzweig and Robert MacArthur gave it in 1963, with C. S. Holling's saturating response of 1959. Jonathan Sherratt, Mark Lewis, and Andrew Fowler described the spiral waves behind an invasion in 1995. Alexander Medvinsky and his colleagues made them the picture of spatial ecology in 2002. Ollin ships it as `.predatorPrey()`:
 
-<img src="Images/23-GridSimulations/PredatorPrey.jpg" alt="Two square land maps side by side. Left, sixty frames after five releases: a green meadow with five sets of orange rings running outward, each behind a pale crest, dark troughs between the rings. Right, six hundred frames later: the rings have broken into an irregular sea of curling orange wave fragments over the green, with dark bare patches between them" width="680">
+<img src="Images/23-GridSimulations/PredatorPrey.jpg" alt="Two square land maps side by side. Left, sixty frames after five releases: a green meadow with five sets of orange rings running outward, each behind a pale crest, dark troughs between the rings. Right, six hundred frames after the releases: the rings have broken into an irregular sea of curling orange wave fragments over the green, with dark green patches between them" width="680">
 
 ```swift
 land = makeSimField(.predatorPrey(), scale: 0.5)
@@ -174,7 +174,7 @@ The field rests at full prey and no predators, and you draw green to release pre
 
 Three numbers set the ecology. `halfSaturation` is how much prey it takes to fill a predator, `predatorGrowth` how fast full predators multiply, and `predatorDeath` how fast they starve. The defaults sit past the model's oscillation threshold, which is what makes waves. Raise the death rate toward the growth rate, or the half saturation toward the land's capacity. The cycle then calms into a steady coexistence, and the waves die out. The [`Simulation/PredatorPrey`](../Examples/Simulation/PredatorPrey/Sketch.swift) example puts all three on parameters, so you can walk the field from spirals to calm and back.
 
-The raw field is prey in red and predators in green, which already reads as a picture. The maps above run it through a gradient map instead. The map reads the *mix*: bare soil where both are gone, meadow where the prey stand alone, orange where the predators have arrived.
+The raw field is prey in red and predators in green, which already reads as a picture. The maps above run it through a gradient map instead. The map reads the *mix*: dark green where both run low, meadow where the prey stand alone, orange where the predators have arrived.
 
 ### The same rule at many sizes: multi-scale Turing
 
@@ -375,7 +375,7 @@ The cone on the shelf is not drawn. Grains land, roll down the slope, and stop w
 
 The **watercolor field** is a sheet of rough paper where water flows, carries pigment, and dries the way paint does. Every other field here is a system you seed and watch; this one is a material you paint with. You lay down wet paint, and the physics produces the look, with no filter imitating it. It is for washes, glazes, and blooms. The three-layer simulation is Cassidy Curtis, Sean Anderson, Joshua Seims, Kurt Fleischer, and David Salesin's, from their 1997 paper "Computer-Generated Watercolor". The twelve pigment presets carry the coefficients the paper measured.
 
-<img src="Images/23-GridSimulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning green where it crosses the blue" width="560">
+<img src="Images/23-GridSimulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning a soft gray where it crosses the blue" width="560">
 
 ```swift
 var paint: WatercolorField!
