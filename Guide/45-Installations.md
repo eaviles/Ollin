@@ -455,7 +455,7 @@ A sketch can also run as several separate windows that look into one scene. Run 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/45-Installations/OneWorldManyWindows-dark.jpg">
-  <img src="Images/45-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
+  <img src="Images/45-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the pane on the right is labeled canvasOnScreen: where this one sits on the desk" width="680">
 </picture>
 
 Each window needs to know where it is. `canvasOnScreen` says where this canvas sits on the desk, the space all your screens share. It is in screen points, measured from the top left of the main screen. So all three windows describe the same desk in the same numbers:
@@ -606,7 +606,7 @@ override func draw() {
 
 You need a broker somewhere. A house that runs a home automation system already has one, and its address is what goes in `host:`. On your own Mac, install one with Homebrew, as [Chapter 44](44-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) did for `xcodegen`. `brew install mosquitto` and then `mosquitto -v` start a broker, which is enough to build against. The sketch then reaches it with `MQTTClient(host: "localhost")`.
 
-A subscription is a filter that can match many topics, through two wildcards. `+` stands for a single level of the topic, and `#` for every level from there down. So `home/+/temperature` matches the kitchen and the hall. A trailing `#` also matches its own parent, so `home/#` matches `home` itself. No wildcard reaches a topic that starts with `$`, which is where a broker keeps its own statistics.
+A subscription is a filter that can match many topics, through two wildcards. `+` stands for a single level of the topic, and `#` for every level from there down. So `home/+/temperature` matches a temperature in any room, such as `home/kitchen/temperature`. A trailing `#` also matches its own parent, so `home/#` matches `home` itself. No wildcard reaches a topic that starts with `$`, which is where a broker keeps its own statistics.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/45-Installations/TopicsAndFilters-dark.jpg">

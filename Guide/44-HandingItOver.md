@@ -4,7 +4,7 @@
 
 # 44. Handing it over
 
-<img src="Images/44-HandingItOver/SkyClock.jpg" alt="A wide sky clock: the sun or the moon on its arch across a sky whose colors follow the hour, over a black ridge of land" width="560">
+<img src="Images/44-HandingItOver/SkyClock.jpg" alt="A wide sky clock: the sun on its arch across a sky whose colors follow the hour, over a black ridge of land" width="560">
 
 Outside its window, a finished sketch lives where people already look, and nobody has to run code. This chapter makes it a screen saver, a wallpaper, a menu-bar strip, a widget, and an app a friend can double-click. One sketch, the sky clock above, follows the hour and goes to four of those places. After it, a phone takes a sketch in two ways, and other programmers take your behavior and your drawing calls.
 
