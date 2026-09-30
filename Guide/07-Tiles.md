@@ -321,7 +321,7 @@ Each tile declares a *socket* per edge, pipe or blank in the classic set. The so
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/TilesAgree-dark.jpg">
-  <img src="Images/07-Tiles/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+  <img src="Images/07-Tiles/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe at each shared edge, forming a few separate networks" width="680">
 </picture>
 
 Building the tileset is most of the work, and it is declarative. A tile is its four edge sockets, in the order top, right, bottom, left. `rotations()` mints the turned variants, and a `weight` makes a tile more or less common:

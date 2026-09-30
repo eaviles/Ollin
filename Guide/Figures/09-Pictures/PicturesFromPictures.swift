@@ -2,7 +2,7 @@
 //
 // Guide diagram (Chapter 9): a photo mosaic. The target on the left (one of
 // the bundled sample photographs), the mosaic built from a hundred small
-// pictures cut from all four photographs in the middle, and a piece of it
+// pictures cut from all the bundled photographs in the middle, and a piece of it
 // enlarged on the right so the cells read as pictures again.
 import Ollin
 import OllinDiagram

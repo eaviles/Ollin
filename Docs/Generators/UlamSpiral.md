@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
-  <img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+  <img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a square sixty-one cells on a side with only the primes marked as dots, falling along visible diagonals" width="680">
 </picture>
 
 The lines are not a coincidence, and they are not a proof of anything. A diagonal of the spiral is the run of values of a quadratic. A diagonal that stays crowded is therefore a quadratic that keeps returning primes, and mathematics has known such polynomials since Euler. The picture makes them visible.

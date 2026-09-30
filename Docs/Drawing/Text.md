@@ -525,7 +525,7 @@ drawText("春はあけぼの。やうやう白くなりゆく山ぎは、", 980,
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/08-Words/WritingInColumns-dark.jpg">
-  <img src="../../Guide/Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+  <img src="../../Guide/Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every full column reaches a red rule, ragged on the right where each stops short of it" width="680">
 </picture>
 
 Turned characters come from the font. A font carries a second shape for each character that turns, and vertical setting picks those shapes. A bracket lies down, and a comma moves to the top right of its square.

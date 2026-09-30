@@ -194,7 +194,7 @@ withClip(star) {
 
 `withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. You never work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
-Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
+Nesting is the other half. A clip inside a clip keeps only what falls in both. So the third panel stripes only where the star lies inside the circle, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
 ## Putting it together: a wall of rosettes
 
@@ -361,7 +361,7 @@ Walk the same grid as a square spiral instead, from the middle outward, writing 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
-  <img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+  <img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a square sixty-one cells on a side with only the primes marked as dots, falling along visible diagonals" width="680">
 </picture>
 
 ```swift

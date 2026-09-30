@@ -287,7 +287,7 @@ drawText("「春」は、あけぼの（をかし）", 820, 80)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/WritingInColumns-dark.jpg">
-  <img src="Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+  <img src="Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every full column reaches a red rule, ragged on the right where each stops short of it" width="680">
 </picture>
 
 Every turned character comes from the font. The middle of the figure shows three of them. The bracket lies down, and the comma moves from the bottom left of its square to the top right. Those shapes are the writing system's own answer, kept in the face, and asking for vertical setting is what picks them.

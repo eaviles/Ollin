@@ -211,7 +211,7 @@ Say a picture is 1200 wide and the space it has to fit is 800. You can squash it
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
-  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
+  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the sky between the walls gives up the most width and the walls narrow less" width="680">
 </picture>
 
 ```swift
@@ -222,7 +222,7 @@ A *seam* is a run of pixels, one per row, that never steps more than one pixel s
 
 Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
 
-That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
+That also means a flat thing is not safe. The pastel walls are nearly one color each, so they are cheap too. In the carve above they have already narrowed, though less than the sky has. A mask tells the carve what to leave alone:
 
 ```swift
 let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
@@ -353,7 +353,7 @@ The marks so far have been characters and dots. They can be pictures. A photo mo
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
-  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a photograph of a young woman in a lace headdress, the same picture rebuilt as a grid of small tiles cut from four photographs, and seven of those cells enlarged so each is visibly a piece of a real picture" width="680">
+  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a photograph of a young woman in a lace headdress, the same picture rebuilt as a grid of small tiles cut from the bundled photographs, and a block seven cells across enlarged so each is visibly a piece of a real picture" width="680">
 </picture>
 
 ```swift

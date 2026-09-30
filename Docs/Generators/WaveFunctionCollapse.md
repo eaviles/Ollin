@@ -26,7 +26,7 @@ A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to e
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/TilesAgree-dark.jpg">
-  <img src="../../Guide/Images/07-Tiles/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+  <img src="../../Guide/Images/07-Tiles/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe at each shared edge, forming a few separate networks" width="680">
 </picture>
 
 ```swift
