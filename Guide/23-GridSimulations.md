@@ -4,7 +4,7 @@
 
 # 23. Simulations on a grid
 
-<img src="Images/23-GridSimulations/Organism.jpg" alt="A dense brain-coral labyrinth grown by reaction-diffusion, its winding slate-gray ridges rimmed in teal with a wet sheen, against deep navy gaps" width="560">
+<img src="Images/23-GridSimulations/Organism.jpg" alt="A dense brain-coral labyrinth grown by reaction-diffusion, its winding ridges glossy teal tubes with a cream sheen and a dark crease, against deep navy gaps" width="560">
 
 A simulation field is a grid of cells on the GPU, and every frame each cell changes by asking its neighbors. You seed one by drawing into it, and run rules on it from the Game of Life to reaction-diffusion. The corridors at the top grew from a scatter of dots, and whatever you draw while the sketch runs joins the chemistry. More chemistries, fields that move, materials, and a rule of your own come after the sketch, and [Chapter 24](24-Automata.md) holds more automata.
 
@@ -136,7 +136,7 @@ final class Organism: Sketch {
                          Color(hex: 0x3FA893), Color(hex: 0xF2E3C2)])
         drawImage(dish.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42))
                       .filtered(.gradientMap(skin))
-                      .filtered(.relight(.liquid, height: 1.4)).image, 0, 0)
+                      .filtered(.relight(.liquid, height: 0.08)).image, 0, 0)
     }
 }
 ```
@@ -145,7 +145,7 @@ Run it live and draw. Your marks do not appear on the canvas. They enter the che
 
 - `poissonDisk(radius:)` from [Chapter 4](04-Randomness.md) scatters the spores evenly, and `seed(7)` in `setup()` makes the same scatter every run. `feed: 0.055` and `kill: 0.062` sit in the maze regime of the map above.
 - The levels stretch pulls the dish's dim state, most of it between 0.16 and 0.42, out to the full range. The four-color ramp then paints it from the deep gaps to the pale ridges.
-- `.relight(.liquid, height: 1.4)` reads the ramped picture as height and lights it wet. `toneMap(.aces, exposure: 1.15)` from [Chapter 19](19-LayersAndEffects.md#brighter-than-the-screen-tonemap) keeps the highlights from clipping.
+- `.relight(.liquid, height: 0.08)` reads the ramped picture as height and lights it wet. A small height keeps the ridges' colors, where a large one turns the surface sideways to the light and grays it. `toneMap(.aces, exposure: 1.15)` from [Chapter 19](19-LayersAndEffects.md#brighter-than-the-screen-tonemap) keeps the highlights from clipping.
 
 Then make it yours:
 
@@ -397,7 +397,7 @@ Painting is drawing into the field, with the palette held in the color channels.
 
 Leave a stroke alone and its edge darkens on its own. The wet rim sheds water and the interior refills it, and that slow one-way traffic ferries pigment to the boundary. It is the dark rim every wet-on-dry stroke dries with. Paint a loaded stroke into a wash that is still wet and it spreads soft and feathery instead. Each pigment keeps its own habits along the way. Dense paints settle where you put them. Granulating ones like `.frenchUltramarine` collect in the paper's hollows and dry speckled, and staining ones grip and will not lift.
 
-Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine makes the muted green those paints mix. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
+Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine comes out a warm gray. Ultramarine absorbs green as hard as red, and the yellow takes the blue, so little is left to reflect. A heavier load of yellow goes khaki, then ochre. Yellow over cerulean is the glaze that comes out green. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
 
 There are arguments for the paper too, on the longer form `watercolor(.watercolor(pigments: [.frenchUltramarine], dryBrush: 0.3))`. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you cannot find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 

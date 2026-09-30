@@ -336,12 +336,12 @@ The left panel is a page with bands of shadow falling across it. `.threshold(0.3
 `adaptiveThreshold` compares each pixel with the average of its own surroundings instead. The rule is Derek Bradley and Gerhard Roth's, from 2007:
 
 ```swift
-page.filtered(.adaptiveThreshold(window: 90))
+page.filtered(.adaptiveThreshold(window: 16))
 ```
 
 That is the right panel. The text comes back through the shadow, and only the darkest band edges keep a streak. Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.
 
-The argument that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, make it wide. The 90 pixels above suit a page a few hundred pixels across, and left alone it is an eighth of the layer.
+The argument that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. It is bounded on the other side too. A window wider than a shadow band averages the lit paper around it, and the band comes out solid ink. So the window wants to be wider than the marks and narrower than the lighting you want to see past. A line height or two suits a page of text, which is the 16 pixels above. Left alone it is an eighth of the layer, which suits a page lit unevenly from edge to edge.
 
 There is one more argument, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, for a reason. Light falling on a page multiplies what comes back off it. So only a test that scales along with the average is unmoved when somebody turns the lamp down.
 

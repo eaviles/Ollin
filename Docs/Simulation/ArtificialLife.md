@@ -8,7 +8,7 @@ Ollin has five classic emergent-behavior systems, and each one runs on the GPU. 
 
 All five are chaotic, so a difference in the last bit of a number grows into a different picture within seconds. An export, or a take playing back, keeps that from happening by chance. It lists the particles in each cell of the neighbor search in index order. So the same seed draws the same frames every time on one machine. Another GPU's arithmetic can still take a run somewhere else. So a pixel-identical video is promised on the machine that made it, not across machines. A live window keeps the faster one-pass order, since a clock that follows the wall never repeats a run anyway.
 
-<img src="../../Guide/Images/25-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
+<img src="../../Guide/Images/25-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, one bright knot of transport loops on an empty violet trail field" width="680">
 
 ### Contents
 
