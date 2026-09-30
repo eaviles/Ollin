@@ -81,7 +81,7 @@ final class FlowStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         busy = true
 
         // Copy what the pass needs out of the frame now, on the callback: only
-        // the capture pixel buffer (which CoreVideo reference-counts) rides along,
+        // the capture pixel buffer (which CoreVideo reference-counts) goes along,
         // and it is released the moment the pass has scaled it.
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp

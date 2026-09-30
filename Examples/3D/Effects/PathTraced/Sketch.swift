@@ -11,7 +11,7 @@ import Ollin
 /// the glowing bar lights the set by its own surface, the scattered pebbles
 /// (sixty-four copies of one mesh, one draw call) drop their own contact shadows and
 /// stand in the floor's reflection, the hammered panel's
-/// normal and roughness maps ride every traced hit (its relief ripples the
+/// normal and roughness maps apply to every traced hit (its relief ripples the
 /// reflections), and the camera's aperture turns into a real thin-lens depth of
 /// field (the raster view stays sharp; the lens is the traced camera's). That is
 /// the whole workflow: the live window is the viewfinder, the flag is the film back.

@@ -387,7 +387,7 @@ final class GalleryModel {
         case .success(let sketch):
             awaitingFirstFrame = true
             // The closure captures the model, never the sketch, so it can't pin
-            // the outgoing instance (the cycletest gate). The signal rides the
+            // the outgoing instance (the cycletest gate). The signal is kept on the
             // instance itself, so only *this* sketch's first frame clears it.
             sketch.extend(FirstFrameSignal { [weak self] in
                 self?.awaitingFirstFrame = false
@@ -647,7 +647,7 @@ private struct ExamplesSidebar: View {
                             running: running,
                             showsContext: isFiltering,
                             toggle: { toggle(row, select: true) })
-                        // The tag rides the row's top-level content (a nested tag
+                        // The tag goes on the row's top-level content (a nested tag
                         // doesn't reach the List); only the empty-state row is
                         // skipped by selection.
                         .tag(row.id)
@@ -660,7 +660,7 @@ private struct ExamplesSidebar: View {
                 // The identity purple marks selection, as in the sibling hosts.
                 .tint(OllinInspector.accent)
                 .focused($listFocused)
-                // The fold arrows ride `onKeyPress`, never `onMoveCommand`: with
+                // The fold arrows use `onKeyPress`, never `onMoveCommand`: with
                 // the list focused, its table view consumes the arrow keys, so a
                 // move command never fires (verified with synthetic keystrokes
                 // both ways). Key presses land here first, and `.ignored` still

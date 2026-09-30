@@ -11,7 +11,7 @@ import OllinMIDI
 /// network's shared tempo session through a `LinkClock`, so every app in the
 /// session lands the same downbeat. Both clocks read the same way (beat, bar,
 /// and ramp), so one visual serves both: the center disk throbs on each beat,
-/// the dots step around the bar, and the comet rides a ramp that takes eight
+/// the dots step around the bar, and the comet follows a ramp that takes eight
 /// beats per lap.
 ///
 ///   swift run Example-Integration-Tempo

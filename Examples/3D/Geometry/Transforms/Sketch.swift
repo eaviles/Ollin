@@ -27,7 +27,7 @@ final class Transforms3D: Sketch {
             makeBlob(count: 1500, dotSize: 0.06,
                      color: Color(hue: 0.55 + Double(i) * 0.16, saturation: 0.7, brightness: 0.95))
         }
-        // The moon rides a tiny scale, so its dots start large to survive the shrink.
+        // The moon is drawn at a tiny scale, so its dots start large to survive the shrink.
         moon = makeBlob(count: 700, dotSize: 0.12, color: Color(white: 0.82))
     }
 

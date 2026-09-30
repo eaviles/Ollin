@@ -165,7 +165,7 @@ public final class Swarm {
     func recordStep(into drawer: Drawer, frameDt: Double) {
         let read = pingpong.read, write = pingpong.write
         // Only the three neighborhood behaviors need to know who is nearby, so a
-        // swarm that is purely wandering, seeking, or riding the flow field skips
+        // swarm that is purely wandering, seeking, or following the flow field skips
         // the sort entirely, which is what lets those run at a million agents.
         if separation > 0 || alignment > 0 || cohesion > 0 {
             hash.recordBuild(into: drawer, positions: read)

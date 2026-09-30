@@ -38,7 +38,7 @@ public enum PhoneWire {
     public static let streamPort: UInt16 = 1338
 
     /// The TCP port the capture app listens on for pictures of a sketch, in
-    /// **Sketch** mode. Pictures ride a connection of their own because they are
+    /// **Sketch** mode. Pictures use a connection of their own because they are
     /// most of what ever crosses the cable and they arrive sixty times a second:
     /// on the sensor connection a picture would wait behind a sensor read, and a
     /// mode request would wait behind a picture.
@@ -122,7 +122,7 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// The phone held as a pointer: where it is and which way it points in ARKit
     /// world space, plus what the thumb is doing on the screen. This is the one
     /// message the person, rather than the room, fills in: a press, a slide, and a
-    /// release ride beside the pose, so a sketch can be pointed at and pressed.
+    /// release are sent beside the pose, so a sketch can be pointed at and pressed.
     /// Plain world tracking carries it, so it needs no LiDAR, and the payload is
     /// small enough to send every frame.
     case wand = 12
@@ -138,7 +138,7 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// is of each, strongest first, on the phone's own audio clock. The phone
     /// sends the whole judgment and the Mac decides what counts as a sound
     /// starting, since the readings run one way and a sketch sets its own
-    /// threshold. Needs no camera, so it rides beside every mode, behind the
+    /// threshold. Needs no camera, so it is sent beside every mode, behind the
     /// app's own Hear switch (the microphone asks its own permission).
     case sound = 14
     /// How the rear camera's picture is moving, everywhere at once: a dense
@@ -159,7 +159,7 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     case touch = 16
     /// The air the phone is standing in: how hard it presses, and how far the
     /// phone has risen since it started measuring. The barometer needs no
-    /// camera, so it rides beside whichever mode is running, behind the app's
+    /// camera, so it is sent beside whichever mode is running, behind the app's
     /// own Air switch (the altimeter asks its own permission).
     case air = 17
     /// What the phone is doing, and what it made of what the sketch asked for:
@@ -288,9 +288,9 @@ public enum PhoneBlendShape: UInt8, CaseIterable, Sendable {
 /// `meshVertices` in **face-local** space (centered on the face, meters), the
 /// `triangleIndices` (the mesh topology, constant per device, three indices per
 /// triangle) so the Mac can draw a real mesh, not just a point cloud, and the
-/// per-vertex `textureCoordinates` so that mesh can wear a texture.
+/// per-vertex `textureCoordinates` so that mesh can carry a texture.
 ///
-/// The eyes and the gaze ride along, all **face-local** (relative to the head):
+/// The eyes and the gaze are carried too, all **face-local** (relative to the head):
 /// each eye as a rotation `(x,y,z,w)` + position, and `lookAtPoint` as the point the
 /// two eyes converge on. Multiply by the head pose to stand them in world space.
 public struct PhoneFaceSample: Sendable, Equatable {
@@ -1021,7 +1021,7 @@ public struct PhoneSoundSample: Sendable, Equatable {
 ///
 /// The map is bounded on the phone (the wire's cost is the grid's size, and a
 /// sketch samples it every few canvas points anyway), and the matching color
-/// frame rides beside it as a JPEG (decoded on the Mac side so this file stays
+/// frame is sent beside it as a JPEG (decoded on the Mac side so this file stays
 /// free of ImageIO). Both are camera-native; `orientation` is the number of
 /// 90-degree **clockwise** turns the Mac applies to stand them upright for how
 /// the phone was held (0…3), turning the grid and every vector in it alike.

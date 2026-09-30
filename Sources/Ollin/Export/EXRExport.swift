@@ -9,7 +9,7 @@ import Metal
 /// came back as 8.0001, with 0.0001 appearing in channels that held nothing),
 /// and it has nowhere to put a fifth channel. Both matter here. This is the
 /// frame before the tone map, so the numbers are the point, and depth has to
-/// ride in the same file to be any use in a compositor.
+/// be stored in the same file to be any use in a compositor.
 ///
 /// What is written is the simplest thing every reader handles: one part,
 /// scanline, uncompressed, one block per row, channels in the alphabetical order

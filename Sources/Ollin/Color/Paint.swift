@@ -18,7 +18,7 @@ public enum Paint: Equatable, Hashable, Sendable {
 /// A gradient paint: a `Ramp` of colors laid over a geometry: a line between
 /// two points, a radius around a center, a sweep around a center, or the run
 /// of the path it strokes. Coordinates are in drawing space (the same space the
-/// shape's own coordinates use), so the gradient rides the transform stack with
+/// shape's own coordinates use), so the gradient follows the transform stack with
 /// the shapes it paints.
 ///
 /// ```swift

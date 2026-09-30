@@ -23,7 +23,7 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     /// weight; and neither does a piece whose program is a wrapper file beside
     /// the sketch (the wallpaper, menu-bar, and phone kinds), where a second
     /// `@main` would refuse to build. It is the one thing that changes the sketch file
-    /// rather than the files around it, which is why it rides the kind instead
+    /// rather than the files around it, which is why it belongs to the kind instead
     /// of being asked about later.
     public let carriesEntryPoint: Bool
     /// Whether a sketch of this kind is drawn onto whatever it is put on, rather

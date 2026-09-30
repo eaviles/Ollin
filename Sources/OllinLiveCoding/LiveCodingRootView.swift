@@ -4,7 +4,7 @@ import Ollin
 import OllinRuntime
 
 /// The performance window: the sketch letterboxed on a black stage, the code
-/// riding over it as translucent text, and the transient chrome (status chip,
+/// drawn over it as translucent text, and the transient chrome (status chip,
 /// evaluated toast, error strip, recovery banner) as stage overlays so they
 /// survive fullscreen, where the title bar hides. The optional inspector
 /// docks on the trailing edge.

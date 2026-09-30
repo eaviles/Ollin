@@ -39,8 +39,8 @@ final class Movement: Sketch {
     }
 
     /// The effect the parameters describe. Set every frame: the chain only
-    /// rewires when the kind changes, and a setting change rides the motion
-    /// already running.
+    /// rewires when the kind changes, and a setting change applies to the
+    /// motion already running.
     private var effect: Effect {
         switch motion {
         case .chorus:

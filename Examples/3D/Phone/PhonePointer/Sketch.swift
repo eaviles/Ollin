@@ -36,7 +36,7 @@ final class PhonePointer: Sketch {
     /// The balls, in the room's own meters.
     var balls: [Vector3] = []
 
-    /// Which ball is being carried, and how far out along the beam it rides.
+    /// Which ball is being carried, and how far out along the beam it is held.
     var held: Int?
     var holdDistance = 1.0
 
@@ -109,7 +109,7 @@ final class PhonePointer: Sketch {
             return
         }
 
-        // The thumb rides up and down the pad as a rate, not a place, so a small
+        // The thumb's travel up and down the pad is a rate, not a place, so a small
         // pad reaches the whole room and letting go leaves the ball where it is.
         if let touch = wand.touch {
             holdDistance += touch.y * pushSpeed * deltaTime

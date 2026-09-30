@@ -114,7 +114,7 @@ final class GuitarTuner: Sketch {
             drawText(string.name, hub.x, hub.y - 110 * scale, size: 150 * scale, color: accent, align: .center, .middle)
             drawText("\(string.pitch)  ·  \(String(format: "%.2f", string.pitch.frequency)) Hz",
                      hub.x, hub.y - 10 * scale, size: 24 * scale, color: Color(white: 0.55), align: .center, .middle)
-            // A short pointer riding the inside of the arc, so the name stays clear.
+            // A short pointer on the inside of the arc, so the name stays clear.
             let angle = map(max(-50, min(50, needle)), -50, 50, .pi * 1.15, .pi * 1.85)
             let tail = hub + Vector2(angle: angle) * (radius - 110 * scale)
             let tip = hub + Vector2(angle: angle) * (radius - 42 * scale)

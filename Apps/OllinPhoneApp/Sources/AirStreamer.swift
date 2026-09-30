@@ -5,7 +5,7 @@ import CoreMotion
 /// risen since it started measuring.
 ///
 /// Every iPhone since the 6 has one, and it is the one sensor here that reads
-/// the room without looking at it, so it needs no camera and rides beside
+/// the room without looking at it, so it needs no camera and runs beside
 /// whichever mode is running. It is a switch rather than a mode for the reason
 /// Hear is: the altimeter asks its own permission (Motion & Fitness), and a
 /// permission sheet during a performance is the thing to avoid.

@@ -6,7 +6,7 @@ import simd
 /// color, and a splat diameter in world units (perspective shrinks distant points).
 ///
 /// Positions live in the camera's right-handed, y-up world space, *not* the 2D
-/// canvas, so a cloud rides the camera rather than the transform stack. Build one
+/// canvas, so a cloud follows the camera rather than the transform stack. Build one
 /// up front (a fixed scan) or rebuild it each frame (a live depth feed); a ~50k-point
 /// cloud rebuilt per frame is comfortable.
 public struct PointCloud: Sendable {

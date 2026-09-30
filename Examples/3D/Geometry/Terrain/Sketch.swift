@@ -4,7 +4,7 @@ import Ollin
 /// subdivision, then erodes: tens of thousands of simulated raindrops carve
 /// ravines and build sediment fans (`.hydraulic`), and a thermal pass settles
 /// the slopes that stand too steep (`.thermal`). Both the raw and the eroded
-/// fields become meshes in `setup()`, wearing a texture that colors each
+/// fields become meshes in `setup()`, with a texture that colors each
 /// sample by its height, so the `weathered` toggle flips between them and the
 /// carving reads directly. Everything reproduces from the seed parameter.
 @main
@@ -44,7 +44,7 @@ final class Terrain3D: Sketch {
         erodedMesh = terrainMesh(eroded)
     }
 
-    /// The field as a mesh wearing a height-colored texture: each sample's
+    /// The field as a mesh with a height-colored texture: each sample's
     /// height walks a ramp from valley green through rock to snow.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0x2E4A33), Color(hex: 0x5C6B48),

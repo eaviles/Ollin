@@ -31,7 +31,7 @@ final class LEDMapping: Sketch {
     var panel: LEDMap.Fixture?
 
     override func setup() {
-        // The strip rides a wave across the picture on universe 1; the matrix
+        // The strip follows a wave across the picture on universe 1; the matrix
         // reads a panel of it on universe 2. Explicit sample radii keep the
         // ring overlay outside each LED's patch.
         let wave = (0...96).map { i -> Vector2 in

@@ -199,7 +199,7 @@ struct Hairline: View {
 // MARK: - Status chip
 
 /// A dot-and-label status chip (`● Watching`). Used in the live host's toolbar
-/// and the detached panel's header. The compiling pulse rides the symbol-effect
+/// and the detached panel's header. The compiling pulse is driven by the symbol-effect
 /// system (`isActive:` starts and stops it per state change), so it works on
 /// every compile — a hand-rolled `repeatForever` keyed on local state only
 /// fired the first time, leaving later compiles a static dimmed dot.
@@ -746,7 +746,7 @@ public struct ParamSaveAction {
 }
 
 /// What the parameters list offers for putting values back: which rows were
-/// turned in this run (they wear a mark beside their name), and the call that
+/// turned in this run (they show a mark beside their name), and the call that
 /// puts some of them, or every parameter, back to the values their `@Param`
 /// lines declare. A host supplies it, since only a host keeps the tuned set
 /// across reloads; a surface without one (the detached panel, the examples
@@ -1009,7 +1009,7 @@ public struct ParametersListView: View {
     }
 
     /// A group card's own reset, shown once one of its rows is turned: the
-    /// header's trailing word, in the accent the tuned marks wear, so the eye
+    /// header's trailing word, in the accent the tuned marks use, so the eye
     /// reads it as the marks' sum. Nothing where no row is turned, so an
     /// untouched card keeps its plain header.
     @ViewBuilder private func groupReset(_ tuned: [String]) -> some View {
@@ -1097,7 +1097,7 @@ private struct ParamRow: View {
 
     @SwiftUI.Environment(\.paramReset) private var reset
 
-    /// The row wears a Reset in its context menu wherever a host can put a
+    /// The row offers a Reset in its context menu wherever a host can put a
     /// value back; the keyframe diamond keeps its own menu, since the nearer
     /// one wins under the pointer.
     var body: some View {
@@ -1261,7 +1261,7 @@ extension EnvironmentValues {
 
 /// The reset action a host carries, when it carries one: which rows were
 /// turned and the call that puts them back. Injected by the parameters list
-/// so every row's label can wear the mark and every row's menu can offer the
+/// so every row's label can show the mark and every row's menu can offer the
 /// reset without each row kind threading it through; `nil` wherever a surface
 /// keeps no tuned record (the gallery, the detached panel), where rows show
 /// nothing. Computed rather than stored, since the action holds a closure.
@@ -1308,7 +1308,7 @@ struct KeyframeDiamond: View {
             Button {
                 timeline.toggleKey(param: handle.name)
             } label: {
-                // A rule wears the function mark rather than a diamond, so the
+                // A rule shows the function mark rather than a diamond, so the
                 // eye can tell a parameter worked out from one written down.
                 SwiftUI.Image(systemName: ruled ? "function" : hasTrack ? "diamond.fill" : "diamond")
                     .font(.system(size: ruled ? 9.5 : 8.5, weight: .semibold))
@@ -2484,7 +2484,7 @@ private struct RectangleParamRow: View {
     }
 
     var body: some View {
-        // x/y ride the label's line, w/h sit right-aligned below (no orphaned
+        // x/y share the label's line, w/h sit right-aligned below (no orphaned
         // label line with dead space beside it).
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
@@ -2580,7 +2580,7 @@ private struct InsetsParamRow: View {
     }
 
     var body: some View {
-        // t/r ride the label's line, b/l sit right-aligned below (no orphaned
+        // t/r share the label's line, b/l sit right-aligned below (no orphaned
         // label line with dead space beside it).
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {

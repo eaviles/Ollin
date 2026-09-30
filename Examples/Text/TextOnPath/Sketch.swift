@@ -42,7 +42,7 @@ final class TextOnPath: Sketch {
         strokeWeight(2 * scale)
         drawShape(path.shape)
 
-        // The message riding it, scrolling seamlessly (the text is periodic, so a
+        // The message running along it, scrolling seamlessly (the text is periodic, so a
         // scroll of one message-width loops without a seam).
         noStroke()
         fill(.white)

@@ -76,7 +76,7 @@ final class PhysicalMaterials: Sketch {
         return Vector3(x, y, 0)
     }
 
-    // Labels ride under the spheres (projected from world space) so they stay readable
+    // Labels are placed under the spheres (projected from world space) so they stay readable
     // and on-canvas as the chart sways: each row's metalness under its leftmost sphere,
     // and a roughness caption centered under the bottom row.
     private func drawAxisLabels() {

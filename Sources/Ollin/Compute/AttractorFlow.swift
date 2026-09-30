@@ -7,7 +7,7 @@ import COllinShaders   // OllinPoint, OllinAttractorParams
 ///
 /// The factories mirror `StrangeAttractor`'s, defaults and all, and `attractor`
 /// hands back that CPU twin, so the same system can be integrated once into a
-/// `[Vector3]` orbit or ridden by a million particles without the two disagreeing.
+/// `[Vector3]` orbit or followed by a million particles without the two disagreeing.
 public struct AttractorSystem: Sendable, Equatable {
 
     /// The systems the kernel knows how to integrate. Internal: a sketch builds one
@@ -160,12 +160,12 @@ public struct AttractorSystem: Sendable, Equatable {
     }
 }
 
-/// A million particles riding a strange attractor: every one of them integrates the
+/// A million particles following a strange attractor: every one of them integrates the
 /// same velocity field on the GPU, so instead of one orbit drawn as a still curve you
 /// get the whole shape as moving material, streaming along itself forever.
 ///
-/// A flow is 3D and rides the camera, like a `PointCloud`. Build it in `setup()`, then
-/// step and draw it in `draw()`:
+/// A flow is 3D and is drawn through the camera, like a `PointCloud`. Build it in
+/// `setup()`, then step and draw it in `draw()`:
 ///
 /// ```swift
 /// var flow: AttractorFlow!
@@ -203,7 +203,7 @@ public final class AttractorFlow {
     /// How many particles.
     public let count: Int
 
-    /// Which system the particles ride. Settable live: the flow re-measures its
+    /// Which system the particles follow. Settable live: the flow re-measures its
     /// placing, pace, and speed range for the new constants and keeps its particles,
     /// so dragging a constant morphs one shape into another.
     public var system: AttractorSystem {
@@ -289,7 +289,7 @@ public final class AttractorFlow {
         seeds.reserveCapacity(count)
         let path = sample.path
         // Nudged off the orbit, which is doing more than spreading the duplicates: on
-        // the orbit exactly, every particle rides the *same* trajectory forever and the
+        // the orbit exactly, every particle follows the *same* trajectory forever and the
         // picture can only ever be that one curve with dots sliding along it. Off it by
         // a hair, chaos separates them within a few laps into a million trajectories
         // filling the attractor's own measure, which is the whole point of running this

@@ -125,7 +125,7 @@ public enum Effect: Sendable, Hashable, Codable {
     /// effect the closure itself is the setting, which is what lets a sketch
     /// swap the work without the chain being rewired; a convolution reverb,
     /// the four motions, the three levels, and the two that work in the
-    /// spectrum ride the same unit, each prepared and swapped in the same
+    /// spectrum use the same unit, each prepared and swapped in the same
     /// way.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {

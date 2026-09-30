@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Ollin reads a model from `.obj`, `.usdz`/`.usdc`/`.stl`/`.ply` (Apple's Model I/O),
 /// or `.gltf`/`.glb` (Ollin's own reader, the format most tools export). The loaded
-/// geometry rides the exact same depth-tested, auto-lit mesh path as the built-in
+/// geometry takes the exact same depth-tested, auto-lit mesh path as the built-in
 /// primitives: `loadMesh` returns a `Mesh`, `normalized(scale:)` fits it to the scene
 /// no matter what size its author saved it at, and `drawMesh` draws it.
 ///

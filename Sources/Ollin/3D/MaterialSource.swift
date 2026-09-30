@@ -1,6 +1,6 @@
 // A tuned finish written back as the source that rebuilds it. The explorer's
-// "copy as Swift" rides this, and any sketch can print any material the same
-// way. Pure text: nothing here touches the renderer.
+// "copy as Swift" is built on this, and any sketch can print any material
+// the same way. Pure text: nothing here touches the renderer.
 
 import Foundation
 

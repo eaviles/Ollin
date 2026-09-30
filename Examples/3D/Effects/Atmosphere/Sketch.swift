@@ -64,7 +64,7 @@ final class Atmosphere: Sketch {
         if aerial {
             background(.black)
             toneMap(.aces)
-            // The sky is the backdrop and the ambient; a warm key rides the same sun
+            // The sky is the backdrop and the ambient; a warm key uses the same sun
             // direction so lit faces catch it while shadow faces keep the sky's cool.
             // The aerial haze reads its sun from the environment (rotation included).
             environment(.sky(turbidity: 2.4, sunElevation: sunHeight).rotated(sunAround))

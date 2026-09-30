@@ -47,7 +47,7 @@ final class BrushedMetal: Sketch {
 
         // Bottom row: the rotation spinning the streak, then the turned look on a
         // rotational body (the ready-made preset on a tilted torus, whose surface
-        // curves through every frame direction and wears the streak the way a
+        // curves through every frame direction and shows the streak the way a
         // machined ring does; a flat face has one constant frame, so a curved body
         // shows the finish best).
         row(y: -spacing / 2, labels: ["turn 0", "turn 45°", "turn 90°", "turned"],

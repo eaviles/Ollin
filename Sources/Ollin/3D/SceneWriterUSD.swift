@@ -220,7 +220,7 @@ struct USDSceneWriter {
     // MARK: - Materials
 
     /// The path of the material prim for `material`, written once and shared by
-    /// every mesh wearing the same one.
+    /// every mesh using the same one.
     private mutating func materialPath(_ material: MeshMaterial, hint: String,
                                        perVertexColor: Bool) -> String {
         let texture = material.texture.map { ordinal(of: $0) }
@@ -259,12 +259,12 @@ struct USDSceneWriter {
 
     /// One material: a UsdPreviewSurface, plus the reader shaders a texture, a
     /// surface map, or per-vertex color needs to feed it. Every map's encoding
-    /// is the stated inverse of the reader's: the normal map's strength rides
-    /// its decode as scale (2s, 2s, 2, 1) / bias (−s, −s, −1, 0) (an exact
-    /// spelling of `s · (2c − 1)` on x/y), the metallic/roughness factors ride
+    /// is the stated inverse of the reader's: the normal map's strength is set
+    /// in its decode as scale (2s, 2s, 2, 1) / bias (−s, −s, −1, 0) (an exact
+    /// spelling of `s · (2c − 1)` on x/y), the metallic/roughness factors set
     /// the packed map's per-channel scale (b and g, the standard packing), the
-    /// occlusion strength rides its channel as scale s / bias 1 − s (exactly
-    /// `1 + s·(ao − 1)`), and the emissive factor rides its map's scale.
+    /// occlusion strength is set on its channel as scale s / bias 1 − s (exactly
+    /// `1 + s·(ao − 1)`), and the emissive factor sets its map's scale.
     private mutating func materialUSDA(_ material: MeshMaterial, name: String, path: String,
                                        perVertexColor: Bool) -> String {
         var shaders = ""
@@ -305,7 +305,7 @@ struct USDSceneWriter {
                                      outputs: ["float3 outputs:rgb"])
             // Both a value and a connection: a renderer follows the connection,
             // and a reader that only looks at values still gets the tint rather
-            // than nothing. The tint itself rides the texture's own scale, which
+            // than nothing. The tint itself is written as the texture's own scale, which
             // is where a preview surface keeps a multiplier on a sample.
             diffuse += "  color3f inputs:diffuseColor.connect = <\(path)/texture.outputs:rgb>\n"
         } else if perVertexColor {

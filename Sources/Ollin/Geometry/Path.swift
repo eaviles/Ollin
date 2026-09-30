@@ -6,7 +6,7 @@ import Foundation
 /// `Path` is the curve-aware way to author a `Shape`: you trace an outline with
 /// pen-style commands — `move(to:)` to start, then `line`, `curve`, `quadCurve`,
 /// or `cubicCurve`, and an optional `close()` — and the curves are *sampled to
-/// points* when you read `contour`/`shape`, so they ride the same triangulated
+/// points* when you read `contour`/`shape`, so they go through the same triangulated
 /// fill + stroked path everything else does (no special pipeline).
 ///
 /// The three curve verbs differ in who supplies the bend:

@@ -33,8 +33,8 @@ public extension OllinApp {
     /// numbers wants something much smaller.
     ///
     /// The container should be `.mov`, which is what every spatial video on Apple
-    /// platforms is; `.mp4` also carries it. Sound the sketch makes rides along,
-    /// exactly as it does in an ordinary video export.
+    /// platforms is; `.mp4` also carries it. Sound the sketch makes is recorded too,
+    /// exactly as it is in an ordinary video export.
     ///
     /// Throws `ExportError` when the clip cannot be made, as `exportVideo`
     /// does, and when this Mac's encoder cannot write stereo video at all. A

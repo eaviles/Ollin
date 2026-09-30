@@ -5,7 +5,7 @@ import Ollin
 /// A *matcap* (material capture) bakes a surface and its lighting into a single image,
 /// sampled by the view-space normal. `matcap(_:)` shades a mesh straight from it, with
 /// no scene lights and at almost no cost — reach for chrome, clay, wax, or a cel look
-/// by name. Here the same sphere wears a built-in in each cell of a grid the camera
+/// by name. Here the same sphere shows a built-in in each cell of a grid the camera
 /// orbits; because a matcap is keyed to the *view*, the shading slides as it turns.
 ///
 /// The built-ins are real baked studio captures (CC0, from the Blender community). The
@@ -67,7 +67,7 @@ final class MatcapGallery: Sketch {
     }
 
     // Place a name under each sphere by projecting its world position to the canvas, so
-    // the labels ride the orbit. Labels are plain 2D, drawn after (and over) the meshes.
+    // the labels follow the orbit. Labels are plain 2D, drawn after (and over) the meshes.
     private func drawLabel(_ name: String, under worldPos: Vector3) {
         guard let p = project(worldPos + Vector3(0, -1.2, 0)) else { return }
         withState {

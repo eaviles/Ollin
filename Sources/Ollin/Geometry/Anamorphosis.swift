@@ -280,7 +280,7 @@ public extension Anamorphosis {
     /// The search runs on the page alone. A bounce off a standing cylinder
     /// keeps the sideways part of the path and turns only the part facing the
     /// glass, so the path seen from above is an ordinary bounce off a circle,
-    /// and the height rides along with it.
+    /// and the height is carried along with it.
     func mirrorPoint(of platePoint: Vector2, asSeenBy viewer: Vector3) -> Vector3? {
         guard radius > 0, viewer.z > 0 else { return nil }
         let from = Vector2(viewer.x, viewer.y) - center

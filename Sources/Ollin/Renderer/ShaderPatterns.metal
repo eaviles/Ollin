@@ -1664,7 +1664,7 @@ fragment float4 ollin_gen_phyllotaxis(PresentOut in [[stage_in]],
 
 // hexPulse: per-cell pulses over a hexagonal lattice. The two-lattice modulo
 // trick picks each pixel's nearest hex center; every cell then breathes on its
-// own hashed phase and rate, its brightness (and a little of its size) riding
+// own hashed phase and rate, its brightness (and a little of its size) following
 // the pulse, its color a hashed palette pick (params[0]: colorCount, aspect,
 // scale, gap; params[1]: phase; params[2]: background; then colors).
 fragment float4 ollin_gen_hexpulse(PresentOut in [[stage_in]],
@@ -2036,7 +2036,7 @@ fragment float4 ollin_gen_newton(PresentOut in [[stage_in]],
 // Run coarse to fine. One Jacobi pass moves information one texel, so a solve
 // at layer size alone would need thousands of passes to carry a color across
 // the picture; starting at 32 across and doubling, a few dozen passes do it.
-// The constraints ride down that ladder as a *premultiplied* pyramid (color x
+// The constraints go down that ladder as a *premultiplied* pyramid (color x
 // weight, weight) rather than being resampled from the layer at each level,
 // which is what keeps a hairline mark alive at the coarse sizes: box-averaging
 // that form keeps the color exactly and lets only the weight fall off.

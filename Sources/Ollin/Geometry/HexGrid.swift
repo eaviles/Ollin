@@ -19,7 +19,7 @@ import Foundation
 /// cell can), so the block is sized to fit inside the padded bounds and
 /// centered: ask for more `columns` for smaller hexes. `gutter` opens a gap
 /// between neighbors; `orientation` picks pointy-top (rows shift by half a
-/// hex) or flat-top (columns shift). Hex-native math rides the axial
+/// hex) or flat-top (columns shift). Hex-native math uses the axial
 /// coordinates: `distance(from:to:)` (rings of equal distance make the classic
 /// honeycomb falloff), `neighbors(of:)` (up to six), `ring(around:radius:)`,
 /// and `cell(at:)` for exact mouse-to-hex picking.

@@ -211,7 +211,7 @@ public func angles(_ count: Int, from start: Double = 0, turns: Double = 1) -> [
 /// `center + Vector2(cos(angle), sin(angle)) * radius`.
 ///
 /// ```swift
-/// let p = polar(time, 300, around: center)     // a point riding a circle
+/// let p = polar(time, 300, around: center)     // a point moving around a circle
 /// drawLine(center, polar(a, r, around: center))
 /// ```
 ///

@@ -10,7 +10,7 @@ import os
 ///
 /// `drawText` renders an outline glyph as a `Shape` — the same vector fill the
 /// triangulator draws — so text automatically takes the current `fill` *and*
-/// `stroke`, rides the transform stack, and composites in draw order with
+/// `stroke`, follows the transform stack, and composites in draw order with
 /// everything else. The geometry is also yours directly: `outlines(of:)` hands
 /// back the glyph `Shape`s so you can warp, sample, scatter, or animate the
 /// letterforms.

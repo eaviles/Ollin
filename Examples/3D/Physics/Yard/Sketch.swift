@@ -9,7 +9,7 @@ import OllinPhysics
 /// its wheels still turning at the speed they were turning, in the gear the
 /// box had picked, so a restore mid-drive carries on rather than pulling away
 /// from rest. The walker comes back mid-stride. The figure comes back where it
-/// fell, wearing the capsules that were fitted to its mesh.
+/// fell, with the capsules that were fitted to its mesh.
 ///
 /// - **Arrow keys** drive the truck. Run it into the crates, or into the
 ///   figure lying by the wall.
@@ -44,7 +44,7 @@ final class Yard: Sketch {
 
     /// The figure's skin: the sketch's asset, not the snapshot's. One copy is
     /// posed from the fallen figure every frame; the other stays as it was
-    /// loaded, so the pacer has a body to wear.
+    /// loaded, so the pacer has a body to draw.
     var skin: Scene!
     var standing: Scene!
     /// The two heavy pieces of geometry, which the file names rather than
@@ -293,7 +293,7 @@ final class Yard: Sketch {
     }
 
     /// Everything loose in the yard, walls included, drawn out of the collider
-    /// each body came back wearing.
+    /// each body came back with.
     func drawCrates() {
         for (index, body) in world.bodies.enumerated() {
             guard case .box(let width, let height, let depth) = body.collider else {
@@ -323,7 +323,7 @@ final class Yard: Sketch {
     }
 
     /// A character is a swept capsule with no mesh of its own, so the pacer
-    /// wears the same figure the fallen one does, standing in the pose it was
+    /// is drawn as the same figure as the fallen one, standing in the pose it was
     /// loaded in. `withCharacter` puts it on its feet facing the right way.
     func drawPacer() {
         guard let pacer else { return }

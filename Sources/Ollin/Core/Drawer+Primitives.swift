@@ -210,7 +210,7 @@ extension Drawer {
     /// no stroke set to `nil` there is nothing to draw. `nil` head measurements
     /// scale with the stroke weight. The shaft stops at the head's base, so a
     /// translucent arrow lays one coat of ink. Composed of the line and
-    /// triangle primitives, so it rides every path they do (SVG export
+    /// triangle primitives, so it goes through every path they do (SVG export
     /// included).
     func drawArrow(from a: Vector2, to b: Vector2, headLength: Double?, headWidth: Double?) {
         guard let shaftPaint = strokePaint else { return }
@@ -692,8 +692,8 @@ extension Drawer {
     }
 
     /// One paint encoded for an `SDFInstance` color slot: a solid color as-is
-    /// (kind 0), or a gradient's geometry — made relative to the shape center, so
-    /// the fragment evaluates it against `in.local` and it rides the CTM — with
+    /// (kind 0), or a gradient's geometry (made relative to the shape center, so
+    /// the fragment evaluates it against `in.local` and it moves with the CTM), with
     /// the paint kind for the shape-tag bits and the ramp's strip row.
     private struct EncodedPaint {
         var slot: SIMD4<Float>
@@ -814,7 +814,7 @@ extension Drawer {
             strokeWidth: hasStroke ? Float(weight) : 0,
             extra: extra,
             bandWidth: band,
-            // Stroke alignment and the two paint kinds ride in the shape tag's
+            // Stroke alignment and the two paint kinds are stored in the shape tag's
             // high bits (the tag itself is < 256), so they cost no instance room:
             // bits 8-9 the alignment, 10-12 the fill kind, 13-15 the stroke kind.
             shape: shape.rawValue | (strokeAlignment.shaderCode << 8)
@@ -885,7 +885,7 @@ extension Drawer {
         }
 
         // Stroke: a solid color, or a linear/radial/conic gradient traced along the merged
-        // outline (its geometry rides the `strokeColor` slot, as `SDFInstance` reuses its color
+        // outline (its geometry goes in the `strokeColor` slot, as `SDFInstance` reuses its color
         // slots). An along-path gradient has no single path on a merged outline, so it draws no stroke.
         var strokeSlot = SIMD4<Float>(repeating: 0)
         var strokeKind: Float = 0
@@ -1414,7 +1414,7 @@ extension Drawer {
     /// fractions along the path rather than evenly spaced ones. That is the whole
     /// reason a mark is its own type: its points bunch where the hand slowed, so
     /// spreading the widths evenly would slide each one off the place it was
-    /// measured. Opacity rides the per-vertex color the same way.
+    /// measured. Opacity is carried in the per-vertex color the same way.
     ///
     /// A width profile already set with `strokeProfile(_:)` still applies, and the
     /// two multiply. That is how a dynamic mark also gets a clean lift-off:
@@ -1490,7 +1490,7 @@ extension Drawer {
     /// An axis-aligned `Rectangle` with a radius per corner. Four equal radii
     /// take the one-radius path above, instance for instance, so a rectangle
     /// that rounds every corner the same draws exactly as `cornerRadius:` does;
-    /// radii that differ ride the box's parameter slots, and the fragment
+    /// radii that differ are stored in the box's parameter slots, and the fragment
     /// picks each corner's radius by the quadrant a pixel falls in.
     func drawRect(_ rect: Rectangle, cornerRadii: CornerRadii) {
         guard rect.width > 0, rect.height > 0 else { return }

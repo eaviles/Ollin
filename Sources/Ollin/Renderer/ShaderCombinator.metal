@@ -12,7 +12,7 @@
 // or rounded, tiled/mirrored) draws as ONE covering quad whose fragment runs a tiny
 // stack-machine "VM" over a flat node program (`SDFNode`, built CPU-side by the `SDF`
 // value type's flattener). Unlike the per-shape SDF path, several leaves evaluate at
-// the same point and combine, so this can't ride `SDFInstance`.
+// the same point and combine, so this can't use `SDFInstance`.
 //
 // Two fixed-depth stacks: a *value* stack of (distance, color) for the leaf/combine/
 // modify ops, and a *point* stack for the transform/domain scopes (an XFORM pushes the
@@ -165,7 +165,7 @@ static float ollin_op_columns_difference(float a0, float b, float r, float n) {
 // on the FIRST field along the second's surface (engrave a v-notch, groove a channel,
 // tongue a ridge), and pipe keeps only a round bead along the two surfaces' crossing.
 // Joint/detailing color stays a crisp pick (nearer operand, or the detailed body), a
-// machined look, not a melt. `n` rides the OP node's `extra` (the stairs step count,
+// machined look, not a melt. `n` is stored in the OP node's `extra` (the stairs step count,
 // the columns count, or the groove/tongue width).
 static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
                               float k, float n, thread float &outD, thread float4 &outC) {
@@ -259,7 +259,7 @@ static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
 
 // Transform the query point for a domain/transform scope (sel = the XFORM kind). The
 // point gets the *inverse* of what the shape gets, so e.g. a +translate moves the
-// shape by +t. All are rigid except scale (its distance fix-up rides RESTORE_P).
+// shape by +t. All are rigid except scale (its distance fix-up is applied at RESTORE_P).
 static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
     switch (nd.sel) {
     case 0u:                                          // translate

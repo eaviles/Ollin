@@ -1,7 +1,7 @@
 import Ollin
 
 /// Steering behaviors: creatures moved by composable forces. A troop of
-/// followers rides a wavy loop (`follow(path:)`), wanderers roam the middle
+/// followers moves along a wavy loop (`follow(path:)`), wanderers roam the middle
 /// leaving trails (`wander` plus `contain`), and one pursuer hunts the lead
 /// follower by aiming where it *will* be (`pursue`). Every motion here is the
 /// same move with a different target: aim at full speed toward what you want,
@@ -43,7 +43,7 @@ final class Steering: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1016))
 
-        // The loop the followers ride, drawn as a faint corridor.
+        // The loop the followers travel, drawn as a faint corridor.
         noFill()
         stroke(Color(hex: 0x2A3040))
         strokeWeight(30 * scale)

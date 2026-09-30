@@ -1,6 +1,6 @@
 import Ollin
 
-/// Ink on the edges, and a light that rides the camera.
+/// Ink on the edges, and a light that follows the camera.
 ///
 /// A still life in the toon material with an ink line around every shape
 /// (`outline(width:color:)`), the cartoon look. The line is drawn as an

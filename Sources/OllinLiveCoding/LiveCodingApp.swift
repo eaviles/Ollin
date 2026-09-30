@@ -6,7 +6,7 @@ import OllinRuntime
 //
 //   swift run OllinLiveCoding [path/to/Sketch.swift]
 //
-// One window: the running sketch fills the stage and the code rides over it
+// One window: the running sketch fills the stage and the code is drawn over it
 // as translucent text. ⌘↩ recompiles the editor buffer and hot-swaps the
 // sketch while the old one keeps drawing; the clock carries across the swap
 // so motion never jumps mid-set (⌘⇧↩ evaluates fresh). Evaluation never

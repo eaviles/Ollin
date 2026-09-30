@@ -11,7 +11,7 @@ extension Drawer {
     // MARK: Text
 
     /// Draw `string` at `(x, y)` using the active `textFont` / `textSize` /
-    /// `textAlign`. `\n` starts a new line; text rides the transform stack and
+    /// `textAlign`. `\n` starts a new line; text follows the transform stack and
     /// stays crisp at any size. A **bitmap** font stamps each lit pixel as a fill
     /// color square on the SDF path; an **outline** font draws each glyph as a
     /// vector `Shape`: it takes the current `fill`, and, once the sketch has set
@@ -236,7 +236,7 @@ extension Drawer {
                                             at: Vector2(x, y))
         guard !placed.isEmpty else { return }
 
-        // A distance field holds one channel, so an emoji cannot ride the atlas and
+        // A distance field holds one channel, so an emoji cannot go in the atlas and
         // is drawn as an ordinary picture instead. The atlas has no slot for a space
         // either, so asking the color cache only where a slot is missing keeps the
         // volume path paying nothing per ordinary glyph.
@@ -594,7 +594,7 @@ extension Drawer {
                 // Trailing spaces belong to the line that ends there, so they are
                 // not measured against the box. A stop allowed to hang is not
                 // measured either: that is the whole of what hanging does here, and
-                // it is why the piece it rides on can stay on this line.
+                // it is why the piece it is attached to can stay on this line.
                 let trimmed = trimmedTrailing(candidate)
                 if current.isEmpty || textWidth(trimmed) - hangingWidth(of: trimmed) <= maxExtent {
                     current = candidate
@@ -711,7 +711,7 @@ extension Drawer {
         }
     }
 
-    /// Draw `string` with its glyphs riding `path`: each glyph is centered on the
+    /// Draw `string` with its glyphs following `path`: each glyph is centered on the
     /// point `offset + (its distance along the run)` measured as arc length from the
     /// path's start, and rotated to the path's tangent there (its baseline sits on
     /// the curve). Glyphs that fall before the start or past the end are skipped, so
@@ -745,7 +745,7 @@ extension Drawer {
             let (anchor, angle) = pointAndTangent(points: points, cumulative: cumulative, at: distance)
             let cosA = cos(angle), sinA = sin(angle)
             if let picture = item.picture {
-                // A picture cannot bend, so it rides the curve upright, centered on
+                // A picture cannot bend, so it stays upright on the curve, centered on
                 // its own point like every other piece.
                 let rect = item.localPictureRect
                 let lx = rect.center.x - item.advance / 2, ly = rect.center.y
@@ -825,7 +825,7 @@ extension Drawer {
     /// The writing direction with the vertical axis taken out: what a path lays its
     /// text along. A path already says which way the text travels and how it turns,
     /// so a column has nothing left to mean there, while left-to-right and
-    /// right-to-left still decide the order the pieces ride in.
+    /// right-to-left still decide the order the pieces are placed in.
     private var horizontalDirection: TextDirection {
         textWritingDirection.isVertical ? .automatic : textWritingDirection
     }

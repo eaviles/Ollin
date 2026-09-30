@@ -136,7 +136,7 @@ final class BallFeed: FrameSource, VideoFeed {
     private var cachedFrameID: ObjectIdentifier?
 
     /// Begin simulating and publishing frames at 30 fps, on the feed's own
-    /// thread (given a roomy stack; the tap hand-off rides it, analysis doesn't).
+    /// thread (given a roomy stack; the tap hand-off runs on it, analysis doesn't).
     func start() {
         guard !started else { return }
         started = true

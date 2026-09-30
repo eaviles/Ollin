@@ -188,7 +188,7 @@ fragment float4 ollin_fx_paint_mix(PresentOut in [[stage_in]],
 // make the result approximate the field wanted rather than a blur. They arrive
 // as parameters, so one set of passes serves any field this scheme can fit.
 //
-// Constraints arrive premultiplied (value x weight, weight) and both parts ride
+// Constraints arrive premultiplied (value x weight, weight) and both parts pass
 // through together, so dividing at the end turns a sparse set of held values
 // into a field defined everywhere. That division is the whole reason a rim one
 // texel thick can decide a picture a thousand texels wide.
@@ -397,7 +397,7 @@ fragment float4 ollin_fx_seamless_clone(PresentOut in [[stage_in]],
 // (a running-average form; details and rationale on the gather below).
 // An in-focus region stays crisp, a defocused foreground spills over what's behind
 // it, and overlapping defocused regions blend like real bokeh rather than hard-cutting.
-// The highlight wears the shape of the opening it came through (`ollin_dof_aperture`),
+// The highlight takes the shape of the opening it came through (`ollin_dof_aperture`),
 // which is round until an iris with blades says otherwise.
 // params[0] = (focus, range, maxBlur px, blades), params[1].xy = texel size,
 // params[2] = (iris angle, cat's eye, 0, 0). The prepass reads the first two rows only.
@@ -569,7 +569,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // (the obvious "nothing here yet" value) leaves its running average converging *from*
     // black, and a partly covered foreground then composites that bias over the
     // background: a uniformly white layer comes back with a ~12% dark ring at the edge of
-    // the near spread. The whole layer is premultiplied, so alpha rides the gather with
+    // the near spread. The whole layer is premultiplied, so alpha is gathered with
     // the color; blurring rgb past a sharp alpha would stop the result being
     // premultiplied at all. An opaque layer is unaffected either way.
     // If this pixel is itself under a near blur, whatever sits behind it is hidden, so
@@ -1178,7 +1178,7 @@ fragment float4 ollin_fx_ssr_composite(PresentOut in [[stage_in]],
 // depth span of it (scale-free: a single slanted face has a tiny span so all its samples
 // count; two surfaces split at the midpoint, so the far one drops out). The output matches
 // the scene depth the SSAO reconstructs position from (`.min`-resolved, i.e. the front
-// surface), so normal and position stay consistent at the edge. Coverage rides in alpha
+// surface), so normal and position stay consistent at the edge. Coverage is stored in alpha
 // (front-sample count / N); a pixel no mesh covered stays at the cleared zero, and the AO
 // falls back to depth reconstruction there.
 fragment float4 ollin_mesh_normal_resolve(float4 pos [[position]],
@@ -1305,7 +1305,7 @@ struct RTReflectTraceOut {
 // LTC amp table at 9, feeding the hit shade's exact area-light diffuse).
 fragment RTReflectTraceOut ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> normalTex [[texture(0)]],
-                                       // Whether a texel is worth a ray at all rides the
+                                       // Whether a texel is worth a ray at all is stored in the
                                        // normal's alpha flag, so this is read only by the
                                        // glossy lobe, which needs the roughness to know how
                                        // wide to spread.
@@ -1317,7 +1317,7 @@ fragment RTReflectTraceOut ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d_array<float> iesProfiles [[texture(10)]],
                                        texture2d_array<float> cookies [[texture(11)]],
                                        // The sheen table, at the same slot every mesh
-                                       // carrier binds it: a hit whose surface wears sheen
+                                       // carrier binds it: a hit whose surface has sheen
                                        // reads its directional albedo here.
                                        texture2d<float> sheenLUT [[texture(12)]],
                                        // The GI probe atlases (the lit carriers' 13/14/15
@@ -1638,7 +1638,7 @@ static inline float3 ollin_taa_rgb(float3 c) {
     return float3(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z);
 }
 
-// Luminance-compressed YCoCg (alpha rides linearly): the blend runs on
+// Luminance-compressed YCoCg (alpha is blended linearly): the blend runs on
 // x/(1+luma) so one HDR spark cannot dominate the average and flash. The
 // average of compressed values weights samples by 1/(1+luma), and the inverse
 // (1/(1-luma')) restores the range afterward.
@@ -1813,7 +1813,7 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
     float4 sigma = sqrt(max(m2 / 9.0 - mu * mu, 0.0));
     // Velocity-adaptive box width (the production form of the moment clip): a
     // still pixel's reprojection is exact, so the box opens to 2.5 sigma and a
-    // converged history rides untouched; under motion it tightens toward 0.75
+    // converged history stays untouched; under motion it tightens toward 0.75
     // sigma, where stale history is the risk. At a fixed 1 sigma the box
     // *itself* oscillates with the jitter phase and drags a converged hairline
     // edge back and forth every frame (the clamp-sawtooth failure, measured
@@ -1884,7 +1884,7 @@ fragment float4 ollin_fx_supersample_resolve(PresentOut in [[stage_in]],
 // cylinder / soft depth compare), so a moving surface streaks past its own
 // silhouette, a sharp background stays sharp behind it, and a blurry
 // foreground lets the background it uncovers show through. Velocities are
-// pixels; camera-space depth rides the fill's z as small negative values (the
+// pixels; camera-space depth goes in the fill's z as small negative values (the
 // published convention: nearer is larger). The per-pixel gather jitter is a
 // pure function of pixel position (the dither's rule), so exports reproduce.
 
@@ -2056,7 +2056,7 @@ fragment float4 ollin_mb_neighbormax(PresentOut in [[stage_in]],
 // behind it estimates the background its streak uncovers. Case 3: both blur
 // together and lie inside each other's spread. The center pixel opens the sum
 // at 1/max(its own velocity, 0.5px), the inverse-magnitude weight that keeps a
-// sharp pixel heavy and a fast one light; alpha rides with the color (the
+// sharp pixel heavy and a fast one light; alpha is gathered with the color (the
 // frame is premultiplied linear). All classifications are continuous, so no
 // sorting and no ordering between taps. The gather jitter de-bands the tap
 // comb; a whole-neighborhood dominant velocity under half a pixel returns the

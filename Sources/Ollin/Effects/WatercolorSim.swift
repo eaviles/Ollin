@@ -7,7 +7,7 @@ import Foundation
 ///
 /// - `density`: how readily the pigment settles onto the paper. Dense pigments
 ///   drop out of the water quickly and stay close to where they were laid down;
-///   light ones ride the flow further before settling.
+///   light ones are carried further by the flow before settling.
 /// - `staining`: how hard it grips once settled. A staining pigment resists being
 ///   lifted back into moving water; a non-staining one re-dissolves and keeps
 ///   traveling.

@@ -371,7 +371,7 @@ public enum JointKind3D {
     /// so this is the one to reach for when none of them fits.
     ///
     /// ```swift
-    /// // A post a platter rides: it may rise and spin, nothing else.
+    /// // A post a platter sits on: it may rise and spin, nothing else.
     /// world.connect(post, platter,
     ///               .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
     /// ```

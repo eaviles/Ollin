@@ -820,7 +820,7 @@ extension MetalRenderer {
         if var lens = flareLens.trace, let traceState = try? pipeline(.flareGhostTrace),
            let samples = flareSamples(width: ghostWidth, height: ghostHeight) {
             lens.frame.x = Float(sensorPerUnit)
-            // The squeeze rides the aspect: a ghost's place across the sensor is
+            // The squeeze is folded into the aspect: a ghost's place across the sensor is
             // stretched back out by it on the way to the frame.
             lens.frame.y = Float(lensAspect / flare.lens.squeeze)
             // Each ghost in its one-pass form, and in its seven-pass form when its
@@ -928,7 +928,7 @@ extension MetalRenderer {
                 traceEncoder.endEncoding()
             }
         }
-        // Whether the composite has followed ghosts to add rides a slot the star
+        // Whether the composite has followed ghosts to add is stored in a slot the star
         // leaves free.
         uniforms.starTints.0.w = hasTraced ? 1 : 0
 

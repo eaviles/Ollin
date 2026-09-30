@@ -5,7 +5,7 @@ import Ollin
 ///
 /// Where a normal map changes how light *lands*, these change what the surface
 /// *is* from texel to texel: a metallic-roughness map decides where a sphere is
-/// bare polished metal and where it is dull paint (roughness rides the green
+/// bare polished metal and where it is dull paint (roughness is stored in the green
 /// channel, metallic the blue, the standard packing), an occlusion map settles
 /// shadow into crevices the geometry doesn't have, and an emissive map makes
 /// parts of the surface give off light of their own.
@@ -144,7 +144,7 @@ final class SurfaceMaps: Sketch {
         let xs: [Double] = [-3.45, -1.15, 1.15, 3.45]
         // The worn sphere and the bare control draw under the identity factors
         // (the maps say what's metal); the occlusion and emissive spheres are
-        // plain dielectrics, their maps riding on top.
+        // plain dielectrics, their maps applied on top.
         let spheres: [(Mesh, Material)] = [
             (worn, .physicallyBased(metallic: 1, roughness: 1)),
             (grooved, .dielectric(roughness: 0.55)),

@@ -20,7 +20,7 @@ import Foundation
 /// The deformation is recursive edge subdivision: each edge splits at its
 /// midpoint, the midpoint jumps by a Gaussian scaled by that edge's own
 /// variance, and the two child edges inherit a decayed, jittered share of
-/// it. Because variance rides the edges, some stretches of outline stay
+/// it. Because variance is per edge, some stretches of outline stay
 /// nearly crisp while others bloom, which is what keeps the blob from
 /// looking like a fuzzy circle. Deterministic from the generator you pass;
 /// build in `setup()` (or behind `noLoop()`), since the stacked fills are

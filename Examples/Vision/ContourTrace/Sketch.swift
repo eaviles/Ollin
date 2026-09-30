@@ -24,7 +24,7 @@ import OllinVision
 /// `FrameSource` (a `Camera`, a `VideoPlayer`) the same way, so vision over
 /// recorded footage costs nothing beyond choosing the source.
 ///
-/// This is where Vision meets Ollin's vector core: the traced `Shape`s ride the
+/// This is where Vision meets Ollin's vector core: the traced `Shape`s take the
 /// same path as any other geometry, so `drawShape`, SVG export, and the
 /// hatching transform all just work on them.
 @main

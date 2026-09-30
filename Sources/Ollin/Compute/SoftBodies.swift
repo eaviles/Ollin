@@ -105,8 +105,8 @@ public final class SoftBodies {
         circles = relaxCircles(circles, in: spawnArea, iterations: 60, padding: s)
         let centers = circles.map { ($0.center, $0.radius) }
 
-        // Fill each blob with a hex lattice of particles; the rest offset rides
-        // seedA/seedB and the body index rides life, so the step kernel can build
+        // Fill each blob with a hex lattice of particles; the rest offset is stored in
+        // seedA/seedB and the body index in life, so the step kernel can build
         // its goal position without any extra per-particle buffer.
         var seeds: [OllinParticle] = []
         var ranges: [OllinSoftBody] = []

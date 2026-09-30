@@ -56,7 +56,7 @@ final class HopfFibration_Example: Sketch {
         }
     }
 
-    /// The color a fiber wears, taken from where on the sphere it came from: the angle
+    /// The color of a fiber, taken from where on the sphere it came from: the angle
     /// around gives the hue, and the height gives how pale it is. Reading the color off the
     /// base point rather than off a counter is what shows that the whole tangle is one
     /// sphere seen from the inside.

@@ -19,7 +19,7 @@ import Foundation
 /// There's no registry to add to; a preset is just a value you pass in, the same
 /// construct-or-mutate shape the material library uses. Lights are world-space (the
 /// sun stays put as the camera orbits) unless the rig is read `relativeTo(.camera)`,
-/// which makes every light ride the view so the look holds under an orbit. The
+/// which makes every light follow the view so the look holds under an orbit. The
 /// preset is applied as *this frame's* lighting, so call `lightingPreset(_:)` in
 /// `draw()` like the individual light calls.
 public struct LightingPreset: Equatable, Sendable {

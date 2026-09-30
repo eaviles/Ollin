@@ -8,7 +8,7 @@ import simd
 ///
 /// The transform reads like the sketch calls it replaces: the copy is placed as
 /// if you had written `translate(position)`, then `rotateX/rotateY/rotateZ` (in
-/// that order), then `scale`. The whole field still rides the surrounding 3D
+/// that order), then `scale`. The whole field still follows the surrounding 3D
 /// transform stack, so `translate`/`rotate` before the draw move every copy
 /// together.
 public struct MeshInstance: Sendable {

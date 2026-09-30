@@ -15,7 +15,7 @@ import simd
 /// skipped, never queued, and the camera never backs up. Everything the lift needs
 /// (the depth floats, the depth-grid intrinsics, the camera pose, the device-hold
 /// turn count) is copied out of the frame *inside* the delegate callback; only the
-/// capture pixel buffer rides to the queue by reference, held for at most one pass.
+/// capture pixel buffer is passed to the queue by reference, held for at most one pass.
 ///
 /// The model wants an upright picture, so the request is handed the device-hold
 /// orientation; its points come back in the upright frame and go onto the wire
@@ -77,7 +77,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
 
         // Copy everything the pass needs out of the frame now, on the callback:
         // the frame's buffers are the session's own, and only the capture pixel
-        // buffer (which CoreVideo reference-counts) rides along.
+        // buffer (which CoreVideo reference-counts) is passed along.
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()

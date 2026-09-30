@@ -389,7 +389,7 @@ extension MetalRenderer {
                             (drawer.renderTargets.contains(where: { $0 === layer }) ? layer.texture : nil)
                                 ?? blankInput()
                         }
-                    // The edge rule rides the sampler: a sim that taps its neighbors
+                    // The edge rule is set by the sampler: a sim that taps its neighbors
                     // through the field's sampler wraps or clamps as the field says,
                     // and one whose physics fix its boundary keeps the image sampler.
                     let sampler = sf.sim.honorsEdge ? simSampler(for: sf.edge) : imageSampler
@@ -904,7 +904,7 @@ extension MetalRenderer {
         for axis in [0.0, 1.0] {
             var size = 2
             while size <= n {
-                // The scale rides the last rung of each axis, so the divide costs
+                // The scale is applied at the last rung of each axis, so the divide costs
                 // no pass of its own.
                 let scale: Float = (inverse && normalize && size == n) ? 1 / Float(n) : 1
                 encodeEffectFragment("ollin_fft_stage", inputs: [read], output: write,
@@ -1165,7 +1165,7 @@ extension MetalRenderer {
     /// Spread a texture of constraints into a field defined everywhere, as one pass
     /// down the sizes and one back up (a convolution pyramid).
     ///
-    /// Constraints arrive premultiplied (value x weight, weight) and both parts ride
+    /// Constraints arrive premultiplied (value x weight, weight) and both parts pass
     /// through together, so the normalize at the end turns values held here and there
     /// into a value everywhere. That is what lets a rim one texel thick decide a
     /// picture a thousand texels wide: the pyramid carries the rim's *weight* down
@@ -1247,7 +1247,7 @@ extension MetalRenderer {
     /// Settle a Laplace field from a texture of constraints: every texel ends up the
     /// average of its four neighbors except where a constraint holds it, run coarse to
     /// fine so a value reaches across the layer in a few passes instead of one texel a
-    /// pass. The constraints arrive premultiplied (value x weight, weight) and ride
+    /// pass. The constraints arrive premultiplied (value x weight, weight) and pass
     /// down the ladder in that form.
     ///
     /// Shared by the diffusion filter, whose constraints are the layer's own marks, and
@@ -1453,9 +1453,9 @@ extension MetalRenderer {
             // gather reads that instead of the raw depth. It costs one fullscreen pass
             // and takes the dilation's 8 taps back out of the per-pixel gather.
             //
-            // The shape of the opening rides the spare slots: the blade count falls back
+            // The shape of the opening goes in the spare slots: the blade count falls back
             // to the camera that drew the depth layer, so a scene defocused by its own
-            // depth wears the same iris its flare ghosts and its path-traced export do.
+            // depth uses the same iris its flare ghosts and its path-traced export do.
             // A hand-drawn depth map carries no camera, so it stays round until the call
             // names a blade count itself.
             let taps = Float(resolveDofTaps(quality))
@@ -1476,8 +1476,8 @@ extension MetalRenderer {
             // position + normal from the aux depth, with the camera geometry stamped on
             // the depth layer, a neutral perspective when the aux carries none, e.g. a
             // hand-drawn depth map), then a depth-aware blur that softens it and multiplies
-            // the base. The sample budget rides the texel row's third slot, as the bokeh
-            // gather's does.
+            // the base. The sample budget is passed in the texel row's third slot, as the
+            // bokeh gather's does.
             let samples = Float(resolveSSAOSamples(quality))
             let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), samples, 0)
             let d = depth ?? .neutral
@@ -1510,8 +1510,8 @@ extension MetalRenderer {
             // temporal run at a quality-resolved fraction of the resolution and the composite
             // upsamples back to full, so live trades reflection resolution for frame rate while
             // export resolves to full (snapshots and exported art are never downscaled). The
-            // camera geometry rides params[2..3] byte-for-byte as SSAO's does; the march budget
-            // rides the texel row's third slot.
+            // camera geometry is passed in params[2..3] byte-for-byte as SSAO's does; the
+            // march budget is passed in the texel row's third slot.
             let steps = Float(resolveSSRSteps(quality))
             let scale = resolveSSRScale(quality)
             let sw = max(1, Int((Double(width) * scale).rounded()))
@@ -1616,13 +1616,13 @@ extension MetalRenderer {
         }
         // Inject the seed marks onto the current state (composited by the seed's
         // alpha, or added, per the sim's inject fragment). The sim's parameter rows
-        // ride along for the injects that read one (the sandpile's pour); the rest
+        // are bound too, for the injects that read one (the sandpile's pour); the rest
         // never look past the texel row.
         encodeEffectFragment(sim.injectFragment, inputs: [state, seed], output: s0,
                              params: [texel] + sim.params, into: cb, format: format, sampler: sampler)
         // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
         // back buffer. Read and write are always distinct, so there's no in-pass hazard.
-        // With a modulation map (and a sim that has a modulated variant), the map rides
+        // With a modulation map (and a sim that has a modulated variant), the map is bound
         // as a second input and the variant fragment lerps the parameters per texel;
         // without one, the plain fragment encodes exactly as it always has.
         let step: (name: String, extra: [MTLTexture])
@@ -1979,7 +1979,7 @@ extension MetalRenderer {
             encodeEffectFragment("ollin_wash_outward", inputs: [flowRead, blurB], output: flowAfterOutward,
                                  params: [texel, SIMD4(config.edgeDarkening, 0, 0, 0)], into: cb)
             flowRead = flowAfterOutward
-            // 4. Pigment rides the flow: four upwind substeps matching the CFL clamp.
+            // 4. Pigment is advected by the flow: four upwind substeps matching the CFL clamp.
             for _ in 0..<4 {
                 let out = nextPig()
                 encodeEffectFragment("ollin_wash_pigment", inputs: [pigRead, flowRead], output: out,
@@ -3178,7 +3178,7 @@ extension MetalRenderer {
         // the world at infinity with its own atmosphere in it (the procedural sky
         // literally *is* this scattering integral to infinity), so painting the
         // scene-scale veil over it would double-count; only the marched beams still
-        // add. The flag rides the reserved fogParams2.z, read by the air fragment
+        // add. The flag is stored in the reserved fogParams2.z, read by the air fragment
         // alone (no surface path touches it). Classic fog keeps painting over the
         // sky: fog is an occluding medium, and a fogged frame should swallow its
         // backdrop too.
@@ -3456,7 +3456,7 @@ extension MetalRenderer {
                 }
             }
             switch batch.kind {
-            case .triangles, .fringe:   // .fringe shares the triangle vertex buffer; only the pipeline differs (coverage rides in `aa.x`)
+            case .triangles, .fringe:   // .fringe shares the triangle vertex buffer; only the pipeline differs (coverage is stored in `aa.x`)
                 let end = next?.vertexStart ?? vertices.count
                 let count = end - batch.vertexStart
                 guard count > 0, let triangleBuffer else { continue }
@@ -3965,7 +3965,7 @@ extension MetalRenderer {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .clipPush:
                 // The clip region's fill triangles, drawn stencil-only (color masked
-                // off; the increment state + reference were set above). Rides the
+                // off; the increment state + reference were set above). Uses the
                 // triangle buffer like a `.triangles` run.
                 let end = next?.vertexStart ?? vertices.count
                 let count = end - batch.vertexStart
@@ -3990,7 +3990,7 @@ extension MetalRenderer {
     /// Replay a recorded `Batch` from its own persistent buffers: the retained
     /// sibling of the per-batch arms in `encode` above, restricted to the kinds a
     /// recording can hold (2D geometry, images, atlas text, SDF groups, point
-    /// clouds). The reference batch supplies the draw-time context: its CTM rides
+    /// clouds). The reference batch supplies the draw-time context: its CTM is passed in
     /// the flag-gated `batchTransform` uniform (identity leaves the flag 0, so an
     /// untransformed replay renders byte-identically to the recording), and its
     /// clip level / 2D depth apply to every inner run. Inner runs keep their own

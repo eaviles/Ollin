@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 
 /// The full easing catalog at a glance: all thirty named `Easing` curves plotted
-/// in a grid, each with a dot riding its shape as a shared phase sweeps `0→1→0`,
+/// in a grid, each with a dot moving along its shape as a shared phase sweeps `0→1→0`,
 /// back and forth. The back, elastic, and bounce rows visibly overshoot their
 /// cells — that's the point of them.
 ///
@@ -43,7 +43,7 @@ final class EasingGallery: Sketch {
         let cellW = (width - margin * 2) / Double(cols)
         let cellH = (height - margin * 2) / Double(rows)
         let inset = cellW * 0.18
-        // Ping-pong 0→1→0 (triangle wave) so the dot rides each curve forward,
+        // Ping-pong 0→1→0 (triangle wave) so the dot moves along each curve forward,
         // then back, instead of snapping to the start.
         let sweep = (time * 0.45).truncatingRemainder(dividingBy: 2)    // 0...2
         let phase = sweep < 1 ? sweep : 2 - sweep                       // 0→1→0
@@ -72,7 +72,7 @@ final class EasingGallery: Sketch {
             noFill(); stroke(tint); strokeWeight(3 * scale)
             drawPolyline((0...48).map { point(Double($0) / 48) })
 
-            // The dot riding it at the current phase.
+            // The dot on it at the current phase.
             noStroke(); fill(tint)
             drawCircle(center: point(phase), radius: 8 * scale)
 

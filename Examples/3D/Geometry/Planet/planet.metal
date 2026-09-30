@@ -1,4 +1,4 @@
-// The maps a planet wears, written once on the GPU.
+// The maps a planet uses, written once on the GPU.
 //
 // Every kernel here works in equirectangular map space: u runs once around the
 // equator, v from the north pole to the south, which is exactly the uv a sphere
@@ -220,7 +220,7 @@ kernel void planet_surface(texture2d<float, access::read> src [[texture(0)]],
     ground = mix(ground, beach, (1.0 - smoothstep(0.0, 0.045, height))
                                 * smoothstep(0.10, 0.35, warmth));
 
-    // Rock, banded by what it is made of. It shows up two ways: high ground wears
+    // Rock, banded by what it is made of. It shows up two ways: high ground has
     // it, and so does any slope steep enough to shed its soil, which is what puts
     // bare stone down the sides of a range and leaves the floor between them green.
     float3 rock = srgbToLinear(mix(float3(0.353, 0.322, 0.290),

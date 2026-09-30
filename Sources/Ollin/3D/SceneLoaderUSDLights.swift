@@ -2,7 +2,7 @@ import Foundation
 import simd
 
 // The lights leg of USD scene import: the authored UsdLux lights become
-// node-riding `SceneLightSpec`s on the scene walk's nodes (`loadUSDScene`
+// node-attached `SceneLightSpec`s on the scene walk's nodes (`loadUSDScene`
 // attaches them where it builds each light prim's node, so visibility and
 // purpose gate them the way they gate meshes), and `Scene.lights` resolves
 // them into ordinary `Light` values through the tree's current transforms.

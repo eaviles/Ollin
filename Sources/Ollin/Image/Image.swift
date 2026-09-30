@@ -127,7 +127,7 @@ public final class Image {
 
     /// Wrap a live Metal `texture` so it can be drawn with `drawImage` — for a GPU
     /// frame that's produced fresh each frame (a Syphon feed; later an effects
-    /// layer) and composited like any other image, riding the transform stack and
+    /// layer) and composited like any other image, following the transform stack and
     /// `tint`. The texture is used as-is by the renderer (no upload, no copy), so
     /// it must live on the same Metal device the sketch renders on (true on a
     /// single-GPU Mac). The CPU paths — pixel `subscript`, `cgImage`,

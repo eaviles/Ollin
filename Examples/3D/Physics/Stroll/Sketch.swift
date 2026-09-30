@@ -244,7 +244,7 @@ final class Stroll: Sketch {
         }
     }
 
-    /// The field as a mesh wearing a height-colored texture: sand at the
+    /// The field as a mesh with a height-colored texture: sand at the
     /// waterline, grass on the plaza, rock and scrub up the hills.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0xE4D2A6), Color(hex: 0x8FAE63),

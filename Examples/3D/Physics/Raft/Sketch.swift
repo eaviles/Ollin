@@ -1,13 +1,13 @@
 import Ollin
 import OllinPhysics
 
-/// A raft made of cloth, riding a swell with cargo on it. **Drag** the deck to
+/// A raft made of cloth, floating on a swell with cargo on it. **Drag** the deck to
 /// sail her: under the sounding line, or through the harbor gate. **Space**
 /// drops another crate.
 ///
 /// The showcase for a soft body being part of the world rather than a thing
 /// draped over it, in three ways. It **floats**: `world.water` pushes each of
-/// its particles up on its own, so `density` decides how high she rides even
+/// its particles up on its own, so `density` decides how high she floats even
 /// though a sheet encloses no volume to work a waterline out of. It **turns up
 /// in `world.contacts`**: a crate landing on the deck reports where and how
 /// hard, the gate is a sensor that sees her sail in, and `raft.touching` counts
@@ -22,7 +22,7 @@ final class Raft: Sketch {
     var crateGrip: Joint3D?
 
     /// How heavy the deck is for its size, against the water's own weight.
-    /// Lower rides higher and drier.
+    /// Lower floats higher and drier.
     @Param(0.1 ... 0.9, icon: "square.stack.3d.up") var deckDensity = 0.25
     /// How high the swell runs, in world units.
     @Param(0 ... 0.4, icon: "water.waves") var swell = 0.1
@@ -135,7 +135,7 @@ final class Raft: Sketch {
             .perspective(eye: Vector3(1.2, 5.4, 9.2), target: Vector3(0, 0.2, 0)))
 
         // Both parameters reach the water between steps, so the raft answers them
-        // while she is riding.
+        // while she is floating.
         world.water?.waves?.amplitude = swell
         raft?.density = deckDensity
 
@@ -164,7 +164,7 @@ final class Raft: Sketch {
         splashes.removeAll { $0.age > 1.1 }
     }
 
-    /// The sea, drawn from the very surface the raft is riding.
+    /// The sea, drawn from the very surface the raft is floating on.
     func drawSea() {
         guard let surface = world.waterMesh(extent: 34, resolution: 108) else { return }
         fill(Color(hex: 0x2A7188))

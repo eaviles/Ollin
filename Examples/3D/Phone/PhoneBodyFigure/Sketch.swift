@@ -64,7 +64,7 @@ final class PhoneBodyFigure: Sketch {
 
     /// Capsule limbs strung between the joints' world positions, plus oriented
     /// parts wherever a rotation shows: the torso leans and twists with the
-    /// spine, the head turns, the hands ride their wrists.
+    /// spine, the head turns, the hands follow their wrists.
     private func drawFigure(_ body: PhoneBody) {
         let s = body.scaleFactor
         for (a, b) in PhoneBody.skeleton {

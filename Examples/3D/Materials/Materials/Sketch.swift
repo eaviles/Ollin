@@ -3,7 +3,7 @@ import Ollin
 /// The material library: one surface, eighteen finishes.
 ///
 /// A `Material` sets how a mesh responds to light; the surface *color* stays the
-/// current `fill`. The same sphere wears each built-in here, laid out in a grid the
+/// current `fill`. The same sphere shows each built-in here, laid out in a grid the
 /// camera orbits so the view-angle finishes come alive: the iridescent rainbows shift,
 /// the velvet rim slides around the silhouette, the jade and wax glow through their
 /// edges. A point light orbits with the camera so every highlight keeps moving.
@@ -87,7 +87,7 @@ final class Materials3D: Sketch {
     }
 
     // Place a name under each sphere by projecting its world position to the canvas —
-    // so the labels ride the orbit with the spheres.
+    // so the labels follow the spheres around the orbit.
     private func drawLabel(_ name: String, under worldPos: Vector3) {
         guard let p = project(worldPos + Vector3(0, -1.15, 0)) else { return }
         withState {

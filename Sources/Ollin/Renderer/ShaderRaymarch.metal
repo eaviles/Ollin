@@ -397,8 +397,8 @@ static float3 ollin_sdf3d_unrotate(float3 p, float3 axis, float angle) {
 }
 
 // Transform the query point for an XFORM scope (sel = the XFORM kind). The point gets the
-// *inverse* of what the shape gets. All are rigid except scale (its distance fix-up rides
-// RESTORE_P). Mirror and repeat mirror the 2D `ollin_sdf_xform` ops in three dimensions.
+// *inverse* of what the shape gets. All are rigid except scale (its distance fix-up is applied
+// at RESTORE_P). Mirror and repeat mirror the 2D `ollin_sdf_xform` ops in three dimensions.
 static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
     switch (nd.sel) {
     case 0u:                                          // translate
@@ -985,9 +985,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // marched and rasterized geometry z-test in one space (Metal NDC z is already [0,1]).
     float4 clip = u.projection * (u.view * float4(pw, 1.0));
     RaymarchFragOut out;
-    // Straight-alpha linear, like the mesh fragment; the silhouette edge rides in the alpha
-    // (the .normal blend composites it over what's behind). A solid hit (coverage 1) is the
-    // mesh path unchanged.
+    // Straight-alpha linear, like the mesh fragment; the silhouette edge is carried in the
+    // alpha (the .normal blend composites it over what's behind). A solid hit (coverage 1) is
+    // the mesh path unchanged.
     out.color = float4(lit.rgb, lit.a * coverage);
     out.depth = clip.z / clip.w;
     return out;

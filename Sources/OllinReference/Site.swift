@@ -509,7 +509,7 @@ public struct SiteBuilder {
 
     /// The front page's opening, lifted off the README and set as the hero:
     /// the title and the one bold line under it, beside the ring. The picture
-    /// the README opens with (the mark) is taken off too, since the bar wears
+    /// the README opens with (the mark) is taken off too, since the bar shows
     /// the mark on every page. What remains of the opening is handed back for
     /// the page to render as written.
     ///
@@ -773,7 +773,7 @@ public struct SiteBuilder {
                     """
             }
             // The command under *Run it* names whichever of these is on
-            // screen, so the target it takes rides the slide.
+            // screen, so the target it takes changes with the slide.
             let runs = target(running: sketch).map { " data-target=\"\(HTML.escape($0))\"" } ?? ""
             return """
                 <article class="band-slide"\(runs)>

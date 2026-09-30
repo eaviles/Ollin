@@ -39,7 +39,7 @@ package struct PhoneProject: Sendable, Equatable {
         "OllinPhone": "the phone link runs on the Mac end of the cable",
     ]
 
-    /// Files beside the sketch that ride along as the app's own resources, so
+    /// Files beside the sketch that are bundled as the app's own resources, so
     /// what `Bundle.module` finds on the desk it finds on the phone too.
     package static let assetExtensions: Set<String> = [
         "png", "jpg", "jpeg", "heic", "gif", "tif", "tiff", "hdr", "exr",

@@ -76,7 +76,7 @@ final class PhoneGaze: Sketch {
             let blink = face.blendShape(eye == .left ? .eyeBlinkLeft : .eyeBlinkRight)
 
             // The eyeball, squashed shut as the lid closes, with a dark pupil
-            // riding its own gaze direction.
+            // turned along its own gaze direction.
             withState {
                 material(.clay)
                 fill(.white)

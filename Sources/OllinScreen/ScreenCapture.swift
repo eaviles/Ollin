@@ -26,7 +26,7 @@ import os
 /// }
 /// ```
 ///
-/// Frames arrive as GPU textures and are drawn with `drawImage`, so they ride the
+/// Frames arrive as GPU textures and are drawn with `drawImage`, so they go through the
 /// transform stack, `tint`, the effect graph, and every filter, with no trip
 /// through the CPU. The capture is also a `FrameSource`, so a vision tracker
 /// attaches to it exactly the way it attaches to a camera and runs over whatever

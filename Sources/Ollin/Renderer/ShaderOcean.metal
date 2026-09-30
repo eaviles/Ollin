@@ -263,7 +263,7 @@ fragment float4 ollin_ocean_fragment(OceanOut in [[stage_in]],
         float3 toLight = normalize(o.sun.xyz);
         float3 halfway = normalize(toLight + view);
         float spec = pow(saturate(dot(nrm, halfway)), max(1.0, o.tuning.y));
-        // The glitter is part of what the surface reflects, so it rides the same
+        // The glitter is part of what the surface reflects, so it uses the same
         // Fresnel term the sky does: strong toward the horizon, nearly gone in
         // the water underfoot. Without that it spreads into flat white plates
         // wherever the sea happens to be smooth.

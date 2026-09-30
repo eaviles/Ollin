@@ -115,7 +115,7 @@ extension Scene {
     /// identity: the inverse of reading `nodeWorldTransforms()`. Each named
     /// node's local transform becomes `inverse(parent world) * world`, walking
     /// top-down so a joint written here is what its children are placed
-    /// against. Nodes not named keep their local transform and ride their
+    /// against. Nodes not named keep their local transform and move with their
     /// parent, which is what makes a partial skeleton (a ragdoll that skips the
     /// fingers) carry the rest of the figure rigidly.
     ///
@@ -141,7 +141,7 @@ extension Scene {
         for i in nodes.indices { visit(&nodes[i], parent: matrix_identity_float4x4) }
     }
 
-    /// `pose`'s rotation and translation wearing `current`'s scale: the columns
+    /// `pose`'s rotation and translation with `current`'s scale: the columns
     /// of `pose` rescaled by the lengths `current`'s carry.
     static func keepingScale(of current: simd_float4x4,
                              pose: simd_float4x4) -> simd_float4x4 {

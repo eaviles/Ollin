@@ -25,7 +25,7 @@ import Foundation
 ///
 /// Blades shade through the solid lit path (lights, shadows received,
 /// image-based lighting, fog) with the current `material(_:)` finish, and the
-/// patch rides the 3D transform stack. Because the geometry exists only inside
+/// patch follows the 3D transform stack. Because the geometry exists only inside
 /// the draw, strands never cast into the shadow maps and cannot be exported
 /// spatially; they are surface dressing, not solids.
 public struct StrandField: Sendable {

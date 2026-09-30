@@ -4,7 +4,7 @@ import Ollin
 /// `phyllotaxis(count:spacing:)` for the spiral (successive points placed at
 /// the golden angle, marching outward by `sqrt(i)`), sizes each seed by its
 /// age, and draws the whole field with one `drawCircles(_:)`. The batch
-/// shares the current fill and rides the transform stack, so the single call
+/// shares the current fill and follows the transform stack, so the single call
 /// is the only draw in the loop: the seeds spin slowly and the count
 /// breathes, growing out from the center and receding.
 @main

@@ -117,7 +117,7 @@ public func hopfBases(spiralCount count: Int) -> [Vector3] {
 // third, and the world it is drawn into stands up along its *second*. The two are a quarter
 // turn about x apart, and the turn rather than a swap of two coordinates is the point:
 // swapping two would mirror the figure, and a mirrored fibration links the other way round,
-// which is a different object wearing the same shape.
+// which is a different object with the same shape.
 
 /// A point of the construction, put where the world can draw it standing up.
 func hopfWorld(_ p: Vector3) -> Vector3 { Vector3(p.x, p.z, -p.y) }

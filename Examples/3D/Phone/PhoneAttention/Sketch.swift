@@ -4,7 +4,7 @@ import OllinPhone
 
 /// Where the phone's picture draws the eye, live from a tethered iPhone: the
 /// camera frame with the attention heat map over it as a warm glow, a frame
-/// around each region the model picked out, and an eased bead riding the
+/// around each region the model picked out, and an eased bead following the
 /// strongest one, trailing where the attention has been.
 ///
 /// Setup: install **Ollin Capture** on an iPhone, launch it, tap **Attention**
@@ -25,7 +25,7 @@ final class PhoneAttention: Sketch {
     let glowColor = Color(hex: 0xFFB84D)
     let frameColor = Color(hex: 0x7FE0D4)
 
-    /// The bead riding the strongest region, eased so a jumpy model reads as a
+    /// The bead following the strongest region, eased so a jumpy model reads as a
     /// wandering gaze, and the places it has been.
     var eye: Vector2?
     var trail: [Vector2] = []

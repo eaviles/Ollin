@@ -29,7 +29,7 @@ extension Mesh {
     /// embedded data-URI or a sidecar `.bin`) or `.glb` (the self-contained binary
     /// container). Every mesh in the scene is baked through its node's world transform
     /// and merged into one `Mesh`; a primitive without normals gets smooth ones. A
-    /// multi-material file wears its first base-color material (preferring a textured
+    /// multi-material file uses its first base-color material (preferring a textured
     /// one); UVs survive only if every merged primitive has them. Returns `nil` if the
     /// file can't be read or holds no triangles.
     static func loadGLTF(_ url: URL) -> Mesh? {
@@ -79,7 +79,7 @@ extension Mesh {
         var tangents: [MeshTangent] = []
         var allHaveTangent = true
         var sawTangent = false
-        // The material the merged mesh wears: the first primitive's material, but
+        // The material the merged mesh uses: the first primitive's material, but
         // preferring the first one that carries a base-color texture (the visible part).
         var chosenMaterial: Int?
         var chosenHasTexture = false
@@ -129,7 +129,7 @@ extension Mesh {
 
                 // Authored tangents: xyz transforms with the positions (the world's
                 // linear part, like a surface direction, not the normal matrix),
-                // w (the bitangent handedness) rides through untouched.
+                // w (the bitangent handedness) passes through untouched.
                 if let tanIndex = prim.attributes["TANGENT"], let localTan = doc.readVec4(tanIndex),
                    localTan.count == localPos.count {
                     sawTangent = true
@@ -737,7 +737,7 @@ struct GLTFDocument {
     /// One glTF mesh (all its triangle primitives merged) as a `Mesh` in the node's
     /// *local* space, with no world baking: that's the caller's transform to apply.
     /// The merge rules match `Mesh.loadGLTF`: UVs survive only when every primitive
-    /// has them, the mesh wears its first material preferring a textured one, and a
+    /// has them, the mesh uses its first material preferring a textured one, and a
     /// primitive without normals gets smooth ones. Returns `nil` when the mesh index
     /// is invalid or no triangles result.
     func localMesh(at meshIndex: Int) -> Mesh? { localMeshData(at: meshIndex)?.mesh }
@@ -755,7 +755,7 @@ struct GLTFDocument {
         var targets: [SceneMorphTarget] = []
         var defaultWeights: [Double] = []
         /// Per-material slices of the merged mesh, filled only when the
-        /// primitives wear two or more distinct materials (`drawScene` then
+        /// primitives use two or more distinct materials (`drawScene` then
         /// draws each with its own); empty for a single-material mesh.
         var parts: [SceneMeshPart] = []
     }
@@ -902,7 +902,7 @@ struct GLTFDocument {
         // look), in first-appearance order. Two or more distinct materials make
         // the mesh multi-material: each group becomes a `SceneMeshPart` so
         // `drawScene` draws it with its own material, while the merged mesh
-        // keeps wearing one material (the first, preferring a textured one) for
+        // keeps using one material (the first, preferring a textured one) for
         // standalone draws. Each material resolves once, shared with the merged
         // mesh's own resolution, so a texture never decodes twice here.
         var resolvedByIndex: [Int: MeshMaterial?] = [:]
@@ -934,8 +934,8 @@ struct GLTFDocument {
         // Authored tangents attach when complete; a normal-mapped material
         // without them generates the standard basis (the loadGLTF rule). A
         // multi-material mesh checks every part's material, since the merged
-        // mesh wears only the first. One guard: generation may *split* a vertex
-        // at a mirrored-UV seam, and the skin/morph/part arrays here all ride
+        // mesh uses only the first. One guard: generation may *split* a vertex
+        // at a mirrored-UV seam, and the skin/morph/part arrays here all follow
         // the merged vertex order, so a splitting result is accepted only when
         // nothing else is aligned to it. (A split-free result, the usual case,
         // is always safe.) A model that loses the map this way still draws,

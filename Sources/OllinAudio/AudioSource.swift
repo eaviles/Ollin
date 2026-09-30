@@ -23,7 +23,7 @@ func installAnalyzerTap(
 }
 
 /// The one tap a node allows is shared by analysis and recording, so the
-/// recorder's lane rides the same closure behind a slot it can come and go
+/// recorder's lane uses the same closure behind a slot it can come and go
 /// from. The slot is read on the audio thread and set from the main one,
 /// hence the lock.
 final class CaptureTapRelay: @unchecked Sendable {

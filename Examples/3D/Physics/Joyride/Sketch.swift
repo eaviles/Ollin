@@ -2,13 +2,13 @@ import Ollin
 import OllinPhysics
 
 /// A car you drive over an eroded island. The same `Heightfield` is the ground
-/// you see and the ground the tires find, and a `Vehicle3D` rides it: arrows or
+/// you see and the ground the tires find, and a `Vehicle3D` drives on it: arrows or
 /// WASD to drive, space for the hand brake, R to be put back on the road.
 ///
 /// A vehicle is not a body you push, it is a machine you operate, and the
 /// sketch's whole job is the four numbers under `steer()`. Everything after
 /// that belongs to the wheels: the front pair turns, the back pair is what the
-/// engine reaches, each one rides a spring you can stiffen until the island
+/// engine reaches, each one sits on a spring you can stiffen until the island
 /// starts throwing the car around, and the hand brake locks only the pair that
 /// has one, which is what lets the back step out. The three parameters are all live,
 /// so you can soften the springs or oil the tires mid-corner and feel it.
@@ -246,7 +246,7 @@ final class Joyride: Sketch {
         }
     }
 
-    /// The field as a mesh wearing a height-colored texture: sand at the
+    /// The field as a mesh with a height-colored texture: sand at the
     /// waterline, grass on the apron, rock and scrub up the hills.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0xE4D2A6), Color(hex: 0x8FAE63),

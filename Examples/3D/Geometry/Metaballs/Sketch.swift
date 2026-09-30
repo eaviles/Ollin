@@ -16,7 +16,7 @@ import Ollin
 @main
 final class Metaballs3D: Sketch {
 
-    /// Where each blob rides: an orbit radius, a tilt, a speed, and a size.
+    /// Where each blob travels: an orbit radius, a tilt, a speed, and a size.
     /// The orbits are wide enough that the cluster keeps opening up, so the
     /// necks between blobs stay visible instead of settling into one lump.
     private let orbits: [(radius: Double, tilt: Double, speed: Double, size: Double)] = [

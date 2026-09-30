@@ -12,7 +12,7 @@ import Ollin
 ///
 /// The morphing shapes are rebuilt each frame (cheap at one shape apiece); the rest
 /// are built once. Each takes a `fill` color shaded by the auto-lit default; labels
-/// ride via `withBillboard`.
+/// face the camera via `withBillboard`.
 @main
 final class ShapeFactory: Sketch {
     // A vase silhouette (x = radius from the axis, y = height) for the lathe.

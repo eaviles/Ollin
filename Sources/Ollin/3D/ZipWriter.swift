@@ -22,7 +22,7 @@ enum ZipWriter {
     /// 0 for none) pads each entry so its *data* starts on that boundary. Both
     /// are what a `.usdz` package requires: it is a zero-compression archive
     /// whose files begin at multiples of 64 bytes, so a reader can map the
-    /// bytes in place instead of unpacking them. The padding rides the local
+    /// bytes in place instead of unpacking them. The padding goes in the local
     /// header's extra field, which is the room the format leaves for exactly
     /// this. The defaults leave the ordinary compressed archive untouched.
     static func package(_ entries: [(name: String, data: Data)],

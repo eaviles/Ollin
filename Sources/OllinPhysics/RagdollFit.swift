@@ -3,7 +3,7 @@ import simd
 import Ollin
 
 // Turning a skinned skeleton into a set of limbs: which joints become bodies,
-// which joint each of the others rides, and what shape each body wears. The
+// which joint each of the others moves with, and what shape each body has. The
 // shapes are fitted to the *mesh*, not guessed from bone lengths, because a
 // figure's proportions live in its skin: a torso is wide and a forearm is thin
 // even though both are one bone. Each limb's body stands at its joint, so the
@@ -79,7 +79,7 @@ struct RagdollPlan {
 
         // The limb that carries each joint: itself if it has a body, otherwise
         // the nearest ancestor that does. A joint left out keeps its pose and
-        // rides that limb rigidly, which is how a hand's fingers stay attached
+        // follows that limb rigidly, which is how a hand's fingers stay attached
         // without becoming twenty bodies.
         var owner = [Int](repeating: 0, count: count)
         for k in 0..<count {

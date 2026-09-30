@@ -227,7 +227,7 @@ struct FabricationMesh {
 
         if upAxis == .z {
             // A quarter turn about x: y becomes up, z becomes depth. It is a
-            // rotation, so winding and normals ride along untouched.
+            // rotation, so winding and normals come through untouched.
             positions = positions.map { Vector3($0.x, -$0.z, $0.y) }
         }
 

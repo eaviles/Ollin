@@ -11,7 +11,7 @@ import Ollin
 /// - a big title whose pen **weight breathes**, with round caps and joins for a
 ///   soft, drawn-by-hand line;
 /// - a fixed caption underneath;
-/// - a line of text **riding a wave** and scrolling, to show stroke text works
+/// - a line of text **following a wave** and scrolling, to show stroke text works
 ///   with the same per-glyph / text-on-path surface as every other font kind.
 @main
 final class StrokeText: Sketch {

@@ -170,7 +170,7 @@ final class Burst: Sketch {
                 translate(body.position)
                 rotate(body.angle)
                 fill(look.color)
-                // A whole fruit wears a rind, so the flesh the break reveals is
+                // A whole fruit has a rind, so the flesh the break reveals is
                 // a lighter color inside a darker edge.
                 if look.breaksAt != nil {
                     stroke(look.color.mixed(with: .black, 0.4))

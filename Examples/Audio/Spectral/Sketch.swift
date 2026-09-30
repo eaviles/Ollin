@@ -57,7 +57,7 @@ final class Spectral: Sketch {
 
     /// The chain for the mode. The freeze's amount is not part of the
     /// recipe: it moves every frame with the mouse, and a moved setting
-    /// rides the standing effect rather than rebuilding it.
+    /// is set on the standing effect rather than rebuilding it.
     private func rebuild() {
         switch mode {
         case .shift:

@@ -179,7 +179,7 @@ enum WebDrawItem: Hashable {
     case shapes(start: Int, count: Int, blend: Int)
     /// `count` vertices of tessellated geometry starting at vertex `start`: a
     /// fill's triangles, or, with `fringe`, a stroke's edge-expanded bands with
-    /// the AA coverage riding each vertex; under a blend mode.
+    /// the AA coverage stored on each vertex; under a blend mode.
     case triangles(start: Int, count: Int, fringe: Bool, blend: Int)
     /// `count` strokes (`fringe`) or fills as their points and styles: the
     /// records at float `start` of the source region, `floats` long, which

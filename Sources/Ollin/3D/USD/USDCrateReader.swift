@@ -705,7 +705,7 @@ final class USDCrateReader {
     }
 
     /// Compressed float arrays store either all-integer values ('i') or a
-    /// lookup table plus indexes ('t'); both ride the integer coder.
+    /// lookup table plus indexes ('t'); both go through the integer coder.
     private func unpackCompressedFloatArray(_ rep: Rep, count: Int, at body: Int) throws -> USDValue {
         let code = try bytes(at: body, count: 1)[0]
         var cursor = body + 1

@@ -4,7 +4,7 @@ import Ollin
 /// by the discovery paper's substitution system with curved edges (the
 /// strictly chiral form, which cannot tile mirrored even if it wanted to).
 /// Every tile is the same shape and the same handedness; the rare "odd"
-/// tiles, each riding a mystic pair rotated thirty degrees from the rest,
+/// tiles, each part of a mystic pair rotated thirty degrees from the rest,
 /// glow as accents while a slow tide of light drifts across the field.
 @main
 final class SpectreField: Sketch {

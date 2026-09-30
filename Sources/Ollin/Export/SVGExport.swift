@@ -28,7 +28,7 @@ struct SVGStyle {
 }
 
 /// One vector primitive, in user space (before the CTM). The serializer maps each
-/// case to an SVG element; the matching CTM rides alongside as a `transform`.
+/// case to an SVG element; the matching CTM is written alongside as a `transform`.
 enum SVGGeometry {
     case ellipse(center: Vector2, radiusX: Double, radiusY: Double)   // circle when the radii match
     case rect(corner: Vector2, width: Double, height: Double, cornerRadii: CornerRadii)
@@ -501,7 +501,7 @@ private func paintValue(_ paint: Paint, _ ids: [Gradient: String]) -> String {
 }
 
 /// The `*-opacity` attribute for a paint: only a flat color carries one (a
-/// gradient's alpha rides its stops).
+/// gradient's alpha is stored in its stops).
 private func paintOpacity(_ kind: String, _ paint: Paint) -> String {
     if case .color(let c) = paint { return svgOpacity(kind, c) }
     return ""
@@ -555,7 +555,7 @@ private func matrixAttr(_ m: simd_float3x3) -> String {
     return " transform=\"matrix(\(n(Double(a))) \(n(Double(b))) \(n(Double(c))) \(n(Double(d))) \(n(Double(e))) \(n(Double(f))))\""
 }
 
-/// `rgb(r,g,b)` with 0…255 channels (alpha rides separately as *-opacity).
+/// `rgb(r,g,b)` with 0…255 channels (alpha is written separately as *-opacity).
 private func svgColor(_ c: Color) -> String {
     func ch(_ v: Double) -> Int { Int((min(max(v, 0), 1) * 255).rounded()) }
     return "rgb(\(ch(c.red)),\(ch(c.green)),\(ch(c.blue)))"

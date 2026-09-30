@@ -22,7 +22,7 @@ import Foundation
 /// is the same tier from the USD side, whose UsdSkel leg runs on the project's
 /// own parser (no platform importer carries it): each Skeleton prim's joints
 /// become ordinary scene nodes you can pose by name, skinned meshes bend
-/// through the shipped deforming tier, and blend-shape weights ride the same
+/// through the shipped deforming tier, and blend-shape weights use the same
 /// animation the transform tracks do, so `apply(_:at:)` plays the whole rig
 /// with no new API. It exercises the envelope: a sea serpent swaying on a
 /// five-joint skinned chain (two blended influences per point, a geometry bind

@@ -11,7 +11,7 @@ import Ollin
 
 /// One `@Param` parameter as the page sees it: identity, display metadata, the
 /// control kind, the current value, and the constraint payload for its kind.
-/// Values ride `ParamStored`, the same payload the hosts persist, with one
+/// Values are carried as `ParamStored`, the same payload the hosts persist, with one
 /// exception: a menu travels as its option *index* (`.number`), because the
 /// page knows the display options and their order, not the enum's case names.
 /// The control kind a parameter renders as on the page. Raw values are the wire

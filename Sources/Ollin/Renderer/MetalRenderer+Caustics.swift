@@ -418,7 +418,7 @@ extension MetalRenderer {
 
     /// (Re)allocate the caustics buffers for an emission-map size and ray budget,
     /// zero-filling the stateful ones. GPU-private throughout: every producer and
-    /// consumer is on the one queue, so frames serialize and nothing rides the ring.
+    /// consumer is on the one queue, so frames serialize and nothing uses the ring.
     private func ensureCausticsBuffers(edge: Int, budget: Int, treeNodes: Int,
                                        into cb: MTLCommandBuffer) {
         let texels = edge * edge

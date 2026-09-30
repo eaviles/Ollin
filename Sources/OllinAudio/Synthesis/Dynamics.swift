@@ -200,7 +200,7 @@ final class DynamicsEffect: @unchecked Sendable {
             let attack = coefficient(compressor.attack)
             let release = coefficient(compressor.release)
             // The level is followed from crest to crest rather than read off
-            // each sample, so the reduction rides the note and not the wave
+            // each sample, so the reduction follows the note and not the wave
             // inside it. Without it a tone lands short of where its ratio says
             // it should, since the reduction eases every time the wave passes
             // through nothing on its way to the other side.

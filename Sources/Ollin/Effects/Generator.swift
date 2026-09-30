@@ -566,7 +566,7 @@ public struct Generator: Sendable {
     }
 
     /// Per-cell pulses over a hexagonal lattice: every hex breathes on its own
-    /// hashed rhythm, brightness (and a little size) riding the pulse, its
+    /// hashed rhythm, brightness (and a little size) following the pulse, its
     /// color a hashed pick from `colors`. `scale` is the cell count across,
     /// `gap` the grout between cells, and `phase` drives the pulsing (feed it
     /// your `time`).

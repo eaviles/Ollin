@@ -261,7 +261,7 @@ extension Mesh {
     /// A USD file merged to one `Mesh`: the native scene read
     /// (`Scene.loadUSDScene`) walked with node transforms *baked into* the
     /// vertices, so a multi-part file's placement survives the merge, exactly
-    /// the glTF merged-loader treatment. The merged mesh wears the first
+    /// the glTF merged-loader treatment. The merged mesh takes the first
     /// authored material (in traversal order) carrying a color or texture;
     /// UVs are kept only when every part has them (a partial set can't map).
     static func loadUSD(_ url: URL) -> Mesh? {
@@ -349,7 +349,7 @@ extension Mesh {
     /// base-color material out of any container Model I/O can open. Every `MDLMesh` in
     /// the asset is merged into one `Mesh`; a mesh with no normals has them generated.
     /// Reads attribute data by its own stride/offset (so interleaved buffers are
-    /// handled) and submesh index buffers at their own bit depth. The merged mesh wears
+    /// handled) and submesh index buffers at their own bit depth. The merged mesh uses
     /// the first submesh material that carries a base color or texture.
     static func loadViaModelIO(_ url: URL) -> Mesh? {
         if url.pathExtension.lowercased() == "stl", !stlFits(url) { return nil }

@@ -127,7 +127,7 @@ extension MetalRenderer {
             let fresh = Self.warnedCloudsOnHDRI.withLock { warned in
                 warned ? false : { warned = true; return true }()
             }
-            if fresh { print("Ollin: clouds ride the procedural .sky environment only; an HDRI's clouds are already in its pixels") }
+            if fresh { print("Ollin: clouds apply to the procedural .sky environment only; an HDRI's clouds are already in its pixels") }
         }
         if var entry = iblCache[key] {
             entry.lastUse = iblResolveTick

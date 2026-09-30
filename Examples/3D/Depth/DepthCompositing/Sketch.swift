@@ -13,7 +13,7 @@ import Ollin
 ///
 /// Here a translucent card stands at the world origin while a ring of glowing orbs
 /// orbits through it: the orbs in front draw over the card, the orbs behind are
-/// hidden by it. The number pins ride the orbs the same way — a pin on the far
+/// hidden by it. The number pins on the orbs behave the same way: a pin on the far
 /// side of the ring disappears behind the card as it swings around.
 @main
 final class DepthCompositing: Sketch {
@@ -79,7 +79,7 @@ final class DepthCompositing: Sketch {
             drawText("2D, depth-tested against the ring", 0, 24)
         }
 
-        // A numbered pin riding each orb, also depth-composited — a pin on the far
+        // A numbered pin on each orb, also depth-composited: a pin on the far
         // side of the ring vanishes behind the card as it swings around. This is
         // the per-point form of the same idea (one billboard per world point).
         for (i, center) in orbCenters.enumerated() {

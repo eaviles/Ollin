@@ -2,7 +2,7 @@ import Ollin
 
 /// Standing things on a surface, and the shortcut that gets it wrong.
 ///
-/// A globe wears a forest. `surfacePoints` picks the spots over the skin
+/// A forest covers a globe. `surfacePoints` picks the spots over the skin
 /// itself, so a spot is as likely anywhere the surface has the same area, and
 /// `alignment` turns each tree to stand along the normal it landed on.
 ///

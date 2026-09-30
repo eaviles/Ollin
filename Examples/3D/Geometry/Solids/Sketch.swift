@@ -11,7 +11,7 @@ import Ollin
 ///
 /// Each solid takes a `fill` color and is shaded by the auto-lit default — a solid
 /// looks 3D out of the box, no lights to set up — with a soft specular highlight.
-/// A 2D label rides above each shape via `withBillboard`.
+/// A 2D label sits above each shape via `withBillboard`.
 @main
 final class Solids3D: Sketch {
     private var shapes: [(name: String, mesh: Mesh)] = []

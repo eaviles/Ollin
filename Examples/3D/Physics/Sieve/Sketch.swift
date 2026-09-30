@@ -9,7 +9,7 @@ import OllinPhysics
 /// or closes; the beads that belong there simply stop being able to touch it.
 ///
 /// **Space** withdraws the three rules, which is the same machine unsorted:
-/// every bead now rides the whole ramp into the overflow tray at the end.
+/// every bead now rolls down the whole ramp into the overflow tray at the end.
 /// **Drag** any bead to put it back where you like.
 ///
 /// The collision-group showcase for `World3D`: `group:` on the bodies,
@@ -248,7 +248,7 @@ final class Sieve: Sketch {
         drawBeads()
         drawGuides()
         drawCaption(sorting ? "space: stop sorting      drag a bead"
-                            : "space: sort again      everything rides to the end")
+                            : "space: sort again      everything rolls to the end")
     }
 
     // MARK: Drawing it

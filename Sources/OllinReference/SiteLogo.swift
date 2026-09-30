@@ -1,6 +1,6 @@
 import Foundation
 
-/// The logo, as the site wears it.
+/// The logo, as the site shows it.
 ///
 /// The drawings live in `Logo/` at the root of the checkout: two masters,
 /// the full mark and the small form, each black ink on nothing and nothing
@@ -22,7 +22,7 @@ import Foundation
 /// both a white bar and a near-black one, so the site writes both files and
 /// the page picks between them on the reader's scheme.
 ///
-/// The bar wears the full mark. The small form (heavier lines, four dots in
+/// The bar shows the full mark. The small form (heavier lines, four dots in
 /// place of the satellites) is for the places that show the logo at icon
 /// size: the favicons and Safari's pinned-tab icon, which is the one that
 /// reads at 16 px. Two pictures the site cannot draw from the masters at

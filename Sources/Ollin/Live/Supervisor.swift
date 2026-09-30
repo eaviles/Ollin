@@ -309,7 +309,7 @@ struct RestartPolicy {
 ///
 /// It says something narrower than "the process is alive", and the narrower
 /// thing is the useful one. A run loop that stops turning is what a viewer sees
-/// as a frozen piece, and the process is perfectly alive throughout. Riding the
+/// as a frozen piece, and the process is perfectly alive throughout. Running on the
 /// run loop rather than the frame loop is also what lets a still sketch
 /// (`noLoop()`) and a piece dark for the night keep answering: neither draws a
 /// frame for hours, and both are working exactly as they should.

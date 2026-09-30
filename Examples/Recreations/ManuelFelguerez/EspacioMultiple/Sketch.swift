@@ -32,7 +32,7 @@ import Ollin
 /// it: a large rounded square with a displaced twin under it, a band crossing
 /// it that ends in a half disk, a disk, and triangles cut into the corners.
 /// What changes with `variation`, and from one cycle to the next, is the
-/// combination: which plane wears which color of the silver or the gold
+/// combination: which plane takes which color of the silver or the gold
 /// scheme, where the twin is displaced to, which row the band takes and which
 /// way it leaves, which corners the triangles cut, and how tall each plane
 /// stands.

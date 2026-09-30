@@ -1455,7 +1455,7 @@ fragment float4 ollin_fx_xdog_tensor(PresentOut in [[stage_in]],
 // Each step advances one texel along the direction's longer axis, the two Gaussians
 // are normalized over the taps they reached, and the result is the brightness pushed
 // by p times their difference: (1 + p) G_σ - p G_kσ with k = 1.6, the ratio at which a
-// difference of Gaussians best stands in for the Laplacian of one. The tangent rides
+// difference of Gaussians best stands in for the Laplacian of one. The tangent is carried
 // along in gb, so the next pass reads one texture.
 fragment float4 ollin_fx_xdog_across(PresentOut in [[stage_in]],
                                      texture2d<float> src [[texture(0)]],

@@ -70,7 +70,7 @@ struct OllinCaptureApp: App {
 /// reason: it needs no camera, and the altimeter asks its own permission.
 ///
 /// The list itself lives in `PhoneWire.swift`, the file this app and the Mac
-/// satellite share, because the mode now travels both ways: it rides home in the
+/// satellite share, because the mode now travels both ways: it comes back in the
 /// state message, and a sketch on the Mac can ask for one.
 typealias CaptureMode = PhoneCaptureMode
 
@@ -301,7 +301,7 @@ final class SensorStreamer {
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
-        // The selfie matte rides the same wire kind as the rear-camera one; the Mac
+        // The selfie matte is sent as the same wire kind as the rear-camera one; the Mac
         // reads whichever mode is running through the same accessors.
         selfie.onSegmentation = { [weak self] sample in
             guard let self else { return }
@@ -732,7 +732,7 @@ struct ContentView: View {
                     modeRow([.wand, .attention, .flow])
                     modeRow([.touch, .sketch], padTo: 3)
                     // Hearing and the air are switches rather than modes: neither
-                    // needs a camera, so both ride beside whichever mode is on.
+                    // needs a camera, so both run beside whichever mode is on.
                     // Drawn as chips so they sit with the others, but they toggle
                     // rather than select.
                     switchRow

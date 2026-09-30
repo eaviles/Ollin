@@ -4,7 +4,7 @@ import OllinPhone
 
 /// How the phone's picture is moving, live from a tethered iPhone: the camera
 /// frame dimmed to a backdrop, the motion field over it as a grid of streaks
-/// colored by speed, and a drift of dust that rides the field. Wave a hand in
+/// colored by speed, and a drift of dust that moves with the field. Wave a hand in
 /// front of the rear camera and the dust scatters; hold still and it settles.
 ///
 /// Setup: install **Ollin Capture** on an iPhone, launch it, tap **Flow** (rear
@@ -71,7 +71,7 @@ final class PhoneFlow: Sketch {
                      sample.position + sample.flow * (spacing * 0.9 / fastest))
         }
 
-        // Dust that rides the field: every grain reads the motion under itself
+        // Dust that moves with the field: every grain reads the motion under itself
         // and drifts with it, settling wherever the picture holds still.
         for i in positions.indices {
             let push = motion.vector(at: positions[i], in: view)

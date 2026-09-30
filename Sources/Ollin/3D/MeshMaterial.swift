@@ -40,7 +40,7 @@ public enum TextureWrap: String, Sendable, Hashable, CaseIterable {
 /// mesh to carry matching `uvs` (one per vertex); without them the mesh falls back
 /// to a flat `baseColor × fill` surface — a texture can't map with nothing to map
 /// against. Set one with `Mesh.textured(_:)`, or read it from a model file
-/// (`loadMesh`). It rides the Blinn-Phong light model like any mesh surface.
+/// (`loadMesh`). It is shaded with the Blinn-Phong light model like any mesh surface.
 ///
 /// ```swift
 /// let globe = Mesh.sphere(radius: 200).textured(earthImage)
@@ -54,7 +54,7 @@ public enum TextureWrap: String, Sendable, Hashable, CaseIterable {
 /// surface. It needs the mesh to carry `tangents` beside its `uvs`
 /// (`Mesh.normalMapped(_:scale:)` and the model loaders set both up).
 ///
-/// The rest of the standard surface-map set rides alongside: a
+/// The rest of the standard surface-map set is carried alongside: a
 /// `metallicRoughnessTexture` varies the physically-based finish per pixel
 /// (the sampled channels *multiply* `material(_:)`'s metallic/roughness and
 /// the factors below, so `material(.physicallyBased(metallic: 1, roughness: 1))`
@@ -134,7 +134,7 @@ public struct MeshMaterial: @unchecked Sendable {
     /// The size of one texture tile in world units when the mesh has no `uvs`
     /// to map through: > 0 projects the base `texture` (and `normalTexture`,
     /// if set) flat along each of the three world axes, blended by the surface
-    /// normal, so a marched or grown surface with no uv layout can wear a
+    /// normal, so a marched or grown surface with no uv layout can carry a
     /// picture. 0 (the default) maps through `uvs` as usual. Set with
     /// `Mesh.triplanarTextured(_:normal:scale:)`; the other surface maps stay
     /// uv-mapped.
@@ -162,7 +162,7 @@ public struct MeshMaterial: @unchecked Sendable {
     /// with `Mesh.detailMapped(_:normal:scale:strength:)`.
     public var detailTexture: Image?
     /// A detail normal map, tiled like `detailTexture` and reoriented onto
-    /// the base normal (the map's relief rides whatever the base `normalTexture`
+    /// the base normal (the map's relief adds to whatever the base `normalTexture`
     /// already shapes), for fine surface grain. Sampled as raw data. Needs the
     /// mesh to carry `tangents` beside its `uvs`. `nil` means no normal detail.
     public var detailNormalTexture: Image?

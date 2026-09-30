@@ -221,7 +221,7 @@ public extension Sketch {
 
     /// Draw a labeled sheet of tiles: the items laid into a near-square grid
     /// over the whole canvas, `tile` drawing each one into its cell, and each
-    /// cell wearing its label on a dark plate along its bottom edge. The
+    /// cell with its label on a dark plate along its bottom edge. The
     /// gallery layout a comparison sketch keeps rebuilding by hand:
     ///
     /// ```swift

@@ -55,7 +55,7 @@ final class ForceGraph: Sketch {
             layout.reheat(0.25)
         }
 
-        // A grabbed node rides the mouse; the reheat keeps the web following.
+        // A grabbed node moves with the mouse; the reheat keeps the web following.
         if let grabbed, mouseIsPressed {
             layout.positions[grabbed] = mouse
             layout.reheat(0.15)

@@ -7,7 +7,7 @@ import Ollin
 ///
 /// `StrangeAttractor.lorenz()` carries the system's velocity field; `orbit`
 /// integrates it with fourth-order Runge-Kutta. The path only reads in three
-/// dimensions, so it rides the point-cloud path through the camera: build the
+/// dimensions, so it takes the point-cloud path through the camera: build the
 /// cloud once in `setup()` (the orbit never changes), then `cameraShowcase` lets
 /// you grab and spin it (drag to orbit, scroll to zoom), drifting on its own when
 /// you let go.

@@ -112,7 +112,7 @@ final class Automated: Sketch {
         keyTicks(of: track, top: top, x: x)
     }
 
-    /// A `Vector2` track: both components, the y one paler. Each rides its own
+    /// A `Vector2` track: both components, the y one paler. Each is scaled to its own
     /// span, so a component that barely moves still reads.
     private func drawPointLane(_ name: String, top: Double, x: (Double) -> Double) {
         guard let track = automation?.track(named: name) else { return }

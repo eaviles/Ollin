@@ -93,7 +93,7 @@ extension Drawer {
 /// frame rate of the same line helps nobody), and the one failure the renderer
 /// can answer, a pass that outgrew memoryless attachments, turns every later
 /// pass to backed ones. Read from the completed handlers, off the main actor,
-/// so its state rides a lock.
+/// so its state is guarded by a lock.
 final class GPUFailures: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (overflowed: false, said: Set<String>()))
 

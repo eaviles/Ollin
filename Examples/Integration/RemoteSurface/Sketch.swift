@@ -60,7 +60,7 @@ final class RemoteSurface: Sketch {
             }
             let ink = accent.mixed(with: layerTint, phase * 0.8)
 
-            // A wide translucent pass underneath is the glow; the crisp line rides it.
+            // A wide translucent pass underneath is the glow; the crisp line is drawn over it.
             if glow > 0.01 {
                 stroke(ink.withAlpha(0.10 + glow * 0.16))
                 strokeWeight(10 + glow * 22)

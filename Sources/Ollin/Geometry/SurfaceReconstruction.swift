@@ -81,7 +81,7 @@ public enum SurfaceFitting: Sendable, Equatable {
 ///   - fitting: How the fitted neighborhoods become a distance: `.planes` (the
 ///     default) reads the nearest tangent plane; `.robust` blends and
 ///     re-weights them (see `SurfaceFitting`). An artwork parameter like
-///     `resolution`: it changes the piece, so it never rides a quality tier.
+///     `resolution`: it changes the piece, so it is never tied to a quality tier.
 ///   - keepingLargestComponent: Drop every disconnected piece but the largest
 ///     (by area). Scan noise tends to leave small floating shells; this is
 ///     the broom for them. It keeps exactly one body, so a real separate

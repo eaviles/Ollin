@@ -155,7 +155,7 @@ typedef struct {
 // gradient row fields then filled the 8 bytes of tail padding that left, so the
 // stride is still 144 with no spare bytes.
 //
-// Gradient paints ride the existing slots rather than widening the struct: when
+// Gradient paints reuse the existing slots rather than widening the struct: when
 // a paint-kind field in `shape` (bits 10-12 for fill, 13-15 for stroke; 0 solid,
 // 1 linear, 2 radial, 3 along-path, 4 conic) is non-zero, the matching color
 // slot is reinterpreted as gradient *geometry* relative to `center` (linear
@@ -185,7 +185,7 @@ typedef struct {
 // fragment interprets with two small fixed-depth stacks — a *value* stack of
 // (distance, color) for the combine/modify ops and a *point* stack for the
 // transform/domain scopes. Unlike `SDFInstance` (one shape per quad), many nodes
-// evaluate at the *same* point and combine, which is why they ride their own buffer.
+// evaluate at the *same* point and combine, which is why they have their own buffer.
 //
 // `kind` is the instruction class; `sel` its sub-selector; the rest are read per
 // kind (most fields unused outside EVAL). Leaves carry NO transform — all
@@ -230,7 +230,7 @@ typedef struct {
 // `fillGradient*` instead (the leaf colors bypassed, like the 3D field — but in
 // field/canvas space here, sampled at the field point, not a screen projection). The
 // merged-outline *stroke* takes the same treatment (solid `strokeColor`, or a gradient
-// whose geometry rides the `strokeColor` slot when `strokeGradientKind != 0`, exactly
+// whose geometry reuses the `strokeColor` slot when `strokeGradientKind != 0`, exactly
 // as `SDFInstance` reinterprets its color slots). Stride 128 (16-aligned).
 typedef struct {
     simd_float3x3 transform; // local sketch space -> sketch space (the CTM)
@@ -376,7 +376,7 @@ typedef struct {
 // `uv` carries texture coordinates (0,0 … 1,1) for the textured-mesh pipeline; the
 // solid `ollin_mesh_vertex`/`_fragment` read only position/normal/color, so an
 // untextured mesh leaves `uv` zero and is unaffected by it. The *material finish*
-// (specular, iridescence, rim, subsurface, …) does not ride the vertex (it's constant
+// (specular, iridescence, rim, subsurface, …) is not stored in the vertex (it's constant
 // across a mesh, so it's bound per batch as an `OllinMaterial` uniform, below); the `w`
 // slots exist for the *per-hit* lookups a per-batch uniform can't serve (a reflection
 // ray lands on someone else's batch). Triangle indices are expanded into a flat
@@ -397,7 +397,7 @@ typedef struct {
 } OllinMeshVertex;
 
 // One instance of an instanced mesh draw (`drawMesh(_:instances:)`): the base
-// mesh's local-space vertices ride their own buffer once per call, and each
+// mesh's local-space vertices go in their own buffer once per call, and each
 // instance carries its own local -> world model matrix, applied per vertex on
 // the GPU (`ollin_mesh_instanced_vertex`), so a thousand copies cost one
 // vertex expansion plus a thousand of these, not a thousand CPU re-bakes.
@@ -536,7 +536,7 @@ typedef struct {
 // physically-based dielectric into glass: the transmitted lobe replaces the diffuse one,
 // refracting the environment (or the traced scene under ray-traced reflections). Inert at
 // transmission 0 and inactive without an environment, so every existing frame is unchanged.
-// Two layered physically-based lobes ride the same model: `clearcoat` adds a thin polished
+// Two layered physically-based lobes extend the same model: `clearcoat` adds a thin polished
 // lacquer layer (a second specular lobe at its own roughness, the base attenuated by what
 // the coat reflects), and `sheenColor` a soft fabric rim (retroreflective fuzz at grazing
 // angles, the base scaled down by the sheen's directional albedo). Both inert at zero.
@@ -654,7 +654,7 @@ typedef struct {
                                   // says nothing, and clamp and repeat agree inside the square,
                                   // so a mesh whose uvs stay in range is untouched either way.
                                   // The fragment picks a `constexpr sampler` by this rather than
-                                  // the bound one, which is why no sampler state rides a batch.
+                                  // the bound one, which is why no batch carries sampler state.
     float dispersion;             // how far the transmitted read splits by wavelength, 0…1
                                   // (`Material.dispersion`): the red and blue channels refract
                                   // at ior * (1 ∓ 0.03 * dispersion) around the green one, the
@@ -677,7 +677,7 @@ typedef struct {
 // A projected decal (see `Sketch.decal(_:at:...)`): a picture stamped onto whatever
 // 3D surfaces sit inside its oriented box, composited over the surface's base color
 // before lighting, so the shading treats it as paint on the surface (it takes the
-// surface's own finish). The frame's decals ride one small uniform (`OllinDecals`,
+// surface's own finish). The frame's decals share one small uniform (`OllinDecals`,
 // fragment buffer 2 on the surface-mapped mesh pipeline) beside a shared
 // `texture2d_array` (texture 24), the light-cookie arrangement. The rows carry the
 // world→box transform: p = (dot(row0, w1), dot(row1, w1), dot(row2, w1)) with
@@ -774,7 +774,7 @@ typedef struct {
                              // fragment texture 10 (-1 = none), y = cookie layer in the array at
                              // fragment texture 11 (-1 = none, spot only), z = roll about the beam
                              // axis in radians (spins profile azimuth + cookie together).
-                             // The point kind's fixture axis rides `direction` (unused before).
+                             // The point kind's fixture axis is stored in `direction` (unused before).
                              // w = 1 when the light declines to throw a shadow
                              // (`Light.castsShadow == false`), 0 when it throws, so a
                              // default light packs byte-identically. The raster resolves
@@ -801,7 +801,7 @@ typedef struct {
 // uses `shadowKind` 2 for a point caster: the renderer traces a visibility ray against a
 // per-frame acceleration structure (no cube, no depth compare: exact, no acne/peter-pan),
 // and `shadowDepthB` carries the area-light radius that softens it (`shadowTexelWorld`
-// reused as the self-hit normal-offset). A rect/disk **area** caster rides the same two
+// reused as the self-hit normal-offset). A rect/disk **area** caster takes the same two
 // paths by the panel's real extent: kind 0 renders a spot-style map from the panel's
 // center whose PCSS penumbra radius is sized from that extent, and a ray-tracing device
 // flips it to kind 2, tracing visibility to the panel's actual surface (`shadowDepthB`
@@ -853,7 +853,7 @@ typedef struct {
 } OllinShadowCaster;
 
 // One camera-anchored global-illumination probe cascade (the vast-scene ladder;
-// the scene-fitted volume rides `OllinLighting`'s own gi fields as cascade 0).
+// the scene-fitted volume is stored in `OllinLighting`'s own gi fields as cascade 0).
 // Spacing is isotropic per cascade (each cascade doubles the finer one's), and the
 // counts/phase pair carries the infinite-scrolling wrap: a probe at grid coordinate
 // g stores into physical tile ((g + phase) mod counts) inside the cascade's own
@@ -1443,7 +1443,7 @@ typedef struct {
 // generated wrapper exposes these to the sketch's `shade(uv, info)` as a
 // `ShaderInfo` value, so a shader reads `info.time` / `info.resolution` / … with
 // no plumbing. Scalars only (no array member), so the Swift side fills it with the
-// plain memberwise initializer; the user's free `params` ride a separate `float4`
+// plain memberwise initializer; the user's free `params` go in a separate `float4`
 // buffer (index 0), read through the `param(info, i)` helper the wrapper defines.
 // Stride 32 (16-aligned).
 #define OLLIN_SHADER_PARAM_ROWS 16
@@ -1458,7 +1458,7 @@ typedef struct {
 } OllinShaderUniforms;
 
 // Per-frame parameters for the strange-attractor step (`AttractorFlow`), packed by
-// the CPU and bound at buffer index 11. Every particle rides the same velocity field
+// the CPU and bound at buffer index 11. Every particle follows the same velocity field
 // and reads no other particle, so a step is `substeps` fourth-order Runge-Kutta steps
 // of size `step`, fixed in the *system's* own time rather than the frame's, because a
 // step much larger than the system's scale integrates a different system. The extent
@@ -1623,7 +1623,7 @@ typedef struct {
 // shading to the pupil point that would have landed there, and asks how much of the
 // source's light arriving that way cleared the front opening and the iris.
 //
-// Three things give a ghost its look, and all three ride this struct. Each color
+// Three things give a ghost its look, and all three are in this struct. Each color
 // channel has its own map, since glass bends each color differently, which puts a
 // colored rim on a ghost. The coating is read per pixel at the angle *that* ray met
 // each reflecting surface at (a table the ghost pass binds), so the color runs

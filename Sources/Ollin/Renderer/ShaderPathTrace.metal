@@ -143,7 +143,7 @@ static inline float3 ollin_pt_env(float3 dir, constant OllinLighting &light,
 // the environment *by its own brightness* (a two-level table over the equirect's
 // luminance, latitude-weighted) and combine the two strategies with the power
 // heuristic, so each direction is credited to whichever strategy finds it reliably.
-// The tables ride one float buffer: [H] row-marginal CDF, [H·W] per-row conditional
+// The tables share one float buffer: [H] row-marginal CDF, [H·W] per-row conditional
 // CDFs, [H·W] the resulting solid-angle pdf per cell. Built once per environment.
 
 // Reduce the equirect to the table grid's latitude-weighted luminance (the CPU
@@ -362,7 +362,7 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     out.emissive = h.mat.emissive.rgb;
     out.selfEmissive = float3(0.0);
     out.ao = 1.0;
-    // One lookup for both halves: which material slot the hit wears (its own
+    // One lookup for both halves: which material slot the hit uses (its own
     // geometry's for a plain mesh, its run's for a copy), and where its triangle
     // begins. A copy's slot carries the map gates down, so the reads below are
     // the ones its raster draw makes: none.

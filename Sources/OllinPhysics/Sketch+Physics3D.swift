@@ -3,7 +3,7 @@ import Ollin
 internal import CJolt
 
 // Drawing and mouse sugar for `World3D`: pose the transform stack from a body,
-// and grab bodies through the camera with the cursor. All of it rides the
+// and grab bodies through the camera with the cursor. All of it is built on the
 // public core surface (`withState`, the 3D transforms, `activeCamera`), so
 // exports, batches, and every renderer rule apply with no new machinery.
 extension Sketch {
@@ -43,7 +43,7 @@ extension Sketch {
     }
 
     /// Run `draw` with the 3D transform stack moved to `wheel`'s pose, so the
-    /// block draws in the wheel's local space: steered, spinning, and riding
+    /// block draws in the wheel's local space: steered, spinning, and moving with
     /// its suspension. A tire modeled as a cylinder along +y lands right:
     ///
     /// ```swift
@@ -87,7 +87,7 @@ extension Sketch {
     /// a rope's segments, turned so that **+y runs along the rope**, which is
     /// the axis Ollin's cylinders, capsules, and cones stand on. So a primitive
     /// drawn inside the block lies along the rope with no turning of its own,
-    /// and anything else riding the rope is placed the same way a rigid body is
+    /// and anything else attached to the rope is placed the same way a rigid body is
     /// by `withBody(_:)`:
     ///
     /// ```swift

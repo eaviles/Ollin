@@ -10,7 +10,7 @@ import Ollin
 ///
 /// The cloud here is a rippling heightfield, rebuilt every frame and colored by
 /// height. World space is right-handed and y-up, a different convention from the
-/// 2D canvas — 3D geometry rides the camera, not the transform stack.
+/// 2D canvas: 3D geometry goes through the camera, not the transform stack.
 @main
 final class PointCloud3D: Sketch {
     let n = 110               // grid resolution: n×n points

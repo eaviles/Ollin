@@ -117,7 +117,7 @@ final class Sightlines: Sketch {
 
     /// Clearance, one sweep straight down. A ray would find the floor between
     /// two crates and drop the drone onto them; a ball the drone's own width
-    /// finds whatever it would actually brush past, which is why it rides over
+    /// finds whatever it would actually brush past, which is why it flies over
     /// the pillars instead of into them.
     func flyTheDrone() {
         let patrol = Vector3(sin(time * 0.31) * 4.6, 0, cos(time * 0.23) * 4.6)

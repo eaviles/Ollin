@@ -128,7 +128,7 @@ public extension Color {
     /// The integer form for hex literals — compile-checked, nothing to parse,
     /// never optional. An integer carries no digit count (`0xFFF` and
     /// `0x000FFF` are the same value), so this form is always six digits of
-    /// RGB and alpha rides as its own parameter; shorthand and RGBA digit
+    /// RGB and alpha is passed as its own parameter; shorthand and RGBA digit
     /// forms belong to `init?(hex String:)`.
     init(hex: UInt32, alpha: Double = 1.0) {
         precondition(hex <= 0xFFFFFF,

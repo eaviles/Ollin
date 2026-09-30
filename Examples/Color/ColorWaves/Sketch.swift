@@ -10,7 +10,7 @@ import Ollin
 /// `sin` — of the row index (a static vertical color gradient) and of
 /// `time + index` (the flowing left↔right motion and pulsing size).
 ///
-/// Each color channel is `unipolar(sin(...))`, riding a `sin` wave across the
+/// Each color channel is `unipolar(sin(...))`, following a `sin` wave across the
 /// full 0...1 range. `setup()` sets `noStroke()` once; the loop count and
 /// offsets read live `width`/`height`, so it stays full-bleed on resize.
 @main

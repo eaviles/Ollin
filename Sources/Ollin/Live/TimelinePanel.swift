@@ -14,7 +14,7 @@ import AppKit
 // MARK: - The panel view
 
 /// The panel's root: transport, ruler, lanes, and the footer, over the same
-/// frosted scrim the detached inspector wears.
+/// frosted scrim the detached inspector uses.
 struct TimelinePanelRoot: View {
     let model: TimelineModel
 
@@ -46,7 +46,7 @@ struct TimelinePanelView: View {
         // Reading the edit counter here is what re-draws the lanes on every
         // key placed or moved: the automation itself lives on the sketch and
         // is not observable on its own. The playhead read keeps the track
-        // list fresh across a reload swap, riding the clock tick.
+        // list fresh across a reload swap, driven by the clock tick.
         let _ = model.editCount
         let _ = model.playhead
         let palette = OllinInspector.Palette.resolve(scheme)
@@ -486,7 +486,7 @@ private struct TimelineLaneView: View {
                            lineWidth: 1.5)
         } else if case .color = track.keys.first?.value {
             // A color track draws itself: the band is the blend the parameter will
-            // wear, sampled from the track rather than faded between stops.
+            // take, sampled from the track rather than faded between stops.
             let bandHeight: CGFloat = 10
             let y = (size.height - bandHeight) / 2
             let stepWidth: CGFloat = 4

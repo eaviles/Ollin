@@ -4,7 +4,7 @@ import Ollin
 /// z² + c; what differs is only the question asked of each orbit. The
 /// **mandelbrot** and **julia** tiles ask *when* it escaped, coloring by the
 /// smooth iteration count through a palette (`phase` cycles the bands, and the
-/// julia's `c` rides a small orbit so the filigree morphs). The four **orbit
+/// julia's `c` follows a small orbit so the filigree morphs). The four **orbit
 /// trap** tiles ask instead *how close* it ever came to a shape held in the
 /// plane: a cross grows the classic stalks, a point makes soft knots, a circle
 /// and a square light up wherever an orbit skims their outline, and two of the

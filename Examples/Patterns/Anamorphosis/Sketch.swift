@@ -66,7 +66,7 @@ final class AnamorphosisSketch: Sketch {
         let probe = Anamorphosis(center: mirrorCenter, radius: mirrorRadius, eye: eye,
                                  picture: Rectangle(x: 0, y: 0, width: 1, height: 1))
         // Use most of the arc this eye can actually see, and give the box the
-        // word's own shape so the letters ride the glass at full height. The
+        // word's own shape so the letters show on the glass at full height. The
         // taller the label, the shallower its bounce, and the farther the plate
         // has to run to catch it.
         let pictureWidth = probe.widestPicture * 0.84

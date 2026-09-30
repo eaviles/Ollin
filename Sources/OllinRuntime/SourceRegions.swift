@@ -366,7 +366,7 @@ package enum SourceRegions {
 
     /// The index past the string literal or comment starting at `i`, or `nil`
     /// when none does. Raw literals are counted by their pounds, since an
-    /// imported shader rides in one.
+    /// imported shader is stored in one.
     private static func pastStringOrComment(_ u: [UInt16], _ i: Int, _ end: Int) -> Int? {
         if u[i] == 0x2F, i + 1 < end {           // /
             if u[i + 1] == 0x2F {                // //

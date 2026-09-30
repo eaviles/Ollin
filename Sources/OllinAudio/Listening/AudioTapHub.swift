@@ -133,7 +133,7 @@ struct PCMBox: @unchecked Sendable {
 /// The slot side of `AudioTapSource` for the sources this library owns.
 ///
 /// The microphone, the file player, and the oscillator each feed an
-/// `AudioAnalyzer` from a tap on their own engine. A relay rides along in that
+/// `AudioAnalyzer` from a tap on their own engine. A relay also runs in that
 /// same tap so those sources can *also* hand their samples on, which is what
 /// lets a `SpeechListener` or a `SoundClassifier` bind to a microphone the way
 /// it binds to a playing video.

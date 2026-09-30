@@ -189,10 +189,10 @@ public extension Mesh {
         return result
     }
 
-    /// A copy wearing `image` as its tangent-space normal map: per-pixel surface
+    /// A copy with `image` as its tangent-space normal map: per-pixel surface
     /// relief that bends the lighting normal, so a flat triangle shades like a
     /// detailed surface. `scale` is the relief strength (1 as authored, smaller
-    /// flattens, larger exaggerates). The map rides the mesh's `uvs`, and the
+    /// flattens, larger exaggerates). The map uses the mesh's `uvs`, and the
     /// tangent basis it needs is generated here (MikkTSpace) if the mesh doesn't
     /// already carry one. Composes with `textured(_:)`; either order works.
     ///
@@ -212,7 +212,7 @@ public extension Mesh {
         return copy
     }
 
-    /// A copy wearing `image` as its height map, read as parallax occlusion:
+    /// A copy with `image` as its height map, read as parallax occlusion:
     /// the map's red channel is per-pixel depth (white the surface itself,
     /// darker carved in), and the fragment marches the eye ray through that
     /// relief so every other map, the base texture included, shifts the way a
@@ -225,7 +225,7 @@ public extension Mesh {
     /// change, read the same image as real geometry with
     /// `displaced(by:scale:)`.
     ///
-    /// Like a normal map, the effect rides the mesh's `uvs` plus a tangent
+    /// Like a normal map, the effect uses the mesh's `uvs` plus a tangent
     /// basis, generated here (MikkTSpace) if the mesh doesn't already carry
     /// one. Composes with `textured(_:)` / `normalMapped(_:scale:)` in any
     /// order.
@@ -246,7 +246,7 @@ public extension Mesh {
         return copy
     }
 
-    /// A copy wearing detail maps: a second, much finer texture pair tiled
+    /// A copy with detail maps: a second, much finer texture pair tiled
     /// `scale` times across each base uv tile, so the surface keeps texture
     /// when the camera gets close instead of dissolving into blur. `color`
     /// multiplies the base color (sampled as raw data with 128 gray the

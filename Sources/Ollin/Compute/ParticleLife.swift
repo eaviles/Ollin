@@ -117,7 +117,7 @@ public final class ParticleLife {
     }
 
     /// The force + integration kernel. `kinds` bakes in as a literal so the matrix
-    /// index needs no extra uniform; the live parameters ride `custom` (beta, forceFactor,
+    /// index needs no extra uniform; the live parameters go in `custom` (beta, forceFactor,
     /// frictionHalfLife). The neighbor macro and toroidal helpers come from the
     /// spliced shader library.
     private static func makeKernel(kinds: Int) -> ComputeKernel {

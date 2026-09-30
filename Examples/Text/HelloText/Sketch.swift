@@ -4,7 +4,7 @@ import Ollin
 /// "Hello, text." A specimen for the bitmap-font `drawText`: a title that breathes
 /// and shifts color, a centered multilingual caption, and the character set —
 /// Latin, Spanish accents, and Japanese kana — marqueeing along the bottom. Every
-/// glyph is stamped as pixel squares on the SDF path, so text rides the transform
+/// glyph is stamped as pixel squares on the SDF path, so text follows the transform
 /// stack and stays crisp at any size. One `textFont` call selects the bundled
 /// Cozette pixel font (MIT); everything after it is plain `drawText`.
 @main

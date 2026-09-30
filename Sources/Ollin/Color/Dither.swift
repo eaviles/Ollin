@@ -267,7 +267,7 @@ extension Dither {
         // un-premultiplies, which lands between table entries.
         let linearOfByte = (0...255).map { Color.srgbToLinear(Double($0) / 255) }
 
-        // Error rides a rolling three-row buffer: no kernel reaches further than
+        // Error is stored in a rolling three-row buffer: no kernel reaches further than
         // two rows down, and a finished row is cleared so it can serve as row+3.
         var error = [SIMD3<Double>](repeating: .zero, count: 3 * width)
         func slot(_ y: Int, _ x: Int) -> Int { (y % 3) * width + x }

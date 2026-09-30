@@ -45,7 +45,7 @@ import Foundation
 /// stays put as the camera orbits, which is what a sun, a sky, and a product
 /// shot all want. `relativeTo(.camera)` reads them in the camera's own frame
 /// instead (x right, y up, z back toward the eye, the eye at the origin), resolved
-/// against the active `Camera3D` each frame, so the light rides the view: a
+/// against the active `Camera3D` each frame, so the light follows the view: a
 /// `headlight()` that keeps the side facing you from ever going black, or a
 /// whole rig (`LightingPreset.relativeTo(.camera)`) that holds its look under
 /// orbit instead of turning with the world.

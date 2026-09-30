@@ -51,7 +51,7 @@ extension Sketch {
 
     /// Draw a standard caption — `text` centered along the bottom edge of the
     /// canvas (or the top, with `edge: .top`), small and white, in the standard
-    /// typeface. The label a sketch wears: what it is, what it's showing, what
+    /// typeface. The label on a sketch: what it is, what it's showing, what
     /// to do with it.
     ///
     /// ```swift

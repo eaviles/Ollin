@@ -216,7 +216,7 @@ extension Drawer {
     }
 
     /// Append one fringe-stroke vertex (CTM-transformed) into `vertices` under a
-    /// `.fringe` batch. The AA coverage rides in `aa.x` (its own interpolant the
+    /// `.fringe` batch. The AA coverage is stored in `aa.x` (its own interpolant the
     /// fringe fragment remaps to perceptual alpha), while `color` carries the
     /// stroke's rgb and its own paint alpha — the two kept separate so a translucent
     /// stroke composites at its true opacity.
@@ -244,10 +244,10 @@ extension Drawer {
     ///
     /// The whole stroke path runs through here — solid, translucent, and gradient. The
     /// paint is sampled per path vertex (`cols[i]`) exactly like the tessellated path
-    /// (along-path reads the arc-length fraction, the rest read position) and rides in
+    /// (along-path reads the arc-length fraction, the rest read position) and is stored in
     /// each vertex's `color` (rgb + paint alpha), constant across the stroke width; a
     /// gradient first splits long segments so the baked LUT is tracked. The AA coverage
-    /// rides separately in `aa.x`, so the fragment can keep the paint alpha linear while
+    /// is stored separately in `aa.x`, so the fragment can keep the paint alpha linear while
     /// remapping only the coverage perceptually.
     ///
     /// The geometry itself (the ribbons, the joins, the caps, and the shared inner

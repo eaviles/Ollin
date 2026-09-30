@@ -98,7 +98,7 @@ final class PhoneMarkers: Sketch {
             fill(stageColor)
             drawBox(width: width, height: height, depth: max(0.001, width * 0.004))
 
-            // The columns: a grid across the print, each riding a wave that travels
+            // The columns: a grid across the print, each lifted by a wave that travels
             // over it. Heights are a share of the print's width, so a business card
             // and a poster carry the same city at their own scale.
             let across = max(2, columns)

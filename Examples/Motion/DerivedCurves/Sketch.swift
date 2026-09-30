@@ -5,7 +5,7 @@ import Ollin
 /// same curve run from its other end (`reversed()`), and the curve on the way
 /// out with its reverse on the way back, squeezed into one trip (`mirrored()`).
 /// Three dots make the same out-and-back journey, one per curve, beside a plot
-/// of the shape each rides.
+/// of the shape each follows.
 ///
 /// Pick an ease-in and the reversed row becomes its ease-out, the mirrored row
 /// its ease-in-out, the catalog's own curves. Pick an ease-out and the mirrored
@@ -38,7 +38,7 @@ final class DerivedCurves: Sketch {
             let y = height * (0.24 + Double(i) * 0.26)
             let top = y - plot / 2, bottom = y + plot / 2
 
-            // The shape the dot rides, as a small plot with its diagonal.
+            // The shape the dot follows, as a small plot with its diagonal.
             noFill()
             stroke(Color(white: 0.85)); strokeWeight(2 * scale)
             drawRect(plotX, top, plot, plot)

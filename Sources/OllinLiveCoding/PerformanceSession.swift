@@ -245,7 +245,7 @@ final class PerformanceSession {
 
     // MARK: - Recording
 
-    /// Start or stop recording the performance (⌘⇧R). The recording rides the
+    /// Start or stop recording the performance (⌘⇧R). The recording stays with the
     /// runner across evaluations, so a swap mid-take never cuts the film; the
     /// file lands in `~/Movies/Ollin/` and its name is shown when it is done.
     func toggleRecording() {

@@ -56,7 +56,7 @@ final class Levels: Sketch {
     }
 
     /// The chain the parameters describe. Set every frame: it only rewires when
-    /// the kind changes, and a setting change rides the level already followed.
+    /// the kind changes, and a setting change keeps the level already followed.
     private var chain: [Effect] {
         switch work {
         case .dry:

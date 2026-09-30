@@ -8,7 +8,7 @@ import Foundation
 /// beside it.
 ///
 /// Where `ChaoticMap` iterates a fixed 2D rule, an `IteratedMap` is a whole
-/// *family*: the parameter rides every call, so one value type answers "what
+/// *family*: every call takes the parameter, so one value type answers "what
 /// does the orbit do at r?" (`orbit(at:count:settle:)`, the staircase
 /// `cobweb(at:steps:)`), "where does it settle across all r?"
 /// (`bifurcation(over:...)` points, `bifurcationImage(width:height:...)` as a

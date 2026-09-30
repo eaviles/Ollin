@@ -55,7 +55,7 @@ final class Hours: Sketch {
             drawRect(0, t * height, width, height / bands + 1)
         }
 
-        // The sun, or the moon, riding the part of the day it belongs to.
+        // The sun, or the moon, crossing the part of the day it belongs to.
         let across = scheduledProgress
         let disc = Vector2(width * (0.12 + 0.76 * across),
                            height * (0.62 - 0.34 * sin(across * .pi)))

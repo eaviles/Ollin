@@ -415,7 +415,7 @@ fragment float4 ollin_light_bounce(PresentOut in [[stage_in]],
     // leans on one rim, and a rim lit in stripes smears into a pinwheel of them. The
     // spread grows with how deep the pixel sits, which is exactly how far its one rim
     // point has been asked to speak for, so the fan comes out as the gradient it
-    // should have been. Nothing physical rides on this: no ray ever reads deeper than
+    // should have been. Nothing physical depends on this: no ray ever reads deeper than
     // the shell of a shape, so this decides only how a solid shows its own lit face.
     float2 along = float2(-toward.y, toward.x) * depth;
     float3 incoming = radiance.sample(samp, out0 / size, level(0)).rgb * 0.34

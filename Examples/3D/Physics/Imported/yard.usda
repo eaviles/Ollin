@@ -111,7 +111,7 @@ def Xform "Yard"
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
-    # A bouncing ball, wearing the rubber material bound above.
+    # A bouncing ball, with the rubber material bound above.
     def Sphere "Ball" (
         prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
     )
@@ -123,7 +123,7 @@ def Xform "Yard"
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
-    # A hammer: one body wearing two colliders, which is what a rigid body
+    # A hammer: one body with two colliders, which is what a rigid body
     # with several collider prims under it means.
     def Xform "Hammer" (
         prepend apiSchemas = ["PhysicsRigidBodyAPI"]

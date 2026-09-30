@@ -15,7 +15,7 @@ import Ollin
 /// The fourth light is a spot with a `LightCookie`: an image projected through
 /// the cone the way a stage gobo or a slide projector works. Here it's a
 /// window frame drawn in code, rocking slowly on the light's `roll`, throwing
-/// afternoon-window light across the floor. The three `.ies` files ride
+/// afternoon-window light across the floor. The three `.ies` files are bundled
 /// beside this sketch and load with `IESProfile(resource:in:)`; a profile's
 /// intensities are normalized (peak 1), so `intensity` still sets brightness.
 @main

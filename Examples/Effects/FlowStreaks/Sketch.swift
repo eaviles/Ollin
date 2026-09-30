@@ -33,7 +33,7 @@ final class FlowStreaks: Sketch {
         background(Color(white: 0.05))
 
         compose {
-            // The base: a gray sheet with three discs riding their orbits,
+            // The base: a gray sheet with three discs following their orbits,
             // grained so the streaks have something to be made of.
             layer {
                 background(Color(white: 0.5))

@@ -12,7 +12,7 @@ import Foundation
 /// Two facts shape the spec. The framework is named by its absolute path, as
 /// the manifest kinds name it, and the spec tool takes that as it is; only a
 /// *source* on another root trips its relative-path routine, and every source
-/// here sits inside the project folder. And a `.metal` file rides as a
+/// here sits inside the project folder. And a `.metal` file is added as a
 /// resource by name, because a Metal file under a source group is compiled
 /// into a library, while the framework reads a shader's source at run time.
 extension ProjectGenerator {
@@ -204,7 +204,7 @@ extension ProjectGenerator {
     // MARK: - The property list
 
     /// The app's name tag. The display name is the project's, the piece takes
-    /// the whole screen in either orientation, and the usage lines ride the
+    /// the whole screen in either orientation, and the usage lines follow the
     /// wired capabilities, because an app that opens the camera or the
     /// microphone without one is killed rather than asked.
     static func iOSInfoPlist(_ request: ProjectRequest, target: String) -> String {

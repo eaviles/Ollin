@@ -131,7 +131,7 @@ extension Drawer {
     }
 
     /// One image stamp, square to its longest side and turned to the stamp's
-    /// angle. The rotation rides the transform stack, which is the only way an
+    /// angle. The rotation goes through the transform stack, which is the only way an
     /// image quad can turn.
     private func drawStampImage(_ image: Image, _ stamp: Brush.Stamp) {
         let w = Double(image.width), h = Double(image.height)

@@ -37,7 +37,7 @@ package struct SceneImportLosses: Sendable, Equatable {
     package var skinnedNodes = 0
     /// Nodes carrying morph targets, whose weights nothing will drive.
     package var morphedNodes = 0
-    /// Nodes whose mesh wears more than one material. Drawn whole, it wears the
+    /// Nodes whose mesh has more than one material. Drawn whole, it uses the
     /// first one.
     package var multiMaterialNodes = 0
     /// Keyframe tracks the file authored.
@@ -66,7 +66,7 @@ extension Scene {
 extension SceneNode {
 
     /// Whether the file gives this node's mesh more than one material. Drawn
-    /// whole with `drawMesh`, such a mesh wears the first, so a caller placing
+    /// whole with `drawMesh`, such a mesh uses the first, so a caller placing
     /// parts by hand has to say so.
     public var wearsSeveralMaterials: Bool { meshParts.count > 1 }
 

@@ -6,7 +6,7 @@ import OllinPhysics
 /// becomes solid terrain through the `.heightfield` collider, so every bounce
 /// lands on exactly the surface the mesh draws. A steady feed of rocks
 /// (spheres, slabs, cones) drops onto the ridge, tumbles down the gullies,
-/// and piles into scree at the foot; rocks that ride off the edge fall into
+/// and piles into scree at the foot; rocks that roll off the edge fall into
 /// the void and return to the top. The dice parameter regrows the whole slope.
 @main
 final class Rockslide: Sketch {
@@ -126,7 +126,7 @@ final class Rockslide: Sketch {
         }
     }
 
-    /// The field as a mesh wearing a height-colored texture: scrub at the
+    /// The field as a mesh with a height-colored texture: scrub at the
     /// foot, bare rock up the slope, snow on the ridge.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0x27402C), Color(hex: 0x4A5A3C),

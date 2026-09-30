@@ -45,7 +45,7 @@ final class RetainedBatch: Sketch {
         background(Color(hex: 0x060612))
 
         // The galaxy, turning: the draw-time transform moves the whole replay,
-        // so the 150k recorded stars ride one rotate about the canvas center.
+        // so the 150k recorded stars turn with one rotate about the canvas center.
         withState {
             translate(center)
             rotate(loopProgress(over: 40) * .tau)

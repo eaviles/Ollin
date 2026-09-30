@@ -90,7 +90,7 @@ struct LiveRootView: View {
     // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
     // macOS centers the traffic lights and `.contentSize` accounts for it with no
     // dead space (hiding the native bar instead leaves its height reserved). The
-    // toggle (leading) and status chip (trailing) ride as title-bar accessories so
+    // toggle (leading) and status chip (trailing) are title-bar accessories so
     // they avoid the toolbar's button capsule; the title is the toolbar's principal
     // item; the gradient is the toolbar background. The sidebar is a translucent
     // vibrancy panel.

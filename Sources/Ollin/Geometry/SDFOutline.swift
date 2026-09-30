@@ -8,7 +8,7 @@ import Foundation
 //
 // All builders return points in the shape's *local* space, centered on the same
 // point the draw call anchors at; the `Drawer` offsets them into user space and
-// the CTM rides as the SVG element transform. Polygonal builders return one
+// the CTM is written as the SVG element transform. Polygonal builders return one
 // point list; traced builders return every boundary loop the zero contour has
 // (usually one; the Drawer records multi-loop traces as an even-odd path).
 

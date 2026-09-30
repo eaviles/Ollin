@@ -23,7 +23,7 @@ import Ollin
 /// instanced *copies*, one call for all of them, and a retained `MeshField` scatters a drift
 /// of pebbles past them. All three ways of placing a mesh mirror alike. A cel-shaded torus
 /// and a Gooch-shaded cone stand among them to show the other half of that: a traced hit is
-/// shaded in the finish its surface wears, so the torus keeps its hard bands in the floor,
+/// shaded in the finish its surface has, so the torus keeps its hard bands in the floor,
 /// the cone its warm-to-cool ramp, and the lacquered sphere in the ring its clear coat. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
@@ -111,7 +111,7 @@ final class RayTracedReflections: Sketch {
         }
 
         // A ring of spheres, each a different finish; they reflect the monolith, the
-        // floor, and each other. Five are metals. The last wears a clear coat instead, a
+        // floor, and each other. Five are metals. The last has a clear coat instead, a
         // dielectric under a polished film, and the film travels: the lacquered sphere
         // carries its coat into the floor's image of it and into its neighbors' too.
         let spheres: [(color: Color, finish: Material)] = [
@@ -150,7 +150,7 @@ final class RayTracedReflections: Sketch {
 
         // Two stylized props: a cel-shaded torus and a Gooch-shaded cone. Neither is a
         // metal, so neither mirrors anything itself, but both are *seen* in the mirrors
-        // around them, and a traced hit shades a surface in the finish it wears. The torus
+        // around them, and a traced hit shades a surface in the finish it has. The torus
         // keeps its hard cel bands in the floor, and the cone its warm-to-cool ramp,
         // instead of flattening into the plain diffuse body underneath.
         withState {

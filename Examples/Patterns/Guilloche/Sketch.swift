@@ -3,7 +3,7 @@ import Ollin
 /// A guilloche rosette, the engine-turned ornament of watch faces and
 /// banknotes: concentric wavy rings, each turned a hair against its neighbor,
 /// weaving into a braided moiré. Two stacked cams shape every ring, a coarse
-/// wave and a fine ripple riding it. The twist creeps with time, so the braid
+/// wave and a fine ripple on top of it. The twist creeps with time, so the braid
 /// slowly crawls around the face while the rings themselves hold still.
 @main
 final class Guilloche: Sketch {

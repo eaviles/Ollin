@@ -1,16 +1,16 @@
 import Ollin
 import OllinPhysics
 
-/// A harbor after a spill. Crates of every weight ride the swell at their own
+/// A harbor after a spill. Crates of every weight float on the swell at their own
 /// depth, a stone anchor sits on the bottom, and the current carries the lot
 /// slowly past. **Drag** a crate under and let go to watch it surface.
 ///
 /// The water showcase for `World3D`. Nothing here opts in to floating:
 /// `world.water` is one property, like `ground`, and everything already in the
-/// world starts riding it. How deep each crate sits is not tuned, it is the
-/// `density` it was built with, so the pale light ones ride high and the dark
+/// world starts floating on it. How deep each crate sits is not tuned, it is the
+/// `density` it was built with, so the pale light ones float high and the dark
 /// heavy ones are almost under. `waterMesh` hands back the very surface the
-/// bodies are floating on, so the drawn swell and the ridden swell are the
+/// bodies are floating on, so the drawn swell and the simulated swell are the
 /// same one.
 @main
 final class Flotsam: Sketch {
@@ -117,7 +117,7 @@ final class Flotsam: Sketch {
 
     /// The current would carry everything out of shot in a minute, so the whole
     /// drift wraps around: anything past the far side comes back on the near
-    /// one, still at the height it was riding.
+    /// one, still floating at the same height.
     func keepInFrame() {
         let edge = 6.0
         for crate in crates {

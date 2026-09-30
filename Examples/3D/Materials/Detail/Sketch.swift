@@ -6,10 +6,10 @@ import Ollin
 /// camera closes in; there are only so many texels. `detailMapped` tiles a
 /// second, much finer pair across it: a color map (128 gray is neutral, so
 /// darker speckles darken and lighter ones lighten) and a normal map whose
-/// fine bumps are reoriented onto the base relief, so the grain rides the
+/// fine bumps are reoriented onto the base relief, so the grain follows the
 /// large forms instead of overwriting them.
 ///
-/// The two spheres wear the same base maps; only the right one carries the
+/// The two spheres use the same base maps; only the right one carries the
 /// detail pair. From afar they read alike. As the camera sways close, the
 /// left one goes soft while the right keeps its grain. `tiles` is how many
 /// times the detail tiles across the base; `amount` fades the pair (0 is

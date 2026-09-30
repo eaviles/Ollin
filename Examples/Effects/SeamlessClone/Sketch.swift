@@ -13,7 +13,7 @@ import OllinSamplePhotos
 /// correction that reaches it. Only the slow, low part of the patch's color is
 /// replaced, which is why the detail survives.
 ///
-/// Here a slab of pebbles rides across a photograph of Cozumel at dusk. It is
+/// Here a slab of pebbles drifts across a photograph of Cozumel at dusk. It is
 /// the same slab twice: on the left as a plain paste, on the right cloned. Watch
 /// the right one take the color it lands in without ever changing its pebbles,
 /// while the left keeps a hard rim it never earned. `amount` sweeps from a plain
@@ -25,7 +25,7 @@ import OllinSamplePhotos
 /// out. This picture keeps its brightness in a narrow band while its color runs
 /// from grey-violet to pink, which is what a clone is for, and the frame here is
 /// the left square of it, since the sun in the right third is the one hard thing
-/// in it. Both slabs ride well above the horizon for the same reason.
+/// in it. Both slabs stay well above the horizon for the same reason.
 ///
 /// Try it: hold `amount` at 1 and drag `patchHue`, or move a slab down onto the
 /// horizon and watch that line smear inward. That is the technique's own limit
@@ -93,7 +93,7 @@ final class SeamlessClone_Example: Sketch {
             }
         }
 
-        // Both slabs ride in the sky, well above the horizon. The rim is where
+        // Both slabs stay in the sky, well above the horizon. The rim is where
         // the correction is measured, so a rim laid across a hard edge spreads
         // that edge inward and the patch blows out. The sky is the quiet ground
         // this picture offers, and it still runs from grey-violet on the left to

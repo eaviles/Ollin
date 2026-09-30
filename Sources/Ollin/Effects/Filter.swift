@@ -153,7 +153,7 @@ public struct Filter: Sendable {
         case bloom(threshold: Double, intensity: Double, radius: Double)
         /// Halation: the part of the image above `threshold`, blurred by `radius`
         /// and colored by `tint`, added back at `amount` only where the emulsion
-        /// still has room, so a highlight keeps its core and wears a fringe.
+        /// still has room, so a highlight keeps its core and gains a fringe.
         case halation(threshold: Double, radius: Double, tint: SIMD4<Float>, amount: Double)
 
         // Color & tone -------------------------------------------------------
@@ -469,7 +469,7 @@ public struct Filter: Sendable {
                             radius: max(0, radius)))
     }
 
-    /// Halation, the fringe film wears around its brightest highlights. Light that
+    /// Halation, the fringe film shows around its brightest highlights. Light that
     /// passes through the emulsion reflects off the base and exposes the layers
     /// again around the point it entered, reddest because the red-sensitive
     /// layer sits deepest. The pixels above `threshold` (the max channel, as
@@ -477,7 +477,7 @@ public struct Filter: Sendable {
     /// colored by `tint`, and added back at `amount`. Unlike a glow, the halo only
     /// lands where the emulsion still has room: each channel takes it in
     /// proportion to how far it sits below white, so a white core stays white and
-    /// wears a warm ring, and a frame with nothing above the threshold comes
+    /// gains a warm ring, and a frame with nothing above the threshold comes
     /// back byte for byte. The halo is the blurred highlight times the tint, so
     /// `.white` keeps each highlight's own color in its fringe.
     public static func halation(threshold: Double = 0.8,

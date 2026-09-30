@@ -40,7 +40,7 @@ final class Drag: Sketch {
         let delta = mouse - previousMouse           // this frame's drag
 
         // Free balls glide, slow down, and bounce off the walls; the held one
-        // rides the cursor. deltaTime keeps the feel the same at any frame rate.
+        // follows the cursor. deltaTime keeps the feel the same at any frame rate.
         for i in balls.indices where i != held {
             balls[i].position += balls[i].velocity * deltaTime
             balls[i].velocity *= exp(-0.9 * deltaTime)

@@ -26,7 +26,7 @@ import Ollin
 /// Everything else a voice can be built from is a handful of numbers, because
 /// a `Voice` travels to the audio thread inside a note and has to be copyable
 /// a word at a time. Recordings are megabytes and live on the heap, so they
-/// cannot ride along. An instrument is held by the `Synth` instead, and a note
+/// cannot go along. An instrument is held by the `Synth` instead, and a note
 /// carries only the settings for playing it. That is why ``Synth/instrument``
 /// is set separately from ``Synth/voice`` rather than being part of it.
 public final class SampledInstrument: @unchecked Sendable {

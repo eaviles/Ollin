@@ -17,7 +17,7 @@ import OllinPhysics
 /// compressed, coral where stretched, so the wind load is visible traveling
 /// through the weave.
 ///
-/// `World.unitsPerMeter` rides a parameter. It maps sketch points onto the rigid
+/// `World.unitsPerMeter` is set by a parameter. It maps sketch points onto the rigid
 /// solver's meters, so raising it makes every collider smaller in meters and
 /// therefore lighter, and the same wind and kick numbers toss the shapes much
 /// harder; the scene rebuilds when it changes, because the walls and masses

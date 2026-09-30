@@ -6,7 +6,7 @@ import OllinPhone
 /// capture app finds up to four 21-joint hands on-device and lifts each joint to
 /// metric 3D through the LiDAR depth, so a hand here floats where the real hand
 /// is, in meters, in the same world the depth sweep and the room mesh use. Left
-/// and right wear their own color, a pinch closes into a bright bead at the
+/// and right have their own color, a pinch closes into a bright bead at the
 /// fingertips, and on a phone with no LiDAR the same stream arrives flat and
 /// draws as a 2D overlay instead.
 ///

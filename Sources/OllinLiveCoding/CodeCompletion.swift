@@ -4,7 +4,7 @@ import OllinRuntime
 /// The completion list under the caret: the names the toolchain's own
 /// completion service offers for the word being typed, shown in a small list
 /// inside the editor's view, taken with Return or Tab. The list is a subview
-/// of the editor's container rather than a window of its own, so it rides
+/// of the editor's container rather than a window of its own, so it follows
 /// the stage into fullscreen, hides with the code, and never floats.
 ///
 /// How it behaves, so a set never has to think about it:

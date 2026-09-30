@@ -14,11 +14,11 @@ internal import CJolt
 ///
 /// What floats and what sinks comes from the bodies' own `density`, the same
 /// number `addBody` already takes, measured against the water's: a crate at
-/// `density: 0.4` rides with 40% of itself under, and a stone at `2` goes
+/// `density: 0.4` floats with 40% of itself under, and a stone at `2` goes
 /// straight to the bottom. The waterline lands where the displaced volume says
 /// it should, so a half-full barrel floats half-submerged without tuning.
 ///
-/// Add `waves` and the surface rolls, carrying whatever is riding it:
+/// Add `waves` and the surface rolls, carrying whatever is floating on it:
 ///
 /// ```swift
 /// world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
@@ -55,7 +55,7 @@ public struct Water: Equatable, Sendable {
 
     /// A rolling swell on the surface: a small train of crossed sine waves,
     /// which is what both floats the bodies and gives `World3D.waterMesh` its
-    /// shape, so what you see and what the bodies ride are the same surface.
+    /// shape, so what you see and what the bodies float on are the same surface.
     public struct Waves: Equatable, Sendable {
 
         /// How far a crest rises above the still `level`, in world units.
@@ -122,7 +122,7 @@ public struct Water: Equatable, Sendable {
     /// point directly above or below it, and the way the surface faces there.
     /// A wavy surface is handed to the solver one body at a time as the plane
     /// tangent to it, which is exact for still water and a good approximation
-    /// for anything smaller than the waves it rides.
+    /// for anything smaller than the waves it floats on.
     func surface(at point: Vector3, phase: Double) -> (point: Vector3,
                                                        normal: Vector3) {
         guard let waves, waves.amplitude != 0 else {
@@ -181,7 +181,7 @@ extension World3D {
     /// ```
     ///
     /// The grid is rebuilt from the live surface each time it is called, which
-    /// is what keeps the drawn swell and the ridden swell identical; keep
+    /// is what keeps the drawn swell and the simulated swell identical; keep
     /// `resolution` modest (the cost is `resolution²` vertices per frame).
     /// Returns `nil` when the world has no water.
     public func waterMesh(extent: Double = 50, resolution: Int = 64,
@@ -249,7 +249,7 @@ extension World3D {
         waterMoved = false
 
         // Water fills the world below its surface out to the same reach as the
-        // ground slab; the box climbs to the crests so a body riding one is
+        // ground slab; the box climbs to the crests so a body floating on one is
         // still found.
         let reach = Float(500.0 / unitsPerMeter)
         let top = Float((water.level + (water.waves?.amplitude ?? 0)) / unitsPerMeter)
@@ -317,7 +317,7 @@ extension World3D {
             // Where a rigid body is handed one tangent plane through its own
             // center, every particle is handed the surface directly above it.
             // A sheet is wide enough that one plane would have its far edges
-            // riding a wave that is not under them, which curls a raft into a
+            // resting on a wave that is not under them, which curls a raft into a
             // bowl; this is the same surface function, asked more often.
             let particles = soft.particlePositions
             if soft.surfaceHeights.count != particles.count {

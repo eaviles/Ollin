@@ -185,7 +185,7 @@ final class CustomEffectRunner: @unchecked Sendable {
 
 // MARK: - The unit that carries it
 
-/// The engine node a custom effect rides in.
+/// The engine node a custom effect runs in.
 ///
 /// The chain is engine wiring, so an effect of our own has to be a real node:
 /// an in-process audio unit registered once and instantiated like the built-in
@@ -219,7 +219,7 @@ final class ClosureAudioUnit: AUAudioUnit {
     private let renderState = RenderState()
 
     /// The room a convolution reverb prepared for this unit, kept so a change
-    /// of `mix` rides the standing engine rather than replacing it, and a
+    /// of `mix` reuses the standing engine rather than replacing it, and a
     /// tail still sounding is not cut. Main-thread state, like the settings
     /// on the built-in units.
     var room: ConvolutionReverb?
@@ -237,7 +237,7 @@ final class ClosureAudioUnit: AUAudioUnit {
     }
 
     /// The motion a chorus, flanger, phaser, or tremolo runs on this unit,
-    /// kept for the same reason the room is: a turn of a setting rides the
+    /// kept for the same reason the room is: a turn of a setting keeps the
     /// standing wave and lines rather than starting them over.
     var motion: ModulationEffect?
 
@@ -254,7 +254,7 @@ final class ClosureAudioUnit: AUAudioUnit {
     }
 
     /// The level work a compressor, limiter, or gate runs on this unit, kept
-    /// for the same reason the motion is: a turn of a setting rides the
+    /// for the same reason the motion is: a turn of a setting keeps the
     /// follower's own level and the gain it has reached rather than dropping
     /// them and starting over.
     var dynamics: DynamicsEffect?
@@ -273,7 +273,7 @@ final class ClosureAudioUnit: AUAudioUnit {
 
     /// The spectral work a pitch shift or a freeze runs on this unit, kept
     /// for the same reason the level is: a turn of the pitch or the amount
-    /// rides the frames in flight and the phases carried between them, and
+    /// keeps the frames in flight and the phases carried between them, and
     /// a held instant stays held, rather than starting the effect over.
     var spectral: SpectralEffect?
 

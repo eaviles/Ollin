@@ -9,7 +9,7 @@ import Foundation
 
 /// The commit that holds the source an export was rendered from.
 struct CaptureSource {
-    /// The short hash that names the exported files and rides in the recipe.
+    /// The short hash that names the exported files and is written into the recipe.
     let id: String
     /// The short hash `HEAD` stood at, `nil` in a repository with no commits.
     let base: String?

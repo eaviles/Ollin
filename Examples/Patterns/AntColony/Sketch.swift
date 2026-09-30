@@ -4,7 +4,7 @@ import Ollin
 /// scatter, and every frame the whole colony walks once and re-lays its
 /// pheromone. The web of trails starts as a faint haze over every pair,
 /// then condenses onto a short route as good edges reinforce and the rest
-/// evaporate. The best tour so far rides on top in bright ink.
+/// evaporate. The best tour so far is drawn on top in bright ink.
 @main
 final class AntColonyTour: Sketch {
     private var colony: AntColony?

@@ -368,7 +368,7 @@ public extension NoiseFields {
     /// let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
     /// ```
     ///
-    /// Under the hood both directions ride the 4D construction the looping
+    /// Under the hood both directions use the 4D construction the looping
     /// forms use for time, spent on space twice instead.
     func tilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double {
         let (ux, uy) = tilePoint(u, detail)

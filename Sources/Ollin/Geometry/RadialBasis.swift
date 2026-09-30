@@ -163,7 +163,7 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
                 magnitude += abs(bump)
             }
         }
-        // Smoothing rides the diagonal, where it reads as "this point is allowed to be
+        // Smoothing goes on the diagonal, where it reads as "this point is allowed to be
         // this wrong", and it is measured against the typical size of a bump rather than
         // taken raw. That scaling is not tidiness: the bumps are as large as the points are
         // far apart, so on a canvas in pixels a raw 1 would sit beside entries in the

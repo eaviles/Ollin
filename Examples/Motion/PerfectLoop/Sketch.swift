@@ -9,7 +9,7 @@ import Ollin
 ///
 /// renders exactly one lap, and the GIF (or .mp4/.mov) cycles seamlessly.
 /// Three nested blobs sample loop noise on a circle, closed in angle by the
-/// circular sample path and closed in time by the loop phase; a comet rides
+/// circular sample path and closed in time by the loop phase; a comet travels
 /// the outer edge, one full turn per period, to make the lap visible.
 @main
 final class PerfectLoop: Sketch {

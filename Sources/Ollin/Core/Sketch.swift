@@ -831,7 +831,7 @@ open class Sketch {
         drawer.recordParticles(chemistry.current, count: chemistry.count)
     }
 
-    /// Make an `AttractorFlow`: `count` particles riding `system`, scattered through
+    /// Make an `AttractorFlow`: `count` particles following `system`, scattered through
     /// the attractor's own neighborhood from `seed` (this sketch's `variation` by
     /// default). Build it in `setup()`, then `stepAttractorFlow` + `drawParticles`
     /// in `draw()`. The flow is 3D, so it needs a camera. See `AttractorFlow`.
@@ -1841,7 +1841,7 @@ open class Sketch {
     /// halo around the sun. `heightFalloff` thins the air with altitude, as in `fog`.
     /// `sun` points **toward** the sun; leave it nil to follow the `.sky` environment
     /// (rotation included), else the first directional light, else a default elevation.
-    /// Replaces `fog` (the last call wins); `volumetricLight()` beams ride it the same
+    /// Replaces `fog` (the last call wins); `volumetricLight()` beams read it the same
     /// way. Per-frame state, so call it in `draw()`; `noAerialPerspective()` turns it
     /// back off. 2D drawing is never touched.
     public func aerialPerspective(density: Double? = nil, haziness: Double = 0.3,
@@ -1861,7 +1861,7 @@ open class Sketch {
     /// scatters forward: near 1 the beams flare when you look toward the light, 0 glows
     /// evenly from every angle. Works with or without `fog(_:density:heightFalloff:)`:
     /// alone, the air stays clear and only the beams appear (the dark-stage look); with
-    /// fog, the beams ride its density and color. Directional and spot lights
+    /// fog, the beams take its density and color. Directional and spot lights
     /// participate; point and area lights light surfaces only. Per-frame state, so call
     /// it in `draw()`; `noVolumetricLight()` turns it back off.
     public func volumetricLight(_ amount: Double = 1, anisotropy: Double = 0.5) {
@@ -1885,7 +1885,7 @@ open class Sketch {
     // MARK: 3D — solid primitives & meshes
 
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a
-    /// camera first with `camera`/`perspective`/`ortho`). The mesh rides the 3D
+    /// camera first with `camera`/`perspective`/`ortho`). The mesh follows the 3D
     /// transform stack — `translate`/`rotate`/`scale` place and orient it — and takes
     /// the current `fill` color: flat (unlit) with no lights, Blinn-Phong shaded once
     /// you add a light (`lights()`, `directionalLight`, …). A no-op without a camera.
@@ -1904,7 +1904,7 @@ open class Sketch {
     /// (keep the array from one frame to the next and hand it over before you
     /// rebuild); a count that does not match notes once and draws the mesh with
     /// transform-only motion. Inside a `withMotion` block the previous positions
-    /// ride last frame's placement of that block too, so a mesh that both moves
+    /// use last frame's placement of that block too, so a mesh that both moves
     /// and changes shape writes the sum; outside one the call is its own mover,
     /// keyed by its call site like `withMotion`. Purely additive: with both
     /// features off the mesh draws as `drawMesh(_:)` does.
@@ -3378,7 +3378,7 @@ open class Sketch {
     }
 
     /// Draw `image` at its native pixel size with its top-left corner at `(x, y)`.
-    /// Load it once with `loadImage` (in `setup()`); it rides the transform stack,
+    /// Load it once with `loadImage` (in `setup()`); it follows the transform stack,
     /// so `translate`/`rotate`/`scale` move and warp it, and composites in draw order.
     public func drawImage(_ image: Image, _ x: Double, _ y: Double) {
         drawer.drawImage(image, in: Rectangle(x: x, y: y,
@@ -3641,7 +3641,7 @@ open class Sketch {
     /// (the default, `OutlineFont.systemMedium`) takes `fill` *and* `stroke`; a
     /// **bitmap** font uses `fill` only (it ignores `stroke`); a **stroke**
     /// (single-line) font uses `stroke` only.
-    /// `\n` starts a new line; text rides the transform stack (so it rotates/scales).
+    /// `\n` starts a new line; text follows the transform stack (so it rotates/scales).
     public func drawText(_ string: String, _ x: Double, _ y: Double) {
         drawer.drawText(string, x, y)
     }
@@ -3758,7 +3758,7 @@ open class Sketch {
     public func drawText(_ string: String, at position: Vector2, perGlyph: (TextGlyph) -> Void) {
         drawer.drawText(string, position.x, position.y, perGlyph: perGlyph)
     }
-    /// Draw `string` with its glyphs riding `path` — each glyph centered on the
+    /// Draw `string` with its glyphs following `path`: each glyph centered on the
     /// curve at its distance along the run (plus `offset`) and rotated to the
     /// tangent. Animate `offset` to flow the text along the path. Single line,
     /// takes `fill`/`stroke` like `drawText`.
@@ -3852,7 +3852,7 @@ open class Sketch {
     /// seam); transforms applied *after* compose inside every fold. Drawing
     /// state like `fill`: it persists until `noSymmetry()`, and `withState { }`
     /// restores it. Replication covers all 2D drawing (shapes, strokes, images,
-    /// text, SDF fields) and rides into SVG export; 3D geometry and GPU
+    /// text, SDF fields) and applies to SVG export; 3D geometry and GPU
     /// particles are untouched.
     public func symmetry(_ folds: Int, mirrored: Bool = false) {
         drawer.symmetry(folds, mirrored: mirrored)
@@ -3868,7 +3868,7 @@ open class Sketch {
     // world units, composing on a 4×4 model matrix that `withState` saves and restores
     // like the 2D one. They don't affect 2D drawing (shapes/images/text keep using the
     // 2D transform), so both stacks stay live in a 3D frame. A 2D-only sketch ignores
-    // them. Set a `camera` first; the cloud rides the model matrix into the scene.
+    // them. Set a `camera` first; the cloud is placed in the scene by the model matrix.
 
     /// Move subsequent 3D geometry by `offset` in world units.
     public func translate(_ offset: Vector3) { drawer.translate(offset) }

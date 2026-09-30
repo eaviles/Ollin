@@ -150,7 +150,7 @@ final class Windmill: Sketch {
     }
 
     /// Draw a collider's matching mesh; a compound recurses into its parts at
-    /// their local poses, so the drawn cross rides the one simulated body.
+    /// their local poses, so the drawn cross follows the one simulated body.
     func drawCollider(_ collider: Collider3D, tint: Color?) {
         switch collider {
         case .box(let w, let h, let d):

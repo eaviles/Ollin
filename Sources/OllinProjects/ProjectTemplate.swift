@@ -302,7 +302,7 @@ extension ProjectTemplate {
                 stroke(.black)
                 strokeWeight(1)
 
-                // Lines that ride a noise field, so no two are quite parallel.
+                // Lines that follow a noise field, so no two are quite parallel.
                 let margin = 48.0
                 var y = margin
                 while y < height - margin {

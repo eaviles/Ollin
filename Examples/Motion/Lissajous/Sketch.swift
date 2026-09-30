@@ -5,7 +5,7 @@ import Ollin
 /// diagonal holds circles and ellipses; everything off it weaves. One shared
 /// phase drifts a full turn per loop, so every figure rolls through its whole
 /// family (the diagonal breathes from circle to line and back) and the lap is
-/// seamless. A tracer rides each curve at the true parametric speed: fast
+/// seamless. A tracer moves along each curve at the true parametric speed: fast
 /// through the middle, hanging at the turns, which is the sine wave made
 /// visible.
 @main
@@ -38,7 +38,7 @@ final class LissajousTable: Sketch {
                 drawPolyline(curve.points, closed: true)
 
                 // The tracer evaluates the same sines the curve is built
-                // from, so it rides at parametric speed.
+                // from, so it moves at parametric speed.
                 let p = Vector2(w / 2 * sin(Double(a) * u + drift),
                                 w / 2 * sin(Double(b) * u))
                 noStroke()

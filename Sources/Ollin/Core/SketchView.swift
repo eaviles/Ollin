@@ -96,7 +96,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var smoothedWaitMS: Double = 0
 
     /// A camera-view snap requested from the host menu (`OllinCameraCommands`),
-    /// applied at the top of the next frame so it rides the rig exactly like a
+    /// applied at the top of the next frame so it goes through the rig exactly like a
     /// `cameraView(_:)` call from `draw()`.
     private var pendingCameraView: CameraView?
 
@@ -704,9 +704,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// Snap the running sketch's camera to a canonical inspection view, requested
-    /// from a host menu command. Applied at the top of the next frame, so it rides
-    /// the camera rig like a `cameraView(_:)` call from `draw()`; a sketch that
-    /// doesn't use the rig (or is 2D) simply ignores it.
+    /// from a host menu command. Applied at the top of the next frame, so it
+    /// goes through the camera rig like a `cameraView(_:)` call from `draw()`; a
+    /// sketch that doesn't use the rig (or is 2D) simply ignores it.
     func requestCameraView(_ view: CameraView) {
         pendingCameraView = view
         if !sketch.isLooping { pauseHoldover = true }   // hand the pause back once settled
@@ -1263,7 +1263,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
         // The other displays of a wall: each hands over the drawable it wants
         // this frame in, and what it carries of the canvas. Asked for before the
-        // render so all of them ride the one command buffer, which is what keeps
+        // render so all of them are encoded in the one command buffer, which is what keeps
         // the beams of a wall on the same frame.
         var wall: [MetalRenderer.ExtraDisplay] = []
         if !otherDisplays.isEmpty {
@@ -1686,7 +1686,7 @@ final class OllinMTKView: MTKView {
     private var pressureMonitor: Any?
 
     /// A modifier change goes to whoever holds the keys, and on the
-    /// performance stage that is the editor riding over the canvas, so the
+    /// performance stage that is the editor laid over the canvas, so the
     /// shape drag would never arm through `flagsChanged` there. This monitor
     /// sees every modifier change in the key window before it is dispatched,
     /// and hands it to the dragger when a host has installed one.
@@ -1906,7 +1906,7 @@ final class OllinMTKView: MTKView {
         guard let sketch else { return }
         let mouseKind = event.type == .mouseMoved || event.type == .leftMouseDown
             || event.type == .leftMouseDragged || event.type == .leftMouseUp
-        // A tablet rides the mouse stream with a subtype, and the subtype is
+        // A tablet arrives in the mouse stream with a subtype, and the subtype is
         // itself only readable on the kinds of event that have one.
         if mouseKind, event.subtype == .tabletProximity {
             tabletProximity(with: event)
@@ -2812,7 +2812,7 @@ public enum OllinApp {
     ///
     /// The file name picks the format. A `.heic` (or `.heif`) path writes HEIC,
     /// which is the one that can keep brightness above white: an `extended`
-    /// sketch's highlights ride along in an ISO gain map. Everything else writes
+    /// sketch's highlights are stored in an ISO gain map. Everything else writes
     /// a PNG, which stops at white.
     ///
     /// Throws `ExportError` when the frame does not draw or the file cannot be

@@ -108,7 +108,7 @@ public enum EtherDreamWire {
 
 // MARK: - What comes back
 
-/// What the DAC says about itself: the same block rides every response and
+/// What the DAC says about itself: the same block comes with every response and
 /// every announcement it broadcasts.
 public struct EtherDreamStatus: Equatable, Sendable {
 

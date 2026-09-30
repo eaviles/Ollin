@@ -42,7 +42,7 @@ extension MetalRenderer {
     nonisolated static let scatterTapCount = 25
 
     /// The most distinct diffusion profiles one frame's blur carries (the kernel rows
-    /// ride the pass's small params buffer); materials past the cap reuse the last.
+    /// are stored in the pass's small params buffer); materials past the cap reuse the last.
     nonisolated static let scatterProfileCap = 8
 
     /// Build one separable diffusion kernel: `scatterTapCount` rows of (r, g, b

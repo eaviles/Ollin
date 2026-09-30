@@ -95,7 +95,7 @@ extension World3D {
     /// step a character is about to take.
     ///
     /// ```swift
-    /// // ride 1.5 units above whatever passes below, crates included
+    /// // hover 1.5 units above whatever passes below, crates included
     /// let below = world.sweep(.sphere(radius: 0.4), from: drone,
     ///                         to: drone - Vector3(0, 8, 0))
     /// let height = (below?.point.y ?? 0) + 1.5

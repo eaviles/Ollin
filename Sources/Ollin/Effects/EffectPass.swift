@@ -393,7 +393,7 @@ extension Generator {
         case let .gaborNoise(wavelength, bandwidth, angle, spread, impulses, phase, seed, fg, bg):
             // Measured in pixels, so the wavelength scales with the layer (a
             // 2x export keeps the picture) and the CPU form reads the same
-            // field at the same point. The seed rides as a plain integer in a
+            // field at the same point. The seed is passed as a plain integer in a
             // float (24 bits is every seed a sketch hands out).
             return pass("ollin_gen_gabor",
                         [SIMD4(Float(wavelength * scale), Float(bandwidth), Float(angle), Float(spread)),

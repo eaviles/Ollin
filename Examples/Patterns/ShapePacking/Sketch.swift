@@ -6,7 +6,7 @@ import Ollin
 /// smaller than the last, and the canvas densifies from a handful of large
 /// shapes to a scatter of tiny ones, never overlapping.
 ///
-/// It rides accumulation (`noClear()`): a placed shape never moves, so each frame
+/// It uses accumulation (`noClear()`): a placed shape never moves, so each frame
 /// draws only the *new* shapes onto the persistent canvas, and the per-frame cost
 /// stays flat however full it gets. With a shape bag the fit is measured against
 /// each neighbor's *outline*, not its bounding circle, so small shapes settle into

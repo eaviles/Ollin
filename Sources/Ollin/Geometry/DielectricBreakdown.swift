@@ -170,7 +170,7 @@ public final class DielectricBreakdown {
         relax(sweeps: 2)
     }
 
-    /// Grow a batch of sites (one relaxation ride-along each).
+    /// Grow a batch of sites (each followed by one relaxation).
     public func step(_ steps: Int) {
         for _ in 0..<Swift.max(0, steps) {
             if isFinished { return }

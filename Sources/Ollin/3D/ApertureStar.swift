@@ -1,7 +1,7 @@
 import Accelerate
 import Foundation
 
-/// The star a bright source wears, worked out from the shape of the opening its
+/// The star around a bright source, worked out from the shape of the opening its
 /// light came through.
 ///
 /// The ghosts are one half of a flare and this is the other. Where a ghost is

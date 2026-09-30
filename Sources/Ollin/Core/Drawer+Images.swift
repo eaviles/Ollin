@@ -8,7 +8,7 @@ import COllinShaders
 extension Drawer {
     // MARK: Images
 
-    /// Draw `image` into `rect` (sketch space), stretched to fit. The image rides
+    /// Draw `image` into `rect` (sketch space), stretched to fit. The image follows
     /// the transform stack like everything else, so `translate`/`rotate`/`scale`
     /// move and warp it. Recorded as one textured quad with its own batch, so it
     /// composites in draw order with the shapes around it. A zero-area rect or a
@@ -66,7 +66,7 @@ extension Drawer {
         let x0 = Float(rect.x), y0 = Float(rect.y)
         let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
         let (vTop, vBot): (Float, Float) = color.flipsVertically ? (1, 0) : (0, 1)
-        // The whiteIsNear flag rides in tint.r (the fragment reads it; the backdrop
+        // The whiteIsNear flag is stored in tint.r (the fragment reads it; the backdrop
         // color is drawn untinted), so no new per-batch field is needed.
         let flag = SIMD4<Float>(whiteIsNear ? 1 : 0, 0, 0, 0)
         let tl = imageVertex(x0, y0, 0, vTop, flag)
@@ -101,7 +101,7 @@ extension Drawer {
         currentTarget?.needsDepth = true   // depth scene in a target → that pass carries depth
         // Map metric depth d → Metal NDC z ∈ [0,1] as ndc_z = P − Q/d, where
         // P = far/(far−near), Q = far·near/(far−near) (the perspective depth curve).
-        // These ride in the quad's vertex tint so the fragment needs no extra buffer.
+        // These are carried in the quad's vertex tint so the fragment needs no extra buffer.
         let denom = camera.far - camera.near
         let p = denom != 0 ? camera.far / denom : 0
         let q = denom != 0 ? camera.far * camera.near / denom : 0

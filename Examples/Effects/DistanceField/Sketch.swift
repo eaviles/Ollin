@@ -9,7 +9,7 @@ import Ollin
 /// here is one of those two answers read back:
 ///
 /// - **rings**: the distance mapped through a repeating ramp, so equal distances share a
-///   color and the marks wear contour lines like a map.
+///   color and the marks show contour lines like a map.
 /// - **grown**: the distance cut at one value, which grows the shapes by that much (or
 ///   shrinks them, if you ask for a negative one) and melts neighbors into each other.
 /// - **cells**: the direction followed to its edge, and the color found there brought

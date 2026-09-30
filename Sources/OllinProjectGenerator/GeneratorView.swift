@@ -1066,7 +1066,7 @@ struct GeneratorView: View {
     // MARK: - The preview
 
     /// What the stage is showing. A 3D change is a different sketch, so the
-    /// recipe rides the key or the cache would hand back the last combination.
+    /// recipe is part of the key or the cache would hand back the last combination.
     private var previewKey: String {
         if isExtension { return "seam:" + seam.id }
         if let example { return example.path }

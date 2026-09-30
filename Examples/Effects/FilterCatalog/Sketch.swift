@@ -14,7 +14,7 @@ import OllinSamplePhotos
 /// filter keeps and what it throws away then reads at a glance. The design
 /// family's alpha readers (`liquidMetal`, `heatmap`, `gemSmoke`) instead read
 /// the *shape* drawn into a transparent layer (draw a shape, filter it), so
-/// their tiles get a plain heart. The retro glitch and grain ride their
+/// their tiles get a plain heart. The retro glitch and grain animate their
 /// `seed`s, and the distortion family animates its warp parameters, so those
 /// sheets move.
 ///

@@ -205,8 +205,8 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
 // surface flat in its color (the unlit look — set a light to shade the form); with
 // lights it shades that color through a Blinn-Phong material — ambient + per-light
 // diffuse + specular, directional/point/spot. The material's specular strength +
-// specularSharpness ride the vertices' spare w slots. Opacity is the baked color's alpha.
-// Straight-alpha out into the linear target.
+// specularSharpness are stored in the vertices' spare w slots. Opacity is the baked
+// color's alpha. Straight-alpha out into the linear target.
 
 struct MeshOut {
     float4 position [[position]];
@@ -238,7 +238,7 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
 // Depth-tested and written like the surface it rings, so a nearer shape hides a
 // farther one's line. A vertex whose normal points straight at the eye has no
 // screen direction to move in and stays put; its faces are the ones culled.
-// The line's color rides `OllinMaterial.outline` (rgb linear, w = the width);
+// The line's color is stored in `OllinMaterial.outline` (rgb linear, w = the width);
 // alpha is the surface's own baked opacity, straight like the lit fragment's.
 
 struct OutlineOut {
@@ -702,7 +702,7 @@ static inline float transmitThicknessCube(float3 worldPos, float3 n, float3 ligh
 // A point/spot light can carry an IES photometric profile (a real fixture's
 // measured angular intensity, baked to a layer of the texture2d_array at
 // fragment texture 10) and a spot can project a cookie image (a gobo/gel,
-// a layer of the array at fragment texture 11). The packed layer indices ride
+// a layer of the array at fragment texture 11). The packed layer indices are stored in
 // `L.shaping.x/.y` (-1 = none) with the roll about the beam axis in `.z`, and
 // the whole feature is gated by `light.iesEnabled`/`light.cookieEnabled` so a
 // frame without it executes the exact prior instruction stream.
@@ -871,7 +871,7 @@ static inline bool ollin_ray_cone_span(float3 o, float3 r, float tEnd,
     float cd = dot(co, axis);
     float cos2 = cosOuter * cosOuter;
     float a = rd * rd - cos2;
-    if (a >= -1e-6) { span = float2(0.0, tEnd); return true; }  // riding the beam
+    if (a >= -1e-6) { span = float2(0.0, tEnd); return true; }  // ray runs along the beam
     float b = 2.0 * (rd * cd - cos2 * dot(co, r));
     float c = cd * cd - cos2 * dot(co, co);
     float disc = b * b - 4.0 * a * c;
@@ -927,7 +927,7 @@ static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 
         }
         // The sub-march range: a transverse spot crossing is bounded to the
         // ray-cone interval so every stratum lands where the beam is; anything
-        // else (directional, or riding a beam) marches the whole ray under a
+        // else (directional, or running along a beam) marches the whole ray under a
         // quadratic warp t = tEnd*u*u that crowds samples into the near field,
         // where the glow subtends the most screen (uniform steps over a long air
         // ray starve the foreground into visible noise).
@@ -980,7 +980,7 @@ static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 
                 if (cone <= 0.0) continue;
                 // The light leg: the beam itself extincts through the medium on the
                 // way to this sample, so a cone dims along its length and the
-                // in-scatter integral stays bounded (without this leg a ray riding
+                // in-scatter integral stays bounded (without this leg a ray running
                 // inside a cone accumulates without limit, washing the frame out).
                 atten = cone * exp(-ollin_fog_optical_depth(p, toLight, distPL,
                                                             scatterBase, falloff));
@@ -1055,7 +1055,7 @@ static inline void ollin_aerial_split(float tau, float3 rd,
 
 // Aerial perspective over a shaded surface fragment: `ollin_apply_fog`'s twin, one
 // shared optical depth exponentiated per channel, the saturated in-scatter standing
-// where the fog color stood, and the same volumetric march riding on top.
+// where the fog color stood, and the same volumetric march applied on top.
 static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixel,
                                         constant OllinLighting &light,
                                         depth2d_array<float> shadowMap, sampler shadowSamp,
@@ -1432,7 +1432,7 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     s.metal = clamp(a.normal.w, 0.0, 1.0);
     s.rough = clamp(a.position.w, 0.045, 1.0);
     // The rest of the finish, which no vertex slot can carry: the stylized shading model
-    // and the two layers that ride any model. Zero unless the frame declared one.
+    // and the two layers that apply to any model. Zero unless the frame declared one.
     s.fin = hit.fin;
     s.P = origin + dir * q.get_committed_distance();
     return s;
@@ -1470,10 +1470,10 @@ static inline float3 ollin_pbr_coat_f0(float3 f0);
 static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
                                       float3 worldPos, texture2d<float> ltcAmp);
 
-// The scene's direct lights on a traced surface, in the finish that surface wears: as
+// The scene's direct lights on a traced surface, in the finish that surface has: as
 // Lambert for a standard or physically-based one, in cel bands for a toon one, and as a
 // warm-cool ramp off the key light for a Gooch one, plus the rim and the subsurface bleed
-// that ride any of the three. A surface therefore reads in a mirror the way it reads head
+// that apply to any of the three. A surface therefore reads in a mirror the way it reads head
 // on, rather than as the plain diffuse body underneath its finish. An area light adds its
 // exact LTC diffuse integral (the identity transform is exact Lambert over the shape,
 // the same term the primary shading computes), so a panel-lit surface reads the same
@@ -1555,7 +1555,7 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
         direct += mix(f.cool.rgb, f.warm.rgb, t) * s.albedo;
     }
     // The soft translucent bleed, and the Fresnel rim, both as the primary path writes
-    // them: display-linear like the direct terms, so they ride the same exposure divide.
+    // them: display-linear like the direct terms, so they go through the same exposure divide.
     if (wantsSSS) {
         direct += f.sss.w * f.sss.rgb * s.albedo * sssAccum;
     }
@@ -1595,7 +1595,7 @@ static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler 
 // even here, its lobe being wide enough that the prefiltered environment is the honest
 // integral, while the coat reuses the radiance the trace already found along this
 // surface's mirror direction, the same single-trace tradeoff the primary shade takes.
-// Both are inert at zero, so a surface wearing neither returns the color it came in with.
+// Both are inert at zero, so a surface with neither returns the color it came in with.
 static inline float3 ollin_rt_layer_lobes(float3 col, OllinRTSurface s, float NoV,
                                           float3 mirrorDir, float3 tracedRadiance,
                                           texturecube<float> prefilterTex, sampler cubeSamp,
@@ -1723,7 +1723,7 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
 // The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
 // returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
 // flag, so an average over jittered rays carries the fractional hit coverage in alpha
-// (the deferred pass's temporal accumulation / export supersample rides exactly that).
+// (the deferred pass's temporal accumulation / export supersample relies on exactly that).
 // The inline wrapper below folds the miss back to the environment sample, so the two
 // callers stay in step.
 //
@@ -1824,7 +1824,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         float3 diffuse2 = ollin_rt_ambient(s2, irr2)
                         + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
-        // The second surface wears its own layered lobes over that body, its coat taking
+        // The second surface adds its own layered lobes over that body, its coat taking
         // the radiance the walk already found along its mirror direction.
         envAtHit = ollin_rt_layer_lobes(envAtHit, s2, NoVb, reflect(secDir, s2.N), env2,
                                         prefilterTex, cubeSamp, rot, sheenLUT, light);
@@ -1983,7 +1983,7 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
 }
 
 // The view *through* a transmissive surface, traced against the actual scene: the
-// refraction upgrade that rides the same `rayTracedReflections()` opt-in (and accel
+// refraction upgrade that uses the same `rayTracedReflections()` opt-in (and accel
 // structure) as the mirror trace, replacing the environment-refraction sample the way
 // the reflection trace replaces the prefilter sample. `envTransmitted` is that sample,
 // the miss fallback and the glossy blend target (a single ray can't blur, the
@@ -2760,7 +2760,7 @@ static inline float ollin_ltc_line(float3 p1, float3 p2, float3x3 Minv) {
 // One area light's diffuse and specular integrals at a surface point: the shared
 // dispatch over the three shapes (rect / disk / tube), diffuse with the identity
 // transform (an untransformed clamped cosine is exact Lambert), specular with the
-// fitted inverse transform for this (roughness, view angle) texel. Intensity rides
+// fitted inverse transform for this (roughness, view angle) texel. Intensity is carried in
 // the light color as the emitting surface's radiance, so the result is scaled by
 // the caller like any other light's N.L term.
 static inline void ollin_ltc_light(OllinLight L, float3 n, float3 viewDir,
@@ -3301,7 +3301,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 // Physically based: the fitted norm + Fresnel split reconstructs the
                 // GGX response (F0 blends the two channels); diffuse is the exact
                 // Lambert integral over the shape, with the usual metallic kill. Both
-                // ride the light's diffuse color, like the punctual microfacet path.
+                // are scaled by the light's diffuse color, like the punctual microfacet path.
                 float3 F0 = mix(float3(mat.f0), base, mat.metallic);
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
                 if (interference > 0.0) {
@@ -3381,7 +3381,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         // its own cube, or its own traced thickness. The term sits *before* the shadow
         // dim on purpose: a backlit surface stands in its own body's shadow, and
         // dimming by that factor would erase exactly the light being transported.
-        // It rides the shaped/tinted local light copy and the cone attenuation, and
+        // It uses the shaped/tinted local light copy and the cone attenuation, and
         // lands ahead of the screen-space blur, which diffuses it together with the
         // reflectance (the published treatment). The reversed-normal irradiance
         // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
@@ -3876,7 +3876,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                 // Physically based: the fitted norm + Fresnel split reconstructs the
                 // GGX response (F0 blends the two channels); diffuse is the exact
                 // Lambert integral over the shape, with the usual metallic kill. Both
-                // ride the light's diffuse color, like the punctual microfacet path.
+                // are scaled by the light's diffuse color, like the punctual microfacet path.
                 float3 F0 = mix(float3(mat.f0), base, pxMetal);
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
                 if (interference > 0.0) {
@@ -3956,7 +3956,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         // its own cube, or its own traced thickness. The term sits *before* the shadow
         // dim on purpose: a backlit surface stands in its own body's shadow, and
         // dimming by that factor would erase exactly the light being transported.
-        // It rides the shaped/tinted local light copy and the cone attenuation, and
+        // It uses the shaped/tinted local light copy and the cone attenuation, and
         // lands ahead of the screen-space blur, which diffuses it together with the
         // reflectance (the published treatment). The reversed-normal irradiance
         // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
@@ -4404,7 +4404,7 @@ vertex MeshCubeShadowOut ollin_mesh_instanced_point_shadow_vertex(uint vid [[ver
 // refracts back out through a curvature-blended exit normal (an approximation of the
 // far interface a rasterizer can't see), while a thin wall (thickness 0) exits parallel
 // to the view ray, leaving only the microfacet blur and the tint. The transmitted
-// sample reuses the GGX-prefiltered mips, so frosting rides the same lod ramp as
+// sample reuses the GGX-prefiltered mips, so frosting follows the same lod ramp as
 // reflection gloss; as the IOR nears 1 the microfacets stop deflecting rays, so the
 // blur roughness fades to sharp independent of the surface's own roughness. A solid
 // absorbs along the interior span by Beer-Lambert (`mat.attenuation`: what white
@@ -4473,7 +4473,7 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
 // `light.sceneBehind.z` of the border, at once behind the camera, and at once where
 // the read lands on something standing in *front* of the surface (the one thing a
 // screen-space read can get wrong, so it hands that pixel back to the environment
-// rather than printing the foreground inside the glass). Roughness rides the layer's
+// rather than printing the foreground inside the glass). Roughness indexes the layer's
 // own mip chain, so frosting blurs the scene the way the prefiltered cube blurs the
 // environment. Written from the published screen-space transmission technique and
 // the image-space refraction of nearby geometry (README Techniques list).
@@ -4508,7 +4508,7 @@ static inline float ollin_layer_view_depth(float2 uv, float depth, constant Olli
 /// deeper than the layer there) is bisected to the pixel and accepted when the ray
 /// sits on the layer there and the layer is continuous across the crossing; a jump
 /// in the layer's depth is a silhouette the ray passed *behind*, so the march
-/// carries on past it (without bisecting again while it rides behind). The far
+/// carries on past it (without bisecting again while it stays behind). The far
 /// plane is a surface like any other, so a ray that reaches it reads the frame's
 /// own backdrop, the way a thin wall does. A ray that goes behind something and
 /// never comes out again ends hidden from the camera, so it reads the last pixel it
@@ -4535,7 +4535,7 @@ static inline float4 ollin_scene_march(float2 uv0, float zExit, float4 vanishCli
     float dInvZ = -invZ0 * stride / span;
     float2 p = uv0, prevP = uv0, lastFront = uv0;
     float invZ = invZ0, prevInvZ = invZ0;
-    bool behind = false;                                     // riding behind something it passed
+    bool behind = false;                                     // traveling behind something it passed
     // A hidden ray reads the visible texel at its center (see above).
     float2 texel = 1.0 / float2(sceneDepthTex.get_width(), sceneDepthTex.get_height());
     for (int i = 0; i < 64; ++i) {
@@ -4784,7 +4784,7 @@ static inline int3 ollin_gi_unpack_phase(float packed) {
 // four-term weight as `ollin_gi_sample` above (which is kept verbatim as the
 // shipped single-volume fast path; a change here changes both, keep them in
 // step), parameterized by an explicit window so a camera cascade's scrolled grid
-// rides the same math. `phase` is the infinite-scroll wrap: grid coordinate g
+// uses the same math. `phase` is the infinite-scroll wrap: grid coordinate g
 // stores into physical tile (g + phase) mod counts inside the cascade's
 // `probeBase` atlas slot, so a stationary world lattice point keeps its texel as
 // the window scrolls. Returns E/pi UN-scaled by the intensity dial (the wrapper
@@ -5009,7 +5009,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float3 F0 = mix(float3(mat.f0), base, mat.metallic);
     if (mat.clearcoat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), mat.clearcoat);
     // A thin film reflects the surroundings in its own colors, so the whole lobe (and
-    // the energy it leaves for the body under it) rides the film's reflectance here.
+    // the energy it leaves for the body under it) uses the film's reflectance here.
     if (mat.thinFilm > 0.0) {
         F0 = ollin_pbr_film_f0(F0, NoV, mat.thinFilm, mat.thinFilmThickness, mat.thinFilmIor);
     }
@@ -5581,7 +5581,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                                              light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows: the pre-marched screen-space visibility toward each caster,
     // sampled by screen position (the fieldShadowScale rule) and folded into the
-    // same per-caster dimmer the marched fields ride, so each one lands in its own
+    // same per-caster dimmer the marched fields use, so each one lands in its own
     // `lit01` at both shadow sites with no shading-tail change. x == 0 leaves the
     // branch untaken.
     if (light.contactShadow.x > 0.0) {
@@ -5836,7 +5836,7 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
 // What a texture does outside the 0…1 uv square, from `OllinMaterial.uvWrap`
 // (0 clamp, 1 repeat, 2 mirrored repeat). A sampler is a compile-time object in
 // MSL, so the choice is a select between three `constexpr` ones rather than
-// sampler state riding the batch: the branch is uniform across a draw, and the
+// sampler state carried with the batch: the branch is uniform across a draw, and the
 // bound sampler is the clamp case itself, so an unstated material samples through
 // exactly the path it always did. One answer serves every map a material carries,
 // since a surface that tiles tiles all of its maps together.
@@ -6278,7 +6278,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 // a metallic-roughness map (glTF packing: roughness in g, metallic in b), an
 // occlusion map (r), an emissive map, or a constant emissive factor, with the
 // normal-map bend folded in behind its own gate so one pipeline serves every
-// combination. A triplanar projection (texture for meshes with no uvs) rides
+// combination. A triplanar projection (texture for meshes with no uvs) is handled
 // here too, behind its own gate. New code, so it may branch freely; the
 // shipped textured/nm fragments stay verbatim and unmapped frames keep their
 // exact codegen (the verbatim-plus-twin rule).
@@ -6404,7 +6404,7 @@ static inline TriplanarSurface ollin_triplanar_surface(float3 worldPos, float3 r
               + baseTex.sample(tri, uvZ) * w.z;
     out.normal = g;
     if (normalScale <= 0.0) { return out; }
-    // The normal map rides the same three projections, combined per plane: the
+    // The normal map uses the same three projections, combined per plane: the
     // geometric normal is expressed in the plane's own frame, the map's
     // tangent-plane push adds onto it and the height components multiply (the
     // "whiteout" combine, which keeps the map's punch where the surface
@@ -6575,7 +6575,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         if (mat.detailGates.y > 0.0) {
             // Reoriented normal mapping (the quaternion-rotation blend): the
             // detail normal is rotated to follow the surface the base normal
-            // map describes, so the fine grain rides the base relief instead
+            // map describes, so the fine grain follows the base relief instead
             // of overwriting it. The bent normal is recomputed from scratch
             // here (one extra base sample, paid only when detail is on) so
             // the shipped resolve above stays textually untouched.
@@ -6956,7 +6956,7 @@ fragment float4 ollin_mesh_scatter_fragment(MeshScatterOut in [[stage_in]],
 // so the vertex shader derives barycentric coordinates from `vid % 3` with no extra
 // vertex attribute. The fragment lights up where any barycentric coordinate nears 0
 // (an edge), fading the rest. The edge color is the baked vertex color (`stroke`),
-// and the line width rides `position.w` (a wireframe has no specular to store there).
+// and the line width is stored in `position.w` (a wireframe has no specular to store there).
 
 struct MeshWireOut {
     float4 position [[position]];

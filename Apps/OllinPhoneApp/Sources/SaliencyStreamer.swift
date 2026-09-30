@@ -10,14 +10,14 @@ import simd
 /// (each with the model's confidence), and the matching JPEG color frame. On a
 /// LiDAR phone each region's center also lifts to a metric 3D position in ARKit
 /// world space, through the scene-depth map and the camera pose, the same lift
-/// the hands and the text ride. World tracking runs on any device, so the mode
+/// the hands and the text use. World tracking runs on any device, so the mode
 /// always works; without LiDAR the regions simply stay 2D.
 ///
 /// The model is the expensive part, so it runs on its own serial queue behind a
 /// drop-if-busy gate: a frame that arrives while one is being mapped is skipped,
 /// never queued, and the camera never backs up. Everything the lift needs is
 /// copied out of the frame *inside* the delegate callback (the shared
-/// `LiftContext`); only the capture pixel buffer rides to the queue by reference,
+/// `LiftContext`); only the capture pixel buffer is passed to the queue by reference,
 /// held for at most one pass.
 ///
 /// The model is handed the device-hold orientation, so its heat map and boxes
@@ -73,7 +73,7 @@ final class SaliencyStreamer: NSObject, ARSessionDelegate, LightReporting, @unch
 
         // Copy everything the pass needs out of the frame now, on the callback:
         // the frame's buffers are the session's own, and only the capture pixel
-        // buffer (which CoreVideo reference-counts) rides along.
+        // buffer (which CoreVideo reference-counts) is passed along.
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()

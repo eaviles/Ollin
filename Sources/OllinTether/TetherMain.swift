@@ -265,7 +265,7 @@ final class Tether: @unchecked Sendable {
                       + "if the build fails, start there")
             }
             if !plan.assets.isEmpty {
-                print("  assets    \(plan.assets.count) file(s) beside the sketch ride along")
+                print("  assets    \(plan.assets.count) file(s) beside the sketch are bundled too")
             }
         }
 
@@ -529,7 +529,7 @@ enum Shell {
 /// A local port forwarded to a port on the phone through usbmuxd, so the
 /// phone's parameter surface opens at `localhost` with no network between the
 /// two. Plain bytes both ways, one pair of threads per connection; the
-/// WebSocket the surface upgrades to rides through untouched.
+/// WebSocket the surface upgrades to passes through untouched.
 final class USBProxy {
     private let listener: Int32
     private let phonePort: UInt16

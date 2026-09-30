@@ -1,6 +1,6 @@
 import Ollin
 
-/// A textured 3D mesh: a sphere wearing an image, mapped through its UVs and lit by
+/// A textured 3D mesh: a sphere with an image, mapped through its UVs and lit by
 /// the material model. The texture here is built in code (a colorful UV grid), so the
 /// sketch is self-contained, but any `Image` works: `(try? loadImage(...))` then
 /// `mesh.textured(image)`.
@@ -32,7 +32,7 @@ final class TexturedMeshExample: Sketch {
         cameraShowcase(.turntable(period: .tau / 0.4), target: Vector3(0, 0.2, 0), radius: 6,
                     elevation: 0.5, fieldOfView: .pi / 3.4)
 
-        // The floor wears the same grid, tiled and dimmed by its base color so the
+        // The floor uses the same grid, tiled and dimmed by its base color so the
         // globe reads as the subject. A textured mesh still takes the lights, here
         // the auto-lit default rig.
         withState { translate(0, -1.7, 0); drawMesh(floor) }

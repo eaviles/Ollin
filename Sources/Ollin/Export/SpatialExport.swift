@@ -29,7 +29,7 @@ final class SpatialRecorder {
     private var notes: [String] = []
 
     /// Record one mesh draw: the geometry, where it was placed, and the surface
-    /// it was wearing.
+    /// it was drawn with.
     func record(mesh: Mesh, transform: simd_float4x4, surface: Color, finish: Material,
                 wireframe: Bool, matcap: Bool) {
         guard !mesh.isEmpty else { return }
@@ -149,7 +149,7 @@ final class SpatialRecorder {
         var out = MeshMaterial(baseColor: color, texture: base?.texture)
         out.opacity = color.alpha
 
-        // The surface maps ride through as drawn: the relief, the packed
+        // The surface maps pass through as drawn: the relief, the packed
         // metallic-roughness channels, the baked occlusion, the emissive map
         // and its factor (the caller strips the textures when the mesh has no
         // uvs to map them with).
@@ -242,7 +242,7 @@ public extension OllinApp {
     /// One frame of `sketch` as a spatial `Scene`: no window, no GPU.
     ///
     /// The 3D counterpart of `svg(of:)`. Each mesh the frame drew becomes a
-    /// node carrying the transform that placed it, wearing the surface it was
+    /// node carrying the transform that placed it and the surface it was
     /// drawn with, under the frame's own camera and lights. Write it with
     /// `Scene.write(to:)`, or read it, edit it, and draw it back.
     static func spatialScene(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60) -> Scene {

@@ -156,11 +156,11 @@ final class LiveSession {
         self.shaderDir = exists ? dir : nil
 
         // The launch automation (the flag's file, or the sketch's own sibling
-        // `.automation.json`) rides the engine so every swap re-installs it;
+        // `.automation.json`) is held by the engine so every swap re-installs it;
         // the panel's edits replace it through the same seam and write back
         // to the same file.
         core.automation = automation
-        // The cues ride the engine the same way, from the sketch's own sibling
+        // The cues are held by the engine the same way, from the sketch's own sibling
         // `.cues.json`; one that does not exist yet is where the first save lands.
         let cuesPath = ((sketchPath as NSString).deletingPathExtension as NSString)
             .appendingPathExtension("cues.json") ?? sketchPath + ".cues.json"
@@ -194,7 +194,7 @@ final class LiveSession {
         core.attach(runner)
         timeline.runner = runner
         // `--record` starts the take the moment the run is on screen. The
-        // recording then rides the runner across reloads, so saves mid-take
+        // recording then stays with the runner across reloads, so saves mid-take
         // keep filming; closing the window finishes the file.
         if recordOnLaunch {
             recordOnLaunch = false
@@ -333,7 +333,7 @@ final class LiveSession {
     }
 
     /// Evaluate the watched file through the shared engine; the OllinLive
-    /// presentation (prints, the window title) rides the callbacks.
+    /// presentation (prints, the window title) is handled in the callbacks.
     private func compileAndApply() {
         core.evaluate(loader) { [weak self] newSketch in
             guard let self else { return }

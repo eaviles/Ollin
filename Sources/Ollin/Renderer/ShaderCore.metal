@@ -112,10 +112,10 @@ vertex VertexOut ollin_clip_cover_vertex(uint vertexID [[vertex_id]]) {
 }
 
 // Fringe-stroke pipeline (edge-expansion AA). A stroke is expanded
-// CPU-side into a core band plus a ~1px fringe whose AA coverage rides in the
+// CPU-side into a core band plus a ~1px fringe whose AA coverage is stored in the
 // vertex's `aa.x`; the GPU interpolates it across the geometry (1 at the core,
 // ramping to 0 across the fringe), so the edge stays smooth at *any* angle with no
-// fwidth/SDF and no supersampling. The stroke's own color rides in `color` (rgb +
+// fwidth/SDF and no supersampling. The stroke's own color is carried in `color` (rgb +
 // paint alpha). The fragment remaps coverage to perceptual alpha (so thin lines
 // stay dark in linear light) and scales by the paint alpha kept linear (so
 // translucent strokes composite correctly), the two channels kept separate.

@@ -24,7 +24,7 @@ import Ollin
 /// does, so `variation` names the same design there and here, and then
 /// raises it: the board is the lowest layer, the largest element sits on it,
 /// and each smaller one stands a step higher, so the machine's paint order
-/// becomes the relief's depth. Every layer wears lacquer. The board and the
+/// becomes the relief's depth. Every layer is lacquered. The board and the
 /// black elements take a piano finish, the two accent tones a lacquered
 /// color, and the element the pen had left as an outline becomes the one
 /// plate of bare aluminum. A key light rakes across the board and circles

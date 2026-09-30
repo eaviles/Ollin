@@ -920,7 +920,7 @@ fragment float4 ollin_sim_smooth_life(PresentOut in [[stage_in]],
 // gradient subtraction, then carry velocity and dye along the flow by semi-Lagrangian
 // advection. The renderer (`runFluid`) drives the pass order and the many pressure
 // iterations; these are the per-pass kernels. params[0].xy is the texel size; later
-// rows carry each pass's parameters (noted per fragment). Velocity rides in .xy, dye in
+// rows carry each pass's parameters (noted per fragment). Velocity is stored in .xy, dye in
 // .rgb, the scalar fields (curl / divergence / pressure) in .x. The clamp-to-edge
 // sampler approximates a closed boundary — neighbor reads clamp at the border — so no
 // explicit boundary pass is needed.
@@ -1418,7 +1418,7 @@ fragment float4 ollin_sim_turing_normalize(PresentOut in [[stage_in]],
 // MARK: - Watercolor (wet paint on rough paper: the classic three-layer wash model)
 //
 // A multi-field stateful sim like the fluid, driven by the renderer's
-// `runWatercolor`. Three persistent fields ride one texel grid:
+// `runWatercolor`. Three persistent fields share one texel grid:
 //
 //   flow  = (u, v, p, M): water velocity on a staggered grid (u lives on the
 //           texel's right face, v on its top face), pressure at the center, and
@@ -1496,7 +1496,7 @@ fragment float4 ollin_wash_inject_flow(PresentOut in [[stage_in]],
 
 // inject (pigment half): add the mark's premultiplied color channels as pigment
 // concentrations (premultiplication is the dilution: a wetter stroke carries its
-// load thinner). Saturation rides through untouched. The dry-brush gate applies
+// load thinner). Saturation passes through untouched. The dry-brush gate applies
 // here too: a dry brush deposits pigment only on the peaks it wets, or the gaps
 // would hold flat, unsimulated stamps. params[1] = (pressureAdd, dryBrush, 0, 0),
 // shared with the flow inject.

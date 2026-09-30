@@ -6,7 +6,7 @@ import Foundation
 /// edge into the strictly chiral "spectre" form, which tiles only without
 /// reflections. Patches are grown by the substitution system from the
 /// discovery paper: spectres cluster into supertiles (one special pair, the
-/// "mystic", rides in each) and supertiles cluster again, as deep as the
+/// "mystic", sits in each) and supertiles cluster again, as deep as the
 /// bounds require. Generation is rng-free, so the same call always lays the
 /// same patch.
 ///

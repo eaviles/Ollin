@@ -3,13 +3,13 @@ import Ollin
 /// A world made out of noise, then lit like any other solid.
 ///
 /// Nothing here is loaded. On the first frame six compute kernels write the maps a
-/// planet wears, into textures the sketch keeps: the elevation, and then, read off
+/// planet uses, into textures the sketch keeps: the elevation, and then, read off
 /// it, the surface color, the relief, the finish that decides where the sun glints,
 /// the lights of the cities, and the weather. They are made once. They are made
 /// again only when a parameter that shapes them moves, which is what `world` and
 /// `cloudCover` do.
 ///
-/// After that the frame is ordinary 3D. A sphere wears the maps, a second sphere a
+/// After that the frame is ordinary 3D. A sphere carries the maps, a second sphere a
 /// hair above it carries the clouds, a third wider one carries the air, and one
 /// directional light stands in for the sun.
 ///
@@ -112,7 +112,7 @@ final class Planet_Example: Sketch {
         cities.material?.emissiveTexture = lightMap.image
         cities.material?.emissiveColor = .white
 
-        // Cloud, a hair above the ground, its cover riding the texture's alpha
+        // Cloud, a hair above the ground, its cover stored in the texture's alpha
         // and its own relief read back off that cover, so a bank of it catches
         // the sun on one side the way a solid would.
         //

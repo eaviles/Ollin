@@ -11,7 +11,7 @@ import simd
 // read the bound preview surface spec-correctly (linear colors re-encoded to
 // sRGB, textures resolved through the package or the file's folder), cameras
 // resolve from their prims' authored attributes, and the UsdLux lights, the
-// baked transform animation, and the UsdSkel deforming tier ride the same
+// baked transform animation, and the UsdSkel deforming tier come from the same
 // parse (`SceneLoaderUSDLights` / `SceneLoaderUSDAnimation` /
 // `SceneLoaderUSDSkinning`).
 //
@@ -88,7 +88,7 @@ extension Scene {
     /// over its own uvs, the `loadGLTF` rule. Runs after the skinning pass so
     /// the one guard can see everything, and it's glTF's guard verbatim:
     /// generation may *split* a vertex at a mirrored-UV seam, and a node's
-    /// skin/morph/part arrays all ride the vertex order, so a splitting result
+    /// skin/morph/part arrays all follow the vertex order, so a splitting result
     /// is accepted only when nothing else is aligned to it (a model that loses
     /// the map this way still draws, with its geometry normals and a one-time
     /// note at draw).
@@ -227,7 +227,7 @@ extension Scene {
             node.meshParts = meshParts
             node.partsVertexCount = mesh.positions.count
         }
-        // Cameras and lights ride their nodes: the projection / emission
+        // Cameras and lights follow their nodes: the projection / emission
         // halves attach here and the pose resolves from the node's world
         // transform on every `cameras` / `lights` read.
         if prim.typeName == "Camera", !hidden {
@@ -283,7 +283,7 @@ extension Scene {
     // MARK: - Meshes
 
     /// One material-binding GeomSubset resolved for the mesh build: the
-    /// authored face indices and the material those faces wear.
+    /// authored face indices and the material those faces use.
     struct USDMaterialSubset {
         var faces: [Int]
         var material: MeshMaterial?
@@ -342,7 +342,7 @@ extension Scene {
 
         // Material-binding subsets assign each authored face a part slot
         // (first claim wins on an overlap, out-of-range face indices are
-        // ignored); the faces no subset claims form a remainder slot wearing
+        // ignored); the faces no subset claims form a remainder slot using
         // the mesh's own material. No claimed face at all means no parts:
         // the mesh draws whole, exactly the subset-less path.
         var slotOfFace: [Int]?
@@ -369,7 +369,7 @@ extension Scene {
             }
         }
 
-        // Per-corner and per-face data can't ride shared vertices; expand
+        // Per-corner and per-face data can't be stored on shared vertices; expand
         // unless the mesh must stay indexed (the deforming form, where such a
         // set drops instead).
         let expand = !keepIndexed && (normalsSpec?.needsExpansion == true
@@ -677,7 +677,7 @@ extension Scene {
             any = true
         }
 
-        // The normal map: its strength rides the texture's decode, which our
+        // The normal map: its strength is carried in the texture's decode, which our
         // writer authors as scale (2s, 2s, 2, 1) / bias (−s, −s, −1, 0), so
         // half the first scale component recovers it (the plain (2, 2, 2, 1)
         // decode, and an unauthored one, both read back as 1).

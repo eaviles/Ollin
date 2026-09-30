@@ -43,9 +43,9 @@ public enum SceneImport {
                 + " blend shapes, which nothing here drives.")
         }
         if losses.multiMaterialNodes > 0 {
-            notes.append(count(losses.multiMaterialNodes, "part wears", "parts wear")
+            notes.append(count(losses.multiMaterialNodes, "part has", "parts have")
                 + " more than one material. Drawn whole, "
-                + (losses.multiMaterialNodes == 1 ? "it wears" : "they wear") + " the first.")
+                + (losses.multiMaterialNodes == 1 ? "it uses" : "they use") + " the first.")
         }
         if names.sheared > 0 {
             notes.append(count(names.sheared, "part has a transform", "parts have transforms")
@@ -64,7 +64,7 @@ public enum SceneImport {
             partNames: names.assigned,
             notes: notes)
 
-        // A material rides its mesh, so writing a fill here would tint what the
+        // A material comes with its mesh, so writing a fill here would tint what the
         // file already colored. Said once, rather than per part.
         if hasGeometry {
             described.notes.append("Each part keeps the material the file gave it. Call fill or "
@@ -113,7 +113,7 @@ public enum SceneImport {
             reasons.append("the file's transform for this one does not reduce to these three moves")
         }
         if node.wearsSeveralMaterials {
-            reasons.append("several materials in the file; drawn whole, it wears the first")
+            reasons.append("several materials in the file; drawn whole, it uses the first")
         }
         let note = reasons.isEmpty ? nil : reasons.joined(separator: "; ")
 

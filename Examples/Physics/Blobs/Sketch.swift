@@ -15,7 +15,7 @@ import OllinPhysics
 ///
 /// This is the springs-and-collision showcase, and it renders each blob as a
 /// smooth filled `drawCurve` through its rim particles — so the soft-body outline
-/// rides Ollin's curved-shape path while the motion comes from the simulation.
+/// goes through Ollin's curved-shape path while the motion comes from the simulation.
 @main
 final class Blobs: Sketch {
     let world = World()

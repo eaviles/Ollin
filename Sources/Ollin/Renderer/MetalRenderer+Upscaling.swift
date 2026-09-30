@@ -244,7 +244,7 @@ extension MetalRenderer {
                   destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         // The mover texture is always bound (type-valid for the fragment's
-        // texture2d slot); a 1×1 stand-in rides along when the probe has none,
+        // texture2d slot); a 1×1 stand-in is bound when the probe has none,
         // with the bound-flag param telling the shader not to sample it.
         let mw = mover != nil ? width : 1
         let mh = mover != nil ? height : 1

@@ -437,7 +437,7 @@ extension Scene {
 
     /// One BlendShape prim as a morph target over the authored points:
     /// `offsets` land on every point, or on the points `pointIndices` names
-    /// (the sparse form), zeros elsewhere; `normalOffsets` ride only when
+    /// (the sparse form), zeros elsewhere; `normalOffsets` are kept only when
     /// they pair one-to-one with the offsets.
     private static func resolveBlendShape(_ prim: USDPrim, pointCount: Int)
         -> SceneMorphTarget? {

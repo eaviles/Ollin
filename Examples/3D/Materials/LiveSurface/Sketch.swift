@@ -2,7 +2,7 @@ import Ollin
 import OllinSamplePhotos
 import OllinVision
 
-/// The camera as a surface: the webcam's frame worn by a globe, and lighting it.
+/// The camera as a surface: the webcam's frame wrapped around a globe, and lighting it.
 ///
 /// A camera frame is an `Image`, and an `Image` goes wherever an image goes: onto a
 /// mesh through `textured(_:)`, and around the scene as its light through
@@ -20,9 +20,9 @@ import OllinVision
 /// frame, since each capture arrives as a fresh `Image`; and a fresh `Image` builds
 /// its texture the first time it is drawn, so the feed costs one upload per new
 /// frame and nothing while the frame holds. That is cheap for one surface and adds
-/// up across many, so wear the feed on the thing that matters and let the same feed
+/// up across many, so put the feed on the thing that matters and let the same feed
 /// light the rest. Walk past the camera and the globe carries you around with it.
-/// With no camera, or under `--photo`, the globe wears the bundled city instead.
+/// With no camera, or under `--photo`, the globe shows the bundled city instead.
 @main
 final class LiveSurface: Sketch {
 
@@ -34,10 +34,10 @@ final class LiveSurface: Sketch {
         background(Color(hex: 0x0B0C12))
         toneMap(.aces)
 
-        // Before the first frame, the standard waiting notice; nothing to wear yet.
+        // Before the first frame, the standard waiting notice; nothing to show yet.
         guard let frame = feed.frame else { drawFrame(feed); return }
 
-        // The room as the light: the same frames the globe wears.
+        // The room as the light: the same frames the globe shows.
         environment(.feed(feed))
 
         cameraShowcase(.sway(amplitude: 0.3, period: .tau / 0.08), target: .zero,
@@ -51,7 +51,7 @@ final class LiveSurface: Sketch {
             drawMesh(globe.textured(frame))
         }
 
-        // A chrome ball beside it, reflecting the room the globe is wearing.
+        // A chrome ball beside it, reflecting the room the globe is showing.
         withState {
             translate(2.9, -0.9, 0.6)
             fill(.white)

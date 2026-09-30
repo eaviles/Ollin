@@ -385,7 +385,7 @@ static inline int2 ollin_gi_gutter_source(int2 local, int interior) {
 // params[0] = (raysPerProbe, seed, hysteresis, probeCount); params[1] = (history valid,
 // farCap, live-response heuristics on, cascade count: 0 = the shipped single-volume
 // layout). With camera cascades, params[2 + c] = (local probe count, moment cap,
-// spacing, 0) for cascade c + 1, and per-probe validity rides the offsets texture's
+// spacing, 0) for cascade c + 1, and per-probe validity is stored in the offsets texture's
 // w channel (texture 2): a probe whose plane just scrolled in reads 0 there, so its
 // stale texels blend exactly like a refit's (fresh at full weight, the reference's
 // clear-then-zero-hysteresis semantics in one step).
@@ -478,7 +478,7 @@ fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
     for (int i = 0; i < rays; i++) {
         float w = pow(max(0.0, dot(texelDir, rot * ollin_gi_sf_dir(i, rays))), 50.0);
         if (w < 0.001) { continue; }
-        // A backface's shortened depth rides in as a negative (the relocation flag);
+        // A backface's shortened depth arrives as a negative (the relocation flag);
         // the moments want its magnitude.
         float d = min(abs(surfels.read(uint2(uint(i + OLLIN_GI_FIXED_RAYS), uint(probe))).a), cap);
         sum += w * float2(d, d * d);
@@ -597,7 +597,7 @@ fragment float4 ollin_gi_scroll(PresentOut in [[stage_in]],
     if (int(in.position.y) > 0) { return float4(0.0); }
     float4 prev = previous.read(uint2(uint(probe), 0u));
     int cascade = probe >> 9;
-    // Cascade 0 (the scene volume) never scrolls; its texels ride through.
+    // Cascade 0 (the scene volume) never scrolls; its texels pass through.
     if (cascade < 1 || cascade >= int(params[0].x)) { return prev; }
     int slot = 3 * (cascade - 1);
     float4 cp = params[1 + slot];

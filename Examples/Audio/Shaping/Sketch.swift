@@ -52,7 +52,7 @@ final class Shaping: Sketch {
             }
         case .crush:
             // Hold each sample for a while instead of letting the next one
-            // through. The memory of what is being held rides in as `state:`
+            // through. The memory of what is being held is passed in as `state:`
             // and comes back on every block.
             let hold = max(1, Int(amount * 3))
             return .custom("crush", state: (left: Float(0), right: Float(0), count: 0)) { sound, held in

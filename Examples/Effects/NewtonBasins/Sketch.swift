@@ -5,7 +5,7 @@ import Ollin
 /// is the step every numeric solver takes, z -= p(z) / p'(z), and far from the
 /// roots it cannot make up its mind: wherever two basins meet, every other one
 /// shows up too, at every scale, so the boundaries are dust where all the
-/// colors touch. The roots ride slow orbits here (one of them wanders in and
+/// colors touch. The roots move on slow orbits here (one of them wanders in and
 /// out on a loop of its own), so the basins pour from one arrangement into the
 /// next, and `relaxation` scales the step: below 1 the method creeps and the
 /// basins fatten, above 1 it overshoots and they spiral and shed islands. A

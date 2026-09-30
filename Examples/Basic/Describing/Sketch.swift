@@ -35,7 +35,7 @@ final class Describing: Sketch {
         let phase = loopProgress(over: day, phase: 0.06)
         let daylight = max(0, sin(phase * .tau))     // 0 at night, 1 at noon
 
-        // The sun rides a half circle over the bay, and drops below it at night.
+        // The sun moves along a half circle over the bay, and drops below it at night.
         let horizon = height * 0.68
         let sunRadius = width * 0.055
         let sunCenter = Vector2(width * (0.1 + 0.8 * phase),

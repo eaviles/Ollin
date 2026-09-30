@@ -7,7 +7,7 @@ import OllinOSC
 /// The host's own performance surface, reachable from a pad, a fader, or
 /// another machine.
 ///
-/// Evaluate, evaluate fresh, hide the code, ride the code's backdrop and
+/// Evaluate, evaluate fresh, hide the code, adjust the code's backdrop and
 /// size, and record: the things a performer reaches for mid-set, each
 /// answerable from MIDI or OSC as well as from the keyboard. A host
 /// preference, never part of the sketch. A sketch's own `@Param` bindings
@@ -47,7 +47,7 @@ final class PerformanceControls {
             }
         }
 
-        /// Whether the action rides a value (a fader) rather than a press.
+        /// Whether the action takes a value (a fader) rather than a press.
         var isContinuous: Bool { self == .backdrop || self == .codeSize }
 
         /// Whether a press turns the action over rather than firing it once.
@@ -245,7 +245,7 @@ final class PerformanceControls {
     }
 
     /// Binds `trigger` to whatever is learning, if it can drive it: a press
-    /// cannot ride a fader's action. Returns whether it was taken.
+    /// cannot drive a fader's action. Returns whether it was taken.
     private func takeForLearning(_ trigger: Trigger) -> Bool {
         guard let action = learning else { return false }
         if action.isContinuous, case .note = trigger { return false }

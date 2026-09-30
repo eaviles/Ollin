@@ -38,7 +38,7 @@ public struct Scene: Sendable {
     /// The root nodes of the scene graph, in document order.
     public var nodes: [SceneNode]
     /// Every camera the file authored, resolved to world space in traversal
-    /// order through the tree's *current* transforms, so a camera rides its
+    /// order through the tree's *current* transforms, so a camera follows its
     /// node: move the node (by hand or by an applied animation) and the camera
     /// moves with it. Assigning this property replaces the authored cameras
     /// with your own fixed array, which no longer follows the nodes.
@@ -49,7 +49,7 @@ public struct Scene: Sendable {
         set { fixedCameras = newValue }
     }
     /// Every light the file authored, resolved to world space in traversal
-    /// order through the tree's *current* transforms, so a light rides its
+    /// order through the tree's *current* transforms, so a light follows its
     /// node: move the node (by hand or by an applied animation) and the light
     /// moves with it. Ollin's punctual lights have no distance falloff, so the
     /// file's physical intensities (lux, candela) can't carry over as-is:
@@ -145,7 +145,7 @@ public struct Scene: Sendable {
         return any ? Box3(min: lo, max: hi) : .zero
     }
 
-    // MARK: - Node-riding cameras and lights
+    // MARK: - Cameras and lights attached to nodes
 
     /// Walk the tree depth-first, handing each node its composed world
     /// transform. Package-visible: the physics satellite walks it to bake
@@ -186,7 +186,7 @@ public struct Scene: Sendable {
         }
     }
 
-    /// Rescale every node-riding light spec so the brightest of each kind is 1
+    /// Rescale every node's light spec so the brightest of each kind is 1
     /// (specs arrive from the loaders carrying the file's raw brightness).
     static func normalizeLightSpecs(in nodes: inout [SceneNode]) {
         var kindMax: [Light.Kind: Double] = [:]
@@ -280,7 +280,7 @@ public struct SceneNode: Sendable {
     /// The mesh's morph targets: per-vertex displacements `weights` blends in.
     var morphTargets: [SceneMorphTarget] = []
     /// The mesh's per-material slices: index groups into the mesh's own vertex
-    /// arrays, each wearing one of the file's materials. Loaders fill these
+    /// arrays, each using one of the file's materials. Loaders fill these
     /// only when a mesh genuinely carries more than one material binding
     /// (glTF primitives with distinct materials, USD material-binding
     /// GeomSubsets); `drawScene` then draws each slice with its material.
@@ -290,12 +290,12 @@ public struct SceneNode: Sendable {
     /// a mesh swapped under the node draws whole (with its own material)
     /// rather than mis-indexing stale parts.
     var partsVertexCount = 0
-    /// The authored light riding this node, in the node's own frame (emitting
+    /// The authored light attached to this node, in the node's own frame (emitting
     /// down local -z, extents at authored size, intensity already normalized);
     /// `Scene.lights` resolves it through the node's world transform on every
     /// read, so moving the node carries the light.
     var lightSpec: SceneLightSpec?
-    /// The authored camera riding this node: the projection and clip range
+    /// The authored camera attached to this node: the projection and clip range
     /// (the pose comes from the node's world transform on every `Scene.cameras`
     /// read, so moving the node carries the camera).
     var cameraSpec: SceneCameraSpec?
@@ -358,7 +358,7 @@ public struct SceneNode: Sendable {
 }
 
 /// One per-material slice of a node's mesh: the triangles (as indices into the
-/// node mesh's vertex arrays) that wear one material. The mesh itself stays
+/// node mesh's vertex arrays) that use one material. The mesh itself stays
 /// whole, one vertex order the deform data (morph targets, skin weights)
 /// aligns with, so posing happens once and each slice draws from the posed
 /// arrays.
@@ -369,7 +369,7 @@ struct SceneMeshPart: Sendable {
     var material: MeshMaterial?
 }
 
-// MARK: - Node-riding light and camera payloads
+// MARK: - Light and camera payloads attached to nodes
 
 /// A file-authored light in its node's local frame: everything but the pose.
 /// The light emits down the node's local -z (both formats' convention), area
@@ -556,7 +556,7 @@ extension Scene {
                     node.vertexWeights = meshData.weights
                 }
             }
-            // Cameras and lights ride their nodes: attach the projection /
+            // Cameras and lights follow their nodes: attach the projection /
             // emission halves here; the pose resolves from the node's world
             // transform on every `cameras` / `lights` read.
             if let ci = n.camera, let defs = gltf.cameras, defs.indices.contains(ci) {

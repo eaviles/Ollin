@@ -159,7 +159,7 @@ struct GeometryBatch {
     /// `instancedMeshVertices` (local space, indices expanded), plus the placement
     /// run in `meshInstances`. Carried as explicit counts rather than next-batch
     /// arithmetic: an instanced draw is always its own batch, and no other batch
-    /// creator records these starts. A GPU-resident instance buffer rides
+    /// creator records these starts. A GPU-resident instance buffer uses
     /// `particleBuffer`/`particleCount` instead (`meshInstanceCount` then 0).
     var instancedVertexStart: Int = 0
     var instancedVertexCount: Int = 0
@@ -171,14 +171,14 @@ struct GeometryBatch {
     var field: MeshField?
     var fieldTransform: simd_float4x4 = matrix_identity_float4x4
     /// The strand parameters for a `.strands` batch (`nil` otherwise); the
-    /// draw-time CTM rides `fieldTransform` like a mesh field's.
+    /// draw-time CTM is carried in `fieldTransform` like a mesh field's.
     var strandField: StrandField?
     /// The wave field, look, and grid for an `.ocean` batch (`nil` otherwise);
-    /// the draw-time CTM rides `fieldTransform`, like the two fields above.
+    /// the draw-time CTM is carried in `fieldTransform`, like the two fields above.
     var oceanDraw: OceanDraw?
     /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
     /// the depth buffer as true clip-space depth against the active camera's near/far
-    /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
+    /// (the conversion coefficients are carried in the quad's vertex tint). `nil` for the
     /// normalized gray path — exactly one of `depthImage`/`metricDepth` is set.
     var metricDepth: MetricDepthMap?
     /// The surface material for a *textured* `.mesh3D` batch — its `texture` is bound
@@ -193,7 +193,7 @@ struct GeometryBatch {
     var finish = OllinMaterial()
     /// Whether a `.mesh3D` batch draws as a wireframe (triangle edges only), selecting
     /// the wireframe pipeline. The edge color is baked into the vertices and the line
-    /// width rides `position.w`; lighting/material are unused.
+    /// width is stored in `position.w`; lighting/material are unused.
     var meshWireframe = false
     /// Whether a `.mesh3D` batch is the live ground-grid overlay (a y=0 plane drawn
     /// through `ollin_grid_fragment`), selecting the grid pipeline + its no-depth-write
@@ -292,7 +292,7 @@ final class Drawer {
     var hasTransparentBackground: Bool { backgroundColor.alpha < 1 }
     var fillPaint: Paint? = .color(.white)     // default: white fill
     var strokePaint: Paint? = .color(.black)   // default: black stroke
-    /// Whether the sketch has set a stroke itself (any `stroke(...)` call; rides
+    /// Whether the sketch has set a stroke itself (any `stroke(...)` call; kept on
     /// the state stack like the paint). Outline text decorates with the stroke
     /// only once this is true: the initial black shape stroke never outlines
     /// glyphs, where a 1px opaque band straddling every contour eats thin light
@@ -1155,7 +1155,7 @@ final class Drawer {
     }
 
     /// Record one clip push as a batch: the region's fill triangles join `vertices`
-    /// (they ride the triangle buffer) under a `.clipPush` batch at `level`.
+    /// (they go into the triangle buffer) under a `.clipPush` batch at `level`.
     private func appendClipPush(_ clipVertices: [OllinVertex], level: Int) {
         batches.append(GeometryBatch(kind: .clipPush, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
@@ -1810,7 +1810,7 @@ final class Drawer {
     /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
     /// Like `beginImageBatch`, it always appends (each draw carries its own buffer)
     /// and resets `currentKind` so a following primitive reopens its own batch. The
-    /// particle buffer's positions are in canvas space, so it rides no CTM.
+    /// particle buffer's positions are in canvas space, so no CTM applies to it.
     func recordParticles(_ buffer: ComputeBindable, count: Int, style: ParticleStyle = .marks) {
         // A particle batch reads a compute buffer the GPU rewrites every frame;
         // there's nothing static to retain.
@@ -1926,7 +1926,7 @@ final class Drawer {
             }
             return
         }
-        // A width profile has no single `stroke-width` to ride on, so the stroke
+        // A width profile has no single `stroke-width` to express it, so the stroke
         // exports as the region it covers: a filled outline, still vector and still
         // true to size. The fill, if any, stays the shape it was.
         if let visibleStroke, !strokeProfileShape.isUniform,
@@ -2011,7 +2011,7 @@ final class Drawer {
     var transformIsIdentity = true
 
     /// The 3D model matrix — the spatial sibling of `transform`, for geometry that
-    /// rides the `camera3D` rather than the 2D canvas (point clouds today). Built by
+    /// goes through the `camera3D` rather than the 2D canvas (point clouds today). Built by
     /// the 3D `translate`/`rotate*`/`scale` overloads and reset to identity each
     /// frame. It composes *inside* the camera: a point reaches clip space as
     /// `projection · view · model · p`. Kept separate from the 2D affine so the 2D
@@ -2185,7 +2185,7 @@ final class Drawer {
         let n = max(1, folds)
         guard n > 1 || mirrored else { symmetryFolds = nil; return }
         // Conjugate each local fold by the CTM: F = C · R · C⁻¹, so a replica's
-        // effective CTM is F · C · L (later transforms L ride inside the fold).
+        // effective CTM is F · C · L (later transforms L apply inside the fold).
         // A degenerate CTM (zero scale) can't be conjugated; fold about the
         // canvas origin instead of poisoning the geometry with non-finite math.
         let base = transform
@@ -2496,7 +2496,7 @@ final class Drawer {
     /// Give subsequent meshes an ink line of `width` canvas pixels in `color` (see
     /// `Material.outlineWidth`). Drawing state, saved by `withState`; `noOutline()`
     /// takes it off. A width change breaks the solid mesh batch, since the line's
-    /// width and color ride the per-batch material uniform.
+    /// width and color are carried in the per-batch material uniform.
     func outline(width: Double, color: Color) {
         currentMaterial.outlineWidth = max(0, width)
         currentMaterial.outlineColor = color
@@ -2861,7 +2861,7 @@ final class Drawer {
         // return below on purpose: fog is a property of the air, so an unlit
         // (`noLights()`) scene still fogs; only the shaft march needs the lights.
         if aerialActive {
-            // Aerial perspective rides the same slots under mode 2 (every fog gate
+            // Aerial perspective uses the same slots under mode 2 (every fog gate
             // checks w > 0, so the carriers stay armed and pick the model with one
             // compare), plus the sun and the wavelength split in the two tail fields.
             // A nil density derives from the camera framing (the contact-shadow
@@ -3196,7 +3196,7 @@ final class Drawer {
         packed.reserveCapacity(count)
         for i in 0..<count {
             let light = active[i]
-            // Light shaping rides two texture arrays; the packed layer index is the
+            // Light shaping uses two texture arrays; the packed layer index is the
             // profile/cookie's position in the frame's deduped list (the renderer
             // bakes the arrays from these).
             var profileLayer = -1, cookieLayer = -1
@@ -3246,7 +3246,7 @@ final class Drawer {
                                   Float(Color.srgbToLinear(s.green) * i),
                                   Float(Color.srgbToLinear(s.blue) * i), 0)
         l.softness = Float(light.softness)   // 0 = hard Lambert (unchanged)
-        // How far this light carries, riding the position's free lane. 0 is the
+        // How far this light carries, stored in the position's free lane. 0 is the
         // unbounded model every light had before, and the shader's window returns
         // exactly 1 for it, so a light without a reach packs and shades identically.
         let reach = Float(max(0, light.reach ?? 0))
@@ -3261,7 +3261,7 @@ final class Drawer {
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
                                       Float(light.position.z), reach)
             // The fixture axis an IES profile aims along (straight down by
-            // default) rides the otherwise-unused direction slot.
+            // default) is stored in the otherwise-unused direction slot.
             let axis = light.direction.length > 0 ? light.direction.normalized
                                                   : Vector3(0, -1, 0)
             l.direction = SIMD4<Float>(Float(axis.x), Float(axis.y), Float(axis.z), 0)
@@ -3279,7 +3279,7 @@ final class Drawer {
             l.cosInner = Float(cos(inner))
         case .rectangle, .disk:
             // A flat panel: center + unit normal (the way it faces, like a spot's axis)
-            // + an orthonormal tangent frame with the half-extents riding the w slots.
+            // + an orthonormal tangent frame with the half-extents stored in the w slots.
             // The frame is right-handed (tangent × bitangent = the facing normal), which
             // the shader's corner winding depends on for its one-sided front test.
             l.kind = light.kind == .rectangle ? 3 : 4
@@ -3315,7 +3315,7 @@ final class Drawer {
     }
 
     /// Record a 3D point cloud, drawn as camera-facing disc splats through the
-    /// active camera. World-space points (they ride the camera, not the 2D
+    /// active camera. World-space points (they go through the camera, not the 2D
     /// transform stack). A no-op without a camera or when the cloud is empty.
     func drawPointCloud(_ cloud: PointCloud) {
         // A recording has no camera (it's per-frame state); the points record
@@ -3437,7 +3437,7 @@ final class Drawer {
     }
 
     /// Record a solid 3D mesh, drawn through the active camera with depth testing.
-    /// World-aware geometry (it rides the camera and the 3D transform stack, not the
+    /// World-aware geometry (it goes through the camera and the 3D transform stack, not the
     /// 2D affine): the model matrix bakes into each position and its normal matrix
     /// into each normal CPU-side, so the shader only applies the camera. Triangle
     /// indices are expanded into the flat per-frame `meshVertices` list. The surface
@@ -3481,7 +3481,7 @@ final class Drawer {
         let uvsAligned = mesh.uvs.count == mesh.positions.count
         // Triplanar projection: the base texture (and any normal map) read by
         // world position instead of uvs, so a mesh with none at all (a marched
-        // isosurface, a grown or reconstructed shell) can wear a picture. It
+        // isosurface, a grown or reconstructed shell) can show a picture. It
         // needs no uvs and no tangents. The rest of the surface-map set stays
         // uv-mapped, the named cut, so a triplanar mesh carrying one draws
         // without it and says so once.
@@ -3556,12 +3556,12 @@ final class Drawer {
         // map, an emissive map, or a constant emissive factor) routes to the
         // textured path's second twin. The map textures need per-vertex uvs like
         // the base texture (degrading honestly without them); a constant emissive
-        // factor alone needs none. The gates ride the per-batch finish (the
+        // factor alone needs none. The gates are carried in the per-batch finish (the
         // `normalScale` pattern), doubling as the encode-side pipeline pick and
         // the shader-side sampling gates.
         var mrMapped = false, occlusionMapped = false, emissiveMapped = false
         var emissiveOn = false
-        // The surface glowing in its own color rides the same pipeline as the
+        // The surface glowing in its own color uses the same pipeline as the
         // constant factor (it multiplies the fragment's resolved base, so it
         // needs no map and no uvs of its own) and the same routing rule.
         var selfGlow = false
@@ -3581,7 +3581,7 @@ final class Drawer {
                 noteOnce("a surface map (metallic-roughness / occlusion / emissive) needs per-vertex uvs; drawing the mesh without it.")
             }
         }
-        // A texture-wearing mesh whose uvs are missing draws flat on the solid
+        // A textured mesh whose uvs are missing draws flat on the solid
         // path; keep it there rather than let an emissive factor route it to a
         // sampling pipeline (which would read the base texture at uv 0).
         // A height map routes here too: the parallax march lives in the
@@ -3595,7 +3595,7 @@ final class Drawer {
         } else if let matcap {
             beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap)
         } else if surfaceMapped {
-            // The gates ride the finish like `normalScale` below; the mesh
+            // The gates are carried in the finish like `normalScale` below; the mesh
             // material's own metallic/roughness fold in as the map's factors
             // (the file's intent), composing with the drawing-state finish the
             // shader then multiplies by the sampled channels.
@@ -3610,7 +3610,7 @@ final class Drawer {
                 finish.uvWrap = mat.wrap.gpuValue
                 if triplanar {
                     // The gate carries tiles per world unit; the projected
-                    // normal map needs no tangent basis, so its gate rides the
+                    // normal map needs no tangent basis, so its gate depends on the
                     // map alone (the drawing-state finish never sets either).
                     finish.triplanar = Float(1 / mat.triplanarScale)
                     if mat.normalTexture != nil, mat.normalScale > 0 {
@@ -3647,7 +3647,7 @@ final class Drawer {
             }
             beginMeshBatch(material: material, finish: finish)
         } else if textured {
-            // The map's strength rides the per-batch finish uniform: it's
+            // The map's strength is carried in the per-batch finish uniform: it's
             // per-mesh state (the drawing-state `material(_:)` knows nothing of
             // it), and nonzero only when the map actually draws, so it doubles
             // as the encode-side and shader-side gate.
@@ -3678,7 +3678,7 @@ final class Drawer {
             color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
         }
         // The material finish is bound per batch as an `OllinMaterial` uniform; two values
-        // also ride the otherwise-spare vertex `w` slots for the ray-traced reflection path
+        // also go in the otherwise-spare vertex `w` slots for the ray-traced reflection path
         // to read: metalness in normal.w and roughness in position.w. A physically-based lit
         // mesh bakes its own metalness + roughness, so a reflection hit shades it as the metal
         // it is (its tinted environment reflection); a non-PBR lit mesh bakes metalness 0 +
@@ -3723,7 +3723,7 @@ final class Drawer {
                 // normal's inverse-transpose), then packs as four Float16 bit
                 // patterns into the vertex's spare 8 bytes; the shader reads
                 // them back as a native half4 and renormalizes after
-                // interpolation. A height map rides the same basis (the
+                // interpolation. A height map uses the same basis (the
                 // parallax march projects the eye ray through it), and a
                 // detail normal map bends through it too.
                 let t = mesh.tangents[i]
@@ -3842,7 +3842,7 @@ final class Drawer {
     private func appendInstancedBaseMesh(_ mesh: Mesh) -> (start: Int, count: Int) {
         // The vertex color is the current fill tinted by the material's base
         // color, times any per-vertex mesh colors (the solid-mesh rules); the
-        // PBR metalness/roughness ride the spare w slots like the solid path.
+        // PBR metalness/roughness go in the spare w slots like the solid path.
         let color = meshSurfaceColor.simd4 * (mesh.material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
         let pbr = currentMaterial.shading == .physicallyBased
         let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
@@ -4474,7 +4474,7 @@ final class Drawer {
     /// wrap a primitive's fill section and its stroke section separately (a
     /// stroke funnel reached *inside* a wrapped body passes through untouched;
     /// see `isReplicating`). SDF instances and combinator groups replicate at
-    /// their own append sites instead (a matrix column ride, cheaper than a
+    /// their own append sites instead (a matrix column rewrite, cheaper than a
     /// range copy).
     func replicated(_ body: () -> Void) {
         guard let folds = symmetryFolds, !isReplicating else { body(); return }

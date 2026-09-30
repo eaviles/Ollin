@@ -89,7 +89,7 @@ final class DeviceHaptics: @unchecked Sendable {
     /// The system events for ours, in order.
     ///
     /// A tap is an instant, so it carries strength and crispness only. A hum
-    /// carries its length as well, and its fades ride the system's own
+    /// carries its length as well, and its fades use the system's own
     /// envelope, which is measured as a share of the event rather than in
     /// seconds. So a fade arrives in the right direction and about the right
     /// size, not to the millisecond.

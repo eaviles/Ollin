@@ -89,7 +89,7 @@ package struct ScenePhysicsBody: Sendable {
     /// Where the body stands, and which way it faces.
     package var position: Vector3
     package var rotation: SIMD4<Double>
-    /// The shapes it wears, each posed inside it.
+    /// The shapes it carries, each posed inside it.
     package var shapes: [ScenePhysicsShape]
     package var mass: Double?
     package var density: Double?
@@ -291,7 +291,7 @@ extension Scene {
             guard let built = buildUSDMesh(prim, keepIndexed: false, material: nil)
             else { return nil }
             let mesh = built.mesh
-            // `none` keeps the triangles, which only a static body may wear;
+            // `none` keeps the triangles, which only a static body may use;
             // every other approximation is a hull, which any body may.
             let approximation = prim.attribute("physics:approximation")?
                 .value?.usdToken ?? "none"

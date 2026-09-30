@@ -5,7 +5,7 @@ import Ollin
 ///
 /// The table holds, at every texel, the sum of everything above and to the left of it.
 /// Subtract the two edges, add the corner back, and you have the sum over any rectangle
-/// at all for the same price. Two filters ride on that here:
+/// at all for the same price. Two filters are built on that here:
 ///
 /// - **`.boxBlur`** averages the square around each pixel, and a radius of 400 costs what
 ///   a radius of 4 costs. Drag `blur` to the top and notice that nothing slows down.

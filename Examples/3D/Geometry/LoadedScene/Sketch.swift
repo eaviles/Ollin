@@ -12,7 +12,7 @@ import Foundation
 /// sketch can draw whole (`drawScene`), while still reaching one node by name to
 /// drive it from `draw()`. The view opens on the file's own camera and hands it
 /// to you (`cameraControl(from:)`): drag to orbit, scroll to dolly, right-drag
-/// to pan. Lights ride their nodes, so a light's carrier moved from `draw()`
+/// to pan. Lights follow their nodes, so a light's carrier moved from `draw()`
 /// (or by a scene animation) carries its light along.
 ///
 /// The bundled `scene.gltf` is a small stage authored by the project itself

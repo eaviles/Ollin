@@ -61,7 +61,7 @@ import COllinShaders
 /// bends it, `thickness` makes the body solid (with `attenuationColor` /
 /// `attenuationDistance` deepening the tint the farther light travels inside).
 ///
-/// A **thin film** rides it too (`thinFilm`, with its thickness in nanometers): a
+/// A **thin film** can be added to it too (`thinFilm`, with its thickness in nanometers): a
 /// transparent skin on the surface whose two faces reflect the same light out of step,
 /// so the colors that survive depend on the film's thickness and on the angle you look
 /// from. That is where a soap bubble, anodized titanium, oil on a puddle, and the inside
@@ -69,7 +69,7 @@ import COllinShaders
 /// computed from the interference itself (use the `.soapFilm(thickness:)` helper or the
 /// `.anodized` / `.oilOnWater` / `.nacre` built-ins).
 ///
-/// Two more layered lobes ride the physically-based finish: **clearcoat** (a thin
+/// Two more layered lobes sit over the physically-based finish: **clearcoat** (a thin
 /// polished lacquer over the base, at its own `clearcoatRoughness`: car paint, piano
 /// lacquer; use the `.carPaint(roughness:)` helper or the `.lacquer` built-in) and
 /// **sheen** (soft fabric fuzz catching light at the silhouette, tinted by
@@ -196,7 +196,7 @@ public struct Material: Equatable, Sendable {
     /// it changes with the angle you look from. `0` (the default) is off.
     /// Ignored unless `shading == .physicallyBased`.
     ///
-    /// Distinct from `iridescence`, the stylized rim rainbow that rides any shading
+    /// Distinct from `iridescence`, the stylized rim rainbow that works with any shading
     /// model: this one is measured in nanometers and computed from the physics, so it
     /// keeps its color under a moving light and reads as a real film.
     public var thinFilm: Double
@@ -296,7 +296,7 @@ public struct Material: Equatable, Sendable {
     /// pushed out along its normal by this many pixels on screen and the faces toward
     /// the eye culled, so only the rim past the silhouette shows. It holds its width at
     /// any distance, like a pen, and takes the depth test, so a nearer shape hides a
-    /// farther one's line. Rides any shading model (`.toon` is the natural home, the
+    /// farther one's line. Works with any shading model (`.toon` is the natural home, the
     /// cartoon's outline), and never a wireframe, matcap, instanced, or field draw;
     /// the path-traced export leaves the line out. A hard-edged mesh (a box) opens a
     /// small notch at each corner, because each face's hull moves off along its own
@@ -438,7 +438,7 @@ public struct Material: Equatable, Sendable {
         let sc = Material.linear(sheenColor, alpha: sheenRoughness)
         m.sheenColor = SIMD4<Float>(sc.x * Float(sheen), sc.y * Float(sheen),
                                     sc.z * Float(sheen), sc.w)
-        // The scattering falloff ratios ride raw (they are relative widths, not a
+        // The scattering falloff ratios pass through raw (they are relative widths, not a
         // display color; linearizing would bend the ratios the sketch wrote), floored
         // just above zero so the kernel's per-channel stretch can't divide by zero.
         m.scatter = SIMD4<Float>(Float(max(0.001, scatteringColor.red)),
@@ -505,7 +505,7 @@ public extension Material {
 
     // Iridescent family — a Fresnel rainbow sheen over a glossy base.
 
-    /// A general pearlescent finish: a broad rainbow sheen riding a glossy rim.
+    /// A general pearlescent finish: a broad rainbow sheen over a glossy rim.
     static let iridescent = Material(specular: 0.6, specularSharpness: 80,
                                      iridescence: 0.85, iridescenceScale: 1.0)
 

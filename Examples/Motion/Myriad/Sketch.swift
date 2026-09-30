@@ -32,7 +32,7 @@ final class Myriad: Sketch {
         }
     }
 
-    /// 8,100 circles, radius and color riding one noise field.
+    /// 8,100 circles, radius and color driven by one noise field.
     private func drawCircleField() {
         let g = grid(columns: 90, rows: 90)
         for dot in g.points {

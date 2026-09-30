@@ -14,8 +14,8 @@ import simd
 /// units, so you place and orient them with `translate`/`rotate`/`scale` before
 /// `drawMesh`.
 ///
-/// Positions live in the camera's right-handed, y-up world space — *not* the 2D
-/// canvas — so a mesh rides the camera and the 3D transform stack, not the 2D
+/// Positions live in the camera's right-handed, y-up world space (*not* the 2D
+/// canvas), so a mesh follows the camera and the 3D transform stack, not the 2D
 /// affine. A primitive is cheap to rebuild each frame; for a dense generated
 /// sphere you can also build the `Mesh` once and `drawMesh` it every frame.
 public struct Mesh: Sendable {
@@ -111,7 +111,7 @@ public extension Mesh {
                     material: material, tangents: tangents)
     }
 
-    /// A copy wearing `image` as its texture (tinted by `baseColor`, default white).
+    /// A copy with `image` as its texture (tinted by `baseColor`, default white).
     /// The texture maps through the mesh's `uvs`, so use it on a mesh that carries
     /// them — a generator like `.sphere`/`.plane` or a loaded model — else the
     /// surface draws flat in `baseColor`. Mirrors `normalized(scale:)`: a value
@@ -137,7 +137,7 @@ public extension Mesh {
         return copy
     }
 
-    /// A copy wearing the rest of the standard surface-map set: a
+    /// A copy with the rest of the standard surface-map set: a
     /// metallic-roughness map (roughness in green, metallic in blue, the
     /// standard packing), an ambient-occlusion map (red channel), and an
     /// emissive map or constant emissive color. Only the maps you pass change;
@@ -149,7 +149,7 @@ public extension Mesh {
     /// show the maps as authored (attaching one here sets the mesh material's
     /// own factors to 1 for the same reason). An emissive map with no
     /// `emissiveColor` emits at full strength (white); pass a color to tint or
-    /// dim it, or alone to emit a constant glow. The maps ride the mesh's
+    /// dim it, or alone to emit a constant glow. The maps use the mesh's
     /// `uvs`, like a texture.
     ///
     /// ```swift
@@ -203,13 +203,13 @@ public extension Mesh {
         return copy
     }
 
-    /// A copy wearing `image` projected onto the surface from the three world
+    /// A copy with `image` projected onto the surface from the three world
     /// axes (triplanar projection), for a mesh with **no uvs at all**: a
     /// marched isosurface or metaball skin, a grown or reconstructed shell, a
     /// subdivision result. Each axis projects the picture flat and the surface
     /// blends the three by how squarely it faces each, so any shape is covered
     /// with no unwrap and no seam line. `scale` is the size of one texture
-    /// tile in world units. An optional `normal` map rides the same projection
+    /// tile in world units. An optional `normal` map uses the same projection
     /// (no tangent basis needed), its relief bent per projection plane and
     /// blended the same way; `normalScale` is its strength, like
     /// `normalMapped(_:scale:)`'s.

@@ -14,7 +14,7 @@ import Ollin
 /// and without it. A sheen tinted away from the `fill` gives the two-tone velvet look
 /// (the last sphere: a deep red body rimmed in orange).
 ///
-/// Both lobes ride `Material.physicallyBased`, shade under plain lights, and pick up
+/// Both lobes use `Material.physicallyBased`, shade under plain lights, and pick up
 /// reflections from an `environment(_:)` the way the rest of the physically-based tier
 /// does. The presets used here: `.carPaint(roughness:)`, `.lacquer`, `.satin`, `.felt`.
 @main

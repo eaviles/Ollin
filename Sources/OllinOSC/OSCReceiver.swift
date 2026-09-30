@@ -83,7 +83,7 @@ public final class OSCReceiver: @unchecked Sendable {
     private let inboxLimit = 4096
 
     /// Handlers called for every message as it arrives. The seam a decoder over
-    /// this receiver rides (the TUIO surface is the one in the tree), kept
+    /// this receiver is built on (the TUIO surface is the one in the tree), kept
     /// internal because a sketch reads through the polling surface above, and
     /// separate from `state` so a handler never runs under that lock.
     private let observers = OSAllocatedUnfairLock<[@Sendable (OSCMessage) -> Void]>(initialState: [])

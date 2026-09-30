@@ -58,8 +58,8 @@ enum Satellite: String, CaseIterable {
 
 // One example sketch = one line in the targets list. The target name is derived
 // from the folder path ("Basic/HelloCircle" -> Example-Basic-HelloCircle), so
-// name and path can't drift apart; satellite libraries ride the second argument
-// and co-located assets `resources:`.
+// name and path can't drift apart; satellite libraries go in the second argument
+// and co-located assets in `resources:`.
 func example(
     _ folder: String,
     _ satellites: [Satellite] = [],
@@ -394,7 +394,7 @@ let package = Package(
         // in its own place as it starts, and a few familiar ones run as levels.
         example("3D/Phone/PhoneSounds", [.phone]),
         // How the phone's picture is moving: the motion field as a grid of streaks
-        // colored by speed over the live frame, and dust that rides it.
+        // colored by speed over the live frame, and dust carried along by it.
         example("3D/Phone/PhoneFlow", [.phone]),
         // The phone played rather than watching: every finger on its screen lands
         // on the canvas, each tap rings out, and lifting the phone warms it.
@@ -807,7 +807,7 @@ let package = Package(
         // Object tracking — click to lock onto a patch and follow it across frames.
         example("Vision/ObjectTracking", [.vision, .samplePhotos]),
         // Optical flow — the camera's motion as a field of arrows, with dust
-        // particles riding it.
+        // particles carried by it.
         example("Vision/OpticalFlow", [.vision, .video, .samplePhotos]),
         // Image classification — what the camera sees, named live as animated
         // label bars.

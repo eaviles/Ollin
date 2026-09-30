@@ -10,7 +10,7 @@ import OllinAudio
 /// at two sizes, the same noise run backward, a resonator that hums at one
 /// pitch, and a dropped ball whose echoes close in. The picture is the
 /// room's answer to a click, and the trace under it is the instrument heard
-/// in it. Turning `mix` rides the room that is sounding; changing the room,
+/// in it. Turning `mix` adjusts the room that is sounding; changing the room,
 /// its damping, or the pre-delay starts a fresh one.
 @main
 final class Rooms: Sketch {
@@ -94,8 +94,8 @@ final class Rooms: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0D12))
         if built != recipe { rebuild() }
-        // The mix rides the room already sounding, so it is set every frame
-        // without starting the room over.
+        // The mix applies to the room already sounding, so it is set every
+        // frame without starting the room over.
         synth.reverb = Reverb(impulse, mix: mix, preDelay: preDelay)
 
         for next in counter.steps(upTo: tempo.beats(at: time)) {

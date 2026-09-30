@@ -308,7 +308,7 @@ final class Crawler: Sketch {
         }
     }
 
-    /// The field as a mesh wearing a height-colored texture: quarry floor,
+    /// The field as a mesh with a height-colored texture: quarry floor,
     /// spoil, and the weathered rock of the bank.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0x9E8C6E), Color(hex: 0xB29C78),

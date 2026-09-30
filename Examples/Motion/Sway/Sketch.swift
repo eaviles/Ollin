@@ -5,7 +5,7 @@ import Ollin
 /// the high end halfway through the lap, and is back as the lap closes.
 ///
 /// The five shapes are the five paths it can take between the ends. Each row
-/// plots its own shape over one lap, with a dot riding it and a circle on the
+/// plots its own shape over one lap, with a dot moving along it and a circle on the
 /// right sized by the same call, live.
 ///
 /// The plot is drawn with `sway` itself rather than with a copy of its
@@ -77,7 +77,7 @@ final class Sway: Sketch {
 
         plot(entry.shape, at: y)
 
-        // The dot riding the curve, at the lap the clock is on.
+        // The dot moving along the curve, at the lap the clock is on.
         noStroke()
         fill(accent)
         drawCircle(x(of: lap), height(of: value(of: entry.shape, at: lap), at: y), 8)

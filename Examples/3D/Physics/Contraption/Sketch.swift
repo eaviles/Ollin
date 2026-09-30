@@ -91,7 +91,7 @@ final class Contraption: Sketch {
         ]), at: smallHub, group: "frame")
         small.userData = brass
 
-        // One body wearing two wheels: the gear that meshes with the small one,
+        // One body carrying two wheels: the gear that meshes with the small one,
         // and the pinion in front of it that drives the bar.
         let big = world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: bigRadius),
@@ -336,7 +336,7 @@ final class Contraption: Sketch {
     }
 
     /// A collider's matching mesh; a compound recurses into its parts at their
-    /// local poses, so a fused assembly rides the one simulated body.
+    /// local poses, so a fused assembly moves with the one simulated body.
     func draw(_ collider: Collider3D, tint: Color?) {
         switch collider {
         case .box(let w, let h, let d):

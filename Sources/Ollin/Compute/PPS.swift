@@ -97,7 +97,7 @@ public final class PPS {
     }
 
     /// The turn + move kernel. `custom` carries α (rad), β (rad), and the step speed;
-    /// the heading rides `seedA`. One frame is one discrete step (no `dt` scaling), so
+    /// the heading is stored in `seedA`. One frame is one discrete step (no `dt` scaling), so
     /// the rule stays the paper's. The neighbor macro and toroidal helpers come from
     /// the spliced shader library.
     private static func makeKernel() -> ComputeKernel {

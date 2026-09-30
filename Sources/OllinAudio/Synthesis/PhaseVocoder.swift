@@ -262,7 +262,7 @@ final class PhaseVocoder {
     /// The magnitudes, phases, and frequencies can be the ones just read or
     /// a set held from an earlier frame; the peaks used are the ones last
     /// found. Each peak's phase advances at its own frequency times `ratio`,
-    /// its region rides along with it, and the whole region lands `ratio`
+    /// its region moves with it, and the whole region lands `ratio`
     /// times as high, to the nearest bin. A `ratio` of 1 moves nothing, and
     /// with a `hop` equal to the analysis hop puts the frame back exactly.
     func propagate(magnitude source: UnsafePointer<Float>, phase phases: UnsafePointer<Float>,

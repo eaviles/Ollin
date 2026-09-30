@@ -24,7 +24,7 @@ public struct SACNDataPacket: Equatable, Sendable {
     /// The universe number, 1 to 63999.
     public var universe: Int
 
-    /// The DMX channel data, up to 512 slots (the START code rides separately).
+    /// The DMX channel data, up to 512 slots (the START code is carried separately).
     public var channels: [UInt8]
 
     /// The DMX START code ahead of the slots; 0 is ordinary dimmer data.

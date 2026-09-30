@@ -219,7 +219,7 @@ public extension Table {
     /// `FileError` when it holds no rows.
     init(text: String, format: TableFormat = .auto, hasHeader: Bool? = nil) throws {
         var bytes = [UInt8](text.utf8)
-        // A byte-order mark would otherwise ride into the first column's name,
+        // A byte-order mark would otherwise end up in the first column's name,
         // where it is invisible and breaks every lookup of it.
         if bytes.count >= 3, bytes[0] == 0xEF, bytes[1] == 0xBB, bytes[2] == 0xBF {
             bytes.removeFirst(3)
@@ -302,7 +302,7 @@ private extension Table {
     ///
     /// Bytes rather than characters because every byte it compares against is
     /// ASCII, and in UTF-8 no byte of a multi-byte character can be mistaken for
-    /// one: the scan is exact and the text inside a cell rides through untouched.
+    /// one: the scan is exact and the text inside a cell passes through untouched.
     static func parse(_ bytes: [UInt8], separator: UInt8) -> [[String]] {
         let quote = UInt8(ascii: "\"")
 

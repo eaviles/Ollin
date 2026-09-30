@@ -180,7 +180,7 @@ package enum ParamWrite {
                 index = endOfGroup(bytes, from: index)
                 index = skip(bytes, from: index)
             }
-            // The modifiers a property may wear before `var`. `@Param` itself
+            // The modifiers a property may have before `var`. `@Param` itself
             // rules out the ones that could not carry a value (`let`, `func`).
             let modifiers: Set<String> = ["private", "fileprivate", "internal", "package",
                                           "public", "open", "final", "static", "class",

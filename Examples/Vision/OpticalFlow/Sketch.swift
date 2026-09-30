@@ -6,7 +6,7 @@ import OllinVision
 /// Motion made visible: a `FlowTracker` measures optical flow, how every part
 /// of the picture is moving, as a field of vectors a sketch can sample
 /// anywhere, and the sketch draws it two ways. A grid of arrows shows the field
-/// itself, colored by speed; a drift of particles rides it. Wave a hand at the
+/// itself, colored by speed; a drift of particles follows it. Wave a hand at the
 /// camera and the dust scatters; hold still and it settles.
 ///
 /// Where there is no camera it reads the film that ships with Ollin instead, a
@@ -68,7 +68,7 @@ final class OpticalFlow: Sketch {
                          sample.position + sample.flow * (spacing * 0.9 / fastest))
             }
 
-            // Dust that rides the field: every particle reads the motion under
+            // Dust that follows the field: every particle reads the motion under
             // itself and drifts with it, settling wherever the picture holds still.
             for i in positions.indices {
                 let push = field.vector(at: positions[i], in: view)
@@ -85,7 +85,7 @@ final class OpticalFlow: Sketch {
         fill(Color(white: 1, alpha: 0.8))
         drawPoints(positions, size: 5 * scale)
 
-        drawCaption("optical flow: arrows show the motion, the dust rides it")
+        drawCaption("optical flow: arrows show the motion, the dust follows it")
     }
 
     private func seedParticles(in view: Rectangle) {

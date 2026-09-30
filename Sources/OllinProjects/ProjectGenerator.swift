@@ -896,7 +896,7 @@ public enum ProjectGenerator {
             """ : ""
 
         // A bundled app that touches the camera or the microphone without the
-        // matching usage line is killed on the first ask, so the lines ride
+        // matching usage line is killed on the first ask, so the lines follow
         // the capabilities that make those asks possible.
         var usageKeys = ""
         let capabilities = request.resolvedCapabilities.map(\.id)

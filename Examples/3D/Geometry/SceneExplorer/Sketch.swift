@@ -9,7 +9,7 @@ import Foundation
 /// and toggle the file's authored lights one by one. Step through the parts with
 /// the arrow keys (or the Part stepper) to highlight or isolate one: the caption
 /// names it, a wireframe box shows its bounds, and anything the import can't
-/// carry exactly (a mesh wearing several materials, a transform with a shear in
+/// carry exactly (a mesh with several materials, a transform with a shear in
 /// it) is said on the part that carries it, right where the eye is.
 ///
 /// The explorer never moves a node and never writes a file. To take a scene
@@ -229,7 +229,7 @@ final class SceneExplorer: Sketch {
             }
             let leaf = p.chain[p.chain.count - 1]
             var notes: [String] = []
-            if leaf.wearsSeveralMaterials { notes.append("wears several materials, draws in its first") }
+            if leaf.wearsSeveralMaterials { notes.append("has several materials, draws in its first") }
             if !leaf.placementIsExact { notes.append("transform carries a shear") }
             let suffix = notes.isEmpty ? "" : "   ·   " + notes.joined(separator: "; ")
             drawCaption("part \(part)/\(parts.count): \(p.name)\(suffix)")

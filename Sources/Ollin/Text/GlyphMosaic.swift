@@ -101,7 +101,7 @@ func glyphRamp(for characters: String, font: ActiveFont) -> [GlyphRampEntry] {
 }
 
 /// A stable identity for the ramp cache. Fonts don't expose identity, so this
-/// keys on the traits that change a glyph set; the characters ride beside it.
+/// keys on the traits that change a glyph set; the characters are stored beside it.
 private func fontCacheKey(_ font: ActiveFont) -> String {
     switch font {
     case .bitmap(let f):  return "b:\(f.pixelHeight):\(f.baseline):\(f.glyphs.count)"

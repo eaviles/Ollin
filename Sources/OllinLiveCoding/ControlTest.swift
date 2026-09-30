@@ -9,7 +9,7 @@ import OllinOSC
 /// - Learn takes the next control for the lit action, once, and a control
 ///   learned elsewhere moves rather than doubling.
 /// - A note fires a press action on its channel and no other; a controller
-///   button fires once on the way up; a fader rides a continuous action.
+///   button fires once on the way up; a fader drives a continuous action.
 /// - The fixed OSC addresses answer with nothing learned: a bare message
 ///   turns a toggle over, a value sets it, a button's release is ignored.
 /// - The map survives a restart through the defaults.
@@ -121,7 +121,7 @@ enum ControlTest {
             fail("a controller button fired \(tally.freshEvaluations) times (wanted 2: once per rise)")
         }
         controls.handle(MIDIMessage(.controlChange(controller: 7, value: 64), channel: 1))
-        guard abs(tally.backdrop - 64.0 / 127) < 1e-9 else { fail("the fader did not ride the backdrop") }
+        guard abs(tally.backdrop - 64.0 / 127) < 1e-9 else { fail("the fader did not drive the backdrop") }
         controls.learn(.codeSize)
         controls.handle(MIDIMessage(.controlChange(controller: 8, value: 127), channel: 1))
         controls.handle(MIDIMessage(.controlChange(controller: 8, value: 127), channel: 1))

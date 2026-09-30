@@ -18,7 +18,7 @@ import simd
 /// level misses it; a few finished readings a second is plenty for signs, which
 /// mostly hold still. Everything the lift needs is copied out of the frame
 /// *inside* the delegate callback (the shared `LiftContext`); only the capture
-/// pixel buffer rides to the queue by reference, held for at most one pass.
+/// pixel buffer is passed to the queue by reference, held for at most one pass.
 ///
 /// The recognizer wants an upright picture, so the request is handed the
 /// device-hold orientation; its corners come back in the upright frame and go
@@ -77,7 +77,7 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
 
         // Copy everything the pass needs out of the frame now, on the callback:
         // the frame's buffers are the session's own, and only the capture pixel
-        // buffer (which CoreVideo reference-counts) rides along.
+        // buffer (which CoreVideo reference-counts) is passed along.
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()

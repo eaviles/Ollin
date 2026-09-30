@@ -8,7 +8,7 @@ import Observation
 /// curves chosen. Every edit lands on the sketch's own automation, so the
 /// panel edits exactly what the frames play.
 ///
-/// The transport half rides the runner's clock transport (`setClockPaused`,
+/// The transport half is built on the runner's clock transport (`setClockPaused`,
 /// `scrubClock`, `stepClock`), so a scrub here is the deterministic clock
 /// moving, not a second clock beside it.
 @MainActor
@@ -184,7 +184,7 @@ public final class TimelineModel {
 
     private func syncFromRunner() {
         guard let runner else { return }
-        // The playhead rides the automation's own position, so a looping
+        // The playhead follows the automation's own position, so a looping
         // pass shows the playhead coming around while the clock runs on.
         let raw = runner.clockTime
         let automation = self.automation
@@ -194,7 +194,7 @@ public final class TimelineModel {
 
     /// Follow the clock while the panel shows: the playhead at a steady
     /// cadence of its own, because the stats readout refreshes too coarsely
-    /// for a moving playhead to ride it.
+    /// for a moving playhead to follow it.
     public func beginFollowingClock() {
         guard ticker == nil else { return }
         ticker = Task { [weak self] in

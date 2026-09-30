@@ -7,7 +7,7 @@ import OllinSamplePhotos
 /// `textured(_:)` has nothing to map through. `triplanarTextured(_:scale:)`
 /// projects the picture flat along each of the three world axes instead and
 /// blends the three reads by how squarely the surface faces each axis: every
-/// part of any shape is covered, no unwrap, no seam line. A normal map rides
+/// part of any shape is covered, no unwrap, no seam line. A normal map uses
 /// the same projection (no tangent basis needed), so the veins read as
 /// engraved relief.
 ///
@@ -95,7 +95,7 @@ final class Triplanar: Sketch {
         fill(.white)
         material(.dielectric(roughness: 0.65))
 
-        // The hero: a no-uv marched skin wearing the stone.
+        // The hero: a no-uv marched skin textured with the stone.
         withState {
             translate(-2.1, 0.35, 0)
             drawMesh(blobMesh().triplanarTextured(stone, normal: veins, scale: tile,

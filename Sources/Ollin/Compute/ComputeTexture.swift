@@ -81,7 +81,7 @@ final class ImageComputeTexture: ComputeTextureBindable {
 /// frame — the texture-half companion to `ComputeBuffer`. It's the storage behind
 /// ping-pong simulations (reaction-diffusion, cellular automata, fluid) and image
 /// kernels, and it draws like any other image: `texture.image` wraps it for
-/// `drawImage`, so the result composites in draw order and rides the transform
+/// `drawImage`, so the result composites in draw order and follows the transform
 /// stack with no CPU round-trip.
 ///
 /// Like `Image`'s texture and `ComputeBuffer`'s buffer, the Metal texture is created

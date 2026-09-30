@@ -3,7 +3,7 @@ import Ollin
 import os
 
 // TUIO is the protocol tangible-surface trackers speak: a table watching printed
-// markers, a touch wall, a phone app sending finger positions. It rides OSC, so
+// markers, a touch wall, a phone app sending finger positions. It runs over OSC, so
 // it lives here beside the receiver it decodes from, and a sketch reaches it with
 // the same `import OllinOSC`.
 //

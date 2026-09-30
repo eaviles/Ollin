@@ -20,7 +20,7 @@ import Ollin
 /// the light's path through it grows as the surface turns, so one thickness makes many
 /// colors across one body.
 ///
-/// Rising behind the rows are a few **soap bubbles**, the *other* way to wear a film.
+/// Rising behind the rows are a few **soap bubbles**, the *other* way to carry a film.
 /// Each is a thin wall of glass (`Material.glass()`, thickness `0`), so the world
 /// passes through it almost straight, composed with the iridescence finish in
 /// soap-film mode, whose thickness drains and swirls while you watch:
@@ -112,7 +112,7 @@ final class ThinFilm: Sketch {
             drawSphere(radius: 0.92)
         }
 
-        // The bubbles: thin glass wearing the flowing film, rising behind the rows.
+        // The bubbles: thin glass with the flowing film, rising behind the rows.
         for b in bubbles {
             // Rise and wrap: a popped bubble is reborn at the bottom of the column.
             let span = 6.0

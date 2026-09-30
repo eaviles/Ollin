@@ -24,7 +24,7 @@ import Ollin
 ///
 /// Drag left↔right to change `exposure` (the brightness dial): push it up and even
 /// `.aces` saturates; pull it down and the whole scene dims into its falloff. This
-/// is the precision the depth-of-field "sandpainting" track rides on: faint light
+/// is the precision the depth-of-field "sandpainting" track relies on: faint light
 /// summed in float, then mapped down at the very end.
 @main
 final class ToneMapping_Example: Sketch {

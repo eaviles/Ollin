@@ -19,7 +19,7 @@ import COllinShaders
 ///
 /// A `Visual` is a value describing the chain, rebuilt each `draw()` like any
 /// other Ollin drawing. Its *structure* decides the shader (compiled once and
-/// cached); its *numbers* ride a uniform buffer, so animating any argument
+/// cached); its *numbers* are passed in a uniform buffer, so animating any argument
 /// (`.rotated(time * 0.2)`, an `@Param` parameter) costs no recompile.
 ///
 /// Chains fall into five families:

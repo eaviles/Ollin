@@ -8,7 +8,7 @@ import os
 /// Plays a video file into a sketch as a live image — recorded footage the way
 /// `Camera` is the live feed. Create one in `setup()`, `play()` it, then draw
 /// `frame` in `draw()`; each decoded frame arrives as a GPU texture wrapped in
-/// an `Image`, so it composites like any other image, riding the transform
+/// an `Image`, so it composites like any other image, honoring the transform
 /// stack and `tint`, with no CPU round-trip.
 ///
 /// ```swift

@@ -478,7 +478,7 @@ public extension Heightfield {
         return Image(width: columns, height: rows, premultipliedRGBA: pixels)
     }
 
-    /// The terrain mesh already wearing its height coloring: `mesh(...)` with
+    /// The terrain mesh already carrying its height coloring: `mesh(...)` with
     /// `image(_:in:)` applied as its texture, so one call goes from a field to
     /// a paintable landscape. Build it once (when the field changes), not per
     /// frame.
