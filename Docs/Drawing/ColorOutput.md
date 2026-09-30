@@ -43,11 +43,11 @@ Gamut and range are two separate things, and they answer different questions.
 <a id="wide-colors"></a>
 ### Naming a color outside sRGB
 
-`Color` is an sRGB type, and it stays one. You name a color outside that gamut in Display P3. Ollin stores it as the sRGB components that mean the same color, so some of those components land outside 0…1:
+`Color` is an sRGB type, and it stays one. You name a color outside that gamut in Display P3. Ollin stores it as the sRGB components that mean the same color, so some of those components land outside 0…1. A component below zero is encoded with the same curve as one above it, mirrored about zero, so it reads what the system's extended sRGB space reads for the same color:
 
 ```swift
 let wideRed = Color(displayP3: 1, green: 0, blue: 0)
-// wideRed.red is about 1.09, .green about -0.54: outside sRGB, on purpose
+// wideRed.red is about 1.09, .green about -0.23: outside sRGB, on purpose
 wideRed.isOutsideSRGB          // true
 wideRed.displayP3Components    // back to (1, 0, 0)
 ```

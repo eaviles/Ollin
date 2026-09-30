@@ -179,7 +179,7 @@ The arguments are the model's personality. `radius` is how far the ring reaches.
 
 **SmoothLife** keeps Life's rule and changes only what a cell is. A cell is a disc rather than a texel, and its neighbors are the ring around that disc. Each step reads how full the disc is and how full the ring is. Life's "born on three, survive on two or three" becomes two intervals of ring filling, one for birth and one for survival. Their edges are soft instead of cliffs. It is the model for a glider that slides in any direction, since nothing in it knows about the grid. Stephan Rafler found that smooth glider in it, and published the model in 2011.
 
-<img src="Images/24-Automata/SmoothLife.jpg" alt="SmoothLife on near-black: a dozen small cream rings, each a glider with a dark hollow, sliding across the field, and two larger ragged colonies at the left mid-split" width="560">
+<img src="Images/24-Automata/SmoothLife.jpg" alt="SmoothLife on near-black: a dozen small cream rings, each a glider with a dark hollow, sliding across the field, and three larger ragged colonies, one at the left, one along the bottom, and one at the top right" width="560">
 
 ```swift
 dish = makeSimField(.smoothLife(radius: 14), scale: 0.35)
