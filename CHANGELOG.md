@@ -44,6 +44,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A physics snapshot keeps a body's own mass and center of mass.** A body given a mass or a center of mass rather than one worked out from its collider, as a scene's `physics:mass` and `physics:centerOfMass` give them through the import, came back from `restore(_:)` at the mass its shape and density make, balanced at its middle. The snapshot now writes both, in format 6, and reads formats 4 and 5 as before. [Physics3D](Docs/Simulation/Physics3D.md)
+
 - **A small chance in a simulation is the chance it says.** The forest fire's lightning and growth, the Ising model's flips, and a Schelling agent's move compared a probability against a float hash that lands on exactly 0 about once in 1,800 rolls, so any chance below about 5e-4 fired at that floor instead. The forest fire's default lightning struck about 90 times too often, so the default ratio of growth to lightning was near 28 to 1 rather than 2,500 to 1, and a magnet below its critical temperature kept flipping spins it should have held. The rolls now draw on steps of 2^-24, so a lightning of 1e-4 lights 1e-4 of the forest and a cold magnet holds still. A run with these sims under a seed draws a different run from before. [Effects](Docs/Drawing/Effects.md#simfield)
 
 - **The bundled Hershey font's notice carries the acknowledgements its distribution requires.** The `.jhf` data is used under terms that ask two credits to travel with it, the original author's and the format's author's, and the notices called it public domain with no requirement. Both now appear as worded, in `THIRD-PARTY-NOTICES.md` and in the notice beside the font. [Notices](THIRD-PARTY-NOTICES.md#hershey-fonts)

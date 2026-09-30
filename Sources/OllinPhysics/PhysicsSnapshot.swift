@@ -31,9 +31,8 @@ internal import CJolt
 /// }
 /// ```
 ///
-/// What it holds: `Body3D`s (with their colliders, poses, motion, and the
-/// parameters `addBody` takes, all but a mass or center of mass handed in,
-/// which come back worked out from the collider and `density`), the
+/// What it holds: `Body3D`s (with their colliders, poses, motion, and every
+/// parameter `addBody` takes, a mass or center of mass handed in among them), the
 /// `Joint3D`s between them, gears and racks, characters, vehicles, ragdolls,
 /// tensegrities, ropes, the collision-group table, and the world's `gravity`,
 /// `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`. Any
@@ -167,9 +166,10 @@ public struct PhysicsSnapshot: Sendable, Equatable {
         return names
     }
 
-    /// The format this build writes. It also reads the one before it, which
-    /// is this one without the trailing tensegrity section.
-    static let version = 5
+    /// The format this build writes. It also reads the two before it: 5 is
+    /// this one without the trailing section of handed masses and centers of
+    /// mass, and 4 is 5 without the tensegrity section before that.
+    static let version = 6
 
     /// The oldest format this build still reads.
     static let oldestReadableVersion = 4
@@ -311,6 +311,20 @@ extension World3D {
             writer.tensegrity(structure, bodyIndex: index, jointPosition: position)
         }
 
+        // What a loose body was handed rather than left to work out: its mass
+        // and where its weight hangs, by its index among the loose bodies.
+        // Format 6; a file from before it ends above.
+        let handed = saved.enumerated().filter {
+            $0.element.overriddenMass != nil || $0.element.handedCenterOfMass != nil
+        }
+        writer.u32(UInt32(handed.count))
+        for (offset, body) in handed {
+            writer.u32(UInt32(offset))
+            writer.optionalDouble(body.overriddenMass)
+            writer.bool(body.handedCenterOfMass != nil)
+            writer.vector(body.handedCenterOfMass ?? .zero)
+        }
+
         return PhysicsSnapshot(payload: writer.data,
                                bodies: saved.count + vehicles.count,
                                joints: structural.count + links.count)
@@ -425,6 +439,18 @@ extension World3D {
             }
         }
 
+        // The handed masses and centers of mass were added in format 6.
+        var handed: [Int: (mass: Double?, centerOfMass: Vector3?)] = [:]
+        if !reader.isAtEnd {
+            for _ in 0 ..< (try reader.count()) {
+                let offset = Int(try reader.u32())
+                let mass = try reader.optionalDouble()
+                let hasCenter = try reader.bool()
+                let center = try reader.vector()
+                handed[offset] = (mass, hasCenter ? center : nil)
+            }
+        }
+
         // Everything read: now the world can be emptied.
         removeAll()
 
@@ -467,7 +493,7 @@ extension World3D {
         // named it are dropped with it. The saved indices still have to line
         // up, so the gaps are kept as nils.
         var restoredBodies: [Body3D?] = []
-        for saved in savedBodies {
+        for (offset, saved) in savedBodies.enumerated() {
             guard let collider = saved.collider.resolved(by: resolve,
                                                          note: { noteOnce($0) })
             else {
@@ -478,8 +504,9 @@ extension World3D {
                                kind: saved.kind, isSensor: saved.isSensor,
                                rotated: 0, axis: .unitY, density: saved.density,
                                friction: saved.friction,
-                               restitution: saved.restitution, mass: nil,
-                               centerOfMass: .zero, freedom: saved.freedom,
+                               restitution: saved.restitution, mass: handed[offset]?.mass,
+                               centerOfMass: handed[offset]?.centerOfMass ?? .zero,
+                               freedom: saved.freedom,
                                gravityScale: saved.gravityScale,
                                checksPath: saved.checksPath,
                                group: group(saved: saved.group),
