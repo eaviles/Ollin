@@ -397,7 +397,7 @@ world.connect(small, big, .gear(teeth: 20, and: 36))
 
 Turning either hinge now turns the other, in the opposite direction and at the ratio you asked for. `.gear(ratio:)` says the same thing as a plain number, which is how many turns the first makes for one turn of the second. It counts teeth and has no sign, so to make a pair turn the same way, flip one hinge's axis.
 
-<img src="../../Guide/Images/30-WorldsWithWeight/Machines.jpg" alt="A small toothed wheel meshed with a wheel twice its size on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar has slid to the right and pushed four teal blocks into a bunch at the end of their shelf" width="620">
+<img src="../../Guide/Images/30-WorldsWithWeight/Machines.jpg" alt="A small wheel touching a wheel twice its size, rim to rim, on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar has slid to the right and pushed four teal blocks into a bunch at the end of their shelf" width="620">
 
 A rack and pinion ties a hinge to a slider, so turning drives sliding:
 
@@ -499,7 +499,7 @@ Sensors detect *moving* bodies, which means dynamic and kinematic ones. They do 
 
 Everything in a world collides with everything else. A **collision group** is a name you put things in. You can then tell the world that two of those names pass straight through each other.
 
-<img src="../../Guide/Images/30-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a horizontal grating across the middle. In the left tube a pile of amber beads rests on top of the grating; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
+<img src="../../Guide/Images/30-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a solid horizontal shelf across the middle. In the left tube a pile of amber beads rests on top of the shelf; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
 
 ```swift
 let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
@@ -620,7 +620,7 @@ Queries cost nothing but the search. Asking does not step the world, so a per-bo
 
 A `Character3D` is a walking figure. It is a capsule that goes where you steer it, climbs steps, and jumps. Walls stop it, and so do slopes that are too steep to hold it. It is not a rigid body, so nothing tumbles it and nothing knocks it over, which is what you want for something a person drives. That is also why you poll for walking in `draw()` instead of pushing the character with forces.
 
-<img src="../../Guide/Images/31-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
+<img src="../../Guide/Images/31-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the slate-gray floor beside the stair" width="560">
 
 ```swift
 let world = World3D()
@@ -961,7 +961,7 @@ The worked example is [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/)
 
 Everything above moves as one rigid piece. A **`SoftBody3D`** does not. Its state lives in its vertices, which are simulated particles held together by springs. So it drapes, folds, and squashes, instead of arriving somewhere else with the shape it started in. Cloth and a beach ball are the two ends of the same idea.
 
-<img src="../../Guide/Images/31-CharactersAndCloth/Cloth.jpg" alt="A cream sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
+<img src="../../Guide/Images/31-CharactersAndCloth/Cloth.jpg" alt="A pale sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
 
 Build one from any `Mesh`:
 

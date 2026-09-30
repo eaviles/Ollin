@@ -246,7 +246,7 @@ The four dragged corners are a `Projection.Corners`, in fractions of the display
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/45-Installations/FittingTheWall-dark.jpg">
-  <img src="../../Guide/Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <img src="../../Guide/Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a lopsided four-sided shape, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
 So the framework places the picture, rather than the window. Press **Command-K** on a running piece, drag the four corners onto the wall, and press **Command-K** again.

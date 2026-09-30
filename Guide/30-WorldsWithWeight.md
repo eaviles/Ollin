@@ -103,7 +103,7 @@ The slider's range has to include 0, the pose it was built in, which is why this
 
 A pinion is a small toothed wheel that drives a toothed bar, the rack. Here it is a smaller disc fixed to the front of the big wheel. `travelPerTurn` is how far the bar runs for one full turn of the pinion. For a pinion of radius `r` that is its circumference, `2 * .pi * r`. The two links combine, and the machine below has one motor, two links, and three moving parts: two wheels and a bar.
 
-<img src="Images/30-WorldsWithWeight/Machines.jpg" alt="A small toothed wheel meshed with a wheel twice its size on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar with a paddle at its left end has slid along a shelf, and four teal blocks sit just ahead of the paddle" width="620">
+<img src="Images/30-WorldsWithWeight/Machines.jpg" alt="A small wheel touching a wheel twice its size, rim to rim, on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar with a paddle at its left end has slid along a shelf, and four teal blocks sit just ahead of the paddle" width="620">
 
 The motor only ever turns the small wheel. The big wheel turns because the gear link says it must, half as fast and the other way. The bar slides because the rack link turns the big wheel's turning into a distance along the shelf. Its paddle pushes the blocks ahead of it. Each wheel carries one pale spoke, so you can see the two are at different angles.
 
@@ -120,9 +120,9 @@ let bead = world.addBody(.sphere(radius: 0.17), at: p, group: "passing")
 world.ignoreCollisions(between: "passing", and: "grating")
 ```
 
-You write a word where you build something, and one sentence saying what it does not touch. The picture below has two identical tubes with identical gratings, and the same beads poured into each. The only difference is that the right pour is in a group the grating was told to ignore.
+You write a word where you build something, and one sentence saying what it does not touch. The picture below has two identical tubes, each with a solid shelf as its grating, and the same beads poured into each. The only difference is that the right pour is in a group the grating was told to ignore.
 
-<img src="Images/30-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a horizontal grating across the middle. In the left tube a pile of amber beads rests on top of the grating; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
+<img src="Images/30-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a solid horizontal shelf across the middle. In the left tube a pile of amber beads rests on top of the shelf; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
 
 The rule has a few consequences.
 

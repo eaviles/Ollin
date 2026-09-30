@@ -394,7 +394,7 @@ A projector is almost never square to what it is aimed at. It hangs off a beam o
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/45-Installations/FittingTheWall-dark.jpg">
-  <img src="Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <img src="Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a lopsided four-sided shape, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
 Press **Command-K** on the running sketch. Four handles appear on the corners. Drag each one onto a corner of the wall, and press Command-K again. The corners are kept with the display rather than with the sketch, since the projector is off square by the same amount whatever is playing. Line it up once, and everything you show there opens square.

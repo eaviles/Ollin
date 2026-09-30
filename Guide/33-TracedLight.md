@@ -10,7 +10,7 @@ Light in most 3D frames stops at the first surface it hits, and here you follow 
 
 ## Mirrors that see off screen: ray-traced reflections
 
-The room's waxed floor shows the lamp and the walls in its sheen. A scene's depth layer, from [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus), can already make a reflection like that, and it is where reflections start.
+The room's waxed floor shows the walls in its sheen. A scene's depth layer, from [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus), can already make a reflection like that, and it is where reflections start.
 
 **`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It works from the finished picture. For each pixel of the floor, it follows the reflected direction across the picture and its depth layer. It stops where it finds what the floor should show. A picture does not contain the back of anything, though. The true reflection can show a surface the camera cannot see, such as the underside of a ball resting on the floor. There it can only approximate. That shows as a soft zone right at the contact.
 

@@ -60,7 +60,7 @@ Angles here are radians, and the easiest way to write them is with `.tau`, the a
   <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 </picture>
 
-To stand on a circle's rim, you need how far around (an angle) and how far out (a radius). `cos(angle) * radius` gives the across part, `sin(angle) * radius` the down part, and adding them to the center gives the point. This one pattern places petals, clock hands, orbiting moons, and everything else arranged in a ring. It first appears in [Chapter 1](01-HelloOllin.md), and later chapters keep using it.
+To stand on a circle's rim, you need how far around (an angle) and how far out (a radius). `cos(angle) * radius` gives the across part, `sin(angle) * radius` the down part, and adding them to the center gives the point. The angle in the picture is negative, so its point sits above the center. This one pattern places petals, clock hands, orbiting moons, and everything else arranged in a ring. It first appears in [Chapter 1](01-HelloOllin.md), and later chapters keep using it.
 
 Once you know the pattern, you can also write it as one call. `polar(angle, radius, around: center)` returns the same point, and `angles(12)` returns twelve evenly spaced angles to place things at. A ring of things becomes a `for` loop with no index arithmetic. This appendix keeps spelling the trig out so you can see it work.
 
@@ -330,7 +330,7 @@ Inversion in a circle moves every point along the line from the circle's center 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/45-Installations/FittingTheWall-dark.jpg">
-  <img src="Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <img src="Images/45-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a lopsided four-sided shape, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
 Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 45](45-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
@@ -677,10 +677,10 @@ This plot follows the line through the centers of two circles. The plain min com
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/32-SculptingWithFields/MarchRay-dark.jpg">
-  <img src="Images/32-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in shrinking hops, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
+  <img src="Images/32-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in hops that shrink as it passes close to a lower shape and lengthen again, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
 </picture>
 
-To render a distance field, march a ray from the eye. Ask the field "how far to the nearest surface?", and since nothing can be closer than that answer, it is safe to hop that far. Repeat, and the hops shrink as the surface nears, until a hop below a threshold counts as a hit. There are no triangles, only a field asked a few dozen times per pixel. It's how all of [Chapter 32](32-SculptingWithFields.md)'s 3D sculptures reach the screen.
+To render a distance field, march a ray from the eye. Ask the field "how far to the nearest surface?", and since nothing can be closer than that answer, it is safe to hop that far. Repeat until a hop below a threshold counts as a hit. The hops shrink wherever the ray passes close to a surface and grow again in open space. There are no triangles, only a field asked a few dozen times per pixel. It's how all of [Chapter 32](32-SculptingWithFields.md)'s 3D sculptures reach the screen.
 
 ### Folding space
 

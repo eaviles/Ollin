@@ -34,7 +34,7 @@ withCharacter(walker) {
 
 Up on the keys becomes -z, away from a camera that looks down the z axis. The same `world.advance(by:)` moves the character along with the crates, so there is no second update to forget. `walk(at:)` sets the speed it is trying to walk at, and it keeps that speed until you say otherwise. Falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if the character is on the ground at the next step, so holding the key hops rather than flies.
 
-<img src="Images/31-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
+<img src="Images/31-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the slate-gray floor beside the stair" width="560">
 
 `withCharacter` is `withBody`'s twin, and it puts the origin at the character's **feet**. That makes a figure easy to draw. Model it standing on the floor at the origin, and it stands on the floor in the world. A capsule is the exception, because `drawCapsule` draws from the capsule's middle. Its `height` is the straight part between the round ends. So the capsule in the loop is 1.7 tall in all, like the character, and the block lifts it by half of that.
 
@@ -178,7 +178,7 @@ drawSoftBody(cloth)
 
 `drawSoftBody` draws the mesh the simulation just arrived at. It is the mesh you handed over, with new positions and new normals. Its texture coordinates, its colors, and its material all carry through, and shadows and reflections treat it like any other mesh. `segments: 22` makes a grid of 23 by 23 vertices, so that sheet is 529 particles. Drop it on a sphere and it drapes over it, each particle finding somewhere to be while the springs between them pull.
 
-<img src="Images/31-CharactersAndCloth/Cloth.jpg" alt="A cream sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
+<img src="Images/31-CharactersAndCloth/Cloth.jpg" alt="A pale sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
 
 Two arguments decide what fabric it is, one for stretching and one for folding:
 
