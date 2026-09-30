@@ -1483,24 +1483,26 @@
       "width": 1080
     },
     "3D/Effects/Upscaling": {
-      "bytes": {
-        "loop": 2305930,
-        "loopSmall": 414555,
-        "still": 129249,
-        "stillSmall": 46962
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Effects/Upscaling/loop.mp4?v=e3c351f3",
-      "loopSmall": "examples/3D/Effects/Upscaling/loop-640.mp4?v=20817dd9",
-      "motion": 7.759,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "813e72fc77f53313",
-      "still": "examples/3D/Effects/Upscaling/still.jpg?v=c29a86c1",
-      "stillSmall": "examples/3D/Effects/Upscaling/still-640.jpg?v=80242487",
-      "width": 1080
+      "frame": 480,
+      "motion": 7.76,
+      "sound": false,
+      "source": "3620c2d15d191fec",
+      "rendered": "2026-09-30",
+      "bytes": {
+        "loop": 2308504,
+        "loopSmall": 416301,
+        "still": 129095,
+        "stillSmall": 46944
+      },
+      "loop": "examples/3D/Effects/Upscaling/loop.mp4?v=f8c14aeb",
+      "loopSmall": "examples/3D/Effects/Upscaling/loop-640.mp4?v=7f5601e8",
+      "still": "examples/3D/Effects/Upscaling/still.jpg?v=62edac1a",
+      "stillSmall": "examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2",
+      "seed": 1
     },
     "3D/Environments/Cloudscape": {
       "bytes": {

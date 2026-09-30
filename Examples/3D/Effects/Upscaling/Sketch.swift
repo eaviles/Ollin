@@ -44,7 +44,12 @@ final class Upscaling: Sketch {
             drawBox(width: 15, height: 0.18, depth: 15)
         }
 
-        // A ring of glossy columns and spheres for the mirror to work on.
+        // A ring of glossy columns and spheres for the mirror to work on. Each
+        // stands a hair above the floor rather than on it: a reflection ray that
+        // reaches the floor where a base sits meets two surfaces at one distance,
+        // and which one the ray tracer answers with can change from run to run,
+        // so a same-seed export would differ by a pixel about one time in three.
+        let lift = 0.001
         for i in 0..<10 {
             let a = Double(i) / 10 * .tau
             withState {
@@ -52,12 +57,12 @@ final class Upscaling: Sketch {
                 if i % 2 == 0 {
                     fill(Color(hue: Double(i) / 10, saturation: 0.55, brightness: 0.85))
                     material(.dielectric(roughness: 0.25))
-                    translate(0, 1.15, 0)
+                    translate(0, 1.15 + lift, 0)
                     drawCylinder(radius: 0.28, height: 2.3)
                 } else {
                     fill(Color(white: 0.9))
                     material(.metal(roughness: 0.12))
-                    translate(0, 0.62, 0)
+                    translate(0, 0.62 + lift, 0)
                     drawSphere(radius: 0.62)
                 }
             }
