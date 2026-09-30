@@ -117,6 +117,20 @@ static inline float hash12(float2 p) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
+// A uniform draw in [0, 1) on steps of 2^-24, from three integers: the PCG3D
+// hash taken to the top 24 bits of its first word, which a float holds exactly.
+// The one to compare a probability against. `hash12` rounds the tail of its
+// last product away, so it lands on exactly 0 about once in 1,800 draws, and a
+// chance below that (a forest fire's lightning, a cold magnet's flip) would
+// fire at the floor instead of at its own rate.
+static inline float ollin_uniform24(uint3 v) {
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    v ^= v >> 16u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    return float(v.x >> 8u) * (1.0 / 16777216.0);
+}
+
 // 1 channel from a float3 seed, in [0, 1).
 static inline float hash13(float3 p3) {
     p3 = fract(p3 * 0.1031);

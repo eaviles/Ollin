@@ -624,8 +624,10 @@ fragment float4 ollin_sim_forest_fire(PresentOut in [[stage_in]],
     const float top = 2.0;   // 0 empty, 1 tree, 2 burning
     float s = ollin_cell_state(src, samp, uv, top);
     float2 cell = floor(uv / max(t, float2(1e-6)));
-    float roll = hash12(cell + float2(age * 0.7331 + seed * 37.13 + 11.13,
-                                      age * 1.3197 + seed * 11.71 + 3.71));
+    // On 2^-24 steps, so a lightning far below growth fires at its own rate
+    // (`hash12`'s floor would light a tree about once in 1,800 rolls).
+    float roll = ollin_uniform24(uint3(uint(cell.x), uint(cell.y),
+                                       uint(age) ^ (as_type<uint>(seed) * 0x9E3779B9u)));
 
     float ns;
     if (s > 1.5) {
@@ -752,8 +754,8 @@ fragment float4 ollin_sim_schelling(PresentOut in [[stage_in]],
         OLLIN_SCHELLING_COUNT(bx, by, v, -1, like, occupied)
         if (like < preference * occupied) {           // unhappy: throw the coin
             float2 at = origin + float2(float(bx), float(by));
-            float roll = hash12(at + float2(pass * 0.7331 + seed * 37.13 + 11.13,
-                                            pass * 1.3197 + seed * 11.71 + 3.71));
+            float roll = ollin_uniform24(uint3(uint(at.x), uint(at.y),
+                                               uint(pass) ^ (as_type<uint>(seed) * 0x9E3779B9u)));
             mover[i] = roll < mobility;
         }
     }
@@ -814,8 +816,10 @@ fragment float4 ollin_sim_ising(PresentOut in [[stage_in]],
     float change = 2.0 * spin * (around + field);
     bool flip = change <= 0.0;
     if (!flip && temperature > 0.0) {
-        float roll = hash12(cell + float2(pass * 0.7331 + seed * 37.13 + 11.13,
-                                          pass * 1.3197 + seed * 11.71 + 3.71));
+        // On 2^-24 steps: a cold magnet's flip chance, exp(-8 / temperature)
+        // for an aligned spin, falls far below `hash12`'s floor of about 5e-4.
+        float roll = ollin_uniform24(uint3(uint(cell.x), uint(cell.y),
+                                           uint(pass) ^ (as_type<uint>(seed) * 0x9E3779B9u)));
         flip = roll < exp(-change / temperature);
     }
     float ns = (mine && flip) ? 1.0 - s : s;

@@ -144,6 +144,40 @@ struct StateAutomataTests {
         #expect(corners[21][21] == 0)    // the block does: it caught and burned out
     }
 
+    /// A small lightning strikes at its own rate. The roll is a 24-bit draw; the
+    /// hash it replaced landed on exactly 0 about once in 1,800 rolls, so every
+    /// lightning below about 5e-4 struck at that floor instead (at 1e-4 a full
+    /// forest of 65,536 trees lit about 290 across these eight seeds, not 52).
+    /// Growth is 0 and the forest is planted whole, so every burning cell after
+    /// one step is a tree that caught on its own.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSmallLightningStrikesAtItsOwnRate() throws {
+        var struck = 0
+        for seed in 1 ... 8 {
+            let sketch = WholeStandSketch()
+            sketch.sim = .forestFire(growth: 0, lightning: 0.0001, seed: Double(seed))
+            sketch.stamp = Color(white: 0.5)
+            struck += states(in: try OllinApp.image(of: sketch, frame: 0), levels: 3)
+                .joined().filter { $0 == 2 }.count
+        }
+        // Expected 8 × 65,536 × 1e-4 ≈ 52; the floor gave about 290.
+        #expect((26 ... 90).contains(struck), "\(struck) trees struck")
+    }
+
+    /// A cold magnet holds still. An aligned spin's flip chance at a temperature
+    /// of 0.5 is exp(-16), about 1e-7, so a whole up-pointing field keeps every
+    /// spin through a sweep; the floor of the hash the roll used to be flipped
+    /// about 35 of them.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aColdMagnetKeepsItsSpins() throws {
+        let sketch = WholeStandSketch()
+        sketch.sim = .ising(temperature: 0.5, sweeps: 1, seed: 3)
+        sketch.stamp = IsingSpin.up.color
+        let flipped = states(in: try OllinApp.image(of: sketch, frame: 0), levels: 2)
+            .joined().filter { $0 == 0 }.count
+        #expect(flipped <= 2, "\(flipped) spins flipped")
+    }
+
     /// A tree stamped the way a sketch stamps one, a `drawRect` a cell in the plain
     /// gray the documentation names, lands as a tree, and the gap beside it stays
     /// bare. Through a blending inject, mid-gray would arrive in linear light, a
@@ -879,6 +913,32 @@ private final class AutomatonProbeSketch: Sketch {
                     drawPolygon([Vector2(x, y), Vector2(x + 1, y),
                                  Vector2(x + 1, y + 1), Vector2(x, y + 1)])
                 }
+            }
+        }
+        drawImage(field.image, 0, 0)
+    }
+}
+
+/// A 256-square field stamped whole with one state on the first frame, then
+/// left to its rule: a full forest for a lightning rate, a field of up-spins for
+/// a cold magnet.
+private final class WholeStandSketch: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var sim: Sim = .gameOfLife()
+    var stamp: Color = .white
+    private var field: SimField!
+
+    override func setup() {
+        field = makeSimField(sim, scale: 1)
+    }
+
+    override func draw() {
+        background(.black)
+        withField(field) {
+            if frameCount == 1 {
+                noStroke()
+                fill(stamp)
+                drawRect(0, 0, width, height)
             }
         }
         drawImage(field.image, 0, 0)
