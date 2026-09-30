@@ -62,12 +62,15 @@ final class NormalizedPlacement: Sketch {
 
     func marks(in r: Rectangle, byFraction: Bool) {
         if byFraction {
+            // Sizes follow the shorter edge, the way the listing's `scale`
+            // does, so the wide canvas gets no bigger a mark than the square.
+            let edge = min(r.width, r.height)
             fill(accent)
-            drawCircle(center: r.point(u: 0.5, v: 0.42), radius: r.width * 0.2)
+            drawCircle(center: r.point(u: 0.5, v: 0.42), radius: edge * 0.2)
             fill(sand)
-            drawCircle(center: r.point(u: 0.72, v: 0.72), radius: r.width * 0.1)
+            drawCircle(center: r.point(u: 0.72, v: 0.72), radius: edge * 0.1)
             fill(.white)
-            drawCircle(center: r.point(u: 0.22, v: 0.78), radius: r.width * 0.06)
+            drawCircle(center: r.point(u: 0.22, v: 0.78), radius: edge * 0.06)
         } else {
             // Fixed offsets from the top-left corner, as a beginner would write
             // them against one canvas size.

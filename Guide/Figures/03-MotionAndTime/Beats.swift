@@ -16,7 +16,7 @@ final class Beats: Sketch {
 
     var paper: Color { theme.paper }
     var ink: Color { theme.ink }
-    var faint: Color { theme.ink(0.28) }
+    var label: Color { theme.ink(0.6) }
     var pale: Color { theme.ink(0.12) }
     var accent: Color { theme.accent }
 
@@ -56,7 +56,7 @@ final class Beats: Sketch {
             drawLine(x(of: Double(second)), 105, x(of: Double(second)), 405)
         }
         noStroke()
-        fill(faint)
+        fill(label)
         textSize(17)
         textAlign(.center, .top)
         for second in stride(from: 0, through: Int(window), by: 2) {
@@ -65,11 +65,12 @@ final class Beats: Sketch {
     }
 
     func lane(_ name: String, at y: Double, marks: [Double], filled: Bool) {
+        // The name starts clear of the 0 s grid line, which runs down `left`.
         noStroke()
-        fill(faint)
+        fill(label)
         textSize(19)
         textAlign(.left, .center)
-        drawText(name, left, y - 42)
+        drawText(name, left + 14, y - 42)
 
         stroke(pale)
         strokeWeight(2)

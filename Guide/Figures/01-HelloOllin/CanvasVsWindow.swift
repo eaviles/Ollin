@@ -75,7 +75,7 @@ final class CanvasVsWindow: Sketch {
         fill(soft)
         textSize(15)
         textAlign(.center, .top)
-        drawText("`width` and `height` say 1080 either way, so the drawing never changes",
+        drawText("width and height say 1080 either way, so the drawing never changes",
                  width / 2, 440)
     }
 

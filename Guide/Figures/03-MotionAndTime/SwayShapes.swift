@@ -63,11 +63,14 @@ final class SwayShapes: Sketch {
         for i in 0...160 {
             let lap = Double(i) / 160
             let unit = value(of: shape, at: lap)
+            let x = left + lap * width
             if abs(unit - previous) > 0.5 && (shape == .square || shape == .saw) {
-                drawPolyline(run)
-                run = []
+                // A jump: the value is never in between, so the plot holds its
+                // level to the jump and rises or drops straight there. The one
+                // at the lap's close is the return home every shape makes.
+                run.append(Vector2(x, top + swing * 2 - previous * swing * 2))
             }
-            run.append(Vector2(left + lap * width, top + swing * 2 - unit * swing * 2))
+            run.append(Vector2(x, top + swing * 2 - unit * swing * 2))
             previous = unit
         }
         drawPolyline(run)

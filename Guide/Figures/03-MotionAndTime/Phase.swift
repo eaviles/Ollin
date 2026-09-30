@@ -66,16 +66,17 @@ final class Phase: Sketch {
         textAlign(.left, .top)
         drawText("the same wave, started a little later", left + 4, midY + swing + 20)
 
-        // Bottom: one instant of 26 swings with growing head starts.
+        // Bottom: one instant of 24 swings with growing head starts, the count
+        // and the step of the chapter's listing.
         let rowY = 420.0, rowSwing = 60.0
         let snapshot = 0.9
         stroke(faint)
         strokeWeight(2)
         drawLine(left, rowY, right, rowY)
         noStroke()
-        for i in 0..<26 {
-            let x = left + 24 + Double(i) / 25 * (right - left - 48)
-            let headStart = Double(i) * 0.42
+        for i in 0..<24 {
+            let x = left + 24 + Double(i) / 23 * (right - left - 48)
+            let headStart = Double(i) * 0.4
             fill(ink)
             drawCircle(x, rowY - sin(snapshot - headStart) * rowSwing, 9)
         }

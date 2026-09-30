@@ -23,6 +23,7 @@ final class GradientPaint: Sketch {
         let dusk = Ramp([
             Color(hex: 0x14213D), Color(hex: 0x5E60CE),
             Color(hex: 0xE56B6F), Color(hex: 0xFFB703),
+            Color(hex: 0xFFF3E0),
         ])
 
         // Linear: start point to end point.

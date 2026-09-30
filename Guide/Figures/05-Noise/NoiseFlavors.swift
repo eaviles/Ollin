@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram: six landscapes from one seed, same zoom, different rules.
+// Guide diagram: six landscapes from one seed, different rules.
 // Top row: layered noise, simplex, and warped fbm. Bottom row: cellular
 // distances, ridged creases, and turbulence billows.
 import Ollin
@@ -55,7 +55,10 @@ final class NoiseFlavors: Sketch {
         switch (r, c) {
         case (0, 0): return noise(x, y)
         case (0, 1): return simplexNoise(x, y)
-        case (0, 2): return warpedFbm(x, y)
+        // The warp multiplies the field's frequency several times over, so
+        // this panel is read farther out, at the chapter's own zoom, to keep
+        // the smeared bands wider than the cells they are drawn with.
+        case (0, 2): return warpedFbm(x * 0.3, y * 0.3)
         case (1, 0): return worley(x * 1.6, y * 1.6)
         case (1, 1): return ridgedFbm(x, y)
         default: return turbulence(x, y)

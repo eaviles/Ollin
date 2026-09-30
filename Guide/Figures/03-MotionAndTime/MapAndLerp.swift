@@ -57,7 +57,7 @@ final class MapAndLerp: Sketch {
         fill(ink)
         textAlign(.left, .middle)
         drawText("0.5", dotX + 14, fromY - 24)
-        drawText("130", dotX + 14, toY + 26)
+        drawText("165", dotX + 14, toY + 26)
         textAlign(.center, .top)
         drawText("map(0.5, -1, 1, 60, 200) keeps the fraction along: 75% in, 75% out",
                  width / 2, 268)
