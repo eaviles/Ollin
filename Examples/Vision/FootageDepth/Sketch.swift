@@ -19,8 +19,8 @@ import OllinVision
 /// ```
 ///
 /// The bundled clip is *Voladores de Papantla México* by José Millán
-/// (Jmillan325), 2018, via Wikimedia Commons, CC BY-SA 4.0; trimmed and
-/// re-encoded for bundling
+/// (Jmillan325), 2018, via Wikimedia Commons, CC BY-SA 4.0, full provenance
+/// in THIRD-PARTY-NOTICES.md; trimmed and re-encoded for bundling
 /// (https://commons.wikimedia.org/wiki/File:Voladores_de_Papantla_México.webm).
 /// The model weights aren't in the repo: run `Scripts/fetch-models.sh` once
 /// and relaunch (the sketch says so on the canvas until then).
