@@ -33,7 +33,7 @@ Hobby's spline needs your points first. Some outlines need no points at all, bec
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/ClassicCurves-dark.jpg">
-  <img src="Images/16-CurvesAndFigures/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
+  <img src="Images/16-CurvesAndFigures/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough gray polygon with its smoothed version drawn over it" width="680">
 </picture>
 
 ```swift
@@ -79,7 +79,7 @@ drawPolyline(fitted(figure.points, in: bounds.inset(by: .all(60))), closed: figu
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/Spirolaterals-dark.jpg">
-  <img src="Images/16-CurvesAndFigures/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the bottom right instead of closing" width="680">
+  <img src="Images/16-CurvesAndFigures/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the top left instead of closing" width="680">
 </picture>
 
 Frank Odds named the spirolateral in 1973. It sometimes comes home and sometimes does not, and you can tell which before you draw a line. Follow one run of order seven and you turn seven times, which leaves you facing a quarter turn from where you started. So the second run is the first one turned a quarter turn, and the third is turned a half. After four runs you have gone all the way around and closed the ring. That is the middle panel, with the first run left in orange inside it.

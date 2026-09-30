@@ -10,7 +10,7 @@ The [medial axis](MedialAxis.md) bends into curves around reflex corners, but th
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
-  <img src="../../Guide/Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets whose innermost ring splits in two where the waist pinches" width="680">
 </picture>
 
 The skeleton also divides the shape into faces, one face per boundary edge. If you raise every point to its inset distance, each face becomes a flat plane. That is the classic roof model, and it gives you a ready-made paneling of any polygon.

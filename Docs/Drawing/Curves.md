@@ -8,7 +8,7 @@ These are the classic curve builders of generative art. Each one is a **pure fun
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-CurvesAndFigures/ClassicCurves-dark.jpg">
-  <img src="../../Guide/Images/16-CurvesAndFigures/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
+  <img src="../../Guide/Images/16-CurvesAndFigures/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough gray polygon with its smoothed version drawn over it" width="680">
 </picture>
 
 ```swift
