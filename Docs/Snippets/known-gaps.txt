@@ -851,7 +851,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  expected '{' in body of function de
 69561a5ccbb1  Docs/Helpers/Synthesis.md:125  cannot find 'synth' in scope
 0325ad3f60c8  Docs/Helpers/Synthesis.md:153  cannot find 'synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:286  missing argument for parameter 'at' in call
+2d7bb8d6c187  Docs/Helpers/Synthesis.md:286  cannot find 'synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
 83821c3e07c3  Docs/Helpers/Synthesis.md:398  cannot find 'synth' in scope
 c1f052f4e696  Docs/Helpers/Synthesis.md:458  cannot find 'synth' in scope
@@ -960,7 +960,7 @@ c67e0244b3e3  Docs/Integration/ScreenCapture.md:144  cannot find 'screen' in sco
 92f32c6a0d4c  Docs/Integration/ScreenCapture.md:150  cannot find 'screen' in scope
 06a8d90c3f1e  Docs/Integration/ScreenCapture.md:162  cannot find 'screen' in scope
 3c8c146ea4e2  Docs/Integration/ScreenCapture.md:66  cannot find 'screen' in scope
-54ee5d0c5d67  Docs/Integration/ScreenCapture.md:90  cannot convert value of type '(any AnyObject).Type' to expected argument type 'CGDirectDisplayID' (aka 'UInt32')
+d0e0b4be4d42  Docs/Integration/ScreenCapture.md:90  cannot find 'displayID' in scope
 441c9d7cac54  Docs/Integration/Serial.md:102  cannot find 'serial' in scope
 df55c6d74f7e  Docs/Integration/Serial.md:112  expected '{' in body of function declaration
 74ae6220bd4e  Docs/Integration/Serial.md:119  cannot find 'serial' in scope

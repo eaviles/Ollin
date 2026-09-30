@@ -316,7 +316,8 @@ public final class World3D {
         // keeps reporting bodies that fall asleep inside it.
         let body = Body3D(world: self, id: id, collider: collider,
                           kind: isSensor ? .kinematic : kind, density: density,
-                          isSensor: isSensor, overriddenMass: mass)
+                          isSensor: isSensor, overriddenMass: mass,
+                          handedCenterOfMass: centerOfMass == .zero ? nil : centerOfMass)
         bodies.append(body)
         bodyByID[id] = body
         return body

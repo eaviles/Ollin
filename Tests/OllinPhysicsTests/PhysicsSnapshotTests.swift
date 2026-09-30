@@ -390,6 +390,38 @@ struct PhysicsSnapshotTests {
         #expect(world.bodies[2].kind == .static, "the wall is still static")
     }
 
+    /// A mass and a center of mass handed to a body carry, as a scene's
+    /// `physics:mass` and `physics:centerOfMass` hand them through the import.
+    /// Neither can be worked out from the collider again, so a snapshot that
+    /// dropped them brought a ten-kilogram crate back at the thousand its box
+    /// and density make, balanced at its middle rather than weighted low.
+    @Test func aHandedMassAndCenterOfMassCarry() throws {
+        // The values rather than the body: a body holds its world unowned, so
+        // it cannot outlive the world this function builds.
+        func settle(restoring: Bool, keel: Vector3 = Vector3(0, -0.4, 0))
+            -> (position: Vector3, mass: Double, handed: Vector3?) {
+            let world = World3D()
+            world.ground = 0
+            _ = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1.5, 0),
+                              kind: .dynamic, isSensor: false, rotated: 0.9, axis: .unitZ,
+                              density: 1, friction: 0.5, restitution: nil,
+                              mass: 10, centerOfMass: keel)
+            run(world, steps: 20)
+            if restoring { try! world.restore(world.snapshot()) }
+            run(world, steps: 90)
+            let body = world.bodies[0]
+            return (body.position, body.mass, body.handedCenterOfMass)
+        }
+        let restored = settle(restoring: true)
+        #expect(abs(restored.mass - 10) < 1e-6, "the handed mass came back")
+        #expect(restored.handed == Vector3(0, -0.4, 0), "and where the weight hangs")
+        let straight = settle(restoring: false)
+        #expect((straight.position - restored.position).length < 1e-6,
+                "the crate settles where it would have with no snapshot between")
+        #expect((straight.position - settle(restoring: false, keel: .zero).position).length > 0.01,
+                "and the measurement is not blind to where the weight hangs")
+    }
+
     /// Every collider kind survives, shape for shape. Mass is the check that a
     /// shape really came back the same size, since it falls out of the volume;
     /// the static-only kinds are checked by what they hold up.

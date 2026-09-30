@@ -76,11 +76,17 @@ public final class Body3D {
     /// reports no mass of its own, so this is what it is rebuilt from.
     let overriddenMass: Double?
 
+    /// Where the body's weight was told to hang when it was created, in its own
+    /// frame, when a center of mass was given; `nil` for the collider's own.
+    /// Kept so a snapshot can hand it back to `addBody` on restore.
+    let handedCenterOfMass: Vector3?
+
     /// Backing store for `kind` (the solver is told on set).
     private var storedKind: Kind
 
     init(world: World3D, id: CJoltBodyID, collider: Collider3D, kind: Kind,
-         density: Double, isSensor: Bool = false, overriddenMass: Double? = nil) {
+         density: Double, isSensor: Bool = false, overriddenMass: Double? = nil,
+         handedCenterOfMass: Vector3? = nil) {
         self.world = world
         self.id = id
         self.collider = collider
@@ -88,6 +94,7 @@ public final class Body3D {
         self.density = density
         self.isSensor = isSensor
         self.overriddenMass = overriddenMass
+        self.handedCenterOfMass = handedCenterOfMass
     }
 
     /// The body's center, in world units.
