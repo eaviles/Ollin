@@ -239,12 +239,12 @@ synth.voice = Voice(plucked: string)
 
 | Property | What it does |
 |---|---|
-| `pick` | where along the string it is plucked, `0...1` |
+| `position` | where along the string it is plucked, `0...1` |
 | `hardness` | how hard the pluck is, `0...1`, from a fingertip to a plectrum |
 | `decay` | how long the note takes to fade, in seconds at the note being played |
 | `damping` | how much sooner the top goes than the bottom, `0...1` |
 
-**`pick` is the one that sounds least like a setting.** A string held at a point cannot move there. Every harmonic with a node at that point is therefore missing. Plucking at `0.5` loses every even harmonic and comes out hollow. Plucking near the end keeps them all and comes out thin and nasal. A quarter of the way along is roughly where a guitar is played. `Examples/Audio/Strings` lets you click a string wherever you want to pluck it.
+**`position` is the one that sounds least like a setting.** A string held at a point cannot move there. Every harmonic with a node at that point is therefore missing. Plucking at `0.5` loses every even harmonic and comes out hollow. Plucking near the end keeps them all and comes out thin and nasal. A quarter of the way along is roughly where a guitar is played. `Examples/Audio/Strings` lets you click a string wherever you want to pluck it.
 
 **A string decides for itself how a note fades.** The envelope only has to stay out of the way. `Envelope.plucked` is that envelope, and the string presets use it. Ask for a note long enough to let the string finish (`for: string.decay`), or the envelope's release cuts it off mid-ring.
 

@@ -10,7 +10,7 @@ Watercolor paints pigment from nothing but polygon deformation and translucency.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/WatercolorLayers-dark.jpg">
-  <img src="../../Guide/Images/17-MarksAndMedia/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+  <img src="../../Guide/Images/17-MarksAndMedia/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity with its wandering outline traced so it can be seen, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
 </picture>
 
 ### Contents

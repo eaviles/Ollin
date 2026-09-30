@@ -4,7 +4,7 @@
 
 # 11. Forces and physics
 
-<img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing into a tower of colored bricks, the bricks it hit shattered into shards flying to the right while the rest of the column leans" width="560">
+<img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links hung from a peg near the top, the chain running down and to the right into a tower of colored bricks: three bricks shattered into shards flying to the right, the top brick flung whole above them, and the five below leaning right as one column" width="560">
 
 Things in the world fall, drift, and swing because forces push on them, and a sketch can push its shapes the same way. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, and a graph lays itself out, all without a world.
 
@@ -96,7 +96,7 @@ final class Confetti: Sketch {
 }
 ```
 
-<img src="Images/11-ForcesAndPhysics/Confetti.jpg" alt="A shower of small colored paper pieces falling through a dark canvas, the short light pieces blown sideways by wind while the long heavy pieces fall on a steeper slant" width="560">
+<img src="Images/11-ForcesAndPhysics/Confetti.jpg" alt="A shower of small colored paper pieces falling through a dark canvas, most of them close to upright, and a few of the short pieces leaning a little" width="560">
 
 The state is [Chapter 10](10-Vectors.md)'s parallel lists again, with one addition. Every piece gets its own `mass`, and its drawn length comes from it, so you can tell them apart. The wind is a single `signedNoise` value shared by the whole shower, wandering the way [Chapter 5](05-Noise.md)'s noise wanders. Run it and watch what mass does. When a gust arrives, the small pieces get thrown almost sideways while the long ones sway a little and keep plowing downward. The code treats every piece the same. The same three forces act on all of them, and the one division by mass makes the light ones flighty and the heavy ones stubborn. Each piece also draws itself rotated to its own velocity (`rotate(velocities[i].angle)`, from [Chapter 10](10-Vectors.md)), so when the wind leans, the whole shower leans with it.
 
@@ -603,8 +603,8 @@ Run it with `swift run OllinLive MySketches/Wrecker.swift`, watch the first swin
 
 - The sketch keeps its own lists, `bricks`, `shards`, and `links`, next to the world's, as the tumble did. The world moves the bodies, and the lists remember which body should be drawn as what. The ball is kept the same way, in `ball`, and the peg only as its position, `anchor`.
 - The tower is nine boxes stacked with two points of breathing room, each with a color in its `userData`.
-- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges it to the previous body at the midpoint between them, and moves on. The first body is a `.static` peg, the world's word for "never moves". That single static body is what the whole swinging chain hangs from. The ball is the seventh link, drawn rounder and made five times denser.
-- Because `linkStep` points up and to the left, the chain is born mid-hoist, and gravity does the first demonstration for you. The figure at the top of the chapter is that first swing, caught two-thirds of the way through the tower.
+- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges its near end to the previous body, and moves on. The first body is a `.static` peg, the world's word for "never moves". That single static body is what the whole swinging chain hangs from. The ball is the seventh link, drawn rounder and made five times denser.
+- Because `linkStep` points up and to the left, the chain is born mid-hoist, and gravity does the first demonstration for you. The figure at the top of the chapter is that first swing: three bricks shattered, the top one flung whole, the five below leaning.
 - A brick breaks when the ball meets it fast. Each frame the ball's center is moved into the brick's own coordinates. `clamp(x, low, high)` holds a value inside a range, so the two clamps give the point of the brick nearest the ball's center. The loop walks the bricks backwards, because removing a brick shifts every index after it, and a backwards walk never visits those again. A ball closer than its radius shatters the brick there, the way [Breaking things](#breaking-things) broke the disc. The pieces carry on with the brick's velocity. Each brick keeps its color in `userData`, so taking one out of the list never recolors the ones above it.
 - `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds. Here that means within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
 - `held` is an optional `Joint`, and every use goes through `?.`. So the same `draw()` works whether or not you're holding something, with no flag to keep in sync.
