@@ -74,11 +74,27 @@ struct OllinLiveApp: App {
             }
         }
 
+        // The sibling cue sheet, the one the inspector saves, loads the same way,
+        // so `--cue <name>` finds a look saved there without `--cues`; a
+        // `--cues` file still wins (the shared handler applies it after setup).
+        let cuesURL = URL(fileURLWithPath: sketchPath).deletingPathExtension()
+            .appendingPathExtension("cues.json")
+        var cueSheet: CueSheet?
+        if FileManager.default.fileExists(atPath: cuesURL.path) {
+            do {
+                cueSheet = try CueSheet.load(from: cuesURL.path)
+            } catch {
+                FileHandle.standardError.write(
+                    Data("OllinLive: could not read the cue sheet: \(error)\n".utf8))
+                exit(1)
+            }
+        }
+
         // `swift run OllinLive Sketch.swift --export-gif loop.gif --seconds 4`
         // runs the same headless export surface a standalone `@main` sketch
         // gets, on a loose watched file: the shared handler recognizes the
         // flag and only then pays for the compile. Exits without a window.
-        // The sibling automation rides along, so an export renders the piece
+        // The sibling automation is applied too, so an export renders the piece
         // as the timeline panel played it; the `--automation` flag still wins
         // (the shared handler applies it after this).
         // The sketch compiles optimized unless `--no-optimize` asks for the
@@ -90,6 +106,7 @@ struct OllinLiveApp: App {
             switch SketchLoader(sketchPath: sketchPath, optimization: optimization).load() {
             case .success(let sketch):
                 if let automation { sketch.automation = automation }
+                if let cueSheet { sketch.cueSheet = cueSheet }
                 return sketch
             case .failure(let error):
                 FileHandle.standardError.write(Data("OllinLive: \(error)\n".utf8))
