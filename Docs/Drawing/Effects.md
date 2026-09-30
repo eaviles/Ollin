@@ -881,7 +881,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 The rest of the shape:
 
 - **`substeps`** runs the step that many times a frame, for a rule that wants to settle faster than once a frame. **`rest`** is the state every cell starts at, `(0, 0, 0, 1)` unless you say otherwise.
-- **`inputs`** are extra layers the kernels read with `input(info, i)`, up to `SimField.maxInputs`, which is four. Like `modulation`, each is a per-frame layer: draw or generate it every frame before reading the field, and it arrives exactly as stored. A layer not drawn this frame reads as zero, and a `filtered(_:)` output cannot be an input, since filters resolve after the sims.
+- **`inputs`** are extra layers the kernels read with `input(info, i)`, up to `SimField.maxInputs`, which is four. Like `modulation`, each is a per-frame layer: draw or generate it every frame before reading the field, and it arrives exactly as stored. A layer not drawn this frame reads as zero, and a `filtered(_:)` output cannot be an input, since filters resolve after the sims; a layer that draws a filtered image is no way around that, since every layer draws before any filter resolves, so it arrives empty.
 - **`edge`** and **`precision`** are the field's, above. A kernel that counts wants `.float32`; a plate that must not leak wants `.clamped`.
 - **`.arrows`** draws a two-channel state as arrows, and **`snapshot()`** reads any state back as numbers.
 - A compile error is reported at the file and line you wrote the kernel in, the field keeps its last state, and a later clean compile picks it up again, the way every user shader behaves. `ollin check` reads a kernel file as the `simulation` shape (it calls `cell`) or the `inject` shape (it calls `mark`).
