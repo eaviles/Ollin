@@ -137,9 +137,13 @@ public enum Penrose {
     /// One deflation step for a single half-tile. Children exactly partition
     /// the parent; lengths shrink by 1/phi.
     ///
-    /// P2, with Q and R at the golden sections of the legs:
-    ///   half-kite(A, B, C) -> half-kite(A, Q, R) + half-kite(C, B, Q)
-    ///                         + half-dart(R, C, Q)
+    /// P2, a half written (apex, axis, free) with the apex the 36-degree
+    /// corner of a half-kite and the 108-degree corner of a half-dart:
+    ///   half-kite(A, C, B) -> half-kite(B, Q, C) + half-kite(B, Q, P)
+    ///                         + half-dart(P, A, Q)
+    ///     with Q on A..C one short edge from A (where the bisector of the
+    ///     angle at B lands, so BQ = BC) and P on B..A one short edge from
+    ///     B. The two half-kites share the axis B..Q, a whole small kite.
     ///   half-dart(A, B, C) -> half-kite(B, A, P) + half-dart(P, C, A)
     ///     with P at the golden section of the base B..C.
     ///
@@ -154,11 +158,11 @@ public enum Penrose {
         switch (variant, h.acute) {
         case (.kitesAndDarts, true):
             let q = h.apex + (h.axis - h.apex) * inv
-            let r = h.apex + (h.free - h.apex) * inv
+            let p = h.free + (h.apex - h.free) * inv
             return [
-                Half(acute: true, apex: h.apex, axis: q, free: r),
-                Half(acute: true, apex: h.free, axis: h.axis, free: q),
-                Half(acute: false, apex: r, axis: h.free, free: q),
+                Half(acute: true, apex: h.free, axis: q, free: h.axis),
+                Half(acute: true, apex: h.free, axis: q, free: p),
+                Half(acute: false, apex: p, axis: h.apex, free: q),
             ]
         case (.kitesAndDarts, false):
             let p = h.axis + (h.free - h.axis) * inv
@@ -272,10 +276,10 @@ public enum Penrose {
         switch tile.kind {
         case .kite:
             corners = (0, 2)
-            fractions = (inv * inv, inv)   // nose, then the 144-degree corner
+            fractions = (inv, inv)   // nose, then the 144-degree corner
         case .dart:
-            corners = (0, 2)
-            fractions = (inv * inv, inv * inv)   // reflex corner, then tail
+            corners = (2, 0)
+            fractions = (inv * inv, inv * inv)   // tip, then the reflex corner
         case .thick:
             corners = (0, 2)
             fractions = (inv * inv, inv * inv)

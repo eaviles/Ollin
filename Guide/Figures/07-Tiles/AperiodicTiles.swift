@@ -47,6 +47,11 @@ final class AperiodicTiles: Sketch {
                 drawShape(tile.shape)
             }
             noFill()
+            stroke(tileInk.withAlpha(0.55))
+            strokeWeight(1)
+            for tile in tiles {
+                drawShape(tile.shape)
+            }
             strokeWeight(1.6)
             for tile in tiles {
                 for (i, arc) in tile.arcs.enumerated() {

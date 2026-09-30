@@ -7631,24 +7631,26 @@
       "width": 1080
     },
     "Patterns/Penrose": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.496,
+      "sound": false,
+      "source": "34ded6ad5d060740",
+      "rendered": "2026-09-30",
       "bytes": {
         "loop": 3063533,
-        "loopSmall": 829488,
+        "loopSmall": 829556,
         "still": 392656,
         "stillSmall": 142177
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
       "loop": "examples/Patterns/Penrose/loop.mp4?v=ab0a8651",
-      "loopSmall": "examples/Patterns/Penrose/loop-640.mp4?v=f07c8f8c",
-      "motion": 3.496,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "34ded6ad5d060740",
+      "loopSmall": "examples/Patterns/Penrose/loop-640.mp4?v=c1c17da2",
       "still": "examples/Patterns/Penrose/still.jpg?v=ac994a88",
       "stillSmall": "examples/Patterns/Penrose/still-640.jpg?v=b56b26ad",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/Pentominoes": {
       "bytes": {

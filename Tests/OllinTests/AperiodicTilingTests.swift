@@ -95,6 +95,46 @@ struct AperiodicTilingTests {
         }
     }
 
+    /// The merged tiles cover the patch with no holes and no overlaps. The
+    /// edge test above passes a tiling with holes in it, since a dropped half
+    /// leaves every remaining edge shared by at most two tiles, and the
+    /// kite-and-dart rule once dropped a third of its halves that way (a
+    /// half-kite split into a piece that was no half-kite, so `merge` found
+    /// no partner for it and the paper showed through). Every point of the
+    /// patch's interior has to lie inside exactly one tile.
+    @Test func penroseTilesCoverThePatchOnce() {
+        for variant in Penrose.Variant.allCases {
+            let tiles = Penrose.tiles(variant, in: bounds, tileEdge: 30)
+            var holes = 0, overlaps = 0
+            for i in 0..<40 {
+                for j in 0..<40 {
+                    // The central three fifths, off any lattice line.
+                    let p = Vector2(80 + Double(i) * 6 + 0.3819, 80 + Double(j) * 6 + 0.6180)
+                    let inside = tiles.count { contains($0.points, p) }
+                    if inside == 0 { holes += 1 }
+                    if inside > 1 { overlaps += 1 }
+                }
+            }
+            #expect(holes == 0, "\(variant): \(holes) of 1600 points lie in no tile")
+            #expect(overlaps <= 2, "\(variant): \(overlaps) of 1600 points lie in two tiles")
+        }
+    }
+
+    /// Even-odd point-in-polygon by ray casting.
+    private func contains(_ polygon: [Vector2], _ p: Vector2) -> Bool {
+        var inside = false
+        var j = polygon.count - 1
+        for i in polygon.indices {
+            let a = polygon[i], b = polygon[j]
+            if (a.y > p.y) != (b.y > p.y),
+               p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x {
+                inside.toggle()
+            }
+            j = i
+        }
+        return inside
+    }
+
     @Test func penroseKindRatioApproachesGolden() {
         // In the limit, kites outnumber darts (and thick rhombs thin ones) by
         // the golden ratio. A finite patch sits near it.
