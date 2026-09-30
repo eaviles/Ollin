@@ -11,7 +11,7 @@
   <img src="../Images/StippleTone.jpg" alt="A photograph of a woman in profile against a plain tan ground beside the same picture as a stipple: black dots on cream, packed tight where the head and the braid are dark, and spread thin across the ground" width="680">
 </picture>
 
-The method behind it is a weighted centroidal Voronoi iteration. It seeds the dots by rejection-sampling the darkness, then it moves every dot to the darkness-weighted centroid of its cell, over and over. Each pass evens out the spacing, while the weighting keeps the dots on the tone. Close up the dots are as even as blue noise, and at full size they take the shape of the image.
+The method behind it is Adrian Secord's weighted Voronoi stippling, from 2002. Dots of even weight were a hand discipline in scientific illustration long before that. A random scatter does not reproduce it, because random placement clumps, so the dots are settled instead. The call seeds them by rejection-sampling the darkness, then it moves every dot to the darkness-weighted centroid of its cell, over and over. Each pass evens out the spacing, while the weighting keeps the dots on the tone. After a few dozen passes the spread is even, dense in the shadows and sparse in the light. Close up the dots are as even as blue noise, and at full size they take the shape of the image.
 
 ### Contents
 
@@ -82,6 +82,8 @@ var rng = SplitMix64(seed: 7)
 let dots = stipple(of: picture, count: 4000, in: frame, using: &rng)
 let field = stipple(count: 800, in: frame, using: &rng) { p in p.x / frame.width }
 ```
+
+Example: `Patterns/Stippling`. Guide: [Chapter 9](../../Guide/09-Pictures.md).
 
 ---
 

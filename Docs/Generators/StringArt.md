@@ -48,7 +48,7 @@ override func draw() {
 
 The canvas never clears, so each frame adds a few more chords to the ones already there. The picture knits itself over the first seconds of the run.
 
-- **`ink`** is how much darkness one pass of thread takes out of the picture (`0...1`), and it sets how dense the winding gets. Lower ink winds more chords, and finer ones, before a region counts as done. Match it to the stroke alpha you draw with, so the solver's idea of one pass is close to what a drawn chord darkens.
+- **`ink`** is how much darkness one pass of thread takes out of the picture (`0...1`), and it sets how dense the winding gets. Lower ink winds more chords, and finer ones, before a region counts as done. The stroke alpha is the thread's faintness, `0.35` in that sketch, and it is what makes crossings add up. Match `ink` to that alpha, so the solver's idea of one pass is close to what a drawn chord darkens.
 - **`minSpan`** is the shortest chord allowed, counted in pins around the rim, and it defaults to a tenth of the pins. It keeps the thread crossing the picture instead of running along the rim.
 - **`inverted`** winds the light areas instead of the dark ones, which gives you a bright thread on a dark ground.
 - **`resolution`** is the side of the internal grid that the scoring runs on. The default suits canvas-sized work. Raise it for fine detail, which costs more time in setup and more time per chord.
@@ -74,7 +74,7 @@ Each `Chord` carries the pins it spans (`fromPin`, `toPin`) and their canvas pos
 
 #### Practical notes
 
-- **Bold tonal masses read best.** A strong silhouette or a deep shadow against open paper knits into a clear figure. A soft gradient across the whole frame reads as fuzz. If the picture is low in contrast, raise its contrast first.
+- **Bold tonal masses read best.** A strong silhouette or a deep shadow against open paper knits into a clear figure. So a profile winds better than a street or a sky. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord then covers about the same darkness, so no choice stands out. If the picture is low in contrast, raise its contrast first.
 - **Accumulate, don't redraw.** The look comes from thousands of translucent chords piling up, so all you need is `noClear()` plus a one-time `background`. See `Examples/Images/StringArt`.
 - **The thread is one line, which suits a pen plotter.** Draw `art.thread` with `drawPolyline` in a clearing sketch. The [SVG export](../Output/Export.md) then writes the whole piece as a single continuous line.
 - **`chords` sets the length of the thread.** A few hundred chords stay open and diagrammatic, and a few thousand read as continuous tone. The winding also stops on its own once nothing left is worth its ink, so `chords` is a ceiling rather than a target.

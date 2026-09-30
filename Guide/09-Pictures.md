@@ -310,46 +310,30 @@ A few practical notes. `.none` skips the scattering entirely, which is what the 
 
 ## A picture as marks: glyphs, dots, pictures, lines, and thread
 
-The portrait was a mosaic built by hand, one letter per cell, so that the message could spell something. When the marks do not need to spell anything, the framework ships the same move finished, along with several others like it. Some place a character, a dot, or a small picture in each cell. Others settle dots into one line or one tree, or wind a single thread between pins. Every one reads brightness the way the portrait did and answers it with a different mark. All of them descend from one idea, the halftone that newspapers were printing by the 1880s. The idea is to pick a mark, vary it by the brightness underneath, and let the eye put the picture back together.
+The portrait was a mosaic built by hand, one letter per cell, so that the message could spell something. When the marks need not spell anything, Ollin ships that move finished, along with dots, small pictures, one line, one tree, and a wound thread. Every one descends from the 1880s newspaper halftone: pick a mark, vary it by the brightness underneath, and let the eye rebuild the picture.
 
 ### One mark per cell: `drawGlyphMosaic` and `drawHalftone`
 
-A glyph mosaic puts one character in each cell of a grid, and a halftone puts one dot in each cell, grown to the tone. Both are for a picture that should read as texture from a distance and as marks up close. The halftone is the one to reach for when the marks have to be drawn by a pen. The glyph mosaic is the picture a line printer made in the 1960s, and the halftone is the printing industry's answer from the 1880s. Ollin ships both finished.
+A glyph mosaic puts one character in each cell of a grid, and a halftone puts one dot in each cell, grown to the tone. Both are for a picture that reads as texture from a distance and as marks up close, and a pen can draw the halftone. The glyph mosaic is the picture a line printer made in the 1960s, and the halftone is the printing industry's answer from the 1880s. The mosaic grows its mark with brightness and the halftone with darkness, so one of them takes `inverted: true` when both should read alike.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsGlyphs-dark.jpg">
   <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same photograph of an older woman in a scarf: on the left a mosaic of ASCII characters that get denser where the face and the scarf are lit, on the right a halftone screen of dots that grow in the same places" width="680">
 </picture>
 
-`drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
-
 ```swift
 textFont(BitmapFont.builtIn)
 fill(.white)
-drawGlyphMosaic(picture, columns: 72)
-```
-
-The part to understand is how it picks the character. It *measures* every character you offer it in the font you are currently using. It counts lit pixels for a bitmap font, outline area for an outline font, and pen travel for a stroke font. Then it matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay true. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from. `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
-
-`drawHalftone` does the same job with one dot per cell, grown until it covers the right fraction of that cell:
-
-```swift
-fill(.black)
 noStroke()
-drawHalftone(picture, pitch: 14)
+drawGlyphMosaic(picture, columns: 72)             // one character per cell
+drawHalftone(picture, pitch: 14, inverted: true)  // one dot per cell, light on dark
 ```
 
-In `drawHalftone`, `pitch` is the cell size and `angle` rotates the screen. The angle defaults to the 45 degrees printers have used for a century, because a diagonal grid is the least visible to the eye. Coverage is exact, so tone is right rather than approximated, and the dots are circles. That last detail is what lets a halftone go straight out to a pen plotter.
-
-Comparing the two panels shows the difference between them. A mosaic has as many tones as it has characters, so it steps. A halftone's radius is continuous, so it gives you a smooth ramp. Choose by which texture you want.
-
-One polarity trap sits between them. By default, `drawGlyphMosaic` grows its mark with *brightness*, which suits glowing marks on a dark ground. But `drawHalftone` grows its dot with *darkness*, because it is modeling ink on paper. Each takes `inverted: true` to flip. The figure above uses the mosaic's default beside the halftone's inverted form, so both read the same way.
-
-Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which hand back the cells or dots instead of drawing them. With them you can draw your own marks from the same measurement. Draw hexagons, or letters from a message, or nothing at all where the tone is light.
+The measured ramp, the sets, the screen angle, and the data forms are on the [glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md) pages, with worked sketches in [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift) and [`Examples/Images/Halftone`](../Examples/Images/Halftone/Sketch.swift).
 
 ### A picture made of pictures
 
-The marks so far have been characters and dots. They can be pictures. A photo mosaic rebuilds a target out of a library of smaller pictures, one per cell. It is for the picture that rewards a second look. From across the room it is the target, and up close every cell is a picture of its own. Robert Silvers wrote his MIT Media Lab thesis on the photographic mosaic in 1996 and applied for its patent in 1997. The idea of one picture built from many is older than photography.
+A photo mosaic rebuilds a target out of a library of smaller pictures, one per cell. It is for the picture that rewards a second look. From across the room it is the target, and up close every cell is a picture of its own. Robert Silvers wrote his MIT Media Lab thesis on the photographic mosaic in 1996 and applied for its patent in 1997. The idea of one picture built from many is older than photography. Each cell of the target takes the library picture whose linear-light average is nearest.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
@@ -361,50 +345,29 @@ let mosaic = target.mosaic(of: library, columns: 32, rows: 32)
 drawMosaic(mosaic, of: library, in: bounds, tint: 0.25)
 ```
 
-Every cell of the target is averaged, every picture in the library is averaged once, and each cell takes the nearest one.
-
-**The averaging happens in linear light, and it has to.** A cell that is half black and half white is middle gray. That gray is 0.5 in linear light and about 0.74 written back out in sRGB. Average the sRGB numbers instead and you get 0.5, a quarter too dark, and the mosaic loses its lights. Ollin averages in linear light. The reason to know it is that hand-rolling the same loop is where the mistake usually lives.
-
-Two arguments matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off. A quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
-
-The material decides whether a mosaic works. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the frame. The result is a picture of nothing. The call `mosaic.uses(of:)` hands back a use count per picture in the library. When a mosaic looks flat, watch the number of non-zero counts.
+The linear-light rule, `tint` and `maxUses`, and the range both sides need are on the [photo mosaic page](../Docs/Drawing/PhotoMosaic.md), with the worked sketch in [`Examples/Images/PhotoMosaic`](../Examples/Images/PhotoMosaic/Sketch.swift).
 
 ### A picture as one line: stippling, `singleLine`, and `spanningTree`
 
-This entry turns a picture into line work, and all of it starts with **stippling**. Stippling places loose dots so that their density reproduces the picture's tone. It is for the drawings a pen makes: a plotter draws dots, one closed tour, or a branching tree, and never a fill. Stippling with dots of even weight was a hand discipline in scientific illustration for a very long time. Adrian Secord gave it an algorithm in 2002. In the one unbroken tour through the dots, the picture appears out of how tightly the line has to wander. Robert Bosch and Craig Kaplan made that tour popular in the mid-2000s. Drawings made that way are called TSP art, after the routing problem that finds the tour.
-
-Getting a stipple right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot. Move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time. After a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. [Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.
-
-```swift
-let dots = stipple(of: picture, count: 4000, in: frame)
-```
+Stippling places loose dots whose density reproduces a picture's tone. Then `singleLine` and `spanningTree` join the dots into one closed tour or one branching tree. All three are for the drawings a pen makes, which are dots and lines and never a fill. Stippling with dots of even weight was a hand discipline in scientific illustration long before Adrian Secord gave it an algorithm in 2002. Robert Bosch and Craig Kaplan made the tour popular in the mid-2000s as TSP art, named after the routing problem that finds it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsLines-dark.jpg">
   <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the profile photograph, dense in the face and hair and empty on the plain ground, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
 </picture>
 
-Once you have the dots, two ways of joining them give two very different drawings:
-
 ```swift
-let tour = singleLine(through: dots)        // one closed loop
-let chains = spanningTree(through: dots)    // branching, minimal pen lifts
+let dots = stipple(of: picture, count: 4000, in: frame)
+let tour = singleLine(through: dots)          // one closed loop
+let chains = spanningTree(through: dots)      // branching, the fewest pen lifts
+let line = singleLine(of: picture, points: 4000, in: frame)   // both steps in one call
 ```
 
-`singleLine` finds a short tour that visits every dot once and comes back. The result is one continuous line, and the picture appears out of how tightly that line has to wander. The call `spanningTree` instead finds the shortest set of links that still connects every dot. Then it breaks the result into the fewest separate chains it can. So a drawing machine lifts its pen as few times as the branching requires. The first reads as a maze, the second as veins.
-
-Both also take a picture directly and do the stippling for you:
-
-```swift
-let line = singleLine(of: picture, points: 4000, in: frame)
-let veins = spanningTree(of: picture, points: 4000, in: frame)
-```
-
-In those forms `cutoff` is the argument to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is what a plain ground behind a face would do. A cutoff around 0.6 calls a tan ground paper, so the ground stays empty and every dot goes to the face.
+The settling method, the one-call forms, and `cutoff` are on the [stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md) pages, with worked sketches in [`Examples/Patterns/Stippling`](../Examples/Patterns/Stippling/Sketch.swift), [`Examples/Images/SingleLine`](../Examples/Images/SingleLine/Sketch.swift), and [`Examples/Images/SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift).
 
 ### A picture wound from thread: `StringArt`
 
-String art takes the same idea to its most physical form. Ring the canvas with pins, tie one thread to a pin, and wind it straight across, again and again. Nothing curves and nothing lifts, and the picture has to come out of where the crossings pile up. It is for a picture you could wind on a hoop of nails, and the winding order comes out with it. Petros Vrellis made it famous as a computational technique in 2016.
+String art rings the canvas with pins and winds one thread straight across, again and again. Nothing curves and nothing lifts, so the picture comes out of where the crossings pile up. It is for a picture you could wind on a hoop of nails, and the winding order comes with it. Petros Vrellis made it famous as a computational technique in 2016. Each chord is a greedy choice. From the pin the thread is on, `StringArt` winds the chord that still covers the most darkness, subtracts that ink from the picture, and goes again.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WoundFromThread-dark.jpg">
@@ -413,23 +376,15 @@ String art takes the same idea to its most physical form. Ring the canvas with p
 
 ```swift
 let art = StringArt(of: picture, center: Vector2(540, 540), radius: 470)
-
-override func setup() { noClear() }
-
+override func setup() { noClear() }                // the chords accumulate
 override func draw() {
     if frameCount == 1 { background(.white) }
     stroke(Color.black.withAlpha(0.35))
-    for chord in art.step(8) {
-        drawLine(chord.from, chord.to)
-    }
+    for chord in art.step(8) { drawLine(chord.from, chord.to) }
 }
 ```
 
-Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores every reachable pin by the darkness the straight chord would still cover. It winds the best one, subtracts that ink from its copy of the picture, and goes again from the pin it landed on. Dark regions demand crossing after crossing. Light regions are left almost alone. The picture emerges from where the thread had to go.
-
-It is a stepper you hold on to, like the growth systems of [Chapter 13](13-GrowingThings.md). Calling `noClear()` in `setup()` stops the canvas from being cleared between frames. So each `step` winds a few more chords onto what is already there. The picture builds up over the first seconds of a run. `withAlpha(0.35)` is the thread's faintness, the same alpha [Chapter 2](02-Color.md) set with `Color(hex:alpha:)`, so crossings add up. The property `art.thread` is the whole winding as one open polyline. The winding order itself is `art.sequence`, pin numbers you could follow on a rim of pins.
-
-Bold tonal masses knit into a clear figure, which is why a profile winds better than a street or a sky. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
+The `ink`, `pins`, and `minSpan` arguments, `thread` and `sequence`, and why bold masses wind better than a soft sky are on the [string art page](../Docs/Generators/StringArt.md), with the worked sketch in [`Examples/Images/StringArt`](../Examples/Images/StringArt/Sketch.swift).
 
 ## The picture's own pixels: sorting and a hidden shape
 
@@ -478,11 +433,11 @@ Four things decide whether one works, and only the first is code.
 
 ## Numbers you didn't type: CSV and JSON
 
-Words and pictures are material you bring in. So are numbers, and they come in the same way: a file read once in `setup()`, then asked one row at a time. The portrait has no use for them. But a spreadsheet, a sensor log, and a download from a public archive all export as one of two formats. Once a sketch reads such a file, the drawing changes when the file does and you never touch the sketch.
+Words and pictures are material you bring in, and numbers come the same way, read once in `setup()` and asked one row at a time. The portrait has no use for them, but a spreadsheet, a sensor log, and a public archive all export as one of two formats. Once a sketch reads such a file, the drawing changes when the file does and you never touch the sketch.
 
 ### Reading a table: `loadTable`
 
-A comma-separated file is the format everything exports. `loadTable` reads one, and each row hands you its cells by column name.
+A comma-separated file is the format every spreadsheet exports, one row per line and one cell per comma. `loadTable` reads one, guesses the separator and whether the first row names the columns, and hands you each row's cells by name. A cell is text, so `row.number(_:)`, `row.int(_:)`, `row.bool(_:)`, and `row.color(_:)` convert it when you ask, and each answers `nil` for a gap, not a zero. The format's published description is RFC 4180 (Yakov Shafranovich, 2005), and the reader follows it, quoted cells included.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DataAsMaterial-dark.jpg">
@@ -490,33 +445,23 @@ A comma-separated file is the format everything exports. `loadTable` reads one, 
 </picture>
 
 ```swift
-var table: Table?
-
-override func setup() {
-    table = try? loadTable(resource: "visits", withExtension: "csv", in: .module)
-}
-
-override func draw() {
-    background(.white)
-    guard let table else { return }
-
-    for (index, row) in table.enumerated() {
-        let y = 100 + Double(index) * 60
-        fill(row.color("tint") ?? .gray)
-        drawRect(corner: Vector2(80, y), width: row.number("visits") ?? 0, height: 22)
-    }
+let table = try loadTable(resource: "visits", withExtension: "csv", in: .module)
+for (index, row) in table.enumerated() {
+    fill(row.color("tint") ?? .gray)
+    drawRect(corner: Vector2(80, 100 + Double(index) * 60), width: row.number("visits") ?? 0, height: 22)
 }
 ```
 
-A cell is text, because that is what a file holds. `row["city"]` gives you that text, and `row.number(_:)`, `row.int(_:)`, `row.bool(_:)`, and `row.color(_:)` convert it when you ask. Each one answers `nil` when the column is not there or the cell is not what you asked for. For a file with a gap in it, `nil` is the right answer. An empty cell is not a zero. `drawRect(corner:width:height:)` takes the corner as the point you already hold, the labeled form beside the positional one from [Chapter 1](01-HelloOllin.md).
-
-Two things about the format matter, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `hasHeader: false` and read cells by position instead.
+The [Data](../Docs/Helpers/Data.md#loadTable) page has the separator and header guesses, the quoting rules, and every read by row and column; [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) reads a year from one.
 
 ### From numbers to marks
 
-A file gives you rows and columns. A drawing wants marks, and nothing in the file says which. That choice is yours, and it comes down to three questions for every mark: which column, which property of the mark, and over what range.
+A file gives you rows and columns, and a drawing wants marks. Each mark asks which column, which of its properties, and over what range. Any property will do, because a length, a radius, a hue, and a turn are all numbers. The range should come from the file, through `numbers(_:)`, `min()`, `max()`, and `map` from [Chapter 3](03-MotionAndTime.md). The bar, the scatter, and the line are the charts a reader already knows, and each is one such answer.
 
-Take one column and one property first. In the bars above, `visits` became a length. It could as well have become a radius, a height, a hue, or a turn, because every property of a mark is a number. The range is the part to get right, and the file should set it. The call `numbers(_:)` reads a column as a series, and `min()` and `max()` find its ends. Then `map` from [Chapter 3](03-MotionAndTime.md) carries a value from that range into the one your mark needs:
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/MarksFromNumbers-dark.jpg">
+  <img src="Images/09-Pictures/MarksFromNumbers.jpg" alt="One table of twelve monthly readings drawn three ways in three panels. Left, a bar per month for rain, tall in winter and short in summer. Middle, a dot per month placed by rain across and high temperature up, each dot labeled with its month, the summer months high on the left and the winter months low on the right. Right, one line through the months in order for the daily high, rising to a plateau in July and August and falling again." width="680">
+</picture>
 
 ```swift
 let rain = table.numbers("rain")
@@ -527,46 +472,21 @@ for (index, row) in table.enumerated() {
 }
 ```
 
-`max()` answers `nil` for an empty column, since an empty list has no largest value, which is why the `guard`. A length starts at zero. A bar twice as long stands for a number twice as big only when the scale starts there. So the low end of a length's range is 0 whatever the column's smallest value is. A position is the opposite. Map it from the column's smallest value to its largest, and the marks spread over the space you gave them. A dot sized by a number is a third case, because the eye reads a dot by its area. Give the radius the square root of the mapped value, `.squareRoot()`. Then a value twice as big reads twice as big instead of four times.
-
-Two columns place a mark. Read one into x and one into y, and every row becomes a point in a field, the drawing a scientist calls a scatter. The rows in order place a mark too. Say they are a sequence, such as the months of a year or the readings of a day. Then the row's index is the x and its number is the y. Joining those points with `drawPolyline` gives the line everybody reads as time:
-
-```swift
-let high = table.numbers("high")
-guard let lowest = high.min(), let highest = high.max() else { return }
-var points: [Vector2] = []
-for (index, row) in table.enumerated() {
-    let y = map(row.number("high") ?? lowest, lowest, highest, 300, 60)
-    points.append(Vector2(60 + Double(index) * 30, y))
-}
-drawPolyline(points)
-```
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/MarksFromNumbers-dark.jpg">
-  <img src="Images/09-Pictures/MarksFromNumbers.jpg" alt="One table of twelve monthly readings drawn three ways in three panels. Left, a bar per month for rain, tall in winter and short in summer. Middle, a dot per month placed by rain across and high temperature up, each dot labeled with its month, the summer months high on the left and the winter months low on the right. Right, one line through the months in order for the daily high, rising to a plateau in July and August and falling again." width="680">
-</picture>
-
-Color is one more property. A column can carry it outright, as `tint` did in the bars, or a number can pick it from a [Chapter 2](02-Color.md) `Ramp`. `ramp.color(at: map(value, lowest, highest, 0, 1))` turns a temperature into a color the way [Chapter 7](07-Tiles.md)'s tangle turned noise into one.
-
-The marks are the sketch's, so nothing holds you to bars and dots. A circle that grows with its number and a line that turns by it read the same column. So does a letter from [Chapter 8](08-Words.md) sized by it. The example [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) draws a year from a table like this step's. Each month is one bar from its low to its high, in a color the file carries. Each month also gets a rain dot sized by the rain column.
+The [Data](../Docs/Helpers/Data.md#mapping) page has the range rule for each kind of mark, and [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) draws a year from such a table.
 
 ### Documents with a shape: `loadJSON`
 
-JSON works the same way, for documents with a shape rather than rows:
+JSON is the format a web service answers in, nesting named values and lists to any depth rather than rows. `loadJSON` reads one and hands back a value you reach through by name or index. At the end of the path you ask for the kind you want: `.text`, `.number`, `.int`, `.bool`, `.color`, or `.array`. A key that is not there answers null rather than stopping, so a path of any length is safe to write in one line. A document you would rather decode into your own type is `Codable`'s job.
 
 ```swift
 let doc = try? loadJSON(resource: "places", withExtension: "json", in: .module)
-
 for point in doc?["points"].array ?? [] {
     fill(point["tint"].color ?? .gray)
     drawCircle(point["x"].number ?? 0, point["y"].number ?? 0, 20)
 }
 ```
 
-Reach in by name or index, then ask for the kind you want at the end: `.text`, `.number`, `.int`, `.bool`, `.color`, `.array`. `doc?["points"]` is the optional chaining from the seam map above, so a document that failed to load loops zero times. A key that is not there answers null rather than stopping, so a whole path is safe to write in one line. A loop over a missing key runs zero times too. That is why the `tint` above needs no check: a point that does not carry one lands on the fallback.
-
-Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives. The two readers are small on purpose, because a document with a shape of its own is `Codable`'s job rather than this framework's. The [Data](../Docs/Helpers/Data.md#codable) page shows that route. [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) draws a JSON survey.
+The [Data](../Docs/Helpers/Data.md#reaching) page has every kind you can ask for, the `Codable` route, and what a written null does; [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) draws a JSON survey.
 
 ## Where this comes from
 

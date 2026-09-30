@@ -8,12 +8,14 @@
 
 By default, bright cells get dense glyphs. That reads as light marks on a dark canvas, which is the terminal look. Pass `inverted: true` for the paper look, where dark cells carry the ink instead. The result is deterministic for a given image, column count, character set, and font. That makes a mosaic safe in a snapshot test and in a recipe.
 
+The glyph mosaic is the picture a line printer made in the 1960s, and the character ramp is the text-mode tradition that followed. Paul Bourke cataloged the standard ramps in 1997, and Ollin measures the ramp instead of ordering it by hand. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PictureAsGlyphs-dark.jpg">
   <img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
 </picture>
 
-The right panel is [`drawHalftone`](./Halftone.md), which answers the same question with one dot per cell, grown to cover the cell's share of ink.
+The right panel is [`drawHalftone`](./Halftone.md), which answers the same question with one dot per cell, grown to cover the cell's share of ink. A mosaic has as many tones as it has characters, so a ramp steps. A halftone's radius is continuous, so its ramp is smooth. Their default polarity also runs the other way. The mosaic grows its mark with brightness and the halftone grows its dot with darkness, so one of them takes `inverted: true` when both should read alike.
 
 ### Contents
 

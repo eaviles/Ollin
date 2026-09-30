@@ -4,7 +4,7 @@
 
 ## Single line
 
-**`singleLine`** connects a set of points into one continuous tour. That is how an image becomes TSP art: [stipple](./Stippling.md) a picture, tour the dots, and the one unbroken line reads as the picture. Dark regions pull the line into tight meanders, and light regions let it take long steps. The technique is Bosch and Kaplan's TSP art. The tour here starts as a nearest-neighbor construction and is then improved by 2-opt, which also removes the crossings that would muddy the tone.
+**`singleLine`** connects a set of points into one continuous tour. That is how an image becomes TSP art: [stipple](./Stippling.md) a picture, tour the dots, and the one unbroken line reads as the picture. Dark regions pull the line into tight meanders, and light regions let it take long steps. The technique is TSP art, which Robert Bosch and Craig Kaplan made popular in the mid-2000s. The TSP in the name is the routing problem that finds the tour. The tour here starts as a nearest-neighbor construction and is then improved by 2-opt, which also removes the crossings that would muddy the tone.
 
 The output is a plain `Contour`, so it works with `drawPolyline`, `drawCurve` for the smoothed reading, [hatching and SVG export](../Output/Export.md), and shape sampling. A single closed line is also the easiest thing to hand to a pen plotter.
 
@@ -43,7 +43,7 @@ stroke(.black)
 drawPolyline(line.points, closed: line.isClosed)
 ```
 
-`cutoff` rounds bright grays up to plain paper. Pixels lighter than `cutoff` place no dots, so light regions stay empty instead of collecting a thin wandering thread. Lower it for high-key images, and raise it toward `1` to let faint tone back in.
+`cutoff` rounds bright grays up to plain paper. Pixels lighter than `cutoff` place no dots, so light regions stay empty instead of collecting a thin wandering thread. Lower it for high-key images, and raise it toward `1` to let faint tone back in. A plain tan ground behind a face reads as paper at a cutoff around `0.6`. The ground then stays empty, and every dot goes to the face.
 
 <a name="points"></a>
 

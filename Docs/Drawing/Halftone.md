@@ -4,7 +4,7 @@
 
 ## Halftone
 
-**`drawHalftone`** rebuilds an image as the classic print dot screen. Round dots sit on a grid rotated to the traditional 45 degrees. Each dot is sized so its ink area matches the tone under its cell. Newspapers and screen prints have carried photographs this way for a century. It is the vector counterpart of the raster screening that [print separations](../Output/PrintSeparations.md) use. Because the sizing is area-exact, tone survives the screen, so a 30 percent gray becomes dots that cover 30 percent of their cells. In the shadows the dots overrun their cells and merge into the traditional checkered diamonds.
+**`drawHalftone`** rebuilds an image as the classic print dot screen. Round dots sit on a grid rotated to the traditional 45 degrees. Each dot is sized so its ink area matches the tone under its cell. Newspapers have carried photographs this way since the 1880s, and screen prints do the same. It is the vector counterpart of the raster screening that [print separations](../Output/PrintSeparations.md) use. Because the sizing is area-exact, tone survives the screen, so a 30 percent gray becomes dots that cover 30 percent of their cells. In the shadows the dots overrun their cells and merge into the traditional checkered diamonds.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/HalftoneScreen-dark.jpg">
@@ -88,6 +88,7 @@ Cells lighter than the printable minimum are left out, so highlights stay clean 
 - **Deterministic.** The screen is a pure function of the image, pitch, angle, and bounds. It consumes no rng, so a screen is safe in snapshots and in recipes.
 - **Tone is measured in linear light.** Coverage is 1 minus linear luminance, times alpha. Stippling uses the same rule, because a dot's ink area maps physically to reflectance. Transparency carries no ink.
 - **Texture-backed images return no dots**, because they hold no CPU pixels. To screen a video frame, read it through its `snapshot()` first.
+- **Beside a glyph mosaic.** A dot's radius is continuous, so a ramp stays smooth where [`drawGlyphMosaic`](./GlyphMosaic.md) steps through its characters. The mosaic also grows its mark with brightness by default, the other way from this screen, so one of the two takes `inverted: true` when both should read alike.
 - **For the pixel-space version** of the same look, filter a layer with `.halftone` or `.cmykHalftone` from the [effects catalog](./Effects.md). The GPU form is cheap per frame at any resolution, but it rasterizes, so it does not feed the plotter path.
 
 ---

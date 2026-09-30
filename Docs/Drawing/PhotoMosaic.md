@@ -16,7 +16,7 @@ let mosaic = portrait.mosaic(of: library, columns: 48, rows: 48)
 drawMosaic(mosaic, of: library, in: bounds)
 ```
 
-The averaging happens in **linear light**, because sRGB numbers do not average correctly. A cell that is half black and half white is middle gray at 0.5 in linear light. That value writes back out as about 0.74 in sRGB. Averaging the sRGB numbers instead gives 0.5, which is about a quarter too dark, so the mosaic loses its lights. Ollin also compares in linear light when it decides which picture is nearest.
+The averaging happens in **linear light**, because sRGB numbers do not average correctly. A cell that is half black and half white is middle gray at 0.5 in linear light. That value writes back out as about 0.74 in sRGB. Averaging the sRGB numbers instead gives 0.5, which is about a quarter too dark, so the mosaic loses its lights. Ollin also compares in linear light when it decides which picture is nearest. The place this goes wrong is a loop of your own that averages the stored sRGB values.
 
 ### Contents
 
@@ -72,7 +72,7 @@ drawMosaic(_ mosaic: PhotoMosaic, of pictures: [Image],
            in bounds: Rectangle? = nil, tint: Double = 0)
 ```
 
-Draws each cell's picture, cropped to fill its cell. **`tint`** mixes each cell toward the color it stands for. This is the usual way to make a mosaic read from further off. A value of 0 leaves the pictures alone, and 1 paints flat color. Most mosaics use about a third.
+Draws each cell's picture, cropped to fill its cell. **`tint`** mixes each cell toward the color it stands for. This is the usual way to make a mosaic read from further off. A value of 0 leaves the pictures alone, and 1 paints flat color. Most mosaics use a quarter to a third.
 
 The mosaic is a list of placements rather than a new picture, so you can draw it yourself. Do that when you want a per-cell rotation, a gap between cells, or a different fit:
 
@@ -98,7 +98,7 @@ Example: `Images/PhotoMosaic`. Guide: [Chapter 9](../../Guide/09-Pictures.md).
 
 #### Where this comes from
 
-Robert Silvers patented the photographic mosaic in 1996, from work at the MIT Media Lab. The idea of building one picture from many smaller ones is older than photography, though. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+Robert Silvers wrote his MIT Media Lab thesis on the photographic mosaic in 1996 and applied for its patent in 1997. The idea of building one picture from many smaller ones is older than photography, though. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 #### Go deeper
 
