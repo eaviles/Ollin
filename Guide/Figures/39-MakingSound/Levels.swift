@@ -83,7 +83,7 @@ final class Levels: Sketch {
         label("2 to 1", at: point(-6, -15) + Vector2(0, -16), align: .right)
         label("4 to 1", at: point(-16, -22) + Vector2(0, 8), align: .left)
         label("a ceiling", at: point(-8, -8) + Vector2(-3, -16), align: .right)
-        label("a knee, before the corner", at: point(-46, -30), align: .left)
+        label("a knee, before the corner", at: point(-46, -12), align: .left)
         label("threshold", at: point(threshold, -48) + Vector2(3, -16), align: .left)
         axis(inset, left: "−48 dB in", right: "0 dB out")
     }

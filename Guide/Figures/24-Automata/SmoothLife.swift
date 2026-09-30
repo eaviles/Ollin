@@ -1,4 +1,4 @@
-// figure: frame=150
+// figure: frame=150 unstable
 //
 // Guide diagram (Chapter 24): SmoothLife, Life's own rule on a continuous field.
 // A scatter of the paper's glider seeds, each a disc a little under the radius

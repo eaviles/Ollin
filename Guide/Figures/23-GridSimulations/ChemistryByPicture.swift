@@ -100,7 +100,7 @@ final class ChemistryByPicture: Sketch {
                      color: i == 2 ? theme.accent : theme.muted, align: .center, .top)
         }
 
-        diagramCaption("one simulation wearing two regimes: the boundary is chemistry, not a mask",
+        diagramCaption("one simulation, two regimes: the boundary is chemistry, not a mask",
                        at: 412, theme: theme)
         drawText("dish.modulation = layer · black runs feed 0.046, kill 0.065 · white runs feed 0.055, kill 0.062 · gray slides between",
                  width / 2, 446, size: 13, color: theme.muted, align: .center, .top)
