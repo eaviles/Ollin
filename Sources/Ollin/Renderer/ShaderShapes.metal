@@ -664,7 +664,11 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
 
     float3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
-    if (a <= 0.0) { return float4(0.0); }
+    // Discard rather than return nothing: the quad covers the shape with a
+    // margin, and under `depth(at:)` a returned fragment writes the mark's depth
+    // there, so a transparent corner hid whatever sat behind it (a ring cut by
+    // its neighbor's square). Discarding writes neither color nor depth.
+    if (a <= 0.0) { discard_fragment(); }
     return float4(premul / a, a);
 }
 

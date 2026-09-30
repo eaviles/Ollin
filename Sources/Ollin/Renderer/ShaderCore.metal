@@ -198,6 +198,8 @@ fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
     // premultiplied path would need it applied unpremultiplied.
     c.rgb *= srgbToLinear(in.tint.rgb);
     c *= in.tint.a;
+    // A transparent texel writes nothing, not even depth under `depth(at:)`.
+    if (c.a <= 0.0) { discard_fragment(); }
     return c;
 }
 
@@ -261,6 +263,9 @@ fragment float4 ollin_glyph_fragment(ImageOut in [[stage_in]],
     // evenly dark in linear light (the same carve-out strokes and dots use).
     cov = perceptualCoverage(clamp(cov, 0.0, 1.0));
     float3 lin = srgbToLinear(in.tint.rgb);
+    // A glyph's quad is its atlas cell; the paper around the strokes writes
+    // nothing, not even depth under `depth(at:)`.
+    if (in.tint.a * cov <= 0.0) { discard_fragment(); }
     // Linear output to the float intermediate; the present pass finalizes.
     return float4(lin, in.tint.a * cov);
 }

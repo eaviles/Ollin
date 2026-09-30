@@ -46,6 +46,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A transparent pixel of a mark writes no depth.** Under `depth(at:)`, a circle, a rect, a glyph, an image, and a point-cloud splat wrote depth over their whole quad, the transparent corners and halo included, so a mark set behind another cut a straight edge out of it where nothing was drawn. A pixel with no coverage is now discarded before the depth write, so a mark hides only where its ink is. [Depth compositing](Docs/3D/DepthCompositing.md#depth)
+
 - **A kite-and-dart tiling covers its patch.** `Penrose.tiles(.kitesAndDarts, in:tileEdge:)` split each half-kite into a piece that was no half-kite, so a third of the halves found no mirror partner and were dropped, and the tiling came back with bare patches through it (about 31% of a panel) and too few kites. The split is the classic one now, two half-kites and a half-dart, each tiling covers its patch once, the kites outnumber the darts by the golden ratio, and the arcs meet across every edge; a test that samples the patch's interior pins the coverage the edge test could not see. The rhombs were right all along. [Aperiodic tilings](Docs/Drawing/AperiodicTilings.md)
 
 - **A physics snapshot keeps a body's own mass and center of mass.** A body given a mass or a center of mass rather than one worked out from its collider, as a scene's `physics:mass` and `physics:centerOfMass` give them through the import, came back from `restore(_:)` at the mass its shape and density make, balanced at its middle. The snapshot now writes both, in format 6, and reads formats 4 and 5 as before. [Physics3D](Docs/Simulation/Physics3D.md)

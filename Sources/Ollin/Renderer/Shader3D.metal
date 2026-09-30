@@ -54,7 +54,9 @@ fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
     float fillCov, strokeCov;
     diskCoverage(in.local, float2(in.radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
     float a = in.color.a * fillCov;
-    if (a <= 0.0) { return float4(0.0); }
+    // Discarded, not returned empty: under a depth write the quad's transparent
+    // corners would otherwise hide what sits behind them (see the splat below).
+    if (a <= 0.0) { discard_fragment(); }
     // Linearize the sRGB tone and emit straight-alpha into the linear float target;
     // the active blend mode composites it (additive sums it as light).
     return float4(srgbToLinear(in.color.rgb), a);
@@ -133,7 +135,7 @@ fragment float4 ollin_particle_light_fragment(ParticleLightOut in [[stage_in]]) 
     float r2 = in.radius * in.radius;
     coverage *= r2 / (r2 + px * px / 12.0);
     float a = in.color.a * coverage;
-    if (a <= 0.0) { return float4(0.0); }
+    if (a <= 0.0) { discard_fragment(); }
     return float4(in.color.rgb, a);
 }
 
