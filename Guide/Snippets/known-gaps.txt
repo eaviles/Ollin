@@ -150,10 +150,10 @@ d2bcab332251  Guide/34-Seeing.md:537  argument type '@MainActor (Camera3D) -> ()
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
 26aeb599498d  Guide/39-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level
-f3eac281f7c3  Guide/40-MusicByRule.md:245  expected '}' in class
+0f2ed74a453a  Guide/40-MusicByRule.md:245  expected '}' in class
 4c5cf3d93c6d  Guide/40-MusicByRule.md:356  extraneous '}' at top level
 656de5f6c561  Guide/44-HandingItOver.md:412  'override' can only be specified on class members
-636645a17f8c  Guide/45-Installations.md:204  expected '}' in class
+f192da08fc8c  Guide/45-Installations.md:204  expected '}' in class
 47a1213a0f2f  Guide/45-Installations.md:251  extraneous '}' at top level
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
