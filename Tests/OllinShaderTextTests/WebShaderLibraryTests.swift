@@ -124,7 +124,7 @@ struct WebShaderLibraryTests {
         #expect(body.contains("p = ollin_fmod(p + halfS, s);"))
         #expect(!body.contains(" mod("))
         // select with a vector condition goes through the helper pair.
-        #expect(body.contains("return ollin_select(lo, hi, ollin_gt(c, 0.04045));"))
+        #expect(body.contains("return sign(c) * ollin_select(lo, hi, ollin_gt(v, 0.04045));"))
         #expect(body.contains("p = ollin_select(p, p + s, ollin_lt(p, 0.0));"))
         // A reference parameter is inout.
         #expect(body.contains("float pmod(inout float p, float s)"))
