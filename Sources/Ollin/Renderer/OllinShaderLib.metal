@@ -38,10 +38,14 @@ using namespace metal;
 // blending and encoded back to sRGB at the end. These two conversions are the
 // foundation the whole pipeline (and any user shader's color math) leans on.
 
+// Mirrored about zero, as the CPU curve is: a component below zero (a color
+// outside sRGB named in Display P3) decodes as the light of its magnitude with
+// the sign kept, so the same color lands on the same linear value either way.
 static inline float3 srgbToLinear(float3 c) {
-    float3 lo = c * (1.0 / 12.92);
-    float3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), float3(2.4));
-    return select(lo, hi, c > 0.04045);
+    float3 v = abs(c);
+    float3 lo = v * (1.0 / 12.92);
+    float3 hi = pow((v + 0.055) * (1.0 / 1.055), float3(2.4));
+    return sign(c) * select(lo, hi, v > 0.04045);
 }
 
 static inline float3 linearToSrgb(float3 c) {

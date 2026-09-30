@@ -210,6 +210,30 @@ struct ColorTests {
         #expect(Color(linear: 0, green: 0, blue: 0, alpha: 0.3) == Color.black.withAlpha(0.3))
     }
 
+    /// A component below zero takes the curve of its magnitude with its sign
+    /// kept, the extended-range convention, so a color named in Display P3
+    /// reads the components the system's extended sRGB space gives it: pure
+    /// P3 red is (1.093, -0.227, -0.150) there, read off `NSColor` on this
+    /// machine, and the linear segment alone would have said -0.544 and
+    /// -0.254 for the two negatives. The curves stay inverses of each other
+    /// on either side of zero.
+    @Test func componentsBelowZeroTakeTheMirroredCurve() {
+        let red = Color(displayP3: 1, green: 0, blue: 0)
+        #expect(abs(red.red - 1.093) < 0.002 && abs(red.green - -0.227) < 0.002
+                && abs(red.blue - -0.150) < 0.002, "\(red)")
+        let back = red.displayP3Components
+        // The two primaries matrices are written to seven digits, so the round
+        // trip closes to about a millionth in linear light, which the curve's
+        // slope of 12.92 at zero makes a few millionths here.
+        #expect(abs(back.red - 1) < 1e-5 && abs(back.green) < 1e-5 && abs(back.blue) < 1e-5, "\(back)")
+        for c in [-0.9, -0.5, -0.04, -0.001, -0.0031308, 0.0031308, 0.001, 0.04, 0.5, 0.9] {
+            #expect(abs(Color.srgbToLinear(Color.linearToSrgb(c)) - c) < 3e-6)
+            #expect(abs(Color.linearToSrgb(Color.srgbToLinear(c)) - c) < 3e-6)
+            #expect(Color.linearToSrgb(-c) == -Color.linearToSrgb(c))
+            #expect(Color.srgbToLinear(-c) == -Color.srgbToLinear(c))
+        }
+    }
+
     /// `linearRGB` is what `linearRGBA` carries, in `Double` and without alpha,
     /// and the light of mid-gray is a fifth of white's, not half.
     @Test func linearRGBIsTheLightOfTheColor() {

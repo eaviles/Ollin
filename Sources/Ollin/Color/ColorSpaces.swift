@@ -16,12 +16,22 @@ public extension Color {
     /// color keeps its meaning). The shader library's `srgbToLinear` is the
     /// same curve per pixel.
     static func srgbToLinear(_ c: Double) -> Double {
-        c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        // Mirrored about zero, the extended-range convention: a component
+        // below zero (a color outside sRGB named in Display P3) takes the
+        // curve of its magnitude with its sign kept, which is what the
+        // system's extended sRGB space reads for the same color.
+        let v = abs(c)
+        let linear = v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        return c < 0 ? -linear : linear
     }
 
-    /// The inverse curve: light to the sRGB component that encodes it.
+    /// The inverse curve: light to the sRGB component that encodes it,
+    /// mirrored about zero like `srgbToLinear`, so the two round-trip on
+    /// either side of it.
     static func linearToSrgb(_ c: Double) -> Double {
-        c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055
+        let v = abs(c)
+        let encoded = v <= 0.0031308 ? v * 12.92 : 1.055 * pow(v, 1 / 2.4) - 0.055
+        return c < 0 ? -encoded : encoded
     }
 
     /// This color's straight-alpha RGBA as linear-light floats: the form the
