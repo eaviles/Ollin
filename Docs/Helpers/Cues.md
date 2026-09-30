@@ -62,10 +62,10 @@ A sketch running on its own names its file: `loadCues(from:)` reads one and `sav
 
 ### A cue on the command line
 
-`--cue <name>` on any export path, or on a standalone window, calls that cue after `setup()`, and before it too when the sheet is already known, so whatever `setup()` builds from a parameter reads the cue's value. `--cues <file>` names the sheet when the sketch is not carrying one already. OllinLive's window installs the sibling file for you, but its exports do not, so an export from a live sketch names the file with `--cues`. A `--param` given beside it lands after the cue, so a value given by hand still wins.
+`--cue <name>` on any export path, or on a standalone window, calls that cue after `setup()`, and before it too when the sheet is already known, so whatever `setup()` builds from a parameter reads the cue's value. `--cues <file>` names the sheet when the sketch is not carrying one already. OllinLive loads the sibling file for its window and its exports alike, so `--cue` alone finds a look saved from the inspector, and a `--cues` file given beside it wins. A `--param` given beside it lands after the cue, so a value given by hand still wins.
 
 ```sh
-swift run OllinLive MySketches/Finale.swift --export finale.png --cues MySketches/Finale.cues.json --cue night
+swift run OllinLive MySketches/Finale.swift --export finale.png --cue night
 swift run --package-path Examples Example-Live-Cues --export-video looks.mov --cues looks.json --cue storm --seconds 8
 ```
 
