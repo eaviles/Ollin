@@ -48,7 +48,7 @@ Once there is ground, you want many things standing on it: a plaza of columns, a
 
 **Instancing** avoids that. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. The mesh uploads once, and only the placements travel.
 
-<img src="Images/29-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars rising and falling with a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+<img src="Images/29-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars rising and falling with a traveling wave, colored deep blue in the troughs and warm amber at the crests. Light comes from behind the viewer on the right, and the field stands on a pale floor" width="640">
 
 ```swift
 let pillar = Mesh.box(width: 0.11, height: 1, depth: 0.11)
@@ -135,7 +135,7 @@ A field bakes its colors when you place it, each copy's own tint on top, and it 
 
 One kind of geometry needs something instancing cannot give. A meadow needs half a million blades, and each blade needs its own curve. It has its own height, its own lean, its own bend along its length, and its own sway in the wind. Instancing cannot do that. An instanced draw moves rigid copies of one fixed shape, and a blade bends along its whole length. The answer is to stop storing geometry at all. A **`StrandField`** grows every blade inside the draw call itself, and the geometry is gone when the draw ends.
 
-<img src="Images/29-Landscapes/GrassMeadow.jpg" alt="A dense meadow of individually curved grass blades in deep greens, each catching the warm key light differently, with pale boulders half-buried among them and the field dimming into darkness at the horizon" width="640">
+<img src="Images/29-Landscapes/GrassMeadow.jpg" alt="A dense meadow of individually curved grass blades in deep greens, each catching the warm key light differently, with tan boulders half-buried among them and the field dimming into darkness at the horizon" width="640">
 
 ```swift
 var meadow = StrandField(width: 90, depth: 90, count: 500_000)
@@ -457,7 +457,7 @@ A **light with a reach** stops at a set distance, and a frame can carry many of 
 
 A courtyard wants dozens of lamps, and two things go wrong at once. The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means sixty-four lamps are sixty-four washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one argument, `reach:`. The figure shows twelve lamps without it, the same twelve with it, and sixty-four with it:
 
-<img src="Images/29-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from a raised angle. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
+<img src="Images/29-Landscapes/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from a raised angle. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, with little dark floor left" width="680">
 
 ```swift
 for i in 0 ..< 64 {

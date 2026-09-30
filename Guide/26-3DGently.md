@@ -46,7 +46,7 @@ Two other cameras place the eye without an orbit. `perspective(eye:target:)` put
 
 ### Keeping your bearings: views, the axis, and the ground grid
 
-Once the camera moves, you need a way back to a known view, and the tools for that come built in. `cameraView(.front)` snaps the camera to a canonical angle, like front, top, left, or isometric, and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu, ⌘0 through ⌘7. They work on any running sketch without a line of code. Two more calls help while you build. `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window and never in an export, which is why no figure in this chapter shows them.
+Once the camera moves, you need a way back to a known view, and the tools for that come built in. `cameraView(.front)` snaps the camera to a canonical angle, like front, top, left, or isometric, and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu, ⌘0 through ⌘7. They work on any running sketch without a line of code. Two more calls help while you build. `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window and never in an export.
 
 ## Where things are in the world: Vector3 and world units
 
@@ -104,7 +104,7 @@ Three things happened at once. `translate` grew a third argument, so it moves th
 
 The sphere is one solid among many. Each of these is one call, shaded and depth-tested like everything else:
 
-<img src="Images/26-3DGently/Catalog.jpg" alt="A four-by-four grid of labeled solid primitives: box, sphere, icosphere, cylinder, cone, capsule, rounded box, torus, the four larger Platonic solids, pyramid, helix, torus knot, and plane" width="560">
+<img src="Images/26-3DGently/Catalog.jpg" alt="A four-by-four grid of labeled solid primitives: box, sphere, icosphere, cylinder, cone, capsule, rounded box, torus, tetrahedron, octahedron, icosahedron, dodecahedron, pyramid, helix, torus knot, and plane" width="560">
 
 The names are what you'd guess: `drawBox(size: 1.5)`, `drawTorus(radius: 0.6, tube: 0.25)`, `drawCone(radius: 0.7, height: 1.5)`, and so on. Past the everyday ones there's also a small shape *factory*. `drawSupershape` and `drawSuperellipsoid` sweep whole families of organic and gem-like forms from a few numbers. `drawExtrude` pushes any flat 2D shape into depth. `drawLathe` revolves a side profile into a vase, and `drawTube` sweeps a tube along any 3D path. The `3D/Geometry/ShapeFactory` example is the tour.
 
@@ -209,7 +209,7 @@ spotLight(Color(hex: 0xE85FD0), at: Vector3(-3.4, 4.6, 2.6),
 castShadows()
 ```
 
-<img src="Images/26-3DGently/LightKinds.jpg" alt="A sphere, box, and torus on a pale floor lit three ways at once: warm directional light from the left, a cyan point light marked by a small ball, and a magenta spot pooling on the floor" width="680">
+<img src="Images/26-3DGently/LightKinds.jpg" alt="A sphere, box, and torus on a pale floor lit three ways at once: warm directional light from the right, a cyan point light marked by a small ball, and a magenta spot pooling on the floor" width="680">
 
 A **directional** light is the sun, parallel rays from a direction, with no position of its own, lighting everything evenly. A **point** light is a bulb at a place, so each surface catches it from its own direction. It reaches equally far forever unless you give it a `reach:`, which [Chapter 29](29-Landscapes.md#a-courtyard-of-lamps-many-lights) teaches. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see which light does what. The warm key shades everything, the cyan bulb lights the faces turned toward it, and the magenta cone pools on the floor. A small ball marks the bulb, so the bulb passes `castsShadow: false`, and the shadow step says why.
 
@@ -232,7 +232,7 @@ withState { translate(0, 3.9, 0); drawSphere(radius: 0.5) }     // and something
 
 <img src="Images/26-3DGently/Shadows.jpg" alt="Four identical orange spheres over one pale floor, each higher than the last, their four shadows in a row on the floor. The leftmost sphere rests on the floor and its shadow is a tight dark ellipse; each shadow further right is a little smaller, further from its sphere, and visibly blurrier" width="680">
 
-The figure has four identical spheres, one floor, and one light. The shadow is the only thing in the picture that says which sphere rests on the floor and which is highest. Two things change as a sphere climbs. The shadow drifts away from it, and the edge gets softer. The one on the left, touching down, has a tight ellipse with a crisp edge. The one on the right, three and a bit units up, has a blurry patch with a wide gray skirt.
+The figure has four identical spheres, one floor, and one light. The shadow is the only thing in the picture that says which sphere rests on the floor and which is highest. Two things change as a sphere climbs. The shadow drifts away from it, and the edge gets softer. The one on the left, touching down, has a tight ellipse with a crisp edge. The one on the right, three and a bit units up, has a dark ellipse whose edge fades softly into the floor.
 
 That softening is what makes a rendered shadow read as real. Shadows here are **contact-hardening** by default, so they are sharp where an object meets a surface and softer as the shadow falls away. `shadowSoftness(_:)` sets how strong the effect is, from `0` for a hard edge, the classic look, through the `0.5` default to `1`. The figure asks for `1` so the difference is easy to see at this size. At the default it is subtler and usually what you want.
 
@@ -279,7 +279,7 @@ pointLight(Color(hex: 0xFFC079), at: Vector3(-4.6, 3.2, 2.2), intensity: 1.5)   
 castShadows()
 ```
 
-<img src="Images/26-3DGently/PointBesideKey.jpg" alt="An orange box and a green post on a pale floor: each drops a warm-lit shadow to the left from the cool key on the right, and a cool-lit shadow to the right from the warm lamp on the left, the two crossing in a darker patch between them" width="680">
+<img src="Images/26-3DGently/PointBesideKey.jpg" alt="An orange box and a green post on a pale floor: each throws a cool-lit shadow right, from the warm lamp on the left. The box also throws a warm-lit shadow left, from the cool key on the right. The post's shadow to the left falls inside the box's cool band as a dark bar between them" width="680">
 
 Read the colors again. The patch on the left is warm because the lamp still reaches it, and the band on the right is cool because the key does. Where the two cross, neither does.
 
@@ -615,7 +615,7 @@ for (i, glyph) in letters.enumerated() {                        // in draw()
 }
 ```
 
-<img src="Images/26-3DGently/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O, at the right the same word in pale blue with each letter tipped back at its own angle" width="680">
+<img src="Images/26-3DGently/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O. At the right is the same word in pale blue, each letter after the O tipped at its own angle" width="680">
 
 The call exists because extruding the letter shapes yourself goes wrong in two ways. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
 
