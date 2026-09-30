@@ -69,7 +69,7 @@ The three permission reads are the preflight forms, which report a decision alre
 zsh can complete the `ollin` command: its subcommands, and the flags of whichever one you are typing, each with the line that says what it does.
 
 ```
-$ ollin piece.swift --export-<TAB>
+$ ollin dots.swift --export-<TAB>
 --export-dxf       -- write a DXF for a cutter
 --export-embroidery -- write a stitch file
 --export-gif       -- write an animated GIF

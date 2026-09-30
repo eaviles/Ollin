@@ -23,7 +23,7 @@ A **kind** is the sort of thing the generator makes for you.
 |---|---|
 | `single-file` | One executable `.swift` file, run with `ollin`. It is the smallest thing that is a whole sketch. |
 | `mac-sketch` | A folder with its own manifest, sources, and assets, built with `swift run`. |
-| `mac-app` | A finished piece wrapped as a signed, double-clickable [Mac app](../Output/App.md) with its own icon, for a machine without the toolchain. |
+| `mac-app` | A finished sketch wrapped as a signed, double-clickable [Mac app](../Output/App.md) with its own icon, for a machine without the toolchain. |
 | `in-package` | A sketch folder, plus one target in the `Package.swift` that already sits above it. |
 | `screen-saver` | A sketch wrapped as the machine's [screen saver](../Output/ScreenSaver.md), with the script that builds and installs it. |
 | `wallpaper` | A sketch that runs as the [desktop wallpaper](../Output/Wallpaper.md), drawn across every display behind the icons. |
@@ -84,7 +84,7 @@ ollin new MyPiece --from Patterns/Marbling
 
 The copy is yours. The generator renames the type after your project and links the libraries the sketch imports. It copies everything the sketch loads in beside it and declares it, whether that is a picture, a mesh, a shader, or a clip. So the copy builds and runs before you have changed a line.
 
-The one thing the generator does *not* change is the file's header comment. For a ported sketch or a homage, that comment is where the credit lives, so it travels with the code. Keep it there if you keep the lineage, and rewrite it when the piece has become yours.
+The one thing the generator does *not* change is the file's header comment. For a ported sketch or a homage, that comment is where the credit lives, so it travels with the code. Keep it there if you keep the lineage, and rewrite it when the work has become yours.
 
 ## The 3D options
 
@@ -112,7 +112,7 @@ ollin new                  # Sketch2026001.swift, then Sketch2026002.swift
 ollin new --kind mac-sketch  # the same name, as a folder
 ```
 
-Serials exist because naming a piece before you make it is the wrong order. They also make a folder sort by when you made things. Give a name whenever you have one.
+Serials exist because naming a sketch before you make it is the wrong order. They also make a folder sort by when you made things. Give a name whenever you have one.
 
 ## What else to wire in
 

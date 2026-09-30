@@ -4,7 +4,7 @@
 
 ## Cues: looks you can call back
 
-A cue is one named set of every parameter's value, the look a piece was tuned to at some moment. You save one from the parameters as they stand and call it back later, at once or over a fade. A set of cues is how a performance moves between the looks it rehearsed, and how a still is rendered at a look that was saved rather than typed in.
+A cue is one named set of every parameter's value, the look a sketch was tuned to at some moment. You save one from the parameters as they stand and call it back later, at once or over a fade. A set of cues is how a performance moves between the looks it rehearsed, and how a still is rendered at a look that was saved rather than typed in.
 
 ```swift
 saveCue("night")               // every @Param, as it stands, under a name
@@ -48,7 +48,7 @@ A number, a color, a vector, a rectangle, a set of insets, and a range fade, eac
 
 Under OllinLive and OllinLiveCoding the inspector shows a **Cues** card under the parameters. Each row is a cue. Press one and it is called over the card's fade, and the dot lights on the cue in force, whoever called it. The field at the bottom saves the parameters as they stand under the name you type, or under "Cue 1", "Cue 2" and so on when you leave it blank. Type the name of a cue that exists and the button updates it instead. The minus beside a row deletes that cue. **Fade** is the seconds a called cue takes, for the card and for the host's own controls alike; 0 is at once.
 
-The card changes the sheet and the file, never the sketch's text. The "Save parameters" button above it is a different thing: it writes the values you turned into the `@Param` lines, which is where a *default* lives. A cue is a look you come back to; a default is where the piece starts.
+The card changes the sheet and the file, never the sketch's text. The "Save parameters" button above it is a different thing: it writes the values you turned into the `@Param` lines, which is where a *default* lives. A cue is a look you come back to; a default is where the sketch starts.
 
 ### A pad, a program change, an address
 

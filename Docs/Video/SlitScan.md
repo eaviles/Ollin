@@ -67,7 +67,7 @@ The history takes CPU-pixel images. A painted `Image` and a `Camera` frame push 
 #### Practical notes
 
 - **Memory is `width x height x 4 x frames` bytes.** Push modest sizes rather than full canvases, such as a camera feed or a painting a few hundred pixels across. You can draw the composed image scaled up, like any other image.
-- **Each pixel reads its nearest frame**, so a shallow history shows visible time steps, which look like combs. More frames make the sweep smoother. The stepping also reads as texture, so many pieces keep it.
+- **Each pixel reads its nearest frame**, so a shallow history shows visible time steps, which look like combs. More frames make the sweep smoother. The stepping also reads as texture, so many sketches keep it.
 - **Slow motion stretches, fast motion shears.** A subject that drifts along the delay axis smears into a long ribbon. A subject that moves across that axis ripples instead. If everything only blurs, slow the subject down or deepen the history.
 - **Deterministic given the pushed frames**, so an export reproduces, and a slit scan fed by a painted source is snapshot-safe.
 

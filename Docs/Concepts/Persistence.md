@@ -30,7 +30,7 @@ A reload builds a fresh sketch, so properties start over and `setup()` runs agai
 
 ### Kept across runs
 
-`@Saved` writes a property to disk at the interval set by `checkpoint:`, along with the seed, the clock, and the parameter values. A piece that has run on a wall for a week then picks up where it stopped instead of starting over. See [running unattended](../Output/Installation.md).
+`@Saved` writes a property to disk at the interval set by `checkpoint:`, along with the seed, the clock, and the parameter values. A sketch that has run on a wall for a week then picks up where it stopped instead of starting over. See [running unattended](../Output/Installation.md).
 
 ### Read next
 

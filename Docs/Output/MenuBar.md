@@ -4,7 +4,7 @@
 
 ## A sketch in the menu bar
 
-The menu bar is on screen for the whole working day. A menu-bar piece puts a small live canvas there, among the status items and beside the clock. That gives you a few points of motion that stay with you through everything else the machine is doing.
+The menu bar is on screen for the whole working day. Ollin can put a small live canvas there, among the status items and beside the clock. That gives you a few points of motion that stay with you through everything else the machine is doing.
 
 ```sh
 ollin new Pulse --kind menu-bar
@@ -39,7 +39,7 @@ enum PulseMain {
 }
 ```
 
-`OllinApp.runInMenuBar` is the framework's host. It puts up one status item, runs the canvas inside that item's button, and attaches the menu that quits the piece. The first line keeps the shared command-line surface, so `--export` and the flags beside it work on this program too. That line is also how `build.sh` renders the app's icon from a frame of the piece.
+`OllinApp.runInMenuBar` is the framework's host. It puts up one status item, runs the canvas inside that item's button, and attaches the menu that quits the sketch. The first line keeps the shared command-line surface, so `--export` and the flags beside it work on this program too. That line is also how `build.sh` renders the app's icon from a frame of the sketch.
 
 ### The strip
 
@@ -58,14 +58,14 @@ What the sketch sees follows its own `windowMode`, the same as everywhere else:
 
 `ollin new` writes `.resizable` into the generated sketch, so the starter draws at the strip's real size. A canvas works the same way at any size. `width / 2` is still the middle, so a sketch written against `width` and `height` needs no changes to live here.
 
-Two things are decided for you, and both come from where the piece runs:
+Two things are decided for you, and both come from where the sketch runs:
 
 - **It draws at 30 frames a second.** A strip beside the clock is up all day. That is worth a moving picture, not a whole display's worth of frames.
 - **It takes no input.** A click falls through to the button, which opens the menu. That is what a click in the menu bar means. The strip never takes the keyboard, so `mouseX`, `mouseY`, `mouseIsPressed`, and `key` hold whatever they started at.
 
 ### Working on it
 
-A strip is a small place to judge a change. Open the same sketch in a window instead, where it reloads as you save. Remember that the proportions go back to the strip's when the piece returns there:
+A strip is a small place to judge a change. Open the same sketch in a window instead, where it reloads as you save. Remember that the proportions go back to the strip's when the sketch returns there:
 
 ```sh
 ollin Sources/Pulse/Sketch.swift
@@ -81,8 +81,8 @@ The file is the same file either way.
 
 ## See also
 
-- [Wallpaper](./Wallpaper.md) - the same idea at the other size, with the whole desktop as the piece
+- [Wallpaper](./Wallpaper.md) - the same idea at the other size, with the whole desktop as the canvas
 - [Widget](./Widget.md) - a small surface too, but stepped: a picture a quarter of an hour rather than a moving one
-- [Screen saver](./ScreenSaver.md) - the piece that runs when nobody is at the desk
+- [Screen saver](./ScreenSaver.md) - the sketch that runs when nobody is at the desk
 - [Sketch as an app](./App.md) - the wrapper this kind shares, and how to hand an app to someone else
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them

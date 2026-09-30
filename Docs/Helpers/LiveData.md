@@ -176,7 +176,7 @@ The reads you learned on a `DataFeed` still work here. `json`, `text`, and `byte
 |---|---|
 | `start()` | Connects, then keeps the connection alive from then on. A feed that is already running ignores the call. |
 | `stop()` | Hangs up. What arrived stays readable. |
-| `reconnect()` | Hangs up and dials again now, so bind it to a key press for when a piece looks stale. |
+| `reconnect()` | Hangs up and dials again now, so bind it to a key press for when a sketch looks stale. |
 | `send(_:)` | Sends a message to the server, on a feed that is a web socket. A stream of server-sent events has no way to receive one. |
 
 <a name="messages"></a>
@@ -199,7 +199,7 @@ A feed that nobody drains keeps the newest few hundred messages and drops the ol
 
 ### Staying connected
 
-A piece on a wall outlives any socket, so a `PushFeed` has to reconnect. The feed does all of it on its own, and a sketch only ever reads `isConnected` and `problem` to say what is happening.
+A sketch on a wall outlives any socket, so a `PushFeed` has to reconnect. The feed does all of it on its own, and a sketch only ever reads `isConnected` and `problem` to say what is happening.
 
 - A dropped connection redials after `retryEvery:` seconds, which the feed reads back as `retryInterval` and which never goes below one. A run of failures doubles the wait each time, up to eight times that. Anything that arrives puts the wait back to `retryEvery:` seconds.
 - A stream of server-sent events that names its own retry time is obeyed. One that labels its messages with ids is resumed with the last id seen, so a short drop loses nothing the server still holds.

@@ -37,7 +37,7 @@ final class Room: Sketch {
 - [Publishing](#publishing) - text, numbers, switches, and bytes
 - [How hard to try](#qos) - at most once, at least once, and what each costs
 - [Retained values](#retained) - starting up already knowing the room
-- [The last will](#will) - how a piece announces its own failure
+- [The last will](#will) - how a sketch announces its own failure
 - [Staying up](#staying-up) - the heartbeat, the reconnection, and what survives a drop
 - [Binding to a `@Param`](#binding) - a sensor drives a parameter
 - [Testing without a broker](#testing) - what runs with nothing installed
@@ -166,21 +166,21 @@ This is how a sketch starts up already knowing the room rather than waiting for 
 
 ### The last will
 
-A will is a message the broker publishes on a client's behalf when that client vanishes without saying goodbye. It is the way a piece announces its own failure, and it costs nothing to set:
+A will is a message the broker publishes on a client's behalf when that client vanishes without saying goodbye. It is the way a sketch announces its own failure, and it costs nothing to set:
 
 ```swift
 let bus = MQTTClient(host: "localhost",
-                     will: MQTTWill(topic: "gallery/piece/status",
+                     will: MQTTWill(topic: "gallery/wall/status",
                                     text: "gone", retains: true))
 ```
 
-Pull the power on the machine and `gallery/piece/status` reads `gone` everywhere on the bus within one and a half times `keepAlive`. That is how long a broker waits on a silent client, 45 seconds at the default of 30. Call `disconnect()` and the broker discards the will instead, because leaving is not the same as being cut off. That difference is the whole point of the feature, and it is what an installation's watchdog watches.
+Pull the power on the machine and `gallery/wall/status` reads `gone` everywhere on the bus within one and a half times `keepAlive`. That is how long a broker waits on a silent client, 45 seconds at the default of 30. Call `disconnect()` and the broker discards the will instead, because leaving is not the same as being cut off. That difference is the whole point of the feature, and it is what an installation's watchdog watches.
 
 <a name="staying-up"></a>
 
 ### Staying up
 
-The connection looks after itself, which is what a piece left running for a month needs.
+The connection looks after itself, which is what a sketch left running for a month needs.
 
 A heartbeat goes out when the line has been quiet, so a broker does not hang up on a sketch that only ever reads. `keepAlive:` is how long quiet is allowed, in seconds, 30 by default. When the broker stops answering altogether, the client says so and reconnects.
 
@@ -219,4 +219,4 @@ Inside the library, `OllinMQTTTests` runs a broker of its own in the test proces
 
 ---
 
-See the **MQTTRoom** example for the bus drawn as a wall of dials, and [Installations](../../Guide/45-Installations.md) in the Guide for the piece that reads a building and answers it.
+See the **MQTTRoom** example for the bus drawn as a wall of dials. [Installations](../../Guide/45-Installations.md) in the Guide has the sketch that reads a building and answers it.

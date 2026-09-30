@@ -96,12 +96,12 @@ ollin dots.swift --seed 10 --export keeper.png
 A loose file can also run on a wall, not only on your desk:
 
 ```sh
-ollin piece.swift --installation
+ollin dots.swift --installation
 ```
 
 The flag gives the sketch a full-screen window of its own, hides the pointer, and keeps the display awake. What the sketch declares in its `Installation` applies there too, from the checkpoint that resumes a run to the corners you line it up by. See [Installation](../Output/Installation.md).
 
-That host does not reload on save, so a piece on a wall runs the code it was started with. Work on the sketch with plain `ollin piece.swift`, then put it up.
+That host does not reload on save, so a sketch on a wall runs the code it was started with. Work on the sketch with plain `ollin dots.swift`, then put it up.
 
 `--displays spanning` spreads the canvas over every display the machine drives. `--rehearse 3` lays that wall out as three windows on the desk you are at. Both flags use the same host as `--installation`, because a wall needs the sketch to own its windows.
 

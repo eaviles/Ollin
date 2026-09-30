@@ -280,7 +280,7 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 ## The pictures and objects it knows
 
-In **Markers** mode the phone looks for things you have given it. There are two ways to give it one. The sketch can [say what to look for](#saying-what-to-look-for-from-the-sketch) and send the file down the cable, which is what keeps the piece in one `.swift` file. Or a reference can be a file in the capture app's own folder, which is the rest of this section. It can be any picture, or an `.arobject` that a scan produced. To add one, connect the cable, open the phone in Finder, then Files, then Ollin Capture, and drop the file in. AirDrop and the Files app work the same way. The app reads the folder when the mode starts. The **Read the folder again** button picks up a file dropped in later.
+In **Markers** mode the phone looks for things you have given it. There are two ways to give it one. The sketch can [say what to look for](#saying-what-to-look-for-from-the-sketch) and send the file down the cable, which keeps the whole sketch in one `.swift` file. Or a reference can be a file in the capture app's own folder, which is the rest of this section. It can be any picture, or an `.arobject` that a scan produced. To add one, connect the cable, open the phone in Finder, then Files, then Ollin Capture, and drop the file in. AirDrop and the Files app work the same way. The app reads the folder when the mode starts. The **Read the folder again** button picks up a file dropped in later.
 
 A picture needs its printed width in meters. No image file carries that, so the file name states it. `poster@30cm.png`, `card-50mm.jpg`, `plate 12in.heic`, and `tile_0.4m.png` all state a size. The units are centimeters, millimeters, inches, and meters. A name that states no size gets 15 cm, and the app says so on its screen. What is left after the size is the marker's **name**, so `poster@30cm.png` is the marker `poster`.
 
@@ -312,7 +312,7 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 ## Saying what to look for, from the sketch
 
-Everything above runs one way: the phone broadcasts and the Mac reads. This is the one thing that runs the other way. The sketch tells the phone which mode to run, and gives it the pictures to look for, so the `.swift` file carries the whole piece. A phone that has never seen your sketch knows what to find the moment the cable goes in.
+Everything above runs one way: the phone broadcasts and the Mac reads. This is the one thing that runs the other way. The sketch tells the phone which mode to run, and gives it the pictures to look for, so the `.swift` file carries the whole work. A phone that has never seen your sketch knows what to find the moment the cable goes in.
 
 ```swift
 override func setup() {
@@ -364,7 +364,7 @@ It arrives when something changes rather than every frame, so read it as standin
 
 Four things are worth knowing:
 
-- **The person keeps the last word.** `use(_:)` moves the phone as if somebody had tapped the mode, and a tap afterwards moves it back. Nothing here forces a mode, which is what lets somebody take over a running piece. Read `state.mode` rather than assuming the ask landed.
+- **The person keeps the last word.** `use(_:)` moves the phone as if somebody had tapped the mode, and a tap afterwards moves it back. Nothing here forces a mode, which is what lets somebody take over a running sketch. Read `state.mode` rather than assuming the ask landed.
 - **A declared library replaces the folder.** While a sketch is declaring, the phone stops reading the files somebody dropped into its own folder, and its screen says so. When the sketch disconnects the folder takes over again. A sketch that declares nothing leaves the folder in charge, which is still the way to give the phone a picture without writing one into the sketch.
 - **A picture is fitted to the cable.** ARKit wants detail, not size. A picture wider than `PhoneReference.maxPictureEdge` (1024 px) is redrawn to fit and re-encoded as JPEG; one already within that, and small enough for a single frame, travels byte for byte, so a hand-made PNG arrives exactly as you shipped it. At most `PhoneWire.maxReferences` (32) references travel.
 - **Declaring nothing is not the same as declaring an empty list.** `look(for: [])` says "look for nothing", and the folder stays out. Never calling `look(for:)` leaves the folder in charge.
@@ -927,7 +927,7 @@ final class Pour: Sketch {
 
 `show(_:)` is the whole setup. It asks the phone for **Sketch** mode, starts the device, and adds a `PhoneScreen` to the sketch. Once the cable is in and the app is open, the phone's screen turns into the canvas.
 
-This answers a different question from [installing the sketch](../Tools/OnThePhone.md). The picture is the Mac's, so you see how the piece looks and plays in the hand. You do not see whether the phone's own GPU keeps up with it, which the installed app answers. In return, the loop is the Mac's. Save under the live window, and the phone shows the edit as soon as the Mac has compiled it. The inspector, the console, and the timeline stay on the Mac too.
+This answers a different question from [installing the sketch](../Tools/OnThePhone.md). The picture is the Mac's, so you see how the sketch looks and plays in the hand. You do not see whether the phone's own GPU keeps up with it, which the installed app answers. In return, the loop is the Mac's. Save under the live window, and the phone shows the edit as soon as the Mac has compiled it. The inspector, the console, and the timeline stay on the Mac too.
 
 **The first finger is the pointer.** `mouseX`, `mouseY`, `mouseIsPressed`, `mousePressed()`, and `mouseReleased()` follow it the way they follow a finger when the sketch is installed on the phone. `pressure` reads the press where the glass measures force, and reads a plain full press where it cannot. A second finger never moves the pointer. Neither does a finger that is still resting when the first one lifts, so lifting one hand does not throw the pointer across the canvas. The fingers press only while the phone is in Sketch mode, since on any other screen the glass is not the canvas. Every finger still arrives on `device.touches`, and the tilt on `device.latestMotion`, as in any mode.
 

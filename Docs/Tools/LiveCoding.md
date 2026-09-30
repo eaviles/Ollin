@@ -39,9 +39,9 @@ OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watc
 
 Type your edit, then press **⌘↩ (Sketch ▸ Evaluate)**. The buffer compiles in the background, so the running sketch never pauses. On a successful compile the new sketch swaps in:
 
-- **The clock carries.** `time` and `frameCount` continue across the swap, so an animation driven by phase does not jump. Use **⌘⇧↩ (Evaluate Fresh)** instead when you want the piece to start over, because that resets the clock.
+- **The clock carries.** `time` and `frameCount` continue across the swap, so an animation driven by phase does not jump. Use **⌘⇧↩ (Evaluate Fresh)** instead when you want the run to start over, because that resets the clock.
 - **Tuned parameters carry.** A `@Param` value you dragged in the inspector is applied again before the new sketch draws. A value bound over MIDI or OSC carries the same way. A parameter you did not touch takes whatever default the code now declares, so editing a default in the source still works.
-- **The run carries on when it can.** If the edit moved nothing but the inside of a method, and left `setup()` alone, the piece keeps going: `setup()` does not run again, the canvas keeps whatever is piled on it, and the state you marked `@Saved` comes across. Anything else starts the run over, which is what a swap has always done. [What the edit changed](#what-the-edit-changed) has the whole rule.
+- **The run carries on when it can.** If the edit moved nothing but the inside of a method, and left `setup()` alone, the run keeps going. `setup()` does not run again, the canvas keeps whatever is piled on it, and the state you marked `@Saved` comes across. Anything else starts the run over, which is what a swap has always done. [What the edit changed](#what-the-edit-changed) has the whole rule.
 - **Two speeds.** The buffer compiles twice at once, plain and optimized, because Swift compiles the code rather than evaluating it directly. The plain build swaps in the moment it compiles, and the optimized build replaces it when it is ready, with the clock carried across that second swap too. An amber chip in the corner reads "Compiling…" until the code is on stage, then "Optimizing…" until the optimized build lands. A green "Evaluated" toast confirms the first swap and gives its time.
 
 Evaluation compiles the buffer exactly as it is on screen, unsaved changes included.
@@ -65,7 +65,7 @@ A swap always brings a fresh instance, because the code lives in a new library a
 **The run carries on** when nothing but the inside of a method moved. Then:
 
 - `setup()` does not run again, so the background it paints does not wipe the canvas.
-- The canvas keeps what is piled on it, which is the whole point for a piece drawn with `noClear()`.
+- The canvas keeps what is piled on it, which is the whole point for a sketch drawn with `noClear()`.
 - `time` and `frameCount` go on, as they do across any swap.
 - `random()` and the noise fields carry on where they were, rather than restarting their sequence.
 - The `@Saved` properties come across, matched by name. This is the same mark that carries state across a relaunch, so one annotation covers both. `savedProperties()` lists them, each as a `SavedHandle` naming the `property` it stands for, which is how a host writes the set down and reads it back (`encodedValue()` and `decodeValue(from:)` on the wrapper do the two halves).

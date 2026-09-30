@@ -4,14 +4,14 @@
 
 ## A sketch as the desktop wallpaper
 
-You see the desktop more often than any other picture, and you look at it least. A wallpaper piece puts a running sketch there. It draws behind the icons and under every window, and it keeps moving all day while you use the machine for everything else.
+You see the desktop more often than any other picture, and you look at it least. Ollin can put a running sketch there. It draws behind the icons and under every window, and it keeps moving all day while you use the machine for everything else.
 
 ```sh
 ollin new Drift --kind wallpaper
 cd Drift && swift run Drift
 ```
 
-The desktop becomes the piece. A small sparkle appears at the right end of the menu bar, so click it and pick Quit to get the plain desktop back. To keep the piece, run `./build.sh --install`, which makes it an app in /Applications. Add that app under System Settings, General, Login Items, and it becomes the machine's wallpaper for good.
+The desktop becomes the canvas. A small sparkle appears at the right end of the menu bar, so click it and pick Quit to get the plain desktop back. To keep the sketch there, run `./build.sh --install`, which makes it an app in /Applications. Add that app under System Settings, General, Login Items, and it becomes the machine's wallpaper for good.
 
 ### What you get
 
@@ -39,14 +39,14 @@ enum DriftMain {
 }
 ```
 
-`OllinApp.runAsWallpaper` is the host the framework provides. It opens one borderless window per display at desktop level, and it builds a sketch for each window from the closure. When you connect or disconnect a monitor, the windows follow. The first line keeps the shared command-line surface, so `--export` and its siblings work on this program too. That line is also how `build.sh` renders the app's icon from a frame of the piece.
+`OllinApp.runAsWallpaper` is the host the framework provides. It opens one borderless window per display at desktop level, and it builds a sketch for each window from the closure. When you connect or disconnect a monitor, the windows follow. The first line keeps the shared command-line surface, so `--export` and its siblings work on this program too. That line is also how `build.sh` renders the app's icon from a frame of the sketch.
 
 ### Behind the icons, out of the way
 
 The window sits at the system's own desktop level. That puts it over the picture the system keeps there, under the icons, and under every window. Three rules make it wallpaper rather than a window:
 
-- **It takes no clicks and no keys.** A click on the desktop lands on the desktop. The piece never takes the keyboard, so `mouseX`, `mouseY`, `mouseIsPressed`, and `key` hold whatever they started at.
-- **It is on every space.** The piece stays in place when you swipe to another desktop, and the window cycle never lands on it.
+- **It takes no clicks and no keys.** A click on the desktop lands on the desktop. The sketch never takes the keyboard, so `mouseX`, `mouseY`, `mouseIsPressed`, and `key` hold whatever they started at.
+- **It is on every space.** The sketch stays in place when you swipe to another desktop, and the window cycle never lands on it.
 - **The app stays out of the Dock.** There is no window to bring forward, so a Dock icon would suggest the app had hung. Quit lives in the menu-bar sparkle instead.
 
 ### Filling the display, or fitting it
@@ -62,7 +62,7 @@ A display is almost never the shape of a canvas. The sketch's own `windowMode` d
 
 ### It runs all day
 
-The piece draws at the display's own rate for as long as the machine is up. That is the point of a wallpaper piece, and it is also a cost to plan for. A heavy sketch keeps drawing through every meeting and every compile. Calm pieces work well here, and a still one can call `noLoop()` and cost nothing at all.
+The sketch draws at the display's own rate for as long as the machine is up. That is the point of a wallpaper, and it is also a cost to plan for. A heavy sketch keeps drawing through every meeting and every compile. Calm sketches work well here, and a still one can call `noLoop()` and cost nothing at all.
 
 ### Working on it
 
@@ -84,7 +84,7 @@ It is the same file either way.
 
 - [Menu bar](./MenuBar.md) - the same idea at a smaller size, a live strip beside the clock
 - [Widget](./Widget.md) - a desktop surface too, stepped rather than live: one picture a quarter of an hour
-- [Screen saver](./ScreenSaver.md) - the piece that runs when nobody is at the desk
+- [Screen saver](./ScreenSaver.md) - the sketch that runs when nobody is at the desk
 - [Sketch as an app](./App.md) - the wrapper this kind shares, and how to hand an app to someone else
-- [Installation](./Installation.md) - a piece left running on a wall rather than a desk
+- [Installation](./Installation.md) - a sketch left running on a wall rather than a desk
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them

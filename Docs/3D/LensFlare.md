@@ -50,7 +50,7 @@ noLensFlare()                                     // back off (the default)
 `LensFlare` carries seven things, and [three extras](#extras) that are off until you ask for them:
 
 - `lens` - the glass the ghosts come from. [`Lens.standard`](#lens) by default.
-- `amount` - how strong the flare is. `1` is the default reading and `0` removes it. A higher value pushes the flare past what a lens would really do. **Use this to keep the flare honest**. A flare is a lens defect, and a piece may want it in small measure or not at all. So turn `amount` down until the flare reads as light in the camera rather than as paint on the picture.
+- `amount` - how strong the flare is. `1` is the default reading and `0` removes it. A higher value pushes the flare past what a lens would really do. **Use this to keep the flare honest**. A flare is a lens defect, and a sketch may want it in small measure or not at all. So turn `amount` down until the flare reads as light in the camera rather than as paint on the picture.
 - `star` - how strong the [star on the source](#star) is, on top of `amount`. `0` gives you the ghosts with no star.
 - `starSize` - how far the star reaches from its source, as a fraction of the frame height, measured with the iris wide open. Stopping down grows it from there.
 - `wear` - how worn the iris is, from `0` to `1`. It is what turns the star's ruled arms into [a real one](#star).

@@ -163,7 +163,7 @@ In a headless export the weather reads once, while `start()` runs, and holds tha
 
 ### Where the data comes from
 
-The conditions come from [Open-Meteo](https://open-meteo.com), an open service that serves the national weather services' forecasts under the [CC BY 4.0](https://open-meteo.com/en/license) license. It needs no key and no account, and it is free for non-commercial use up to ten thousand requests a day. A sketch asking every fifteen minutes uses about a hundred. A piece sold or shown commercially wants one of the service's own plans, and a page or a print that carries the numbers should say where they came from.
+The conditions come from [Open-Meteo](https://open-meteo.com), an open service that serves the national weather services' forecasts under the [CC BY 4.0](https://open-meteo.com/en/license) license. It needs no key and no account, and it is free for non-commercial use up to ten thousand requests a day. A sketch asking every fifteen minutes uses about a hundred. A work sold or shown commercially wants one of the service's own plans. A page or a print that carries the numbers should say where they came from.
 
 The forecast is read at a grid point near the place, so the `place` on a reading can sit a few kilometers from the one asked for.
 

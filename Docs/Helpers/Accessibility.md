@@ -6,7 +6,7 @@ Ollin applies none of this for you. It gives you the Reduce Motion setting, the 
 
 ## Saying what the sketch shows
 
-A generative piece carries no caption. A screen reader that reaches the window finds a rectangle of pixels, so it has nothing to read out. `describe` gives it a sentence to read.
+A generative sketch carries no caption. A screen reader that reaches the window finds a rectangle of pixels, so it has nothing to read out. `describe` gives it a sentence to read.
 
 ```swift
 override func draw() {
@@ -19,7 +19,7 @@ That sentence becomes the canvas's accessible name. Turn on VoiceOver (⌘F5), a
 
 ### Naming the parts
 
-A piece with more than one thing in it can name each of them.
+A sketch with more than one thing in it can name each of them.
 
 ```swift
 describe("the sun", as: "a yellow disc high on the left")
@@ -58,7 +58,7 @@ Ollin tells the screen reader to look again only when the set of parts changes. 
 
 Describe what is there, not how it is made. Use one or two sentences in the present tense, the way you would describe the picture to somebody over the telephone. Write "A red circle drifting left across a pale field", not "a `drawCircle` driven by `sin(time)`".
 
-Keep the parts few, because a list of fifty shapes tells nobody what the piece looks like. Texture is not a part, so leave it out. Draw the glow around a sun and the shimmer on water, but do not name them.
+Keep the parts few, because a list of fifty shapes tells nobody what the work looks like. Texture is not a part, so leave it out. Draw the glow around a sun and the shimmer on water, but do not name them.
 
 You can also show the words on the canvas. `drawCaption(_:)` draws one line, and `accessibleDescription.lines` holds everything the sketch has said. That description is a `SketchDescription`, whose `elements` are the parts in reading order, each built as `DescribedElement(name:text:region:)`. Each is a `DescribedElement` with its `name`, its `text`, the `region` it sits in when the sketch said one (which is what lets a screen reader move to it by position, and the accessibility inspector draw a box around it), and `spoken`, the one line a screen reader reads: the name, then what it looks like.
 
@@ -146,11 +146,11 @@ So the practical rule is to vary lightness as well as hue. Give a shape or a lab
 fill(Palette.colorblindSafe[i])
 ```
 
-`Palette.colorblindSafe` is the eight colors that Okabe and Ito published for color universal design. It is the usual choice when a piece needs categories anybody can follow. Its closest pair under the worst kind is 0.076 apart. A familiar six-color chart set falls to 0.007 under the same test.
+`Palette.colorblindSafe` is the eight colors that Okabe and Ito published for color universal design. It is the usual choice when a sketch needs categories anybody can follow. Its closest pair under the worst kind is 0.076 apart. A familiar six-color chart set falls to 0.007 under the same test.
 
 ### The tolerance
 
-The default tolerance of 0.06 comes from measurement. It sits between the 0.076 and the 0.007 above, with room on either side. Pass your own tolerance if a piece needs a stricter or looser threshold.
+The default tolerance of 0.06 comes from measurement. It sits between the 0.076 and the 0.007 above, with room on either side. Pass your own tolerance if a sketch needs a stricter or looser threshold.
 
 ### What the model is
 
@@ -170,7 +170,7 @@ let speed = prefersReducedMotion ? 0.1 : 1.0
 
 Ollin reads the setting fresh, so turning it on reaches a running sketch on the next frame. A headless render always reads `false`, so an export is the same file on any machine.
 
-Nothing changes on its own. You decide what less movement means, because only you know which movements matter to the piece and which are decoration. Common answers are to slow a drift, hold a value that was oscillating, drop a flash, or replace a camera move with a still framing.
+Nothing changes on its own. You decide what less movement means, because only you know which movements matter to the work and which are decoration. Common answers are to slow a drift, hold a value that was oscillating, drop a flash, or replace a camera move with a still framing.
 
 ## See also
 

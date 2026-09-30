@@ -6,7 +6,7 @@
 
 Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./BlueNoise.md) fixes the spacing, but it gives you one fixed layout for one radius. A **low-discrepancy sequence** is the third option. It is an ordered, deterministic *stream* of points that covers a region evenly at **every** count. Growing the count only adds points, and never moves the ones already placed.
 
-That *prefix property* is the point of the whole technique. Draft a piece with 100 points and render it with 10,000, and the draft is a subset of the final render. There is no seed and no random number generator anywhere, because you pass in an index and get back a point.
+That *prefix property* is the point of the whole technique. Draft a sketch with 100 points and render it with 10,000, and the draft is a subset of the final render. There is no seed and no random number generator anywhere, because you pass in an index and get back a point.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/HaltonGrowth-dark.jpg">

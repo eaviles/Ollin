@@ -114,7 +114,7 @@ mirror.mirrorPoint(of: mark, asSeenBy: eye)      // where a mark is seen from, f
 
 `picturePoint(of:)` undoes `plate(of:)`, and there is no formula for it. Finding where a ray from the eye bounces to a given spot is the circle problem al-Haytham posed a thousand years ago. That problem has no answer in ordinary algebra, so the bounce is searched for along the arc the eye can see, then sharpened. The answer is exact to about a millionth of a page unit. The search is slow enough to belong in `setup()` rather than in a per-frame loop.
 
-`mirrorPoint(of:asSeenBy:)` takes a *different* eye, which is what you want when you show the piece to someone else. Follow every point of the finished plate up to the glass, then project the glass as that viewer sees it. What you draw is what the mirror shows, worked out from the plate rather than from the picture that made it.
+`mirrorPoint(of:asSeenBy:)` takes a *different* eye, which is what you want when you show the work to someone else. Follow every point of the finished plate up to the glass, then project the glass as that viewer sees it. What you draw is what the mirror shows, worked out from the plate rather than from the picture that made it.
 
 <a name="real"></a>
 

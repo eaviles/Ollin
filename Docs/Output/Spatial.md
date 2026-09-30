@@ -7,7 +7,7 @@
 A 3D sketch draws a scene, and an exported frame is a flat picture of that scene. A USDZ export sends the scene itself instead of a picture. The model opens in Quick Look from the Finder or from a message. In AR it stands on a real table, and you can add it to a visionOS app or open it in Reality Composer. The [fabrication](./Fabrication.md) writers send a single mesh to a printer, and the [vector exporters](./Export.md#vector-svg) send a flat frame to a plotter. This exporter is the three-dimensional counterpart of both.
 
 ```sh
-swift run --package-path Examples Example-3D-Geometry-SpatialExport --export-usdz piece.usdz
+swift run --package-path Examples Example-3D-Geometry-SpatialExport --export-usdz model.usdz
 ```
 
 That one command is the whole export. It opens no window and uses no GPU. The sketch runs headlessly up to the frame you name, and its 3D draw calls are collected into a model.
@@ -23,11 +23,11 @@ You can export one frame of a sketch or a whole scene, and both go through the s
 
 ```swift
 // One frame of a sketch, recorded as it draws.
-try OllinApp.exportSpatial(sketch, to: "piece.usdz", frame: 120)
+try OllinApp.exportSpatial(sketch, to: "model.usdz", frame: 120)
 
 // Any Scene: one you loaded, one you built, one you recorded.
-scene.write(to: "piece.usdz")
-saveScene(scene, to: "piece.usdz")            // the same, from inside a sketch
+scene.write(to: "model.usdz")
+saveScene(scene, to: "model.usdz")            // the same, from inside a sketch
 ```
 
 `OllinApp.spatialScene(of:frame:fps:)` is the step between the two. It returns an ordinary [`Scene`](../3D/Scenes.md), the same kind `loadScene` gives you. So you can read a recorded frame, edit it, draw it again with `drawScene`, or write it later.
@@ -35,7 +35,7 @@ saveScene(scene, to: "piece.usdz")            // the same, from inside a sketch
 ```swift
 var scene = OllinApp.spatialScene(of: sketch, frame: 120)
 scene["piece3"]?.position.y += 0.5
-scene.write(to: "piece.usdz")
+scene.write(to: "model.usdz")
 ```
 
 There is one writer, and the recorder feeds it. Because a frame export goes through the recorder and then through that same writer, the frame path and the scene path cannot drift apart.
@@ -45,11 +45,11 @@ There is one writer, and the recorder feeds it. Because a frame export goes thro
 A model file records how big one scene unit is, and Ollin does not guess that size. Nothing is scaled on the way out. Instead, `metersPerUnit` says how to read the numbers already in the scene.
 
 ```swift
-scene.write(to: "piece.usdz", metersPerUnit: 1)      // one unit is a meter (the default)
-scene.write(to: "piece.usdz", metersPerUnit: 0.05)   // desk-sized
+scene.write(to: "model.usdz", metersPerUnit: 1)      // one unit is a meter (the default)
+scene.write(to: "model.usdz", metersPerUnit: 0.05)   // desk-sized
 ```
 
-At the default of 1, a sphere of radius 1 arrives as a ball two meters across. That is right for a piece meant to fill a room, and much too big for one meant to sit on a table. Most 3D sketches work at unit scale, so `0.01` to `0.1` is the usual range for a model that someone will place in a room.
+At the default of 1, a sphere of radius 1 arrives as a ball two meters across. That is right for a work meant to fill a room, and much too big for one meant to sit on a table. Most 3D sketches work at unit scale, so `0.01` to `0.1` is the usual range for a model that someone will place in a room.
 
 ### Choosing a format
 
@@ -82,7 +82,7 @@ Nothing is dropped silently. When the format cannot hold something, the exporter
 Ollin reads USD as well as writing it, so a model it wrote opens again:
 
 ```swift
-let scene = try? loadScene("piece.usdz")
+let scene = try? loadScene("model.usdz")
 drawScene(scene!)
 ```
 
@@ -93,10 +93,10 @@ This round trip is what the writer is tested against. Geometry, node transforms,
 The system's own USD tools read what Ollin writes, and they are the final check on whether a package is well formed:
 
 ```sh
-usdchecker --arkit piece.usdz      # the profile Apple's platforms hold a model to
-usdcat piece.usdz | head -40       # look at the layer
-usdtree piece.usdz                 # the prim tree
-usdrecord piece.usdz look.png      # render it with someone else's renderer
+usdchecker --arkit model.usdz      # the profile Apple's platforms hold a model to
+usdcat model.usdz | head -40       # look at the layer
+usdtree model.usdz                 # the prim tree
+usdrecord model.usdz look.png      # render it with someone else's renderer
 ```
 
 Ollin's own test suite runs `usdchecker --arkit` over a package that carries every light kind, a texture, per-vertex colors, and a physically based material.
@@ -122,16 +122,16 @@ A `.usdz` is a ZIP archive with extra rules. Nothing in it is compressed, and th
 A model sends the geometry and lets a viewer walk around it. **Spatial video** sends the motion instead, recorded from two eyes at once. That is the only way an animation reads as three-dimensional in a headset. The file uses the same format Apple's platforms record and play: stereo MV-HEVC, with metadata that describes the rig that shot it.
 
 ```sh
-swift run --package-path Examples Example-3D-Geometry-SpatialVideo --export-spatial piece.mov --seconds 8
+swift run --package-path Examples Example-3D-Geometry-SpatialVideo --export-spatial colonnade.mov --seconds 8
 ```
 
 Each frame is drawn **once** and rendered twice, from two cameras a short distance apart. That distinction matters, because drawing twice would roll the sketch's randomness twice and step every simulation twice. The simulations that are documented as not reproducing frame for frame would then give the two eyes different worlds. With one draw and two renders, both eyes see the same instant.
 
 ### The two numbers
 
-A stereo pair needs exactly two numbers. Both are choices about the piece, not settings with one correct value.
+A stereo pair needs exactly two numbers. Both are choices about the work, not settings with one correct value.
 
-**Convergence** is the distance at which the two eyes agree. Whatever sits at that distance appears on the screen plane. Nearer things come out of the screen, and farther things sit behind it. So the convergence decides what the viewer looks *into* rather than *out at*. When you leave convergence unset, Ollin uses the camera's own target, because you are already pointing the camera at the thing the piece is about.
+**Convergence** is the distance at which the two eyes agree. Whatever sits at that distance appears on the screen plane. Nearer things come out of the screen, and farther things sit behind it. So the convergence decides what the viewer looks *into* rather than *out at*. When you leave convergence unset, Ollin uses the camera's own target. You are already pointing the camera at the thing the work is about.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/42-MakingItPhysical/StereoPair-dark.jpg">

@@ -128,7 +128,7 @@ override func draw() {
 }
 ```
 
-On a machine with no haptic hardware, and in an export, every call above does nothing and the sketch runs on. The library says so once on the error stream. The reason is also readable from the sketch, so a piece can put it on the canvas.
+On a machine with no haptic hardware, and in an export, every call above does nothing and the sketch runs on. The library says so once on the error stream. The reason is also readable from the sketch, which can put it on the canvas.
 
 <a name="what-is-on-the-other-end"></a>
 
@@ -151,7 +151,7 @@ There are two kinds of hardware. The difference matters because it changes what 
 
 A Mac today is the `.trackpad` case. Its Force Touch trackpad is reached through the window system, which offers three fixed feelings and one strength. The haptic engine reports that a Mac supports no haptic hardware. The trackpad also actuates only while the button is held. A knock asked for during a plain pointer move is accepted, but nobody feels it. So ask for touch inside a drag, as the ridges example does. `.engine` is the iPhone and iPad case. The code for it is here and checked, and it waits on those platforms.
 
-Read `hapticHardware` when a piece should play a different pattern on each kind. A piece built on strength alone feels flat on a trackpad, so give it fewer, crisper marks there instead.
+Read `hapticHardware` when a sketch should play a different pattern on each kind. A sketch built on strength alone feels flat on a trackpad, so give it fewer, crisper marks there instead.
 
 <a name="how-a-pattern-reaches-a-trackpad"></a>
 

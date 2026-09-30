@@ -202,4 +202,4 @@ Examples: `Examples/Simulation/Evolution`, `Examples/Simulation/Breeding`.
 - [`Swarm`](Swarm.md) - steering behaviors at GPU scale, over the same compute path
 - [`Artificial life`](ArtificialLife.md) - particle life, primordial particles, and slime mold
 - [`Compute`](../Shaders/Compute.md) - the kernels, buffers, and particle path underneath
-- [`Variations`](../Core/Variations.md) - the seed as a piece's identity
+- [`Variations`](../Core/Variations.md) - the seed as a work's identity

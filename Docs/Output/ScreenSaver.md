@@ -117,13 +117,13 @@ Then anybody can drop it into `~/Library/Screen Savers`.
 
 ### Several displays
 
-The system creates one saver for each display, so each screen runs its own copy of your sketch from its own first frame. The copies do not share a clock, so they are not in step. A piece that has to line up across two screens should be an [installation](./Installation.md) rather than a screen saver. An installation is built for a wall, with the displays laid out and the picture fitted across them.
+The system creates one saver for each display, so each screen runs its own copy of your sketch from its own first frame. The copies do not share a clock, so they are not in step. A sketch that has to line up across two screens should be an [installation](./Installation.md) rather than a screen saver. An installation is built for a wall, with the displays laid out and the picture fitted across them.
 
 ---
 
 ## See also
 
-- [Installation](./Installation.md) - the other way a piece runs unattended, for a wall rather than a desk
+- [Installation](./Installation.md) - the other way a sketch runs unattended, for a wall rather than a desk
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, including this one
 - [Single-file sketches](../Tools/SingleFile.md) - one loose file as a whole sketch
 - [Export](./Export.md) - rendering a picture to a file instead

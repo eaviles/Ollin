@@ -68,7 +68,7 @@ art.chordCount       // chords wound so far
 art.isFinished       // the cap is reached, or nothing left worth winding
 ```
 
-Each `Chord` carries the pins it spans (`fromPin`, `toPin`) and their canvas positions (`from`, `to`), which you pass straight to `drawLine`. `thread` is the same winding as one open polyline through the pins. `sequence` is the pin order on its own. That order is the whole piece if you ever wind it by hand on a real rim.
+Each `Chord` carries the pins it spans (`fromPin`, `toPin`) and their canvas positions (`from`, `to`), which you pass straight to `drawLine`. `thread` is the same winding as one open polyline through the pins. `sequence` is the pin order on its own. That order is the work itself if you ever wind it by hand on a real rim.
 
 <a name="notes"></a>
 
@@ -76,7 +76,7 @@ Each `Chord` carries the pins it spans (`fromPin`, `toPin`) and their canvas pos
 
 - **Bold tonal masses read best.** A strong silhouette or a deep shadow against open paper knits into a clear figure. So a profile winds better than a street or a sky. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord then covers about the same darkness, so no choice stands out. If the picture is low in contrast, raise its contrast first.
 - **Accumulate, don't redraw.** The look comes from thousands of translucent chords piling up, so all you need is `noClear()` plus a one-time `background`. See `Examples/Images/StringArt`.
-- **The thread is one line, which suits a pen plotter.** Draw `art.thread` with `drawPolyline` in a clearing sketch. The [SVG export](../Output/Export.md) then writes the whole piece as a single continuous line.
+- **The thread is one line, which suits a pen plotter.** Draw `art.thread` with `drawPolyline` in a clearing sketch. The [SVG export](../Output/Export.md) then writes the drawing as a single continuous line.
 - **`chords` sets the length of the thread.** A few hundred chords stay open and diagrammatic, and a few thousand read as continuous tone. The winding also stops on its own once nothing left is worth its ink, so `chords` is a ceiling rather than a target.
 - **A texture-backed image has no CPU pixels.** Read a video frame through its `snapshot()` first. This is the same rule the other picture renderings follow.
 

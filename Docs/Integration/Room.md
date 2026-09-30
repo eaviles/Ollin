@@ -4,7 +4,7 @@
 
 ## Room
 
-A room lets several machines draw one piece together. Two Macs on the same network find each other by the room's name alone. There is no server to run, no address to type, and nothing to configure. Values, `@Param` parameters, and one agreed clock travel between them. That is what makes a row of screens one piece rather than several copies of it. Rooms live in a separate library, so the drawing core stays free of MultipeerConnectivity. Add `import OllinRoom` alongside `import Ollin` to reach it.
+A room lets several machines draw one work together. Two Macs on the same network find each other by the room's name alone. There is no server to run, no address to type, and nothing to configure. Values, `@Param` parameters, and one agreed clock travel between them. That is what makes a row of screens one work rather than several copies of it. Rooms live in a separate library, so the drawing core stays free of MultipeerConnectivity. Add `import OllinRoom` alongside `import Ollin` to reach it.
 
 ```swift
 import Ollin
@@ -34,7 +34,7 @@ Open that sketch on a second Mac and the two are in the same room. It still runs
 - [Sending and reading values](#sending-and-reading-values) - the three ways to read, as with OSC and MIDI
 - [Sharing parameters](#sharing-parameters) - one person adjusts a parameter for the whole room
 - [The clock everyone agrees on](#the-clock) - why `room.time` and not `time`
-- [Splitting one piece across screens](#splitting-a-piece) - seats
+- [Splitting one work across screens](#splitting-a-work) - seats
 - [The network story](#the-network-story) - who can join, and what the system asks
 - [Trying it](#trying-it) - the two examples
 
@@ -62,7 +62,7 @@ room.sketchName(of: peer)  // what that machine is running
 room.lastError           // what went wrong, when something did
 ```
 
-Arrivals and departures drain as events, so a piece can respond to them:
+Arrivals and departures drain as events, so a sketch can respond to them:
 
 ```swift
 for machine in room.arrivals()   { print("\(machine) joined") }
@@ -143,7 +143,7 @@ Sharing needs `extend(room)`, because Ollin reads and applies the parameters on 
 
 ### The clock everyone agrees on
 
-Each machine starts its own clock when its sketch starts. Two machines running one piece are then out of step by the difference between their start times, and an audience sees that difference. `room.time` is the room's own clock, so read it for anything that moves:
+Each machine starts its own clock when its sketch starts. Two machines running one sketch are then out of step by the difference between their start times, and an audience sees that difference. `room.time` is the room's own clock, so read it for anything that moves:
 
 ```swift
 let angle = room.time * speed     // in step everywhere
@@ -157,15 +157,15 @@ room.ownsClock     // whether this machine keeps the clock
 room.clockError    // how far room time can be off, in seconds, nil before the first answer
 ```
 
-Between two sketches on one Mac, the first answer lands within a quarter second of joining. The two clocks then agree to within a tenth of a millisecond, which is the finest the measurement could see. Before that first answer, `room.time` is this machine's own clock and `clockError` is `nil`. A piece that must not start early can wait for the first answer.
+Between two sketches on one Mac, the first answer lands within a quarter second of joining. The two clocks then agree to within a tenth of a millisecond, which is the finest the measurement could see. Before that first answer, `room.time` is this machine's own clock and `clockError` is `nil`. A sketch that must not start early can wait for the first answer.
 
 When the machine that owns the clock leaves, the room picks the next owner. The room keeps the time it already had, rather than starting again from the new owner's own start. Across a real handover, the measured step was a tenth of a millisecond.
 
-<a name="splitting-a-piece"></a>
+<a name="splitting-a-work"></a>
 
-### Splitting one piece across screens
+### Splitting one work across screens
 
-A wall of screens draws one piece several times, and each machine slides its own part into view:
+A wall of screens draws one sketch several times, and each machine slides its own part into view:
 
 ```swift
 override func draw() {

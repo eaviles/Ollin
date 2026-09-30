@@ -332,7 +332,7 @@ override var loopDuration: Double? { 6 }   // repeats every 6 seconds
 installation: Installation
 ```
 
-What the piece needs to run by itself for days. The default is `.off`, which suits a sketch you run at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and Ollin writes down every `@Saved` property, so a relaunch resumes where the run left off. Add `restarts:` and Ollin starts the run again if it crashes or stops answering. Add `schedule:` to set the hours the piece is on screen, and the sketch reads back the parts of the day with `scheduledPeriod`. Add `displays:` and one canvas spans every display the machine drives. See [running unattended](../Output/Installation.md).
+What the sketch needs to run by itself for days. The default is `.off`, which suits a sketch you run at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and Ollin writes down every `@Saved` property, so a relaunch resumes where the run left off. Add `restarts:` and Ollin starts the run again if it crashes or stops answering. Add `schedule:` to set the hours the sketch is on screen, and it reads back the parts of the day with `scheduledPeriod`. Add `displays:` and one canvas spans every display the machine drives. See [running unattended](../Output/Installation.md).
 
 ```swift
 override var installation: Installation { .on }

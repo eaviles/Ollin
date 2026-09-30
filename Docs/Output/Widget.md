@@ -4,7 +4,7 @@
 
 ## A sketch as a widget
 
-A widget sits on the desktop and in the notification panel, next to the weather and the calendar. Putting a sketch there gives the piece a place in the day rather than a window you open.
+A widget sits on the desktop and in the notification panel, next to the weather and the calendar. Putting a sketch there gives it a place in the day rather than a window you open.
 
 ```sh
 ollin new Ripple --kind widget
@@ -19,7 +19,7 @@ This is the one surface that changes what a sketch *is*, so it is worth being pl
 
 The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. There is no frame rate here and no sixty draws a second: there are four or five draws an hour, and the viewer sees the difference between two of them rather than the motion between them.
 
-So a piece here is one that **changes** rather than one that moves. A dial that turns through the day works. A slow drift through a color works. A ball bouncing does not: by the time the next picture goes up, the ball has been somewhere else a thousand times and nobody saw any of it.
+So a sketch here is one that **changes** rather than one that moves. A dial that turns through the day works. A slow drift through a color works. A ball bouncing does not: by the time the next picture goes up, the ball has been somewhere else a thousand times and nobody saw any of it.
 
 ### What you get
 
@@ -51,9 +51,9 @@ public enum RipplePiece {
 
 ### The clock is the time of day
 
-`time` is seconds since midnight of the moment being drawn. `time / 3600` is the hour, `time` runs from 0 to 86400, and the piece reads the same at four this afternoon as at four tomorrow.
+`time` is seconds since midnight of the moment being drawn. `time / 3600` is the hour, `time` runs from 0 to 86400, and the sketch reads the same at four this afternoon as at four tomorrow.
 
-An elapsed clock could not do that. The system throws a run away and asks for a new one whenever it feels like it, and a piece counting from zero would jump back to the beginning every time it did. Reading the day instead means two runs that cover the same moment draw the same picture, which is the whole contract of this surface.
+An elapsed clock could not do that. The system throws a run away and asks for a new one whenever it feels like it. A sketch counting from zero would jump back to the beginning every time it did. Reading the day instead means two runs that cover the same moment draw the same picture, which is the whole contract of this surface.
 
 The rest of the frame's clock follows from that:
 
@@ -78,12 +78,12 @@ Four pictures a quarter of an hour apart, which covers the next hour. `.every(ho
 
 Two things about it are honest rather than convenient:
 
-- **The spacing is a wish, not a promise.** The system decides when it comes back for more pictures, and it will not come back every minute for anybody. A quarter of an hour is the shortest spacing worth asking for, and a piece that would look wrong a few minutes late should not be a widget.
+- **The spacing is a wish, not a promise.** The system decides when it comes back for more pictures, and it will not come back every minute for anybody. A quarter of an hour is the shortest spacing worth asking for. A sketch that would look wrong a few minutes late should not be a widget.
 - **The whole run is held at once.** Every picture is drawn before any of them is shown, so `count` is a handful and not a hundred.
 
-`span` is how long one pass covers, which is the last picture's moment minus the first's. `moments(from:)` is the whole list a pass draws for, `gridMoment(atOrBefore:)` the grid step a moment falls on, and `WidgetTimeline.timeOfDay(at:)` the seconds since midnight of one. The moments land on a grid counted from midnight rather than from whenever the system happened to ask. A quarter-hour piece therefore steps at the quarter hours, and the next run carries on the same grid instead of starting one of its own. A spacing that does not divide the day has one short step at midnight.
+`span` is how long one pass covers, which is the last picture's moment minus the first's. `moments(from:)` is the whole list a pass draws for, `gridMoment(atOrBefore:)` the grid step a moment falls on, and `WidgetTimeline.timeOfDay(at:)` the seconds since midnight of one. The moments land on a grid counted from midnight rather than from whenever the system happened to ask. A quarter-hour sketch therefore steps at the quarter hours, and the next run carries on the same grid instead of starting one of its own. A spacing that does not divide the day has one short step at midnight.
 
-One consequence follows from the grid: a piece whose own period divides the spacing is caught in the same place every time, so it never appears to move at all. A run every fifteen minutes cannot show you anything that repeats every fifteen minutes.
+One consequence follows from the grid. A sketch whose own period divides the spacing is caught in the same place every time, so it never appears to move at all. A run every fifteen minutes cannot show you anything that repeats every fifteen minutes.
 
 ### Seeing the run without waiting for it
 
@@ -96,7 +96,7 @@ swift run RippleApp --export-widget frames --size 720x720       # the whole run,
 
 `--export-widget <dir>` writes one picture per moment into a folder, named by the moment (`widget-141500.png`). It is exactly what the widget will show, drawn by exactly the same call. `--size WxH` is the widget's own size in pixels; left out, the sketch's declared canvas is used. `--frames N` overrides how many pictures the run holds.
 
-The flag works on any sketch, not only a generated widget project, so a piece can be tried on this surface before it is wrapped for it.
+The flag works on any sketch, not only a generated widget project. So a sketch can be tried on this surface before it is wrapped for it.
 
 ### The same call, from your own code
 

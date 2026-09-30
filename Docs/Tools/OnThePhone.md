@@ -58,7 +58,7 @@ The sketch file is referenced where it is, never copied. Files beside it with a 
 
 Every `import Ollin…` line links that satellite into the app. Ten have been built and run on a phone: `OllinRemote`, `OllinPhysics`, `OllinOSC`, `OllinMIDI`, `OllinController`, `OllinVideo`, `OllinBluetooth`, `OllinAudio`, `OllinVision`, and `OllinHaptics`. A satellite outside that list is linked too, and the command names it, so you know what to check first if the build fails. Five satellites work only on the Mac, so the command refuses them and gives the reason. They are the virtual camera, Syphon, screen capture, and both ends of the phone-as-sensor link, because a phone cannot be its own peripheral.
 
-The Mac features stay on the Mac. They are the export flags, the screen saver, the wallpaper, the menu bar piece, the display wall, the detached inspector panel, and the source-editing drag. A sketch that uses none of them is portable as written.
+The Mac features stay on the Mac. They are the export flags, the screen saver, the wallpaper, the menu-bar strip, the display wall, the detached inspector panel, and the source-editing drag. A sketch that uses none of them is portable as written.
 
 ### The options
 
@@ -106,7 +106,7 @@ struct MyApp: App {
 }
 ```
 
-The app owns the entry point, so `@main` goes on the `App` rather than on the sketch. The command's own host calls `beginInstallation` with a checkpoint every second. But a piece that runs on a tablet in a room can use a checkpoint every minute instead.
+The app owns the entry point, so `@main` goes on the `App` rather than on the sketch. The command's own host calls `beginInstallation` with a checkpoint every second. But a sketch that runs on a tablet in a room can use a checkpoint every minute instead.
 
 ### Without installing it
 
@@ -127,7 +127,7 @@ final class Held: Sketch {
 
 The Mac compresses each frame as video and sends it down the cable to [Ollin Capture](../3D/Phone.md#the-sketch-on-the-phones-screen), which shows it full screen. The first finger on the picture is the sketch's pointer, just as it is on this page. So `mouseX`, `mouseY`, `mouseIsPressed`, and `pressure` read the same either way.
 
-The two answer different questions. Showing the picture tells you how the piece looks and plays in the hand. An edit appears as soon as the Mac has compiled it, through the live window's own reload. Installing tells you whether the phone's own GPU keeps up, and that the sketch runs with no Mac at all. Both suit a sketch in progress: showing it while you shape it, installing it when you want to know it holds.
+The two answer different questions. Showing the picture tells you how the sketch looks and plays in the hand. An edit appears as soon as the Mac has compiled it, through the live window's own reload. Installing tells you whether the phone's own GPU keeps up, and that the sketch runs with no Mac at all. Both suit a sketch in progress: showing it while you shape it, installing it when you want to know it holds.
 
 ### What it needs
 

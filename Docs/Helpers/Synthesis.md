@@ -522,7 +522,7 @@ The licenses matter here, so each group below says what its terms are.
 
 **Free per item.** [Freesound](https://freesound.org/) is enormous, but every upload carries its own license, which is CC0, CC-BY, or CC-BY-NC. Filter by license and check each clip, because the three are mixed together.
 
-**Free to make music with, but not to redistribute.** The [Philharmonia Orchestra samples](https://philharmonia.co.uk/resources/sound-samples/) are very good. Their terms say they must not be made available "as is", meaning as samples or as a sampler instrument. That is fine for a piece you release. Do not ship them inside a sketch you hand to someone else.
+**Free to make music with, but not to redistribute.** The [Philharmonia Orchestra samples](https://philharmonia.co.uk/resources/sound-samples/) are very good. Their terms say they must not be made available "as is", meaning as samples or as a sampler instrument. That is fine for a work you release. Do not ship them inside a sketch you hand to someone else.
 
 The [SFZ format site](https://sfzformat.com/) documents the format itself and lists more libraries.
 
@@ -697,12 +697,12 @@ Placing survives an [export](#sound-in-an-export). The moves are written down as
 A sketch that plays sound carries it out of the window and into the file:
 
 ```sh
-swift run --package-path Examples Example-Audio-SoundInAnExport --export-video piece.mp4 --frames 480
+swift run --package-path Examples Example-Audio-SoundInAnExport --export-video sound.mp4 --frames 480
 ```
 
 The file has the music in it, with no recording step and nothing to switch on. The exporters drive a sketch on a fixed clock with nothing playing, so the notes are written down instead of going to the speakers. The soundtrack is then rendered at the end, through the same code that would have fed the speakers.
 
-That works because the renderer takes events and gives back samples, and it has no clock of its own. An export is that same code with the waiting taken out. That is also why **the sound reproduces**. Export twice and the audio comes back sample for sample identical, so you can come back to a piece later.
+That works because the renderer takes events and gives back samples, and it has no clock of its own. An export is that same code with the waiting taken out. That is also why **the sound reproduces**. Export twice and the audio comes back sample for sample identical, so you can come back to the work later.
 
 What to know:
 
@@ -987,7 +987,7 @@ The effect is a value, with two footnotes. Putting the same one in two places ma
 
 Changing a **setting** costs nothing, because the chain keeps the same wiring and only the numbers move. Changing **which effects are in the chain** rewires it. That happens on the running engine rather than around a stop. Measured on this wiring, reconnecting while it runs costs nothing audible, and stopping costs the same.
 
-The chain reaches an [export](#sound-in-an-export) as well, built the same way from the same list. An export that ran a different set of effects from the one the sketch was heard through would be a different piece.
+The chain reaches an [export](#sound-in-an-export) as well, built the same way from the same list. An export that ran a different set of effects from the one the sketch was heard through would be a different work.
 
 ---
 

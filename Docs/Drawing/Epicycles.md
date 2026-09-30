@@ -93,7 +93,7 @@ This draws the classic construction in one call. Each kept circle appears as an 
 
 #### Terms, detail, and ringing
 
-Every read method takes `terms:`, the number of circles to keep from the front of the list. The terms are sorted by amplitude, so `terms: k` is always the best `k`-circle approximation, and one built chain serves every level of detail. Put the count on a [`@Param`](../Helpers/Parameters.md) parameter and scrub it live. A few terms give a soft, loose shape, more terms sharpen it, and a near-full count traces the outline exactly. Around a sharp corner a truncated chain overshoots in small ripples. That overshoot is the transform's ringing, and it reads as a wobble near the corner. Raise `terms:` or soften the corner if that wobble bothers the piece.
+Every read method takes `terms:`, the number of circles to keep from the front of the list. The terms are sorted by amplitude, so `terms: k` is always the best `k`-circle approximation, and one built chain serves every level of detail. Put the count on a [`@Param`](../Helpers/Parameters.md) parameter and scrub it live. A few terms give a soft, loose shape, more terms sharpen it, and a near-full count traces the outline exactly. Around a sharp corner a truncated chain overshoots in small ripples. That overshoot is the transform's ringing, and it reads as a wobble near the corner. Raise `terms:` or soften the corner if that wobble is wrong for the work.
 
 ---
 

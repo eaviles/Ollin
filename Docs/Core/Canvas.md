@@ -34,7 +34,7 @@ override func draw() {
 
 Coordinates are in **logical points**. The origin is the top-left corner and y increases downward, the same as in p5, Processing, and OPENRNDR. Inside `draw()`, `width` and `height` are the canvas size in those points.
 
-To keep a piece looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
+To keep a sketch looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
 
 - **`scale`** grows and shrinks with the canvas, so a size multiplied by it keeps its proportion at any canvas size. Pick the size you would want on a canvas of about 1000 points, then multiply: a `12 * scale` dot, a `375 * scale` radius.
 - **`width` / `height` fractions** suit layout, such as `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, and [`shortSide`](#shortSide)` * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as a single point, so you write `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
@@ -140,7 +140,7 @@ The on-screen window does not have to match `canvasSize`, because a 1080² or 4K
 
 - **`.auto`** is the default. It opens at 1:1 when the screen has room for the full `canvasSize`. Otherwise it steps down to the largest clean fraction that fits (¾, ½, …), so the window always fits. A 1080² sketch opens at 1080 on a large or external display, and at ¾ (810pt) on a 14"/16" laptop.
 - **`.fixed(_)`** pins an explicit fraction of `canvasSize` and ignores the screen, so `.fixed(0.5)` is always half size and `.fixed(1)` is always 1:1.
-- **`.resizable`** opens a freely resizable window at the auto-fit size, and the canvas follows it live. Use it for sketches made for the screen rather than for a fixed export. Draw with `scale`, `width`, and `height`, and the piece adapts as you drag the window.
+- **`.resizable`** opens a freely resizable window at the auto-fit size, and the canvas follows it live. Use it for sketches made for the screen rather than for a fixed export. Draw with `scale`, `width`, and `height`, and the sketch adapts as you drag the window.
 
 ```swift
 override var windowMode: WindowMode { .fixed(0.5) }   // always half of canvasSize

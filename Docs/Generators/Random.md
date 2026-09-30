@@ -37,7 +37,7 @@ let y = 400 + random(-100, 100)        // jitter around 400
 if random() < 0.2 { /* runs about a fifth of the time */ }
 ```
 
-A zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. That matters in a seeded sketch. A parameter or an animated value can scale a jitter amount down to exactly zero. In that case, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, and not `random(-amount, amount)`. The unit roll always draws, so the seeded sequence stays stable as `amount` crosses zero. The piece's whole pattern of later rolls stays stable with it.
+A zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. That matters in a seeded sketch. A parameter or an animated value can scale a jitter amount down to exactly zero. In that case, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, and not `random(-amount, amount)`. The unit roll always draws, so the seeded sequence stays stable as `amount` crosses zero. The sketch's whole pattern of later rolls stays stable with it.
 
 <a name="randomGaussian"></a>
 
@@ -158,7 +158,7 @@ randomSeed(42)   // same scatter every run
 seed(_ seed: Int)
 ```
 
-Seed *both* `random` and `noise` from one value. That locks the whole sketch's randomness, so the sketch reproduces exactly. Use it when one seed should fully determine a piece. To reseed only one of the two, use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed).
+Seed *both* `random` and `noise` from one value. That locks the whole sketch's randomness, so the sketch reproduces exactly. Use it when one seed should fully determine the work. To reseed only one of the two, use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed).
 
 ```swift
 seed(7)   // random and noise both reproducible

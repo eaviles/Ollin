@@ -54,7 +54,7 @@ There is no orientation problem here, and no idea of a hole, because the skin al
 
 #### The fitting: planes or robust
 
-`fitting:` chooses how the fitted neighborhoods turn into a distance. It is an artwork parameter like `resolution`, so it changes the piece and not only the cost.
+`fitting:` chooses how the fitted neighborhoods turn into a distance. It is an artwork parameter like `resolution`, so it changes the work and not only the cost.
 
 - **`.planes`** is the default. Every evaluation reads its single nearest plane, which is fast and faithful. On noisy or unevenly captured data the piecewise planes can look slightly faceted. Where coverage runs out, planes that disagree can shed stray shreds of surface.
 - **`.robust`** is robust kernel regression over the same planes, the RIMLS method. Every evaluation blends all the nearby samples, then re-weights the blend a few times. Samples that disagree with the local consensus fade out of the fit, which covers noise, outliers, and the far side of a crease. The result is smoother where the surface is smooth, and it keeps its edges where the surface is not. It also resists phantom shreds around partly observed objects. The cost is higher than the plane fit, from a few percent on a real scan to roughly double on dense synthetic clouds.

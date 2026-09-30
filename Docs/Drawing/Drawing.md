@@ -34,7 +34,7 @@ Clear the frame to `color`. The renderer clears every frame, so call this first 
 background(.white)
 ```
 
-`background(.clear)`, or any color with an alpha under 1, makes the canvas see-through. The window paints it over black, and every export keeps the coverage as the file's alpha, so the piece lands over another layer. See [Transparent output](../Output/Export.md#transparent-output).
+`background(.clear)`, or any color with an alpha under 1, makes the canvas see-through. The window paints it over black, and every export keeps the coverage as the file's alpha, so the work lands over another layer. See [Transparent output](../Output/Export.md#transparent-output).
 
 <a name="fill"></a>
 
@@ -355,7 +355,7 @@ drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
 > [!TIP]
-> **Sizes go all the way down.** Round points, circles, lines, and shape outlines stay smooth at sub-pixel sizes. A dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by ink. It does not pop in, snap to a 1px floor, or flicker as it moves. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft, even wash rather than hard speckle. Draw at whatever size and stroke weight the piece wants, down to a fraction of a pixel.
+> **Sizes go all the way down.** Round points, circles, lines, and shape outlines stay smooth at sub-pixel sizes. A dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by ink. It does not pop in, snap to a 1px floor, or flicker as it moves. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft, even wash rather than hard speckle. Draw at whatever size and stroke weight the sketch wants, down to a fraction of a pixel.
 
 <a name="line"></a>
 
@@ -1296,7 +1296,7 @@ Clipping is scoped to the current drawing surface, so a `layer { }` opened insid
 withViewBox(_ rect: Rectangle, fit: ImageFit = .contain, _ body: () -> Void)
 ```
 
-Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is clipped to it, and the coordinates are remapped, so `0...width` and `0...height` land on the box. That is how one window shows several versions of a piece at once.
+Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is clipped to it, and the coordinates are remapped, so `0...width` and `0...height` land on the box. That is how one window shows several versions of a sketch at once.
 
 ```swift
 for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumerated() {
@@ -1310,13 +1310,13 @@ for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumer
 The block needs no changes to run in a box, and two things are remapped to keep that true:
 
 - **`background(_:)` fills this box's own canvas** rather than setting the frame's clear color. The clear color belongs to the whole frame and to every other box on it. A box that wiped it would take the others with it.
-- **The mouse arrives in the box's coordinates**, so an interactive piece works in each box independently. A pointer outside the box reads proportionally outside `0...width`, the way [`Rectangle.point(u:v:)`](Geometry.md#rectangle) does.
+- **The mouse arrives in the box's coordinates**, so an interactive sketch works in each box independently. A pointer outside the box reads proportionally outside `0...width`, the way [`Rectangle.point(u:v:)`](Geometry.md#rectangle) does.
 
 Both are restored on exit, and boxes nest. A box inside a box composes both mappings, and the clips intersect.
 
 `fit` says what happens when the box is not the canvas's shape. It means the same thing here as it does for a picture (see [`ImageFit`](Images.md#fit)). `.contain` puts the whole virtual canvas inside and leaves the box showing along two edges. `.cover` fills the box and crops what runs past. `.stretch` squashes to fit. A box of the canvas's own shape gets the same answer from all three.
 
-`width` and `height` do **not** change, on purpose. The code inside believes it has the whole canvas, which is what lets you hand an unmodified piece to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the sketch's shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Draw labels and frames outside the block, in canvas coordinates, so they keep one size while the pieces are scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
+`width` and `height` do **not** change, on purpose. The code inside believes it has the whole canvas, which is what lets you hand an unmodified sketch to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the sketch's shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Draw labels and frames outside the block, in canvas coordinates, so they keep one size while the drawing in each box is scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
 
 <a name="viewcontrol"></a>
 
@@ -1336,7 +1336,7 @@ override func draw() {
 }
 ```
 
-It leaves a plain transform in force, so everything drawn after it moves together and anything drawn before it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the piece in a `withState { }` block, then draw the HUD after it.
+It leaves a plain transform in force, so everything drawn after it moves together and anything drawn before it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the drawing in a `withState { }` block. Then draw the HUD after it.
 
 `center` and `zoom` frame the opening view, and they apply on the first call only. Passing them every frame therefore does not fight the dragging. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts it back to its opening framing, which is what a reset key would call.
 

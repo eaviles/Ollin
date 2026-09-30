@@ -12,7 +12,7 @@ This page covers the host panel. A sketch can also drive its own keyframe sequen
 
 Click **Timeline** in the title bar of OllinLive, or press **⌘T**. The panel floats beside the window and remembers its place and size. Close it with its own close button or with the same toggle.
 
-The panel is in OllinLive only. The gallery shows parameters as a showcase, and the live host is where you direct a piece.
+The panel is in OllinLive only. The gallery shows parameters as a showcase, and the live host is where you direct a sketch.
 
 ### The authoring loop
 
@@ -44,13 +44,13 @@ The rule lands in the same automation file as the keys, written as the text you 
 
 The playhead follows the automation's own position. When the automation loops, the playhead comes around again while the clock runs on, and the readout follows the playhead. Pausing holds the clock still and draws no wasted frames, which is what an accumulating canvas needs. A frame step holds the clock first, the way a video editor does.
 
-The **loop button** repeats a stretch of time while you work on it. Option-drag the ruler to choose the region, and use the button to arm and disarm the loop. The region belongs to the transport only, and it is never written into the file. So looping two seconds while you shape a curve changes nothing about the piece.
+The **loop button** repeats a stretch of time while you work on it. Option-drag the ruler to choose the region, and use the button to arm and disarm the loop. The region belongs to the transport only, and it is never written into the file. So looping two seconds while you shape a curve changes nothing about the sketch.
 
 ### The file
 
 The tracks round-trip to a JSON file. By default that file is the sketch's sibling, so `Sketch.automation.json` sits beside `Sketch.swift`. Use `--automation <file>` to point at another file. On launch, OllinLive reads the file and installs its tracks, and it re-installs them across every reload. The panel's work survives the edit loop. Edits write back to the same file a moment after they land, and the footer names the file and says whether it is saved.
 
-OllinLive's own export flags read the sibling file too, so this renders the piece exactly as the panel played it:
+OllinLive's own export flags read the sibling file too, so this renders the sketch exactly as the panel played it:
 
 ```sh
 swift run OllinLive Sketch.swift --export-video out.mp4 --seconds 12

@@ -11,7 +11,7 @@
   <img src="../../Guide/Images/13-GrowingThings/ClaimingSpace.jpg" alt="Four panels of the same growth at step 6, 18, 40, and finished: ink veins spread from a bottom root into a field of orange dots, and the dots vanish as branches reach them" width="680">
 </picture>
 
-`SpaceColonization` keeps its own state, so you hold on to it and call `step()` each frame, or run it to the end with `grow()`. The algorithm draws no random numbers, which means the same attractors and roots always grow the same structure. Scatter the attractors with a seeded generator and the whole piece is reproducible.
+`SpaceColonization` keeps its own state, so you hold on to it and call `step()` each frame, or run it to the end with `grow()`. The algorithm draws no random numbers, which means the same attractors and roots always grow the same structure. Scatter the attractors with a seeded generator and the whole sketch is reproducible.
 
 ```swift
 seed(7)

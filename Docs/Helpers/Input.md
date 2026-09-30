@@ -39,7 +39,7 @@ override func draw() {
 }
 ```
 
-Two calls remap the mouse into their own coordinates. One is [`withViewBox`](../Drawing/Drawing.md#viewbox), which does it for the length of its block. The other is [`viewControl`](../Drawing/Drawing.md#viewcontrol), which does it for the rest of the frame. The remap keeps a piece written for the whole canvas working when the view is not the whole canvas. In both cases, `mouseX` and `mouseY` give the position in the content under the pointer, not the position on the screen. The pointer values are restored before the next frame.
+Two calls remap the mouse into their own coordinates. One is [`withViewBox`](../Drawing/Drawing.md#viewbox), which does it for the length of its block. The other is [`viewControl`](../Drawing/Drawing.md#viewcontrol), which does it for the rest of the frame. The remap keeps a sketch written for the whole canvas working when the view is not the whole canvas. In both cases, `mouseX` and `mouseY` give the position in the content under the pointer, not the position on the screen. The pointer values are restored before the next frame.
 
 <a name="mousePoint"></a>
 

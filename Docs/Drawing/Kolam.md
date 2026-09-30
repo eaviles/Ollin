@@ -63,7 +63,7 @@ Draw the line-work with the current `stroke`, rounded by `rounding` passes of co
 - **`dots`** the field itself, row-major, for marking the pulli a kolam is drawn around.
 - **`loopCount`** how many closed loops the line makes. A count of one is the single unbroken line, which is what most traditional drawings aim for.
 
-The design keeps the `grid` it was built on. That means `design.grid.cells` and `design.grid.bounds` are there when a piece needs to place something else against the same field. The grid's `gutter` does not apply, because the line needs an even field to bounce in.
+The design keeps the `grid` it was built on. That means `design.grid.cells` and `design.grid.bounds` are there when a sketch needs to place something else against the same field. The grid's `gutter` does not apply, because the line needs an even field to bounce in.
 
 <a name="walls"></a>
 

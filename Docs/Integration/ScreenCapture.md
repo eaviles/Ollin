@@ -133,7 +133,7 @@ override func setup() {
 }
 ```
 
-The intended workflow is to list once, find what you want, and then **write the name into the sketch**. The piece then does not depend on anyone having clicked a menu. The `ScreenCapture` example prints each entry in the listing as the line of code that names that source, ready to paste.
+The intended workflow is to list once, find what you want, and then **write the name into the sketch**. The sketch then does not depend on anyone having clicked a menu. The `ScreenCapture` example prints each entry in the listing as the line of code that names that source, ready to paste.
 
 <a name="capturing-the-screen-you-are-drawn-on"></a>
 

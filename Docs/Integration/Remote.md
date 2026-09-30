@@ -55,7 +55,7 @@ remote.unavailableReason // why it is not, in a sentence, or nil
 remote.start()           // serve again after stop(), or try the port again
 ```
 
-Keep a reference to the extension if you want the sketch to draw the address on the canvas. The example below does that, so the piece itself tells visitors how to reach it.
+Keep a reference to the extension if you want the sketch to draw the address on the canvas. The example below does that, so the sketch itself tells visitors how to reach it.
 
 <a name="what-the-phone-shows"></a>
 

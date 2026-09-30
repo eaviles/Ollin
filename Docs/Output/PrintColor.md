@@ -65,7 +65,7 @@ artwork.outOfGamutFraction(press)      // 0…1, how much of the picture will no
 artwork.gamutMask(press)               // white where it will not print, black where it will
 ```
 
-The fraction is the number to watch while you tune a palette. A value under a few percent is ordinary. A value near a third of the canvas means the piece is drawn in colors that will not survive printing.
+The fraction is the number to watch while you tune a palette. A value under a few percent is ordinary. A value near a third of the canvas means the work is drawn in colors that will not survive printing.
 
 ### Proofing live
 

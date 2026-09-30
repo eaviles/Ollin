@@ -4,7 +4,7 @@
 
 ## A sketch as an app
 
-A finished piece should not need you standing next to it. Wrapped as a Mac app, a sketch opens with a double click on a machine that has never seen the toolchain. That machine can be a friend's laptop, a gallery machine, or the computer that runs the wall.
+A finished work should not need you standing next to it. Wrapped as a Mac app, a sketch opens with a double click on a machine that has never seen the toolchain. That machine can be a friend's laptop, a gallery machine, or the computer that runs the wall.
 
 ```sh
 ollin new Orbit --kind mac-app
@@ -28,7 +28,7 @@ The sketch keeps its `@main` and its window, because an app is a program. The ta
 
 ### The icon is the sketch
 
-`build.sh` runs the binary it just built with `--export`, takes frame 120, squares it, and writes it into the `.icns` file the Finder shows. The piece is its own icon, so the icon is made again on every build.
+`build.sh` runs the binary it just built with `--export`, takes frame 120, squares it, and writes it into the `.icns` file the Finder shows. The sketch is its own icon, so the icon is made again on every build.
 
 You can take that over in two ways:
 
@@ -77,7 +77,7 @@ Before you send an app anywhere, change `CFBundleIdentifier` in `Info.plist` fro
 
 ### An app for a wall
 
-`build.sh` and `Info.plist` are self-contained. Copy the pair into any sketch folder of the same shape and change the two names at the top of the script. That project then builds an app too. A piece delivered to a gallery machine this way runs without the repo, without the toolchain, and without you. A sketch that declares an `Installation` keeps that declaration inside the app. The double click then opens the piece the way [installation mode](./Installation.md) describes, which means full screen, unattended, and on the building's hours.
+`build.sh` and `Info.plist` are self-contained. Copy the pair into any sketch folder of the same shape and change the two names at the top of the script. That project then builds an app too. A sketch delivered to a gallery machine this way runs without the repo, without the toolchain, and without you. A sketch that declares an `Installation` keeps that declaration inside the app. The double click then opens the sketch the way [installation mode](./Installation.md) describes, which means full screen, unattended, and on the building's hours.
 
 ---
 
@@ -85,7 +85,7 @@ Before you send an app anywhere, change `CFBundleIdentifier` in `Info.plist` fro
 
 - [Installation](./Installation.md) - running unattended on a wall, once the app is on the machine
 - [Screen saver](./ScreenSaver.md) - the other double-clickable form a sketch can take
-- [Widget](./Widget.md) - this wrapper with an extension packed inside it, so the piece sits on the desktop
+- [Widget](./Widget.md) - this wrapper with an extension packed inside it, so the sketch sits on the desktop
 - [The sketch on the phone](../Tools/OnThePhone.md#in-an-app-of-your-own) - the same idea for an iPhone or iPad, written by `ollin new --kind ios-app`
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them
 - [Export](./Export.md) - leaving with a picture instead of an app
