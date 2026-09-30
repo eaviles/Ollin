@@ -4,10 +4,10 @@
     "guide": {
       "across": 8,
       "cell": 200,
-      "clip": "heroes/guide-hero.mp4?v=0b7608ac",
+      "clip": "heroes/guide-hero.mp4?v=a9117e3b",
       "fps": 30,
       "height": 800,
-      "image": "heroes/guide-hero.jpg?v=e821420d",
+      "image": "heroes/guide-hero.jpg?v=bc69da33",
       "kind": "guide-payoffs",
       "lead": 6,
       "leads": {

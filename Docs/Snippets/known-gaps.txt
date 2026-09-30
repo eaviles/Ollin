@@ -415,7 +415,7 @@ e6d16b4806cb  Docs/Drawing/Morphing.md:95  cannot find 'star' in scope
 6616ead47cf9  Docs/Drawing/PixelSorting.md:33  cannot find 'picture' in scope
 4a4ccc188ee0  Docs/Drawing/PixelSorting.md:39  cannot find 'picture' in scope
 925a3ab88457  Docs/Drawing/SVG.md:109  cannot find 'art' in scope
-09ac458fe623  Docs/Drawing/SVG.md:121  cannot find 'art' in scope
+817fa3d9f756  Docs/Drawing/SVG.md:121  cannot find 'art' in scope
 b9313279f830  Docs/Drawing/SVG.md:14  '@main' attribute cannot be applied to this declaration
 b7f538ce65b8  Docs/Drawing/SVG.md:54  expected ',' separator
 86fbf33563b8  Docs/Drawing/SVG.md:70  expected ',' separator
@@ -767,20 +767,22 @@ cb8c68156be1  Docs/Helpers/Composition.md:482  missing argument label '_animatab
 79b2cb45d17c  Docs/Helpers/Composition.md:497  overriding non-open property outside of its defining module
 01f2f3e68796  Docs/Helpers/Composition.md:55  unary operator cannot be separated from its operand
 b749134545cc  Docs/Helpers/Cues.md:36  value of optional type 'Character?' must be unwrapped to refer to member 'wholeNumberValue' of wrapped base type 'Character'
-a92b3e5e1377  Docs/Helpers/Data.md:106  cannot find 'table' in scope
-425e3127d787  Docs/Helpers/Data.md:115  cannot find 'table' in scope
-c9e3802d889e  Docs/Helpers/Data.md:157  overriding non-open instance method outside of its defining module
-39bd4dc1070b  Docs/Helpers/Data.md:165  cannot find 'document' in scope
-39bcf57fe500  Docs/Helpers/Data.md:190  cannot find 'json' in scope
-54526e1ce130  Docs/Helpers/Data.md:195  cannot infer contextual base in reference to member 'text'
-d0c0dee9ea81  Docs/Helpers/Data.md:210  cannot find 'json' in scope
-8b218a4941b3  Docs/Helpers/Data.md:227  'module' is inaccessible due to 'internal' protection level
-90b941060901  Docs/Helpers/Data.md:238  expected ',' separator
-b87990929e7d  Docs/Helpers/Data.md:33  overriding non-open instance method outside of its defining module
-51d4297e4630  Docs/Helpers/Data.md:42  'module' is inaccessible due to 'internal' protection level
-e0ad80b2704e  Docs/Helpers/Data.md:69  cannot find type 'Row' in scope
-d2e4dd12768b  Docs/Helpers/Data.md:84  cannot find 'row' in scope
-3497e1983058  Docs/Helpers/Data.md:98  cannot find 'row' in scope
+a92b3e5e1377  Docs/Helpers/Data.md:107  cannot find 'table' in scope
+425e3127d787  Docs/Helpers/Data.md:116  cannot find 'table' in scope
+ee8873faa936  Docs/Helpers/Data.md:131  cannot find 'table' in scope
+5b00b2203e0f  Docs/Helpers/Data.md:148  cannot find 'table' in scope
+c9e3802d889e  Docs/Helpers/Data.md:200  overriding non-open instance method outside of its defining module
+39bd4dc1070b  Docs/Helpers/Data.md:208  cannot find 'document' in scope
+39bcf57fe500  Docs/Helpers/Data.md:235  cannot find 'json' in scope
+54526e1ce130  Docs/Helpers/Data.md:240  cannot infer contextual base in reference to member 'text'
+d0c0dee9ea81  Docs/Helpers/Data.md:255  cannot find 'json' in scope
+8b218a4941b3  Docs/Helpers/Data.md:274  'module' is inaccessible due to 'internal' protection level
+90b941060901  Docs/Helpers/Data.md:285  expected ',' separator
+b87990929e7d  Docs/Helpers/Data.md:34  overriding non-open instance method outside of its defining module
+51d4297e4630  Docs/Helpers/Data.md:43  'module' is inaccessible due to 'internal' protection level
+e0ad80b2704e  Docs/Helpers/Data.md:70  cannot find type 'Row' in scope
+d2e4dd12768b  Docs/Helpers/Data.md:85  cannot find 'row' in scope
+3497e1983058  Docs/Helpers/Data.md:99  cannot find 'row' in scope
 f70dbf2322a8  Docs/Helpers/Formula.md:159  errors thrown from here are not handled
 285baa53a08e  Docs/Helpers/Formula.md:168  errors thrown from here are not handled
 60a99bf62638  Docs/Helpers/Formula.md:183  cannot find '$radius' in scope
@@ -1022,9 +1024,9 @@ eac6cd3e0246  Docs/Output/PrintSeparations.md:85  cannot find 'sketch' in scope
 f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 2464e3c8732c  Docs/Output/Spatial.md:153  cannot find 'shot' in scope
 87c880d4f02e  Docs/Output/Spatial.md:182  cannot find 'AVAssetPlaybackAssistant' in scope
-08483ac7ea33  Docs/Output/Spatial.md:24  cannot find 'sketch' in scope
-2061a81c0661  Docs/Output/Spatial.md:35  cannot find 'sketch' in scope
-690a25f392d7  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
+5180113920cd  Docs/Output/Spatial.md:24  cannot find 'sketch' in scope
+51c43cf9240c  Docs/Output/Spatial.md:35  cannot find 'sketch' in scope
+6769d4f057a2  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
 1f2cfde3b6d6  Docs/Output/Wallpaper.md:30  '@main' attribute cannot be applied to this declaration
 68da6254f5c3  Docs/QuickReference.md:30  '@main' attribute cannot be applied to this declaration
 04f155b00209  Docs/Shaders/Compute.md:109  cannot find 'sand' in scope

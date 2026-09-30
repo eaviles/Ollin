@@ -35,20 +35,16 @@ ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
 ed123e551581  Guide/09-Pictures.md:227  cannot find 'picture' in scope
 8ca70252f031  Guide/09-Pictures.md:238  cannot find 'picture' in scope
 cd4b2fbdddc6  Guide/09-Pictures.md:287  cannot find 'photo' in scope
-91f49fa6cea0  Guide/09-Pictures.md:326  cannot find 'picture' in scope
-10c5114223ae  Guide/09-Pictures.md:336  cannot find 'picture' in scope
-c3c5db53cc82  Guide/09-Pictures.md:359  cannot find 'target' in scope
+94e632809a2c  Guide/09-Pictures.md:324  cannot find 'picture' in scope
+c3c5db53cc82  Guide/09-Pictures.md:343  cannot find 'target' in scope
+edc50590a5d1  Guide/09-Pictures.md:359  cannot find 'picture' in scope
 5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
-5a7c4c5605e8  Guide/09-Pictures.md:378  cannot find 'picture' in scope
-4bf5f3360259  Guide/09-Pictures.md:389  cannot find 'dots' in scope
-53973e6b4213  Guide/09-Pictures.md:398  cannot find 'picture' in scope
-68079cdd8056  Guide/09-Pictures.md:414  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:447  cannot find 'picture' in scope
-4bda4ace2c1f  Guide/09-Pictures.md:467  cannot find 'depthMap' in scope
-b414f6435a99  Guide/09-Pictures.md:492  'module' is inaccessible due to 'internal' protection level
-9335f3c2f125  Guide/09-Pictures.md:521  cannot find 'table' in scope
-e4ad8ec48e3a  Guide/09-Pictures.md:534  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:558  'module' is inaccessible due to 'internal' protection level
+843a4fdf6a3f  Guide/09-Pictures.md:377  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:402  cannot find 'picture' in scope
+4bda4ace2c1f  Guide/09-Pictures.md:422  cannot find 'depthMap' in scope
+7363ccd01a5f  Guide/09-Pictures.md:447  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:466  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:481  'module' is inaccessible due to 'internal' protection level
 ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
@@ -140,12 +136,13 @@ e6e9484ee21c  Guide/34-Seeing.md:313  argument type '@MainActor (Camera3D) -> ()
 fe868f649d36  Guide/34-Seeing.md:370  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 c09ae8043967  Guide/34-Seeing.md:404  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 a74ee9528a00  Guide/34-Seeing.md:419  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-2cc90665cec7  Guide/34-Seeing.md:442  cannot find 'encoderURL' in scope
-e32d94bf2d6a  Guide/34-Seeing.md:473  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-1c6e923d0f9f  Guide/34-Seeing.md:492  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-d2bcab332251  Guide/34-Seeing.md:537  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-491c839e438a  Guide/34-Seeing.md:584  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-746879197407  Guide/34-Seeing.md:656  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+5f5a4703d420  Guide/34-Seeing.md:440  cannot find 'encoderURL' in scope
+ed00e1e6886f  Guide/34-Seeing.md:454  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+9db962075aa9  Guide/34-Seeing.md:468  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+69cdcef589cf  Guide/34-Seeing.md:482  cannot find 'rect' in scope
+a7aa8455a66f  Guide/34-Seeing.md:496  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+491c839e438a  Guide/34-Seeing.md:539  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+746879197407  Guide/34-Seeing.md:611  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 6d480cc311b2  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
