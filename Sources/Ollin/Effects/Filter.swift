@@ -1678,14 +1678,19 @@ public struct Filter: Sendable {
     /// drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
     /// ```
     ///
-    /// `window` is how wide that neighborhood is, in pixels, and it wants to be large
-    /// enough to hold both ink and paper: too small and the middle of a thick stroke
-    /// reads as its own background and hollows out. Left `nil` it is an eighth of the
-    /// layer, the published default. `bias` is the *fraction* below the local average a
-    /// pixel must fall before it goes dark, which keeps flat paper from breaking up into
-    /// noise. A fraction rather than a distance is what makes the cut survive uneven
-    /// light, since light falling on a page multiplies what comes back off it. The window
-    /// costs nothing to widen, so it is a parameter to adjust freely.
+    /// `window` is how wide that neighborhood is, in the layer's pixels, and it is
+    /// bounded on both sides. It wants to be wider than the marks, so every window
+    /// holds both ink and paper: too small and the middle of a thick stroke reads as
+    /// its own background and hollows out. And it wants to be narrower than the
+    /// lighting it should see past: a window wider than a shadow band averages the
+    /// lit paper around the band, and the band comes out solid ink. On a page of text
+    /// a window of one or two line heights sits between the two. Left `nil` it is an
+    /// eighth of the layer, the published default, which suits a page lit unevenly
+    /// across its whole width rather than one crossed by shadows. `bias` is the
+    /// *fraction* below the local average a pixel must fall before it goes dark, which
+    /// keeps flat paper from breaking up into noise. A fraction rather than a distance
+    /// is what makes the cut survive uneven light, since light falling on a page
+    /// multiplies what comes back off it. The window costs the same at any width.
     public static func adaptiveThreshold(window: Double? = nil, bias: Double = 0.15,
                                          inverted: Bool = false) -> Filter {
         Filter(kind: .adaptiveThreshold(window: window.map { max(1, $0) },

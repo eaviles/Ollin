@@ -117,8 +117,12 @@ paper color, so the stroke comes out hollow:
   <img src="../Images/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
 </picture>
 
-Widening the window costs nothing, so prefer a wide one. The published default of an eighth of
-the image is a good starting point for a page of text.
+The window costs the same at any width, and it is bounded on both sides. It has to be wider
+than the marks, or they hollow out as above. And it has to be narrower than the lighting it
+should see past: a window wider than a shadow band averages the lit paper around the band,
+and the band comes out solid ink. On a page of text, one or two line heights sits between
+the two. The published default of an eighth of the image suits a page lit unevenly across
+its whole width; a page crossed by shadows wants a window narrower than they are.
 
 <a id="how-it-works"></a>
 ### How it works

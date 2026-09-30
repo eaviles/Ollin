@@ -51,7 +51,7 @@ final class LocalAverages: Sketch {
             case 1:
                 drawImage(page.filtered(.threshold(0.3)).image, in: frame)
             default:
-                drawImage(page.filtered(.adaptiveThreshold(window: 90)).image, in: frame)
+                drawImage(page.filtered(.adaptiveThreshold(window: 16)).image, in: frame)
             }
 
             fill(labelInk)
