@@ -380,7 +380,7 @@ The picture inside that file is the PNG's picture, so any viewer can open it. Be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-FinishingASketch/WhatTheStillKeeps-dark.jpg">
-  <img src="Images/41-FinishingASketch/WhatTheStillKeeps.jpg" alt="Two dark square panels with a plus sign between them. Left, a soft lamp whose center is a flat white plateau, beside a small white bar labeled white. Right, the same frame as a gain map: black everywhere except a small soft gray disc where the lamp's core was, labeled as reaching 2.7 times white" width="680">
+  <img src="Images/41-FinishingASketch/WhatTheStillKeeps.jpg" alt="Two dark square panels with a plus sign between them. Left, a soft lamp whose center is a flat white plateau, beside a small white bar labeled white. Right, the same frame as a gain map: black everywhere except a small soft disc, white at its center and fading through gray, where the lamp's core was, labeled as reaching 2.7 times white" width="680">
 </picture>
 
 The left panel is the picture inside the file, clamped at white, and the lamp's flat plateau is where everything above 1.0 went. The right panel is a gain map, drawn in shades of one gray. It is black where the frame stayed in range, and it gets brighter the further above white a pixel went. A display with headroom multiplies the two together, and the plateau turns back into a lamp. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop to see it, and turn the screen brightness down while you look.

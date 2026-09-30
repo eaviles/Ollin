@@ -72,7 +72,7 @@ A pen draws a sketch's lines, and a press prints its colors. A risograph, a sten
   <img src="Images/42-MakingItPhysical/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of one photograph of a woman before a wall of marigolds, followed by the color preview of the three overprinted, which reads as the photograph again" width="680">
 </picture>
 
-Printing inks are see-through, so overlapping inks mix. Pink over blue makes a purple that neither ink could print alone. So three plain-looking plates make a picture with more than three colors. Read the plates against the photograph. The flowers take nearly all the yellow plate has, and the blue one leaves them bare and goes to the woman instead. The pink one runs mid-gray almost everywhere, which is what a warm picture asks of it.
+Printing inks are see-through, so overlapping inks mix. Pink over blue makes a purple that neither ink could print alone. So three plain-looking plates make a picture with more than three colors. Read the plates against the photograph. The flowers take nearly all the yellow plate has, and the blue one leaves them bare and goes to the woman instead. The pink one covers nearly everything and runs darkest where the orange deepens. A warm picture asks that of it.
 
 ```swift
 override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }
