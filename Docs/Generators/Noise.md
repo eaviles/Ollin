@@ -57,7 +57,7 @@ signedNoise(_ x: Double[, _ y: Double[, _ z: Double]]) -> Double
 The same field in `-1...1`, following the `ofSignedNoise` and OPENRNDR convention. Use it for offsets that swing both ways.
 
 ```swift
-let dx = signedNoise(time * 0.5, 0) * 40   // drift left and right
+let dx = signedNoise(time * 0.5) * 40   // drift left and right
 drawCircle(width / 2 + dx, height / 2, 30)
 ```
 
@@ -325,9 +325,11 @@ The multiplier on noise's input is a zoom control. It decides how far apart your
 - For **several independent glides from one field**, do not use several noise functions. Sample far-apart rows instead. Both drifts below move at the same speed through unrelated terrain:
 
 ```swift
-let dx = signedNoise(time * 0.3, 10) * 300   // row 10
-let dy = signedNoise(time * 0.3, 99) * 300   // row 99, unrelated to row 10
+let dx = signedNoise(time * 0.3, 10.5) * 300   // row 10.5
+let dy = signedNoise(time * 0.3, 99.5) * 300   // row 99.5, unrelated to row 10.5
 ```
+
+  Keep a row off the whole numbers. On a whole-number row the two-dimensional field reads its lattice's own line, where some gradients have no component along it, so the curve rests flat between one pair of lattice points in seven; half a step off, every gradient counts.
 
 ### Seeding
 

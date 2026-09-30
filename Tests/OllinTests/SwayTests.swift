@@ -48,10 +48,12 @@ struct SwayTests {
     /// `loopDuration`, and `--export-loop` writes a visible jump.
     ///
     /// The fractions matter more than they look. Checking only the lap boundary
-    /// cannot see a broken `.wander`, because Perlin noise is exactly zero at
-    /// every whole number, so a wander driven straight off the clock reads the
-    /// same at second 0, 4 and 8 whether it loops or not. A sabotage swapping
-    /// the looping noise for a plain one passed that test and fails this one.
+    /// is a weak test of `.wander`: a wander driven straight off the clock is
+    /// read at three points of a smooth curve there, and three readings that
+    /// happen to agree say nothing about the lap between them (when the 1D
+    /// noise still read the 3D field's axis, it passed exactly through the
+    /// midline at every whole number, and the boundary check could not fail).
+    /// A sabotage swapping the looping noise for a plain one fails this one.
     @Test(arguments: SwayShape.allCases)
     func everyShapeReadsTheSameAtTheSamePointOfAnyLap(_ shape: SwayShape) {
         for fraction in [0.0, 0.13, 0.37, 0.61, 0.88] {

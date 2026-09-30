@@ -52,6 +52,35 @@ struct PerlinNoise: Sendable {
         Swift.max(-1, Swift.min(1, rawValue(x, y, z) * PerlinNoise.gain))
     }
 
+    /// Unsigned 1D noise in `0...1`, the line's own field (see `rawValue(_:)`).
+    func value(_ x: Double) -> Double {
+        (signedValue(x) + 1) / 2
+    }
+
+    /// Signed 1D noise in `-1...1`, contrast-calibrated to fill the range.
+    func signedValue(_ x: Double) -> Double {
+        Swift.max(-1, Swift.min(1, rawValue(x) * PerlinNoise.gain))
+    }
+
+    /// Raw 1D gradient noise, in `-0.5...0.5`: a gradient of +1 or -1 at every
+    /// whole number, by the low bit of the hash the 3D field's x axis would
+    /// have used at that point, faded between neighbors.
+    ///
+    /// The 3D field read along its axis is not a 1D noise. At y = z = 0 six of
+    /// the sixteen gradient hashes have no x component, so between two whole
+    /// numbers that both drew one the curve is dead flat at its midline, one
+    /// cell in seven, and it passes exactly through the midline at every whole
+    /// number whatever the seed. A line has its own gradients, and on a line
+    /// the cube-edge set collapses to the two signs, so none is ever zero: the
+    /// curve never rests, and its range is the half the axis had at its best.
+    private func rawValue(_ x: Double) -> Double {
+        let xi = PerlinNoise.cell(x)
+        let xf = x - floor(x)
+        let g0: Double = (perm[perm[perm[xi]]] & 1) == 0 ? 1 : -1
+        let g1: Double = (perm[perm[perm[xi + 1]]] & 1) == 0 ? 1 : -1
+        return lerp(fade(xf), g0 * xf, g1 * (xf - 1))
+    }
+
     /// Raw improved-Perlin value — roughly `[-1, 1]`, but concentrated near 0.
     private func rawValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
         let xi = PerlinNoise.cell(x), yi = PerlinNoise.cell(y), zi = PerlinNoise.cell(z)
@@ -243,14 +272,14 @@ struct PerlinNoise: Sendable {
 // so the bare `noise(x, y)` and `noiseFields.noise(x, y)` are one number.
 public extension NoiseFields {
     /// 1D Perlin noise at `x`, in `0...1`.
-    func noise(_ x: Double) -> Double { perlin.value(x, 0, 0) }
+    func noise(_ x: Double) -> Double { perlin.value(x) }
     /// 2D Perlin noise at `(x, y)`, in `0...1`.
     func noise(_ x: Double, _ y: Double) -> Double { perlin.value(x, y, 0) }
     /// 3D Perlin noise at `(x, y, z)`, in `0...1`.
     func noise(_ x: Double, _ y: Double, _ z: Double) -> Double { perlin.value(x, y, z) }
 
     /// 1D signed Perlin noise at `x`, in `-1...1`.
-    func signedNoise(_ x: Double) -> Double { perlin.signedValue(x, 0, 0) }
+    func signedNoise(_ x: Double) -> Double { perlin.signedValue(x) }
     /// 2D signed Perlin noise at `(x, y)`, in `-1...1`.
     func signedNoise(_ x: Double, _ y: Double) -> Double { perlin.signedValue(x, y, 0) }
     /// 3D signed Perlin noise at `(x, y, z)`, in `-1...1`.
@@ -305,7 +334,7 @@ public extension NoiseFields {
     /// shape-plus-detail layering you'd otherwise sum by hand; `octaves: 1` is
     /// exactly `noise(x)`. Matches the shader library's `fbm` vocabulary.
     func fbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
-        fbmSum(octaves, gain, lacunarity) { f in perlin.value(x * f, 0, 0) }
+        fbmSum(octaves, gain, lacunarity) { f in perlin.value(x * f) }
     }
     /// 2D fractal noise at `(x, y)`, in `0...1` (see `fbm(_:octaves:gain:lacunarity:)`).
     func fbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
@@ -408,7 +437,7 @@ public extension NoiseFields {
     /// filling the valleys (the multifractal feedback that makes terrain read
     /// as terrain). Same parameters as `fbm`; bright values are the ridges.
     func ridgedFbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
-        ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f, 0, 0) }
+        ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f) }
     }
     /// 2D ridged fractal noise at `(x, y)`, in `0...1` (see `ridgedFbm(_:octaves:gain:lacunarity:)`).
     func ridgedFbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
@@ -433,7 +462,7 @@ public extension NoiseFields {
     /// layers pile into billows with creased seams, the classic basis for
     /// clouds, smoke, and marble. Same parameters as `fbm`.
     func turbulence(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
-        fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f, 0, 0)) }
+        fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f)) }
     }
     /// 2D turbulence at `(x, y)`, in `0...1` (see `turbulence(_:octaves:gain:lacunarity:)`).
     func turbulence(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
@@ -747,6 +776,8 @@ public extension Sketch {
     /// as a value, `noiseFields`.
     func noiseField() -> Formula.NoiseField {
         let fields = noiseFields
-        return { x, y, z in fields.signedNoise(x, y, z) }
+        // A formula's `noise(t)` arrives with its missing arguments as zeros,
+        // and reads the line's own field, as `signedNoise(t)` does in a sketch.
+        return { x, y, z in y == 0 && z == 0 ? fields.signedNoise(x) : fields.signedNoise(x, y, z) }
     }
 }

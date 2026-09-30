@@ -311,9 +311,11 @@ final class CameraRig {
             azimuth = baseAzimuth + clock * angularSpeed(period)
         case let .handheld(amount, speed):
             let t = clock * speed
-            azimuth = baseAzimuth + breath.signedValue(t, 0, 0) * amount
-            elevation = baseElevation + breath.signedValue(t, 10, 0) * amount
-            radius = baseRadius * (1 + breath.signedValue(t, 20, 0) * amount)
+            // Three stretches of the one line, far enough apart never to meet
+            // within the field's period of 256.
+            azimuth = baseAzimuth + breath.signedValue(t) * amount
+            elevation = baseElevation + breath.signedValue(t + 64) * amount
+            radius = baseRadius * (1 + breath.signedValue(t + 128) * amount)
         case .pushIn, .pullOut, .tilt, .reveal:
             break   // radius / elevation already taken from the timelines
         }

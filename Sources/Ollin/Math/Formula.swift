@@ -96,7 +96,9 @@ public struct Formula: Sendable, CustomStringConvertible {
     /// a formula with no sketch behind it is still reproducible.
     private static let sharedNoise: NoiseField = {
         let field = PerlinNoise(seed: 0)
-        return { x, y, z in field.signedValue(x, y, z) }
+        // `noise(t)` arrives with zeros for the arguments it left out, and
+        // reads the line's own field, as it does from a sketch.
+        return { x, y, z in y == 0 && z == 0 ? field.signedValue(x) : field.signedValue(x, y, z) }
     }()
 }
 
