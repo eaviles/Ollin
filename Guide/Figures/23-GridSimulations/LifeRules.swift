@@ -34,8 +34,8 @@ final class LifeRules: Sketch {
         for (i, rule) in cases.enumerated() {
             let ox = 60 + Double(i) * 280
             panel(at: Vector2(ox, 90), cell: cell, centerAlive: rule.0, neighbors: rule.1)
-            arrow(from: Vector2(ox + cell * 1.5 - 20, 90 + cell * 3 + 40),
-                  to: Vector2(ox + cell * 1.5 - 20, 90 + cell * 3 + 80))
+            arrow(from: Vector2(ox + cell * 1.5, 90 + cell * 3 + 40),
+                  to: Vector2(ox + cell * 1.5, 90 + cell * 3 + 80))
             // The outcome: the same center cell, next generation.
             noStroke()
             fill(rule.2 ? alive : gone)

@@ -47,10 +47,14 @@ final class Layers: Sketch {
         let colA = 40.0, colB = 340.0, colC = 640.0
         let rowTop = 60.0, rowBottom = 290.0, rowMid = 175.0
 
+        // The marks layer is transparent around its white ring and dot, which
+        // would vanish on light paper, so its two thumbnails stand on the same
+        // dark the top row's layer starts from.
+        let dark = Color(hex: 0x141B2B)
         thumb(backdrop, colA, rowTop, w, h, "draw into a layer")
-        thumb(marks, colA, rowBottom, w, h, "draw into another")
+        thumb(marks, colA, rowBottom, w, h, "draw into another", under: dark)
         thumb(blurred, colB, rowTop, w, h, ".filtered(.gaussianBlur)")
-        thumb(glowing, colB, rowBottom, w, h, ".filtered(.bloom)")
+        thumb(glowing, colB, rowBottom, w, h, ".filtered(.bloom)", under: dark)
 
         // The composite panel: both filtered layers drawn into the same rect,
         // the second added as light.
@@ -82,7 +86,12 @@ final class Layers: Sketch {
     }
 
     func thumb(_ layer: RenderTarget, _ x: Double, _ y: Double,
-               _ w: Double, _ h: Double, _ caption: String) {
+               _ w: Double, _ h: Double, _ caption: String, under backing: Color? = nil) {
+        if let backing {
+            noStroke()
+            fill(backing)
+            drawRect(x, y, w, h)
+        }
         drawImage(layer.image, in: Rectangle(x: x, y: y, width: w, height: h))
         noFill()
         stroke(faint)

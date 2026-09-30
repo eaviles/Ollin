@@ -39,8 +39,8 @@ final class ForestFireFigure: Sketch {
         background(paper)
 
         state(y: 46, fillColor: bare, title: "bare ground", light: true)
-        state(y: 176, fillColor: tree, title: "a tree", light: false)
-        state(y: 306, fillColor: fire, title: "burning", light: true)
+        state(y: 176, fillColor: tree, title: "a tree", light: true)
+        state(y: 306, fillColor: fire, title: "burning", light: false)
 
         arrow(from: Vector2(190, 122), to: Vector2(190, 170))
         arrow(from: Vector2(190, 252), to: Vector2(190, 300))
@@ -79,7 +79,7 @@ final class ForestFireFigure: Sketch {
         strokeWeight(1.5)
         drawRect(80, y, 220, 76, cornerRadius: 10)
         noStroke()
-        fill(light ? Color(white: 0.94) : Color(white: 0.97))
+        fill(light ? Color(white: 0.94) : Color(white: 0.12))
         textSize(19)
         textAlign(.center)
         drawText(title, 190, y + 45)

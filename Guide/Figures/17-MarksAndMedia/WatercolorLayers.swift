@@ -31,8 +31,10 @@ final class WatercolorLayers: Sketch {
             frame(panel, title: titles[i])
 
             var rng = SplitMix64(seed: 12)
+            // This seed's blob hangs low, reaching about 50 further below its
+            // center than above, so the center sits above the panel's middle.
             let center = Vector2(panel.x + panel.width / 2,
-                                 panel.y + panel.height / 2)
+                                 panel.y + panel.height / 2 - 26)
             // Same seed and same radius everywhere, so the ten-sided ring in
             // the first panel is literally what the other two grow from.
             let wash = Watercolor(around: center, radius: 92, variance: 28,

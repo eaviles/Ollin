@@ -1,9 +1,10 @@
-// figure: frame=140 themed
+// figure: frame=141 themed
 //
 // Guide diagram (Chapter 24): Wireworld. On the left the whole rule as four
 // states and the moves between them; on the right a circuit running it, typed
 // as text, a hundred and forty steps in: two ring clocks of different periods
-// feeding one bus through diodes, with two lamps at its end.
+// feeding one bus through diodes, with two lamps at its end. The field is read
+// back and stamped cell by cell, so the frame drawn is one past the step shown.
 import Ollin
 import OllinDiagram
 
@@ -53,8 +54,6 @@ final class WireworldFigure: Sketch {
     /// 64 columns into the panel on the right at a size you can read.
     private let cellsAcross = 72.0
     private var board: SimField!
-    private lazy var colors = Ramp(stops: [(0.0, empty), (1.0 / 3.0, wire),
-                                           (2.0 / 3.0, tail), (1.0, head)])
 
     override func setup() {
         board = makeSimField(.wireworld(), scale: cellsAcross / width)
@@ -104,13 +103,26 @@ final class WireworldFigure: Sketch {
                 }
             }
         }
-        let cell = width / cellsAcross
-        let panel = Rectangle(x: 3 * cell, y: 7 * cell, width: 66 * cell, height: 19 * cell)
+        // The field's cells, read back and stamped as squares: the circuit's 66
+        // columns from its third fill the panel's 440 points, and its rows run
+        // from the seventh to the field's bottom. An image of the field drawn at
+        // that size is smoothed on the way up, and a diode's one-cell gap blurs
+        // to a dot; a stamped cell keeps its edge. The read holds the state the
+        // last frame left, one step behind the field's own image.
+        let px = 440.0 / 66.0
         withClip(Rectangle(x: 470, y: 118, width: 440, height: 200)) {
-            // The field, mapped so the circuit's part of it fills the panel.
-            let scale = 440 / panel.width
-            drawImage(board.filtered(.gradientMap(colors)).image,
-                      470 - panel.x * scale, 118 - panel.y * scale, width * scale, height * scale)
+            noStroke()
+            if let snap = board.snapshot(), snap.width > 3, snap.height > 7 {
+                fill(empty)
+                drawRect(470, 118, 440, Double(snap.height - 7) * px)
+                for y in 7 ..< snap.height {
+                    for x in 3 ..< min(69, snap.width) {
+                        guard let stamp = paint(forLevel: snap[x, y].x) else { continue }
+                        fill(stamp)
+                        drawRect(470 + Double(x - 3) * px, 118 + Double(y - 7) * px, px, px)
+                    }
+                }
+            }
         }
         noStroke()
         fill(soft)
@@ -120,6 +132,18 @@ final class WireworldFigure: Sketch {
     }
 
     // MARK: Pieces
+
+    /// The color a stored level wears in the panel, or nil for an empty cell. The
+    /// field keeps its four states as thirds, the gray each `WireworldCell.color`
+    /// names, so the nearest third is the state.
+    private func paint(forLevel value: Float) -> Color? {
+        switch WireworldCell(rawValue: Int((max(0, min(1, value)) * 3).rounded())) {
+        case .conductor: return wire
+        case .tail: return tail
+        case .head: return head
+        default: return nil
+        }
+    }
 
     private func state(y: Double, fillColor: Color, title: String, light: Bool) {
         fill(fillColor)

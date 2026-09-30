@@ -30,12 +30,16 @@ final class ChainGraph: Sketch {
         thumb(source, 40, y, w, h, ".oscillator(frequency: 24)")
         thumb(folded, 335, y, w, h, ".kaleidoscope(segments: 6)")
         thumb(final, 630, y, w, h, ".displaced(by: noise)")
-        thumb(driver.brightness(0.5), 483, 370, w * 0.55, h * 0.55, "the noise driver")
+        // The driver sits below and left of the step it feeds, high enough that
+        // its caption clears the line at the bottom, and its arrow lands on that
+        // panel's corner rather than on the panel's caption.
+        let dx = 455.0, dy = 355.0
+        thumb(driver.brightness(0.5), dx, dy, w * 0.55, h * 0.55, "the noise driver")
 
         arrow(from: Vector2(40 + w + 10, y + h / 2), to: Vector2(335 - 10, y + h / 2))
         arrow(from: Vector2(335 + w + 10, y + h / 2), to: Vector2(630 - 10, y + h / 2))
-        arrow(from: Vector2(483 + w * 0.55 + 10, 370 + h * 0.27),
-              to: Vector2(630 + w * 0.32, y + h + 12))
+        arrow(from: Vector2(dx + w * 0.55 + 10, dy + h * 0.27),
+              to: Vector2(630 - 5, y + h + 5))
 
         noStroke()
         fill(ink)
