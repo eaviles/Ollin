@@ -212,7 +212,7 @@ The back, elastic, and bounce families overshoot. Back dips past the start and o
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/EasingFamilies-dark.jpg">
-  <img src="../../Guide/Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+  <img src="../../Guide/Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack and easeOutElastic, which overshoot and settle, and easeOutBounce, which hops back up to its target" width="680">
 </picture>
 
 Three short aliases cover the common case. `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothstep` is a Hermite smoothstep. It is a gentler S curve than `easeInOut`, and it is the same curve as the bare [`smoothstep(0, 1, t)`](../Helpers/Math.md#shaping).

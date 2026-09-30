@@ -26,7 +26,7 @@ Every sketch carries a clock, and you've already used it: `time` is the seconds 
 The first two strips are that bare step, on a slow display and a fast one, and they are what to avoid. A step written per frame silently bakes your display's refresh rate into the artwork. The third strip is the fix, and there are two ways to reach it:
 
 - **Derive positions from `time`.** `width / 2 + time * 120` is at the same place after one second on any display. It says where to *be*, not how far to *step*. Most of what you've written so far works this way, and it's the default habit to build.
-- **Scale steps by `deltaTime`.** Some values have to accumulate, like a particle that remembers where it was, which is most of Part II. Write the speed per second and multiply, as in `x += 120 * deltaTime`. That is the third strip: a fast display takes more, smaller steps and lands in the same place.
+- **Scale steps by `deltaTime`.** Some values have to accumulate, like a particle that remembers where it was, which is most of Part II. Write the speed per second and multiply, as in `x += 180 * deltaTime`. That is the third strip: a fast display takes more, smaller steps and lands in the same place.
 
 ## When a frame takes too long
 
@@ -180,10 +180,10 @@ Once you can read a curve and its dot strip together, you can read any easing fu
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/EasingFamilies-dark.jpg">
-  <img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+  <img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack and easeOutElastic, which overshoot and settle, and easeOutBounce, which hops back up to its target" width="680">
 </picture>
 
-The top row stays inside `0...1`, quadratics and cubics that differ mainly in how hard they lean. The bottom row overshoots on purpose. `easeOutBack` goes past the target and comes back, the way your hand does when you reach past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
+The top row stays inside `0...1`, quadratics and cubics that differ mainly in how hard they lean. The bottom row reaches its target early and leaves it again, on purpose. `easeOutBack` goes past the target and comes back, the way your hand does when you reach past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
 
 <img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 

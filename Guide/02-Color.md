@@ -207,10 +207,10 @@ let seen = Color.red.simulated(.deuteranopia)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/ColorVision-dark.jpg">
-  <img src="Images/02-Color/ColorVision.jpg" alt="A photograph of woven blankets and two palettes, each drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. The blankets' reds and greens flatten into one olive band in the middle two columns while the blues hold. In the chart set the orange, green and red arrive as that same olive. The safe set stays separable" width="680">
+  <img src="Images/02-Color/ColorVision.jpg" alt="A photograph of woven blankets and two palettes, each drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. The blankets' reds and greens flatten into one olive band in the middle two columns while the blues hold. In the chart set the orange, green and red all turn olive, and in each middle column two of them share one shade. The safe set stays separable" width="680">
 </picture>
 
-The picture at the top is a wall of woven blankets, where red sits beside green in nearly every stripe. Under the two commonest kinds those stripes arrive as one olive band, and only the blues survive. The middle block is a palette common in charts, and its orange, green and red land on that same olive. The bottom block is `Palette.colorblindSafe`, eight colors published for this, and it holds together.
+The picture at the top is a wall of woven blankets, where red sits beside green in nearly every stripe. Under the two commonest kinds those stripes arrive as one olive band, and only the blues survive. The middle block is a palette common in charts. Its orange, green and red all turn olive, and under each of those kinds two of them land on one shade. The bottom block is `Palette.colorblindSafe`, eight colors published for this, and it holds together. A dark bar under a swatch marks a color that merges with another one in that column.
 
 To see a whole sketch rather than a swatch, put the reading over the frame. The call `postProcess` filters the finished frame just before it is shown, so it belongs in `draw()` rather than `setup()`. The usual place is the last line:
 

@@ -85,7 +85,7 @@ if random() < 0.25 {   // about a quarter of the time
 }
 ```
 
-Read the top strip in the figure and count. About a quarter of the slots made it through, but they arrive in clumps and gaps rather than neatly spaced. That lumpiness is what chance looks like, because dice have no memory of the last roll. It is part of why a generative sketch reads as alive rather than patterned.
+Read the top strip in the figure and count. Eleven of its 34 slots made it through, a few more than a quarter. They arrive in clumps and gaps rather than neatly spaced. That lumpiness is what chance looks like, because dice have no memory of the last roll. It is part of why a generative sketch reads as alive rather than patterned.
 
 The **pick** chooses from a list, and it is one call:
 

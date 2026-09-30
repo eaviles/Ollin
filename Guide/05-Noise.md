@@ -4,7 +4,7 @@
 
 # 5. Noise
 
-<img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in thousands of short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
+<img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in about fifteen hundred short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
 
 Grass, smoke, coastlines, and a hand-drawn line all vary smoothly, and `random` only knows how to jump. The function that varies smoothly is `noise`, and this chapter teaches it from a single drift to layered fields that change with time and loop. The meadow above is fifteen hundred blades combed by one wind, all grown from that function. Other fields follow it, built by other rules: triangles, cells, folds, and warps.
 
