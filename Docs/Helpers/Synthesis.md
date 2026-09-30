@@ -284,8 +284,8 @@ synth.play("C4", for: 4)
 The frequencies can come from geometry instead of a list. A flat shape held at its edge rings at frequencies decided entirely by its outline, and `StruckShape` works them out:
 
 ```swift
-let outline = textToShapes("O").first!
-let bell = StruckShape(outline)                  // once, in setup()
+lazy var outline = textToShapes("O", at: Vector2(540, 540)).first!
+lazy var bell = StruckShape(outline)             // built once, on first use
 
 override func mousePressed() {
     synth.voice = Voice(struck: bell!.body(struckAt: Vector2(mouseX, mouseY)))

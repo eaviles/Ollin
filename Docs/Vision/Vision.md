@@ -278,7 +278,7 @@ The other trackers find *things*. This one finds *edges*, the boundaries between
 
 ```swift
 let camera = Camera()
-let contours = ContourDetector(camera)
+lazy var contours = ContourDetector(camera)
 override func draw() {
     background(.white)
     noFill(); stroke(.black)
@@ -318,7 +318,7 @@ static func detect(in: Image, maxHandCount: Int = 2) async throws -> [Hand]
 
 ```swift
 let camera = Camera()
-let hands = HandTracker(camera)
+lazy var hands = HandTracker(camera)
 override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for hand in hands.hands {
@@ -364,7 +364,7 @@ static func detect(in: Image) async throws -> [Body]
 
 ```swift
 let camera = Camera()
-let bodies = BodyTracker(camera)
+lazy var bodies = BodyTracker(camera)
 override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for body in bodies.bodies {
@@ -568,7 +568,7 @@ static func detect(in: Image, …) async throws -> [DetectedRectangle]
 
 ```swift
 let camera = Camera()
-let rects = RectangleDetector(camera)
+lazy var rects = RectangleDetector(camera)
 override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     noFill(); stroke(.green)
@@ -592,7 +592,7 @@ static func detect(in: Image) async throws -> [DetectedBarcode]
 
 ```swift
 let camera = Camera()
-let codes = BarcodeScanner(camera)
+lazy var codes = BarcodeScanner(camera)
 override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for code in codes.barcodes {
@@ -619,7 +619,7 @@ static func detect(in: Image, quality: Quality = .accurate) async throws -> [Det
 
 ```swift
 let camera = Camera()
-let reader = TextRecognizer(camera)
+lazy var reader = TextRecognizer(camera)
 override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for line in reader.lines {

@@ -89,12 +89,12 @@ A `ScreenSource` is a plain value you write in the sketch. The same line always 
 
 ```swift
 ScreenCapture(.mainDisplay)                          // the display the menu bar is on
-ScreenCapture(.display(id))                          // a display by its system id
+ScreenCapture(.display(displayID))                   // a display by its system id
 ScreenCapture(.app("Safari"))                        // every window one app has open
 ScreenCapture(.app("com.apple.Safari"))              // the same, by bundle identifier
 ScreenCapture(.window(matching: "Shopping list"))       // one window, by its title
 ScreenCapture(.window(matching: "Untitled", app: "Notes"))
-ScreenCapture(.windowID(id))                         // one window by its id
+ScreenCapture(.windowID(windowID))                   // one window by its id
 ```
 
 Names are matched loosely, because that is what makes them worth writing down. An app matches on its name **or** its bundle identifier, ignoring case, and the whole name has to match. A window matches any title *containing* the text, ignoring case, so `"Shopping list"` keeps working when the title bar reads `"Notes: Shopping list"`. When several windows match, the lowest window id wins, so a repeated run picks the same window instead of whichever one happens to be frontmost.
