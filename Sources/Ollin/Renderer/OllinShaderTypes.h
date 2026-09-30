@@ -1334,20 +1334,22 @@ typedef struct {
 
 // A uniform-grid spatial hash over a toroidal 2-D domain (the GPU neighbor-search
 // primitive `SpatialHash` builds and every particle-interaction sim queries).
-// Cells tile `worldSize` exactly (`worldSize = float2(gridW, gridH) * cellSize`), so
+// Cells tile `worldSize` exactly (`worldSize = float2(gridW, gridH) * cell`), so
 // wrapping a position into `[origin, origin + worldSize)` and wrapping a cell index
-// modulo `gridW`/`gridH` stay consistent. `cellSize` is set to the query radius, so
-// every neighbor within the radius lives in the queried cell's toroidal 3×3 block
-// (which needs `gridW`/`gridH` at least 3, which `SpatialHash` guarantees). Stride
-// 32: float2 @0, float2 @8, float @16, three uints @20…28. (Distinct from
-// `OllinGridParams` above, which is the 3D reference-floor uniform.)
+// modulo `gridW`/`gridH` stay consistent. `cellSize` is the query radius and each
+// `cell` side is at least that, so every neighbor within the radius lives in the
+// queried cell's toroidal 3×3 block (which needs `gridW`/`gridH` at least 3, which
+// `SpatialHash` guarantees). Stride 40: float2 @0, float2 @8, float @16, three
+// uints @20…28, float2 @32. (Distinct from `OllinGridParams` above, which is the
+// 3D reference-floor uniform.)
 typedef struct {
     simd_float2 origin;         // world-space min corner (points, top-left origin)
-    simd_float2 worldSize;      // the toroidal domain extent = float2(gridW,gridH)*cellSize
-    float cellSize;             // uniform cell edge, set to the neighbor query radius
+    simd_float2 worldSize;      // the toroidal domain extent = float2(gridW,gridH)*cell
+    float cellSize;             // the neighbor query radius, which no cell side is under
     unsigned int gridW;         // cells across
     unsigned int gridH;         // cells down
     unsigned int numCells;      // gridW * gridH (the cell-count/start/cursor buffer length)
+    simd_float2 cell;           // one cell's width and height: worldSize / (gridW, gridH)
 } OllinSpatialGrid;
 
 // Per-substep parameters for the particle-fluid step (`ParticleFluid`), packed by

@@ -63,6 +63,9 @@ public final class SpatialHash {
     public let count: Int
     /// The cell edge, which is also the neighbor query radius (points).
     public let cellSize: Double
+    /// A cell's width and height: each side of `bounds` divided into as many
+    /// cells of at least `cellSize` as fit, so the cells tile the bounds exactly.
+    let cellExtent: Vector2
     /// The grid's min corner in canvas space (points, top-left origin).
     public let origin: Vector2
     /// The toroidal domain the grid tiles (points); positions wrap within
@@ -104,20 +107,27 @@ public final class SpatialHash {
     private let scatterKernel: ComputeKernel
     private let rankKernel: ComputeKernel
 
-    /// Build a hash over `bounds` with square cells of `cellSize` (set this to the
-    /// neighbor radius your query uses), sorting `count` particles. The grid is
+    /// Build a hash over `bounds` with cells at least `cellSize` on a side (set this
+    /// to the neighbor radius your query uses), sorting `count` particles. The world
+    /// is `bounds` itself: as many cells as `cellSize` divides each side into, each
+    /// stretched to the side's exact share, so a particle wraps at the bounds a
+    /// sketch gave and not at the last whole cell short of them (a 253-wide panel
+    /// at a radius of 15 would wrap at 240 and leave a bare strip). The grid is
     /// clamped to at least 3×3 cells so the wrapped 3×3 neighbor block never revisits
-    /// a cell, so the actual `worldSize` may round up to a whole number of cells past
-    /// `bounds`.
+    /// a cell, which is the one case the world rounds up past `bounds`, to three
+    /// cells of `cellSize`.
     public init(bounds: Rectangle, cellSize: Double, count: Int) {
         precondition(count > 0, "SpatialHash needs a positive count")
         precondition(cellSize > 0, "SpatialHash needs a positive cellSize")
         let gw = max(3, Int((bounds.width / cellSize).rounded(.down)))
         let gh = max(3, Int((bounds.height / cellSize).rounded(.down)))
-        let world = Vector2(Double(gw) * cellSize, Double(gh) * cellSize)
+        let cell = Vector2(max(cellSize, bounds.width / Double(gw)),
+                           max(cellSize, bounds.height / Double(gh)))
+        let world = Vector2(cell.x * Double(gw), cell.y * Double(gh))
 
         self.count = count
         self.cellSize = cellSize
+        self.cellExtent = cell
         self.origin = bounds.corner
         self.worldSize = world
         self.gridWidth = gw
@@ -135,7 +145,8 @@ public final class SpatialHash {
             origin: SIMD2<Float>(Float(bounds.x), Float(bounds.y)),
             worldSize: SIMD2<Float>(Float(world.x), Float(world.y)),
             cellSize: Float(cellSize),
-            gridW: UInt32(gw), gridH: UInt32(gh), numCells: UInt32(numCells))
+            gridW: UInt32(gw), gridH: UInt32(gh), numCells: UInt32(numCells),
+            cell: SIMD2<Float>(Float(cell.x), Float(cell.y)))
         self.gridBuffer = ComputeBuffer([grid])
 
         let source = SpatialHash.kernelSource

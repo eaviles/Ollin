@@ -26,7 +26,7 @@ struct SpatialHashTests {
     @Test func gridStrideMatchesHeader() {
         // The shared CPU/GPU struct is stride 32 (float2 @0, float2 @8, float @16,
         // three uints @20…28). A drift here would corrupt every hash dispatch.
-        #expect(MemoryLayout<OllinSpatialGrid>.stride == 32)
+        #expect(MemoryLayout<OllinSpatialGrid>.stride == 40)
     }
 
     @Test func gridDerivation() {
@@ -36,6 +36,19 @@ struct SpatialHashTests {
         #expect(h.gridWidth == 8 && h.gridHeight == 8)
         #expect(h.worldSize.x == 400 && h.worldSize.y == 400)
         #expect(h.cellCount.count == 64 && h.sortedIndices.count == 100)
+    }
+
+    @Test func theWorldIsTheBoundsWhenTheRadiusDoesNotDivideThem() {
+        // 253 by 340 at a radius of 15 is 16 by 22 cells. The world used to be
+        // 240 by 330, the last whole cells, and a sim seeded and wrapped inside
+        // it left a bare strip along the far edges of the bounds it was given.
+        let h = SpatialHash(bounds: Rectangle(x: 10, y: 20, width: 253, height: 340),
+                            cellSize: 15, count: 100)
+        #expect(h.gridWidth == 16 && h.gridHeight == 22)
+        #expect(h.worldSize.x == 253 && h.worldSize.y == 340)
+        #expect(h.cellExtent.x >= 15 && h.cellExtent.y >= 15,
+                "a cell is never narrower than the query radius")
+        #expect(abs(h.cellExtent.x * 16 - 253) < 1e-9 && abs(h.cellExtent.y * 22 - 340) < 1e-9)
     }
 
     @Test func gridClampsToThree() {

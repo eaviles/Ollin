@@ -1670,8 +1670,8 @@ static inline float4 ollin_project_eye(constant OllinCameraMatrices &camera, flo
 // Wrapped integer cell coordinate of a world position (positive modulo, so any
 // position maps in range and the grid's edges join).
 static inline int2 ollin_grid_coord(float2 pos, OllinSpatialGrid g) {
-    int cx = int(floor((pos.x - g.origin.x) / g.cellSize));
-    int cy = int(floor((pos.y - g.origin.y) / g.cellSize));
+    int cx = int(floor((pos.x - g.origin.x) / g.cell.x));
+    int cy = int(floor((pos.y - g.origin.y) / g.cell.y));
     cx = ((cx % int(g.gridW)) + int(g.gridW)) % int(g.gridW);
     cy = ((cy % int(g.gridH)) + int(g.gridH)) % int(g.gridH);
     return int2(cx, cy);
