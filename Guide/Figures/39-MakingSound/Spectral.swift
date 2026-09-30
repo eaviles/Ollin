@@ -131,7 +131,7 @@ final class Spectral: Sketch {
 
         label("the amount rises", at: Vector2(x(frozenAt) + 4, y(1) - 2), align: .left)
         label("held", at: Vector2(x(seconds) - 4, y(starts[0] * exp(-decays[0] * frozenAt)) - 18), align: .right)
-        label("fading", at: Vector2(x(0.16), y(starts[0] * exp(-decays[0] * 0.16)) + 6), align: .left)
+        label("fading", at: Vector2(x(0.16), y(starts[0] * exp(-decays[0] * 0.16)) - 18), align: .left)
         axis(inset, left: "0 s", right: "1.2 s")
     }
 

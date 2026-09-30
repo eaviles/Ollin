@@ -41,7 +41,12 @@ final class GrowingSurface: Sketch {
             translate(3.9, 0.2, 0)
             fill(Color(hex: 0xE8794A))
             material(.matte)
-            drawMesh(rim)
+            // Tipped toward the camera, so the smooth pole and the ruffled rim
+            // around it both show; seen edge-on, the poles are out of view.
+            withState {
+                rotateX(0.85)
+                drawMesh(rim)
+            }
             label("at the equator")
         }
     }

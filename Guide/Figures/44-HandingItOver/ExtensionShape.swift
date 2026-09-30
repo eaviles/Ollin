@@ -41,8 +41,9 @@ final class ExtensionShape: Sketch {
             "",
             "extension Sketch {",
             "  public func drawSpiral(center: Vector2,",
-            "                         radius: Double) {",
-            "    let points = (0...240).map { … }",
+            "                         radius: Double,",
+            "                         turns: Double = 3) {",
+            "    let points = (0...400).map { … }",
             "    drawPolyline(points)",
             "  }",
             "}",
@@ -125,7 +126,7 @@ final class ExtensionShape: Sketch {
     }
 
     /// The starter's own geometry, so the picture is what that code draws.
-    func drawSpiral(center: Vector2, radius: Double, turns: Double = 3, steps: Int = 240) {
+    func drawSpiral(center: Vector2, radius: Double, turns: Double = 3, steps: Int = 400) {
         var points: [Vector2] = []
         for step in 0...steps {
             let along = Double(step) / Double(steps)

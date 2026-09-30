@@ -47,6 +47,16 @@ final class Prism: Sketch {
                 drawSphere(radius: 1.2)
             }
         }
-        drawCaption("dispersion: 0 (left) and 1 (right)")
+        // The caption in two halves, one under each ball on the dark wall: one
+        // line across the middle would sit on the white bar there.
+        withState {
+            noStroke()
+            fill(.white)
+            textFont(OutlineFont.systemMedium)
+            textSize(15)
+            textAlign(.center, .bottom)
+            drawText("dispersion: 0", 130, height - 28)
+            drawText("dispersion: 1", 750, height - 28)
+        }
     }
 }

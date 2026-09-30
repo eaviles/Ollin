@@ -81,7 +81,7 @@ final class Levels: Sketch {
         drawLine(point(-8, -8), point(0, -8))
 
         label("2 to 1", at: point(-6, -15) + Vector2(0, -16), align: .right)
-        label("4 to 1", at: point(-6, -19.5) + Vector2(0, 2), align: .right)
+        label("4 to 1", at: point(-16, -22) + Vector2(0, 8), align: .left)
         label("a ceiling", at: point(-8, -8) + Vector2(-3, -16), align: .right)
         label("a knee, before the corner", at: point(-46, -30), align: .left)
         label("threshold", at: point(threshold, -48) + Vector2(3, -16), align: .left)
@@ -129,8 +129,8 @@ final class Levels: Sketch {
         drawLine(x(step.start), y(0.33), x(step.start + attack), y(0.33))
         drawLine(x(step.end), y(0.33), x(step.end + release), y(0.33))
 
-        label("what came in", at: Vector2(x(0.02), y(0.66) - 16), align: .left)
-        label("one attack", at: Vector2(x(step.start + attack) + 3, y(0.33) - 15), align: .left)
+        label("what came in", at: Vector2(x(seconds) - 4, y(0.66) - 16), align: .right)
+        label("one attack", at: Vector2(x(step.start + attack) + 8, y(0.33) + 3), align: .left)
         label("one release", at: Vector2(x(step.end + release) + 3, y(0.33) - 15), align: .left)
         label("how much it holds down", at: Vector2(x(0.02), y(0.06) + 2), align: .left)
         axis(inset, left: "0 s", right: "0.9 s")
@@ -182,8 +182,8 @@ final class Levels: Sketch {
         drawLine(x(crossing + hold), y(threshold), x(crossing + hold), y(0))
 
         label("threshold", at: Vector2(x(seconds) - 4, y(threshold) - 16), align: .right)
-        label("hold", at: Vector2(x(crossing + hold / 2), y(threshold) + 3), align: .center)
-        label("the note", at: Vector2(x(0.06), y(0.62)), align: .left)
+        label("hold", at: Vector2(x(crossing + hold / 2), y(threshold) - 14), align: .center)
+        label("the note", at: Vector2(x(0.26), y(0.63)), align: .left)
         label("no hold", at: Vector2(x(crossing + release) - 3, y(0.03)), align: .right)
         axis(inset, left: "0 s", right: "1.2 s")
     }

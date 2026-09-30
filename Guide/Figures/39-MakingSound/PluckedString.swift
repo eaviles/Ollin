@@ -27,7 +27,9 @@ final class PluckedString: Sketch {
 
         drawLoop(top: 46)
 
-        let picks = [0.5, 0.33, 0.2, 0.08]
+        // A third exactly, so the modes with a node there are truly zero; the
+        // label still prints it as 0.33.
+        let picks = [0.5, 1.0 / 3, 0.2, 0.08]
         for (row, pick) in picks.enumerated() {
             drawPluck(pick: pick, y: 300 + Double(row) * 102)
         }
@@ -144,9 +146,13 @@ final class PluckedString: Sketch {
         let biggest = amplitudes.map { abs($0) }.max() ?? 1
         for (index, amplitude) in amplitudes.enumerated() {
             let x = barLeft + Double(index) / 12 * barSpan
-            let height = abs(amplitude) / biggest * 40
-            fill(height < 0.8 ? faint : accent)
-            drawRect(corner: Vector2(x, y + 20 - height), width: barSpan / 12 - 5, height: max(1.5, height))
+            // Only a mode with a node under the finger, which gets nothing at
+            // all, is a faint dash; every other mode is there, however thin,
+            // so it keeps the accent at the minimum height.
+            let isNode = abs(amplitude) < biggest * 1e-6
+            let height = max(1.5, abs(amplitude) / biggest * 40)
+            fill(isNode ? faint : accent)
+            drawRect(corner: Vector2(x, y + 20 - height), width: barSpan / 12 - 5, height: height)
         }
         fill(soft)
         textSize(11)

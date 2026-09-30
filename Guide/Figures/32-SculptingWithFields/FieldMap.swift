@@ -52,11 +52,15 @@ final class FieldMap: Sketch {
         textAlign(.left, .middle)
         drawText("outside: distance > 0", 40, 60)
         drawText("each band is one step farther", 40, 96)
+        // Centered on the disc and a step smaller, so the label stays on the
+        // orange rather than starting on the outline.
         textAlign(.center, .middle)
         fill(.white)
-        drawText("inside:", 330, 258)
-        drawText("distance < 0", 330, 292)
+        textSize(22)
+        drawText("inside:", 340, 262)
+        drawText("distance < 0", 340, 292)
         fill(ink)
+        textSize(26)
         drawText("the surface: distance = 0", 628, 408)
     }
 }

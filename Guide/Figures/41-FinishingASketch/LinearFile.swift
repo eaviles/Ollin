@@ -51,7 +51,14 @@ final class LinearFile: Sketch {
     private func panel(_ image: Image, at index: Int, left: Double, top: Double,
                        tile: Double, tall: Double, title: String, note: String) {
         let x = left + Double(index) * (tile + 18)
-        drawImage(image, in: Rectangle(x: x, y: top, width: tile, height: tall))
+        let box = Rectangle(x: x, y: top, width: tile, height: tall)
+        drawImage(image, in: box)
+        // A hairline around each panel: the Z channel's far region is white,
+        // and on the light page it had no top edge without one.
+        noFill()
+        stroke(theme.border)
+        strokeWeight(1)
+        drawRect(box)
         textFont(.system)
         noStroke()
         fill(ink)

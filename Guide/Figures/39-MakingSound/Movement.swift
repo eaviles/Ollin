@@ -68,8 +68,10 @@ final class Movement: Sketch {
                 return Vector2(inset.x + inset.width * t, middle + sign * gain * inset.height * 0.42)
             })
         }
-        label("full", at: Vector2(inset.x + 4, middle - inset.height * 0.42 - 6), align: .left)
-        label("1 − depth", at: Vector2(inset.topRight.x - 4, middle - 0.3 * inset.height * 0.42 - 6), align: .right)
+        // "full" above the first peak, "1 − depth" under the last trough:
+        // the envelope itself runs through the corners they used to sit in.
+        label("full", at: Vector2(inset.x + inset.width / 16, middle - inset.height * 0.42 - 17), align: .center)
+        label("1 − depth", at: Vector2(inset.topRight.x - 4, middle - 0.3 * inset.height * 0.42 + 6), align: .right)
         axis(inset, left: "0 s", right: "1 s")
     }
 
@@ -92,8 +94,13 @@ final class Movement: Sketch {
                 return Vector2(inset.x + inset.width * Double(column) / Double(count), y(ms))
             })
         }
-        label("26 ms", at: Vector2(inset.x + 4, y(26) - 8), align: .left)
-        label("20 ms, where the copy sits", at: Vector2(inset.x + 4, y(20) + 4), align: .left)
+        // Two waves a quarter turn apart leave no run along the 20 ms line
+        // long enough for a sentence, so the levels are named where the waves
+        // are not: beside the accented peak, in a gap where both sit below the
+        // line, and under the troughs, with the sentence in the strip above.
+        label("26 ms", at: Vector2(inset.x + inset.width * 0.125 + 8, y(26) - 18), align: .left)
+        label("the copy sits 20 ms behind", at: Vector2(inset.topRight.x - 4, y(26) - 18), align: .right)
+        label("20 ms", at: Vector2(inset.x + inset.width * 0.81, y(20) - 14), align: .center)
         label("14 ms", at: Vector2(inset.x + 4, y(14) + 4), align: .left)
         axis(inset, left: "0 s", right: "2.5 s")
     }
@@ -114,11 +121,13 @@ final class Movement: Sketch {
                 let real = 0.5 + 0.5 * cos(phase), imaginary = -0.5 * sin(phase)
                 let gain = (real * real + imaginary * imaginary).squareRoot()
                 return Vector2(inset.x + inset.width * Double(column) / Double(count),
-                               inset.bottomRight.y - inset.height * 0.9 * gain)
+                               inset.bottomRight.y - inset.height * 0.84 * gain)
             })
         }
-        label("1 ms gap", at: Vector2(inset.x + inset.width * 0.135, inset.y + 2), align: .center)
-        label("3 ms", at: Vector2(inset.x + inset.width * 0.0417 + 30, inset.y + inset.height * 0.35), align: .left)
+        // Both combs fill the panel, so each is named in the strip above its
+        // peaks, in its own color.
+        label("1 ms gap", at: Vector2(inset.x + 4, inset.y + 2), align: .left, color: accent)
+        label("3 ms gap, further along the sweep", at: Vector2(inset.topRight.x - 4, inset.y + 2), align: .right)
         axis(inset, left: "0 Hz", right: "8 kHz")
     }
 
@@ -158,11 +167,14 @@ final class Movement: Sketch {
             drawPolyline((0...count).map { column in
                 let f = low * pow(high / low, Double(column) / Double(count))
                 return Vector2(inset.x + inset.width * Double(column) / Double(count),
-                               inset.bottomRight.y - inset.height * 0.9 * response(f, corner: corner))
+                               inset.bottomRight.y - inset.height * 0.84 * response(f, corner: corner))
             })
         }
-        label("stages at 200 Hz", at: Vector2(inset.x + 4, inset.y + 2), align: .left)
-        label("swept to 800 Hz", at: Vector2(inset.topRight.x - 4, inset.y + 2), align: .right)
+        // Each row is named above the end where it alone runs along the top,
+        // in its own color: the 800 Hz row starts there, the 200 Hz row ends
+        // there.
+        label("swept to 800 Hz", at: Vector2(inset.x + 4, inset.y + 2), align: .left)
+        label("stages at 200 Hz", at: Vector2(inset.topRight.x - 4, inset.y + 2), align: .right, color: accent)
         axis(inset, left: "40 Hz", right: "8 kHz, log")
     }
 
@@ -170,9 +182,12 @@ final class Movement: Sketch {
         Rectangle(x: r.x + dx, y: r.y + dy, width: r.width - 2 * dx, height: r.height - 2 * dy)
     }
 
-    private func label(_ text: String, at point: Vector2, align: HorizontalTextAlign) {
+    /// A label, in `soft` unless it names one curve, when it takes that
+    /// curve's color.
+    private func label(_ text: String, at point: Vector2, align: HorizontalTextAlign,
+                       color: Color? = nil) {
         noStroke()
-        fill(soft)
+        fill(color ?? soft)
         textSize(11)
         textAlign(align, .top)
         drawText(text, at: point)

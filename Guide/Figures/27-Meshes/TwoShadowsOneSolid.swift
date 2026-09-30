@@ -30,19 +30,23 @@ final class TwoShadowsOneSolid: Sketch {
         }
         let art = shadowArt(fromFront: front, fromSide: side, resolution: 48)
 
-        // The solid, drawn small and lit, in the middle.
+        // The solid, lit, in the middle. It goes into a layer the size of its
+        // panel, since a 3D camera frames whatever surface it draws into: on
+        // the full canvas it centered the solid on the canvas, and the panel
+        // cut off its base and its left side.
         let stage = Rectangle(x: 330, y: 60, width: 230, height: 230)
-        // The lights and the camera are state, so they are set before the clip
-        // rather than inside it.
-        lightingPreset(.studio)
-        cameraShowcase(.autoOrbit(period: 18), radius: 4.2, elevation: 0.34,
-                       fieldOfView: .pi / 3.6)
-        fill(Color(hex: 0xC9C2B6))
-        specular(0.35)
-        specularSharpness(44)
-        withClip(stage) {
+        let view = makeRenderTarget(width: Int(stage.width), height: Int(stage.height))
+        withTarget(view) {
+            background(paper)
+            lightingPreset(.studio)
+            cameraShowcase(.autoOrbit(period: 18), radius: 3.5, elevation: 0.34,
+                           fieldOfView: .pi / 3.6)
+            fill(Color(hex: 0xC9C2B6))
+            specular(0.35)
+            specularSharpness(44)
             drawMesh(art.mesh)
         }
+        drawImage(view.image, in: stage)
 
         square(front, at: Rectangle(x: 64, y: 60, width: 105, height: 105), title: "asked: front")
         square(side, at: Rectangle(x: 186, y: 60, width: 105, height: 105), title: "asked: side")

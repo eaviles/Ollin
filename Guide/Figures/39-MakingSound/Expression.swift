@@ -70,8 +70,8 @@ final class Expression: Sketch {
             return Vector2(x(t), y(target))
         })
 
-        label("bend(note, semitones: 7)", at: Vector2(x(1.05), y(7) - 18), align: .left)
-        label("the other note", at: Vector2(x(1.2), y(5) + 6), align: .left)
+        label("bend(note, semitones: 7)", at: Vector2(inset.topRight.x - 4, y(7) - 18), align: .right)
+        label("the other note", at: Vector2(x(0.04), y(5) - 16), align: .left)
         label("struck", at: Vector2(x(0.04), y(0) + 6), align: .left)
         axis(inset, left: "0 s", right: "2 s")
     }
@@ -101,7 +101,7 @@ final class Expression: Sketch {
 
         label("full", at: Vector2(inset.x + 2, y(1) + 4), align: .left)
         label("as struck, velocity 0.4", at: Vector2(inset.x + 2, y(struck) + 4), align: .left)
-        label("pressureAmount 1", at: Vector2(x(0.55), y(struck + (1 - struck) * 0.55) - 17), align: .left)
+        label("pressureAmount 1", at: Vector2(x(0.75), y(struck + (1 - struck) * 0.75) - 17), align: .right)
         label("0.5", at: Vector2(x(0.86), y(struck + (1 - struck) * 0.5 * 0.86) + 8), align: .left)
         axis(inset, left: "pressure 0", right: "1")
     }
@@ -132,12 +132,15 @@ final class Expression: Sketch {
             })
         }
 
-        // Each curve named where it has fallen to a fifth, which is where the
-        // three sit furthest apart.
+        // The outer curves are named where each has fallen to a fifth, on the
+        // side its neighbor leaves clear: the bottom one from below and left,
+        // the top one from above and right. An octave is thirty pixels here,
+        // too little for a word between two curves, so the middle one is
+        // named at the head of the cutoff line, which is its corner.
         func knee(_ corner: Double) -> Double { corner * pow(1 / (0.2 * 0.2) - 1, 0.25) }
-        label("bottom", at: Vector2(x(knee(cutoff / 4)) + 4, y(0.2) - 5), align: .left)
-        label("rest", at: Vector2(x(knee(cutoff)) + 4, y(0.2) - 5), align: .left)
-        label("top", at: Vector2(x(knee(cutoff * 4)) + 4, y(0.2) - 5), align: .left)
+        label("bottom", at: Vector2(x(knee(cutoff / 2)) - 6, y(0.2) + 2), align: .right)
+        label("rest", at: Vector2(x(cutoff), y(1) - 24), align: .center)
+        label("top", at: Vector2(x(knee(cutoff * 2)) + 4, y(0.2) - 15), align: .left)
         axis(inset, left: "50 Hz", right: "6.4 kHz")
     }
 
