@@ -431,108 +431,67 @@ if let heat = eyes.heatMap {
 
 ## Models of your own
 
-The motion brush needed only what the Mac finds on its own. The entries below go past the built-in trackers on trained models you download, whose learned numbers are called **weights**. They are the one part of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once, and every file these entries and their examples need lands in `Models/`, skipping whatever is already there.
-
-The fragments below write the plain `Models/` path, which works when you launch from the top folder of the repository. A sketch that lives elsewhere finds the folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models` folder. It hands back the file's path, or `nil` if there is none. That path keeps working wherever the sketch is launched from. Wrap it as `URL(fileURLWithPath:)` for the initializers below.
+The motion brush needed only what the Mac finds on its own. The entries below run trained models you download, whose learned numbers are called **weights**, and Ollin ships none. `Scripts/fetch-models.sh` fetches every file they need into `Models/`, and [the reference](../Docs/Vision/Vision.md#modeltracker) says how a sketch kept elsewhere finds that folder with `sketchResource`.
 
 ### A click cuts it loose: PointSegmenter
 
-The segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject) decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture. It runs SAM 2.1, the small version of Nikhila Ravi and colleagues' 2024 model for segmenting whatever a point asks for.
+The segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject) decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture. The pick is the same `matte` and `cutout` pair, with a `confidence` and a `bounds(in:)` box. A shift-click names a point the mask must not cover, which drops a shadow the pick took along. It runs SAM 2.1, the small version of Nikhila Ravi and colleagues' 2024 model for segmenting whatever a point asks for.
 
 ```swift
 lazy var picker = PointSegmenter(camera,
     imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
 
-override func mousePressed() {
-    guard let rect = camera.fittedRectangle(in: bounds) else { return }
-    if modifiers.contains(.shift) {
-        picker.exclude(Vector2(mouseX, mouseY), in: rect)   // shift-click: leave this out
-    } else {
-        picker.pick(at: Vector2(mouseX, mouseY), in: rect)
-    }
-}
-
-override func draw() {
-    tint(Color(white: 0.3))                                          // the room, dimmed
-    guard let rect = drawFrame(camera) else { return noTint() }
-    noTint()
-    if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // the picked thing, lit
-}
+picker.pick(at: Vector2(mouseX, mouseY), in: rect)               // in mousePressed()
+if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // in draw()
 ```
 
-A pick answers with the same `matte` and `cutout` pair as the other segmenters. It adds a `confidence`, and a `bounds(in:)` box for framing what it found. The first answer takes a moment, because the model studies the clicked frame once. After that the frame stays frozen and refining is nearly free. `include(_:in:)` adds a point the mask must also cover, and `exclude(_:in:)` a point it must not. Click the teapot, then shift-click the shadow that came with it, and the mask lets the shadow go.
-
-The three URLs point at the model's three parts the fetch script pulled, `SAM2_1SmallImageEncoderFLOAT16.mlpackage`, `SAM2_1SmallPromptEncoderFLOAT16.mlpackage` and `SAM2_1SmallMaskDecoderFLOAT16.mlpackage` in `Models/`. `Examples/Vision/PointLift` is the whole loop, clicks and all.
+The three model files, the frozen frame that makes refining cheap, and `include(_:in:)` are in [the reference](../Docs/Vision/Vision.md#pointsegmenter), and [`PointLift`](../Examples/Vision/PointLift/Sketch.swift) runs that loop, clicks and all.
 
 ### Bringing your own model: ModelTracker
 
-When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames. It has the same attach-and-read shape. Core ML is Apple's format for trained models, and most published models convert to it: depth estimators, object detectors, style transfer, semantic segmentation.
-
-It fills whichever read surfaces match what your model puts out. A classifier gives you `classifications`, `topClassification` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once. `map` reads its output as a value field, white-alpha and tintable, with `value(at:in:)` for the number under a point. `image` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`. It knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
+When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames, with the same attach-and-read shape. Core ML is Apple's format for trained models, and most published models convert to it. It fills whichever read surfaces match what the model puts out. A classifier gives `classifications`, a detector `objects`, an image-to-image model `map` and `image`, and a semantic segmenter `classMask`. The model in the block is Depth Anything V2, by Lihe Yang and colleagues, from 2024.
 
 ```swift
 lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath:
     "Models/DepthAnythingV2SmallF16.mlpackage"))
 
-override func draw() {
-    guard let rect = drawFrame(camera) else { return }
-    if let map = depth.map { drawImage(map, in: rect) }
-    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
-}
+if let map = depth.map { drawImage(map, in: rect) }               // in draw()
+let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)     // 0 far … 1 near
 ```
 
-The model in the block is Depth Anything V2, by Lihe Yang and colleagues, from 2024. `Examples/Vision/DepthRelief`, `ObjectDetection`, `DigitReader` and `PaintByClass` each show a different one of the four surfaces above. `StyleMirror` watches for a style model you train yourself from a picture you pick, with `Scripts/train-style-model.swift`, so nobody else's weights are involved.
-
-Loading runs in the background, off the frame loop. `isLoaded` flips when the model is ready, and frames pass by until then. Expect the first launch of a freshly built sketch to sit for a few seconds while Core ML prepares the model for your Mac. Every later launch of that same build starts at once. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use. So you can tell the person in front of the screen what to do about it.
+The four surfaces, loading, and availability are in [the reference](../Docs/Vision/Vision.md#modeltracker), and [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), and [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift) each read one of them.
 
 ### Depth that holds still: DepthTracker
 
-A single-image depth model decides each frame on its own. `Examples/Vision/DepthRelief` draws the depth as a field of disks, and pointed at a still room, its relief moves. The map shimmers, and the disks with it, because nothing ties one frame's answer to the next. **`DepthTracker`** runs a video depth model instead. It keeps what it saw over the last second and reads each new frame against that, so the map moves only when the scene does. The model is Video Depth Anything, by Sili Chen and colleagues, from 2025.
+A single-image depth model decides each frame on its own, so a still room's depth shimmers, and `DepthRelief`'s disks with it. **`DepthTracker`** runs a video depth model instead. It keeps what it saw over the last second and reads each new frame against that, so the map moves only when the scene does. The surface is the one `ModelTracker` gives a depth model, `map` and `value(at:in:)`, and the depth is relative, anchored on its first frame. The model is Video Depth Anything, by Sili Chen and colleagues, from 2025.
 
 ```swift
 lazy var depth = DepthTracker(camera, modelAt: URL(fileURLWithPath:
     "Models/VideoDepthAnythingSmallF16.mlpackage"))
 
-override func draw() {
-    guard let rect = drawFrame(camera) else { return }
-    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
-    if let map = depth.map { drawImage(map, in: rect) }
-}
-
-override func keyPressed() {
-    if key == "r" { depth.reset() }   // a new scene: anchor the depth again
-}
+if let map = depth.map { drawImage(map, in: rect) }               // in draw()
+if key == "r" { depth.reset() }                                   // a new scene: anchor again
 ```
 
-The surface is the one `ModelTracker` gives a depth model, `map` and `value(at:in:)`, so a sketch swaps one for the other in a line. Two things are new. The depth is relative, nearer and farther rather than meters. The model keeps that scale consistent by anchoring on the first frame it sees. Move the camera to another room and call `reset()`, and the next frame becomes the anchor. And the numbers you read pass through a range that follows the scene slowly, `range`. It widens at once for something nearer or farther than anything so far, and eases back over a few seconds. So the picture never rescales between two frames.
-
-The model is built rather than downloaded. Nobody publishes a Core ML version, so `Scripts/fetch-models.sh` makes one on your Mac from the published model. The build is a one-time step of a few minutes, and it needs Python. The tracker runs on the GPU, about fourteen readings a second on an M2. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
+The anchor and `reset()`, the slow `range`, and the build step the model needs are in [the reference](../Docs/Vision/Vision.md#depthtracker). [`DepthContours`](../Examples/Vision/DepthContours/Sketch.swift) draws the depth as contour lines, with a parameter that swaps in the single-image model.
 
 ### A clip read whole for an export: DepthClip
 
-A recording can be read whole instead of as it plays. You want that for an export, because a tracker over a playing clip reads nothing under `--export-video`, its frames arriving on the live clock. **`DepthClip`** takes a `VideoPlayer` and runs its file through the model once. It reads in windows of 32 frames, the way the model was trained to read. Each window is fitted to the one before it on the frames they share, so the whole clip sits on one scale. The pass takes a second or two a window and is kept on disk, so the next run opens at once. Then `map` and `value(at:in:)` answer for the frame under the playhead, the same calls as the tracker's. Here `player` is a `VideoPlayer`, set up like the film in [When there is no camera](#when-there-is-no-camera-stills-and-footage).
+A recording can be read whole instead of as it plays. An export needs that, because a tracker over a playing clip reads nothing under `--export-video`. **`DepthClip`** takes a `VideoPlayer` and runs its file through the video depth model once, in the 32-frame windows it was trained on. Each window is fitted to the one before, so the clip sits on one scale. The pass is kept on disk, and then `map` and `value(at:in:)` answer for the frame under the playhead, the tracker's own calls.
 
 ```swift
 var depth: DepthClip?
 
-override func setup() {
-    player.play()
-    depth = DepthClip(player, modelAt: URL(fileURLWithPath:
-        "Models/VideoDepthAnythingSmallClipF16.mlpackage"))
-}
-
-override func draw() {
-    guard let rect = drawFrame(player), let depth else { return }
-    if !depth.isReady { return drawStatus("Reading the clip's depth… \(Int(depth.progress * 100))%") }
-    if let map = depth.map { drawImage(map, in: rect) }
-}
+depth = DepthClip(player, modelAt: URL(fileURLWithPath:              // in setup(), never lazily
+    "Models/VideoDepthAnythingSmallClipF16.mlpackage"))
+if let map = depth?.map { drawImage(map, in: rect) }                 // in draw(), under the playhead
 ```
 
-`DepthClip` reads the file, so the pass runs before the first exported frame. Frame `k` then carries the map of the clip frame it shows, every time. Make it in `setup()`, not lazily, so the export finds it. `Examples/Vision/FootageDepth` draws a clip's depth as contour lines, over the bundled footage of the *Voladores de Papantla*, flyers circling down a pole on ropes.
+The export rule, the cache, and `range` are in [the reference](../Docs/Vision/Vision.md#depthclip), and [`FootageDepth`](../Examples/Vision/FootageDepth/Sketch.swift) draws the bundled *Voladores de Papantla* clip's depth as contour lines.
 
 ### Words as numbers: ConceptTracker
 
-The classifier's `confidence(of: "plant")` answers only for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. It runs MobileCLIP, Apple's small model from 2024, by Pavan Kumar Anasosalu Vasu and colleagues. The scores follow the recipe of CLIP, by Alec Radford and colleagues, from 2021.
+The classifier's `confidence(of: "plant")` answers only for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. The scores are shares across your phrase set and sum to 1, so give it contrasts, the thing and its opposite. It runs MobileCLIP, Apple's small model from 2024, by Pavan Kumar Anasosalu Vasu and colleagues. The scores follow the recipe of CLIP, by Alec Radford and colleagues, from 2021.
 
 ```swift
 lazy var ideas = ConceptTracker(camera,
@@ -540,14 +499,10 @@ lazy var ideas = ConceptTracker(camera,
     textModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_text.mlpackage"),
     vocabularyAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
     concepts: ["a spooky scene", "a cheerful scene"])
-
-// in draw():
-let spooky = ideas.share(of: "a spooky scene")   // 0…1, every frame
+let spooky = ideas.share(of: "a spooky scene")   // 0…1, every frame, in draw()
 ```
 
-Under it are two halves of one model. An image encoder turns each frame into a point in a shared space. A text encoder puts each phrase into the same space once, and keeps the result. A score is how close the two land. The scores are shares across your phrase set and sum to 1, so one phrase alone always reads 1. Give the tracker contrasts, the thing and its opposite, and the share moves across a range you can use. `similarity(of:)` reads the raw closeness instead, if you'd rather map the space yourself.
-
-The phrases stay live. Set `concepts` to a new list, or ask `share(of:)` about a phrase it hasn't seen, and the newcomer joins the scoring a frame later. `Examples/Vision/TugOfWords` wires two phrase parameters to a tug-of-war rope, with each phrase editable in the inspector while the sketch runs.
+The two encoders, `similarity(of:)`, and live phrase changes are in [the reference](../Docs/Vision/Vision.md#concepttracker), and [`TugOfWords`](../Examples/Vision/TugOfWords/Sketch.swift) wires two phrase parameters to a tug-of-war rope.
 
 ## The camera in a 3D scene: the room as the light and the surface
 
