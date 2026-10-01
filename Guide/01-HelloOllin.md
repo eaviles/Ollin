@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-This chapter takes you from an empty file to a sketch that moves on its own. Twenty-eight circles drift around the ring above, each breathing a little out of step, while a panel of parameters tunes them as they run. On the way you learn what creative coding is and meet the idea every chapter comes back to: in Ollin, things move by default. After the ring, you drag a shape into place by hand and run a sketch from anywhere.
+This chapter takes you from an empty file to a sketch that moves on its own. Twenty-eight circles drift around the ring above, each breathing a little out of step, while a panel of parameters tunes them as they run. On the way you learn what creative coding is and meet the idea every chapter comes back to: in Ollin, things move by default. After the ring, you drag a shape into place by hand, meet a sketch that waits for the mouse, and run a sketch from anywhere.
 
 ## What you need
 
@@ -487,6 +487,85 @@ drawCircle(sunX, sunY, 40)     // dragging this moves both parameters
 The drag sets those parameters instead of writing the file, so nothing recompiles. The values are kept across the next reload, the way any parameter you change by hand is. Both coordinates have to be parameters for that. With a parameter in one slot and a plain number in the other, the number is still written into the file and the sketch reloads.
 
 That limit follows from what the drag is. The file is the sketch, and dragging edits the file. So anything the file works out for itself has to be changed where it's written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends. It also says what stops a shape from moving past a line that is not ink.
+
+## A sketch that waits, and a few small doors
+
+The ring above draws every frame and reads the mouse as it goes. Some sketches would rather hold still and answer only when something happens. A few small calls belong with that kind of sketch: the frame it asks for, the pointer it shows, a file the person hands it, and a frame it hands back.
+
+### One more frame when asked: `redraw()`
+
+`redraw()` draws one more frame of a sketch that `noLoop()` stopped, and then the sketch holds again. It is for a still sketch that changes on a click or a key. Between clicks it costs nothing, and a picture that takes a second to draw is drawn only when something changed. The pair comes from Processing, where a sketch that changes only on input is written with `noLoop()` and `redraw()`.
+
+```swift
+import Ollin
+
+final class Stamps: Sketch {
+    var marks: [Vector2] = []
+
+    override func setup() { noLoop() }
+
+    override func mousePressed() {
+        marks.append(mouse)
+        redraw()   // one frame shows the new mark
+    }
+
+    override func draw() {
+        background(Color(white: 0.95))
+        noStroke()
+        fill(.black)
+        for mark in marks { drawCircle(center: mark, radius: 14) }
+    }
+}
+```
+
+Three clicks before the frame is drawn still make one frame. A `redraw()` inside `draw()` asks for nothing, because that frame is the one being drawn. While the loop runs, it does nothing at all. [Sketch](../Docs/Core/Sketch.md#redraw) has the rest.
+
+### The pointer's shape, or none
+
+`pointerShape(_:)` gives the pointer over the canvas one of the Mac's own shapes, and `hidePointer()` takes it away. A shape says what a click will do: an open hand over something to drag, a crosshair where you pick an exact point. Hiding it suits a sketch that draws its own brush at `mouse`. The shapes are the system's cursors, the same arrow, crosshair, and hands every app on the machine shows.
+
+```swift
+override func draw() {
+    background(.white)
+    let overDisc = (mouse - center).length < 80
+    pointerShape(overDisc ? .openHand : .crosshair)
+    fill(.black)
+    drawCircle(center: center, radius: 80)
+}
+```
+
+Setting the same shape every frame costs one comparison, so the call can live in `draw()`. The shape and the hiding are kept apart: `showPointer()` brings the pointer back in whatever shape was set last. Both apply over the canvas only, so the rest of the window keeps the ordinary arrow. [Input](../Docs/Helpers/Input.md#pointer) lists every shape.
+
+### A file the person picks: the open panel
+
+`chooseFiles(withExtensions:)` shows the open panel, the same window every Mac app's Open command shows. It returns at once, and the sketch keeps drawing while the panel is up. When the person picks, the paths arrive in `chosenFiles()` and `filesChosen()` runs. It is the other way in beside a drop, which [Chapter 9](09-Pictures.md#a-picture-you-drop-on-the-window) uses for a photograph. A drop needs the Finder open, and the panel only needs a key.
+
+```swift
+var photo: Image?
+
+override func keyPressed() {
+    if key == "o" { chooseFiles(withExtensions: ["png", "jpg", "heic"]) }
+}
+
+override func filesChosen() {
+    for path in chosenFiles() { photo = try? loadImage(path) }
+    redraw()
+}
+```
+
+Reading `chosenFiles()` empties it, as `droppedFiles()` does, and a panel closed without a pick adds nothing. The `redraw()` matters only to a still sketch, which would otherwise wait for its next click to show the picture. [Input](../Docs/Helpers/Input.md#chooseFiles) covers several files at once.
+
+### The frame on the clipboard: `copyFrame()`
+
+`copyFrame()` puts the frame the window shows on the clipboard as a PNG. It is for showing someone what the sketch is doing: press a key, then paste into a message or a document. Larry Tesler and Tim Mott worked out cut, copy, and paste at Xerox PARC in the 1970s. The Lisa and the Macintosh then made them part of every program.
+
+```swift
+override func keyPressed() {
+    if key == "c" { copyFrame() }
+}
+```
+
+The copy is the canvas at its own size, whatever size the window is. A still sketch draws one more frame for it, so a `draw()` that rolls new numbers copies a new roll. To keep a frame as a file instead, `--export frame.png` on the run command writes one ([Export](../Docs/Output/Export.md#raster-png-and-sequences)). [Recording](../Docs/Output/Recording.md#copyFrame) has the details of the copy.
 
 ## A shorter way to run things
 

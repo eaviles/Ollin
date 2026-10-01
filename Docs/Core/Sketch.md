@@ -22,10 +22,10 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `filesDropped`, `reloaded`, and a file that will not load (`FileError`)
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `filesDropped`, `filesChosen`, `reloaded`, and a file that will not load (`FileError`)
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`, `canvasOnScreen`, `screenFrame`
-- [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
+- [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`, `redraw`, and `isExporting`
 - [Extensions](#extensions) - `extend`, and writing a `SketchExtension`
 - [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`, `installation`
 - [Running a sketch](#running-a-sketch)
@@ -147,6 +147,16 @@ override func filesDropped() {
 }
 ```
 
+<a name="filesChosen"></a>
+
+#### filesChosen
+
+```swift
+filesChosen()
+```
+
+Ollin calls this once each time the open panel that `chooseFiles(...)` showed closes on a pick. `chosenFiles()` holds the paths. See [Input](../Helpers/Input.md#chooseFiles).
+
 <a name="reloaded"></a>
 
 #### reloaded
@@ -238,6 +248,58 @@ override func setup() {
     noLoop()   // one frame, then hold
 }
 ```
+
+<a name="redraw"></a>
+
+#### redraw
+
+```swift
+redraw()
+```
+
+Draws one more frame of a sketch that has stopped looping, then holds again. An input hook is the usual caller. A still sketch that changes on a click or a key asks for the one frame that shows the change, and costs nothing between them. Several calls before that frame is drawn ask for it once. While the loop runs it does nothing, since the next frame is coming anyway. Inside `setup()` or `draw()` it does nothing either, because that frame is the one being drawn. An export ignores it, because an export draws every frame it writes.
+
+```swift
+var marks: [Vector2] = []
+
+override func setup() { noLoop() }
+
+override func mousePressed() {
+    marks.append(mouse)
+    redraw()   // one frame shows the new mark
+}
+
+override func draw() {
+    background(.white)
+    for mark in marks { drawCircle(center: mark, radius: 12) }
+}
+```
+
+<a name="isExporting"></a>
+
+#### isExporting
+
+```swift
+var isExporting: Bool { get }
+```
+
+True for the whole of an export: `setup()`, the frames run up to the first one written, and every frame written. That holds for every kind of export: a picture, a sequence, a video, a GIF, a vector file, a web page, and a widget's frames. It is false in a window, and false in a `--bench` run, whose frames stand in for a window's.
+
+A sketch that spreads slow work over live frames reads it to do all of that work at once in an export. A written frame cannot be improved by the frames after it. This one places two hundred marks a frame in a window, so the frames stay smooth, and every mark at once in an export:
+
+```swift
+var pending: [Vector2] = []   // marks still to be placed
+var placed: [Vector2] = []
+
+override func draw() {
+    let batch = isExporting ? pending.count : 200
+    placed += pending.prefix(batch)
+    pending.removeFirst(min(batch, pending.count))
+    for mark in placed { drawCircle(center: mark, radius: 2) }
+}
+```
+
+`isVectorExporting` is the narrower question, true only while a frame is recorded as vector line work (see [G-code](../Output/GCode.md)).
 
 <a name="extensions"></a>
 

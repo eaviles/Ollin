@@ -73,7 +73,8 @@ final class Rings: Sketch {
 - **`frameCount`** is 1 during the first `draw()`. **`deltaTime`** is the step since the last frame: 0 on the first frame in a window, exactly `1 / fps` in an export.
 - **`loopProgress(over:phase:)`** runs from 0 up to 1 over the given seconds and wraps. **`pingPong(over:phase:)`** goes 0 to 1 and back.
 - **`loopDuration`** declares the length of one lap. It does not change `time`. It tells `--export-loop` how many frames make exactly one lap, and makes a web export loop.
-- **`noLoop()`** stops the window's timer after the current frame. Exports ignore it and draw every frame they advance through.
+- **`noLoop()`** stops the window's timer after the current frame. Exports ignore it and draw every frame they advance through. **`redraw()`** draws one more frame of a stopped sketch, from an input hook.
+- **`isExporting`** is true through the whole of an export, `setup()` included, and false in a window: work spread over live frames is done at once when it is true.
 - **`random()`** returns 0 up to but not including 1, `random(a, b)` a up to b, and `randomGaussian()` has mean 0 and deviation 1.
 - **`seed(n)`** fixes both `random` and `noise` and sets `variation`. `randomSeed` and `noiseSeed` fix one each. A sketch that never seeds gets a different variation at every launch.
 
@@ -87,7 +88,7 @@ The names a sketch reaches for first in each area. `ollin api <name>` gives any 
 
 | Area | Calls | Page |
 | --- | --- | --- |
-| Canvas and frame | `background`, `width`, `height`, `center`, `scale`, `noClear`, `makeAccumulator`, `withAccumulator`, `noLoop` | [Sketch](./Core/Sketch.md), [Accumulation](./Drawing/Accumulation.md) |
+| Canvas and frame | `background`, `width`, `height`, `center`, `scale`, `noClear`, `makeAccumulator`, `withAccumulator`, `noLoop`, `redraw`, `isExporting` | [Sketch](./Core/Sketch.md), [Accumulation](./Drawing/Accumulation.md) |
 | 2D shapes | `drawCircle`, `drawEllipse`, `drawRect`, `drawLine`, `drawPoint`, `drawTriangle`, `drawArc`, `drawPolygon`, `drawNgon`, `drawStar`, `drawRing`, `drawBezier`, `drawArrow` | [Drawing](./Drawing/Drawing.md) |
 | Style | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin`, `strokeDash`, `strokeAlign`, `blendMode`, `hollow`, `solid` | [Drawing](./Drawing/Drawing.md) |
 | Transforms | `translate`, `rotate`, `scale`, `withState`, `mirrored`, `repeated`, `withClip` | [Drawing](./Drawing/Drawing.md) |
@@ -95,12 +96,12 @@ The names a sketch reaches for first in each area. `ollin api <name>` gives any 
 | Text | `drawText`, `textFont`, `textSize`, `textAlign`, `textWidth`, `textToShapes` | [Text](./Drawing/Text.md) |
 | Images | `loadImage`, `drawImage`, `Image`, `tint`, `noTint` | [Images](./Drawing/Images.md) |
 | Color | `Color`, `Palette`, `Ramp`, `Gradient`, `CosinePalette`, `Colormap`, `OKLCH` | [Color](./Drawing/Color.md) |
-| Math and noise | `map`, `lerp`, `clamp`, `smoothstep`, `polar`, `random`, `noise`, `signedNoise`, `fbm`, `curlNoise` | [Math](./Helpers/Math.md), [Noise](./Generators/Noise.md) |
+| Math and noise | `map`, `lerp`, `clamp`, `smoothstep`, `polar`, `spherical`, `random`, `noise`, `signedNoise`, `fbm`, `curlNoise` | [Math](./Helpers/Math.md), [Noise](./Generators/Noise.md) |
 | Motion | `loopProgress`, `pingPong`, `Easing`, `Eased`, `Sprung`, `every`, `after` | [Animation](./Helpers/Animation.md) |
 | Layers and effects | `makeRenderTarget`, `withTarget`, `filtered`, `Filter`, `combined`, `postProcess`, `makeFeedback`, `withFeedback`, `generate` | [Effects](./Drawing/Effects.md) |
 | Your own shaders | `Shader`, `Filter`, `Generator`, `Visual`, `drawVisual`, `compute` | [Shaders](./Shaders/Shaders.md) |
 | 3D | `camera`, `Camera3D`, `cameraControl`, `drawBox`, `drawSphere`, `drawMesh`, `Mesh`, `material`, `Material`, `directionalLight`, `pointLight`, `environment`, `castShadows`, `temporalAntialiasing`, `motionBlur` | [3D](./3D/3D.md) |
-| Input | `mouseX`, `mouseY`, `mouse`, `mouseIsPressed`, `key`, `keyIsPressed`, `isKeyDown` | [Input](./Helpers/Input.md) |
+| Input | `mouseX`, `mouseY`, `mouse`, `mouseIsPressed`, `key`, `keyIsPressed`, `isKeyDown`, `droppedFiles`, `chooseFiles`, `pointerShape`, `hidePointer` | [Input](./Helpers/Input.md) |
 | Parameters | `Param`, `ParamGroup`, `Saved`, `variation` | [Parameters](./Helpers/Parameters.md) |
 | Techniques | `poissonDisk`, `voronoi`, `delaunay`, `flowField`, `drawLSystem`, `drawWFC`, `packCircles`, `drawTruchet`, `stipple` | [Generators](./Generators/README.md) |
 
@@ -116,7 +117,9 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 | `strokeWidth`, `lineWidth` | `strokeWeight` |
 | `push()` and `pop()` | `withState { }` |
 | `createCanvas(w, h)` | `override var canvasSize: CanvasSize { .size(w, h) }` |
-| `saveFrame` | `--export` or `--export-sequence` on the command line, or `OllinApp.image(of:frame:)` in code |
+| `saveFrame` | `--export` or `--export-sequence` on the command line, or `OllinApp.image(of:frame:)` in code; `copyFrame()` puts the frame on the clipboard |
+| `cursor(CROSS)` and `noCursor()` | `pointerShape(.crosshair)` and `hidePointer()`, with `showPointer()` to bring it back |
+| `selectInput(prompt, callback)` | `chooseFiles(withExtensions:)`, with the pick read from `chosenFiles()` in `filesChosen()` |
 | `millis()` | `time`, in seconds |
 | `radians(45)` | `.degrees(45)`, which converts degrees to the radians every drawing call takes |
 | `beginShape()` and `endShape()` | `drawShape { }` with a `Path`, or `drawPolyline` for points |
@@ -229,6 +232,7 @@ Each of these gives a wrong or empty picture and no error.
 - **A `@Param` icon that is not an SF Symbol.** The row shows an empty space where the icon goes.
 - **3D on a `noClear()` canvas.** Nothing is sorted by depth and nothing casts a shadow.
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
+- **`redraw()`, `copyFrame()`, `chooseFiles`, and `pointerShape` in an export.** There is no window, so each does nothing. A `redraw()` inside `draw()` asks for nothing either: that frame is the one being drawn.
 - **A `print` during an exported sequence.** It lands on the same terminal line as the progress text, and later than expected when the output is piped. Write to standard error with a newline first, or read the value after the run.
 
 <a name="checking"></a>

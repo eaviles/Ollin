@@ -75,7 +75,7 @@ Each concept page is one screen on an idea that the reference pages below assume
 
 ### Core
 
-- [`Sketch`](./Core/Sketch.md) - the lifecycle (`setup`/`draw`), the clock values (`time`, `frameCount`, …), and loop control
+- [`Sketch`](./Core/Sketch.md) - the lifecycle (`setup`/`draw`), the clock values (`time`, `frameCount`, …), loop control with `redraw()`, and `isExporting`
 - [`Canvas`](./Core/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window (`windowMode`)
 - [`Variations`](./Core/Variations.md) - `variation`, the seed a run starts from. Step, roll, and jump through a sketch's variation space in the inspector. Proof a range as a contact sheet (`--export-grid`), and render the one you want to keep again with `--seed`.
 - [`Replay`](./Core/Replay.md) - record a run's seed, clock, inputs, and parameter changes as a take (`--record-take`). Play it back exactly (`--replay`, with transport keys), scrub through it, and render the performance again through any export flag.
@@ -216,13 +216,13 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 
 ### Helpers
 
-- [`Math`](./Helpers/Math.md) - `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), and `Double.tau`
+- [`Math`](./Helpers/Math.md) - `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), `polar` and `spherical`, and `Double.tau`
 - [`Complex`](./Helpers/Complex.md) - `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `exp`/`log`/`pow`/`sqrt` and the trigonometric functions on the principal branch, the `Vector2` bridge, `ComplexPlane` (the framing every picture of the plane shares, converting between its numbers and canvas points; a generator's `plane`), and the shader library's `complex` module as its twin on the GPU
 - [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the timers (`every`/`after`/`everyFrames`), `sway` (a value that travels between two ends and back, over five shapes), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), `@Sprung` (spring toward a target with momentum), and the `Timeline` keyframe sequencer
 - [`Formula`](./Helpers/Formula.md) - a number written as a rule and read from text: `drive($radius, "190 + sin(time) * 80")`. The page covers the arithmetic a formula understands, the clock, canvas, pointer, and other parameters it can name, and the errors it reports rather than throws.
 - [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable parameters: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards (with `.folded` sections that start closed), value scrubbing, optional smoothing, and binding from OSC or MIDI
 - [`Cues`](./Helpers/Cues.md) - looks you can call back: `saveCue` stores every parameter's value under a name, `cue(_:over:)` brings them back at once or over a fade, the inspector's Cues card lists and saves them, a MIDI program change or `/ollin/cue` calls one in the performance host, `Sketch.cues.json` keeps them beside the sketch, and `--cue` renders an export at one
-- [`Input`](./Helpers/Input.md) - mouse and keyboard
+- [`Input`](./Helpers/Input.md) - mouse and keyboard, files dropped or picked through the open panel, and the pointer's shape
 - [`Accessibility`](./Helpers/Accessibility.md) - see your colors as the three kinds of color vision see them, check whether a palette's colors stay apart, and read the system's reduce-motion setting
 - [`Data`](./Helpers/Data.md) - `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach into by name and index
 - [`LiveData`](./Helpers/LiveData.md) - `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now. It covers conditional polling, backoff, and one fixed answer in an export.
@@ -281,7 +281,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), vector (SVG for pen plotters, PDF for print), or linear EXR with depth, for a compositor
 - [`Web page`](./Output/Web.md) - `--export-web` records what a sketch draws and writes a page that plays it back in a browser, as one self-contained file or as a fragment for a page of your own
 - [`Path-traced export`](./Output/PathTraced.md) - `--path-traced` renders the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
-- [`Recording`](./Output/Recording.md) - record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time
+- [`Recording`](./Output/Recording.md) - record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time, or copy one frame to the clipboard
 - [`Fabrication`](./Output/Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./Output/GCode.md) - write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly
 - [`DXF`](./Output/DXF.md) - write a frame as a DXF drawing a CAD program or a laser cutter's software opens: lines, polylines, and true circles in millimeters, each color on its own layer

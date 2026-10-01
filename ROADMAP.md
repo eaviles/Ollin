@@ -32,8 +32,6 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
 - **Drawing part of an image.** `drawImage` takes a source rectangle inside the image. A sprite sheet, a tile set, or a film strip then draws one frame at a time, with no cropping first.
 - **Pitch bend bound to a parameter.** A parameter binds to a MIDI control change. The pitch wheel is the other continuous control on most keyboards, and it binds the same way.
-- **Small sketch conveniences.** `redraw()` draws one frame of a sketch that has stopped looping. A sketch can set the pointer's shape or hide it, and spherical coordinates sit beside `polar`. A file can be picked through the system's open panel, and the frame can be copied to the clipboard.
-- **Knowing an export from a live run.** A sketch can ask whether it is being exported, so it can spread slow work over live frames and do all of it at once when every frame is written.
 - **Even spacing at large counts.** A `surfacePoints` scatter of hundreds of thousands of points, such as a forest over a whole valley, keeps its even spacing without a long wait in `setup()`.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).

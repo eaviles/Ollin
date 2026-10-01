@@ -222,6 +222,27 @@ public func polar(_ angle: Double, _ radius: Double, around center: Vector2 = .z
     center + Vector2(angle: angle, length: radius)
 }
 
+/// The point at `azimuth`, `elevation`, and `radius` from `center`: spherical
+/// coordinates as one call, the angles first and then the distance, the way
+/// `polar` takes them.
+///
+/// ```swift
+/// let eye = spherical(time * 0.3, 0.4, 8)                  // a slow orbit
+/// let moon = spherical(time, 0.2, 3, around: planet)       // a body circling another
+/// ```
+///
+/// Angles in radians, in the world the 3D calls draw in, where y is up.
+/// `azimuth` turns around the y axis, `0` pointing along +z and a quarter turn
+/// along +x; `elevation` lifts the point above the plane of x and z, `pi / 2`
+/// straight up. It is the camera's own orbit, so `spherical(a, e, r)` is where
+/// an eye stands that orbits the origin at those angles. A vector's
+/// ``Vector3/azimuth``, ``Vector3/elevation`` and `length` read the three back.
+public func spherical(_ azimuth: Double, _ elevation: Double, _ radius: Double,
+                      around center: Vector3 = .zero) -> Vector3 {
+    let level = cos(elevation) * radius
+    return center + Vector3(level * sin(azimuth), sin(elevation) * radius, level * cos(azimuth))
+}
+
 public extension Double {
     /// The angle `value` degrees, as radians: `rotate(.degrees(45))`.
     ///

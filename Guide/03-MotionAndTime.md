@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-Motion needs a clock you can trust and curves that give it character. You learn both, from the clock and the circle behind `sin` to shaping curves that ease, snap, and bounce. The rings above loop without a seam, and you export them as a GIF. Past the rings comes the motion Ollin runs for you, from a sway in one call to timers, and the setting that holds it still.
+Motion needs a clock you can trust and curves that give it character. You learn both, from the clock and the circle behind `sin` to shaping curves that ease, snap, and bounce. The rings above loop without a seam, and you export them as a GIF. Past the rings comes the motion Ollin runs for you, from a sway in one call to timers and the setting that holds it still. Last is the question a sketch asks when its frames go to a file.
 
 ## The clock
 
@@ -273,7 +273,7 @@ Then make it yours:
 
 ## Motion the framework runs for you
 
-The ring above drives every motion from the clock by hand: a wrap, a phase, a window, a curve. You can now write that arithmetic yourself, and the calls below do the common cases for you in a line or two. The sketch needed none of them. Reduced motion, at the end, is different in kind: it is the one setting that asks you to hold back.
+The ring above drives every motion from the clock by hand: a wrap, a phase, a window, a curve. You can now write that arithmetic yourself, and the calls below do the common cases for you in a line or two. The sketch needed none of them. The last two are different in kind. Reduced motion is the one setting that asks you to hold back, and `isExporting` says whether the frames are going to a file.
 
 ### The sway you write over and over: `sway`
 
@@ -398,6 +398,24 @@ let speed = prefersReducedMotion ? 0.1 : 1.0
 ```
 
 The `? :` picks the first value when the test holds and the second when it does not. So `speed` is 0.1 under Reduce Motion and 1.0 otherwise. Nothing changes on its own, and that is deliberate. Only you know which of your movements is the sketch and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
+
+### When every frame is written: `isExporting`
+
+`isExporting` is true while the sketch is being exported, from `setup()` through the last frame written, and false in a window. It is for work spread across frames. A sketch that places a few hundred marks a frame keeps its window smooth. An exported frame cannot wait for the frames after it, because it is written as it stands. Every export runs on the fixed clock from [When a frame takes too long](#when-a-frame-takes-too-long), and this is that fact read from inside the sketch.
+
+```swift
+var pending: [Vector2] = []   // marks still to be placed
+var placed: [Vector2] = []
+
+override func draw() {
+    let batch = isExporting ? pending.count : 200
+    placed += pending.prefix(batch)
+    pending.removeFirst(min(batch, pending.count))
+    for mark in placed { drawCircle(center: mark, radius: 2) }
+}
+```
+
+In the window the marks arrive two hundred a frame. In a still or a video, every mark is there from the first frame written. A `--bench` run reads `false`, because its frames stand in for the window's. [Sketch](../Docs/Core/Sketch.md#isExporting) has the rest.
 
 ## Where this comes from
 

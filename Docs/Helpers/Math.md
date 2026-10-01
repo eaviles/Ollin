@@ -14,6 +14,7 @@ Ollin has a small and growing set of the familiar creative-coding math functions
 - [Shaping scalars](#shaping): `clamp`, `wrap`, `fract`, `step`, `smoothstep`, `unipolar`, `bipolar`
 - [Dividing a whole](#dividing): `fractions`, `angles`
 - [polar](#polar)
+- [spherical](#spherical): the same in 3D, and a vector's `azimuth` and `elevation`
 - [Primes](#primes)
 - [Constants and angle units](#constants)
 
@@ -178,6 +179,38 @@ use `Vector2(angle:length:)`, which gives the same point as a direction vector.
 
 ```swift
 drawLine(center, polar(time, 300, around: center))
+```
+
+<a name="spherical"></a>
+
+### spherical
+
+```swift
+spherical(_ azimuth: Double, _ elevation: Double, _ radius: Double,
+          around center: Vector3 = .zero) -> Vector3
+```
+
+The point at two angles and a distance from `center` in 3D. This is spherical
+coordinates as one call, the angles first and then the radius, the way `polar`
+takes them. The angles are in radians, in the world the 3D calls draw in, where
+y is up. `azimuth` turns around the y axis: `0` points along +z, and a
+quarter turn points along +x. `elevation` lifts the point above the floor
+plane of x and z, so `0` is level with it and `.pi / 2` is straight up.
+
+It is the camera's own orbit, so `spherical(a, e, r, around: target)` is where
+an eye stands that orbits `target` at those angles, which is the point
+`Camera3D.orbiting(target:radius:azimuth:elevation:)` puts its eye. Going the
+other way, a `Vector3`'s `azimuth`, `elevation`, and `length` read the three
+numbers back off a direction.
+
+```swift
+let planet = Vector3(0, 1, 0)
+let moon = spherical(time, 0.3, 3, around: planet)    // a body circling another
+let lamp = spherical(-0.8, 0.9, 6)                     // a light high and to the left
+
+let toMoon = moon - planet
+let heading = toMoon.azimuth                           // which way it lies, seen from above
+let rise = toMoon.elevation                            // how far above the planet's level
 ```
 
 <a name="primes"></a>

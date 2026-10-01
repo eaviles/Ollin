@@ -75,7 +75,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## Core
 
-- [Sketch](Docs/Core/Sketch.md): the lifecycle (`setup`/`draw`), the clock values (`time`, `frameCount`, …), and loop control
+- [Sketch](Docs/Core/Sketch.md): the lifecycle (`setup`/`draw`), the clock values (`time`, `frameCount`, …), loop control with `redraw()`, and `isExporting`
 - [Canvas, size, and export](Docs/Core/Canvas.md): `scale`, the `canvasSize` export presets, and the preview window (`windowMode`)
 - [Variations](Docs/Core/Variations.md): `variation`, the seed a run starts from.
 - [Record & replay](Docs/Core/Replay.md): record a run's seed, clock, inputs, and parameter changes as a take (`--record-take`).
@@ -214,13 +214,13 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## Helpers
 
-- [Math helpers](Docs/Helpers/Math.md): `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), and `Double.tau`
+- [Math helpers](Docs/Helpers/Math.md): `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), `polar` and `spherical`, and `Double.tau`
 - [Complex numbers](Docs/Helpers/Complex.md): `Complex`, a point of the plane that multiplies: literals and `Numeric`, the polar form, `exp`/`log`/`pow`/`sqrt` and the trigonometric functions on the principal branch, the…
 - [Animation](Docs/Helpers/Animation.md): looping progress (`loopProgress`/`pingPong`), the timers (`every`/`after`/`everyFrames`), `sway` (a value that travels between two ends and back, over five shapes), the `Easing`…
 - [A number written as a rule](Docs/Helpers/Formula.md): a number written as a rule and read from text: `drive($radius, "190 + sin(time) * 80")`. The page covers the arithmetic a formula understands, the clock, canvas, pointer, and…
 - [Parameters](Docs/Helpers/Parameters.md): `@Param` tunable parameters: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards (with `.folded` sections that…
 - [Cues: looks you can call back](Docs/Helpers/Cues.md): looks you can call back: `saveCue` stores every parameter's value under a name, `cue(_:over:)` brings them back at once or over a fade, the inspector's Cues card lists and saves…
-- [Input](Docs/Helpers/Input.md): mouse and keyboard
+- [Input](Docs/Helpers/Input.md): mouse and keyboard, files dropped or picked through the open panel, and the pointer's shape
 - [Accessibility](Docs/Helpers/Accessibility.md): see your colors as the three kinds of color vision see them, check whether a palette's colors stay apart, and read the system's reduce-motion setting
 - [Data](Docs/Helpers/Data.md): `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach into by name and index
 - [Live data](Docs/Helpers/LiveData.md): `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now.
@@ -279,7 +279,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Export](Docs/Output/Export.md): save frames as raster (PNG, sequences), motion (video, animated GIF), vector (SVG for pen plotters, PDF for print), or linear EXR with depth, for a compositor
 - [A sketch as a web page](Docs/Output/Web.md): `--export-web` records what a sketch draws and writes a page that plays it back in a browser, as one self-contained file or as a fragment for a page of your own
 - [Path-traced export](Docs/Output/PathTraced.md): `--path-traced` renders the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
-- [Recording](Docs/Output/Recording.md): record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time
+- [Recording](Docs/Output/Recording.md): record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time, or copy one frame to the clipboard
 - [Fabrication](Docs/Output/Fabrication.md): write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [G-code](Docs/Output/GCode.md): write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly
 - [DXF](Docs/Output/DXF.md): write a frame as a DXF drawing a CAD program or a laser cutter's software opens: lines, polylines, and true circles in millimeters, each color on its own layer

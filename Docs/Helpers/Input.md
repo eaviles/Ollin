@@ -18,6 +18,9 @@ Pointer and keyboard input are plain properties and overridable methods on the s
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
 - [moveAxis](#moveAxis)
+- [droppedFiles / filesDropped](#droppedFiles)
+- [chooseFiles / chosenFiles / filesChosen](#chooseFiles): a file picked through the open panel
+- [pointerShape / hidePointer / showPointer](#pointer): the pointer over the canvas
 - [Keyboard focus in the hosts](#keyboardFocus)
 
 <a name="mouse"></a>
@@ -220,8 +223,6 @@ position += moveAxis * speed * deltaTime
 
 A 3D sketch reads the same value and maps y onto its own forward direction. The usual choice is for canvas up to mean "ahead", so `-moveAxis.y` is the throttle.
 
-<a name="keyboardFocus"></a>
-
 <a name="droppedFiles"></a>
 
 ### droppedFiles / filesDropped
@@ -242,6 +243,63 @@ override func filesDropped() {
 ```
 
 Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. With the code showing, the editor over the stage takes the drop as text instead.
+
+<a name="chooseFiles"></a>
+
+### chooseFiles / chosenFiles / filesChosen
+
+```swift
+chooseFiles(withExtensions extensions: [String] = [], allowsMultiple: Bool = false)
+chosenFiles() -> [String]
+filesChosen()
+```
+
+Files the person picks through the system's open panel, for a sketch that asks for a picture or a table instead of waiting for a drop. `chooseFiles` shows the panel over the sketch's window as a sheet and returns at once, so the frames keep coming while it is open. When the panel closes on a pick, the paths join `chosenFiles()` as `String` paths, oldest first, and `filesChosen()` fires once. Reading `chosenFiles()` empties the list, as `droppedFiles()` does. A panel closed without a pick adds nothing and fires nothing.
+
+`extensions` limits what the panel offers, written without the dot (`"png"`, `"csv"`) and in any case; empty, the default, offers every file. An extension the system has no type for still matches files by name. `allowsMultiple` lets the person pick several at once. While a panel is open, a second call does nothing.
+
+```swift
+var photo: Image?
+
+override func keyPressed() {
+    if key == "o" { chooseFiles(withExtensions: ["png", "jpg", "heic"]) }
+}
+
+override func filesChosen() {
+    for path in chosenFiles() { photo = (try? loadImage(path)) ?? photo }
+    redraw()   // a still sketch shows the new picture
+}
+```
+
+A pick is live input outside a take, like a drop: neither recorded nor replayed. The panel is a Mac window; on a phone or a tablet, and in an export, the call does nothing.
+
+<a name="pointer"></a>
+
+### pointerShape / hidePointer / showPointer
+
+```swift
+pointerShape(_ shape: PointerShape)
+hidePointer()
+showPointer()
+```
+
+The pointer over the canvas. `pointerShape` gives it one of the system's shapes. `hidePointer()` takes it away, for a sketch that draws its own (a brush outline, a reticle) at `mouse`. Both hold until changed, and both apply only over the canvas. The rest of the window, and a host's sidebar beside the canvas, keep the ordinary arrow.
+
+The shape and the hiding are kept apart. A shape set while the pointer is hidden is the one `showPointer()` brings back. So a sketch can pick its next shape without showing the pointer early. A call that changes nothing costs one comparison, so a sketch can set the shape in `draw()` every frame from what is under the pointer:
+
+```swift
+override func draw() {
+    let overDisc = (mouse - center).length < 80
+    pointerShape(overDisc ? .openHand : .crosshair)
+    drawCircle(center: center, radius: 80)
+}
+```
+
+`PointerShape` names the system's own cursors: `.arrow` (the default), `.crosshair`, `.pointingHand`, `.openHand`, `.closedHand`, `.iBeam`, `.notAllowed`, `.zoomIn`, `.zoomOut`, `.columnResize`, `.rowResize`, and `.dragCopy`.
+
+An installation that hides the pointer ([`Installation.hidesPointer`](../Output/Installation.md)) hides it over the whole screen whatever the sketch asks, and the sketch's own hiding never undoes it. On a phone or a tablet there is no pointer, and in an export there is no window; both calls do nothing there.
+
+<a name="keyboardFocus"></a>
 
 ### Keyboard focus in the hosts
 

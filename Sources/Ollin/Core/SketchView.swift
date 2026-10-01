@@ -8,6 +8,7 @@ import SwiftUI
 import MetalKit
 import QuartzCore
 import simd
+import UniformTypeIdentifiers
 import COllinShaders
 
 /// The sketch runner currently drawing, so a host menu command can reach the
@@ -122,6 +123,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// consecutive poses (with no pending snap or drag) mean settled, and a 2D
     /// sketch has none, so it settles on the frame it drew.
     private var pauseHoldover = false
+
+    /// True while a still sketch has been woken for the one frame `redraw()`
+    /// asked for. The frame that draws hands the pause back; a refresh that
+    /// draws nothing (the ring full, a held frame shown) leaves it set, so the
+    /// frame is late rather than lost. Asked for inside a frame, it is spent
+    /// by that frame, which is how a `redraw()` in `draw()` draws nothing more.
+    private var drawsOneFrame = false
+
+    /// True while the open panel a sketch asked for is up, so a second ask
+    /// waits for it to close rather than stacking a second panel.
+    private var isChoosingFiles = false
     private var holdoverPose: Camera3D?
 
     /// The longest step the sketch clock takes in one frame, however long the
@@ -701,6 +713,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         sketch.loopStateDidChange = { [weak self] looping in
             self?.view?.isPaused = !looping
         }
+        sketch.host = self
+        #if os(macOS)
+        if let view = view as? OllinMTKView {
+            // Input goes to the instance drawing, which a swap just changed.
+            view.sketch = sketch
+            view.setPointer(sketch.requestedPointer, hidden: sketch.hidesPointerOverCanvas)
+        }
+        #endif
     }
 
     /// Snap the running sketch's camera to a canonical inspection view, requested
@@ -842,6 +862,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         lastGridFlag = nil
         pauseHoldover = false       // any holdover belonged to the sketch being replaced
         holdoverPose = nil
+        drawsOneFrame = false       // and so did any frame it asked for
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
         // A run that carries on keeps a still sketch still: the `noLoop()` that
         // paused it is in a `setup()` that is not going to run again, so the
@@ -993,12 +1014,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             view.isPaused = true
             return
         } else if isClockPaused, sketch.takePlayer == nil, didSetup,
-                  pendingClockNudge == nil, !pendingSetupRerun, pendingCameraView == nil {
+                  pendingClockNudge == nil, !pendingSetupRerun, pendingCameraView == nil,
+                  !drawsOneFrame {
             // The timeline transport's hold, enforced the same way: a queued
             // tick must not advance a clock the panel just placed, and an
             // accumulating canvas must not composite the held frame twice.
-            // A reload's first frame, a setup rerun, and a camera snap still
-            // pass (each runs one pass under a zero step and holds again).
+            // A reload's first frame, a setup rerun, a camera snap, and a
+            // still sketch's `redraw()` still pass (each runs one pass under a
+            // zero step and holds again).
             view.isPaused = true
             return
         }
@@ -1374,6 +1397,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             }
         }
 
+        // The one frame a still sketch asked for is drawn: hold again, unless
+        // the sketch started looping meanwhile or camera work still owns the
+        // pause and will hand it back itself.
+        if drawsOneFrame {
+            drawsOneFrame = false
+            if !sketch.isLooping, !pauseHoldover { view.isPaused = true }
+        }
+
         endTakeFrame(in: view)
     }
 
@@ -1441,6 +1472,68 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 }
 
+// MARK: - What the sketch asks of the window
+
+extension SketchRunner: SketchHost {
+    func sketchWantsFrame(_ sketch: Sketch) {
+        // Only the instance drawing gets a frame: one a swap replaced may still
+        // run a timer or a callback that asks.
+        guard sketch === self.sketch, !sketch.isLooping, let view else { return }
+        drawsOneFrame = true
+        view.isPaused = false
+    }
+
+    func sketchPointerChanged(_ sketch: Sketch) {
+        #if os(macOS)
+        guard sketch === self.sketch else { return }
+        (view as? OllinMTKView)?.setPointer(sketch.requestedPointer,
+                                            hidden: sketch.hidesPointerOverCanvas)
+        #endif
+    }
+
+    func sketchWantsFiles(_ sketch: Sketch, extensions: [String], allowsMultiple: Bool) {
+        #if os(macOS)
+        guard sketch === self.sketch, !isChoosingFiles else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = allowsMultiple
+        let types = Self.contentTypes(forExtensions: extensions)
+        if !types.isEmpty { panel.allowedContentTypes = types }
+        isChoosingFiles = true
+        // The pick goes to the instance drawing when the panel closes, which a
+        // reload while it was open may have changed.
+        let finish: @MainActor (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard let self else { return }
+            isChoosingFiles = false
+            guard response == .OK else { return }
+            self.sketch.handleChosenFiles(panel.urls.map(\.path))
+        }
+        // Over the sketch's own window as a sheet, which leaves the run loop
+        // and so the frames running; a free-standing panel when there is no
+        // window to hang it from.
+        if let window = view?.window {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            panel.begin(completionHandler: finish)
+        }
+        #endif
+    }
+
+    /// The types an open panel offers for a list of file extensions, with or
+    /// without their dots and in any case. An extension the system has no
+    /// type for still gets the one it makes up for it, which matches by name.
+    static func contentTypes(forExtensions extensions: [String]) -> [UTType] {
+        var seen = Set<UTType>()
+        return extensions.compactMap { raw in
+            let name = raw.hasPrefix(".") ? String(raw.dropFirst()) : raw
+            guard !name.isEmpty, let type = UTType(filenameExtension: name.lowercased()),
+                  seen.insert(type).inserted else { return nil }
+            return type
+        }
+    }
+}
+
 // MARK: - Shared MTKView configuration
 
 #if os(macOS)
@@ -1478,6 +1571,41 @@ final class OllinMTKView: MTKView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         ignoresInput ? nil : super.hitTest(point)
     }
+
+    /// The cursor the sketch asked for over the canvas (`pointerShape(_:)`,
+    /// `hidePointer()`), or nil for the ordinary arrow, which adds no cursor
+    /// rect at all. A cursor rect is this view's alone, so the pointer takes
+    /// the shape over the canvas and nowhere else, and it never touches the
+    /// app-wide hide count an installation's `hidesPointer` keeps.
+    private(set) var canvasCursor: NSCursor?
+
+    func setPointer(_ shape: PointerShape, hidden: Bool) {
+        let cursor = hidden ? Self.invisibleCursor : (shape == .arrow ? nil : shape.systemCursor)
+        guard cursor !== canvasCursor else { return }
+        canvasCursor = cursor
+        guard let window else { return }
+        window.invalidateCursorRects(for: self)
+        // A pointer resting over the canvas changes now, not at its next move.
+        let resting = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        if visibleRect.contains(resting) { (cursor ?? .arrow).set() }
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if let canvasCursor { addCursorRect(visibleRect, cursor: canvasCursor) }
+    }
+
+    /// A cursor with nothing in it: a pointer hidden over the canvas alone.
+    static let invisibleCursor: NSCursor = {
+        let image = NSImage(size: NSSize(width: 1, height: 1))
+        if let clear = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1, pixelsHigh: 1,
+                                        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                        isPlanar: false, colorSpaceName: .deviceRGB,
+                                        bytesPerRow: 0, bitsPerPixel: 0) {
+            image.addRepresentation(clear)
+        }
+        return NSCursor(image: image, hotSpot: .zero)
+    }()
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -2530,6 +2658,13 @@ public enum OllinApp {
     /// so work done only to make an export repeat (`Drawer.runsOnFixedClock`)
     /// stays out of them. Set and cleared on one thread, like the flag above.
     package nonisolated(unsafe) static var isBenchmarking = false
+
+    /// True for the whole of a drive that writes what it draws: every headless
+    /// drive but the benchmark, whose frames stand in for a window's.
+    /// `Sketch.isExporting` forwards here. Like the flags it reads, it is
+    /// believed only on the thread that drives the export, which for a
+    /// sketch's own `setup()` and `draw()` is the main thread.
+    package nonisolated static var isExporting: Bool { isRenderingHeadless && !isBenchmarking }
 
     /// True for the *whole* of a vector-export drive (`recordVectorFrame`),
     /// setup and warmup frames included, not just the recorded frame. Vector

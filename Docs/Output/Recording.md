@@ -25,6 +25,24 @@ override func keyPressed() {
 
 Each frame is stamped with the wall clock. A frame that took longer to render therefore lasts longer in the file, and time is not stretched. The working example is [`Examples/Export/Record`](../../Examples/Export/Record/Sketch.swift).
 
+<a name="copyFrame"></a>
+
+### One frame to the clipboard
+
+```swift
+copyFrame()
+```
+
+`copyFrame()` puts the frame on the clipboard as a PNG, ready to paste into a message, a document, or an image editor. It takes the place of whatever the clipboard held. The frame is the next one the window shows, at the canvas's own size whatever the window's. It is read through the same frame grab a recording uses, so the copy costs one more pass on that frame and no second render. The host's own chrome, such as the ground grid, stays out of it.
+
+```swift
+override func keyPressed() {
+    if key == "c" { copyFrame() }
+}
+```
+
+A sketch that has stopped looping draws one frame for the copy, as [`redraw()`](../Core/Sketch.md#redraw) would, so what it copies is what its `draw()` makes now. A still sketch that rolls new numbers in every `draw()` copies a new roll. Building the picture in `setup()`, or seeding the numbers inside `draw()`, keeps the copy the picture on screen. In an export there is no window and no clipboard, and the call does nothing. To keep a frame as a file instead, [`--export`](Export.md#raster-png-and-sequences) renders it.
+
 ### Sound
 
 By default, the recording listens to the sketch. It finds the instruments and players the sketch holds (`Synth`, `AudioPlayer`, `Tone`), the same way the offline exporters find a soundtrack. Then it mixes what they play into the file's audio track. There is nothing to wire and no permission to grant. An instrument made during the run joins the mix when it appears.

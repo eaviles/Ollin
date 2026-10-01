@@ -138,11 +138,12 @@ eeb1b8b840a9  Docs/Core/Canvas.md:68  consecutive statements on a line must be s
 449b8a7d3c1e  Docs/Core/Replay.md:90  cannot find 'url' in scope
 0c5c32f2e2b3  Docs/Core/Sketch.md:11  '@main' attribute cannot be applied to this declaration
 2d9ad13906de  Docs/Core/Sketch.md:144  cannot find 'photo' in scope
-ae6ac9017cc8  Docs/Core/Sketch.md:285  consecutive statements on a line must be separated by ';'
-695452f77db3  Docs/Core/Sketch.md:300  consecutive statements on a line must be separated by ';'
-c4f9e4f56eb7  Docs/Core/Sketch.md:307  'canvasSize' has already been overridden
-4c39e3113d60  Docs/Core/Sketch.md:317  consecutive statements on a line must be separated by ';'
-a44d249678b0  Docs/Core/Sketch.md:331  consecutive statements on a line must be separated by ';'
+9335784ea79a  Docs/Core/Sketch.md:282  expected '{' to start getter definition
+ae6ac9017cc8  Docs/Core/Sketch.md:347  consecutive statements on a line must be separated by ';'
+695452f77db3  Docs/Core/Sketch.md:362  consecutive statements on a line must be separated by ';'
+c4f9e4f56eb7  Docs/Core/Sketch.md:369  'canvasSize' has already been overridden
+4c39e3113d60  Docs/Core/Sketch.md:379  consecutive statements on a line must be separated by ';'
+a44d249678b0  Docs/Core/Sketch.md:393  consecutive statements on a line must be separated by ';'
 a5c2f1d106c9  Docs/Core/Variations.md:104  cannot find 'MySketch' in scope
 57d474d715d6  Docs/Core/Variations.md:127  unary operator cannot be separated from its operand
 1c021458eb56  Docs/Drawing/Accumulation.md:72  cannot find 'samples' in scope
@@ -787,22 +788,24 @@ f70dbf2322a8  Docs/Helpers/Formula.md:159  errors thrown from here are not handl
 285baa53a08e  Docs/Helpers/Formula.md:168  errors thrown from here are not handled
 60a99bf62638  Docs/Helpers/Formula.md:183  cannot find '$radius' in scope
 315461351e2d  Docs/Helpers/Formula.md:9  errors thrown from here are not handled
-b06014a03f48  Docs/Helpers/Input.md:102  consecutive statements on a line must be separated by ';'
-08d010246bba  Docs/Helpers/Input.md:111  cannot find 'brush' in scope
-f92b38359663  Docs/Helpers/Input.md:123  consecutive statements on a line must be separated by ';'
-79ee2cbf3f29  Docs/Helpers/Input.md:149  consecutive statements on a line must be separated by ';'
-1177688d0de2  Docs/Helpers/Input.md:180  cannot find 'paused' in scope
-c64f9f091aae  Docs/Helpers/Input.md:191  expected ',' separator
-f9bcf06f0aea  Docs/Helpers/Input.md:198  cannot find 'x' in scope
-3da996694044  Docs/Helpers/Input.md:211  consecutive statements on a line must be separated by ';'
-4eeafe0f61ad  Docs/Helpers/Input.md:217  cannot find 'position' in scope
-950c0a9c5d80  Docs/Helpers/Input.md:229  expected type before '->'
-725ffd331515  Docs/Helpers/Input.md:236  cannot find 'pictures' in scope
-fb9dcf7906f1  Docs/Helpers/Input.md:252  cannot find 'sketch' in scope
-9908ad262265  Docs/Helpers/Input.md:27  consecutive statements on a line must be separated by ';'
-f0cd6be6aef9  Docs/Helpers/Input.md:48  consecutive statements on a line must be separated by ';'
-8367ed789b5b  Docs/Helpers/Input.md:55  unary operator cannot be separated from its operand
-8e0b26210e84  Docs/Helpers/Input.md:67  consecutive statements on a line must be separated by ';'
+b06014a03f48  Docs/Helpers/Input.md:105  consecutive statements on a line must be separated by ';'
+08d010246bba  Docs/Helpers/Input.md:114  cannot find 'brush' in scope
+f92b38359663  Docs/Helpers/Input.md:126  consecutive statements on a line must be separated by ';'
+79ee2cbf3f29  Docs/Helpers/Input.md:152  consecutive statements on a line must be separated by ';'
+1177688d0de2  Docs/Helpers/Input.md:183  cannot find 'paused' in scope
+c64f9f091aae  Docs/Helpers/Input.md:194  expected ',' separator
+f9bcf06f0aea  Docs/Helpers/Input.md:201  cannot find 'x' in scope
+3da996694044  Docs/Helpers/Input.md:214  consecutive statements on a line must be separated by ';'
+4eeafe0f61ad  Docs/Helpers/Input.md:220  cannot find 'position' in scope
+950c0a9c5d80  Docs/Helpers/Input.md:230  expected type before '->'
+725ffd331515  Docs/Helpers/Input.md:237  cannot find 'pictures' in scope
+8fb44123b8d1  Docs/Helpers/Input.md:251  expected ',' separator
+e8797eca5985  Docs/Helpers/Input.md:280  expected ',' separator
+9908ad262265  Docs/Helpers/Input.md:30  consecutive statements on a line must be separated by ';'
+fb9dcf7906f1  Docs/Helpers/Input.md:310  cannot find 'sketch' in scope
+f0cd6be6aef9  Docs/Helpers/Input.md:51  consecutive statements on a line must be separated by ';'
+8367ed789b5b  Docs/Helpers/Input.md:58  unary operator cannot be separated from its operand
+8e0b26210e84  Docs/Helpers/Input.md:70  consecutive statements on a line must be separated by ';'
 d7ff958d42d5  Docs/Helpers/Listening.md:107  cannot find 'ears' in scope
 14edaccb0736  Docs/Helpers/Listening.md:128  cannot find 'mic' in scope
 7abdd4aad5ea  Docs/Helpers/Listening.md:141  'module' is inaccessible due to 'internal' protection level
@@ -823,16 +826,17 @@ eb3d4457c490  Docs/Helpers/MIDIFiles.md:135  errors thrown from here are not han
 9c3561da79ed  Docs/Helpers/MIDIFiles.md:147  errors thrown from here are not handled
 f915388f1eb2  Docs/Helpers/MIDIFiles.md:176  cannot find 'synth' in scope
 8f3726bdcd34  Docs/Helpers/MIDIFiles.md:54  'module' is inaccessible due to 'internal' protection level
-545d4e2f1553  Docs/Helpers/Math.md:113  cannot find 'angle' in scope
-7b68eee41292  Docs/Helpers/Math.md:127  cannot find 'palette' in scope
-0714efb3d0bc  Docs/Helpers/Math.md:135  expected ',' separator
-fc35f42a451a  Docs/Helpers/Math.md:168  expected ',' separator
-3e45647bc875  Docs/Helpers/Math.md:187  expected ',' separator
-b3812f188f90  Docs/Helpers/Math.md:24  expected ',' separator
-8e6813ce40f8  Docs/Helpers/Math.md:44  expected ',' separator
-1af5b1655501  Docs/Helpers/Math.md:60  expected ',' separator
-eaee9918e7ae  Docs/Helpers/Math.md:66  cannot find 'progress' in scope
-7dfe97ef7006  Docs/Helpers/Math.md:76  expected ',' separator
+545d4e2f1553  Docs/Helpers/Math.md:114  cannot find 'angle' in scope
+7b68eee41292  Docs/Helpers/Math.md:128  cannot find 'palette' in scope
+0714efb3d0bc  Docs/Helpers/Math.md:136  expected ',' separator
+fc35f42a451a  Docs/Helpers/Math.md:169  expected ',' separator
+922b46b911bc  Docs/Helpers/Math.md:188  expected ',' separator
+3e45647bc875  Docs/Helpers/Math.md:220  expected ',' separator
+b3812f188f90  Docs/Helpers/Math.md:25  expected ',' separator
+8e6813ce40f8  Docs/Helpers/Math.md:45  expected ',' separator
+1af5b1655501  Docs/Helpers/Math.md:61  expected ',' separator
+eaee9918e7ae  Docs/Helpers/Math.md:67  cannot find 'progress' in scope
+7dfe97ef7006  Docs/Helpers/Math.md:77  expected ',' separator
 62c82222d99f  Docs/Helpers/Parameters.md:106  cannot find 'radius' in scope
 7e61c6f57b45  Docs/Helpers/Parameters.md:131  unary operator cannot be separated from its operand
 8b0cd896963b  Docs/Helpers/Parameters.md:146  property wrappers are not yet supported in top-level code

@@ -45,6 +45,17 @@ public struct Vector3: Vector, Hashable, Codable {
     /// The `(x, y)` components as a `Vector2`: the drop-the-depth projection
     /// onto the canvas plane.
     public var xy: Vector2 { Vector2(x, y) }
+
+    /// The angle around the y axis, in radians: `0` along +z and a quarter
+    /// turn along +x. With ``elevation`` and `length` it is the vector in
+    /// spherical coordinates, the three numbers `spherical(_:_:_:around:)`
+    /// takes back. In `-pi...pi`, and `0` for a vector straight up or down.
+    public var azimuth: Double { atan2(x, z) }
+
+    /// The angle above the plane of x and z, in radians: `0` level with it,
+    /// `pi / 2` straight up the y axis, `-pi / 2` straight down. `0` for the
+    /// zero vector.
+    public var elevation: Double { atan2(y, (x * x + z * z).squareRoot()) }
 }
 
 public extension Vector3 {

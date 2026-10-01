@@ -626,6 +626,19 @@ enum PointMarker: CaseIterable, Equatable, Hashable, Sendable
   case diamond
   case square
   case x
+enum PointerShape: CaseIterable, Equatable, Hashable, Sendable
+  case arrow
+  case closedHand
+  case columnResize
+  case crosshair
+  case dragCopy
+  case iBeam
+  case notAllowed
+  case openHand
+  case pointingHand
+  case rowResize
+  case zoomIn
+  case zoomOut
 enum Profile
   static func ellipse(radiusX: Double = default, radiusY: Double = default, segments: Int = default) -> [Vector2]
   static func polygon(sides: Int = default, radius: Double = default) -> [Vector2]
@@ -1935,6 +1948,7 @@ func sketchResource(_: String, in: String = default, from: String = default) -> 
 func smoothstep(_: Double, _: Double, _: Double) -> Double
 func sobolPoints(count: Int, in: Rectangle, startIndex: Int = default) -> [Vector2]
 func spanningTree(through: [Vector2]) -> [Contour]
+func spherical(_: Double, _: Double, _: Double, around: Vector3 = default) -> Vector3
 func spirolateral(order: Int, turn: Double = default, step: Double = default, reversed: Set<Int> = default, repeats: Int? = default, maxRepeats: Int = default) -> Spirolateral
 func step(_: Double, _: Double) -> Double
 func stipple(count: Int, in: Rectangle, iterations: Int = default, using: R, density: (Vector2) -> Double) -> [Vector2]
@@ -1988,6 +2002,8 @@ open class Sketch: Sendable
   func chamferIntersect(radius: Double, _: () -> Void)
   func chamferSubtract(radius: Double, _: () -> Void)
   func chamferUnion(radius: Double, _: () -> Void)
+  func chooseFiles(withExtensions: [String] = default, allowsMultiple: Bool = default)
+  func chosenFiles() -> [String]
   func clearEachFrame()
   func columnsIntersect(radius: Double, count: Int, _: () -> Void)
   func columnsSubtract(radius: Double, count: Int, _: () -> Void)
@@ -1999,6 +2015,7 @@ open class Sketch: Sendable
   func compute(_: ComputeKernel, reading: ComputeTexture, writing: ComputeTexture, params: ComputeParams = default)
   func compute(_: ComputeKernel, writing: ComputeTexture, params: ComputeParams = default)
   func contactShadows(_: Bool = default, length: Double? = default)
+  func copyFrame()
   func curlField(scale: Double = default, z: Double = default) -> FlowField
   func curlNoise(_: Double, _: Double) -> Vector2
   func curlNoise(_: Double, _: Double, _: Double) -> Vector3
@@ -2277,6 +2294,7 @@ open class Sketch: Sendable
   func haltonPoints(count: Int, in: Rectangle? = default, bases: (Int, Int) = default, startIndex: Int = default) -> [Vector2]
   func headlight(_: Color = default, intensity: Double = default, specular: Color? = default, softness: Double = default)
   func hexGrid(columns: Int, rows: Int, orientation: HexGrid.Orientation = default, padding: Insets = default, gutter: Double = default) -> HexGrid
+  func hidePointer()
   func hitomezashi(in: Rectangle? = default, columns: Int, rows: Int, probability: Double = default) -> Hitomezashi
   func hollow(_: Double)
   func hyperbolicTiling(sides: Int = default, meeting: Int = default, in: Rectangle? = default, viewpoint: Vector2 = default, minEdge: Double = default) -> [HyperbolicTiling.Tile]
@@ -2413,6 +2431,7 @@ open class Sketch: Sendable
   func pointLight(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default)
   func pointMarker(_: PointMarker)
   func pointSize(_: Double)
+  func pointerShape(_: PointerShape)
   func poissonDisk(in: Rectangle? = default, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
   func poissonDisk(in: Shape, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
   func popState()
@@ -2441,6 +2460,7 @@ open class Sketch: Sendable
   func raymarchSteps(_: Int)
   func record(into: StrokeMark)
   func rectangleLight(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default)
+  func redraw()
   func reflectionBounces(_: Int = default)
   func reflectionQuality(_: RenderQuality = default)
   func relaxCircles(_: [Circle], in: Rectangle? = default, iterations: Int = default, padding: Double = default) -> [Circle]
@@ -2479,6 +2499,7 @@ open class Sketch: Sendable
   func shadowSamples(_: Int)
   func shadowSoftness(_: Double = default)
   func shapeGrammar(_: ShapeGrammar, generations: Int) -> [ShapeGrammar.Piece]
+  func showPointer()
   func shuffled(_: [T]) -> [T]
   func signedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -2628,6 +2649,7 @@ open class Sketch: Sendable
   func worley(_: Double, _: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   func worley(_: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   open func draw()
+  open func filesChosen()
   open func filesDropped()
   open func keyPressed()
   open func keyReleased()
@@ -2663,6 +2685,7 @@ open class Sketch: Sendable
   var frameRate: Double { get }
   var height: Double { get }
   var isCueFading: Bool { get }
+  var isExporting: Bool { get }
   var isLooping: Bool { get }
   var isRecording: Bool { get }
   var isVectorExporting: Bool { get }
@@ -6568,7 +6591,9 @@ struct Vector3: ParamValue, RadialBasisPoint, RadialBasisValue, Tweenable, Vecto
   static var axisCount: Int { get }
   static var channelCount: Int { get }
   typealias Constraints = ParamVector3Constraints
+  var azimuth: Double { get }
   var channels: [Double] { get }
+  var elevation: Double { get }
   var lengthSquared: Double { get }
   var xy: Vector2 { get }
 struct Visual

@@ -202,6 +202,17 @@ open class Sketch {
     }
     var droppedFileInbox: [String] = []
 
+    /// The paths picked through ``chooseFiles(withExtensions:allowsMultiple:)``
+    /// since the last call, oldest first, and reading them empties the list.
+    ///
+    /// Poll it in `draw()`, or override ``filesChosen()`` to be told when the
+    /// panel closes on a pick. A panel closed without one adds nothing.
+    public func chosenFiles() -> [String] {
+        defer { chosenFileInbox.removeAll() }
+        return chosenFileInbox
+    }
+    var chosenFileInbox: [String] = []
+
     /// The modifier keys (shift, option, command, control) currently held. Combine
     /// with a drag for a modified gesture, e.g. `if modifiers.contains(.shift) { … }`.
     public internal(set) var modifiers: ModifierKeys = []
@@ -471,6 +482,10 @@ open class Sketch {
     /// respond at the drop; to pick them up later, poll `droppedFiles()` in
     /// `draw()` instead.
     open func filesDropped() {}
+    /// Called once each time the open panel that `chooseFiles(...)` showed
+    /// closes on a pick. `chosenFiles()` holds the paths. A still sketch calls
+    /// `redraw()` here to show what it picked.
+    open func filesChosen() {}
     /// Called once after this sketch is hot-swapped in by the live-reload host,
     /// right after its `setup()`, or on its first frame when the swap carried
     /// the run and `setup()` did not run at all. Override to do reload-specific
@@ -512,6 +527,47 @@ open class Sketch {
     public func noLoop() { setLooping(false) }
     /// Resume the continuous draw loop.
     public func loop() { setLooping(true) }
+
+    /// Draw one more frame of a sketch that has stopped looping, and hold
+    /// again after it.
+    ///
+    /// An input hook is the usual caller: a still sketch that changes what it
+    /// shows on a click or a key asks for the one frame that shows it, and
+    /// costs nothing between them. Several calls before that frame is drawn
+    /// ask for it once. While the loop runs it does nothing, since the next
+    /// frame is coming anyway, and inside `setup()` or `draw()` it does
+    /// nothing either, since that frame is the one being drawn. An export
+    /// draws every frame it writes, so it ignores the call too.
+    ///
+    /// ```swift
+    /// override func setup() { noLoop() }
+    /// override func mousePressed() {
+    ///     marks.append(mouse)
+    ///     redraw()
+    /// }
+    /// ```
+    public func redraw() {
+        guard !isLooping else { return }
+        host?.sketchWantsFrame(self)
+    }
+
+    /// True for the whole of an export: `setup()`, the frames run up to the
+    /// first one written, and every frame written, whichever export it is (a
+    /// picture, a sequence, a video, a GIF, a vector file, a web page). False
+    /// in a window, and false in a `--bench` run, whose frames stand in for a
+    /// window's.
+    ///
+    /// A sketch that spreads slow work over live frames reads it to do all of
+    /// that work at once when every frame is written, since a written frame
+    /// cannot be improved by the frames after it.
+    ///
+    /// ```swift
+    /// let budget = isExporting ? stale.count : 4   // outlines re-traced this frame
+    /// ```
+    ///
+    /// ``isVectorExporting`` is the narrower question, true only while the
+    /// frame is recorded as vector line work.
+    public var isExporting: Bool { OllinApp.isExporting }
 
     // MARK: Accumulation
 
@@ -2566,6 +2622,21 @@ open class Sketch {
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 
+    /// Whatever is showing this sketch, for the few things a sketch asks of
+    /// it: one frame while it holds still, the pointer over its canvas, a file
+    /// chosen through the open panel. Set by the live runner; nil in an export
+    /// or a test without a window, where each of those asks does nothing.
+    weak var host: SketchHost?
+
+    /// The pointer this sketch asked for over its canvas (`pointerShape(_:)`,
+    /// `hidePointer()`), kept here so the runner can put it back on a view
+    /// that mounts later or after a reload.
+    var requestedPointer: PointerShape = .arrow
+    var hidesPointerOverCanvas = false
+
+    /// The frame grab `copyFrame()` arms, made on its first call.
+    var frameCopier: FrameCopier?
+
     /// Record-and-replay plumbing (see `Take`): at most one of the two is
     /// attached. The recorder writes this run down as it plays; the player
     /// drives this run from a recorded one, overriding the clock and gating
@@ -4364,8 +4435,7 @@ open class Sketch {
             for e in extensions { e.setup(self) }
         }
         drawer.beginFrame()
-        drawer.runsOnFixedClock = (OllinApp.isRenderingHeadless && !OllinApp.isBenchmarking)
-            || takePlayer != nil
+        drawer.runsOnFixedClock = OllinApp.isExporting || takePlayer != nil
         // The GPU takes the clock as a 32-bit float, which runs out of precision
         // in a run measured in days, so an installation hands it one that starts
         // over (`shaderClock`); every other run passes `time` through unchanged.

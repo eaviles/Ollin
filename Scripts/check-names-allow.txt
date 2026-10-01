@@ -22,6 +22,8 @@ saveFrame                       # named in Docs/QuickReference.md's table of nam
 millis                          # named in Docs/QuickReference.md's table of names from elsewhere
 beginShape                      # named in Docs/QuickReference.md's table of names from elsewhere
 endShape                        # named in Docs/QuickReference.md's table of names from elsewhere
+noCursor                        # named in Docs/QuickReference.md's table of names from elsewhere
+selectInput                     # Processing's file chooser, named in Docs/QuickReference.md's table of names from elsewhere
 
 # Other frameworks, formats, and languages the prose compares against or quotes.
 ofSignedNoise                   # openFrameworks

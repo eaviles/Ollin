@@ -73,6 +73,17 @@ Once you know the pattern, you can also write it as one call. `polar(angle, radi
 
 [An angle and a radius make a point](#an-angle-and-a-radius-make-a-point) goes from an angle to a point. `atan2(y, x)` goes back, from a point to its angle. Given the two parts of an arrow, it answers the angle the arrow points at, measured from the positive x-axis, between `-.pi` and `.pi`. It takes y first. It needs both parts, because an arrow and its opposite have the same ratio of y to x. (1, 1) and (-1, -1) are one example. A vector's `angle` is this call. [Chapter 10](10-Vectors.md) turns a shape to face where it moves with it, and [Chapter 17](17-MarksAndMedia.md) reads the lean of a pen.
 
+### Two angles and a radius make a point in space
+
+In the [3D world frame](#the-3d-world-frame) a point on a sphere needs two angles and a distance. The first angle is the azimuth, and it turns around the y axis like a compass bearing. `0` points along +z toward you, and a quarter turn points along +x. The second is the elevation, which lifts the point above the floor of x and z: `0` is level, `.pi / 2` is straight up. These are latitude and longitude with a radius added, the way maps have named places since Ptolemy's *Geography*, nearly two thousand years ago.
+
+```swift
+let planet = Vector3(0, 1, 0)
+let moon = spherical(time, 0.3, 3, around: planet)    // circles the planet, a little above its level
+```
+
+`spherical(azimuth, elevation, radius, around:)` takes the angles first and the radius last, as `polar` does. Inside, it is the circle pattern twice. The elevation splits the radius into a height of `sin(elevation) * radius` and a reach along the floor of `cos(elevation) * radius`. The azimuth then places that reach on a circle. It is the same convention as the camera's orbit, so `spherical(a, e, r)` is where a camera stands when it orbits the origin at those angles. A `Vector3`'s `azimuth` and `elevation` go the other way and read the two angles off a direction. Each is an `atan2` like the one above.
+
 ### Sine: a smooth swing
 
 <picture>

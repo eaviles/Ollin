@@ -62,6 +62,7 @@ The loop is [Chapter 1](01-HelloOllin.md)'s subject, and the clock is [Chapter 3
 | `function draw()` | `override func draw()` | runs at the display's refresh rate |
 | `createCanvas(800, 600)` | `override var canvasSize: CanvasSize { .size(800, 600) }` | a property, not a call; `.square(1080)` is the default. Processing: `size(800, 600)` in `setup()` or `settings()` |
 | `noLoop()` / `loop()` | same names | motion is the default, and `noLoop()` stops after one frame |
+| `redraw()` | same name | one more frame of a stopped sketch, usually from an input hook ([Chapter 1](01-HelloOllin.md#one-more-frame-when-asked-redraw)) |
 | `frameCount` | `frameCount` | an `Int` |
 | `millis()` | `time` | seconds as a `Double`, not milliseconds |
 | `deltaTime` | `deltaTime` | seconds, not milliseconds |
@@ -199,6 +200,8 @@ One difference changes how vector code reads. p5's vector methods change the vec
 | `key`, `keyCode` | same names | typed: a `Character?` and a `KeyCode?` |
 | `keyPressed()`, `keyReleased()` | same names | |
 | `keyIsDown(LEFT_ARROW)` | `isKeyDown(.leftArrow)` | also by character: `isKeyDown("a")` |
+| `cursor(CROSS)`, `noCursor()` | `pointerShape(.crosshair)`, `hidePointer()` | the shape is a `PointerShape`; `showPointer()` brings it back, and both apply over the canvas only |
+| Processing: `selectInput(prompt, callback)` | `chooseFiles(withExtensions:)` | the pick arrives in `chosenFiles()`, with `filesChosen()` as the callback |
 
 ### The bigger machines
 
@@ -223,7 +226,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 | p5.js | Ollin | Notes |
 |---|---|---|
-| `saveCanvas()` | `swift run OllinLive Pulse.swift --export out.png` | `--frame 90` picks the frame |
+| `saveCanvas()` | `swift run OllinLive Pulse.swift --export out.png` | `--frame 90` picks the frame; `copyFrame()` in a sketch puts the frame on the clipboard instead |
 | `saveFrames(…)` | `--export-sequence out --seconds 5` | |
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
