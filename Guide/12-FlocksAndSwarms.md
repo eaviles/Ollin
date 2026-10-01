@@ -4,7 +4,7 @@
 
 # 12. Flocks and swarms
 
-<img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them, and one large pale triangle riding inside the coral band" width="560">
+<img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them, and one large pale triangle flying inside the coral band" width="560">
 
 Give a few hundred creatures something to want, let each watch only its neighbors, and a flock appears with nobody in charge. You build one creature that chases, stops, and roams, then give every creature the same three rules about its neighbors. The flock above leaves trails that fade instead of being erased. The pale shape inside it is one creature on its own, hunting a boid. Other crowds run by a rule come after it: chases that draw curves, walkers that make room, and fireflies falling into step.
 
