@@ -636,7 +636,21 @@ The wrecking ball used a world that pushes back, its hinges, a grab, and a break
   <img src="Images/11-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
 </picture>
 
-The middle panel is the double pendulum, two arms hinged end to end. [Chapter 22](22-IteratedForms.md#the-classic-chaos-machine-doublependulum) takes it up beside the rest of chaos, and the other two panels are taught here.
+The middle panel is the double pendulum, two arms hinged end to end. [Chapter 22](22-IteratedForms.md#the-classic-chaos-machine-doublependulum) takes it up beside the rest of chaos, and the other two panels are taught here. Holding one works like holding the other two. Make it with its arm lengths and starting angles, `advance()` it once a frame, and draw the arms through `bob1` and `bob2`, both measured from the pivot:
+
+```swift
+let pendulum = DoublePendulum(length1: 180, length2: 180, angle1: 2.1, angle2: 2.5)
+
+// each frame:
+pendulum.advance()
+withState {
+    translate(width / 2, height / 3)
+    drawLine(.zero, pendulum.bob1)
+    drawLine(pendulum.bob1, pendulum.bob2)
+}
+```
+
+The tangle in the panel is `bob2` appended to a list each frame and drawn with `drawPolyline`.
 
 ### A limb that reaches: `IKChain`
 
