@@ -1,14 +1,15 @@
-// figure: frame=0
+// figure: frame=100
 //
 // Guide payoff (Chapter 8): a type specimen. The headline is glyph geometry
-// rather than text, filled and then beaded along its own resampled outline;
-// the three font kinds set the same line underneath; and the passage is
-// justified inside a box.
+// rather than text, filled and then beaded along its own resampled outline,
+// and each of its letters floats on a beat of its own; the three font kinds
+// set the same line underneath; and the passage is justified inside a box.
 import Ollin
 
 final class Specimen: Sketch {
     @Param("Bead spacing", 6.0...26.0) var beadSpacing = 13.0
     @Param("Bead size", 1.0...6.0) var beadSize = 2.6
+    @Param("Drift", 0.0...24.0) var drift = 8.0
     @Param("Justify") var justified = true
 
     let paper = Color(hex: 0xF4EFE6)
@@ -27,10 +28,20 @@ final class Specimen: Sketch {
 
         // The headline is not text. It is a set of outlines, filled in ink,
         // then respaced so the beads sit an even distance apart along them.
+        // Each letter floats on its own beat: it rises and sinks a little and
+        // leans as it goes, about its own center, with a head start per letter
+        // so the five never move as one. The beads come along, because they
+        // are computed from the moved outline.
         textFont(OutlineFont(name: "Avenir Next Heavy") ?? .systemBold)
         textSize(210)
         textAlign(.center, .middle)
-        for glyph in textToShapes("Ollin", width / 2, 250) {
+        for (i, letter) in textToShapes("Ollin", width / 2, 250).enumerated() {
+            let beat = time * 1.3 + Double(i) * 1.1
+            let center = letter.centroid
+            let glyph = letter.mapPoints { p in
+                p.rotated(by: cos(beat) * 0.03, around: center) + Vector2(0, sin(beat) * drift)
+            }
+
             noStroke()
             fill(ink)
             drawShape(glyph)

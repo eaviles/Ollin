@@ -4,9 +4,9 @@
 
 # 8. Words
 
-<img src="Images/08-Words/Specimen.jpg" alt="A type specimen sheet on cream paper: the word Ollin set very large in black with small red beads running evenly around every outline, three lines below it in an outline font, a pen font, and a pixel font, and a passage set flush on both edges under a red rule" width="560">
+<img src="Images/08-Words/Specimen.jpg" alt="A type specimen sheet on cream paper: the word Ollin set very large in black with small red beads running evenly around every outline, its five letters floating a little above or below one another and leaning slightly, three lines below it in an outline font, a pen font, and a pixel font, and a passage set flush on both edges under a red rule" width="560">
 
-A word is a shape that also means something, and it comes with centuries of craft attached. Here you learn to set words and to take them apart, down to outlines you can warp and respace. The specimen above beads one word along its own outline, over the three kinds of letter and a passage set flush on both edges. After it, letters come one at a time, and scripts that do not run like English keep their shaping, their direction, and their columns.
+A word is a shape that also means something, and it comes with centuries of craft attached. Here you learn to set words and to take them apart, down to outlines you can warp and respace. The specimen above beads one word along its own outline, over the three kinds of letter and a passage set flush on both edges. Each letter of that word floats on its own beat. After it, letters come one at a time, and scripts that do not run like English keep their shaping, their direction, and their columns.
 
 ## Saying something: `drawText`
 
@@ -119,7 +119,7 @@ The box has a second setting. The call `textHangingPunctuation()` lets a full st
 
 ## Putting it together: a type specimen
 
-Now you can build the sheet at the top. A specimen is what type designers make to show a face off, which makes it the right shape for this sketch. It composes every step above. The headline word comes from [Text as geometry](#text-as-geometry-texttoshapes), and the three kinds of letter from [Three kinds of letters](#three-kinds-of-letters-outline-bitmap-and-stroke-fonts). The passage set flush comes from [Both edges flush](#both-edges-flush-the-box-form-and-justification). Make a new file, `MySketches/Specimen.swift`:
+Now you can build the sheet at the top. A specimen is what type designers make to show a face off, which makes it the right shape for this sketch. It composes every step above. The headline word comes from [Text as geometry](#text-as-geometry-texttoshapes), and the three kinds of letter from [Three kinds of letters](#three-kinds-of-letters-outline-bitmap-and-stroke-fonts). The passage set flush comes from [Both edges flush](#both-edges-flush-the-box-form-and-justification). The headline moves with `time`, from [Chapter 3](03-MotionAndTime.md), one letter at a time. Make a new file, `MySketches/Specimen.swift`:
 
 ```swift
 import Ollin
@@ -127,6 +127,7 @@ import Ollin
 final class Specimen: Sketch {
     @Param("Bead spacing", 6.0...26.0) var beadSpacing = 13.0
     @Param("Bead size", 1.0...6.0) var beadSize = 2.6
+    @Param("Drift", 0.0...24.0) var drift = 8.0
     @Param("Justify") var justified = true
 
     let paper = Color(hex: 0xF4EFE6)
@@ -145,10 +146,20 @@ final class Specimen: Sketch {
 
         // The headline is not text. It is a set of outlines, filled in ink,
         // then respaced so the beads sit an even distance apart along them.
+        // Each letter floats on its own beat: it rises and sinks a little and
+        // leans as it goes, about its own center, with a head start per letter
+        // so the five never move as one. The beads come along, because they
+        // are computed from the moved outline.
         textFont(OutlineFont(name: "Avenir Next Heavy") ?? .systemBold)
         textSize(210)
         textAlign(.center, .middle)
-        for glyph in textToShapes("Ollin", width / 2, 250) {
+        for (i, letter) in textToShapes("Ollin", width / 2, 250).enumerated() {
+            let beat = time * 1.3 + Double(i) * 1.1
+            let center = letter.centroid
+            let glyph = letter.mapPoints { p in
+                p.rotated(by: cos(beat) * 0.03, around: center) + Vector2(0, sin(beat) * drift)
+            }
+
             noStroke()
             fill(ink)
             drawShape(glyph)
@@ -207,25 +218,27 @@ Run it, then drag the bead spacing. What each part contributes:
 
 - `textToShapes` is what the sketch turns on. The headline is drawn twice from one call: filled as a shape, then beaded along the *same* outline. Both need the outlines, which only that call hands you.
 - `resampled(spacing:)` is what makes the beads even. Outline points come back dense on curves and sparse on straights. So beads placed one per raw point would clump around the O and thin out along the l. Respacing first puts every point a fixed distance from the last one.
+- `mapPoints` is what moves a letter. It passes every point of the glyph through one closure and keeps the holes and the winding. Each letter gets a `beat` of its own from its place in the word, so the five never rise together. The move is a small rise and a lean about the letter's own `centroid`, and `Drift` sets how far. The beads are computed after the move, which is why they come along.
 - The three font blocks are three calls because each kind of font is its own type. The pen font draws with `stroke`, so leaving `noStroke` set from the headline makes it disappear with no error.
 - `drawText(_:in:)` wraps the passage inside a rectangle, and `textJustify()` opens the spaces so both edges line up. Turn the `Justify` parameter off and the right edge goes ragged, which is the same passage doing less work.
 
-When a specimen is a keeper, export it as a still:
+When a specimen is a keeper, export one frame of it as a still:
 
 ```sh
-swift run OllinLive MySketches/Specimen.swift --export specimen.png
+swift run OllinLive MySketches/Specimen.swift --export specimen.png --frame 100
 ```
 
 Before moving on, make it yours:
 
-- Warp the headline before you bead it, using the `signedNoise` push from [Text as geometry](#text-as-geometry-texttoshapes). The beads follow the outline wherever it goes, because they are computed from it.
+- Warp the headline before you bead it, using the `signedNoise` push from [Text as geometry](#text-as-geometry-texttoshapes). It goes inside the same `mapPoints` closure as the drift. The beads follow the outline wherever it goes, because they are computed from it.
+- Set `Drift` to 0 and the sheet holds still, the way a printed specimen does. Set it to 24 and the letters float apart, which is the point where it stops reading as a specimen.
 - Set `beadSpacing` to 26 and `beadSize` to 5.5. The beads stop reading as a texture and start reading as a dotted rule.
 - Swap the headline for a word in a script you do not read. Everything here works the same way, and the scripts family below says why.
 - Drop the fill and keep only the beads, on a dark ground. The word stays readable from its outline alone.
 
 ## Letters one at a time: the per-glyph form
 
-The specimen set its headline as one shape and its lines as one string each. There is also a form of `drawText` that hands you a string one glyph at a time. So each letter can carry its own color, position, and motion. The specimen has no use for it. But it is the move under kinetic typography, where letters move on their own, and the scripts family after it reads through the same closure.
+The specimen moved its headline letters as shapes, one glyph at a time, and set its three lines as one string each. There is also a form of `drawText` that hands you a string one glyph at a time, with no outlines in sight. So each letter can carry its own color, position, and motion. The specimen has no use for it, because it already had the geometry. But it is the move under kinetic typography, where letters move on their own, and the scripts family after it reads through the same closure.
 
 ### Letters that move: `drawText` with a closure
 
