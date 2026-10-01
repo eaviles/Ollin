@@ -127,7 +127,7 @@ Each incoming value is mapped into the parameter's own range and assigned. The s
 
 A knob sends whole steps, 128 of them, so a value that jumps from step to step can look jerky. Give the parameter a `smoothing:` and every source glides instead. `.eased(0.3)` is a fixed glide of 0.3 seconds. `.smoothed` is an adaptive filter that holds still at rest and follows quickly under a moving hand. The smoothing belongs to the parameter, so it applies to every hand at once.
 
-A parameter can also hide its row in the inspector while another parameter gives it nothing to do, with a *show-rule*. The rose uses one: `$trailCount.show(when: $trails) { $0 }` shows the trail count only while trails are on. [Show-rules](../Docs/Helpers/Parameters.md#show-rules-parameters-that-come-and-go) in the reference has the rest, and the [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift) panel uses one on every finish that depends on another.
+A parameter can also hide its row in the inspector while another parameter gives it nothing to do, with a *show-rule*. The rose uses one: `$trailCount.show(when: $trails) { $0 }` shows the trail count only while trails are on. The closure at the end is the rule. It is handed the other parameter's value, and on a toggle that value is the answer. [Show-rules](../Docs/Helpers/Parameters.md#show-rules-parameters-that-come-and-go) in the reference has the rest, and the [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift) panel uses one on every finish that depends on another.
 
 ## Something to hold: game controllers
 
@@ -497,7 +497,7 @@ Typing addresses into a phone means keeping them in step with the sketch. Rename
   <img src="Images/38-ControlsAndSignals/PublishedParameters.jpg" alt="Three columns: five parameter declarations on the left, the node each is served as in the middle with its address, type letter and range, and the control an app lays out on the right; a return arrow along the bottom carries one OSC message back" width="680">
 </picture>
 
-Here is the sketch in the figure. The `extend` line is the only setup:
+Here is the sketch in the figure. The `extend` line is the only setup. `extend` registers an extension, a small object the sketch tells about each frame, and [Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches them in full. Here it is the server that publishes the parameters:
 
 ```swift
 import OllinOSC
@@ -632,7 +632,7 @@ final class Edits: Sketch {
 
 The read to notice is `messages()`. On a busy stream, dozens of messages land between two frames, and the `json` and `text` reads show only the last of them. `messages()` hands over every message since the last frame, oldest first, so nothing slips between two frames. `updateCount` counts every message here, since each one was sent because there was something new to say.
 
-The feed also stays connected by itself, as the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream of server-sent events that labels its messages with ids is resumed from the last one seen. So a message sent while the connection was down arrives late instead of being lost. On a web socket, the `greeting:` you give the feed is sent at every open, not once. That keeps a service that wants a subscribe message subscribed across every redial. Your sketch reads `isConnected` and `problem` to say what is happening, and keeps drawing everything that already arrived.
+The feed also stays connected by itself, as the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream of server-sent events that labels its messages with ids is resumed from the last one seen. So a message sent while the connection was down arrives late instead of being lost. On a web socket, a `greeting:` is a message you give the feed when you make it, to send as soon as it connects. It is sent at every open, not once. That keeps a service that wants a subscribe message subscribed across every redial. Your sketch reads `isConnected` and `problem` to say what is happening, and keeps drawing everything that already arrived.
 
 In an export, the feed waits for one message while `start()` runs, then holds it for every frame, the way the polled feed reads once. The `Data/Edits` example is this entry as a finished sketch. The encyclopedia's edits fall as rain, each drop sized by the bytes somebody just added or took away.
 
