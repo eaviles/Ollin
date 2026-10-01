@@ -69,7 +69,7 @@ Here is Ollin's `.plant` preset, rewritten one, two, three, and four times:
   <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
 </picture>
 
-Nothing about the drawing code changes between panels. The drawing gets richer because the *sentence* gets longer. Every `X` in the string sprouts the whole shoot pattern each round, so one letter becomes fifteen hundred in four rewrites. Growth by rewriting is exponential, which is how a twig's worth of rule makes a tree's worth of structure.
+Nothing about the drawing code changes between panels. The drawing gets richer because the *sentence* gets longer. `X` is a symbol the plant grammar adds to the turtle's alphabet. It draws nothing itself, and its rule is the whole shoot pattern. Every `X` in the string sprouts that pattern each round, so one letter becomes fifteen hundred in four rewrites. Growth by rewriting is exponential, which is how a twig's worth of rule makes a tree's worth of structure.
 
 Ollin ships the grammar machine as `LSystem`, thirteen classic presets, and a turtle that returns ordinary contours. Drawing one is a line:
 
@@ -89,7 +89,7 @@ final class Fern: Sketch {
 
 <img src="Images/13-GrowingThings/Fern.jpg" alt="A drooping fern-like plant in soft green line work, grown from the plant grammar at five rewriting rounds" width="560">
 
-`drawLSystem` fits the grown form to the canvas and strokes it. Its sibling `lSystem(...)` returns the contours instead, for when you want to place, color, or export them yourself, as the garden does. A grammar of your own is one constructor. `LSystem(axiom: "F", rules: ["F": "F+F-F-F+F"], angle: 90)` is a Koch curve. Its rules are a table pairing each symbol with its replacement, written in the brackets [Chapter 8](08-Words.md) used for a font's axes. The [L-systems reference](../Docs/Generators/LSystem.md) lists the whole preset shelf, from `.dragonCurve` to `.hilbertCurve`.
+`drawLSystem` fits the grown form to the canvas and strokes it. Its sibling `lSystem(...)` returns the contours instead, for when you want to place, color, or export them yourself, as the garden does. A grammar of your own is one constructor. `LSystem(axiom: "F", rules: ["F": "F+F-F-F+F"], angle: 90)` is a Koch curve, the fractal zigzag that makes the edge of a paper snowflake. Its rules are a table pairing each symbol with its replacement, written in the brackets [Chapter 8](08-Words.md) used for a font's axes. The [L-systems reference](../Docs/Generators/LSystem.md) lists the whole preset shelf, from `.dragonCurve` to `.hilbertCurve`.
 
 One more idea turns plants into *populations*. Give a symbol several possible rewrites, and let a seeded roll pick one each time it is rewritten. `.randomPlant` does this. Every plant grown from the same grammar is a different individual with the same species' look. The rolls come from your `seed`, so the same seed grows the same garden, down to the last twig, as [Chapter 4](04-Randomness.md) promised.
 
@@ -350,7 +350,7 @@ for cell in lattice.run(generations: 9, seed: 7) {
 }
 ```
 
-A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. There lies the difference between the two kinds of rewriting. A plain L-system can always rewrite its symbols again, so it grows for as many rounds as you ask. Shapes are rewritten in place, so a shape grammar runs out of room.
+A sweep is one generation, the count the `generations:` argument sets. It offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. There lies the difference between the two kinds of rewriting. A plain L-system can always rewrite its symbols again, so it grows for as many rounds as you ask. Shapes are rewritten in place, so a shape grammar runs out of room.
 
 One arithmetic fact sits behind this whole family, and it saves you from writing rules down. The cut meets two edges away from their ends. So it hands one new corner to each part at each end, and every corner the cell had lands in exactly one part. Whatever the cell was, **the two parts carry four more corners between them than the cell had**. Now say that the parts may only have three, four, or five corners. A triangle can then only become a triangle and a quadrilateral. A quadrilateral can only become a triangle and a pentagon, or two quadrilaterals. A pentagon can only become a quadrilateral and another pentagon. A hexagon has one legal cut. A shape with seven corners has none at all, so it is finished however large it is. Nobody writes those rules. They are what is left once you name the corner range.
 
@@ -376,7 +376,7 @@ Where DLA's walkers arrive most often is also where an electric field would be s
   <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and small in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
 </picture>
 
-One number sets the character. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a dial DLA never had. At `1` you are back to DLA's bushes. Near `2` the strongest cells win so often that the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
+One number sets the character. The model lives on a grid of cells, and the frontier is every empty cell touching the discharge. Each frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a dial DLA never had. At `1` you are back to DLA's bushes. Near `2` the strongest cells win so often that the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
 
 ```swift
 var bolt: DielectricBreakdown!

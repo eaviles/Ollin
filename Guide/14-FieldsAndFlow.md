@@ -51,7 +51,7 @@ final class Compass: Sketch {
 
 <img src="Images/14-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
 
-The second loop puts a gold dot on the forward end of each needle, so you can tell which way it points. `field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector, ready for [Chapter 10](10-Vectors.md)'s arithmetic. The `z` argument is the third noise dimension doing its usual job from [Chapter 5](05-Noise.md). Nudge it over time and the whole field drifts. Two things to notice before moving on. The needles are only *samples*, and the field has an answer between them too. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
+The second loop puts a gold dot on the forward end of each needle, so you can tell which way it points. `field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector. That is the length-one arrow [Chapter 10](10-Vectors.md#length-and-direction-length-normalized-and-limitedto)'s `normalized` made, ready for its arithmetic. `scale` multiplies the coordinates before the noise reads them, like the `* 0.004` in [Chapter 5](05-Noise.md)'s calls, so a smaller number gives broader currents. The `z` argument is the third noise dimension doing its usual job from [Chapter 5](05-Noise.md). Nudge it over time and the whole field drifts. Two things to notice before moving on. The needles are only *samples*, and the field has an answer between them too. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
 
 One habit follows from that. `flowField` reads the sketch's seeded noise, so call `seed(...)` first and build the field fresh each frame. You can also trace what you need once and keep the *results*. The field is a function laid over the noise rather than a stored grid.
 
@@ -64,7 +64,7 @@ The compass asked the field a question at each point of a grid. The field become
   <img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
 </picture>
 
-The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The `stepLength` argument sets the accuracy, since big steps cut corners on tight curves.
+The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have a sheet of flowing lines. The call also takes a `stepLength` argument, left at its default above. It sets the accuracy, since big steps cut corners on tight curves.
 
 ## Lines that keep their distance: evenly spaced streamlines
 
@@ -83,7 +83,7 @@ let lines = field.streamlines(from: poissonDisk(radius: 24),
                               bounds: bounds, separation: 21)
 ```
 
-The starts come from `poissonDisk`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences), because evenly spaced lines need evenly spread beginnings. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
+The starts come from `poissonDisk`, the even scatter from [Chapter 4](04-Randomness.md#chance-spread-evenly-blue-noise-and-low-discrepancy-sequences), because evenly spaced lines need evenly spread beginnings. `steps` is how many steps a line may take each way from its start, and `bounds` is the rectangle a line stops at when it leaves. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
 
 ## Putting it together: the print
 
@@ -170,13 +170,13 @@ Passing all the levels at once samples the field a single time and traces them a
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there is a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That is how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also how you get an outline out of any field. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also how you get an outline out of any field. A metaball is a blob drawn where a few soft bumps add up past a level. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
 
 ### Standing waves: Chladni figures
 
 The noise contours above sit at whatever level you pick. Some fields come with a level that means something on its own, and zero is the usual one. A vibrating plate is the classic example. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that were not. Those lines are the plate's **nodes**, the places where it does not move at all. Chladni toured Europe showing the figures they make.
 
-The square plate's movement has a closed form, so Ollin gives you the value at any point directly instead of a simulation:
+The square plate's movement has a closed form, one formula that gives its displacement at any point. So Ollin gives you the value directly instead of a simulation:
 
 ```swift
 let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
@@ -191,7 +191,7 @@ let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
 
 One rule matters. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Both are properties of the physics rather than bugs to work around. Keep `m` and `n` apart and every mode gives you a figure.
 
-`m` and `n` do not have to be whole numbers, and that is how you animate one. Fractional modes morph continuously from one figure to the next. A slow tour through mode space makes the sand rearrange itself, the way it does when the bow moves. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
+`m` and `n` do not have to be whole numbers, and that is how you animate one. Fractional modes morph continuously from one figure to the next. A slow tour through mode space makes the sand rearrange itself, the way it does when the bow moves. Keep `m` above `n` at every stop along the way, or the tour crosses the line where they are equal and the figure blinks out.
 
 The grains are a picture of the zero level, and the section above already has the tool for the lines themselves. Hand the same function to `isolines` at zero, and the nodal lines come back as contours you can stroke or plot:
 
@@ -267,7 +267,7 @@ compose {
 
 <img src="Images/14-FieldsAndFlow/Streaks.jpg" alt="Two panels: a smooth gray field of soft blurred blobs on the left, and on the right the same field shown as fine dark fiber combed along its directions, the strands turning where the grays turn" width="640">
 
-`field:` says how the aside's colors encode a direction. `.angle(turns:)` reads gray as a heading, black to white sweeping that many full turns, which is the natural reading for a noise layer. `.contour` follows the aside's contour lines, so streaks circle every bright blob. `.vector` reads red and green as a direction, which is what a normal map holds. `length` is the streak from end to end, as a fraction of the canvas. Raise it and the picture melts into strokes.
+`field:` says how the aside's colors encode a direction. `.angle(turns:)` reads gray as a heading, black to white sweeping that many full turns, which is the natural reading for a noise layer. `.contour` follows the aside's contour lines, so streaks circle every bright blob. `.vector` reads red and green as a direction. That is what a normal map holds, a picture that stores a surface direction in each pixel's color. `length` is the streak from end to end, as a fraction of the canvas. Raise it and the picture melts into strokes.
 
 The walk stops at the layer's edge and at any pixel where the field is zero. A hard edge in the field traps the walk on one side of it, so keep the steering layer smooth, or read it as `.contour`. The base does not have to be grain. Feed a photo in and the picture is brushed along the field. The `Effects/FlowStreaks` example brushes a grained sheet along a field with the three readings on a parameter.
 
@@ -275,7 +275,7 @@ The walk stops at the layer's edge and at any pixel where the field is zero. A h
 
 A **radial basis function** field is a number field built from values you know at a few scattered places. It is made so that it passes through every one of them. Every field so far came out of noise or out of a formula. You adjusted its arguments, but you never told it what to be at any particular place. Sometimes you want the reverse. You know what you want at a few spots, and you want something sensible everywhere else. That is what this field is for: a smooth color, number, or vector field through scattered readings. Rolland Hardy introduced the method in 1971, to draw the surface of the ground from scattered survey points.
 
-If those spots sat on a grid you could interpolate between the neighbors. Scattered points have no fixed neighbors, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave:
+If those spots sat on a grid you could interpolate between the neighbors, blending from one value to the next the way [Chapter 3](03-MotionAndTime.md#map-and-lerp-moving-between-ranges)'s `lerp` does. Scattered points have no fixed neighbors, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave:
 
 ```swift
 let field = RadialBasis(points: anchors, values: inks)!

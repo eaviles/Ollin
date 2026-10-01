@@ -66,11 +66,11 @@ let cut = circle.subtracting(star)        // this one, minus that one
 let rind = circle.symmetricDifference(star)   // either, but not both
 ```
 
-These are the **shape booleans**, and they let you build a drawing the way you build a sentence. A window is a wall subtracting a rectangle, and a crescent is a circle subtracting a shifted circle. The plate at the top is a mosaic subtracting a ribbon. Holes come along correctly, results are ordinary `Shape`s, and you can chain as deep as the sentence needs. When a boolean's result looks unexpectedly *solid* or *hollow*, the shape's winding rule is usually the reason. The [geometry reference](../Docs/Drawing/Geometry.md#shape-booleans) covers the two rules, and when each reads more naturally.
+`circle` and `star` are two `Shape`s, each built from a list of points with `Shape(points)`, as [Chapter 7](07-Tiles.md#pieces-that-have-to-fit-polyominoes)'s polyomino listing did. These are the **shape booleans**, and they let you build a drawing the way you build a sentence. A window is a wall subtracting a rectangle, and a crescent is a circle subtracting a shifted circle. The plate at the top is a mosaic subtracting a ribbon. Holes come along correctly, results are ordinary `Shape`s, and you can chain as deep as the sentence needs. When a boolean's result looks unexpectedly *solid* or *hollow*, the shape's winding rule is usually the reason. That is the rule for what counts as inside, named in [Contours, shapes, and holes](#contours-shapes-and-holes). The [geometry reference](../Docs/Drawing/Geometry.md#shape-booleans) covers the two rules, and when each reads more naturally.
 
 ### Growing, shrinking, and thickening: `offset` and `stroked`
 
-Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward on a positive number and shrinks it inward on a negative one, with holes moving the opposite way. Shrinking a region repeatedly reads as topographic contour lines, until it pinches apart and disappears. The `Patterns/Topography` example is that loop. `stroked(width:)` turns a *line* into a *region*. It gives the closed shape that a pen stroke of that width would cover, round or square or butt ends included. An open contour comes back as a thick line with ends, and a closed one as a band. The ribbon is the open case:
+Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward on a positive number and shrinks it inward on a negative one, with holes moving the opposite way. Shrinking a region repeatedly reads as topographic contour lines, until it pinches apart and disappears. The `Patterns/Topography` example is that loop. `stroked(width:)` turns a *line* into a *region*. It gives the closed shape that a pen stroke of that width would cover, round or square or butt ends included. An open contour comes back as a thick line with ends, and a closed one as a band. The ribbon is the open case. `wave` is the list of points down its middle, which the plate builds from noise:
 
 ```swift
 let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
@@ -91,14 +91,14 @@ A scatter of points hides two structures, and each is the other turned inside ou
   <img src="Images/15-ShapesAsMaterial/Duals.jpg" alt="Two panels over the same orange points: on the left Voronoi cells partitioning the panel into convex territories, on the right the Delaunay triangulation joining each point to its natural neighbors" width="680">
 </picture>
 
-The **Voronoi diagram** gives each point its territory, the region of the canvas closer to it than to any other point. The **Delaunay triangulation** joins each point to its natural neighbors. Ollin builds both from any point list:
+The **Voronoi diagram** gives each point its territory, the region of the canvas closer to it than to any other point. The points are called sites. The **Delaunay triangulation** joins each point to its natural neighbors. Ollin builds both from any point list:
 
 ```swift
 let mosaic = voronoi(sites, in: bounds)     // mosaic.cells is one Shape per site
 let mesh = delaunay(sites)                  // mesh.triangles, each a Triangle value
 ```
 
-Every Voronoi cell is a `Shape`, so every shape tool in the chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. A companion helper comes with it. `lloyd(sites, in: bounds)` nudges every site to its cell's center and re-tessellates. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
+Every Voronoi cell is a `Shape`, so every shape tool in the chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. A companion helper comes with it. `lloyd(sites, in: bounds)` relaxes the scatter, nudging every site to its cell's center and building the mosaic again. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
 
 A Voronoi diagram answers one question badly, and it comes up as soon as the things being divided have sizes. A boundary halfway between two centers is fair between two points. Between a large circle and a small one it is not, because it falls inside the large one.
 
@@ -113,7 +113,7 @@ let cells = powerDiagram(of: circles).cells   // one per circle, some possibly e
 
 A **power diagram** gives every site a weight and subtracts it from the squared distance. Weight each circle by the square of its radius, as `powerDiagram(of:)` does. The boundary between two circles then becomes the line where a point is equally far outside both. When two circles overlap, that line runs through their crossing points. Every circle that touches no other then sits inside its own cell. Franz Aurenhammer worked the diagram out in 1987.
 
-The cells are still convex and they still tile the region exactly, so everything you do to a Voronoi cell you can do to these. What is new is that a site can lose. A small circle inside a large one gets no cell at all, and its entry in `cells` is an empty `Shape` that draws nothing.
+The cells are still convex, with no corner bending inward, and they still tile the region exactly. So everything you do to a Voronoi cell you can do to these. What is new is that a site can lose. A small circle inside a large one gets no cell at all, and its entry in `cells` is an empty `Shape` that draws nothing.
 
 ## Outlines and bones
 
@@ -167,7 +167,7 @@ Two arguments shape the result. `spacing` is how finely the boundary gets sample
 
 The skeleton also remembers thickness. Each branch carries `radii` alongside `points`, one radius per vertex, holding the size of the disk that fits there. So the skeleton knows how fat the shape is at every step along itself. Walk a branch drawing a circle from each pair and you rebuild the region as a train of disks. Size marks by the radius and a drawing swells through the thick parts, then thins into the tips. The largest radius anywhere marks the deepest point of the shape, the spot furthest from any edge.
 
-Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 8](08-Words.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
+Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 8](08-Words.md)'s `textToShapes` skeletonize as they are, counters and all. A counter is the hole inside a letter, the inside of an `o` or an `a`. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
 ## Lines for a pen: hatching
 
@@ -327,7 +327,7 @@ drawPoints(stipple, size: 3)
 drawPoints(rim, size: 6)
 ```
 
-Three lines and a glyph is a stipple. The plate scattered its sites over a whole rectangle, and this confines the same scatter to a shape. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
+`drawPoints` draws one dot at every point in a list, `size` across. Three lines and a glyph is a stipple. The plate scattered its sites over a whole rectangle, and this confines the same scatter to a shape. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
 
 ## Filling space by packing: circles, fractions, and shapes
 
@@ -414,7 +414,7 @@ let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
 drawCircle(best.values[0], best.values[1], best.values[2])
 ```
 
-The closure is the whole of it. You never say how to search, only how to score. `reduce` adds up one number over a list, starting from the value you give it. The closure inside it runs once per mark and returns the running total. Squared distance is the usual scoring. It punishes one badly placed mark much harder than several slightly off ones. That is what makes the answer settle in the middle of the crowd.
+The closure is the whole of it. You never say how to search, only how to score. `best.values` is the three numbers where the walk stopped, in the order you gave them. `reduce` adds up one number over a list, starting from the value you give it. The closure inside it runs once per mark and returns the running total. Squared distance is the usual scoring. It punishes one badly placed mark much harder than several slightly off ones. That is what makes the answer settle in the middle of the crowd.
 
 It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest. So when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each number a little either side of where it stands. So your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
 
@@ -422,7 +422,7 @@ The third panel of the fitting figure in [Chapter 14](14-FieldsAndFlow.md#a-fiel
 
 ### The straight skeleton
 
-There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
+There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, one that bends inward, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
@@ -470,7 +470,7 @@ if let art = try? loadSVG("boat.svg") {
 }
 ```
 
-The [SVG import reference](../Docs/Drawing/SVG.md) has loading, the element type, what the importer skips, and the plotter round trip, and [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift) is the worked example.
+`fitted(in:)` is a copy of the drawing scaled into a rectangle, since a file's units are its own. `drawSVG(_:in:)` does that scaling for you before drawing. The [SVG import reference](../Docs/Drawing/SVG.md) has loading, the element type, what the importer skips, and the plotter round trip, and [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift) is the worked example.
 
 ## A pattern that folds: creases and cuts
 
