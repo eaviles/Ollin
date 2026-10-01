@@ -32,7 +32,7 @@ The repository carries a fuller check than those two commands, and it is the fir
 Scripts/ollin doctor
 ```
 
-It asks about the system, the Swift compiler, the graphics chip, the shaders, the `ollin` command, and the permissions a sketch might need. Metal is the part of macOS that draws with the graphics chip, and a shader is a small program that runs on it. Ollin draws through both, and you write a shader of your own in [Chapter 18](18-YourFirstShader.md). Each answer gets a mark. `ok` is settled. `--` is a note, and nothing is waiting on it. `no` would stop a sketch from running, and a `fix:` line under it says what to do.
+It asks about the system, the Swift compiler, the graphics chip, the shaders, the `ollin` command, and the permissions a sketch might need. The `ollin` command is a shortcut you install near the end of this chapter, under [A shorter way to run things](#a-shorter-way-to-run-things). Metal is the part of macOS that draws with the graphics chip, and a shader is a small program that runs on it. Ollin draws through both, and you write a shader of your own in [Chapter 18](18-YourFirstShader.md). Each answer gets a mark. `ok` is settled. `--` is a note, and nothing is waiting on it. `no` would stop a sketch from running, and a `fix:` line under it says what to do.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CheckingTheMachine-dark.jpg">
@@ -47,7 +47,7 @@ Now run your first example:
 swift run --package-path Examples Example-Basic-HelloCircle
 ```
 
-The first build takes a few minutes, and after that builds are quick. A window opens with a circle slowly breathing on a white canvas. That is a **sketch**: a small program that draws a picture. Ollin runs its drawing commands again for every frame, and changing the numbers between frames is what turns the picture into motion.
+The first build takes a few minutes, and after that builds are quick. A window opens with a circle slowly breathing on a white canvas. That is a **sketch**: a small program that draws a picture. A frame is one picture the display shows, and it shows many of them each second. Ollin runs its drawing commands again for every frame, and changing the numbers between frames is what turns the picture into motion.
 
 A running sketch keeps the terminal busy, so quit it with ⌘Q when you've looked at it.
 
@@ -66,7 +66,7 @@ That opens the **gallery**, a window holding every example in the repository. Gi
   <img src="Images/01-HelloOllin/Gallery.jpg" alt="A diagram of the gallery window in three panes: a left sidebar listing example groups as a collapsible tree with one entry selected and a filter field at its foot, a dark center pane showing the running sketch, and a right sidebar of four labeled sliders" width="680">
 </picture>
 
-The window has three panes. On the left, every example, as a collapsible tree that mirrors the folders on disk. A filter field at the bottom finds one by name. In the middle, the selected sketch, running rather than pictured. On the right, that sketch's parameters, which you can drag while it runs, and hide with ⌘/ when you want the picture to yourself.
+The window has three panes. On the left, every example, as a collapsible tree that mirrors the folders on disk. A filter field at the bottom finds one by name. In the middle, the selected sketch, running rather than pictured. On the right, that sketch's parameters. A parameter is a value the sketch lets you tune from a control while it runs. Hide the panel with ⌘/ when you want the picture to yourself.
 
 **Arrow keys move through the example list**, not into the sketch. The canvas takes the keyboard only once you *click* it. That way you can still arrow to the next example while a sketch is reading key presses. Examples that use the keyboard show a small hint saying so, and clicking the canvas hands the keys over.
 
@@ -184,7 +184,7 @@ Those go inside your class, above `draw()`, like the two functions did.
 
 > **Swift note.** `override var canvasSize: CanvasSize { .square(1080) }` is a *property* rather than a function, and the braces hold the value it answers with. It is the same move as `override func draw()`: Ollin asks, and your class answers. `.square(1080)` is short for `CanvasSize.square(1080)`, because Swift lets you drop the type name when it can already tell what you mean. `.white` is `Color.white` the same way.
 
-`canvasSize` takes a square, an explicit width and height, or one of the named presets. Try `.fhd1080` for a wide canvas. The other presets cover video, phone screens, and real paper, so `.uhd4K`, `.vertical1080`, `.a4`, and `.usLetter` are all there. Paper sizes come with a companion, since `.a4.dpi(300)` keeps the page the same physical size while raising the pixel grid to print resolution.
+`canvasSize` takes a square, an explicit width and height, or one of the named presets. Try `.fhd1080` for a wide canvas. The other presets cover video, phone screens, and real paper, so `.uhd4K`, `.vertical1080`, `.a4`, and `.usLetter` are all there. Paper sizes come with a companion. `.a4.dpi(300)` keeps the page the same physical size while raising the pixel grid to print resolution, 300 dots per inch.
 
 `windowMode` is `.auto` by default, which picks a preview size that fits your screen and then holds it. `.fixed(0.5)` pins the preview to a fraction you choose, and holds that. Neither window can be dragged, and neither changes your drawing. `.resizable` is the one that can: the window is free, and the canvas follows it, so `width` and `height` change as you drag. Exports still come out at the size `canvasSize` declares.
 
@@ -266,7 +266,7 @@ drawCircle(620, 540, 200)     // drawn second, so it sits on top
 
 The blue circle sits on top because it was drawn second, and after the swap the orange one does. This is also why `background(...)` goes first in `draw()`: it repaints the whole canvas, so anything drawn before it is covered up. There is no other layering in a plain sketch. Whatever you want in front, you draw last.
 
-Colors come as names or as hex values like `Color(hex: 0xE4572E)`, the same six digits you'd use on the web. Ollin ships a selected set of the CSS color names, `.white`, `.black`, `.orange`, `.crimson` and about forty more, and the [Color](../Docs/Drawing/Color.md) page lists them all. There are many more shapes where these three came from, including ellipses, triangles, stars, and hearts, and the [Drawing](../Docs/Drawing/Drawing.md) page is the full catalog.
+Colors come as names or as hex values like `Color(hex: 0xE4572E)`, the same six digits you'd use on the web. Ollin ships a selected set of the CSS color names, the names a web page can call a color by. `.white`, `.black`, `.orange`, `.crimson` and about forty more are there, and the [Color](../Docs/Drawing/Color.md) page lists them all. There are many more shapes where these three came from, including ellipses, triangles, stars, and hearts, and the [Drawing](../Docs/Drawing/Drawing.md) page is the full catalog.
 
 Sometimes you want a rectangle centered on a point instead of placed by its corner. Then ask for it by name, with `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor. Naming the anchor is how you say which part of the shape the position refers to.
 
@@ -322,7 +322,7 @@ The recipe has a second half, and it's what the finished sketch is built on. `si
   <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 </picture>
 
-Angles here are radians rather than degrees, and one full turn is `.tau`. Angle zero points to the right, and since y grows downward, a growing angle sweeps clockwise. The angle in the diagram is negative, which is why its point sits above the center rather than below.
+Angles here are radians rather than degrees. A radian is a unit of angle, and in radians a full turn is `.tau`, where degrees would say 360. [Appendix B](B-JustEnoughMath.md#radians-and-tau) draws the unit as a dial. Angle zero points to the right, and since y grows downward, a growing angle sweeps clockwise. The angle in the diagram is negative, which is why its point sits above the center rather than below.
 
 Give the pair an angle and a radius. Then `cos(angle) * radius` is how far across the point sits, and `sin(angle) * radius` is how far down. Grow the angle and the point walks the rim. For now that's all this guide asks of `cos` and `sin`, that they're how you place things *around* something. [Chapter 3](03-MotionAndTime.md) shows why it works, and [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
 

@@ -187,7 +187,7 @@ The top row stays inside `0...1`, quadratics and cubics that differ mainly in ho
 
 <img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 
-Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the craft of easing: an animation's character lives in the spacing rather than the path. Hand the dot listing `Easing.easeOutBounce(t)` in place of `smoothstep(0, 1, t)`. The trip keeps its start, its end, and its three seconds, but it feels different. The S itself is in the catalog too, as `Easing.smoothstep`, for anywhere that wants a curve by name.
+Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the craft of easing: an animation's character lives in the spacing rather than the path. The catalog is a type named `Easing`, and each curve is a value of it that you call like a function. Hand the dot listing `Easing.easeOutBounce(t)` in place of `smoothstep(0, 1, t)`. The trip keeps its start, its end, and its three seconds, but it feels different. The S itself is in the catalog too, as `Easing.smoothstep`, for anywhere that wants a curve by name.
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
@@ -256,7 +256,7 @@ Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the intere
 - Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using [Chapter 2](02-Color.md)'s `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
 - `direction` flips alternate rings, so neighboring rings run against each other. Make them all run the same way and see how much of the sketch's character that was.
 
-When it feels right in the live window, export it. Anything Ollin can run it can also render to a file without opening a window. The live host accepts the same export flags the example targets do:
+When it feels right in the live window, export it. Anything Ollin can run it can also render to a file without opening a window. The live host accepts the same export flags the examples do, including the `--export` from [Chapter 1](01-HelloOllin.md#make-it-yours):
 
 ```sh
 swift run OllinLive MySketches/RingPulse.swift --export-loop ring.gif --gif-width 540
@@ -376,7 +376,7 @@ if after(3) { revealed = true }
 if everyFrames(10) { sim.step() }
 ```
 
-`every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. The `phase:` argument shifts the beat by a fraction of its own length, as it did for `sway` above. So two rhythms of one period can take turns:
+`every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. `random(width)` with one number is the roll from Chapter 2 with its low end at zero, so each dot lands anywhere across the canvas. The `phase:` argument shifts the beat by a fraction of its own length, as it did for `sway` above. So two rhythms of one period can take turns:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Beats-dark.jpg">
@@ -397,7 +397,7 @@ Motion is the default here, and for some people it is a problem. Movement can br
 let speed = prefersReducedMotion ? 0.1 : 1.0
 ```
 
-Nothing changes on its own, and that is deliberate. Only you know which of your movements is the sketch and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
+The `? :` picks the first value when the test holds and the second when it does not. So `speed` is 0.1 under Reduce Motion and 1.0 otherwise. Nothing changes on its own, and that is deliberate. Only you know which of your movements is the sketch and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
 
 ## Where this comes from
 

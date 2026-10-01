@@ -17,7 +17,7 @@ You've been writing `Color(hex: 0x2B2B2B)` since your first sketch. Here is the 
 ```swift
 fill(.coral)                                   // the CSS named set
 fill(Color(hex: 0x5E60CE))                     // six hex digits, straight from a color picker
-fill(Color(hex: 0xE4572E, alpha: 0.5))         // alpha is its own parameter
+fill(Color(hex: 0xE4572E, alpha: 0.5))         // alpha is its own argument
 fill(Color(white: 0.15))                       // a quick gray
 fill(Color(red: 0.95, green: 0.45, blue: 0.25))
 ```
@@ -32,7 +32,7 @@ Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once
 
 Hex digits and names get you a color you already know. To find one you don't, you want dials you can turn, and which dials you get depends on the model. A **color model** is a set of dials for naming a color. Pick how many dials there are and what each one does, and you have a model. There is no single right answer. A set of dials that suits a screen does not suit a hand mixing paint, and neither suits an eye judging whether two colors match.
 
-RGB has three dials, one per amount of light, because that is what a screen emits and a sensor measures. It goes back to nineteenth-century experiments on how three lights can be matched against a fourth, and it is how the machine stores color. That makes it good for storing and poor for choosing, because nobody thinks "a little less green" when what they want is a warmer orange.
+RGB has three dials, one each for red, green, and blue light, because that is what a screen emits and a sensor measures. It goes back to nineteenth-century experiments on how three lights can be matched against a fourth, and it is how the machine stores color. That makes it good for storing and poor for choosing, because nobody thinks "a little less green" when what they want is a warmer orange.
 
 HSB rearranges the same colors onto dials a person can steer. Pick the hue on a wheel, then decide how vivid it is (saturation) and how bright (brightness). It arrived with computer graphics in the 1970s, made for a designer's hand. Later in this chapter you will meet a third family, the OK models, which arrange the dials so that equal moves *look* equal.
 
@@ -62,7 +62,7 @@ The wheel names one color at a time. The next thing you want is the color halfwa
   <img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
 </picture>
 
-Ollin gives you mixing as one call, with the space as a choice. With `blue` and `yellow` standing for any two colors you hold:
+Ollin gives you mixing as one call, with the space as a choice. A space is a color model used for the arithmetic, and each model finds a different halfway color. With `blue` and `yellow` standing for any two colors you hold:
 
 ```swift
 Color.mix(blue, yellow, 0.5)              // OKLab, the default
@@ -82,7 +82,7 @@ The `sin(time) * 0.5 + 0.5` squeezes the `-1...1` that `sin` gives into the `0..
 
 ## Hues that weigh the same: lightness
 
-Mixing was the first place the eye and the numbers disagreed. The second is lightness. Two hues with the same `brightness` in HSB do not look equally bright. The eye weighs hues differently, so a yellow glows and a blue turns heavy. The same perceptual model as OKLab comes in two more shapes that put lightness on a dial of its own. **OKLCH** turns OKLab into dials for lightness, chroma (how far from gray a color sits), and hue, so nudging a hue leaves the lightness alone. Mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** arranges the same three dials so that everything you ask for is displayable. That makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked.
+Mixing was the first place the eye and the numbers disagreed. The second is lightness. Two hues with the same `brightness` in HSB do not look equally bright. The eye weighs hues differently, so a yellow glows and a blue turns heavy. The same perceptual model as OKLab comes in two more shapes that put lightness on a dial of its own. **OKLCH** turns OKLab into dials for lightness, chroma (how far from gray a color sits), and hue, so nudging a hue leaves the lightness alone. Mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** arranges the same three dials so that everything you ask for is displayable, since a screen cannot show every color the numbers can name. That makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked.
 
 Three everyday moves come ready-made on top of OKLCH. A shadow, a highlight, and an accent can all come from the one color you chose, here called `ink`:
 
@@ -92,7 +92,7 @@ ink.darker(by: 0.25)   // and down, by as much as you ask for
 ink.complement         // the opposite hue at the same weight
 ```
 
-OKHSL does one more thing: hues that match in weight.
+OKHSL does one more thing: hues that match in weight. You spell one as `OKHSL(h:s:l:)`, its hue, saturation, and lightness each from 0 to 1, and hand it to `Color`.
 
 ```swift
 for i in 0..<12 {
@@ -145,7 +145,7 @@ Palette.analogous(of: base, count: 5)
 
 `spread:` on `splitComplementary` and `analogous` sets how far apart the companions sit, as a fraction of a turn. A harmony is a `Palette`, so it indexes and walks like `.set2` does. `.ramp()` turns it into the smooth kind, which is what the finished sketch does with one.
 
-A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself. Then read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean. Every mixing space from earlier is on the menu, so `Ramp([blue, yellow], in: .hsb)` walks the hue wheel between its two colors:
+A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself. A stop is a color paired with where it sits along the length, from 0 to 1. Then read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean. Every mixing space from earlier is on the menu, so `Ramp([blue, yellow], in: .hsb)` walks the hue wheel between its two colors:
 
 ```swift
 let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
@@ -166,7 +166,7 @@ The palette shows in the inspector as its colors side by side. Click one and the
 
 ## Gradients as paint
 
-A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of four ways. Below, `dusk` is the ramp from the kit section and `glow` is a ramp that ends in a transparent color. The last one, `wheel`, is a ramp of hues around the wheel:
+A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of four ways. Below, `dusk` is the ramp from the kit section and `glow` is a ramp that ends in a transparent color. `spot` is a point you choose, as a `Vector2`. The last one, `wheel`, is a ramp of hues around the wheel:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/GradientPaint-dark.jpg">
@@ -180,7 +180,7 @@ fill(.conic(center: spot, startAngle: -.pi / 2, wheel))            // once aroun
 stroke(.alongPath(wheel))                                          // along the stroke itself
 ```
 
-Each of them takes a `Ramp` or a plain list of colors. Alpha is kept too. A radial ramp that ends in a transparent color gives you a soft glow, as in the second panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.conic` sweeps the ramp once around a point you choose, starting from an angle you choose. That is a color wheel, a dial, or a pie in one call. A ramp whose last color repeats its first hides the seam where the sweep comes back around. `.alongPath` runs from the start of a line to its end. On a closed shape it sweeps once around its own center, which is how the ring above became a wheel too.
+Each of them takes a `Ramp` or a plain list of colors. Alpha is kept too. A radial ramp that ends in a transparent color gives you a soft glow, as in the second panel above. The coordinates are the ones you place shapes with, measured from the canvas corner. When [Chapter 6](06-GridsAndRepetition.md#moving-the-paper-translate-rotate-and-scale) moves the paper, a gradient moves with the shapes it paints. `.conic` sweeps the ramp once around a point you choose, starting from an angle you choose. `.pi` is half a turn, so `-.pi / 2` is a quarter turn back from the right, which is straight up. That is a color wheel, a dial, or a pie in one call. A ramp whose last color repeats its first hides the seam where the sweep comes back around. `.alongPath` runs from the start of a line to its end. On a closed shape it sweeps once around its own center, which is how the ring above became a wheel too.
 
 ## Palettes from a file
 
@@ -191,7 +191,7 @@ let sets = try! loadPalettes("1000.json")      // however many the file holds
 let one  = try! loadPalette("sunset.hex")     // just the first
 ```
 
-> **Swift note.** A call that can fail on the way, like reading a file, is marked `throws`, and you call it with `try`. `try!` says "I promise this works", and crashes if it doesn't, the way `!` did for the optional earlier. `try?` hands you `nil` instead of a crash. [Appendix A](A-JustEnoughSwift.md) has the rest of the story.
+> **Swift note.** A call that can fail on the way, like reading a file, is marked `throws`, and you call it with `try`. `try!` says "I promise this works", and crashes if it doesn't, the way `!` did for the optional earlier. `try?` hands you `nil`, Swift's name for the nothing case of an optional, instead of a crash. [Appendix A](A-JustEnoughSwift.md) has the rest of the story.
 
 A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in the shape `loadPalettes` expects. You do not need npm to use it. The repository holds the files, so take `100.json` or `1000.json` from it and drop the file next to your sketch. The call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use. So Ollin doesn't bundle them, and you should check the terms before selling work that uses them. And so many people have reached for this collection that its first palette shows up in a great deal of generative art. That palette's colors are `#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, and `#fa6900`. If you want your work to look like yours, [Chapter 9](09-Pictures.md#palettes-from-a-photograph) takes a palette out of a photograph you took.
 
