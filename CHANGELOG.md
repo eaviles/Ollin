@@ -56,6 +56,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A stack of contour levels costs one march.** `isolines(at: levels, ...)` sampled the field once but marched every cell again for each level, about 0.8 ms a level on a 650-wide grid, so a contour map of a cheap field paid for every level in full. Each cell now visits only the levels that pass between its corners, and joining the crossings into contours is faster too: 28 levels of a smooth lookup went from 22 ms to 8.5 ms beside 2.4 ms of sampling, with the same contours. [Isolines](Docs/Generators/Isolines.md)
+
+- **A hole in a contoured field leaves the contour open.** A field that returned NaN or infinity next to a contour made `isolines` interpolate a crossing onto NaN and stop the program. A cell with a corner that is not finite now holds no contour, so the line ends at the hole's edge.
+
 - **Input after a live reload reaches the sketch that is drawing.** In OllinLive and OllinLiveCoding, a click, a key, a drop, or the pointer's position after an edit went to the first instance the window mounted rather than the one swapped in, so a mouse-driven sketch stopped answering after its first reload. The canvas now follows every swap.
 
 - **A simulation's substeps cost what their kernels cost.** Every pass of a `Sim.shader` kernel, and every user shader, composed its full Metal source (the shared library spliced in, a few hundred kilobytes) and hashed it to find its compiled pipeline, on every encode: 17 ms a substep in a debug build, so a 25-substep field ran at two frames a second with the GPU idle, and `--bench` showed the time as end-to-end rather than GPU. The hash is now remembered by what the shader itself says (its text, its file, its modules, the variant and the output format), so a pass costs its draw; the same 25-substep field exports 60 frames in 2.5 s where it took 37. [Effects](Docs/Drawing/Effects.md#simfield-shader)

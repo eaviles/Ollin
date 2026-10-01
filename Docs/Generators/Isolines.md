@@ -60,7 +60,7 @@ isolines(at levels: [Double],
          field: (Vector2) -> Double) -> [[Contour]]
 ```
 
-This form traces a stack of levels from a single sampling pass. It returns one `[Contour]` per level, in the order you gave them, so it is the contour-map form. Sampling the field is the expensive part, so ten levels cost barely more than one.
+This form traces a stack of levels from a single sampling pass and a single march over the grid. It returns one `[Contour]` per level, in the order you gave them, so it is the contour-map form. Each cell visits only the levels that pass between its corners, so a level adds the cost of its own crossings and nothing more. When the field is costly to evaluate (noise, `fbm`), sampling is nearly all of the work, and ten levels cost barely more than one. When the field is a cheap lookup, joining each level's crossings into contours is most of what is left: a 650-cell-wide grid of a smooth lookup took about 3.5 ms for one level and 11 ms for 28 in a release build on an M2.
 
 ```swift
 let levels = Array(stride(from: 0.3, through: 0.7, by: 0.04))

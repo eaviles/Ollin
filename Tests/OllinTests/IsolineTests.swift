@@ -62,6 +62,59 @@ struct IsolineTests {
         }
     }
 
+    /// The stack form marches once and visits each cell only for the levels
+    /// between its lowest and highest corner, so it has to agree with a march
+    /// per level exactly, on the edges of that range too: levels out of order
+    /// and repeated, levels outside the field, levels landing exactly on
+    /// corner values (a staircase field, where most corners sit on a level),
+    /// corners that are NaN, and a NaN level.
+    @Test func oneMarchAgreesWithAMarchPerLevel() {
+        func expectSame(_ levels: [Double], resolution: Int, _ field: (Vector2) -> Double,
+                        _ name: String) {
+            let stacked = isolines(at: levels, in: bounds, resolution: resolution, field: field)
+            #expect(stacked.count == levels.count, "\(name)")
+            for (level, group) in zip(levels, stacked) {
+                let single = isolines(at: level, in: bounds, resolution: resolution, field: field)
+                let same = group.count == single.count && zip(group, single).allSatisfy {
+                    $0.points == $1.points && $0.isClosed == $1.isClosed
+                }
+                #expect(same, "\(name): level \(level) gives \(group.count) contours, alone \(single.count)")
+            }
+        }
+        func ripples(_ p: Vector2) -> Double {
+            sin(p.x * 0.041) * 40 + cos(p.y * 0.053 + p.x * 0.011) * 35 + sin((p.x + p.y) * 0.019) * 25
+        }
+        let levels = (0 ..< 28).map { -95 + Double(($0 * 11) % 28) * 7 }   // a shuffled ladder
+        expectSame(levels + [levels[3], levels[3], -500, 500], resolution: 160, ripples, "ripples")
+
+        func staircase(_ p: Vector2) -> Double { Double(Int(p.x / 23) + Int(p.y / 31)) }
+        expectSame((0 ... 30).map(Double.init).reversed(), resolution: 90, staircase, "staircase")
+
+        func holed(_ p: Vector2) -> Double {
+            p.distance(to: Vector2(200, 150)) < 60 ? .nan : ripples(p)
+        }
+        expectSame([-40, -10, 0, 10, 40, .nan], resolution: 120, holed, "NaN corners")
+        #expect(isolines(at: [.nan], in: bounds, field: ripples) == [[]], "a NaN level crosses nothing")
+    }
+
+    /// A field that is NaN or infinite somewhere has no contour there: a ring
+    /// crossing the hole comes back as one open line with every point finite,
+    /// where a crossing interpolated against the hole used to land on NaN and
+    /// stop the program.
+    @Test func aHoleInTheFieldOpensTheRing() {
+        func field(_ p: Vector2) -> Double {
+            if p.x > 260 { return p.y > 150 ? .nan : .infinity }
+            return p.distance(to: Vector2(200, 150))
+        }
+        for contours in [isolines(at: 80, in: bounds, resolution: 160, field: field),
+                         isolines(at: [80], in: bounds, resolution: 160, field: field)[0]] {
+            #expect(contours.count == 1)
+            #expect(contours.first?.isClosed == false)
+            #expect(contours.allSatisfy { $0.points.allSatisfy { $0.x.isFinite && $0.y.isFinite } })
+            #expect(contours.first.map { $0.points.allSatisfy { $0.x <= 261 } } == true)
+        }
+    }
+
     /// A hyperbolic saddle field separates into its two branches (the
     /// cell-average rule keeps them from crossing into an X).
     @Test func saddleFieldKeepsItsBranchesApart() {

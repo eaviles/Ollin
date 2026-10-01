@@ -25,7 +25,9 @@ import Foundation
 /// on a grid `resolution` cells across the longer side (square-ish cells, so
 /// the short side gets proportionally fewer); raise it for tighter curves,
 /// at linearly more field samples per cell. Saddle cells are disambiguated
-/// by the cell's average, the standard rule. Deterministic.
+/// by the cell's average, the standard rule. A cell with a corner where the
+/// field is NaN or infinite holds no contour, so a hole in the field leaves
+/// the contours open at its edge. Deterministic.
 public func isolines(at level: Double,
                      in bounds: Rectangle,
                      resolution: Int = 128,
@@ -35,8 +37,11 @@ public func isolines(at level: Double,
 }
 
 /// The contours of `field` at each of `levels`, one `[Contour]` per level in
-/// order. The field is sampled once and traced per level, so a stack of
-/// levels (the topographic map) costs one sampling pass.
+/// order. The field is sampled once and the cells are marched once, each cell
+/// tracing only the levels that pass between its corners, so a stack of
+/// levels (the topographic map) costs one sampling pass plus its crossings.
+/// Each level's contours are the ones `isolines(at:in:resolution:field:)`
+/// traces for it alone.
 public func isolines(at levels: [Double],
                      in bounds: Rectangle,
                      resolution: Int = 128,
@@ -44,8 +49,7 @@ public func isolines(at levels: [Double],
     guard let grid = IsolineGrid(bounds: bounds, resolution: resolution) else {
         return levels.map { _ in [] }
     }
-    let values = grid.sample(field)
-    return levels.map { grid.trace(values: values, level: $0) }
+    return grid.trace(values: grid.sample(field), levels: levels)
 }
 
 // MARK: - Sketch sugar
@@ -208,67 +212,118 @@ private struct IsolineGrid {
     /// saddle cell, paired by the cell-average rule), then stitch segments
     /// into contours.
     func trace(values: [Double], level: Double) -> [Contour] {
-        let stride = cols + 1
         var segments: [(from: Vector2, to: Vector2)] = []
         for j in 0 ..< rows {
             for i in 0 ..< cols {
-                // Corners counterclockwise from the cell's low corner:
-                // 0 = (i, j), 1 = (i+1, j), 2 = (i+1, j+1), 3 = (i, j+1).
-                let v0 = values[j * stride + i] - level
-                let v1 = values[j * stride + i + 1] - level
-                let v2 = values[(j + 1) * stride + i + 1] - level
-                let v3 = values[(j + 1) * stride + i] - level
-                var code = 0
-                if v0 < 0 { code |= 1 }; if v1 < 0 { code |= 2 }
-                if v2 < 0 { code |= 4 }; if v3 < 0 { code |= 8 }
-                guard code != 0, code != 15 else { continue }
-
-                let x0 = x(i), x1 = x(i + 1), y0 = y(j), y1 = y(j + 1)
-                func interp(_ ax: Double, _ ay: Double, _ av: Double,
-                            _ bx: Double, _ by: Double, _ bv: Double) -> Vector2 {
-                    let t = av / (av - bv)
-                    return Vector2(ax + t * (bx - ax), ay + t * (by - ay))
-                }
-                func e0() -> Vector2 { interp(x0, y0, v0, x1, y0, v1) }   // low edge
-                func e1() -> Vector2 { interp(x1, y0, v1, x1, y1, v2) }   // right
-                func e2() -> Vector2 { interp(x0, y1, v3, x1, y1, v2) }   // high edge
-                func e3() -> Vector2 { interp(x0, y0, v0, x0, y1, v3) }   // left
-
-                // Oriented so a shared endpoint is one segment's `to` and the
-                // next one's `from`, which is what lets the stitch walk
-                // directionally. Saddles (5 and 10) pair their two segments
-                // by the cell average: below the level, the inside corners
-                // connect through the center; above, they stay separate.
-                switch code {
-                case 1: segments.append((e3(), e0()))
-                case 2: segments.append((e0(), e1()))
-                case 3: segments.append((e3(), e1()))
-                case 4: segments.append((e1(), e2()))
-                case 5:
-                    if (v0 + v1 + v2 + v3) / 4 < 0 {
-                        segments.append((e1(), e0())); segments.append((e3(), e2()))
-                    } else {
-                        segments.append((e3(), e0())); segments.append((e1(), e2()))
-                    }
-                case 6: segments.append((e0(), e2()))
-                case 7: segments.append((e3(), e2()))
-                case 8: segments.append((e2(), e3()))
-                case 9: segments.append((e2(), e0()))
-                case 10:
-                    if (v0 + v1 + v2 + v3) / 4 < 0 {
-                        segments.append((e0(), e3())); segments.append((e2(), e1()))
-                    } else {
-                        segments.append((e0(), e1())); segments.append((e2(), e3()))
-                    }
-                case 11: segments.append((e2(), e1()))
-                case 12: segments.append((e1(), e3()))
-                case 13: segments.append((e1(), e0()))
-                case 14: segments.append((e0(), e3()))
-                default: break
-                }
+                appendCrossings(of: level, inCell: i, j, values: values, to: &segments)
             }
         }
         return stitch(segments)
+    }
+
+    /// Every level's contours from one march. A level crosses a cell only when
+    /// some corner is below it and some corner is not, so it lies above the
+    /// lowest corner and at or below the highest; a cell visits just the
+    /// levels in that range, found by a binary search over the sorted levels,
+    /// and the cell code makes the final call on each. Segments reach each
+    /// level's list in the order `trace(values:level:)` makes them, so every
+    /// level stitches to the same contours as its own march. A cell with a
+    /// corner that is not finite holds no contour, and a NaN level crosses
+    /// nothing.
+    func trace(values: [Double], levels: [Double]) -> [[Contour]] {
+        let order = levels.indices.filter { !levels[$0].isNaN }.sorted { levels[$0] < levels[$1] }
+        let ascending = order.map { levels[$0] }
+        var segments = [[(from: Vector2, to: Vector2)]](repeating: [], count: levels.count)
+        guard !ascending.isEmpty else { return levels.map { _ in [] } }
+        let stride = cols + 1
+        for j in 0 ..< rows {
+            for i in 0 ..< cols {
+                let c0 = values[j * stride + i], c1 = values[j * stride + i + 1]
+                let c2 = values[(j + 1) * stride + i + 1], c3 = values[(j + 1) * stride + i]
+                guard c0.isFinite, c1.isFinite, c2.isFinite, c3.isFinite else { continue }
+                let lowest = Swift.min(Swift.min(c0, c1), Swift.min(c2, c3))
+                let highest = Swift.max(Swift.max(c0, c1), Swift.max(c2, c3))
+                // The first level above the lowest corner.
+                var first = 0, past = ascending.count
+                while first < past {
+                    let middle = (first + past) / 2
+                    if ascending[middle] > lowest { past = middle } else { first = middle + 1 }
+                }
+                var k = first
+                while k < ascending.count, ascending[k] <= highest {
+                    appendCrossings(of: ascending[k], inCell: i, j, values: values,
+                                    to: &segments[order[k]])
+                    k += 1
+                }
+            }
+        }
+        return segments.map(stitch)
+    }
+
+    /// The oriented segments where `level` crosses cell `(i, j)`, appended to
+    /// `segments`: none when every corner is on one side of it, and none when
+    /// a corner is NaN or infinite, since a crossing found against one would
+    /// land nowhere. A hole in the field leaves the contours open at its edge.
+    @inline(__always) private func appendCrossings(of level: Double, inCell i: Int, _ j: Int, values: [Double],
+                                 to segments: inout [(from: Vector2, to: Vector2)]) {
+        let stride = cols + 1
+        guard values[j * stride + i].isFinite, values[j * stride + i + 1].isFinite,
+              values[(j + 1) * stride + i + 1].isFinite, values[(j + 1) * stride + i].isFinite
+        else { return }
+        // Corners counterclockwise from the cell's low corner:
+        // 0 = (i, j), 1 = (i+1, j), 2 = (i+1, j+1), 3 = (i, j+1).
+        let v0 = values[j * stride + i] - level
+        let v1 = values[j * stride + i + 1] - level
+        let v2 = values[(j + 1) * stride + i + 1] - level
+        let v3 = values[(j + 1) * stride + i] - level
+        var code = 0
+        if v0 < 0 { code |= 1 }; if v1 < 0 { code |= 2 }
+        if v2 < 0 { code |= 4 }; if v3 < 0 { code |= 8 }
+        guard code != 0, code != 15 else { return }
+
+        let x0 = x(i), x1 = x(i + 1), y0 = y(j), y1 = y(j + 1)
+        func interp(_ ax: Double, _ ay: Double, _ av: Double,
+                    _ bx: Double, _ by: Double, _ bv: Double) -> Vector2 {
+            let t = av / (av - bv)
+            return Vector2(ax + t * (bx - ax), ay + t * (by - ay))
+        }
+        func e0() -> Vector2 { interp(x0, y0, v0, x1, y0, v1) }   // low edge
+        func e1() -> Vector2 { interp(x1, y0, v1, x1, y1, v2) }   // right
+        func e2() -> Vector2 { interp(x0, y1, v3, x1, y1, v2) }   // high edge
+        func e3() -> Vector2 { interp(x0, y0, v0, x0, y1, v3) }   // left
+
+        // Oriented so a shared endpoint is one segment's `to` and the
+        // next one's `from`, which is what lets the stitch walk
+        // directionally. Saddles (5 and 10) pair their two segments
+        // by the cell average: below the level, the inside corners
+        // connect through the center; above, they stay separate.
+        switch code {
+        case 1: segments.append((e3(), e0()))
+        case 2: segments.append((e0(), e1()))
+        case 3: segments.append((e3(), e1()))
+        case 4: segments.append((e1(), e2()))
+        case 5:
+            if (v0 + v1 + v2 + v3) / 4 < 0 {
+                segments.append((e1(), e0())); segments.append((e3(), e2()))
+            } else {
+                segments.append((e3(), e0())); segments.append((e1(), e2()))
+            }
+        case 6: segments.append((e0(), e2()))
+        case 7: segments.append((e3(), e2()))
+        case 8: segments.append((e2(), e3()))
+        case 9: segments.append((e2(), e0()))
+        case 10:
+            if (v0 + v1 + v2 + v3) / 4 < 0 {
+                segments.append((e0(), e3())); segments.append((e2(), e1()))
+            } else {
+                segments.append((e0(), e1())); segments.append((e2(), e3()))
+            }
+        case 11: segments.append((e2(), e1()))
+        case 12: segments.append((e1(), e3()))
+        case 13: segments.append((e1(), e0()))
+        case 14: segments.append((e0(), e3()))
+        default: break
+        }
     }
 
     private struct EndpointKey: Hashable {
@@ -286,43 +341,79 @@ private struct IsolineGrid {
     /// edge are computed identically by both cells, so quantized keys match
     /// exactly; the maps are only ever indexed, never iterated, so the walk
     /// order is the segment order and the result is deterministic.
+    ///
+    /// Each endpoint's key is computed once. A key maps to the first segment
+    /// that starts (or ends) there, and the rare others that share it (a
+    /// crossing exactly on a grid corner) follow in a chain in segment order,
+    /// so a lookup takes the first unused one in the same order a list would.
     private func stitch(_ raw: [(from: Vector2, to: Vector2)]) -> [Contour] {
         // A contour passing exactly through a grid corner (a corner value of
         // exactly zero) makes its cell emit a null segment; the real curve
         // already routes through the neighbor cells, so nulls only leave
         // two-point litter. Drop them before walking.
-        let segments = raw.filter { EndpointKey($0.from) != EndpointKey($0.to) }
-        guard !segments.isEmpty else { return [] }
-        var bySource: [EndpointKey: [Int]] = [:]
-        var byTarget: [EndpointKey: [Int]] = [:]
-        for (s, segment) in segments.enumerated() {
-            bySource[EndpointKey(segment.from), default: []].append(s)
-            byTarget[EndpointKey(segment.to), default: []].append(s)
+        var segments: [(from: Vector2, to: Vector2)] = []
+        var fromKeys: [EndpointKey] = [], toKeys: [EndpointKey] = []
+        segments.reserveCapacity(raw.count)
+        fromKeys.reserveCapacity(raw.count)
+        toKeys.reserveCapacity(raw.count)
+        for segment in raw {
+            let from = EndpointKey(segment.from), to = EndpointKey(segment.to)
+            guard from != to else { continue }
+            segments.append(segment)
+            fromKeys.append(from)
+            toKeys.append(to)
         }
+        guard !segments.isEmpty else { return [] }
+
+        // First segment per key, then each segment's next one with the same key.
+        func index(_ keys: [EndpointKey]) -> (first: [EndpointKey: Int], next: [Int]) {
+            var first: [EndpointKey: Int] = [:]
+            first.reserveCapacity(keys.count)
+            var last: [EndpointKey: Int] = [:]
+            var next = [Int](repeating: -1, count: keys.count)
+            for (s, key) in keys.enumerated() {
+                if let tail = last[key] {
+                    next[tail] = s
+                } else if first[key] == nil {
+                    first[key] = s
+                    continue
+                } else {
+                    next[first[key]!] = s
+                }
+                last[key] = s
+            }
+            return (first, next)
+        }
+        let bySource = index(fromKeys), byTarget = index(toKeys)
         var used = [Bool](repeating: false, count: segments.count)
+        func firstUnused(_ key: EndpointKey, in map: (first: [EndpointKey: Int], next: [Int])) -> Int? {
+            var s = map.first[key] ?? -1
+            while s >= 0, used[s] { s = map.next[s] }
+            return s >= 0 ? s : nil
+        }
+
         var contours: [Contour] = []
         for start in segments.indices where !used[start] {
             used[start] = true
-            let startKey = EndpointKey(segments[start].from)
+            let startKey = fromKeys[start]
             var points = [segments[start].from, segments[start].to]
             var closed = false
 
-            var key = EndpointKey(segments[start].to)
-            while let next = bySource[key]?.first(where: { !used[$0] }) {
+            var key = toKeys[start]
+            while let next = firstUnused(key, in: bySource) {
                 used[next] = true
-                let target = segments[next].to
-                key = EndpointKey(target)
+                key = toKeys[next]
                 if key == startKey { closed = true; break }
-                points.append(target)
+                points.append(segments[next].to)
             }
 
             if !closed {
                 var back: [Vector2] = []
                 var backKey = startKey
-                while let previous = byTarget[backKey]?.first(where: { !used[$0] }) {
+                while let previous = firstUnused(backKey, in: byTarget) {
                     used[previous] = true
                     back.append(segments[previous].from)
-                    backKey = EndpointKey(segments[previous].from)
+                    backKey = fromKeys[previous]
                 }
                 if !back.isEmpty { points = back.reversed() + points }
             }
