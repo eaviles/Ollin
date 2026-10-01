@@ -370,7 +370,7 @@ noStroke(); fill(.white)
 for point in spiral.primePoints { drawCircle(center: point, radius: 3) }
 ```
 
-The lines are not a mystery once you see where they come from. Step diagonally in a square spiral and the number under you grows by a quadratic. So a diagonal *is* a quadratic, and a crowded one is a quadratic that keeps returning primes. Mathematics has known such polynomials since Euler. What the picture does is make them visible.
+The lines are not a mystery once you see where they come from. Step diagonally in a square spiral and the number under you grows by a quadratic. That is a rule with a squared term, so each step adds more than the last. So a diagonal *is* a quadratic, and a crowded one is a quadratic that keeps returning primes. Mathematics has known such polynomials since Euler. What the picture does is make them visible.
 
 The primes are only the famous test. To ask your own question, read `numbers`, the number in every cell in the grid's own order. Or hand `points(where:)` any test at all:
 

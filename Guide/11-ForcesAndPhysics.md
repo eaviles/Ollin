@@ -424,7 +424,7 @@ The pieces inherit the motion of the thing they came from, which is what makes i
 
 Try this:
 
-- Raise the piece count to 40. The break turns to gravel, and the small pieces tumble faster than the big ones because the solver gives them less inertia.
+- Raise the piece count to 40. The break turns to gravel, and the small pieces tumble faster than the big ones because the solver gives them less inertia. Inertia is the resistance a mass puts up to being moved.
 - Move the impact point to the edge of the disc (`Vector2(150, 0)`) and the break reads as a strike off one side.
 - Break the pieces again on a second collision, and you have a crack that runs.
 
@@ -700,7 +700,7 @@ Because the layout freezes, a change is a deliberate act. `reheat(0.3)` warms th
 
 ## Where this comes from
 
-The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
+The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Relaxation nudges each constraint toward satisfied, a few passes a frame. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
 
 Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the usual approach when a toolkit shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike. The assembled systems name their own sources above. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 

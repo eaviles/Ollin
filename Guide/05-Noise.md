@@ -122,7 +122,7 @@ let n = noise(x * 0.006, y * 0.006, loop: loopProgress(over: 4), radius: 0.6)
 
 <img src="Images/05-Noise/NoiseDrift.gif" alt="The cloudy noise field slowly churning, bright and dark regions growing, drifting, and dissolving into each other" width="480">
 
-`loop` takes a `0...1` progress, which [Chapter 3](03-MotionAndTime.md)'s `loopProgress` makes a four-second one here. One lap of it tours a closed circle through the field, and `radius` sets how much terrain the lap covers, so bigger is windier weather. The figure is this move, and it loops because of it. Inside, the circle runs through extra noise dimensions, a trick the looping-GIF artists use. The [Noise reference](../Docs/Generators/Noise.md#loop) has the details, including using `loop:` to close a wave around a ring in *space*.
+`loop` takes a `0...1` progress, which [Chapter 3](03-MotionAndTime.md)'s `loopProgress` makes a four-second one here. One lap of it tours a closed circle through the field, and `radius` sets how much terrain the lap covers, so bigger is windier weather. The figure is this move, and it loops because of it. Inside, the circle runs through two extra noise dimensions, inputs beyond the ones you draw with, a trick the looping-GIF artists use. The [Noise reference](../Docs/Generators/Noise.md#loop) has the details, including using `loop:` to close a wave around a ring in *space*.
 
 The same circle is built into the `sway` from [Chapter 3](03-MotionAndTime.md#the-sway-you-write-over-and-over-sway). Its `.wander` shape reads the noise field instead of a curve, so it never repeats inside a lap. It walks a closed circle like this one, so it still arrives home at the end of the lap:
 

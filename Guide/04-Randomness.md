@@ -35,7 +35,7 @@ final class Scatter: Sketch {
 }
 ```
 
-Run it and the canvas boils, which is what the code asks for. Your `draw()` runs at the display's rate, sixty or more times a second. Every frame rolls eighty fresh positions, and you are watching all of them. Sometimes that shimmer is the texture a sketch wants, and the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) uses it on purpose. Most of the time you want chance to make its choices once and keep them. For that, you need to know where these numbers come from.
+Run it and the canvas boils, which is what the code asks for. Your `draw()` runs at the display's rate, sixty or more times a second. Every frame rolls eighty fresh positions, and you are watching all of them. Sometimes that shimmer is the texture a sketch wants, and the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) uses it on purpose. Its rolls pile up in the middle, the way [Two shapes of chance](#two-shapes-of-chance-uniform-and-gaussian) explains below. Most of the time you want chance to make its choices once and keep them. For that, you need to know where these numbers come from.
 
 > **Swift note.** `for _ in 0..<80` is [Chapter 1](01-HelloOllin.md)'s counting loop with the counter thrown away. The underscore says "I don't need `i`, just do this eighty times."
 
@@ -101,7 +101,7 @@ let trio = [Color.indigo, .coral, .gold]
 fill(randomChoice(trio, weights: [6, 3, 1]))   // the figure's last strip
 ```
 
-With weights of six, three, and one, the first color wins six times as often as the last. A weight of zero would never win at all. Under the hood this is the gate again, one roll checked against thresholds stacked in proportion to the weights. Most compositions want a dominant, a support, and a spice, and three weights give you that. A related call, `shuffled(palette)`, hands back the whole list in a seeded random order.
+With weights of six, three, and one, the first color wins six times as often as the last. A weight of zero would never win at all. Under the hood this is the gate again, one roll checked against thresholds stacked in proportion to the weights. Most compositions want a dominant, a support, and a spice, and three weights give you that. A related call, `shuffled(palette)`, hands back the whole list in a seeded random order. It is the seeded shuffle the Swift trap above spelled as `shuffled(using: &randomness)`.
 
 ## Two shapes of chance: uniform and Gaussian
 
@@ -382,7 +382,7 @@ levyFlight(steps: 900, minStep: 1.5, maxStep: 90)
 selfAvoidingWalk(cellSize: 22)
 ```
 
-Each call hands back the walk's points as a list, ready to draw. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every argument, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
+Each call hands back the walk's points as a `[Vector2]`, which `drawPolyline` draws in one call. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every argument, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
 
 ## Chance spread evenly: blue noise and low-discrepancy sequences
 
