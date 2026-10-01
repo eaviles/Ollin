@@ -90,7 +90,7 @@ So far every mark, on the canvas or in a layer, has covered what was under it. T
   <img src="Images/19-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
 </picture>
 
-The one to learn first is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Ollin blends color as physical amounts of light, in the linear space [Chapter 9](09-Pictures.md) met when it averaged pixels. So the sum behaves like lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as light. `.multiply` does the opposite. It stacks color like layered ink or gels, and it works on light backgrounds. The rest are variations on lighter and darker, and the figure shows each of the seven on the same two discs.
+The one to learn first is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Ollin blends color as physical amounts of light, called linear light. [Appendix B](B-JustEnoughMath.md#light-and-the-number-stored-for-it-linear-light) explains it in one picture. [Chapter 9](09-Pictures.md)'s photo mosaic averaged pixels in it. So the sum behaves like lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as light. `.multiply` does the opposite. It stacks color like layered ink or gels, and it works on light backgrounds. The rest are variations on lighter and darker, and the figure shows each of the seven on the same two discs.
 
 One pairing comes back through the chapter. A bloomed layer drawn with `blendMode(.add)` reads as added light rather than as a sticker laid over the scene. The finished sketch composites its comets that way.
 
@@ -160,7 +160,7 @@ Accumulation adds new marks to a picture that otherwise sits still. **Feedback**
   <img src="Images/19-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a long tail that dims along the dot's path, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 </picture>
 
-A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame. The layer itself starts every frame cleared, so if you never draw `prev` back, the past is gone:
+A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame. The layer itself starts every frame cleared. The loop below hands you last frame's picture as `prev`, and if you never draw it back, the past is gone:
 
 ```swift
 var trail: Feedback!
@@ -331,7 +331,7 @@ override func draw() {
 }
 ```
 
-The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed. It applies an exposure and a Reinhard roll-off, then adds the paper's own tone after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 33](33-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` makes the same promise as the feedback section's `Feedback!`.
+The first frame is four thousand random dots. After a few hundred, the dots have averaged into the smooth noise field they were sampling, at the brightness one frame had. Nothing saturates, because nothing accumulates: the accumulator holds the sum in single-precision float and the count beside it, and `image` is their ratio. `light.reset()` starts it over when the scene changes. `developed(exposure:ground:)` prints the mean the way a photograph is printed. It applies an exposure, then rolls the highlights off with a curve like the tone map step's, this one Erik Reinhard's. Then it adds the paper's own tone after the curve. The `Rendering/DepthOfField` example uses this to turn a million scattered samples a frame into a photograph with a lens. [Chapter 33](33-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) picks it up with the 3D camera. The `Accumulator!` makes the same promise as the feedback section's `Feedback!`.
 
 ## When it gets slow
 
@@ -346,13 +346,13 @@ The cost row is the last row of the inspector, and it measures one frame. Press 
   <img src="Images/19-LayersAndEffects/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
 </picture>
 
-The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there. A polygon, a curve, or a stroke is cut into triangles before the GPU sees it. A closed shape like a circle or a rectangle is one instance. The **GPU** bar is what the card spent on the frame, taken from its own clock.
+The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there. A polygon, a curve, or a stroke is cut into triangles before the GPU sees it. A closed shape like a circle or a rectangle skips that cut. The GPU draws it from one small record, called an instance, so it barely touches this bar. The **GPU** bar is what the card spent on the frame, taken from its own clock.
 
 Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
 
 The bars are kept apart on purpose. The CPU is already building the next frame while the GPU draws this one, so the two overlap in time rather than adding up.
 
-The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, the texture, the clip, or the kind of drawing changes.
+The counts say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs Ollin recorded from your `draw()`, each a stretch of marks drawn in one state. A run breaks whenever the blend mode, the texture, the clip, or the kind of drawing changes.
 
 The batch count is the one to watch. Ten thousand circles in a row cost one draw call. Ten circles that each change the blend mode cost ten. If the batch count is close to the shape count, group the shapes that share a state.
 

@@ -33,7 +33,7 @@ drawImage(marks.filtered(.diffuse(sharpness: 1)).image, 0, 0)
 
 The rule the solve follows matters, because everything the picture does follows from it. Away from the marks, every pixel ends up the average of its four neighbors. That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
 
-`drawDiffusionCurve` is the form the technique is named for. It draws the same path twice, a small distance apart, with a different color on each side. The field jumps across the curve and stays smooth everywhere else. Left and right are named from walking the path in the order its points come, so reversing the points swaps the colors.
+`drawDiffusionCurve` is the form the technique is named for. It takes a list of points, which is what `horizon` holds in the listing above. It draws that path twice, a small distance apart, with a different color on each side. The field jumps across the curve and stays smooth everywhere else. Left and right are named from walking the path in the order its points come, so reversing the points swaps the colors.
 
 Now compare it to a gradient, the usual tool for a smooth field. A gradient needs a direction and two ends. This needs neither. The shape of the field is decided by where you put the marks. That is why the third panel remakes the whole lower half of the picture with one added curve. You place a few colors and let the space between them work itself out.
 
@@ -115,7 +115,7 @@ drawImage(lit.image, 0, 0)
   <img src="Images/21-PicturesYouSolve/LightField.jpg" alt="Three dark panels. A room drawn flat: walls, a comb of four teeth, a red bar, a yellow disc and a small white dot. The same room as light, with the dot lit and four shadows thrown by the teeth, light through the gaps between them. The same again, with the red bar, the yellow disc and the green wall now glowing in their own colors" width="680">
 </picture>
 
-The base layer is **the scene**: whatever you draw there is solid, and its alpha is how much of a ray it stops. The aux layer is **the lamps**: whatever you draw there gives light off, in its own color. What comes back is the light itself, which is why you draw it as the frame instead of over the scene.
+The base layer is **the scene**: whatever you draw there is solid, and its alpha is how much of a ray it stops. The aux layer, the second one `combined(with:_:)` takes, is **the lamps**: whatever you draw there gives light off, in its own color. What comes back is the light itself, which is why you draw it as the frame instead of over the scene.
 
 Look at what nobody drew. The comb's four teeth throw four shadows, with light through the gaps, and the shadows fan out. Each is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a lamp's does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those all come from one measurement.
 
@@ -125,13 +125,13 @@ The argument for that third panel is `bounces`:
 scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
 ```
 
-At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a look you may want on its own. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass over the whole ladder, and more is softer.
+At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a look you may want on its own. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another full pass of the solve, and more is softer.
 
 `sky` and `reach` are the two arguments to know next. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the argument that sets the speed.
 
-The cost needs saying plainly. This is among the most expensive effects in the chapter, level with diffusion at its default quality and far past it at its detail quality. Its cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
+The cost needs saying plainly. This is among the most expensive effects in the chapter. A `quality:` argument sets how closely the light is measured, as `.performance`, `.default`, or `.detail`. At the default it costs about what diffusion costs, and at `.detail` far more. Its cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
-Underneath, the answer is a ladder of light fields. Each one holds a single ring of distance around every point it samples. Close in there are many places and few directions; further out there are few places and many directions, over a span four times as long. That trade is why one lamp on the far side of the room costs no more than one beside you. The rays are marched against the measured field from the step above, which is why an empty room is crossed in a single step.
+Underneath, the answer is a ladder of light fields. Each one holds a single ring of distance around every point it samples. Close in there are many places and few directions; further out there are few places and many directions, over a span four times as long. That trade is why one lamp on the far side of the room costs no more than one beside you. The rays are walked against the measured field from the step above, each step as long as the distance the field reads there. That is why an empty room is crossed in a single step.
 
 ## Putting it together: the lighthouse
 
