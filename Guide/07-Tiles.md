@@ -57,7 +57,7 @@ for run in maze.runs { drawPolyline(run.points) }
 
 The diagonals meet at the cells' corners, so the doorways here are the corners rather than the edge midpoints. Two neighbors that lean toward each other make a longer line, four that agree make a box, and the eye reads the field as paths. `runs` is that reading made into values. The figure's right panel draws a smaller field than the listing's and gives each joined run its own color. The colors show what was already there in the left panel.
 
-`strokeCap(.round)` makes the corners read as turns instead of notches. `probability:` biases the coin. Pushed toward 0 or 1, the field combs into long parallel diagonals with the odd cell crossing them, which is quieter.
+`strokeCap(.round)` makes the corners read as turns instead of notches. `probability:`, one more argument to `tenPrint`, biases the coin. Pushed toward 0 or 1, the field combs into long parallel diagonals with the odd cell crossing them, which is quieter.
 
 ## Strands as values: `truchet`
 
@@ -206,7 +206,7 @@ Bias the flips with `probability:` and the weave drifts into long diagonal stair
 
 ### One route between any two: perfect mazes
 
-The diagonals of `tenPrint` read as paths, but not as a maze you could solve. Four that lean together close a box, and whatever is inside it is sealed off. A **perfect maze** makes the opposite promise. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets. It is the maze to draw when somebody is meant to solve it. Use it too when you want the one hardest route through it as a line. The idea comes from graph theory. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume.
+The diagonals of `tenPrint` read as paths, but not as a maze you could solve. Four that lean together close a box, and whatever is inside it is sealed off. A **perfect maze** makes the opposite promise. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets. It is the maze to draw when somebody is meant to solve it. Use it too when you want the one hardest route through it as a line. The idea comes from graph theory, the mathematics of points and the links between them. A spanning tree is a set of links that reaches every point and closes no loop. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/PerfectMaze-dark.jpg">
@@ -222,7 +222,7 @@ stroke(.orange)
 drawPolyline(m.contour(of: m.longestPath(), in: bounds).points)
 ```
 
-The algorithm you choose is a texture control as much as a technical one. `.backtracker`, a depth-first walk, gives long winding corridors. `.kruskal`, after Joseph Kruskal's 1956 method, gives an even sprawl of short dead ends. The same guarantee holds for both. `drawMaze` strokes the walls. The maze can also hand you its longest path, the single hardest route through it, whose two ends make a natural entrance and exit. The last line draws that path through the cell centers, and `bounds` there is the whole canvas as a rectangle, which every sketch has ready. [Mazes](../Docs/Drawing/Tiling.md#maze) has all three carving algorithms, and [`Patterns/Maze`](../Examples/Patterns/Maze/Sketch.swift) traces the longest path through each.
+The algorithm you choose is a texture control as much as a technical one. `.backtracker` walks forward until it is stuck, then backs up to the last fork. That depth-first walk gives long winding corridors. `.kruskal`, after Joseph Kruskal's 1956 method, gives an even sprawl of short dead ends. The same guarantee holds for both. `drawMaze` strokes the walls. The maze can also hand you its longest path, the single hardest route through it, whose two ends make a natural entrance and exit. The last line draws that path through the cell centers, and `bounds` there is the whole canvas as a rectangle, which every sketch has ready. [Mazes](../Docs/Drawing/Tiling.md#maze) has all three carving algorithms, and [`Patterns/Maze`](../Examples/Patterns/Maze/Sketch.swift) traces the longest path through each.
 
 ### No coins at all: kolam and sona
 
@@ -244,7 +244,7 @@ How many separate loops you get is decided before you draw anything. It is the g
   <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
 </picture>
 
-The third panel is how you steer it. A **wall** sits between two neighboring dots, and the line bounces off that too:
+The third panel is how you steer it. A **wall** sits between two neighboring dots, and the line bounces off that too. The call lists them as `mirrors`, since the line reflects off a wall the way light does:
 
 ```swift
 let design = kolam(columns: 7, rows: 5,
@@ -253,7 +253,7 @@ let design = kolam(columns: 7, rows: 5,
 
 Every wall inside the field moves the count by one. It either cuts a loop in two or joins two into one, never more. So you can start from a field of the size you want and walk the count down to one, wall by wall. That is how the figures of a sona are built.
 
-The value hands you `loops` as closed contours and `dots` as the field, so the line is geometry. Stroke it, cut it with the shape booleans from [Chapter 15](15-ShapesAsMaterial.md), or send it to a pen plotter. The walk turns square corners, and `smoothed(iterations:)` rounds them into the chalked form. `drawKolam` does that rounding for you. [Kolam and sona](../Docs/Drawing/Kolam.md) is the reference, and [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) resizes the field live with the loop count read out.
+The value hands you `loops` as closed contours and `dots` as the field, so the line is geometry. Stroke it, cut it against another shape with the booleans from [Chapter 15](15-ShapesAsMaterial.md#shape-arithmetic-the-booleans), or send it to a pen plotter. The walk turns square corners, and `smoothed(iterations:)` rounds them into the chalked form. `drawKolam` does that rounding for you. [Kolam and sona](../Docs/Drawing/Kolam.md) is the reference, and [`Patterns/Kolam`](../Examples/Patterns/Kolam/Sketch.swift) resizes the field live with the loop count read out.
 
 ### The same line, woven: Celtic knotwork
 
@@ -358,7 +358,7 @@ It cuts the sample into every little square the sample contains, counts how ofte
   <img src="Images/07-Tiles/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
 </picture>
 
-Hand it a small `Image`, a sample of sixteen pixels square like the figure's, and ask for a size:
+Hand it a small `Image` and ask for a size. An `Image` is a picture held in memory, the type [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) loads from a file, and the figure's sample is sixteen pixels square:
 
 ```swift
 let texture = wfc(from: sample, width: 48, height: 30)   // an Image, or nil
@@ -436,7 +436,7 @@ The figure counts why only three fit on flat paper:
   <img src="Images/07-Tiles/CornersAtAVertex.jpg" alt="Five panels. Six triangles, four squares, and three hexagons each meet around a dot with no gap and no overlap, labeled as summing to 360 degrees. Four pentagons around the fourth dot overlap, the fourth one landing on the first, with the extra 72-degree wedge marked in orange. The last panel is a Poincaré disk with four pentagons meeting cleanly at its center, the rest of the tiling faded around them" width="680">
 </picture>
 
-The corners meeting at a vertex must add up to one full turn. Six triangles, four squares, or three hexagons use up that turn exactly, and no other regular shape does. Four pentagons ask for 432 degrees, so the fourth lands on the first. In the disk the same four meet at right angles, because a hyperbolic polygon's corners shrink as the polygon grows. So there is always a size whose corners fit. The rule is written with `sides`, the polygon's sides, and `meeting`, how many meet at a corner. A pair whose `(sides - 2) * (meeting - 2)` is above 4 lives in the disk. Exactly 4 is flat paper, and below 4 the corners close up into one of the five Platonic solids.
+The corners meeting at a vertex must add up to one full turn. Six triangles, four squares, or three hexagons use up that turn exactly, and no other regular shape does. Four pentagons ask for 432 degrees, so the fourth lands on the first. In the disk the same four meet at right angles, because a hyperbolic polygon's corners shrink as the polygon grows. So there is always a size whose corners fit. The rule is written with `sides`, the polygon's sides, and `meeting`, how many meet at a corner. A pair whose `(sides - 2) * (meeting - 2)` is above 4 lives in the disk. Exactly 4 is flat paper. Below 4 the corners close up into one of the five Platonic solids, whose faces are all one regular polygon, like the cube's.
 
 ```swift
 for tile in hyperbolicTiling(sides: 5, meeting: 4) {
@@ -490,7 +490,7 @@ let sheet = ParquetDeformation(grid: Grid(in: field, columns: 15, rows: 15),
 }
 ```
 
-Now the sheet keeps turning one tile into the other and back, which is the form in time rather than in space. Two faces come out of it, as with hitomezashi. `tiles` is the interlocking pieces, each carrying the `amount` it was built at so you can color the drift, and `edges` is the line-work. Prefer `edges` when you are stroking, because it visits each grid edge once. Stroking the tiles would draw every interior edge twice. A translucent stroke then shows a doubled line, and a pen plotter makes a second pass over each edge.
+The `field` is the canvas with 70 pixels taken off every side, which is what `inset(by: .all(70))` asks `bounds` for. The `smoothstep` is [Chapter 3](03-MotionAndTime.md#shaping-time)'s window cutter, so the tiles change across a soft band around `front`. Now the sheet keeps turning one tile into the other and back, which is the form in time rather than in space. Two faces come out of it, as with hitomezashi. `tiles` is the interlocking pieces, each carrying the `amount` it was built at so you can color the drift, and `edges` is the line-work. Prefer `edges` when you are stroking, because it visits each grid edge once. Stroking the tiles would draw every interior edge twice. A translucent stroke then shows a doubled line, and a pen plotter makes a second pass over each edge.
 
 The tiles on the outside of the sheet carry their deformed outer edges too, so the border comes out fringed. Every tile is the shape the run asks for. If you want a clean rectangle, cut the tiles against the bounds with the shape booleans from [Chapter 15](15-ShapesAsMaterial.md). [Parquet deformations](../Docs/Drawing/ParquetDeformation.md) is the reference, and [`Patterns/ParquetDeformation`](../Examples/Patterns/ParquetDeformation/Sketch.swift) is the moving front.
 

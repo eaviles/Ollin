@@ -10,7 +10,7 @@ Pictures and tables arrive from outside your sketch, and you read both the same 
 
 ## A picture on the canvas: `loadImage` and `drawImage`
 
-Images follow the pattern you already know from fonts: load once in `setup()`, keep the result, draw it in `draw()`.
+Images follow the habit from [Chapter 4](04-Randomness.md#finding-a-seed-to-keep), where the rolls happened once in `setup()`: load once there, keep the result, draw it in `draw()`.
 
 ```swift
 final class Photo: Sketch {
@@ -58,20 +58,20 @@ A 1600-pixel square is more than a stipple, a dither, or a mosaic needs. Each of
 
 ## An image you can ask: `image[x, y]`
 
-Drawing a picture is the smaller half of what `Image` does for generative work. The larger half is *reading* it. The subscript `image[x, y]` returns the color stored at a pixel. So a picture becomes a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
+Drawing a picture is the smaller half of what `Image` does for generative work. The larger half is *reading* it. The subscript `image[x, y]`, the same square brackets that read one entry of a list, returns the color stored at a pixel. So a picture becomes a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
   <img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a photograph of a woman in profile on a plain tan ground; right, the same picture redrawn as a grid of dots on a dark ground, each dot taking its pixel's color and sized by its brightness, so the ground is large tan dots and the face is small dark ones" width="680">
 </picture>
 
-The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`. Rows work the same way, so any grid samples any image size. Second, "how bright is this pixel" takes one more line than the three channels suggest, because your eye does not weigh them equally. Green counts most and blue least, and the standard weights are
+The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`. Rows work the same way, so any grid samples any image size. Second, call the color a pixel answers with `c`. Its red, green, and blue read back as `c.red`, `c.green`, and `c.blue`, and those are its three channels. Asking "how bright is this pixel" takes one more line than the three suggest, because your eye does not weigh them equally. Green counts most and blue least, and the standard weights are
 
 ```swift
 let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 ```
 
-and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. [Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright. Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
+and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. [Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright. Ollin also carries the ask as a property, `c.luminance`. It measures a touch more faithfully, on the channels converted to the light the screen emits, which [Appendix B](B-JustEnoughMath.md#light-and-the-number-stored-for-it-linear-light) draws. The handwritten weights are the idea, and the property is the everyday spelling.
 
 You can also write pixels. The initializer `Image(width:height:)` makes a blank image, and `image[x, y] = color` paints one pixel. So a picture can come out of code as readily as out of a file. Run a double loop over every pixel, color each from a [Chapter 2](02-Color.md) ramp read by height, and add a little [Chapter 5](05-Noise.md) noise. The result is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example builds one this way, reading a colormap along a diagonal wave instead of by height. Every picture tool in this chapter reads an authored image the way it reads a photograph.
 
@@ -79,7 +79,7 @@ You can also write pixels. The initializer `Image(width:height:)` makes a blank 
 
 This is the sketch from the top of the chapter. It composes the loading and the working copy from [A picture on the canvas](#a-picture-on-the-canvas-loadimage-and-drawimage) with the sampling from [An image you can ask](#an-image-you-can-ask-imagex-y). It answers each sample with words drawn by [Chapter 8](08-Words.md)'s `drawText`, so the picture is *made of* the words. A message repeats across a grid in reading order. Each letter samples the photograph at its own position, takes the pixel's color, and scales by its brightness.
 
-It is a glyph mosaic built by hand, on purpose. The finished glyph mosaic after the sketch would give you a better ramp in one line. But it chooses the character for you, and this sketch needs the characters to spell something. Building the grid yourself is what lets it spell. Make `MySketches/TypeMosaic.swift`:
+It is a glyph mosaic, a picture made of one character per cell, and this one is built by hand on purpose. The finished glyph mosaic after the sketch does it in one line, with a ramp of characters ordered by how much ink each puts down. But it chooses the character for you, and this sketch needs the characters to spell something. Building the grid yourself is what lets it spell. Make `MySketches/TypeMosaic.swift`:
 
 ```swift
 import Ollin
@@ -161,7 +161,7 @@ The portrait loaded a bundled photograph and only read it, never drawing the pic
 
 ### A picture you drop on the window
 
-A path typed into `loadImage` is fine for a picture you keep. For one you want to try, drop it on the window. The sketch is told at the drop, the paths arrive through `droppedFiles()`, and `mouse` says where the file landed:
+A path typed into `loadImage` is fine for a picture you keep. For one you want to try, drop it on the window. The sketch is told at the drop by `filesDropped()`, a hook like [Chapter 2](02-Color.md#putting-it-together-a-color-field)'s `mousePressed()`. The paths arrive through `droppedFiles()`, and `mouse` says where the file landed:
 
 ```swift
 override func filesDropped() {
@@ -178,7 +178,7 @@ Here `pictures` is a list the sketch keeps. Each entry is a pair, a picture with
   <img src="Images/09-Pictures/DroppedOnTheWindow.jpg" alt="A diagram of a file tile labeled marigolds.jpg leaving the Finder on a dotted trail that arcs into a dark sketch window, where the picture sits a little turned on a white border under an orange crosshair labeled mouseX, mouseY. An orange line in the window's corner reads not a picture: notes.txt. Callouts say the Finder hands over a path, not a picture, and that a file that is not a picture is still a path to name" width="680">
 </picture>
 
-Reading `droppedFiles()` empties the list of dropped paths. So a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input outside a take, so a replay from [Chapter 43](43-Performing.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
+Reading `droppedFiles()` empties the list of dropped paths. So a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input that a recording does not keep, so a replay from [Chapter 43](43-Performing.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
 
 ### The box is never the right shape: `fit`
 
@@ -197,7 +197,7 @@ The chapter's first `drawImage(photo, 0, 0, width, height)` did something quietl
 drawImage(photo, in: panel, fit: .cover)
 ```
 
-Each answer is right for a different loss. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
+The `in:` form takes a `Rectangle`, here one called `panel`, and `fit:` says how the picture meets it. Each answer is right for a different loss. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
 
 A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The church dome in the figure gives the game away in all three panels at once.
 
@@ -384,7 +384,7 @@ override func draw() {
 }
 ```
 
-The `ink`, `pins`, and `minSpan` arguments, `thread` and `sequence`, and why bold masses wind better than a soft sky are on the [string art page](../Docs/Generators/StringArt.md), with the worked sketch in [`Examples/Images/StringArt`](../Examples/Images/StringArt/Sketch.swift).
+Two calls in the listing are new. `noClear()` stops the canvas being wiped between frames, so each frame's chords stay and pile up. `withAlpha(0.35)` hands back the same color at 35% opacity. The `ink`, `pins`, and `minSpan` arguments, `thread` and `sequence`, and why bold masses wind better than a soft sky are on the [string art page](../Docs/Generators/StringArt.md), with the worked sketch in [`Examples/Images/StringArt`](../Examples/Images/StringArt/Sketch.swift).
 
 ## The picture's own pixels: sorting and a hidden shape
 
@@ -476,7 +476,7 @@ The [Data](../Docs/Helpers/Data.md#mapping) page has the range rule for each kin
 
 ### Documents with a shape: `loadJSON`
 
-JSON is the format a web service answers in, nesting named values and lists to any depth rather than rows. `loadJSON` reads one and hands back a value you reach through by name or index. At the end of the path you ask for the kind you want: `.text`, `.number`, `.int`, `.bool`, `.color`, or `.array`. A key that is not there answers null rather than stopping, so a path of any length is safe to write in one line. A document you would rather decode into your own type is `Codable`'s job.
+JSON is the format a web service answers in, nesting named values and lists to any depth rather than rows. `loadJSON` reads one and hands back a value you reach through by name or index. At the end of the path you ask for the kind you want: `.text`, `.number`, `.int`, `.bool`, `.color`, or `.array`. A key that is not there answers null rather than stopping, so a path of any length is safe to write in one line. A document you would rather decode into a type of your own is `Codable`'s job. `Codable` is Swift's built-in way of reading a file straight into a type you declare.
 
 ```swift
 let doc = try? loadJSON(resource: "places", withExtension: "json", in: .module)

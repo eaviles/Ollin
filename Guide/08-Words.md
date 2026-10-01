@@ -54,7 +54,7 @@ textFont(StrokeFont.builtIn)               // Hershey Sans, the bundled pen font
 textFont(OutlineFont.systemMedium)         // back to the default
 ```
 
-For outline fonts, anything installed on your Mac is a name away. The initializer returns nothing when the name does not match, so a typo fails where you can see it. Pair it with a fallback:
+For outline fonts, anything installed on your Mac is a name away. `OutlineFont(name:)` is an initializer, a call named after a type that makes a new value of it. It returns nothing when the name does not match, so a typo fails where you can see it. Pair it with a fallback:
 
 ```swift
 textFont(OutlineFont(name: "Avenir Next") ?? .system)
@@ -97,7 +97,7 @@ Marks *along* the letters need one more step. The outline points come back uneve
 
 ## Both edges flush: the box form and justification
 
-So far every string has been one line hung from a point. A passage wants a box. A `Rectangle` is a corner plus a width and a height. When you hand `drawText` one, it breaks the text to fit inside, line by line. It wraps where the system says a line may break. By default each line stops where its last word ends. `textJustify()` opens the spaces instead, until every full line reaches the box's right edge:
+So far every string has been one line hung from a point. A passage wants a box. A `Rectangle` is a corner plus a width and a height. When you hand `drawText` one, it breaks the text to fit inside, line by line. It wraps where the system says a line may break. By default each line stops where its last word ends. `textJustify()` opens the spaces instead, until every full line reaches the box's right edge. In the listing, `passage` is a string holding a few sentences:
 
 ```swift
 let box = Rectangle(x: 120, y: 758, width: 840, height: 280)
@@ -113,7 +113,7 @@ drawText(passage, in: box)
 
 Justification needs to know how far a line should run, and only a box says that. So it applies to the box form of `drawText` and to nothing else. The last line of each paragraph keeps its natural length, because the writing ended there. `noTextJustify()` turns it back off, and `textAlign` still decides which corner of the box the passage opens from.
 
-Where the extra room goes is the layout engine's business. English opens the spaces between words. A script with no spaces opens the gaps between its characters instead, which the scripts family after the sketch comes back to. Either way you ask for the same thing.
+Where the extra room goes is the business of the layout engine, the system code that places each glyph on its line. English opens the spaces between words. A script with no spaces opens the gaps between its characters instead, which the scripts family after the sketch comes back to. Either way you ask for the same thing.
 
 The box has a second setting. The call `textHangingPunctuation()` lets a full stop or comma that will not fit sit past the box's edge. Without the setting, the mark would take the character before it to the next line. Hanging the mark keeps the right margin looking straight. In the reference, [textHangingPunctuation](../Docs/Drawing/Text.md#hanging) has the rule, and [`Text/HangingStops`](../Examples/Text/HangingStops/Sketch.swift) sets one passage both ways.
 
