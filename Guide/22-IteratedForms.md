@@ -4,9 +4,9 @@
 
 # 22. Iterated forms
 
-<img src="Images/22-IteratedForms/OrbitPlate.jpg" alt="Four dark panels on near-black: a coral-red Barnsley fern, a gold folded ribbon from a chaotic map, a teal lace of nested circles from circle inversion, and a violet double spiral from a Kleinian group" width="560">
+<img src="Images/22-IteratedForms/OrbitPlate.jpg" alt="Four dark panels on near-black, each a cloud of points caught part way through condensing, its newest points bright over the faint ones: a coral-red Barnsley fern, a gold folded ribbon from a chaotic map, a teal lace of nested circles from circle inversion, and a violet double spiral from a Kleinian group" width="560">
 
-Take a point, apply a rule, mark where it lands, and repeat tens of thousands of times. The marks record where the point spent its time, and that record is the picture. You learn four such rules and one plotting function that draws them all, and the plate above is that function called four times. Fractal flames, order turning into chaos, and questions asked of the plane one pixel at a time follow it.
+Take a point, apply a rule, mark where it lands, and repeat tens of thousands of times. The marks record where the point spent its time, and that record is the picture. You learn four such rules and one plotting function that draws them all. The plate above is that function called four times, each cloud condensing as its points land. Fractal flames, order turning into chaos, and questions asked of the plane one pixel at a time follow it.
 
 ## The same fern, played as a game: the chaos game
 
@@ -102,7 +102,7 @@ The return type is what sets this one apart from the clouds. `kleinianLimitSet` 
 
 ## Putting it together: a plate of four orbits
 
-Now you can build the plate at the top. It is a specimen sheet, four systems laid out under one hand. The four steps above each made a cloud of points, and the plate composes them. The chaos game's fern and a chaotic map's orbit each get a panel. So do the dust of a ring of mirrors and a Kleinian curve's points. Each is fitted into its panel and laid down faint. One function turns a rule into a cloud of points. One other function fits that cloud into a panel and draws it. Make a new file, `MySketches/OrbitPlate.swift`:
+Now you can build the plate at the top. It is a specimen sheet, four systems laid out under one hand, and it fills in front of you. The four steps above each made a cloud of points, and the plate composes them. The chaos game's fern and a chaotic map's orbit each get a panel. So do the dust of a ring of mirrors and a Kleinian curve's points. Each is fitted into its panel and laid down faint, a few points at a time, until the cloud is whole. One function turns a rule into a cloud of points. One other function fits that cloud into a panel and draws as much of it as has landed. Make a new file, `MySketches/OrbitPlate.swift`:
 
 ```swift
 import Ollin
@@ -120,6 +120,9 @@ final class OrbitPlate: Sketch {
     var clouds: [[Vector2]] = []
     var builtFor = 0
 
+    // Six seconds of points landing, then two seconds of the finished plate.
+    override var loopDuration: Double? { 8 }
+
     override func setup() {
         build()
     }
@@ -129,10 +132,16 @@ final class OrbitPlate: Sketch {
         background(paper)
         noStroke()
 
+        // How much of each cloud has landed so far. The ease-in keeps the
+        // first few hundred points on screen long enough to watch them land,
+        // before the flood.
+        let seconds = loopProgress(over: 8) * 8
+        let grown = Easing.easeInCubic(min(seconds / 6, 1))
+
         let panels = grid(columns: 2, rows: 2, padding: 70, gutter: 44)
         for (index, cell) in panels.cells.enumerated() {
             let inner = cell.frame.inset(by: .all(26))
-            plot(clouds[index], in: inner, ink: ramp.color(at: Double(index) / 3))
+            plot(clouds[index], in: inner, ink: ramp.color(at: Double(index) / 3), grown: grown)
             label(index, in: cell.frame)
         }
     }
@@ -173,16 +182,25 @@ final class OrbitPlate: Sketch {
             mirrors.append(Circle(center: .zero, radius: 1 - r))
             return inversionLimitSet(of: mirrors, count: budget / 3)
         default:
-            return kleinianLimitSet(.lace).points
+            // A contour's points come in order along the curve. Shuffled, they
+            // land all over it at once, the way the other three clouds do.
+            return shuffled(kleinianLimitSet(.lace).points)
         }
     }
 
-    // The one plotting function. Fit the cloud to its panel, then lay every
-    // point down at the same low alpha so that crowding is what makes a
-    // region bright.
-    func plot(_ cloud: [Vector2], in frame: Rectangle, ink: Color) {
+    // The one plotting function. Fit the whole cloud to its panel, then lay
+    // down the points that have landed so far, every one at the same low
+    // alpha, so that crowding is what makes a region bright. The newest few
+    // go down at full ink while the cloud is still growing, so you can watch
+    // the game being played.
+    func plot(_ cloud: [Vector2], in frame: Rectangle, ink: Color, grown: Double) {
+        let placed = fitted(cloud, in: frame)
+        let landed = Int(Double(placed.count) * grown)
+        let fresh = grown < 1 ? 200 : 0
         fill(ink.withAlpha(inkAlpha))
-        drawPoints(fitted(cloud, in: frame), size: dotSize)
+        drawPoints(Array(placed.prefix(landed)), size: dotSize)
+        fill(ink)
+        drawPoints(Array(placed.prefix(landed).suffix(fresh)), size: dotSize + 0.5)
     }
 
     func label(_ index: Int, in frame: Rectangle) {
@@ -196,14 +214,15 @@ final class OrbitPlate: Sketch {
 }
 ```
 
-> **Swift note.** `switch index` picks one branch by a value. Each `case` is one value, `default` is every other, and a `return` inside a case leaves the function with that branch's answer. `trail.reserveCapacity(budget)` asks the list to set room aside before the loop fills it, so it never has to grow. The property `clouds` is a list of lists, like the trails in [Chapter 10](10-Vectors.md)'s chasers. The call `(0 ..< 4).map { orbit($0) }` builds it with the `$0` form from [Chapter 6](06-GridsAndRepetition.md).
+> **Swift note.** `switch index` picks one branch by a value. Each `case` is one value, `default` is every other, and a `return` inside a case leaves the function with that branch's answer. `trail.reserveCapacity(budget)` asks the list to set room aside before the loop fills it, so it never has to grow. The property `clouds` is a list of lists, like the trails in [Chapter 10](10-Vectors.md)'s chasers. The call `(0 ..< 4).map { orbit($0) }` builds it with the `$0` form from [Chapter 6](06-GridsAndRepetition.md). `placed.prefix(landed)` is the first `landed` items of a list, and `.suffix(fresh)` the last `fresh` of those. Each is a view onto the list rather than a list of its own, so `Array(...)` makes one again before `drawPoints` takes it.
 
 Run it, then pull the ink alpha down and the point budget up. What each function does:
 
-- `build()` makes the four clouds once, in `setup()`, and makes them again only when `Points per panel` moves. Building them every frame would cost the same work sixty times a second for a picture that never changes. `seed(3)` inside it is what keeps the fern and the mirrors' dust the same from one build to the next. The mirrors get a third of the budget, since their dust crowds faster. The Kleinian curve has a point count of its own and ignores the budget.
-- `orbit(_:)` is where the four systems live, and it is the only place they differ. Three of them return a cloud they generated. The Kleinian one returns a curve's points, which is the same list of `Vector2` and so plots identically.
-- `plot(_:in:ink:)` never asks what it is drawing. `fitted` measures whatever it is handed and scales it into the panel. That is why the fern's own coordinates and the Clifford map's plus-or-minus-two range both land correctly. No numbers are set per system anywhere.
-- The low alpha is the reason these read as forms rather than scribble. A single dot is nearly invisible. Where the orbit returns often the dots stack, and the density becomes the image. Turn `Ink` up to 0.6 and the picture flattens into a silhouette, which is the same information with the interesting part thrown away.
+- `build()` makes the four clouds once, in `setup()`, and makes them again only when `Points per panel` moves. Building them every frame would cost the same work sixty times a second for clouds that never change. Only how much of each is shown changes. `seed(3)` inside it is what keeps the fern and the mirrors' dust the same from one build to the next. The mirrors get a third of the budget, since their dust crowds faster. The Kleinian curve has a point count of its own and ignores the budget.
+- `orbit(_:)` is where the four systems live, and it is the only place they differ. Three of them return a cloud they generated. The Kleinian one returns a curve's points, which is the same list of `Vector2` and so plots identically. They are shuffled first, because a contour's points come in order along the curve. In that order the panel would draw its curve from one end to the other, while the other three condense all over at once.
+- `loopProgress(over: 8)` is the clock from [Chapter 3](03-MotionAndTime.md), lapping `0...1` every eight seconds, and `loopDuration` declares the same eight so an export can render exactly one lap. The first six seconds grow the clouds and the last two hold the finished plate. `Easing.easeInCubic` shapes the growth. One second in, fewer than one point in two hundred has landed, so the first few hundred stay on screen long enough to watch, and the flood comes at the end.
+- `plot(_:in:ink:grown:)` never asks what it is drawing. `fitted` measures the whole cloud and scales it into the panel, and only then does `prefix` keep the part that has landed. That is why the fern's own coordinates and the Clifford map's plus-or-minus-two range both land correctly, and why the picture never shifts as it fills. Fitting the landed part instead would make each cloud swell and slide as its extent grew. No numbers are set per system anywhere.
+- The low alpha is the reason these read as forms rather than scribble. A single dot is nearly invisible. Where the orbit returns often the dots stack, and the density becomes the image. Turn `Ink` up to 0.6 and the picture flattens into a silhouette, which is the same information with the interesting part thrown away. The newest two hundred landings go down at full ink while a cloud is growing, which is what lets you see the game being played rather than a picture fading in. Once the lap holds, they go down faint like the rest.
 - `grid` and `Ramp` do the layout and the color, from [Chapter 6](06-GridsAndRepetition.md) and [Chapter 2](02-Color.md). The plate is a grid sketch that happens to be full of orbits.
 
 Before moving on, make it yours:
@@ -211,9 +230,10 @@ Before moving on, make it yours:
 - Swap `ChaoticMap.clifford()` for `.deJong()`, `.gumowskiMira()`, or `.ikeda()`. Each has its own temperament, and the panel is one word wide.
 - Give the fern panel `.sierpinskiTriangle` or one of the other systems, and watch `fitted` absorb the change with no other edit.
 - Feed the ring in panel three six mirrors instead of five, then let them overlap slightly. The lace tears, as the mirrors step said it would, and pulling them apart instead scatters it into dust.
+- Take `shuffled` off the Kleinian points. That panel then draws its curve from one end to the other while the others condense, because a contour's points come in order.
 - Drop to one panel at the full canvas and raise the budget to its ceiling. These are density plates, and they keep gaining from samples long past the point where a drawn shape would be finished.
 
-The plate is a still, so keep it as one. `swift run OllinLive MySketches/OrbitPlate.swift --export plate.png` writes the canvas at its full size, with the parameter values in the file.
+The plate fills in front of you, so keep a lap of it. `swift run OllinLive MySketches/OrbitPlate.swift --export-loop plate.mp4` renders exactly the eight seconds `loopDuration` declares, from the first landings to the held plate. For the finished plate alone, `--export plate.png --frame 400` writes a frame from the hold at the canvas's full size, with the parameter values in the file.
 
 ## More games with transformations: fractal flames and Schottky circles
 

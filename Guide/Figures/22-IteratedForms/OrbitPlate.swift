@@ -1,9 +1,12 @@
-// figure: frame=0 probe
+// figure: frame=240 probe
 //
 // Guide payoff (Chapter 22): a plate of four orbits. Four different iterated
 // rules, all of them handed to the same plotting function, because the
 // chapter's whole claim is that what you are looking at is the density of an
-// orbit rather than a drawn shape.
+// orbit rather than a drawn shape. The clouds condense point by point over
+// six seconds and then hold for two. The pinned frame is four seconds in,
+// with each cloud about a third of the way grown and its newest landings
+// bright.
 import Ollin
 
 final class OrbitPlate: Sketch {
@@ -19,6 +22,9 @@ final class OrbitPlate: Sketch {
     var clouds: [[Vector2]] = []
     var builtFor = 0
 
+    // Six seconds of points landing, then two seconds of the finished plate.
+    override var loopDuration: Double? { 8 }
+
     override func setup() {
         build()
     }
@@ -28,10 +34,16 @@ final class OrbitPlate: Sketch {
         background(paper)
         noStroke()
 
+        // How much of each cloud has landed so far. The ease-in keeps the
+        // first few hundred points on screen long enough to watch them land,
+        // before the flood.
+        let seconds = loopProgress(over: 8) * 8
+        let grown = Easing.easeInCubic(min(seconds / 6, 1))
+
         let panels = grid(columns: 2, rows: 2, padding: 70, gutter: 44)
         for (index, cell) in panels.cells.enumerated() {
             let inner = cell.frame.inset(by: .all(26))
-            plot(clouds[index], in: inner, ink: ramp.color(at: Double(index) / 3))
+            plot(clouds[index], in: inner, ink: ramp.color(at: Double(index) / 3), grown: grown)
             label(index, in: cell.frame)
         }
     }
@@ -72,16 +84,25 @@ final class OrbitPlate: Sketch {
             mirrors.append(Circle(center: .zero, radius: 1 - r))
             return inversionLimitSet(of: mirrors, count: budget / 3)
         default:
-            return kleinianLimitSet(.lace).points
+            // A contour's points come in order along the curve. Shuffled, they
+            // land all over it at once, the way the other three clouds do.
+            return shuffled(kleinianLimitSet(.lace).points)
         }
     }
 
-    // The one plotting function. Fit the cloud to its panel, then lay every
-    // point down at the same low alpha so that crowding is what makes a
-    // region bright.
-    func plot(_ cloud: [Vector2], in frame: Rectangle, ink: Color) {
+    // The one plotting function. Fit the whole cloud to its panel, then lay
+    // down the points that have landed so far, every one at the same low
+    // alpha, so that crowding is what makes a region bright. The newest few
+    // go down at full ink while the cloud is still growing, so you can watch
+    // the game being played.
+    func plot(_ cloud: [Vector2], in frame: Rectangle, ink: Color, grown: Double) {
+        let placed = fitted(cloud, in: frame)
+        let landed = Int(Double(placed.count) * grown)
+        let fresh = grown < 1 ? 200 : 0
         fill(ink.withAlpha(inkAlpha))
-        drawPoints(fitted(cloud, in: frame), size: dotSize)
+        drawPoints(Array(placed.prefix(landed)), size: dotSize)
+        fill(ink)
+        drawPoints(Array(placed.prefix(landed).suffix(fresh)), size: dotSize + 0.5)
     }
 
     func label(_ index: Int, in frame: Rectangle) {
